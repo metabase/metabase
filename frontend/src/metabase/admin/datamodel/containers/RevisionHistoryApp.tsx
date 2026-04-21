@@ -3,14 +3,15 @@ import _ from "underscore";
 
 import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
+import type { State } from "metabase/redux/store";
+import { getUser } from "metabase/selectors/user";
+import { connect } from "metabase/utils/redux";
+import { checkNotNull } from "metabase/utils/types";
 import type { Revision, RevisionId, Segment, User } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { RevisionHistory } from "../components/revisions/RevisionHistory";
 import { fetchSegmentRevisions } from "../datamodel";
-import { getCurrentUser, getRevisions } from "../selectors";
+import { getRevisions } from "../selectors";
 
 type RevisionHistoryAppOwnProps = {
   params: {
@@ -38,7 +39,7 @@ const mapStateToProps = (
 ): RevisionHistoryAppStateProps => ({
   id: props.params.id,
   revisions: getRevisions(state),
-  user: checkNotNull(getCurrentUser(state)),
+  user: checkNotNull(getUser(state)),
 });
 
 const mapDispatchToProps: RevisionHistoryAppDispatchProps = {

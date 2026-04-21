@@ -5,9 +5,9 @@ import styled from "@emotion/styled";
 
 import { Card } from "metabase/common/components/Card";
 import { Link } from "metabase/common/components/Link";
-import { alpha } from "metabase/lib/colors";
 import type { BoxProps } from "metabase/ui";
 import { Box, Icon } from "metabase/ui";
+import { alpha } from "metabase/ui/colors";
 
 const LIST_H_MARGINS = "var(--mantine-spacing-md)";
 
@@ -29,8 +29,14 @@ export const ToastCard = styled(Card)<{
   padding: 10px var(--mantine-spacing-md);
   margin-top: var(--mantine-spacing-sm);
   max-width: calc(100vw - 2 * ${LIST_H_MARGINS});
-  background-color: var(--mb-color-background-primary-inverse);
-  color: var(--mb-color-text-secondary-inverse);
+  background-color: ${(props) =>
+    props.dark
+      ? "var(--mb-color-background-primary-inverse)"
+      : "var(--mb-color-background-primary)"};
+  color: ${(props) =>
+    props.dark
+      ? "var(--mb-color-text-secondary-inverse)"
+      : "var(--mb-color-text-primary)"};
   ${({ noBorder }) =>
     noBorder &&
     css`

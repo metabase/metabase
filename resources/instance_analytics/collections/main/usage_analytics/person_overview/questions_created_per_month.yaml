@@ -1,0 +1,99 @@
+name: Questions created per month
+entity_id: Z18i0B5CgOe66-YScAZdx
+created_at: '2023-06-15T02:12:55.658594Z'
+creator_id: internal@metabase.com
+display: line
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_audit_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - count
+      - {}
+    breakout:
+    - - field
+      - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, temporal-unit: month}
+      - [Internal Metabase Database, public, v_audit_log, timestamp]
+    filters:
+    - - =
+      - {}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text}
+        - [Internal Metabase Database, public, v_audit_log, topic]
+      - card-create
+    joins:
+    - alias: Question 1
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer}
+          - [Internal Metabase Database, public, v_audit_log, user_id]
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Question 1}
+          - [Internal Metabase Database, public, v_users, user_id]
+      fields: all
+      stages:
+      - {source-card: 0wVIfjBJWclD0lKeABYYl, lib/type: mbql.stage/mbql}
+      lib/options: {lib/uuid: d58b3c9a-583e-41ea-9415-e3dcd5b3e644}
+      lib/type: mbql/join
+    source-card: -lNDM3tJmuL5ltGbX0oyT
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: 'Timestamp: Month'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_audit_log, timestamp]
+  - {temporal-unit: month}
+  id: [Internal Metabase Database, public, v_audit_log, timestamp]
+  inherited_temporal_unit: month
+  name: timestamp
+  position: 2
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_audit_log]
+  unit: month
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 124
+  lib/deduplicated-name: timestamp
+  lib/desired-column-alias: timestamp
+  lib/from-model?: true
+  lib/original-display-name: Timestamp
+  lib/original-name: timestamp
+  lib/source: source/previous-stage
+  lib/source-column-alias: timestamp
+  lib/temporal-unit: month
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+visualization_settings:
+  column_settings: null
+  graph.dimensions: [timestamp]
+  graph.metrics: [count]
+  graph.show_values: true
+card_schema: 23
+serdes/meta:
+- {id: Z18i0B5CgOe66-YScAZdx, label: questions_created_per_month, model: Card}
+dashboard_id: DHMhMa1FYxiyIgM7_xdgR
+source_card_id: -lNDM3tJmuL5ltGbX0oyT
+type: question

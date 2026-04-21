@@ -1,17 +1,21 @@
 (ns ^:mb/driver-tests metabase.transforms.util-test
   "Tests for transform utility functions."
   (:require
+   [clojure.core.async :as a]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.util :as transforms.u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -64,8 +68,8 @@
     (testing "tables with schema"
       (let [table-with-schema    {:name (name (driver.u/temp-table-name :postgres :schema/orders))}
             table-without-schema {:name (name (driver.u/temp-table-name :postgres :orders))}]
-        (is (true? (transforms.util/is-temp-transform-table? table-with-schema)))
-        (is (true? (transforms.util/is-temp-transform-table? table-without-schema)))))))
+        (is (true? (transforms.u/is-temp-transform-table? table-with-schema)))
+        (is (true? (transforms.u/is-temp-transform-table? table-without-schema)))))))
 
 (deftest create-table-from-schema!-test
   (testing "create-table-from-schema! preserves column order from schema definition"
@@ -85,7 +89,7 @@
         (mt/as-admin
           (try
             (testing "Creating table with ordered columns"
-              (transforms.util/create-table-from-schema! driver db-id table-schema)
+              (transforms-base.u/create-table-from-schema! driver db-id table-schema)
               (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)})))
 
             (when (get-method driver/describe-table driver)
@@ -112,7 +116,7 @@
 
 (deftest ^:parallel matching-timestamp?-test
   (testing "matching-timestamp? checks if a timestamp falls within a date range [start, end)"
-    (let [matching-timestamp? #'transforms.util/matching-timestamp?
+    (let [matching-timestamp? #'transforms-base.u/matching-timestamp?
           field-path          [:start_time]
           range-jan-feb       {:start "2024-01-01T00:00:00Z" :end "2024-02-01T00:00:00Z"}
           range-start-only    {:start "2024-01-01T00:00:00Z" :end nil}
@@ -155,105 +159,105 @@
                    :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
                    :model/Table    t2 {:db_id (:id db) :name "table_two" :schema "my_schema"}]
       (testing "returns nil for empty input"
-        (is (nil? (transforms.util/batch-lookup-table-ids [])))
-        (is (nil? (transforms.util/batch-lookup-table-ids nil))))
+        (is (nil? (transforms-base.u/batch-lookup-table-ids [])))
+        (is (nil? (transforms-base.u/batch-lookup-table-ids nil))))
 
       (testing "looks up table without schema"
         (let [refs [{:database_id (:id db) :schema nil :table "table_one"}]
-              result (transforms.util/batch-lookup-table-ids refs)]
+              result (transforms-base.u/batch-lookup-table-ids refs)]
           (is (= {[(:id db) nil "table_one"] (:id t1)} result))))
 
       (testing "looks up table with schema"
         (let [refs [{:database_id (:id db) :schema "my_schema" :table "table_two"}]
-              result (transforms.util/batch-lookup-table-ids refs)]
+              result (transforms-base.u/batch-lookup-table-ids refs)]
           (is (= {[(:id db) "my_schema" "table_two"] (:id t2)} result))))
 
       (testing "handles mixed refs with and without schema"
         (let [refs [{:database_id (:id db) :schema nil :table "table_one"}
                     {:database_id (:id db) :schema "my_schema" :table "table_two"}]
-              result (transforms.util/batch-lookup-table-ids refs)]
+              result (transforms-base.u/batch-lookup-table-ids refs)]
           (is (= {[(:id db) nil "table_one"] (:id t1)
                   [(:id db) "my_schema" "table_two"] (:id t2)}
                  result))))
 
       (testing "returns empty for non-existent table"
         (let [refs [{:database_id (:id db) :schema nil :table "nonexistent"}]
-              result (transforms.util/batch-lookup-table-ids refs)]
+              result (transforms-base.u/batch-lookup-table-ids refs)]
           (is (= {} result)))))))
 
 (deftest normalize-source-tables-test
-  (testing "normalize-source-tables converts all entries to map format"
+  (testing "normalize-source-tables enriches vec entries"
     (mt/with-temp [:model/Database db {}
                    :model/Table    t1 {:db_id (:id db) :name "existing_table" :schema nil}]
-      (testing "converts integer table ID to map format"
-        (let [result (transforms.util/normalize-source-tables {"t" (:id t1)})]
-          (is (map? (get result "t")))
-          (is (= (:id db) (get-in result ["t" :database_id])))
-          (is (= "existing_table" (get-in result ["t" :table])))
-          (is (= (:id t1) (get-in result ["t" :table_id])))))
+      (testing "enriches entry with table_id but no table metadata"
+        (let [result (transforms-base.u/normalize-source-tables [{:alias "t" :table_id (:id t1)}])
+              entry  (first result)]
+          (is (= (:id db) (:database_id entry)))
+          (is (= "existing_table" (:table entry)))
+          (is (= (:id t1) (:table_id entry)))))
 
-      (testing "throws for non-existent integer table ID"
+      (testing "throws for non-existent table_id"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found for ids: 999999"
-                              (transforms.util/normalize-source-tables {"t" 999999}))))
+                              (transforms-base.u/normalize-source-tables [{:alias "t" :table_id 999999}]))))
 
-      (testing "populates table_id for existing table"
-        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table"}}
-              result (transforms.util/normalize-source-tables source-tables)]
-          (is (= (:id t1) (get-in result ["t" :table_id])))))
+      (testing "populates table_id for existing table ref"
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "existing_table"}]
+              result (transforms-base.u/normalize-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))))
 
-      (testing "preserves existing table_id"
-        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "existing_table" :table_id 999}}
-              result (transforms.util/normalize-source-tables source-tables)]
-          (is (= 999 (get-in result ["t" :table_id])))))
+      (testing "preserves existing table_id when table metadata present"
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "existing_table" :table_id 999}]
+              result (transforms-base.u/normalize-source-tables source-tables)]
+          (is (= 999 (:table_id (first result))))))
 
-      (testing "leaves table_id nil for non-existent table ref"
-        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}
-              result (transforms.util/normalize-source-tables source-tables)]
-          (is (nil? (get-in result ["t" :table_id])))))
+      (testing "creates transform target table for non-existent table ref"
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]
+              result (transforms-base.u/normalize-source-tables source-tables)]
+          (is (int? (:table_id (first result))))))
 
-      (testing "handles mixed int and map entries"
-        (let [source-tables {"t1" (:id t1)
-                             "t2" {:database_id (:id db) :schema nil :table "existing_table"}}
-              result (transforms.util/normalize-source-tables source-tables)]
-          (is (map? (get result "t1")))
-          (is (= (:id t1) (get-in result ["t1" :table_id])))
-          (is (= (:id t1) (get-in result ["t2" :table_id]))))))))
+      (testing "handles entries needing different kinds of enrichment"
+        (let [source-tables [{:alias "t1" :table_id (:id t1)}
+                             {:alias "t2" :database_id (:id db) :schema nil :table "existing_table"}]
+              result (transforms-base.u/normalize-source-tables source-tables)]
+          (is (= "existing_table" (:table (first result))))
+          (is (= (:id t1) (:table_id (first result))))
+          (is (= (:id t1) (:table_id (second result)))))))))
 
 (deftest resolve-source-tables-test
-  (testing "resolve-source-tables returns {alias -> table_id} map"
+  (testing "resolve-source-tables returns entries with :table_id filled in"
     (mt/with-temp [:model/Database db {}
                    :model/Table    t1 {:db_id (:id db) :name "table_one" :schema nil}
                    :model/Table    t2 {:db_id (:id db) :name "table_two" :schema nil}]
-      (testing "passes through integer entries (old format)"
-        (is (= {"t" 123} (transforms.util/resolve-source-tables {"t" 123}))))
+      (testing "resolves entry with table_id"
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}]
+              result        (transforms-base.u/resolve-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))))
 
-      (testing "resolves map with table_id"
-        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one" :table_id (:id t1)}}]
-          (is (= {"t" (:id t1)} (transforms.util/resolve-source-tables source-tables)))))
-
-      (testing "looks up table_id for map without it"
-        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "table_one"}}]
-          (is (= {"t" (:id t1)} (transforms.util/resolve-source-tables source-tables)))))
+      (testing "looks up table_id for entry without it"
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "table_one"}]
+              result        (transforms-base.u/resolve-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))))
 
       (testing "throws for non-existent table"
-        (let [source-tables {"t" {:database_id (:id db) :schema nil :table "nonexistent"}}]
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema nil :table "nonexistent"}]]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: nonexistent"
-                                (transforms.util/resolve-source-tables source-tables)))))
+                                (transforms-base.u/resolve-source-tables source-tables)))))
 
       (testing "throws with schema in error message"
-        (let [source-tables {"t" {:database_id (:id db) :schema "my_schema" :table "nonexistent"}}]
+        (let [source-tables [{:alias "t" :database_id (:id db) :schema "my_schema" :table "nonexistent"}]]
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tables not found: my_schema\.nonexistent"
-                                (transforms.util/resolve-source-tables source-tables)))))
+                                (transforms-base.u/resolve-source-tables source-tables)))))
 
-      (testing "handles mixed entries (old and new format)"
-        (let [source-tables {"t1" (:id t1)
-                             "t2" {:database_id (:id db) :schema nil :table "table_two"}}]
-          (is (= {"t1" (:id t1) "t2" (:id t2)}
-                 (transforms.util/resolve-source-tables source-tables))))))))
+      (testing "handles multiple entries"
+        (let [source-tables [{:alias "t1" :table_id (:id t1) :database_id (:id db) :schema nil}
+                             {:alias "t2" :database_id (:id db) :schema nil :table "table_two"}]
+              result        (transforms-base.u/resolve-source-tables source-tables)]
+          (is (= (:id t1) (:table_id (first result))))
+          (is (= (:id t2) (:table_id (second result)))))))))
 
 (deftest source-tables-readable?-test
   (testing "source-tables-readable? function"
-    (mt/with-premium-features #{:transforms :transforms-python}
+    (mt/with-premium-features #{:transforms-basic :transforms-python}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}
                        :model/Table {table-id :id} {:db_id db-id :name "test_table"}]
@@ -262,21 +266,21 @@
               (testing "returns true for query transform when user can read database"
                 (let [transform {:source {:type :query
                                           :query {:database db-id}}}]
-                  (is (true? (transforms.util/source-tables-readable? transform)))))
+                  (is (true? (transforms.u/source-tables-readable? transform)))))
 
               (testing "returns true for python transform when user can read all source tables"
                 (let [transform {:source {:type :python
-                                          :source-tables {"t1" table-id}}}]
-                  (is (true? (transforms.util/source-tables-readable? transform)))))
+                                          :source-tables [{:alias "t1" :table_id table-id}]}}]
+                  (is (true? (transforms.u/source-tables-readable? transform)))))
 
-              (testing "handles source tables with table_id in map format"
+              (testing "handles source tables with table_id"
                 (let [transform {:source {:type :python
-                                          :source-tables {"t1" {:table_id table-id}}}}]
-                  (is (true? (transforms.util/source-tables-readable? transform))))))))))))
+                                          :source-tables [{:alias "t1" :table_id table-id}]}}]
+                  (is (true? (transforms.u/source-tables-readable? transform))))))))))))
 
 (deftest source-tables-readable-permissions-test
   (testing "source-tables-readable? with various permission levels"
-    (mt/with-premium-features #{:transforms :transforms-python}
+    (mt/with-premium-features #{:transforms-basic :transforms-python}
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
         (mt/with-temp [:model/Database {db-id :id} {:engine driver/*driver*}
                        :model/Table {table1-id :id} {:db_id db-id :name "test_table_1"}
@@ -290,24 +294,24 @@
                 (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :blocked
                   (mt/with-db-perm-for-group! group db-id :perms/view-data :blocked
                     (binding [api/*current-user-id* (:id user)]
-                      (is (false? (transforms.util/source-tables-readable? transform))
+                      (is (false? (transforms.u/source-tables-readable? transform))
                           "User with blocked database access should not be able to read source database")))))))
 
           (testing "Python transforms - blocked database access"
             (let [transform {:source {:type          :python
-                                      :source-tables {"t1" table1-id}}}]
+                                      :source-tables [{:alias "t1" :table_id table1-id}]}}]
               (mt/with-user-in-groups [group {:name "Blocked Group"}
                                        user [group]]
                 (mt/with-db-perm-for-group! (perms-group/all-users) db-id :perms/view-data :blocked
                   (mt/with-db-perm-for-group! group db-id :perms/view-data :blocked
                     (binding [api/*current-user-id* (:id user)]
-                      (is (false? (transforms.util/source-tables-readable? transform))
+                      (is (false? (transforms.u/source-tables-readable? transform))
                           "User with blocked database access should not be able to read source tables")))))))
 
           (testing "Python transforms - granular access but missing some tables"
             (let [transform {:source {:type          :python
-                                      :source-tables {"t1" table1-id
-                                                      "t2" table2-id}}}]
+                                      :source-tables [{:alias "t1" :table_id table1-id}
+                                                      {:alias "t2" :table_id table2-id}]}}]
               (mt/with-user-in-groups [group {:name "Limited Granular Group"}
                                        user [group]]
                 ;; Block all-users from viewing data at database level, then grant specific access via test group
@@ -317,29 +321,77 @@
                       ;; Block table2 for the test group only
                       (data-perms/set-table-permission! (:id group) table2-id :perms/view-data :blocked)
                       (binding [api/*current-user-id* (:id user)]
-                        (is (false? (transforms.util/source-tables-readable? transform))
+                        (is (false? (transforms.u/source-tables-readable? transform))
                             "User who cannot read all source tables should have source_readable=false")))))))))))))
 
-(deftest handle-transform-complete-sets-transform-id-test
-  (testing "handle-transform-complete! sets transform_id on the target table"
-    (mt/with-premium-features #{:transforms}
-      (let [target {:type "table" :schema nil :name "test_output_table"}]
-        (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}
-                       :model/Transform {transform-id :id :as transform} {:target target}
-                       :model/Table {table-id :id :as table} {:db_id db-id :name "test_output_table" :schema nil}
-                       :model/TransformRun {run-id :id} {:transform_id transform-id
-                                                         :status "running"
-                                                         :run_method "manual"}]
-          (with-redefs [transforms.util/sync-target!                       (constantly table)
-                        events/publish-event!                              (constantly nil)
-                        transforms.util/execute-secondary-index-ddl-if-required! (constantly nil)]
-            (transforms.util/handle-transform-complete! :run-id run-id :transform transform :db db)
-            (is (= transform-id
-                   (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))
+(deftest activate-table-and-mark-computed-sets-is-writable-false-test
+  (testing "activate-table-and-mark-computed! sets is_writable to false on computed transform tables"
+    (let [target {:type "table" :schema nil :name "test_computed_writable"}
+          synced-table (atom nil)]
+      (mt/with-temp [:model/Database db {:engine :h2}]
+        ;; Mock sync-table! to just create the table in Metabase without needing a real DB table
+        (with-redefs [sync/create-table! (fn [database table-map]
+                                           (let [created (t2/insert-returning-instance!
+                                                          :model/Table
+                                                          {:db_id          (:id database)
+                                                           :name           (:name table-map)
+                                                           :schema         (:schema table-map)
+                                                           :active         true
+                                                           :is_writable    (:is_writable table-map)
+                                                           :data_source    (:data_source table-map)
+                                                           :data_authority (:data_authority table-map)})]
+                                             (reset! synced-table created)
+                                             created))
+                      sync/sync-table!     (constantly nil)
+                      driver/table-exists? (constantly false)]
+          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (is (some? @synced-table))
+          (let [table (t2/select-one :model/Table (:id @synced-table))]
+            (is (= :computed (:data_authority table)))
+            (is (false? (:is_writable table))
+                "Computed transform tables should have is_writable=false")))))))
+
+(deftest target-table-handles-nil-schema-test
+  (testing "target-table can find a Table row with schema=nil (GDGT-2144)"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}
+                   :model/Table _table {:db_id  db-id
+                                        :schema nil
+                                        :name   "some_nil_schema_table"
+                                        :active true}]
+      (let [found (transforms-base.u/target-table db-id {:schema nil :name "some_nil_schema_table"})]
+        (is (some? found)
+            "target-table must find a Table row with schema=nil — otherwise schemas-less drivers (MySQL) would silently miss their targets")
+        (is (= "some_nil_schema_table" (:name found)))))))
+
+(deftest execute-sets-transform-id-on-target-table-test
+  (testing "Executing a query transform sets transform_id on the target table"
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/with-premium-features #{:transforms-basic}
+        (let [target {:type "table" :schema nil :name "test_output_table"}]
+          ;; The Transform after-insert hook creates a provisional table for the target,
+          ;; so we don't need to create one explicitly.
+          (mt/with-temp [:model/Transform {transform-id :id :as transform}
+                         {:target target
+                          :source {:type  "query"
+                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}]
+            (let [table-id (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_output_table" :schema nil)]
+              ;; Mock execute-base! to return success without actually running a query,
+              ;; run-cancelable-transform! to bypass schema creation / cancellation infra,
+              ;; and sync-target! to skip driver calls but still return the provisional table
+              ;; so complete-execution! can set transform_id on it.
+              (mt/with-dynamic-fn-redefs
+                [transforms-base.i/execute-base!        (constantly {:status :succeeded})
+                 transforms-base.u/sync-target!         (fn [_target _database]
+                                                          (t2/select-one :model/Table table-id))
+                 transforms.u/run-cancelable-transform! (fn [_run-id _transform _driver _details run-fn & _opts]
+                                                          (run-fn (a/promise-chan) nil))]
+                (transforms.execute/execute! transform {:run-method :manual})
+                (is (= transform-id
+                       (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))))
 
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (let [target {:type "table" :schema nil :name "hydration_test_table"}]
         (mt/with-temp [:model/Transform {transform-id :id} {:target target :name "Test Hydration Transform"}
                        :model/Table table {:transform_id transform-id}]
@@ -348,7 +400,7 @@
             (is (= transform-id (-> hydrated :transform :id))))))))
 
   (testing "hydrating :transform returns nil when transform_id is nil"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/Table table {:transform_id nil}]
         (let [hydrated (t2/hydrate table :transform)]
           (is (nil? (:transform hydrated))))))))
@@ -356,17 +408,69 @@
 (deftest ^:parallel massage-sql-query-test
   (testing "massage-sql-query sets disable-remaps? and disable-max-results?"
     (let [query    {:database 1, :type :query, :query {:source-table 1}}
-          massaged (transforms.util/massage-sql-query query)]
+          massaged (transforms-base.u/massage-sql-query query)]
       (is (true? (get-in massaged [:middleware :disable-remaps?])))
       (is (true? (get-in massaged [:middleware :disable-max-results?]))))))
 
 (deftest compile-source-no-limit-test
   (testing "compile-source produces SQL without a LIMIT clause"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (let [transform {:source {:type  "query"
                                   :query (lib/query (mt/metadata-provider) (mt/mbql-query venues))}}
-              {:keys [query]} (transforms.util/compile-source transform)]
+              {:keys [query]} (transforms-base.u/compile-source transform (transforms-base.u/get-source-range-params transform))]
           (is (string? query))
           (is (not (re-find #"(?i)\bLIMIT\b" query))
               (str "Expected no LIMIT clause in compiled SQL, got: " query)))))))
+
+(deftest activate-table-resolves-nil-schema-test
+  (testing "activate-table-and-mark-computed! resolves nil schema when physical table exists in default schema"
+    (let [target {:type "table" :schema nil :name "test_nil_schema_fix"}
+          synced-table (atom nil)]
+      (mt/with-temp [:model/Database db {:engine :h2}]
+        (with-redefs [sync/create-table! (fn [database table-map]
+                                           (let [created (t2/insert-returning-instance!
+                                                          :model/Table
+                                                          {:db_id          (:id database)
+                                                           :name           (:name table-map)
+                                                           :schema         (:schema table-map)
+                                                           :active         true
+                                                           :is_writable    (:is_writable table-map)
+                                                           :data_source    (:data_source table-map)
+                                                           :data_authority (:data_authority table-map)})]
+                                             (reset! synced-table created)
+                                             created))
+                      sync/sync-table!   (constantly nil)
+                      ;; Simulate: physical table exists in "PUBLIC" (H2's default schema)
+                      driver/table-exists? (fn [_driver _db table]
+                                             (= "PUBLIC" (:schema table)))]
+          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (is (some? @synced-table))
+          (let [table (t2/select-one :model/Table (:id @synced-table))]
+            (is (= "PUBLIC" (:schema table))
+                "Table schema should be updated to the driver's default schema"))))))
+
+  (testing "activate-table-and-mark-computed! leaves nil schema when physical table has no default schema"
+    (let [target {:type "table" :schema nil :name "test_nil_schema_no_default"}
+          synced-table (atom nil)]
+      (mt/with-temp [:model/Database db {:engine :h2}]
+        (with-redefs [sync/create-table! (fn [database table-map]
+                                           (let [created (t2/insert-returning-instance!
+                                                          :model/Table
+                                                          {:db_id          (:id database)
+                                                           :name           (:name table-map)
+                                                           :schema         (:schema table-map)
+                                                           :active         true
+                                                           :is_writable    (:is_writable table-map)
+                                                           :data_source    (:data_source table-map)
+                                                           :data_authority (:data_authority table-map)})]
+                                             (reset! synced-table created)
+                                             created))
+                      sync/sync-table!   (constantly nil)
+                      ;; Simulate: physical table does NOT exist under default schema
+                      driver/table-exists? (constantly false)]
+          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (is (some? @synced-table))
+          (let [table (t2/select-one :model/Table (:id @synced-table))]
+            (is (nil? (:schema table))
+                "Table schema should remain nil when physical table isn't in default schema")))))))

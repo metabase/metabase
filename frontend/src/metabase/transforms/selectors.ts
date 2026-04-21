@@ -1,10 +1,10 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import { getPlan } from "metabase/common/utils/plan";
+import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getIsHosted, getTokenFeature } from "metabase/setup";
-import type { State } from "metabase-types/store";
 
 export const canAccessTransforms = (state: State): boolean => {
   if (getUserIsAdmin(state)) {
@@ -16,7 +16,7 @@ export const canAccessTransforms = (state: State): boolean => {
 
 export const getTransformsFeatureAvailable = createSelector(
   (state: State) => getPlan(getSetting(state, "token-features")),
-  (state: State) => getTokenFeature(state, "transforms"),
+  (state: State) => getTokenFeature(state, "transforms-basic"),
   (plan, feature) => {
     if (plan === "oss") {
       return true;
@@ -28,7 +28,7 @@ export const getTransformsFeatureAvailable = createSelector(
 
 export const getShouldShowTransformsUpsell = createSelector(
   getIsHosted,
-  (state: State) => getTokenFeature(state, "transforms"),
+  (state: State) => getTokenFeature(state, "transforms-basic"),
   (isHosted, hasTransformsFeature) => isHosted && !hasTransformsFeature,
 );
 

@@ -1,7 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   type OmniPickerItem,
   isInDbTree,
@@ -10,9 +9,9 @@ import { DashboardPickerModal } from "metabase/common/components/Pickers/Dashboa
 import { getCollectionType } from "metabase/common/components/Pickers/EntityPicker/utils";
 import { canPlaceEntityInCollectionOrDescendants } from "metabase/data-studio/utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Card, Dashboard } from "metabase-types/api";
 
 import { useMostRecentlyViewedDashboard } from "./hooks";
@@ -46,12 +45,8 @@ export const AddToDashSelectDashModal = ({
   onChangeLocation,
 }: AddToDashSelectDashModalProps) => {
   const personalCollectionId = useSelector(getUserPersonalCollectionId);
-
-  const {
-    data: mostRecentlyViewedDashboard,
-    isLoading,
-    error,
-  } = useMostRecentlyViewedDashboard();
+  const { data: mostRecentlyViewedDashboard } =
+    useMostRecentlyViewedDashboard();
 
   const onDashboardSelected = (
     selectedDashboard?: Pick<Dashboard, "id" | "name">,
@@ -71,11 +66,26 @@ export const AddToDashSelectDashModal = ({
   const isRecentDashboardInPersonalCollection =
     mostRecentlyViewedDashboard?.collection?.is_personal;
 
-  // we can only show the most recently viewed dashboard if it's not in a personal collection
-  // OR the question and dashboard are both in personal collections
   const showRecentDashboard =
     mostRecentlyViewedDashboard?.id &&
     (!isQuestionInPersonalCollection || isRecentDashboardInPersonalCollection);
+
+  const value = useMemo(() => {
+    if (showRecentDashboard) {
+      return {
+        id: mostRecentlyViewedDashboard.id,
+        model: "dashboard" as const,
+      };
+    }
+    return {
+      id: card.collection_id ?? "root",
+      model: "collection" as const,
+    };
+  }, [
+    showRecentDashboard,
+    mostRecentlyViewedDashboard?.id,
+    card.collection_id,
+  ]);
 
   const shouldDisable = useCallback(
     (item: OmniPickerItem) => {
@@ -92,7 +102,6 @@ export const AddToDashSelectDashModal = ({
         personalCollectionId &&
         item.model === "dashboard"
       ) {
-        // if the question is in a personal collection, hide dashboards that aren't in the personal collection
         const isPersonalDash = isInPersonalCollection(
           item,
           personalCollectionId,
@@ -101,7 +110,6 @@ export const AddToDashSelectDashModal = ({
         return !isPersonalDash;
       }
 
-      // if there can't be dashboards in the collection, you can't add a question to one there
       if (
         !canPlaceEntityInCollectionOrDescendants(
           "dashboard",
@@ -116,26 +124,12 @@ export const AddToDashSelectDashModal = ({
     [isQuestionInPersonalCollection, personalCollectionId],
   );
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
     <DashboardPickerModal
       title={getTitle(card)}
       onChange={onDashboardSelected}
       onClose={onClose}
-      value={
-        showRecentDashboard
-          ? {
-              id: mostRecentlyViewedDashboard.id,
-              model: "dashboard",
-            }
-          : {
-              id: card.collection_id ?? "root",
-              model: "collection",
-            }
-      }
+      value={value}
       options={{
         hasPersonalCollections: true,
         hasRootCollection: !isQuestionInPersonalCollection,

@@ -1,10 +1,9 @@
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
 
-import { UpsellMetabaseBanner } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { UpsellMetabaseBanner } from "metabase/common/components/upsells/UpsellMetabaseBanner";
 import { useDocsUrl } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import type {
   DisplayTheme,
   EmbedResourceType,
@@ -20,6 +19,7 @@ import {
   Switch,
   Text,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import {
   DashboardDownloadSettings,

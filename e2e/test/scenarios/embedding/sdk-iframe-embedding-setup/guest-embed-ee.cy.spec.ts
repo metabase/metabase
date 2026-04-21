@@ -42,7 +42,7 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.enableTracking();
 
     H.updateSetting("embedding-secret-key", JWT_SHARED_SECRET);
@@ -404,7 +404,10 @@ describe("scenarios > embedding > sdk iframe embed setup > guest-embed", () => {
           cy.findByText("Get code").click();
 
           codeBlock().first().should("contain", "dashboard-id=");
-          codeBlock().first().should("contain", "hidden-parameters=");
+
+          // hiddenParameters is reset to [] when switching from guest to SSO mode,
+          // so hidden-parameters= should not appear in the code.
+          codeBlock().first().should("not.contain", "hidden-parameters=");
 
           codeBlock().first().should("not.contain", "token=");
           codeBlock().first().should("not.contain", "locked-parameters=");

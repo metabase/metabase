@@ -8,14 +8,16 @@ import {
   getParameterTarget,
   getQuestionByCard,
 } from "metabase/dashboard/selectors";
-import { isNativeDashCard, isQuestionDashCard } from "metabase/dashboard/utils";
-import { connect } from "metabase/lib/redux";
+import { isNativeDashCard } from "metabase/dashboard/utils";
 import {
   type ParameterMappingOption,
   getMappingOptionByTarget,
 } from "metabase/parameters/utils/mapping-options";
+import type { State } from "metabase/redux/store";
 import { getIsRecentlyAutoConnectedDashcard } from "metabase/redux/undo";
 import { Box, Flex, Icon, Text, Transition } from "metabase/ui";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { connect } from "metabase/utils/redux";
 import { getMobileHeight } from "metabase/visualizations/shared/utils/sizes";
 import type Question from "metabase-lib/v1/Question";
 import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
@@ -27,7 +29,6 @@ import type {
   ParameterTarget,
   VirtualCard,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { DashCardCardParameterMapperContent } from "./DashCardCardParameterMapperContent";
 import S from "./DashCardParameterMapper.module.css";

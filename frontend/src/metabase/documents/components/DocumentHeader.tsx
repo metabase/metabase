@@ -2,14 +2,13 @@ import { useCallback, useState } from "react";
 import { Link } from "react-router";
 import { c, t } from "ttag";
 
+import { useListCommentsQuery } from "metabase/api";
 import {
   DateTime,
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { isWithinIframe } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   ActionIcon,
@@ -24,11 +23,14 @@ import {
   Transition,
   type TransitionProps,
 } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
+import { useSelector } from "metabase/utils/redux";
 import type { Document } from "metabase-types/api";
 
 import { DocumentPublicLinkPopover } from "../../embedding/components/PublicLinkPopover";
 import { trackDocumentPrint } from "../analytics";
 import { DOCUMENT_TITLE_MAX_LENGTH } from "../constants";
+import { getListCommentsQuery } from "../utils/api";
 
 import S from "./DocumentHeader.module.css";
 
@@ -53,7 +55,6 @@ interface DocumentHeaderProps {
   onToggleBookmark: () => void;
   onArchive: () => void;
   onShowHistory: () => void;
-  hasComments?: boolean;
 }
 
 export const DocumentHeader = ({
@@ -71,8 +72,13 @@ export const DocumentHeader = ({
   onToggleBookmark,
   onArchive,
   onShowHistory,
-  hasComments = false,
 }: DocumentHeaderProps) => {
+  const { hasComments } = useListCommentsQuery(getListCommentsQuery(document), {
+    selectFromResult: ({ data }) => ({
+      hasComments: !isNewDocument && !!data?.comments?.length,
+    }),
+  });
+
   const isPublicSharingEnabled = useSetting("enable-public-sharing");
   const isAdmin = useSelector(getUserIsAdmin);
   const [isPublicLinkPopoverOpen, setIsPublicLinkPopoverOpen] = useState(false);

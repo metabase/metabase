@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.tools.trace :as trace]
    [environ.core :as env]
-   [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api-routes.core :as api-routes]
@@ -20,6 +19,7 @@
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.initialization-status.core :as init-status]
+   [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -32,6 +32,7 @@
    [metabase.startup.core :as startup]
    [metabase.system.core :as system]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.queue :as queue]
@@ -106,12 +107,14 @@
   (queue/stop-listeners!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
+  (tracing/shutdown!)
   (analytics/shutdown!)
   (notification/shutdown!)
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
   (let [timeout-seconds 20]
     (mdb/release-migration-locks! timeout-seconds))
   (perf/stop-monitoring!)
+  (shutdown-agents)
   (log/info "Metabase Shutdown COMPLETE"))
 
 (defenterprise ensure-audit-db-installed!
@@ -167,6 +170,8 @@
   (init-status/set-progress! 0.2)
   ;; Ensure the classloader is installed as soon as possible.
   (classloader/the-classloader)
+  ;; Initialize OpenTelemetry tracing early (before plugins, no DB dependency)
+  (tracing/init!)
   ;; load any plugins as needed
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
@@ -217,10 +222,12 @@
 
   (init-status/set-progress! 0.85)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
+  (llm.startup/check-and-sync-settings-on-startup!)
   (init-status/set-progress! 0.9)
   (setting/migrate-encrypted-settings!)
   (database/check-health!)
   (startup/run-startup-logic!)
+  (setting/log-deprecated-env-var-usage!)
   (init-status/set-progress! 0.95)
   (task/start-scheduler!)
   (queue/start-listeners!)
@@ -231,10 +238,10 @@
   "General application initialization function which should be run once at application startup. Calls [[init!*]] and
   records the duration of startup."
   []
-  (let [start-time          (t/zoned-date-time)
-        jvm-start-time      (.getStartTime (ManagementFactory/getRuntimeMXBean))]
+  (let [timer          (u/start-timer)
+        jvm-start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))]
     (init!*)
-    (let [init-duration-ms  (.toMillis (t/duration start-time (t/zoned-date-time)))
+    (let [init-duration-ms   (u/since-ms timer)
           jvm-to-complete-ms (u/since-ms-wall-clock jvm-start-time)]
       (log/infof "Metabase Initialization COMPLETE in %s (JVM uptime: %s)"
                  (u/format-milliseconds init-duration-ms)

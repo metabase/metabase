@@ -161,7 +161,10 @@ describe("useAdminSettings", () => {
     const valuesElement = await screen.findByTestId("values");
 
     expect(valuesElement).toHaveTextContent(
-      JSON.stringify({ "site-name": true, "site-url": true }),
+      JSON.stringify({
+        "site-name": "Metabased",
+        "site-url": "https://metabase.com",
+      }),
     );
   });
 

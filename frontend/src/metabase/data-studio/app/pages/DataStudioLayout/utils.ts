@@ -1,4 +1,4 @@
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 
 type TabName =
   | "data"

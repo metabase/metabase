@@ -8,24 +8,30 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
+import type { DashboardState, State } from "metabase/redux/store";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockStoreDashboard,
+} from "metabase/redux/store/mocks";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
 import type { Dashboard } from "metabase-types/api";
 import {
+  createMockCard,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
-  createMockSettings,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import type { DashboardState } from "metabase-types/store";
-import {
-  createMockDashboardState,
-  createMockStoreDashboard,
-} from "metabase-types/store/mocks";
 
 import { dashboardReducers } from "../reducers";
-import { isQuestionDashCard } from "../utils";
 
-import { fetchCardDataAction, fetchDashboard } from "./data-fetching";
+import {
+  fetchCardDataAction,
+  fetchDashboard,
+  fetchDashboardCardData,
+  reloadDashboardCards,
+} from "./data-fetching";
 
 type SetupOpts = {
   dashboards?: Dashboard[];
@@ -42,7 +48,7 @@ function setup({
     entities: createMockEntitiesState({
       databases: [database],
     }),
-    settings: createMockSettings(),
+    settings: createMockSettingsState(),
   };
 
   const store = getStore(
@@ -177,5 +183,97 @@ describe("fetchDashboard", () => {
     expect(firstResult.payload).toMatchObject({ result: null });
     expect(secondResult.payload).toMatchObject({ result: null });
     expect(thirdResult.payload).toMatchObject({ result: { foo: true } });
+  });
+});
+
+/**
+ * Creates a mock dispatch/getState pair that executes thunks but skips the
+ * Redux store, avoiding the Immer/icepick incompatibility in dashcardData
+ * reducer when multiple fulfilled actions arrive.
+ */
+function createMockDispatch(getState: () => Partial<State>) {
+  const dispatch = (action: unknown): unknown => {
+    if (typeof action === "function") {
+      return action(dispatch, getState);
+    }
+    return Promise.resolve(action);
+  };
+  return dispatch;
+}
+
+function setupConcurrencyTest(dashboardId: number, cardCount: number) {
+  let currentConcurrent = 0;
+  let maxConcurrent = 0;
+
+  const database = createSampleDatabase();
+  const dashcards = Array.from({ length: cardCount }, (_, i) =>
+    createMockDashboardCard({
+      id: i + 1,
+      card_id: i + 1,
+      dashboard_id: dashboardId,
+      card: createMockCard({ id: i + 1 }),
+    }),
+  );
+
+  dashcards.forEach((dashcard) => {
+    fetchMock.post(
+      `/api/dashboard/${dashboardId}/dashcard/${dashcard.id}/card/${dashcard.card_id}/query`,
+      () =>
+        new Promise((resolve) => {
+          currentConcurrent++;
+          maxConcurrent = Math.max(maxConcurrent, currentConcurrent);
+          setTimeout(() => {
+            currentConcurrent--;
+            resolve({ data: [] });
+          }, 50);
+        }),
+    );
+  });
+
+  const DASHBOARD = createMockDashboard({ id: dashboardId, dashcards });
+  const state: Partial<State> = {
+    dashboard: createMockDashboardState({
+      dashboardId: DASHBOARD.id,
+      dashboards: {
+        [DASHBOARD.id]: createMockStoreDashboard({
+          ...DASHBOARD,
+          dashcards: dashcards.map((dc) => dc.id),
+        }),
+      },
+      dashcards: Object.fromEntries(dashcards.map((dc) => [dc.id, dc])),
+    }),
+    entities: createMockEntitiesState({ databases: [database] }),
+    settings: createMockSettingsState(),
+  };
+
+  const getState = () => state;
+  const dispatch = createMockDispatch(getState);
+
+  return { dispatch, getState, getMaxConcurrent: () => maxConcurrent };
+}
+
+describe("fetchDashboardCardData", () => {
+  it("should make at most 5 api calls simultaneously", async () => {
+    const { dispatch, getState, getMaxConcurrent } = setupConcurrencyTest(
+      100,
+      8,
+    );
+
+    await fetchDashboardCardData()(dispatch as never, getState as never);
+
+    expect(getMaxConcurrent()).toBe(5);
+  });
+});
+
+describe("reloadDashboardCards", () => {
+  it("should make at most 5 api calls simultaneously", async () => {
+    const { dispatch, getState, getMaxConcurrent } = setupConcurrencyTest(
+      200,
+      8,
+    );
+
+    await reloadDashboardCards()(dispatch as never, getState as never);
+
+    expect(getMaxConcurrent()).toBe(5);
   });
 });

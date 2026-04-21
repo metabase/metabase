@@ -1,6 +1,7 @@
-import type { EChartsCoreOption, EChartsType } from "echarts/core";
-import type * as React from "react";
+import type { EChartsOption } from "echarts";
+import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useLatest } from "react-use";
 
 import {
   GOAL_LINE_SERIES_ID,
@@ -11,14 +12,23 @@ import type {
   BaseCartesianChartModel,
   ChartDataset,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import {
+  buildBrushMirrorGraphics,
+  buildClearBrushMirrorGraphics,
+} from "metabase/visualizations/echarts/cartesian/option";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
 import { useClickedStateTooltipSync } from "metabase/visualizations/echarts/tooltip";
-import type {
-  EChartsSeriesBrushEndEvent,
-  EChartsSeriesMouseEvent,
+import {
+  type EChartsSeriesBrushEndEvent,
+  type EChartsSeriesBrushEvent,
+  type EChartsSeriesMouseEvent,
+  isLineXBrushRange,
 } from "metabase/visualizations/echarts/types";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
-import type { VisualizationProps } from "metabase/visualizations/types";
+import type {
+  RenderingContext,
+  VisualizationProps,
+} from "metabase/visualizations/types";
 import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
 import {
   canBrush,
@@ -33,15 +43,22 @@ import {
 import { getVisualizerSeriesCardIndex } from "metabase/visualizer/utils";
 import type { CardId } from "metabase-types/api";
 
+import { useBrush } from "./use-brush";
 import { useTooltipMouseLeave } from "./use-tooltip-mouse-leave";
 import { getHoveredEChartsSeriesDataKeyAndIndex } from "./utils";
+
+function getSplitPanelGrids(option: EChartsOption) {
+  const { grid } = option;
+  return Array.isArray(grid) && grid.length > 1 ? grid : null;
+}
 
 export const useChartEvents = (
   chartRef: React.MutableRefObject<EChartsType | undefined>,
   containerRef: React.RefObject<HTMLDivElement>,
   chartModel: BaseCartesianChartModel,
   timelineEventsModel: TimelineEventsModel | null,
-  option: EChartsCoreOption,
+  option: EChartsOption,
+  renderingContext: RenderingContext,
   {
     card,
     rawSeries,
@@ -51,6 +68,7 @@ export const useChartEvents = (
     settings,
     visualizationIsClickable,
     onChangeCardAndRun,
+    onBrush,
     onVisualizationClick,
     onHoverChange,
     onOpenTimelines,
@@ -86,14 +104,20 @@ export const useChartEvents = (
     ],
   );
 
+  const isSplitPanels =
+    settings["graph.split_panels"] === true &&
+    chartModel.seriesModels.filter((series) => series.visible).length > 1;
+
   useChartYAxisVisibility({
     chartRef,
     seriesModels: chartModel.seriesModels,
-    leftAxisModel: chartModel.leftAxisModel,
-    rightAxisModel: chartModel.rightAxisModel,
+    leftAxisModel: isSplitPanels ? null : chartModel.leftAxisModel,
+    rightAxisModel: isSplitPanels ? null : chartModel.rightAxisModel,
     leftAxisSeriesKeys: chartModel.leftAxisModel?.seriesKeys ?? [],
     hovered,
   });
+
+  const optionRef = useLatest(option);
 
   const eventHandlers: EChartsEventHandler[] = useMemo(
     () => [
@@ -176,6 +200,7 @@ export const useChartEvents = (
 
           if (!visualizationIsClickable(clickData)) {
             onOpenQuestion(clickData?.cardId);
+            return;
           }
 
           onVisualizationClick?.(clickData);
@@ -183,33 +208,55 @@ export const useChartEvents = (
       },
       {
         eventName: "brush",
-        handler: () => {
+        handler: (event: EChartsSeriesBrushEvent) => {
           if (!isBrushing.current) {
             chartRef.current?.setOption({ tooltip: { show: false } }, false);
             isBrushing.current = true;
+          }
+
+          const grids = getSplitPanelGrids(optionRef.current);
+          const range = event.areas?.[0]?.range;
+          if (grids && isLineXBrushRange(range)) {
+            const graphics = buildBrushMirrorGraphics(
+              grids,
+              range,
+              renderingContext,
+            );
+            chartRef.current?.setOption({ graphic: graphics }, false);
           }
         },
       },
       {
         eventName: "brushEnd",
         handler: (event: EChartsSeriesBrushEndEvent) => {
-          const eventData = getBrushData(
-            isVisualizerCard ? visualizerRawSeries : rawSeries,
-            metadata,
-            chartModel,
-            event,
-          );
-
-          if (eventData) {
-            onChangeCardAndRun?.(eventData);
-
-            // clear selected brush area after calling change handler
-            chartRef.current?.dispatchAction({
-              type: "brush",
-              command: "clear",
-              areas: [],
-            });
+          const grids = getSplitPanelGrids(optionRef.current);
+          if (grids) {
+            const graphics = buildClearBrushMirrorGraphics(grids.length);
+            chartRef.current?.setOption({ graphic: graphics }, false);
           }
+
+          if (onBrush) {
+            const range = event.areas[0]?.coordRange;
+            if (range) {
+              onBrush({ start: Number(range[0]), end: Number(range[1]) });
+            }
+          } else {
+            const eventData = getBrushData(
+              isVisualizerCard ? visualizerRawSeries : rawSeries,
+              metadata,
+              chartModel,
+              event,
+            );
+            if (eventData) {
+              onChangeCardAndRun?.(eventData);
+            }
+          }
+
+          chartRef.current?.dispatchAction({
+            type: "brush",
+            command: "clear",
+            areas: [],
+          });
         },
       },
     ],
@@ -227,11 +274,14 @@ export const useChartEvents = (
       onSelectTimelineEvents,
       onDeselectTimelineEvents,
       onOpenQuestion,
+      optionRef,
+      renderingContext,
       rawSeries,
       visualizerRawSeries,
       isVisualizerCard,
       metadata,
       onChangeCardAndRun,
+      onBrush,
     ],
   );
 
@@ -308,41 +358,15 @@ export const useChartEvents = (
 
   useClickedStateTooltipSync(chartRef.current, clicked);
 
-  // In order to keep brushing always enabled we have to re-enable it on every model change
-  useEffect(
-    function toggleBrushing() {
-      const shouldEnableBrushing =
-        canBrush(rawSeries, settings, onChangeCardAndRun) &&
-        !hovered &&
-        !clicked;
-
-      setTimeout(() => {
-        if (shouldEnableBrushing) {
-          chartRef.current?.dispatchAction({
-            type: "takeGlobalCursor",
-            key: "brush",
-            brushOption: {
-              brushType: "lineX",
-              brushMode: "single",
-            },
-          });
-        } else {
-          chartRef.current?.dispatchAction({
-            type: "takeGlobalCursor",
-          });
-        }
-      }, 0);
-    },
-    [
-      chartRef,
-      hovered,
-      onChangeCardAndRun,
-      option,
-      rawSeries,
-      settings,
-      clicked,
-    ],
+  const canBrushChart = canBrush(
+    rawSeries,
+    settings,
+    onChangeCardAndRun,
+    onBrush,
   );
+  const isBrushable = canBrushChart && !hovered && !clicked;
+
+  useBrush(chartRef, containerRef, canBrushChart, isBrushable, option);
 
   const onSelectSeries = useCallback(
     (event: React.MouseEvent, seriesIndex: number) => {

@@ -10,7 +10,7 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { cancelConfirmationModal } from "e2e/test/scenarios/admin/performance/helpers/modals-helpers";
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 import {
   createMockVirtualCard,
   createMockVirtualDashCard,
@@ -1456,7 +1456,7 @@ describe("scenarios > dashboard", () => {
     // toggle full-width
     H.editDashboard();
     cy.findByLabelText("Toggle width").click();
-    H.popover().findByText("Full width").click();
+    H.popover().findByLabelText("Full width").click();
     H.assertDashboardFullWidth();
     H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",
@@ -1471,7 +1471,7 @@ describe("scenarios > dashboard", () => {
     // toggle back to fixed
     H.editDashboard();
     cy.findByLabelText("Toggle width").click();
-    H.popover().findByText("Full width").click();
+    H.popover().findByLabelText("Full width").click();
     H.assertDashboardFixedWidth();
     H.expectUnstructuredSnowplowEvent({
       event: "dashboard_width_toggled",

@@ -128,20 +128,34 @@
      [:card-id ::id/card]]]
    [:ref ::disallow-dimension]])
 
+(def allowed-source-filter-ops
+  "Set of allowed source-filter ops"
+  #{:> :>= :< :<= := :!=})
+
+(mr/def ::source-filter
+  "Schema for a single source-filter applied to a table template tag."
+  [:map
+   [:field-id ::id/field]
+   [:op       (into [:enum] allowed-source-filter-ops)]
+   [:value    :any]])
+
 ;; Example:
 ;;
 ;;    {:id           "fc5e14d9-7d14-67af-66b2-b2a6e25afeaf"
 ;;     :name         "orders"
 ;;     :display-name "Orders"
 ;;     :type         :table
-;;     :table-id     2}
+;;     :table-id     2
+;;     :source-filters [{:op :> :field-id 3 :value 500}]}
 (mr/def ::source-table
   [:and
    [:merge
     [:ref ::common]
     [:map
      [:type                  [:= :table]]
-     [:table-id              ::id/table]]]
+     [:table-id              ::id/table]
+     [:emit-alias            {:optional true} :boolean]
+     [:source-filters        {:optional true} [:sequential [:ref ::source-filter]]]]]
    [:ref ::disallow-dimension]])
 
 (def raw-value-template-tag-types

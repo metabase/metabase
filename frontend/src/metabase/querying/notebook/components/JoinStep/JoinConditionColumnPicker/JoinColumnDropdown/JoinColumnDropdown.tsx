@@ -4,13 +4,13 @@ import {
   type ColumnListItem,
   QueryColumnPicker,
 } from "metabase/common/components/QueryColumnPicker";
-import {
-  ExpressionWidget,
-  ExpressionWidgetHeader,
-} from "metabase/query_builder/components/expressions/ExpressionWidget";
 import type { DefinedClauseName } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
 
+import {
+  ExpressionWidget,
+  ExpressionWidgetHeader,
+} from "../../../../../components/expressions/ExpressionWidget";
 import { getJoinStrategyIcon } from "../../utils";
 
 import S from "./JoinColumnDropdown.module.css";

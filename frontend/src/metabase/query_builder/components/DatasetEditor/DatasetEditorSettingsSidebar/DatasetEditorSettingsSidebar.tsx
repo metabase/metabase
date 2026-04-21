@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
 import {
   getIsListViewConfigurationShown,
   getTransformedSeries,
 } from "metabase/query_builder/selectors";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Button, Group, SegmentedControl, Stack, Text } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { CardDisplayType } from "metabase-types/api";
 

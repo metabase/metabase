@@ -6,6 +6,8 @@
    [java-time.api :as t]
    [java-time.clock]
    [metabase.app-db.core :as mdb]
+   [metabase.search.appdb.index :as search.index]
+   [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.testing-api.api :as testing]
    [metabase.util :as u]
@@ -56,6 +58,28 @@
           (is (nil? java-time.clock/*clock*) "Clock should be reset after restore")
           (finally
             (alter-var-root #'java-time.clock/*clock* (constantly nil))
+            (.delete (io/file (#'testing/snapshot-path-for-name snapshot-name)))))))))
+
+(deftest restore-refreshes-search-index-test
+  (when (and (= (mdb/db-type) :h2) (search/supports-index?))
+    (testing "After restore, the search index tracking atoms should reflect the restored state"
+      (let [snapshot-name (munge (u/qualified-name ::search-index-snapshot))]
+        (try
+          ;; Ensure a search index exists before snapshotting
+          (mt/user-http-request :crowberto :post 200 "search/re-init")
+          (is (some? (search.index/active-table))
+              "Precondition: search index should exist before snapshot")
+          ;; Snapshot with a valid search index in place
+          (mt/user-http-request :rasta :post 204 (format "testing/snapshot/%s" snapshot-name))
+          ;; Clear the tracking atoms so we can verify they get restored
+          (reset! @#'search.index/*indexes* {:active nil, :pending nil})
+          (is (nil? (search.index/active-table))
+              "Precondition: tracking atoms should be cleared before restore")
+          ;; Restore should call sync-from-restored-db! and refresh the atoms
+          (mt/user-http-request :rasta :post 204 (format "testing/restore/%s" snapshot-name))
+          (is (some? (search.index/active-table))
+              "After restore, the active search index table should be tracked")
+          (finally
             (.delete (io/file (#'testing/snapshot-path-for-name snapshot-name)))))))))
 
 (deftest snapshot-restore-works-with-views

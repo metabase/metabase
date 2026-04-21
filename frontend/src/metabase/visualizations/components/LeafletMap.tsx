@@ -6,8 +6,8 @@ import L from "leaflet";
 import { Component, createRef } from "react";
 import _ from "underscore";
 
-import MetabaseSettings from "metabase/lib/settings";
-import { isNullOrUndefined } from "metabase/lib/types";
+import MetabaseSettings from "metabase/utils/settings";
+import { isNullOrUndefined } from "metabase/utils/types";
 import type { OnChangeCardAndRun } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -15,6 +15,25 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { Series } from "metabase-types/api";
 import type { Point } from "metabase-types/api/dataset";
 import { isObject } from "metabase-types/guards/common";
+
+export type LeafletMapPoint<TExtra extends unknown[] = []> = [
+  number,
+  number,
+  ...TExtra,
+];
+
+type AnyLeafletMapPoint = LeafletMapPoint<unknown[]>;
+
+/**
+ * Checks if a hostname belongs to openstreetmap.org or one of its subdomains.
+ * Uses exact matching to prevent bypass via malicious domains like
+ * "openstreetmap.org.evil.com" or "fake-openstreetmap.org".
+ */
+export function isOpenStreetMapHost(hostname: string): boolean {
+  return (
+    hostname === "openstreetmap.org" || hostname.endsWith(".openstreetmap.org")
+  );
+}
 
 type MapSettings = {
   "map.latitude_column"?: string;
@@ -25,13 +44,13 @@ type MapSettings = {
   "map.zoom"?: number;
 };
 
-export interface LeafletMapProps {
+export interface LeafletMapProps<TPoint extends AnyLeafletMapPoint = Point> {
   className?: string;
   width?: number;
   height?: number;
   bounds: L.LatLngBounds;
   settings: MapSettings;
-  points?: Point[] | null;
+  points?: TPoint[] | null;
   series: Series;
   metadata?: Metadata;
   token?: string | null;
@@ -46,7 +65,9 @@ export interface LeafletMapProps {
   onChangeCardAndRun: OnChangeCardAndRun;
 }
 
-export class LeafletMap extends Component<LeafletMapProps> {
+export class LeafletMap<
+  T extends LeafletMapProps<AnyLeafletMapPoint> = LeafletMapProps,
+> extends Component<T> {
   mapRef = createRef<HTMLDivElement>();
   map: L.Map | null = null;
   drawControl: L.Control.Draw | null = null;
@@ -101,7 +122,7 @@ export class LeafletMap extends Component<LeafletMapProps> {
       try {
         mapTileHostname = new URL(mapTileUrl).host;
       } catch {}
-      const mapTileAttribution = mapTileHostname.includes("openstreetmap.org")
+      const mapTileAttribution = isOpenStreetMapHost(mapTileHostname)
         ? 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors'
         : undefined;
 
@@ -115,6 +136,8 @@ export class LeafletMap extends Component<LeafletMapProps> {
         const zoom = map.getZoom();
         this.props.onMapZoomChange(zoom);
       });
+
+      this.syncMapFromProps();
     } catch (error) {
       console.error(error);
       this.props.onRenderError(
@@ -123,14 +146,18 @@ export class LeafletMap extends Component<LeafletMapProps> {
     }
   }
 
-  componentDidUpdate(prevProps: LeafletMapProps) {
+  componentDidUpdate(prevProps: T) {
+    this.syncMapFromProps(prevProps);
+  }
+
+  protected syncMapFromProps(prevProps?: T) {
     if (!this.map) {
       return;
     }
 
     const { bounds, settings, zoomControl, zoom, lat, lng } = this.props;
 
-    if (prevProps.zoomControl !== zoomControl) {
+    if (prevProps?.zoomControl !== zoomControl) {
       if (zoomControl === false) {
         this.map.zoomControl?.remove();
       } else if (this.map.zoomControl) {
@@ -365,8 +392,8 @@ export class LeafletMap extends Component<LeafletMapProps> {
  * so that we should recalculate the zoom.
  */
 function shouldRecalculateZoom(
-  prevPoints?: Point[] | null,
-  nextPoints?: Point[] | null,
+  prevPoints?: LeafletMapPoint<unknown[]>[] | null,
+  nextPoints?: LeafletMapPoint<unknown[]>[] | null,
 ) {
   if (!prevPoints && !nextPoints) {
     return false;

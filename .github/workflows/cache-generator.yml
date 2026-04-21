@@ -39,7 +39,8 @@ concurrency:
 
 jobs:
   get-cache-keys:
-    runs-on: ubuntu-22.04
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - uses: actions/checkout@v4
       - name: Get cache keys
@@ -52,7 +53,7 @@ jobs:
       cypress-cache-key: ${{ steps.get-cache-keys.outputs.cypress-cache-key }}
 
   generate-caches:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     needs: get-cache-keys
     env:
@@ -106,11 +107,6 @@ jobs:
           bun run cypress cache list
           bun run cypress verify
         shell: bash
-
-      # Run Prettier to populate its cache (stored in node_modules/.cache/prettier)
-      # so it gets saved as part of the node_modules cache below
-      - name: Run Prettier to populate cache
-        run: bun run lint-prettier-pure
 
       - name: Update node_modules cache
         uses: ./.github/actions/update-cache

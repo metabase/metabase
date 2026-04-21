@@ -1,4 +1,3 @@
-import type * as React from "react";
 import { t } from "ttag";
 
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
@@ -8,7 +7,7 @@ import { PivotTableSettingLabel } from "./PivotTable.styled";
 
 export interface Partition {
   name: "rows" | "columns" | "values";
-  columnFilter: (col: DatasetColumn | undefined) => boolean;
+  columnFilter: (col: DatasetColumn) => boolean;
   title: React.ReactNode;
 }
 

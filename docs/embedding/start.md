@@ -6,6 +6,8 @@ redirect_from:
 
 # Embedding overview
 
+You can use Metabase as a BI tool for your own team, or embed Metabase in your app so your customers can explore their own data.
+
 ## [Introduction](./introduction.md)
 
 What is embedding, and how does it work?
@@ -51,3 +53,7 @@ Admins can also create unsecured public links or embeds of questions and dashboa
 ## [Securing embeds](./securing-embeds.md)
 
 How to make sure the right people can see the right data in your embedded Metabase.
+
+## [AI agent resources](./ai-agent-resources.md)
+
+Machine-readable docs and agent skills to help AI coding agents with embedding setup, upgrades, and migrations.

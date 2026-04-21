@@ -30,7 +30,7 @@ frontend_configs: &frontend_configs
   - "**/tsconfig*.json"
   - "package.json"
   - "babel.config.json"
-  - ".eslintrc.js"
+  - "eslint.config.mjs"
   - "postcss.config.js"
   - "rspack.config.js"
   - "rspack.main.config.js"
@@ -199,6 +199,10 @@ cljs:
   - *shared_specs
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
+
+serialization_baseline:
+  - ".github/workflows/serialization.yml"
+  - "test_resources/serialization_baseline/**"
 
 openapi:
   - ".github/workflows/openapi.yml"

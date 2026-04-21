@@ -1,42 +1,41 @@
 (ns metabase.transforms.core
   "API namespace for the `metabase.transforms` module."
   (:require
-   [java-time.api :as t]
-   [metabase.models.transforms.transform]
-   [metabase.models.transforms.transform-job]
-   [metabase.models.transforms.transform-run]
-   [metabase.models.transforms.transform-run-cancelation]
-   [metabase.models.transforms.transform-tag]
+   [metabase.transforms-base.ordering]
+   [metabase.transforms-base.util]
    [metabase.transforms.canceling]
    [metabase.transforms.crud]
    [metabase.transforms.execute]
    [metabase.transforms.jobs]
-   [metabase.transforms.ordering]
+   [metabase.transforms.models.transform]
+   [metabase.transforms.models.transform-job]
+   [metabase.transforms.models.transform-run]
+   [metabase.transforms.models.transform-run-cancelation]
+   [metabase.transforms.models.transform-tag]
    [metabase.transforms.schedule]
    [metabase.transforms.settings]
    [metabase.transforms.util]
-   [potemkin :as p]
-   [toucan2.core :as t2]))
+   [potemkin :as p]))
 
 (p/import-vars
  [metabase.transforms.settings
   transform-timeout]
- [metabase.transforms.util
-  add-source-readable
+ [metabase.transforms-base.util
   native-query-transform?
+  output-table
   python-transform?
   query-transform?
   transform-source-database
   transform-source-type
-  transform-type
+  transform-type]
+ [metabase.transforms.util
+  add-source-readable
   is-temp-transform-table?]
  [metabase.transforms.crud
-  python-source-table-ref->table-id
   check-database-feature
   check-feature-enabled!
-  extract-all-columns-from-query
-  extract-incremental-filter-columns-from-query
   validate-incremental-column-type!
+  validate-target-schema!
   validate-transform-query!
   get-transforms
   get-transform
@@ -47,7 +46,7 @@
   cancel-run!]
  [metabase.transforms.execute
   execute!]
- [metabase.transforms.ordering
+ [metabase.transforms-base.ordering
   transform-ordering
   get-transform-cycle]
  [metabase.transforms.jobs
@@ -59,38 +58,16 @@
   update-job!
   delete-job!
   existing-trigger]
- [metabase.models.transforms.transform
+ [metabase.transforms.models.transform
   update-transform-tags!]
- [metabase.models.transforms.transform-run
+ [metabase.transforms.models.transform-run
   timeout-run!
   paged-runs
   running-run-for-transform-id]
- [metabase.models.transforms.transform-run-cancelation
+ [metabase.transforms.models.transform-run-cancelation
   mark-cancel-started-run!]
- [metabase.models.transforms.transform-job
+ [metabase.transforms.models.transform-job
   update-job-tags!]
- [metabase.models.transforms.transform-tag
+ [metabase.transforms.models.transform-tag
   tag-name-exists?
   tag-name-exists-excluding?])
-
-(defn transform-stats
-  "Calculate successful transform runs over a window of the previous UTC day 00:00-23:59.
-    Rolling stats are included under :transform-rolling (up to date totals for today)"
-  []
-  (let [today-utc     (t/offset-date-time (t/zone-offset "+00"))
-        yesterday-utc (t/minus today-utc (t/days 1))
-        count-runs    (fn [source-types date]
-                        (or (:cnt (t2/query-one {:select [[[:count :r.id] :cnt]]
-                                                 :from   [[:transform_run :r]]
-                                                 :join   [[:transform :t] [:= :t.id :r.transform_id]]
-                                                 :where  [:and
-                                                          [:= :r.status "succeeded"]
-                                                          [:in :t.source_type source-types]
-                                                          [:= [:cast :r.end_time :date] [:cast date :date]]]}))
-                            0))]
-    {:transform-native-runs         (count-runs ["native" "mbql"] yesterday-utc)
-     :transform-python-runs         (count-runs ["python"] yesterday-utc)
-     :transform-usage-date          (str (t/local-date yesterday-utc))
-     :transform-rolling-native-runs (count-runs ["native" "mbql"] today-utc)
-     :transform-rolling-python-runs (count-runs ["python"] today-utc)
-     :transform-rolling-usage-date  (str (t/local-date today-utc))}))

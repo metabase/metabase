@@ -1,6 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.workspaces.validation-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.validation :as ws.validation]
@@ -53,9 +54,7 @@
                                                    (str "ee/workspace/" ws-id "/transform")
                                                    {:name   "Test Transform"
                                                     :source {:type  "query"
-                                                             :query {:database (mt/id)
-                                                                     :type     :native
-                                                                     :native   {:query "SELECT 1 as col"}}}
+                                                             :query (mt/native-query {:query "SELECT 1 as col"})}
                                                     :target {:type   "table"
                                                              :schema "public"
                                                              :name   "test_output_table"}})
@@ -92,14 +91,13 @@
                                                                 :database (mt/id)
                                                                 :schema   "public"
                                                                 :name     "external_output"}}]
+            (deps.test/synchronously-run-backfill!)
             ;; Create a workspace transform that targets the same table
             (let [{ref-id :ref_id} (mt/user-http-request :crowberto :post 200
                                                          (str "ee/workspace/" ws-id "/transform")
                                                          {:name   "Workspace Transform"
                                                           :source {:type  "query"
-                                                                   :query {:database (mt/id)
-                                                                           :type     :native
-                                                                           :native   {:query "SELECT 1 as col"}}}
+                                                                   :query (mt/native-query {:query "SELECT 1 as col"})}
                                                           :target {:type   "table"
                                                                    :schema "public"
                                                                    :name   "global_output_table"}})]

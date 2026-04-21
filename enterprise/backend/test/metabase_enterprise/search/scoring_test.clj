@@ -185,7 +185,7 @@
                (appdb.scoring-test/search-results* "card")))))))
 
 (deftest transforms-user-recency-test
-  (mt/with-premium-features #{:transforms}
+  (mt/with-premium-features #{:transforms-basic}
     (let [user-id (mt/user->id :crowberto)
           now     (Instant/now)
           recent-view (fn [model-id timestamp]
@@ -199,7 +199,7 @@
                                                   :source {:type "query"
                                                            :query (mt/native-query {:query "SELECT 1"})}
                                                   :target {:type "table"
-                                                           :name "test_table"}}
+                                                           :name (mt/random-name)}}
                      :model/RecentViews _ (recent-view c1 now)]
         (appdb.scoring-test/with-index-contents
           [{:model "card"      :id c1 :name "test card recent"}

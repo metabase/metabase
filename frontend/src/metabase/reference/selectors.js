@@ -2,24 +2,15 @@ import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 
 import { Dashboards } from "metabase/entities/dashboards";
-import { resourceListToMap } from "metabase/lib/redux";
 import {
   getShallowDatabases as getDatabases,
   getShallowFields as getFields,
   getShallowSegments as getSegments,
   getShallowTables as getTables,
 } from "metabase/selectors/metadata";
+import { resourceListToMap } from "metabase/utils/redux";
 
 import { idsToObjectMap } from "./utils";
-
-// import { getDatabases, getTables, getFields, getSegments } from "metabase/selectors/metadata";
-
-export {
-  getShallowDatabases as getDatabases,
-  getShallowTables as getTables,
-  getShallowFields as getFields,
-  getShallowSegments as getSegments,
-} from "metabase/selectors/metadata";
 
 export const getUser = (state, props) => state.currentUser;
 
@@ -125,6 +116,3 @@ export const getDashboards = (state, props) => {
   const list = Dashboards.selectors.getList(state);
   return list && resourceListToMap(list);
 };
-
-export const getIsDashboardModalOpen = (state, props) =>
-  state.reference.isDashboardModalOpen;

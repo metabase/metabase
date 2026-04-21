@@ -11,6 +11,8 @@ Transforms can be used to, well, transform your data - do stuff like preprocessi
 
 You'll write a query or a Python script in Metabase, a transform will run this query or script, create a table in your target database containing the results, and sync that table to Metabase, so it can be used as a data source for questions or other transforms.
 
+![Transforms](../images/transforms.png)
+
 ## Transforms overview
 
 - **Transforms** are queries (created either with SQL or the query builder) or Python scripts that write back to your database and create a new, persistent table. Use transforms to clean, join, or pre-aggregate data.
@@ -18,6 +20,7 @@ You'll write a query or a Python script in Metabase, a transform will run this q
   - You assign tags (e.g., daily, hourly) to group your transforms.
   - A job runs on a schedule (e.g., every day at midnight) and executes all transforms that have been assigned a specific tag.
 - Each execution of a transform is a **run**. A run replaces the target table with fresh results. You can review the history of runs to monitor their success or failure.
+- You can **inspect** a transform to analyze its data flow, join behavior, and column distributions. See [Transform inspector](transform-inspector.md).
 
 ## Databases that support transforms
 
@@ -33,7 +36,7 @@ Currently, Metabase can create transforms on the following databases:
 
 You can't create transforms on databases that have [Database routing](../../permissions/database-routing.md) enabled, or on Metabase's Sample Database.
 
-Transforms will create tables in your database, so the database user you use for your connection must have appropriate privileges. See [Database users, roles, and privileges](../../databases/users-roles-privileges.md).
+Transforms will create tables in your database, so the database user you use for your connection must have appropriate privileges. See [Database users, roles, and privileges](../../databases/users-roles-privileges.md). We suggest using a [Writable connection](../../databases/writable-connection.md) option for your database.
 
 ## Types of transforms
 
@@ -46,11 +49,10 @@ Metabase supports two types of transforms: query-based transforms and Python tra
 
 If you are running Metabase Open Source/Starter, Admins (and only Admins) can see and run transforms.
 
-Metabase Pro/Enterprise comes with additional permission controls for transforms, see [Transform permissions](../../permissions/data.md).
+Metabase Pro/Enterprise comes with additional permission controls for transforms:
 
-To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin or a member of the special [Data Analyst group](../../people-and-groups/managing.md).
-
-To **execute** transforms on a database, people additionally need to have the [Transform permissions](../../permissions/data.md) for that database.
+- To **see** the list of transforms on your instance, people need to be able to access Data Studio, so they need to be either an Admin or a member of the special [Data Analyst group](../../people-and-groups/managing.md).
+- To **execute** transforms on a database, people additionally need to have the [Transform permissions](../../permissions/data.md) for that database.
 
 ## See all transforms
 
@@ -61,6 +63,8 @@ You can see all your Metabase's transforms:
 1. Make sure you have [appropriate permissions to see transforms](#permissions-for-transforms).
 2. Click the **grid** icon on top right and go to **Data Studio**.
 3. In the left sidebar, select **Transforms**.
+
+![Transforms](../images/transforms.png)
 
 ## Create a transform
 
@@ -75,9 +79,13 @@ To create a transform:
 3. In the left sidebar, select **Transforms**.
 4. Click **+ New** and select a source for your transform.
 
+   ![New transform](../images/new_transform.png)
+
    You can create your transform using Metabase's [graphical query builder](../../questions/query-builder/editor.md), SQL, or Python.
 
    For more information on transforms built with the query builder or SQL, see [query-based transforms](query-transforms.md). For more information on Python transforms, see [Python transforms](python-transforms.md).
+
+   ![Query transform](../images/sql-transform.png)
 
    If you select **Copy of a saved question** for the transform's source, you can copy the query of an existing Metabase question (either a SQL question or a query builder question) into your transform query. Metabase will only _copy_ the question's query. Later edits to that original question won't affect the transform's query.
 
@@ -97,6 +105,8 @@ To create a transform:
    - **Folder** (optional): The folder where the transform should live. Click on the field to pick a different folder or create a new one.
    - **Incremental transformation** (optional): see [Incremental query-based transforms](query-transforms.md#incremental-query-transforms) or [Incremental Python transforms](python-transforms.md)
 
+     ![Transform settings](../images/transform-settings.png)
+
 7. Optionally, once the transform is saved, assign tags to your transform. Tags are used by [jobs](./jobs-and-runs.md) to run transforms on schedule.
 
 ## Use Metabot to generate code for transforms
@@ -105,13 +115,19 @@ To create a transform:
 
 You can ask Metabot to generate a new SQL or Python-based transform, or edit an existing transform.
 
-1. Go to **Data studio > Transforms**.
+1. Go to **Data studio > Transforms**. If you want Metabot to edit an existing transform, navigate to the transform.
 2. While in Transforms view, click on the Metabot icon in top right.
 3. Describe the transform that you'd like Metabot to write.
 
    You can specify which kind of transform you want (Python or SQL) and @-mention specific data sources to help Metabot understand your request.
 
-Metabot will create a to-do list for itself that will show its thinking process, and then work through the list.
+   ![Create a new transform with codegen](../images/transform-codegen.png)
+
+4. Metabot will create a to-do list for itself that will show its thinking process, and then work through the list.
+
+5. If you asked Metabot to create a new transform, review the code that Metabot offers in the chat window and click on "Create" under the code snippet.
+
+   ![Create snippet](../images/create-transform.png)
 
 You can continue working with Metabot to refine your code. Metabot will suggest code changes, and give you the option of accepting or rejecting the changes.
 
@@ -122,6 +138,8 @@ _Data Studio > Transforms_
 You can edit the transform's name and description, query/script, target table, and incremental settings. You can edit the transform even if it already ran or is scheduled to run.
 
 If you're using remote sync, you won't be able to edit transforms if your instance is in ["read-only" sync mode](../../installation-and-operation/remote-sync.md).
+
+![Edit transform settings](../images/transform-edit-settings.png)
 
 ### Edit transform's query or script
 
@@ -160,11 +178,19 @@ You can see the time and status of the latest transform run on the transform's p
 
 For Python transforms, you'll also see the transform's execution logs.
 
+## Inspect a transform
+
+_Data Studio > Transforms > [transform name] > Inspect_
+
+The [transform inspector](./transform-inspector.md) lets you poke at the input and outputs of your transform.
+
 ## Transform dependencies
 
-> Transform dependency graph is only available on Pro and Enterprise plans (both self-hosted and Metabase Cloud)
+{% include plans-blockquote.html feature="Transform dependencies" is_plural=true%}
 
 _Data Studio > Transforms > Dependencies_
+
+![Transforms dependencies](../images/transform-dependencies.png)
 
 Transform queries can use the data from other transforms, and query-based transforms can also reference Metabase questions and models. For example, you can have a transform that uses data from a `raw_events` table and writes to a `stg_events` table, and then create another transform that uses data from the `stg_events` table and writes to an `events` table.
 
@@ -184,7 +210,6 @@ Incremental transforms only append new data since the previous transform run. Fo
 
 - There is a column in your data that Metabase can check for new values to determine which data is new. We'll refer to this as a "Checkpoint" column.
 - The checkpoint column has to have increasing values, like a sequential ID or timestamp column. Metabase will determine what "new" data is by looking for values that are _greater than_ already-written checkpoint values.
-- The checkpoint column should be present in both input and output table.
 - Your schema is stable, meaning that the structure of the tables is not going to change from run to run.
 
 ### Make a transform incremental
@@ -199,7 +224,7 @@ You can check your transforms into git with [Remote Sync](../../installation-and
 
 To enable git sync of transforms:
 
-1. Go to Admin settings by click the **grid** icon in top right and select **Admin**.
+1. Go to Admin settings by clicking the **grid** icon in top right and select **Admin**.
 2. On the **General** tab, pick **Remote sync** in the left sidebar.
 3. Follow the steps to [Set up Remote Sync](../../installation-and-operation/remote-sync.md), and toggle "Transforms" sync on.
 
@@ -215,3 +240,35 @@ Transforms are similar to models with model persistence turned on, but there are
 - You can use Python to create transforms.
 
 Use models to enable non-admins to create their own datasets within Metabase, and to add context like field descriptions and semantic types. Use transforms to create persisted datasets in your database and reuse them across Metabase. In future versions of Metabase, model persistence will be deprecated in favor of transforms.
+
+## Convert models to transforms
+
+If you have models you'd like to migrate to transforms, Metabase can convert them for you. When you convert a model, Metabase:
+
+1. Creates a new transform based on the model's query.
+2. Runs the transform to create the output table in your database.
+3. Replaces every question, dashboard, and other item that used the model with the transform's output table.
+4. Converts the original model to a question.
+
+You must be an admin to convert models, and the model's database must [support transforms](#databases-that-support-transforms).
+
+Before converting models into transforms, review [Replacing data sources](../dependencies/replace-data-sources.md) docs for overview and limitations of the process.
+
+To convert a model into a transform:
+
+1. Open **Data Studio** and select **Transforms** in the sidebar.
+2. Click **Tools > Migrate models**.
+3. Find the model you want to convert and click it to open its details panel. The panel shows the model's name, database, and collection, and a list of items that depend on it.
+4. Click **Convert to a transform**.
+5. Fill out the transform settings. See [Create a transform](#create-a-transform) for the overview of settings.
+6. Click **Convert to a transform**.
+
+Metabase runs the conversion in the background. A status indicator at the bottom of the screen shows progress.
+
+If the transform run fails, Metabase stops and leaves the model unchanged—nothing is replaced.
+
+If the transform runs successfully but the source swap fails afterward, the transform and its output table are kept. The model is left unchanged. You can complete the migration manually using [Replace data sources](../dependencies/replace-data-sources.md) to point remaining content from the model to the transform's output table.
+
+Once conversion completes, all content that previously queried the model now queries the transform's output table, and the model becomes a saved question.
+
+Newly created tables will be created with default permissions and will _not_ inherit the model's permissions. As an alternative, consider manually creating and running the transform first, setting up the permissions, then using [Replace data sources](../dependencies/replace-data-sources.md) to swap the model for the transform's output table once you configured permissions.

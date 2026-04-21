@@ -18,6 +18,25 @@ const setup = async () => {
 };
 
 describe("EmbeddingSecuritySettings => common", () => {
+  it("should allow users to update CORS settings", async () => {
+    await setup();
+
+    expect(
+      await screen.findByText("Cross-Origin Resource Sharing (CORS)"),
+    ).toBeInTheDocument();
+
+    const input = await screen.findByPlaceholderText("https://*.example.com");
+    await userEvent.type(input, "https://my-app.example.com");
+    await userEvent.tab();
+
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+
+    const [{ url, body }] = puts;
+    expect(url).toContain("/setting/embedding-app-origins-sdk");
+    expect(body).toEqual({ value: "https://my-app.example.com" });
+  });
+
   it("should allow changing samesite cookie setting", async () => {
     await setup();
 

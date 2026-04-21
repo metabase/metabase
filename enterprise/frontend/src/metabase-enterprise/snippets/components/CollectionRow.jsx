@@ -2,10 +2,9 @@
 import cx from "classnames";
 import { Component } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
-import { Icon } from "metabase/ui";
+import { Ellipsified, Icon } from "metabase/ui";
 
 import { SnippetCollectionMenu } from "./SnippetCollectionMenu";
 

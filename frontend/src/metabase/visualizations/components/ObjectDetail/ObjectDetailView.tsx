@@ -8,10 +8,10 @@ import { skipToken, useListActionsQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { useDispatch } from "metabase/lib/redux";
 import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";
 import { Modal } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -88,6 +88,7 @@ export function ObjectDetailView({
   viewNextObjectDetail,
   closeObjectDetail,
   className,
+  isDashboard,
 }: ObjectDetailProps): JSX.Element | null {
   const [hasNotFoundError, setHasNotFoundError] = useState(false);
   const [maybeLoading, setMaybeLoading] = useState(false);
@@ -246,9 +247,9 @@ export function ObjectDetailView({
 
   const areImplicitActionsEnabled = Boolean(
     question &&
-      question.canWrite() &&
-      question.type() === "model" &&
-      question.supportsImplicitActions(),
+    question.canWrite() &&
+    question.type() === "model" &&
+    question.supportsImplicitActions(),
   );
 
   const modelId = question?.type() === "model" ? question.id() : undefined;
@@ -355,6 +356,7 @@ export function ObjectDetailView({
               settings={settings}
               onVisualizationClick={onVisualizationClick}
               visualizationIsClickable={visualizationIsClickable}
+              isDashboard={isDashboard}
             />
           </ObjectDetailWrapperDiv>
         )}

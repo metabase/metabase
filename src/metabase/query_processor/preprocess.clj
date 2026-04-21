@@ -61,6 +61,7 @@
    #'qp.perms/remove-permissions-key
    #'qp.perms/remove-source-card-keys
    #'qp.perms/remove-sandboxed-table-keys
+   #'qp.perms/remove-persisted-info-native-keys
    #'qp.constraints/maybe-add-default-userland-constraints
    #'validate/validate-query
    #'fetch-source-query/resolve-source-cards
@@ -103,6 +104,7 @@
    #'optimize-temporal-filters/optimize-temporal-filters
    #'limit/add-default-limit
    #'qp.middleware.enterprise/apply-download-limit
+   #'qp.middleware.enterprise/apply-workspace-remapping
    #'check-features/check-features])
 
 (def ^:private ^Long slow-middleware-warning-threshold-ms

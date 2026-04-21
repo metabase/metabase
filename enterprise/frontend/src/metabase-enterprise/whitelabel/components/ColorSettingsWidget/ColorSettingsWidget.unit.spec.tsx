@@ -4,8 +4,8 @@ import { renderWithProviders, screen } from "__support__/ui";
 import {
   deriveChartShadeColor,
   deriveChartTintColor,
-} from "metabase/lib/colors/accents";
-import MetabaseSettings from "metabase/lib/settings";
+} from "metabase/ui/colors/accents";
+import MetabaseSettings from "metabase/utils/settings";
 import type { SettingKey } from "metabase-types/api";
 
 import { ColorSettingsWidget } from "./ColorSettingsWidget";

@@ -44,7 +44,7 @@ export const ParagraphNodeView = ({
     isHovered,
     hovered,
     setHovered,
-    threads,
+    unresolvedCommentsCount,
     document,
     shouldShowMenus,
     setReferenceElement,
@@ -79,7 +79,7 @@ export const ParagraphNodeView = ({
           ref={commentsRefs.setFloating}
           show={isOpen || hovered}
           style={commentsFloatingStyles}
-          threads={threads}
+          unresolvedCommentsCount={unresolvedCommentsCount}
         />
       )}
     </>

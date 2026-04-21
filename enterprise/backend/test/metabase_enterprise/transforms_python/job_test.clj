@@ -4,10 +4,10 @@
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [metabase.driver :as driver]
-   [metabase.models.transforms.transform-run :as transform-run]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.transforms.jobs :as jobs]
+   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :as transforms.tu]
@@ -19,7 +19,7 @@
     (mt/with-temp-scheduler!
       (task/init! ::transforms.schedule/RunTransform)
       (mt/test-drivers #{:postgres}
-        (mt/with-premium-features #{:transforms-python :transforms}
+        (mt/with-premium-features #{:transforms-python :transforms-basic}
           (mt/dataset transforms-dataset/transforms-test
             (transforms.tu/with-transform-cleanup! [target {:type   "table"
                                                             :schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
@@ -29,7 +29,7 @@
                  :model/Transform    {transform-id :id} {:name   "Gadget Products"
                                                          :source {:type  "python"
                                                                   :source-database (mt/id)
-                                                                  :source-tables {"transforms_customers" (mt/id :transforms_customers)}
+                                                                  :source-tables [(transforms.tu/source-table-entry "transforms_customers" (mt/id :transforms_customers))]
                                                                   :body  (str "import pandas as pd\n"
                                                                               "\n"
                                                                               "def transform():\n"
@@ -53,15 +53,15 @@
 
 (deftest run-transform-feature-flag-test
   (testing "Python transforms are skipped without :transforms-python feature"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (let [python-transform {:id 2
                               :source python-source
                               :name "Test Python Transform"}
             run-id 101
             logged-messages (atom [])]
-        (with-redefs [log/log* (fn [_ level _ message]
-                                 (swap! logged-messages conj {:level level :message message}))
-                      transform-run/running-run-for-transform-id (constantly nil)]
+        (mt/with-dynamic-fn-redefs [log/log* (fn [_ level _ message]
+                                               (swap! logged-messages conj {:level level :message message}))
+                                    transform-run/running-run-for-transform-id (constantly nil)]
           (#'jobs/run-transform! run-id :scheduled nil python-transform)
           (is (= 1 (count @logged-messages))
               "Should log exactly one warning")

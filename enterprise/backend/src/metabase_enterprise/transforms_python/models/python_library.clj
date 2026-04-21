@@ -94,8 +94,7 @@
   [:path])
 
 (defmethod serdes/storage-path "PythonLibrary" [entity _ctx]
-  (let [{:keys [id label]} (-> entity serdes/path last)]
-    ["python-libraries" (serdes/storage-leaf-file-name id label)]))
+  [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])
 
 ;;; ------------------------------------------------ Event Hooks -----------------------------------------------------
 

@@ -1,9 +1,9 @@
 (ns metabase.transforms-rest.api.transform-job-test
   (:require
    [clojure.test :refer :all]
-   [metabase.models.transforms.transform-job]
-   [metabase.models.transforms.transform-tag]
    [metabase.test :as mt]
+   [metabase.transforms.models.transform-job]
+   [metabase.transforms.models.transform-tag]
    [metabase.transforms.schedule :as transforms.schedule]
    [metabase.transforms.test-util :refer [parse-instant
                                           utc-timestamp]]
@@ -14,7 +14,7 @@
 (deftest create-job-test
   (testing "POST /api/transform-job"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (mt/with-temp [:model/TransformTag tag1 {:name "test-tag-1"}
                        :model/TransformTag tag2 {:name "test-tag-2"}]
           (testing "Creates job with valid data"
@@ -49,7 +49,7 @@
 (deftest get-job-test
   (testing "GET /api/transform-job/:id"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (mt/with-temp [:model/TransformTag tag {:name "test-tag"}
                        :model/TransformJob job {:name     "Test Job"
                                                 :schedule "0 0 0 * * ?"}
@@ -67,7 +67,7 @@
 (deftest get-job-transforms-test
   (testing "GET /api/transform-job/:id/transforms"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (let [lucky-id (mt/user->id :lucky)]
           (mt/with-temp [:model/Transform {transform1-id :id} {:name "tr1" :creator_id lucky-id}
                          :model/Transform {transform2-id :id} {:name "tr2" :creator_id lucky-id}
@@ -91,7 +91,7 @@
 (deftest list-jobs-test
   (testing "GET /api/transform-job"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (let [at-5-second-schedule "5 * * * * ?"]
           (mt/with-temp [:model/TransformTag {t1-id :id} {:name "test-tag"}
                          :model/TransformTag {t2-id :id} {:name "second test-tag"}
@@ -151,7 +151,7 @@
 (deftest update-job-test
   (testing "PUT /api/transform-job/:id"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (mt/with-temp [:model/TransformTag tag1 {:name "tag-1"}
                        :model/TransformTag tag2 {:name "tag-2"}]
           (let [job (mt/user-http-request :lucky :post 200 "transform-job"
@@ -176,7 +176,7 @@
 (deftest update-job-remove-tags-test
   (testing "PUT /api/transform-job/:id"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (testing "should be able to remove all tags from a job"
           (mt/with-temp [:model/TransformTag tag {}
                          :model/TransformJob job {}
@@ -188,7 +188,7 @@
 (deftest delete-job-test
   (testing "DELETE /api/transform-job/:id"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (mt/with-temp [:model/TransformJob job {:name "To Delete" :schedule "0 0 0 * * ?"}]
           (testing "Deletes job"
             (mt/user-http-request :lucky :delete 204 (str "transform-job/" (:id job)))
@@ -200,7 +200,7 @@
 (deftest execute-job-test
   (testing "POST /api/transform-job/:id/execute"
     (mt/with-data-analyst-role! (mt/user->id :lucky)
-      (mt/with-premium-features #{:transforms}
+      (mt/with-premium-features #{:transforms-basic}
         (mt/with-temp [:model/TransformJob job {:name "To Execute" :schedule "0 0 0 * * ?"}]
           (testing "Returns stub run response"
             (let [response (mt/user-http-request :lucky :post 200 (str "transform-job/" (:id job) "/run"))]
@@ -210,7 +210,7 @@
 
 (deftest permissions-test
   (testing "All endpoints require transform permissions"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-temp [:model/TransformJob job {:name "Test" :schedule "0 0 0 * * ?"}]
         (mt/user-http-request :rasta :post 403 "transform-job"
                               {:name "New" :schedule "0 0 0 * * ?"})

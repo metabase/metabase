@@ -14,9 +14,9 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 import SearchApp from "metabase/search/containers/SearchApp";
 import type { SearchFilters } from "metabase/search/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { EnabledSearchModel, SearchResult } from "metabase-types/api";
 import {
   createMockCollection,
@@ -38,6 +38,7 @@ const TYPE_FILTER_LABELS: Record<EnabledSearchModel, string> = {
   dataset: "Model",
   table: "Table",
   card: "Question",
+  measure: "Measure",
   metric: "Metric",
   action: "Action",
   "indexed-entity": "Indexed record",

@@ -30,7 +30,7 @@ Database routing is **not supported** on:
 - Spark SQL
 - Vertica.
 
-Different database have different setups, so _what_ you can route between (database, schema, data catalog, etc.) will differ slightly depending on which data warehouse you're using.
+Different databases have different setups, so _what_ you can route between (database, schema, data catalog, etc.) will differ slightly depending on which data warehouse you're using.
 
 - Athena: Only routing between different connections is supported (e.g., different buckets, roles, or catalogs).
 - BigQuery: Only routing between databases in different projects is supported.
@@ -40,7 +40,7 @@ Different database have different setups, so _what_ you can route between (datab
 
 Database routing **can't be used** on databases with:
 
-- [Writeable connections](../databases/writeable-connection.md)
+- [Writable connections](../databases/writable-connection.md)
 - [Editable tables](../data-modeling/editable-tables.md)
 - [Actions](../actions/introduction.md)
 - [CSV uploads](../databases/uploads.md)
@@ -100,7 +100,7 @@ Here's a `curl` command to add a PostgreSQL database as a destination database. 
 curl 'http://localhost:3000/api/ee/database-routing/mirror-database?check_connection_details=true' \
   --request POST \
   --header 'Content-Type: application/json' \
-  --header 'X-Api-Key: mb_CpkoZHvSB5R+P+WsuXWRbdT3WbVphFv/rgMX9UGux/4=' \
+  --header 'X-API-Key: mb_CpkoZHvSB5R+P+WsuXWRbdT3WbVphFv/rgMX9UGux/4=' \
   --data '{
   "router_database_id": 2,
   "mirrors": [
@@ -132,7 +132,7 @@ If you grab the payload from the browser's Network tab, you may see additional, 
 curl 'http://localhost:3000/api/ee/database-routing/mirror-database?check_connection_details=true' \
   --request POST \
   --header 'Content-Type: application/json' \
-  --header 'X-Api-Key: mb_CpkoZHvSB5R+P+WsuXWRbdT3WbVphFv/rgMX9UGux/4=' \
+  --header 'X-API-Key: mb_CpkoZHvSB5R+P+WsuXWRbdT3WbVphFv/rgMX9UGux/4=' \
   --data '{
   "router_database_id": 2,
   "mirrors": [

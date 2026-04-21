@@ -1,10 +1,8 @@
 import { useFormikContext } from "formik";
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import { FormSelect } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { TitleSection } from "metabase/transforms/components/TitleSection";
@@ -12,7 +10,7 @@ import {
   SOURCE_STRATEGY_OPTIONS,
   TARGET_STRATEGY_OPTIONS,
 } from "metabase/transforms/constants";
-import { getLibQuery, isMbqlQuery } from "metabase/transforms/utils";
+import { getLibQuery } from "metabase/transforms/utils";
 import {
   Anchor,
   Box,
@@ -23,15 +21,18 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import { useSelector } from "metabase/utils/redux";
+import * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";
+import type { TransformType } from "metabase-types/api/transform";
 
 import {
   MBQLKeysetColumnSelect,
+  NativeQueryTableTagFieldSelect,
   PythonKeysetColumnSelect,
 } from "./KeysetColumnSelect";
-import { NativeQueryColumnSelect } from "./NativeQueryColumnSelect";
 import type { IncrementalSettingsFormValues } from "./form";
+import { useHasCheckpointOptions } from "./useHasCheckpointOptions";
 
 type IncrementalTransformSettingsProps = {
   source: TransformSource;
@@ -39,6 +40,7 @@ type IncrementalTransformSettingsProps = {
   onIncrementalChange: (value: boolean) => void;
   variant?: "embedded" | "standalone";
   readOnly?: boolean;
+  extraActions?: React.ReactNode;
 };
 
 export const IncrementalTransformSettings = ({
@@ -47,6 +49,7 @@ export const IncrementalTransformSettings = ({
   onIncrementalChange,
   variant = "embedded",
   readOnly,
+  extraActions,
 }: IncrementalTransformSettingsProps) => {
   const metadata = useSelector(getMetadata);
   const libQuery = getLibQuery(source, metadata);
@@ -54,42 +57,55 @@ export const IncrementalTransformSettings = ({
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
 
-  // Check if this is a Python transform with exactly one source table
-  // Incremental transforms are only supported for single-table Python transforms
-  const isPythonTransform = source.type === "python";
-  const isMultiTablePythonTransform =
-    isPythonTransform && Object.keys(source["source-tables"]).length > 1;
+  const { hasCheckpointOptions, transformType } =
+    useHasCheckpointOptions(source);
 
-  const transformType = match({
-    isMbqlQuery: isMbqlQuery(source, metadata),
-    isPythonTransform,
-  })
-    .with({ isMbqlQuery: true }, () => "query" as const)
-    .with({ isPythonTransform: true }, () => "python" as const)
-    .otherwise(() => "native" as const);
+  const isMultiTablePythonTransform =
+    getIsPythonTransformWithMultipleTables(source);
+  const isNativeWithoutTableTags = getIsNativeWithoutTableVariables(
+    libQuery,
+    transformType,
+  );
+
   const { url: incrementalTransformsDocsUrl, showMetabaseLinks } = useDocsUrl(
-    isPythonTransform
+    transformType === "python"
       ? "data-studio/transforms/python-transforms#incremental-python-transforms"
       : "data-studio/transforms/query-transforms#incremental-query-transforms",
   );
 
   const renderIncrementalSwitch = () => {
+    const getLabel = () => {
+      if (isMultiTablePythonTransform) {
+        return t`Incremental transforms are only supported for single data source transforms.`;
+      }
+      if (isNativeWithoutTableTags) {
+        return t`Incremental transforms for native queries require a table variable.`;
+      }
+      if (!hasCheckpointOptions) {
+        return t`Incremental transforms require at least one numeric or temporal source field.`;
+      }
+      return t`Only process new and changed data`;
+    };
+
+    const transformHasIssues =
+      isNativeWithoutTableTags ||
+      !hasCheckpointOptions ||
+      isMultiTablePythonTransform;
+
     const switchContent = (
       <Switch
         disabled={
-          readOnly || isMultiTablePythonTransform || isRemoteSyncReadOnly
+          readOnly ||
+          isRemoteSyncReadOnly ||
+          (!incremental && transformHasIssues)
         }
         checked={incremental}
         size="sm"
-        label={
-          isMultiTablePythonTransform
-            ? t`Incremental transforms are only supported for single data source transforms.`
-            : t`Only process new and changed data`
-        }
+        label={getLabel()}
         wrapperProps={{
           "data-testid": "incremental-switch",
         }}
-        onChange={(e) => onIncrementalChange(e.target.checked)}
+        onChange={(event) => onIncrementalChange(event.target.checked)}
       />
     );
 
@@ -109,18 +125,21 @@ export const IncrementalTransformSettings = ({
 
   const label = t`Incremental transformation`;
   const renderDescription = () => {
-    const description = t`If you don’t need to reprocess all the data, incremental transforms can be faster. To use this, your transform definition should have a stable schema. `;
+    const description = t`If you don’t need to reprocess all the data, incremental transforms can be faster. To use this, your transform definition should have a stable schema.`;
     return (
       <>
         {description}
         {showMetabaseLinks && (
-          <Anchor
-            href={incrementalTransformsDocsUrl}
-            target="_blank"
-            td="underline"
-            c="inherit"
-            size="sm"
-          >{t`Learn more.`}</Anchor>
+          <>
+            {" "}
+            <Anchor
+              href={incrementalTransformsDocsUrl}
+              target="_blank"
+              td="underline"
+              c="inherit"
+              size="sm"
+            >{t`Learn more.`}</Anchor>
+          </>
         )}{" "}
       </>
     );
@@ -136,10 +155,16 @@ export const IncrementalTransformSettings = ({
               <SourceStrategyFields
                 source={source}
                 query={libQuery}
-                type={transformType}
+                transformType={transformType}
                 readOnly={readOnly}
               />
             </Group>
+            {extraActions && (
+              <>
+                <Divider />
+                <Group p="lg">{extraActions}</Group>
+              </>
+            )}
             <TargetStrategyFields variant={variant} />
           </>
         )}
@@ -161,7 +186,7 @@ export const IncrementalTransformSettings = ({
           <SourceStrategyFields
             source={source}
             query={libQuery}
-            type={transformType}
+            transformType={transformType}
           />
           <TargetStrategyFields variant={variant} />
         </>
@@ -205,17 +230,18 @@ function TargetStrategyFields({
 type SourceStrategyFieldsProps = {
   source: TransformSource;
   query: Lib.Query | null;
-  type: "query" | "native" | "python";
+  transformType: TransformType;
   readOnly?: boolean;
 };
 
 function SourceStrategyFields({
   source,
   query,
-  type,
+  transformType,
   readOnly,
 }: SourceStrategyFieldsProps) {
   const { values } = useFormikContext<IncrementalSettingsFormValues>();
+
   return (
     <>
       {SOURCE_STRATEGY_OPTIONS.length > 1 && (
@@ -229,9 +255,9 @@ function SourceStrategyFields({
       )}
       {values.sourceStrategy === "checkpoint" && (
         <>
-          {type === "query" && query && (
+          {transformType === "mbql" && query && (
             <MBQLKeysetColumnSelect
-              name="checkpointFilterUniqueKey"
+              name="checkpointFilterFieldId"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
               description={t`Pick the field that we should scan to determine which records are new or changed`}
@@ -241,20 +267,20 @@ function SourceStrategyFields({
               disabled={readOnly}
             />
           )}
-          {type === "native" && query && (
-            <NativeQueryColumnSelect
-              name="checkpointFilter"
-              label={t`Column to check for new values`}
-              placeholder={t`Pick a column`}
-              description={t`Pick the column that we should scan to determine which records are new or changed`}
+          {transformType === "native" && query && (
+            <NativeQueryTableTagFieldSelect
+              name="checkpointFilterFieldId"
+              label={t`Field to check for new values`}
+              placeholder={t`Pick a field`}
+              description={t`Pick the field that we should scan to determine which records are new or changed`}
               descriptionProps={{ lh: "1rem" }}
               query={query}
               disabled={readOnly}
             />
           )}
-          {type === "python" && "source-tables" in source && (
+          {transformType === "python" && "source-tables" in source && (
             <PythonKeysetColumnSelect
-              name="checkpointFilterUniqueKey"
+              name="checkpointFilterFieldId"
               label={t`Field to check for new values`}
               placeholder={t`Pick a field`}
               description={t`Pick the field that we should scan to determine which records are new or changed`}
@@ -267,4 +293,31 @@ function SourceStrategyFields({
       )}
     </>
   );
+}
+
+// Check if this is a Python transform with exactly one source table
+// Incremental transforms are only supported for single-table Python transforms
+function getIsPythonTransformWithMultipleTables(source: TransformSource) {
+  const isPythonTransform = source.type === "python";
+  const isMultiTablePythonTransform =
+    isPythonTransform && source["source-tables"].length > 1;
+
+  return isMultiTablePythonTransform;
+}
+
+function getIsNativeWithoutTableVariables(
+  query: Lib.Query | null,
+  transformType: TransformType,
+) {
+  return transformType === "native" && !queryHasTableVariables(query);
+}
+
+function queryHasTableVariables(query: Lib.Query | null) {
+  const hasTableTemplateTags = query
+    ? Object.values(Lib.templateTags(query)).some(
+        (tag) => tag.type === "table" && tag["table-id"] != null,
+      )
+    : false;
+
+  return hasTableTemplateTags;
 }

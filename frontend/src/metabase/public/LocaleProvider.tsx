@@ -7,9 +7,9 @@ import {
 } from "react";
 
 import { useSetting } from "metabase/common/hooks";
-import { setLocaleHeader } from "metabase/lib/api";
-import { loadLocalization, setUserLocale } from "metabase/lib/i18n";
 import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";
+import { setLocaleHeader } from "metabase/utils/api";
+import { loadLocalization, setUserLocale } from "metabase/utils/i18n";
 
 interface LocaleProviderProps {
   locale?: string | null;
@@ -88,7 +88,7 @@ export const getLocaleToUse = (
   if (!locale) {
     return "en";
   }
-  const [language, country] = locale.split("-");
+  const [language, country] = locale.split(/[-_]/);
 
   const normalizedLanguage = language.toLowerCase();
   const normalizedCountry = country?.toUpperCase();

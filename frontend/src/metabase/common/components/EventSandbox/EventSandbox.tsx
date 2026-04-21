@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from "react";
-import * as React from "react";
 import _ from "underscore";
 type Options = {
   preventDefault?: boolean;
@@ -68,6 +67,10 @@ const eventsSandboxedByDefault: EventName[] = [
   "onMouseOver",
   "onMouseOut",
   "onMouseUp",
+  "onTouchCancel",
+  "onTouchEnd",
+  "onTouchMove",
+  "onTouchStart",
 ];
 
 /** All supported events that start with 'onMouse' */
@@ -123,7 +126,7 @@ export function EventSandbox({
   ]);
 
   return disabled === true ? (
-    <React.Fragment>{children}</React.Fragment>
+    <>{children}</>
   ) : (
     <div className={className} {...sandboxProps}>
       {children}

@@ -7,7 +7,8 @@ on:
 
 jobs:
   harvest:
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     permissions:
       contents: read
     steps:
@@ -35,7 +36,7 @@ jobs:
       # Hence, the three minute timeout and continue-on-error.
       - name: Trigger pre-translations
         timeout-minutes: 3
-        uses: crowdin/github-action@v2
+        uses: crowdin/github-action@ce33ce793a5cbc401d9cd748716e03fc90c001f1 # v2
         # https://crowdin.github.io/crowdin-cli/commands/crowdin-pre-translate
         with:
           command: "pre-translate"

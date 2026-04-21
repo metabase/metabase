@@ -9,6 +9,7 @@
   (:require
    [buddy.core.codecs :as codecs]
    [clojure.core.memoize :as memoize]
+   [clojure.edn :as edn]
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
@@ -241,6 +242,14 @@
   {:in  json-in
    :out json-out-without-keywordization})
 
+(def transform-edn
+  "Transform that stores Clojure data as EDN strings. Preserves keywords, sets, and other
+   types that JSON cannot represent. Strings are assumed to already be EDN and passed through."
+  {:in  (fn [v] (cond (nil? v)    nil
+                      (string? v) v
+                      :else       (pr-str v)))
+   :out (fn [s] (when (string? s) (edn/read-string s)))})
+
 (mu/defn assert-enum
   "Assert that a value is one of the values in `enum`."
   [enum :- [:set :any]
@@ -264,6 +273,23 @@
     (throw (ex-info (format "Must be a namespaced keyword under :%s, got: %s" qualified-ns value) {:status-code 400
                                                                                                    :value       value}))))
 
+(defn transform-validator-with-fixes
+  "Like [[transform-validator]], but applies `fixes` (a fn of old-value->new-value) before validation on both read
+   and write. Use this when an enum has been renamed and old values may still exist in the database or in
+   serialization exports."
+  [tf assert-fn fixes]
+  (-> tf
+      (update :out (fn [f]
+                     (fn [x]
+                       (let [out (fixes (f x))]
+                         (assert-fn out)
+                         out))))
+      (update :in (fn [f]
+                    (fn [x]
+                      (let [x (fixes x)]
+                        (assert-fn x)
+                        (f x)))))))
+
 (defn transform-validator
   "Given a transform, returns a transform that call `assert-fn` on the \"out\" value.
 
@@ -273,18 +299,7 @@
       (when-not (-> x namespace some?)
         (throw (ex-info \"Value is not namespaced\")))))"
   [tf assert-fn]
-  (-> tf
-      ;; deserialization
-      (update :out (fn [f]
-                     (fn [x]
-                       (let [out (f x)]
-                         (assert-fn out)
-                         out))))
-      ;; serialization
-      (update :in (fn [f]
-                    (fn [x]
-                      (assert-fn x)
-                      (f x))))))
+  (transform-validator-with-fixes tf assert-fn identity))
 
 (def encrypted-json-in
   "Serialize encrypted json."

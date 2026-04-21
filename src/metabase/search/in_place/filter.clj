@@ -111,7 +111,7 @@
     [:= (search.config/column-with-model-alias model :creator_id) (first creator-ids)]
     [:in (search.config/column-with-model-alias model :creator_id) creator-ids]))
 
-(doseq [model ["card" "dataset" "metric" "dashboard" "action" "document"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "action" "document" "measure"]]
   (defmethod build-optional-filter-query [:created-by model]
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
@@ -184,7 +184,7 @@
       [:and [:>= dt-col start] [:< dt-col end]])))
 
 (doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action" "document"
-               "transform"]]
+               "transform" "measure"]]
   (defmethod build-optional-filter-query [:created-at model]
     [_filter model query created-at]
     (sql.helpers/where query (date-range-filter-clause
@@ -300,7 +300,7 @@
     (sql.helpers/where query false-clause)))
 
 ;; Things that don't belong to collections
-(doseq [model ["database" "action" "indexed-entity"]]
+(doseq [model ["database" "action" "indexed-entity" "measure" "segment"]]
   (defmethod build-optional-filter-query [:collection model]
     [_filter _model query _collection-id]
     ;; These models don't have collection_id, so they never match
@@ -326,7 +326,7 @@
             (reduce (fn [acc [filter model]]
                       (update acc filter set/union #{model}))
                     {})))
-      (update :collection disj "database")
+      (update :collection disj "database" "measure" "segment")
       (update :collection conj "indexed-entity")))
 
 ;; ------------------------------------------------------------------------------------------------;;

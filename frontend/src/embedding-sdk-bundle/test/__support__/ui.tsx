@@ -1,5 +1,4 @@
 import { render } from "@testing-library/react";
-import type * as React from "react";
 import _ from "underscore";
 
 import { getStore } from "__support__/entities-store";
@@ -10,11 +9,11 @@ import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { MantineThemeOverride } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 
 export interface RenderWithSDKProvidersOptions {
   storeInitialState?: Partial<State>;

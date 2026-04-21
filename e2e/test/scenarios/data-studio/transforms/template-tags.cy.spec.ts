@@ -13,7 +13,8 @@ describe("scenarios > admin > transforms", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     cy.intercept("PUT", "/api/field/*").as("updateField");
@@ -98,25 +99,22 @@ describe("scenarios > admin > transforms", () => {
       query: "SELECT 1",
     })
       .then((query) =>
-        H.createTransform(
-          {
-            name: "MBQL",
-            source: {
-              type: "query",
-              query,
-            },
-            target: {
-              type: "table",
-              database: WRITABLE_DB_ID,
-              name: TARGET_TABLE,
-              schema: TARGET_SCHEMA,
-            },
+        H.createTransform({
+          name: "MBQL",
+          source: {
+            type: "query",
+            query,
           },
-          { wrapId: true },
-        ),
+          target: {
+            type: "table",
+            database: WRITABLE_DB_ID,
+            name: TARGET_TABLE,
+            schema: TARGET_SCHEMA,
+          },
+        }),
       )
-      .then((transformId) => {
-        cy.visit(`/data-studio/transforms/${transformId}`);
+      .then(({ body: transform }) => {
+        cy.visit(`/data-studio/transforms/${transform.id}`);
       });
 
     function testSimpleTemplateTag(
@@ -148,6 +146,8 @@ describe("scenarios > admin > transforms", () => {
         .icon("close")
         .click();
 
+      assertNoParameterSettingsAreVisible();
+
       editorSidebar()
         .findByText("Always require a value")
         .scrollIntoView()
@@ -156,9 +156,7 @@ describe("scenarios > admin > transforms", () => {
 
       queryEditor().button("Save").should("be.disabled");
 
-      editorSidebar()
-        .findByText(/Default filter widget value/)
-        .scrollIntoView();
+      editorSidebar().findByText("Default value").scrollIntoView();
       setDefaultValue();
 
       queryEditor().button("Save").should("be.enabled").click();
@@ -188,6 +186,8 @@ describe("scenarios > admin > transforms", () => {
       H.popover().findByText("Schema a").click();
       H.popover().findByText("Animals").click();
       H.popover().findByText("Score").click();
+
+      assertNoParameterSettingsAreVisible();
 
       editorSidebar()
         .findByText("Always require a value")
@@ -232,6 +232,8 @@ describe("scenarios > admin > transforms", () => {
 
       H.popover().findByText("Schema a").click();
       H.popover().findByText("Animals").click();
+
+      assertNoParameterSettingsAreVisible();
 
       queryEditor().button("Save").should("be.enabled").click();
       H.undoToast()
@@ -363,4 +365,16 @@ function assertIsTransformRunnable() {
 
 function getRunButton(options: { timeout?: number } = {}) {
   return cy.findAllByTestId("run-button").eq(0, options);
+}
+
+function assertNoParameterSettingsAreVisible() {
+  editorSidebar().within(() => {
+    cy.findByText("How should users filter on this variable?").should(
+      "not.exist",
+    );
+    cy.findByText("People can pick").should("not.exist");
+    cy.findByText("Time grouping options").should("not.exist");
+    cy.findByText("Parameter widget label").should("not.exist");
+    cy.findByText("Filter widget label").should("not.exist");
+  });
 }

@@ -13,9 +13,13 @@ import {
   useSetting,
 } from "metabase/common/hooks";
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
-import { type DispatchFn, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
+import {
+  type DispatchFn,
+  useDispatch,
+  useSelector,
+} from "metabase/utils/redux";
 import type {
   Collection,
   CollectionNamespace,
@@ -49,7 +53,7 @@ export const useRootItems = () => {
   const { options, models, searchQuery, namespaces } = useOmniPickerContext();
   const isAdmin = useSelector(getUserIsAdmin);
   const hasTenants = useSetting("use-tenants");
-  const transformsEnabled = useHasTokenFeature("transforms");
+  const transformsEnabled = useHasTokenFeature("transforms-basic");
   const dispatch = useDispatch();
 
   const { data: databaseData, isLoading: isLoadingDatabases } =

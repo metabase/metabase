@@ -8,7 +8,7 @@ describe("scenarios > data studio > library > tables", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   describe("header", () => {
@@ -83,6 +83,33 @@ describe("scenarios > data studio > library > tables", () => {
         .contains("Table description updated")
         .should("be.visible");
     });
+
+    it("should be able to view additional properties in sidebar", () => {
+      H.DataStudio.Tables.Overview.descriptionSidebar().within(() => {
+        cy.findByText("Entity type").should("be.visible");
+
+        cy.findByText("Last edited at").should("be.visible");
+
+        cy.findByText("Database").should("be.visible");
+        cy.findByText("Sample Database").should("be.visible");
+
+        cy.findByText("Source").should("be.visible");
+        cy.findByPlaceholderText("Select a data source").should(
+          "have.value",
+          "Ingested",
+        );
+
+        cy.findByText("Owner").should("be.visible");
+
+        cy.findByPlaceholderText("Pick someone, or type an email").should(
+          "have.value",
+          "No owner",
+        );
+        cy.findByText("Fields").should("be.visible");
+
+        cy.findByText("Dependents").should("be.visible");
+      });
+    });
   });
 
   describe("fields", () => {
@@ -133,7 +160,7 @@ describe("scenarios > data studio > library > tables", () => {
         name: "Test question",
         query: { "source-table": ORDERS_ID },
       });
-
+      H.waitForBackfillComplete();
       H.DataStudio.Tables.visitOverviewPage(ORDERS_ID);
       H.DataStudio.Tables.dependenciesTab().click();
       H.DependencyGraph.graph().within(() => {

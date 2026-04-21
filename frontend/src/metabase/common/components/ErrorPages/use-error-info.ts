@@ -1,10 +1,9 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { MetabaseApi, UtilApi } from "metabase/services";
+import { useSelector } from "metabase/utils/redux";
 
 import type { ErrorPayload, ReportableEntityName } from "./types";
 import { getBrowserInfo, getEntityDetails, hasQueryData } from "./utils";
@@ -24,7 +23,7 @@ const maybeSerializeError = (key: string, value: any) => {
 export const useErrorInfo = (
   { enabled }: { enabled?: boolean } = { enabled: true },
 ) => {
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
   const isAdmin = useSelector(getUserIsAdmin);
   const location = window.location.href;
 
@@ -53,7 +52,6 @@ export const useErrorInfo = (
       ? UtilApi.logs().catch(nullOnCatch)
       : Promise.resolve(null);
 
-    // @ts-expect-error non-standard error property
     const frontendErrors = console?.errorBuffer?.map?.((errArray) =>
       errArray
         .map((errLine: any) => JSON.stringify(errLine, maybeSerializeError))

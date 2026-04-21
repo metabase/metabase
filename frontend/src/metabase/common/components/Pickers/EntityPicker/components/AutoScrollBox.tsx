@@ -6,15 +6,15 @@ import { Box } from "metabase/ui";
 
 import S from "./EntityPicker.module.css";
 
-const scrollRight = (
+const scrollToLastColumn = (
   container: HTMLDivElement | null,
   behavior: "smooth" | "auto",
 ) => {
-  if (!container) {
-    return;
+  const lastColumn = container?.firstElementChild?.lastElementChild;
+
+  if (container && lastColumn instanceof HTMLElement) {
+    container.scrollTo({ left: lastColumn.offsetLeft, behavior });
   }
-  const diff = container.scrollWidth - container.clientWidth;
-  container.scrollBy({ left: diff, behavior });
 };
 
 export const AutoScrollBox = ({
@@ -36,7 +36,7 @@ export const AutoScrollBox = ({
     }
 
     if (contentHash !== previousContentHash) {
-      scrollRight(
+      scrollToLastColumn(
         containerRef.current,
         !previousContainerRef ? "auto" : "smooth",
       );

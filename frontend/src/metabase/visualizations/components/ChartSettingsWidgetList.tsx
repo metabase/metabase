@@ -1,10 +1,9 @@
 import _ from "underscore";
 
+import { Badge } from "metabase/ui";
+
 import ChartSettingsWidget from "./ChartSettingsWidget";
-import {
-  ChartSettingsWidgetListDivider,
-  ChartSettingsWidgetListHeader,
-} from "./ChartSettingsWidgetList.styled";
+import { ChartSettingsWidgetListDivider } from "./ChartSettingsWidgetList.styled";
 
 interface ChartSettingsWidgetListProps {
   widgets: { id: string; group?: string }[];
@@ -36,9 +35,18 @@ const ChartSettingsWidgetList = ({
       return (
         <div key={`group-${groupIndex}`}>
           {group && (
-            <ChartSettingsWidgetListHeader>
+            <Badge
+              mb="lg"
+              ml="lg"
+              fz="0.75rem"
+              px="0.5rem"
+              tt="none"
+              radius="xs"
+              size="lg"
+              c="text-primary"
+            >
               {group}
-            </ChartSettingsWidgetListHeader>
+            </Badge>
           )}
           <div>
             {_.sortBy(groupedWidgets[group], "index").map((widget) => (
@@ -48,7 +56,9 @@ const ChartSettingsWidgetList = ({
                 {...extraWidgetProps}
               />
             ))}
-            {!lastGroup && <ChartSettingsWidgetListDivider />}
+            <ChartSettingsWidgetListDivider
+              style={lastGroup ? { marginBottom: 0 } : undefined}
+            />
           </div>
         </div>
       );

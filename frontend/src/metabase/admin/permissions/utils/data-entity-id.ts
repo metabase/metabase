@@ -1,4 +1,4 @@
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -33,6 +33,7 @@ export const isTableEntityId = (
 export const isSchemaEntityId = (
   entityId: Partial<EntityId>,
 ): entityId is SchemaEntityId & { schemaName: string } =>
+  // not sure why schemaName can be undefined on SchemaEntityId
   entityId.schemaName != null &&
   entityId.schemaName !== "" &&
   !isTableEntityId(entityId);

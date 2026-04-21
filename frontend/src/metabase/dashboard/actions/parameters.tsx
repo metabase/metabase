@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { LocationDescriptorObject } from "history";
 import { assoc } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
@@ -12,7 +13,6 @@ import {
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
   type NewParameterOpts,
   createParameter,
@@ -20,14 +20,21 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
+import { selectTab, setParameterValues } from "metabase/redux/dashboard";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
+import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { createAction, createThunkAction } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
   PULSE_PARAM_EMPTY,
   isParameterValueEmpty,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import { isNumericBaseType, isa } from "metabase-lib/v1/types/utils/isa";
 import type {
   ActionDashboardCard,
   CardId,
@@ -42,7 +49,7 @@ import type {
   VisualizationDisplay,
   WritebackAction,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
+import { isDimensionTarget } from "metabase-types/guards";
 
 import {
   trackAutoApplyFiltersDisabled,
@@ -73,7 +80,6 @@ import {
   findDashCardForInlineParameter,
   hasInlineParameters,
   isDashcardInlineParameter,
-  isQuestionDashCard,
   setDashboardHeaderParameterIndex,
   supportsInlineParameters,
 } from "../utils";
@@ -84,7 +90,6 @@ import {
   setDashboardAttributes,
   setMultipleDashCardAttributes,
 } from "./core";
-import { selectTab } from "./tabs";
 import { closeSidebar, setSidebar } from "./ui";
 
 type SingleParamUpdater = (p: Parameter) => Parameter;
@@ -444,9 +449,63 @@ export const setParameterMapping = createThunkAction(
           },
         }),
       );
+
+      // QUE2-326: when an ID parameter is mapped to a field, replace the
+      // placeholder "id" type with a concrete type based on the field.
+      if (target !== null && isDimensionTarget(target)) {
+        const parameter = getParameters(getState()).find(
+          (p) => p.id === parameterId,
+        );
+        if (parameter?.type === "id") {
+          updateParameter(dispatch, getState, parameterId, (p) => ({
+            ...p,
+            type: resolveIdParameterType(getState, target),
+            // Preserve sectionId so getParameterType() still returns "id" for
+            // UI purposes (column compatibility, widget rendering) even though
+            // the QP-facing type is now concrete.
+            sectionId: p.sectionId ?? "id",
+          }));
+        }
+      }
     };
   },
 );
+
+/**
+ * QUE2-326: Determine the concrete parameter type for an ID parameter based on
+ * the mapped field. Handles both by-ID refs (looks up metadata) and by-name
+ * refs (reads base-type from the field ref options). Falls back to "number/="
+ * since most PKs are numeric.
+ */
+function resolveIdParameterType(
+  getState: GetState,
+  target: ParameterTarget,
+): string {
+  const fieldRef = target[1];
+  if (!Array.isArray(fieldRef) || fieldRef[0] !== "field") {
+    return "number/=";
+  }
+
+  const fieldIdOrName = fieldRef[1];
+
+  // By-ID: look up the field from the metadata store
+  if (typeof fieldIdOrName === "number") {
+    const field = getMetadata(getState()).field(fieldIdOrName);
+    if (field) {
+      return isNumericBaseType(field) ? "number/=" : "string/=";
+    }
+    return "number/=";
+  }
+
+  // By-name: read the base-type from the field ref options
+  const opts = fieldRef[2];
+  const baseType = opts?.["base-type"];
+  if (typeof baseType === "string") {
+    return isa(baseType, TYPE.Number) ? "number/=" : "string/=";
+  }
+
+  return "number/=";
+}
 
 export const UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT =
   "metabase/dashboard/UPDATE_PARAMETER_MAPPINGS_FOR_DASHCARD_TEXT";
@@ -778,9 +837,6 @@ export const setParameterValue = createThunkAction(
   },
 );
 
-export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
-export const setParameterValues = createAction(SET_PARAMETER_VALUES);
-
 // Auto-apply filters
 const APPLY_DRAFT_PARAMETER_VALUES =
   "metabase/dashboard/APPLY_DRAFT_PARAMETER_VALUES";
@@ -978,10 +1034,6 @@ export const setParameterIndex = createThunkAction(
   },
 );
 
-export const SHOW_ADD_PARAMETER_POPOVER =
-  "metabase/dashboard/SHOW_ADD_PARAMETER_POPOVER";
-export const showAddParameterPopover = createAction(SHOW_ADD_PARAMETER_POPOVER);
-
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";
 export const hideAddParameterPopover = createAction(HIDE_ADD_PARAMETER_POPOVER);
@@ -1015,7 +1067,7 @@ export const setOrUnsetParameterValues =
   };
 
 export const setParameterValuesFromQueryParams =
-  (queryParams: Record<string, string | string[]>) =>
+  (queryParams: LocationDescriptorObject["query"] = {}) =>
   (dispatch: Dispatch, getState: GetState) => {
     const parameters = getParameters(getState());
     const parameterValues = getParameterValuesByIdFromQueryParams(

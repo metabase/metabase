@@ -1,15 +1,15 @@
 import { t } from "ttag";
 
 import {
-  collection as collectionUrl,
-  dashboard as dashboardUrl,
-} from "metabase/lib/urls";
-import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
 import type { WrappedResult } from "metabase/search/types";
 import { Box, Icon } from "metabase/ui";
+import {
+  collection as collectionUrl,
+  dashboard as dashboardUrl,
+} from "metabase/utils/urls";
 import type { Collection } from "metabase-types/api";
 
 export type InfoTextData = {

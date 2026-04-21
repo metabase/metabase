@@ -4,6 +4,8 @@ title: "Segments"
 
 # Segments
 
+> Prefer [Data Studio](../data-studio/segments.md) for managing segments.
+
 Metabase allows admins to create segments so people can quickly and easily reference them in the query builder.
 
 To manage segments:

@@ -2,10 +2,9 @@ import { useDraggable } from "@dnd-kit/core";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, Icon, Loader, Menu, Text } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import { DRAGGABLE_ID } from "metabase/visualizer/constants";
 import { useIsCardPristine } from "metabase/visualizer/hooks/use-is-card-pristine";
 import {
@@ -30,6 +29,8 @@ import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
 } from "metabase-types/api";
+
+import { trackVisualizerDataChanged } from "../../analytics";
 
 import S from "./ColumnsList.module.css";
 import { ColumnsListItem, type ColumnsListItemProps } from "./ColumnsListItem";
@@ -123,11 +124,9 @@ export const ColumnsList = (props: ColumnListProps) => {
                       leftSection={<Icon name="revert" />}
                       disabled={isPristine}
                       onClick={() => {
-                        trackSimpleEvent({
-                          event: "visualizer_data_changed",
-                          event_detail: "visualizer_datasource_reset",
-                          triggered_from: "visualizer-modal",
-                        });
+                        trackVisualizerDataChanged(
+                          "visualizer_datasource_reset",
+                        );
                         onResetDataSource(source);
                       }}
                       aria-label={t`Reset data source`}
@@ -139,11 +138,9 @@ export const ColumnsList = (props: ColumnListProps) => {
                       key="remove_data_source"
                       leftSection={<Icon name="close" />}
                       onClick={() => {
-                        trackSimpleEvent({
-                          event: "visualizer_data_changed",
-                          event_detail: "visualizer_datasource_removed",
-                          triggered_from: "visualizer-modal",
-                        });
+                        trackVisualizerDataChanged(
+                          "visualizer_datasource_removed",
+                        );
                         onRemoveDataSource(source);
                       }}
                       data-testid="remove-datasource-button"
@@ -164,11 +161,7 @@ export const ColumnsList = (props: ColumnListProps) => {
                   aria-label={t`Remove`}
                   cursor="pointer"
                   onClick={() => {
-                    trackSimpleEvent({
-                      event: "visualizer_data_changed",
-                      event_detail: "visualizer_datasource_removed",
-                      triggered_from: "visualizer-modal",
-                    });
+                    trackVisualizerDataChanged("visualizer_datasource_removed");
                     onRemoveDataSource(source);
                   }}
                 />
@@ -203,11 +196,7 @@ export const ColumnsList = (props: ColumnListProps) => {
                       isSelected={isSelected}
                       onClick={() => {
                         if (!isSelected) {
-                          trackSimpleEvent({
-                            event: "visualizer_data_changed",
-                            event_detail: "visualizer_column_added",
-                            triggered_from: "visualizer-modal",
-                          });
+                          trackVisualizerDataChanged("visualizer_column_added");
 
                           handleAddColumn(source, column);
                         }
@@ -215,11 +204,9 @@ export const ColumnsList = (props: ColumnListProps) => {
                       onRemove={
                         isSelected
                           ? () => {
-                              trackSimpleEvent({
-                                event: "visualizer_data_changed",
-                                event_detail: "visualizer_column_removed",
-                                triggered_from: "visualizer-modal",
-                              });
+                              trackVisualizerDataChanged(
+                                "visualizer_column_removed",
+                              );
 
                               handleRemoveColumn(columnReference.name);
                             }

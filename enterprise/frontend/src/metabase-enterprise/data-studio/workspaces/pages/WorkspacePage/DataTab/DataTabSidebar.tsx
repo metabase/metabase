@@ -150,6 +150,7 @@ export const DataTabSidebar = ({
                         hasChanges={hasChanges}
                         transform={workspaceTransform}
                         tableId={tableId ?? undefined}
+                        tableActive={table.isolated.active ?? false}
                         isSelected={tableId === selectedTableId}
                         isRunning={
                           workspaceTransform

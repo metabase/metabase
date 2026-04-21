@@ -1,10 +1,9 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 
-import { trackUpsellViewed } from "metabase/admin/upsells/components/analytics";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { trackUpsellViewed } from "metabase/common/components/upsells/components/analytics";
 import { useStoreUrl } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import {
@@ -18,6 +17,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import { useTransformsBilling } from "metabase-enterprise/transforms/upsells/hooks";
 
 import { CloudPurchaseContent } from "./CloudPurchaseContent";

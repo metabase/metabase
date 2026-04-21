@@ -5,8 +5,8 @@ import { t } from "ttag";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
-import { getAccentColors } from "metabase/lib/colors/groups";
 import { Flex } from "metabase/ui";
+import { getAccentColors } from "metabase/ui/colors/groups";
 
 import {
   OptionsIcon,

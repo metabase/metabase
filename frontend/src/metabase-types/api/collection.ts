@@ -1,5 +1,3 @@
-import type { ColorName } from "metabase/lib/colors/types";
-import type { IconName } from "metabase/ui";
 import type {
   BaseEntityId,
   CollectionEssentials,
@@ -54,22 +52,6 @@ export type LastEditInfo = Pick<
   "id" | "email" | "first_name" | "last_name"
 > & {
   timestamp: string;
-};
-
-export type CollectionAuthorityLevelConfig = {
-  type: CollectionAuthorityLevel;
-  name: string;
-  icon: IconName;
-  color?: ColorName;
-  tooltips?: Record<string, string>;
-};
-
-export type CollectionInstanceAnaltyicsConfig = {
-  type: CollectionType;
-  name?: string;
-  icon: IconName;
-  color?: ColorName;
-  tooltips?: Record<string, string>;
 };
 
 export interface Collection {
@@ -160,7 +142,7 @@ export interface CollectionItem {
     isArchived: boolean,
     opts?: Record<string, unknown>,
   ) => Promise<void>;
-  setPinned?: (isPinned: boolean) => void;
+  setPinned?: (isPinned: number | boolean) => void;
   setCollection?: (
     collection: Pick<Collection, "id"> | Pick<Dashboard, "id">,
   ) => void;
@@ -262,8 +244,7 @@ export interface DashboardQuestionCandidate {
   };
 }
 
-export interface GetCollectionDashboardQuestionCandidatesRequest
-  extends PaginationRequest {
+export interface GetCollectionDashboardQuestionCandidatesRequest extends PaginationRequest {
   collectionId: CollectionId;
 }
 

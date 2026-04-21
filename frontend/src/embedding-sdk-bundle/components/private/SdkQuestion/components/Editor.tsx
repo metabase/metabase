@@ -2,15 +2,15 @@ import { useMemo } from "react";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import {
   isQuestionDirty,
   isQuestionRunnable,
-} from "metabase/query_builder/utils/question";
+} from "metabase/querying/common/utils/question";
 import { Notebook as QBNotebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 

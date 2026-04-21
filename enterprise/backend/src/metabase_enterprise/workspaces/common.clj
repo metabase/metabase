@@ -4,9 +4,9 @@
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.models.workspace-log :as ws.log]
    [metabase-enterprise.workspaces.util :as ws.u]
-   [metabase.api-keys.core :as api-key]
    [metabase.api.common :as api]
-   [metabase.transforms.interface :as transforms.i]
+   [metabase.driver.util :as driver.u]
+   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util.log :as log]
    [metabase.util.quick-task :as quick-task]
    [toucan2.core :as t2]))
@@ -41,37 +41,23 @@
       (str stripped-name " (" next-num ")"))))
 
 (defn- create-workspace-container!
-  "Create the workspace and its related collection, user, and api key.
-   Returns the workspace with :api_key attached (unmasked, only available at creation time)."
+  "Create the workspace and its related collection.
+   Returns the workspace."
   [creator-id db-id workspace-name]
-  (let [key-name (format "API key for Workspace: %s" workspace-name)
-        ;; Ensure the key-name is unique.
-        key-name (if-not (t2/exists? :model/ApiKey :name key-name)
-                   key-name
-                   ;; Rather than figuring out all the escapes we need for [[workspace-name]], just over fetch.
-                   (let [used? (t2/select-fn-set :name [:model/ApiKey :name] :name [:like "API key for Workspace: %"])]
-                     ;; By trying N + 1 names, we know at least 1 of them must be available.
-                     (first (remove used? (for [i (range (inc (count used?)))]
-                                            (str key-name "(" (inc i) ")"))))))
-        api-key  (api-key/create-api-key-with-new-user! {:key-name key-name})
-        ws      (t2/insert-returning-instance! :model/Workspace
-                                               {:name           workspace-name
-                                                :creator_id     creator-id
-                                                :database_id    db-id
-                                                :api_key_id     (:id api-key)
-                                                :execution_user (:user_id api-key)
-                                                :base_status    :empty
-                                                :db_status      :uninitialized})
-        coll    (t2/insert-returning-instance! :model/Collection
-                                               {:name         (format "Collection for Workspace %s" workspace-name)
-                                                :namespace    "workspace"
-                                                :workspace_id (:id ws)})
-        ws      (assoc ws :collection_id (:id coll))]
-    ;; Set the backlink from the workspace to the collection inside it and set the schema.
+  (let [ws   (t2/insert-returning-instance! :model/Workspace
+                                            {:name        workspace-name
+                                             :creator_id  creator-id
+                                             :database_id db-id
+                                             :base_status :empty
+                                             :db_status   :uninitialized})
+        coll (t2/insert-returning-instance! :model/Collection
+                                            {:name         (format "Collection for Workspace %s" workspace-name)
+                                             :namespace    "workspace"
+                                             :workspace_id (:id ws)})
+        ws   (assoc ws :collection_id (:id coll))]
+    ;; Set the backlink from the workspace to the collection inside it.
     (t2/update! :model/Workspace (:id ws) {:collection_id (:id coll)})
-    ;; Return the workspace with the unmasked API key attached.
-    ;; This is the only time the key is available - after this it's hashed and unrecoverable.
-    (assoc ws :api_key (:unmasked_key api-key))))
+    ws))
 
 (defn- unique-constraint-violation?
   "Check if an exception is due to a unique constraint violation."
@@ -101,7 +87,7 @@
    and transitions db_status to :pending. Returns the updated workspace with schema set."
   [workspace database-id]
   (let [database (t2/select-one :model/Database database-id)
-        schema   (ws.u/isolation-namespace-name workspace)
+        schema   (driver.u/workspace-isolation-namespace-name workspace)
         res      (t2/update! :model/Workspace {:id        (:id workspace)
                                                :db_status :uninitialized}
                              {:database_id database-id
@@ -157,7 +143,7 @@
   (ws.u/assert-transform! entity-type)
   ;; Initialize workspace if uninitialized (outside transaction so async task can see committed data)
   (let [workspace (if (= :uninitialized (:db_status workspace))
-                    (let [target-db-id (transforms.i/target-db-id body)]
+                    (let [target-db-id (transforms-base.i/target-db-id body)]
                       (api/check-400 target-db-id "Transform must have a target database")
                       (initialize-workspace! workspace target-db-id))
                     workspace)]

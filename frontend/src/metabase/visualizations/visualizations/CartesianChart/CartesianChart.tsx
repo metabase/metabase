@@ -3,7 +3,7 @@ import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import React from "react";
 import { useSet } from "react-use";
 
-import { isWebkit } from "metabase/lib/browser";
+import { isWebkit } from "metabase/utils/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
@@ -34,8 +34,10 @@ function CartesianChartInner(props: VisualizationProps) {
 
   const {
     showAllLegendItems,
+    hideLegend,
     rawSeries,
     settings: originalSettings,
+    autoAdjustSettings = false,
     card,
     getHref,
     width: outerWidth,
@@ -58,25 +60,27 @@ function CartesianChartInner(props: VisualizationProps) {
 
   const settings = useMemo(
     () =>
-      getDashboardAdjustedSettings(
-        originalSettings,
-        isDashboard ?? false,
-        outerWidth,
-        outerHeight,
-      ),
-    [originalSettings, isDashboard, outerWidth, outerHeight],
+      autoAdjustSettings
+        ? getDashboardAdjustedSettings?.({
+            settings: originalSettings,
+            height: outerHeight,
+            width: outerWidth,
+          })
+        : originalSettings,
+    [originalSettings, outerHeight, outerWidth, autoAdjustSettings],
   );
 
-  const { chartModel, timelineEventsModel, option } = useModelsAndOption(
-    {
-      ...props,
-      width: chartSize.width,
-      height: chartSize.height,
-      hiddenSeries,
-      settings,
-    },
-    containerRef,
-  );
+  const { chartModel, timelineEventsModel, option, renderingContext } =
+    useModelsAndOption(
+      {
+        ...props,
+        width: chartSize.width,
+        height: chartSize.height,
+        hiddenSeries,
+        settings,
+      },
+      containerRef,
+    );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
   const chartRef = useRef<EChartsType>();
@@ -87,7 +91,7 @@ function CartesianChartInner(props: VisualizationProps) {
     () => getLegendItems(chartModel.seriesModels, showAllLegendItems),
     [chartModel, showAllLegendItems],
   );
-  const hasLegend = legendItems.length > 0;
+  const hasLegend = !hideLegend && legendItems.length > 0;
 
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
@@ -123,6 +127,7 @@ function CartesianChartInner(props: VisualizationProps) {
     chartModel,
     timelineEventsModel,
     option,
+    renderingContext,
     props,
   );
 
@@ -144,7 +149,10 @@ function CartesianChartInner(props: VisualizationProps) {
   useCloseTooltipOnScroll(chartRef);
 
   return (
-    <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
+    <CartesianChartRoot
+      isQueryBuilder={isQueryBuilder}
+      className="CardVisualization"
+    >
       {showTitle && (
         <LegendCaption
           title={settings["card.title"] ?? card.name}

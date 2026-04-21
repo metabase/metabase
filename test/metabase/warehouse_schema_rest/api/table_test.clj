@@ -1316,9 +1316,6 @@
                                      {:visibility_type  "hidden"
                                       :data_layer "hidden"})))))))
 
-;; NOTE: unused-only-filter-test moved to enterprise/backend/test/metabase_enterprise/dependencies/api_test.clj
-;; because it depends on EE event handlers to populate the dependency table
-
 (deftest orphan-only-filter-test
   (testing "GET /api/table?orphan-only=true"
     (testing "filters tables that have no owner"

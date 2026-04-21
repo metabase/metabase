@@ -50,7 +50,7 @@
    device-info :- request/DeviceInfo]
   (let [login-history (merge {:user_id    user-id
                               :session_id session-id}
-                             (dissoc device-info :embedded))]
+                             (dissoc device-info :embedded :token_exchange))]
     (t2/insert! :model/LoginHistory login-history)
     login-history))
 

@@ -1,5 +1,6 @@
 (ns metabase.driver.clickhouse
   "Driver for ClickHouse databases"
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
@@ -19,7 +20,8 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [not-empty]])
   (:import
    (com.clickhouse.client.api.query QuerySettings)
    (java.sql Connection SQLException Statement PreparedStatement)
@@ -107,6 +109,11 @@
                            default-connection-details
                            details)
         {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
+        ;; Handling legacy `dbname` values here. `dbname` used to be a space-separated string of
+        ;; the database names. These `dbname` values weren't migrated so they still need to be handled
+        ;; here. This is the original version that takes the first db. This value is just the default
+        ;; db, we hit other dbs by including the db in the queries (#70798).
+        dbname (first (str/split (str/trim dbname) #" "))
         host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
@@ -123,10 +130,12 @@
          :http_connection_provider       "HTTP_URL_CONNECTION"
          :jdbc_ignore_unsupported_values "true"
          :jdbc_schema_term               "schema"
-         :select_sequential_consistency  true
+         :ignore_unknown_config_key      true
          :max_open_connections           (or max-open-connections 100)
          ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-         :custom_http_params             (or clickhouse-settings "")}
+         :custom_http_params             (cond-> "select_sequential_consistency=1"
+                                           (not (str/blank? clickhouse-settings))
+                                           (str "," clickhouse-settings))}
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
@@ -139,7 +148,8 @@
       ;; Default SELECT 1 is not enough for Metabase test suite,
       ;; as it works slightly differently than expected there
       (let [spec  (sql-jdbc.conn/connection-details->spec driver details)
-            db    (ddl.i/format-name driver (or (:dbname details) (:db details) "default"))]
+            dbname (first (str/split (str/trim (or (not-empty (:dbname details)) (:db details) "default")) #" "))
+            db    (ddl.i/format-name driver dbname)]
         (sql-jdbc.execute/do-with-connection-with-options
          driver spec nil
          (fn [^java.sql.Connection conn]
@@ -380,11 +390,12 @@
 (defmethod driver/grant-workspace-read-access! :clickhouse
   [_driver database workspace tables]
   (let [read-user-name (-> workspace :database_details :user)
+        qu             (sql.u/quote-name :clickhouse :field read-user-name)
         sqls           (for [table tables]
-                         (format "GRANT SELECT ON `%s`.`%s` TO `%s`"
-                                 (:schema table)
-                                 (:name table)
-                                 read-user-name))]
+                         (format "GRANT SELECT ON %s.%s TO %s"
+                                 (sql.u/quote-name :clickhouse :schema (:schema table))
+                                 (sql.u/quote-name :clickhouse :table (:name table))
+                                 qu))]
     (when-not read-user-name
       (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
                       {:workspace-id (:id workspace) :step :grant})))
@@ -406,13 +417,5 @@
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 
-(defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse
-  [driver database]
-  (merge
-   ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
-   ;; TODO(rileythomp, 2026-01-29): Remove this once we upgrade past 0.8.4
-   ;; This is to work around 68674 where connections are being poisoned with bad roles
-   {"preferredTestQuery" "SELECT 1"}))
-
 (defmethod driver/llm-sql-dialect-resource :clickhouse [_]
-  "llm/prompts/dialects/clickhouse.md")
+  "metabot/prompts/dialects/clickhouse.md")

@@ -18,8 +18,6 @@ import {
   getCollectionIcon,
 } from "metabase/entities/collections";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { getGroupNameLocalized } from "metabase/lib/groups";
-import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
@@ -28,11 +26,15 @@ import {
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
+import { getGroupNameLocalized } from "metabase/utils/groups";
+import { useSelector } from "metabase/utils/redux";
+import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { EditUserStrategyModal } from "./EditUserStrategyModal";
 import { EditUserStrategySettingsButton } from "./EditUserStrategySettingsButton";
 import { CanAccessTenantSpecificRoute } from "./components/CanAccessTenantSpecificRoute";
+import { CreateTenantsOnboardingStep } from "./components/CreateTenantsOnboardingStep";
 import { ExternalGroupDetailApp } from "./components/ExternalGroupDetailApp/ExternalGroupDetailApp";
 import { ExternalGroupsListingApp } from "./components/ExternalGroupsListingApp/ExternalGroupsListingApp";
 import { ExternalPeopleListingApp } from "./components/ExternalPeopleListingApp/ExternalPeopleListingApp";
@@ -48,6 +50,7 @@ import { TenantSpecificCollectionPermissionsPage } from "./components/TenantSpec
 import { TenantSpecificCollectionsItemList } from "./components/TenantSpecificCollectionsItemList";
 import { TenantUsersList } from "./components/TenantUsersList";
 import { TenantUsersPersonalCollectionList } from "./components/TenantUsersPersonalCollectionList";
+import { TenantsSummaryOnboardingStep } from "./components/TenantsSummaryOnboardingStep";
 import { EditTenantModal } from "./containers/EditTenantModal";
 import { NewTenantModal } from "./containers/NewTenantModal";
 import { TenantActivationModal } from "./containers/TenantActivationModal";
@@ -69,6 +72,13 @@ import {
 export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
+
+    PLUGIN_TENANTS.useListActiveTenants = () => {
+      const { data, isLoading, error } = useListTenantsQuery({
+        status: "active",
+      });
+      return { data: data?.data, isLoading, error };
+    };
 
     // Register tenant collection permissions tabs and routes
     PLUGIN_ADMIN_PERMISSIONS_TABS.tabs.push({
@@ -99,6 +109,8 @@ export function initializePlugin() {
     );
 
     PLUGIN_TENANTS.EditUserStrategyModal = EditUserStrategyModal;
+    PLUGIN_TENANTS.CreateTenantsOnboardingStep = CreateTenantsOnboardingStep;
+    PLUGIN_TENANTS.TenantsSummaryOnboardingStep = TenantsSummaryOnboardingStep;
 
     PLUGIN_TENANTS.userStrategyRoute = (
       <ModalRoute path="user-strategy" modal={EditUserStrategyModal} noWrap />
@@ -129,25 +141,12 @@ export function initializePlugin() {
             <IndexRedirect to="/admin/people/tenants/people" />
             <ModalRoute
               path="edit"
-              // @ts-expect-error - params prop can't be inferred
               modal={(props) => <EditUserModal {...props} external />}
               noWrap
             />
-            <ModalRoute
-              path="deactivate"
-              // @ts-expect-error - params prop can't be inferred
-              modal={UserActivationModal}
-              noWrap
-            />
-            <ModalRoute
-              path="reactivate"
-              // @ts-expect-error - params prop can't be inferred
-              modal={UserActivationModal}
-              noWrap
-            />
-            {/* @ts-expect-error - params prop can't be inferred */}
+            <ModalRoute path="deactivate" modal={UserActivationModal} noWrap />
+            <ModalRoute path="reactivate" modal={UserActivationModal} noWrap />
             <ModalRoute path="success" modal={UserSuccessModal} noWrap />
-            {/* @ts-expect-error - params prop can't be inferred */}
             <ModalRoute path="reset" modal={UserPasswordResetModal} noWrap />
             {PLUGIN_ADMIN_USER_MENU_ROUTES.map((getRoutes, index) => (
               <Fragment key={index}>{getRoutes()}</Fragment>

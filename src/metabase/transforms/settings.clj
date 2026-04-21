@@ -10,8 +10,9 @@
   :type       :integer
   :visibility :internal
   :default    (* 4 60)
-  :feature    :transforms
-  :doc        false
+  :doc        "Each query executed by a transform is also subject to the MB_DB_QUERY_TIMEOUT_MINUTES timeout,
+  so make sure that value isn't lower, or it will timeout your transform."
+  :feature    :transforms-basic
   :export?    false
   :encryption :no
   :audit      :getter)

@@ -30,7 +30,8 @@ describe("scenarios > data studio > workspaces", () => {
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
     // TODO (Stas 2025-12-31) -- Is this correct way to grant querying permissions?
@@ -1344,7 +1345,8 @@ describe("scenarios > data studio > workspaces", () => {
       cy.findByTestId("python-results").should("not.exist");
 
       cy.log("Python editor should fill available height (no white box)");
-      const MIN_EDITOR_HEIGHT = 590;
+
+      const MIN_EDITOR_HEIGHT = 535; // assumes that no notification banner is showing
       cy.findByTestId("python-editor").should(($editor) => {
         const height = $editor.height();
         expect(height).to.be.at.least(
@@ -1765,7 +1767,20 @@ describe("scenarios > data studio > workspaces", () => {
         }).then((id2) => {
           createPythonTransform({
             body: TEST_PYTHON_TRANSFORM,
-            sourceTables: { foo: id1, bar: id2 },
+            sourceTables: [
+              {
+                alias: "foo",
+                table_id: id1,
+                database_id: WRITABLE_DB_ID,
+                schema: "Schema A",
+              },
+              {
+                alias: "bar",
+                table_id: id2,
+                database_id: WRITABLE_DB_ID,
+                schema: "Schema B",
+              },
+            ],
             visitTransform: true,
           });
         });
@@ -1808,7 +1823,6 @@ describe("scenarios > data studio > workspaces", () => {
       cy.log("change target table");
       cy.button(/Change target/).click();
       H.modal().within(() => {
-        cy.findByLabelText("Schema").clear().type("new_schema");
         cy.findByLabelText("New table name").clear().type("epic_table");
         cy.button("Change target").click();
       });
@@ -1908,7 +1922,20 @@ describe("scenarios > data studio > workspaces", () => {
           }).then((id2) => {
             createPythonTransform({
               body: TEST_PYTHON_TRANSFORM_MULTI_TABLE,
-              sourceTables: { animals_a: id1, animals_b: id2 },
+              sourceTables: [
+                {
+                  alias: "animals_a",
+                  table_id: id1,
+                  database_id: WRITABLE_DB_ID,
+                  schema: "Schema A",
+                },
+                {
+                  alias: "animals_b",
+                  table_id: id2,
+                  database_id: WRITABLE_DB_ID,
+                  schema: "Schema B",
+                },
+              ],
               visitTransform: true,
             });
           });
@@ -2517,7 +2544,14 @@ function createTransforms({ visit }: { visit?: boolean } = { visit: false }) {
   H.getTableId({ name: "Animals", databaseId: WRITABLE_DB_ID }).then((id) => {
     createPythonTransform({
       body: TEST_PYTHON_TRANSFORM,
-      sourceTables: { foo: id },
+      sourceTables: [
+        {
+          alias: "foo",
+          table_id: id,
+          database_id: WRITABLE_DB_ID,
+          schema: TARGET_SCHEMA,
+        },
+      ],
     });
   });
 

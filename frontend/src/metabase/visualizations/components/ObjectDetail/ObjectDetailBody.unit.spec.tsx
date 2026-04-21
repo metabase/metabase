@@ -14,6 +14,7 @@ describe("ObjectDetailBody", () => {
         }}
         onVisualizationClick={() => null}
         visualizationIsClickable={() => false}
+        isDashboard={false}
       />,
     );
 

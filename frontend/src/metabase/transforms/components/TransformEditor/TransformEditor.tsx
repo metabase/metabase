@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_WORKSPACES } from "metabase/plugins";
 import {
   QueryEditor,
@@ -8,6 +7,7 @@ import {
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -113,6 +113,7 @@ export function TransformEditor({
           />
         ))
       }
+      parametersAreUserVisible={false}
     />
   );
 }

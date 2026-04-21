@@ -275,7 +275,7 @@
   MBQL 5 query. The key difference is that instead of having a `:query` with a `:source-query` with a `:source-query`
   and so forth, you have a vector of `:stages` where each stage serves as the source query for the next stage.
   Initially this was an implementation detail of a few functions, but it's easier to visualize and manipulate, so now
-  all of MLv2 deals with MBQL 5. See this Slack thread
+  all of Lib deals with MBQL 5. See this Slack thread
   https://metaboat.slack.com/archives/C04DN5VRQM6/p1677118410961169?thread_ts=1677112778.742589&cid=C04DN5VRQM6 for
   more information."
   [query]
@@ -410,27 +410,6 @@
       (native-stage? query -1)
       (update :stages conj {:lib/type :mbql.stage/mbql}))))
 
-(defn join-strings-with-conjunction
-  "This is basically [[clojure.string/join]] but uses commas to join everything but the last two args, which are joined
-  by a string `conjunction`. Uses Oxford commas for > 2 args.
-
-  (join-strings-with-conjunction \"and\" [\"X\" \"Y\" \"Z\"])
-  ;; => \"X, Y, and Z\""
-  [conjunction coll]
-  (when (seq coll)
-    (if (= (count coll) 1)
-      (first coll)
-      (let [conjunction (str \space (str/trim conjunction) \space)]
-        (if (= (count coll) 2)
-          ;; exactly 2 args: X and Y
-          (str (first coll) conjunction (second coll))
-          ;; > 2 args: X, Y, and Z
-          (str
-           (str/join ", " (butlast coll))
-           ","
-           conjunction
-           (last coll)))))))
-
 (mu/defn legacy-string-table-id->card-id :- [:maybe ::lib.schema.id/card]
   "If `table-id` is a legacy `card__<id>`-style string, parse the `<id>` part to an integer Card ID. Only for legacy
   queries! You don't need to use this in MBQL 5 since this is converted automatically by [[metabase.lib.convert]] to
@@ -529,7 +508,7 @@
                              (throw (ex-info "Could not convert old :aggregation ref to new UUIDs"
                                              {:aggregation &match})))])))
 
-(mu/defn normalized-query-type :- [:maybe [:enum #_MLv2 :mbql/query #_legacy :query :native #_audit :internal]]
+(mu/defn normalized-query-type :- [:maybe [:enum #_MBQL5 :mbql/query #_legacy :query :native #_audit :internal]]
   "Get the `:lib/type` or `:type` from `query`, even if it is not-yet normalized."
   [query :- [:maybe :map]]
   (when (map? query)

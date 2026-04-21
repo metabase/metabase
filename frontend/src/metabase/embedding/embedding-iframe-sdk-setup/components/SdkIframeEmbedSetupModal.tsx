@@ -13,7 +13,6 @@ import { AuthenticationSection } from "metabase/embedding/embedding-iframe-sdk-s
 import { SdkIframeGuestEmbedStatusBar } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeGuestEmbedStatusBar";
 import { EMBED_STEPS } from "metabase/embedding/embedding-iframe-sdk-setup/constants";
 import { isQuestionOrDashboardSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
-import { useDispatch } from "metabase/lib/redux";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
 import { closeModal } from "metabase/redux/ui";
 import {
@@ -27,6 +26,7 @@ import {
   Modal,
   Stack,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type { SettingKey } from "metabase-types/api";
 
 import { useSdkIframeEmbedSetupContext } from "../context";
@@ -58,7 +58,11 @@ export const SdkIframeEmbedSetupContent = () => {
 
   function handleEmbedDone() {
     // Embedding Hub: track step completion
-    const settingKey: SettingKey = settings.useExistingUserSession
+    // Test embed = guest or existing user session (for quick testing)
+    // Production embed = full SSO setup
+    const isTestEmbed = settings.isGuest || settings.useExistingUserSession;
+
+    const settingKey: SettingKey = isTestEmbed
       ? "embedding-hub-test-embed-snippet-created"
       : "embedding-hub-production-embed-snippet-created";
 

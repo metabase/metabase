@@ -6,14 +6,14 @@ import {
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import {
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { TransformsUpsellPage } from "./TransformsUpsellPage";
 
@@ -45,7 +45,7 @@ export const setup = ({
       trial: isOnTrial,
     },
     "token-features": createMockTokenFeatures({
-      transforms: !!hasBasicTransforms,
+      "transforms-basic": !!hasBasicTransforms,
     }),
   });
   const state = createMockState({

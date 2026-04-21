@@ -11,12 +11,13 @@ name: Backend-Cloverage
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 10 * * 1-5' # every weekday at 5am US eastern time
+  # re-enable once we figure out the correctness of the reports in DEV-1104
+  # schedule:
+  #   - cron: '0 10 * * 1-5' # every weekday at 5am US eastern time
 
 jobs:
   setup-oss:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       modules: ${{ steps.get-modules.outputs.modules }}
     steps:
@@ -30,7 +31,7 @@ jobs:
     needs: setup-oss
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -56,14 +57,14 @@ jobs:
 
       - name: Upload coverage to codecov.io
         if: always()
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./target/coverage/codecov.json
           flags: back-end
 
   setup-ee:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       modules: ${{ steps.get-modules.outputs.modules }}
     steps:
@@ -77,7 +78,7 @@ jobs:
     needs: setup-ee
     # don't run this workflow on a cron for forks
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -103,7 +104,7 @@ jobs:
 
       - name: Upload coverage to codecov.io
         if: always()
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./target/coverage/codecov.json

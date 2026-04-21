@@ -11,6 +11,7 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.tracing.core :as tracing]
    [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
@@ -84,6 +85,12 @@
     (can-read? search-ctx instance)))
 
 (defmethod check-permissions-for-model :segment
+  [search-ctx instance]
+  (if (:archived? search-ctx)
+    (can-write? search-ctx instance)
+    (can-read? search-ctx instance)))
+
+(defmethod check-permissions-for-model :measure
   [search-ctx instance]
   (if (:archived? search-ctx)
     (can-write? search-ctx instance)
@@ -379,37 +386,14 @@
         (cond-> (t2/instance-of? :model/Collection instance) map-collection))))
 
 (defn- add-can-write [search-ctx row]
-  (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card])
+  (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card :model/Collection])
     (assoc row :can_write (can-write? search-ctx row))
     row))
 
 (defn- normalize-result-more
-  "Additional normalization that is done after we've filtered by permissions, as its more expensive."
-  [search-ctx result]
-  (->> (update result :pk_ref json/decode)
-       (add-can-write search-ctx)))
-
-(defn- search-results [search-ctx model-set-fn total-results]
-  (let [add-perms-for-col  (fn [item]
-                             (cond-> item
-                               (mi/instance-of? :model/Collection item)
-                               (assoc :can_write (can-write? search-ctx item))))]
-    ;; We get to do this slicing and dicing with the result data because
-    ;; the pagination of search is for UI improvement, not for performance.
-    ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-    (cond-> {:data             (cond->> total-results
-                                 (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-                                 (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
-                                 true (map add-perms-for-col))
-             :limit            (:limit-int search-ctx)
-             :models           (:models search-ctx)
-             :offset           (:offset-int search-ctx)
-             :table_db_id      (:table-db-id search-ctx)
-             :engine           (:search-engine search-ctx)
-             :total            (count total-results)}
-
-      (:calculate-available-models? search-ctx)
-      (assoc :available_models (model-set-fn search-ctx)))))
+  "Additional normalization that is done after we've filtered by permissions."
+  [_search-ctx result]
+  (update result :pk_ref json/decode))
 
 (defn- hydrate-dashboards [results]
   (->> (t2/hydrate results [:dashboard :moderation_status])
@@ -431,22 +415,47 @@
              item))
          search-results)))
 
-(mu/defn search
-  "Builds a search query that includes all the searchable entities, and runs it."
-  [search-ctx :- search.config/SearchContext]
-  (let [reducible-results (search.engine/results search-ctx)
-        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
-        xf                (comp
-                           (take search.config/*db-max-results*)
-                           (map normalize-result)
-                           (filter (partial check-permissions-for-model search-ctx))
-                           (map (partial normalize-result-more search-ctx))
-                           (keep #(search.engine/score scoring-ctx %)))
-        total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
+(defn- search-results [search-ctx model-set-fn ranked-results]
+  ;; Slice the ranked window down to the requested page *before* hydration/serialization so
+  ;; display-only work (including the expensive per-row `:can_write` permission check) only runs
+  ;; on the rows we actually return. The pagination of search is for UI improvement, not for
+  ;; performance — the ranked set is already capped by `max-filtered-results` — but doing the
+  ;; slice here lets downstream steps amortize their batch hydrations over ~limit rows instead
+  ;; of the full cap.
+  (let [paginated-results (cond->> ranked-results
+                            (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                            (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
                             true hydrate-dashboards
                             true hydrate-user-metadata
                             (:include-metadata? search-ctx) (add-metadata)
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
+                            true (map (partial add-can-write search-ctx))
                             true (map serialize))]
-    (search-results search-ctx search.engine/model-set total-results)))
+    (cond-> {:data        paginated-results
+             :limit       (:limit-int search-ctx)
+             :models      (:models search-ctx)
+             :offset      (:offset-int search-ctx)
+             :table_db_id (:table-db-id search-ctx)
+             :engine      (:search-engine search-ctx)
+             :total       (count ranked-results)}
+
+      (:calculate-available-models? search-ctx)
+      (assoc :available_models (model-set-fn search-ctx)))))
+
+(mu/defn search
+  "Builds a search query that includes all the searchable entities, and runs it."
+  [search-ctx :- search.config/SearchContext]
+  (tracing/with-span :search "search.execute" {:search/engine       (name (:search-engine search-ctx))
+                                               :search/query-length (count (:search-string search-ctx))
+                                               :search/model-count  (count (:models search-ctx))}
+    (let [reducible-results (search.engine/results search-ctx)
+          scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
+          xf                (comp
+                             (take search.config/*db-max-results*)
+                             (map normalize-result)
+                             (filter (partial check-permissions-for-model search-ctx))
+                             (map (partial normalize-result-more search-ctx))
+                             (keep #(search.engine/score scoring-ctx %)))
+          ranked-results    (scoring/top-results reducible-results search.config/max-filtered-results xf)]
+      (search-results search-ctx search.engine/model-set ranked-results))))

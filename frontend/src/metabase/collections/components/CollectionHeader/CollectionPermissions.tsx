@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Collection } from "metabase-types/api";
 
 interface CollectionPermissionsProps {

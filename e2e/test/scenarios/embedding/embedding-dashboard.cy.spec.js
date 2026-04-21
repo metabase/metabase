@@ -12,7 +12,7 @@ import {
   questionDetailsWithDefaults,
 } from "./shared/embedding-dashboard";
 
-const { ORDERS, PEOPLE, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, PEOPLE, PEOPLE_ID, PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding > static embedding dashboard", () => {
   beforeEach(() => {
@@ -1089,14 +1089,14 @@ describe("scenarios > embedding > dashboard appearance", () => {
 
     H.getIframeBody().within(() => {
       cy.findByText(questionDetails.name).should("exist");
-      cy.findByText("April 2022").should("exist");
+      cy.findByText("May 2025").should("exist");
 
       // TODO: Enable this once we fix the flakiness https://app.trunk.io/metabase/flaky-tests/test/facb35f0-6d76-5e7d-b21c-40401bbc3ff6?repo=metabase%2Fmetabase
       // (metabase#49537)
       // chartPathWithFillColor("#509EE3").last().realHover();
       // echartsTooltip().should("be.visible");
       // assertEChartsTooltip({
-      //   header: "August 2022",
+      //   header: "August 2025",
       //   rows: [
       //     {
       //       name: "Count",
@@ -1136,7 +1136,7 @@ describe("scenarios > embedding > dashboard appearance", () => {
 
     cy.wait("@deLocale");
 
-    H.main().findByText("Februar 11, 2025, 9:40 PM");
+    H.main().findByText("Februar 11, 2028, 9:40 PM");
 
     cy.findByRole("button", {
       name: "Automatische Aktualisierung",
@@ -1380,6 +1380,84 @@ describe("scenarios > embedding > dashboard appearance", () => {
             .should("be.visible")
             .should("have.css", "color", "rgba(255, 255, 255, 0.95)");
         });
+      });
+    });
+  });
+
+  it("should not show raw parameter value in static-list filter dropdown when using initial-parameters", () => {
+    const staticListFilter = {
+      name: "Number",
+      slug: "number",
+      id: "static-list-id",
+      type: "number/=",
+      sectionId: "number",
+      values_source_type: "static-list",
+      values_source_config: {
+        values: [
+          ["1", "Option A"],
+          ["2", "Option B"],
+        ],
+      },
+    };
+
+    H.createQuestionAndDashboard({
+      questionDetails: {
+        name: "Static list filter question",
+        query: {
+          "source-table": PEOPLE_ID,
+          expressions: { Thing: ["*", 1, 1] },
+        },
+      },
+      dashboardDetails: {
+        parameters: [staticListFilter],
+        enable_embedding: true,
+        embedding_params: {
+          [staticListFilter.slug]: "enabled",
+        },
+      },
+    }).then(({ body: { id, card_id, dashboard_id } }) => {
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
+          {
+            id,
+            card_id,
+            row: 0,
+            col: 0,
+            size_x: 24,
+            size_y: 9,
+            parameter_mappings: [
+              {
+                parameter_id: staticListFilter.id,
+                card_id,
+                target: [
+                  "dimension",
+                  ["expression", "Thing", { "base-type": "type/Integer" }],
+                  { "stage-number": 0 },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      H.visitEmbeddedPage(
+        {
+          resource: { dashboard: dashboard_id },
+          params: {},
+        },
+        {
+          setFilters: { [staticListFilter.slug]: "1" },
+        },
+      );
+
+      H.filterWidget().findByText("Option A").should("be.visible");
+
+      H.filterWidget().findByText("Option A").click();
+      H.popover().within(() => {
+        cy.findByText("Option A").should("exist");
+        cy.findByText("Option B").should("exist");
+        // The raw numeric value "1" should NOT appear as a separate option
+        cy.findByText("1").should("not.exist");
       });
     });
   });

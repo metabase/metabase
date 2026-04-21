@@ -26,6 +26,7 @@ import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Search } from "metabase/entities/search";
+import type { State } from "metabase/redux/store";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -37,7 +38,6 @@ import type {
   ListCollectionItemsSortColumn,
   SortingOptions,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import {
   CollectionEmptyContent,

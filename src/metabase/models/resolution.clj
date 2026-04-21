@@ -31,7 +31,7 @@
     :model/CollectionPermissionGraphRevision metabase.permissions.models.collection-permission-graph-revision
     :model/Comment                           metabase.comments.models.comment
     :model/CommentReaction                   metabase.comments.models.comment-reaction
-    :model/ConnectionImpersonation           metabase-enterprise.impersonation.model
+    :model/ConnectionImpersonation           metabase-enterprise.impersonation.models
     :model/ContentTranslation                metabase.content-translation.models
     :model/Dashboard                         metabase.dashboards.models.dashboard
     :model/DashboardBookmark                 metabase.bookmarks.models.bookmark
@@ -40,8 +40,9 @@
     :model/DashboardTab                      metabase.dashboards.models.dashboard-tab
     :model/DataPermissions                   metabase.permissions.models.data-permissions
     :model/Database                          metabase.warehouses.models.database
-    :model/DatabaseRouter                    metabase-enterprise.database-routing.model
+    :model/DatabaseRouter                    metabase-enterprise.database-routing.models
     :model/Dependency                        metabase-enterprise.dependencies.models.dependency
+    :model/DependencyStatus                  metabase-enterprise.dependencies.models.dependency-status
     :model/Dimension                         metabase.warehouse-schema.models.dimension
     :model/Document                          metabase.documents.models.document
     :model/DocumentBookmark                  metabase.bookmarks.models.bookmark
@@ -54,15 +55,23 @@
     :model/ImplicitAction                    metabase.actions.models
     :model/LoginHistory                      metabase.login-history.models.login-history
     :model/Measure                           metabase.measures.models.measure
-    :model/Metabot                           metabase-enterprise.metabot-v3.models.metabot
-    :model/MetabotConversation               metabase-enterprise.metabot-v3.models.metabot-conversation
-    :model/MetabotMessage                    metabase-enterprise.metabot-v3.models.metabot-message
-    :model/MetabotPrompt                     metabase-enterprise.metabot-v3.models.metabot-prompt
+    :model/Metabot                           metabase.metabot.models.metabot
+    :model/MetabotConversation               metabase.metabot.models.metabot-conversation
+    :model/MetabotMessage                    metabase.metabot.models.metabot-message
+    :model/AiUsageLog                        metabase.metabot.models.ai-usage-log
+    :model/MetabotGroupLimit                 metabase-enterprise.metabot.models.metabot-group-limit
+    :model/MetabotInstanceLimit              metabase-enterprise.metabot.models.metabot-instance-limit
+    :model/MetabotPermissions                metabase-enterprise.metabot.models.metabot-permissions
+    :model/MetabotPrompt                     metabase.metabot.models.metabot-prompt
     :model/ModelIndex                        metabase.indexed-entities.models.model-index
     :model/ModelIndexValue                   metabase.indexed-entities.models.model-index
     :model/ModerationReview                  metabase.content-verification.models.moderation-review
     :model/NativeQuerySnippet                metabase.native-query-snippets.models.native-query-snippet
     :model/Notification                      metabase.notification.models
+    :model/OAuthAccessToken                  metabase.oauth-server.models.oauth-access-token
+    :model/OAuthAuthorizationCode            metabase.oauth-server.models.oauth-authorization-code
+    :model/OAuthClient                       metabase.oauth-server.models.oauth-client
+    :model/OAuthRefreshToken                 metabase.oauth-server.models.oauth-refresh-token
     :model/NotificationCard                  metabase.notification.models
     :model/NotificationHandler               metabase.notification.models
     :model/NotificationRecipient             metabase.notification.models
@@ -88,9 +97,11 @@
     :model/RecentViews                       metabase.activity-feed.models.recent-views
     :model/RemoteSyncObject                  metabase-enterprise.remote-sync.models.remote-sync-object
     :model/RemoteSyncTask                    metabase-enterprise.remote-sync.models.remote-sync-task
+    :model/ReplacementRun                    metabase-enterprise.replacement.models.replacement-run
     :model/Revision                          metabase.revisions.models.revision
     :model/SearchIndexMetadata               metabase.search.models.search-index-metadata
     :model/Secret                            metabase.secrets.models.secret
+    :model/SecurityAdvisory                  metabase-enterprise.security-center.models.security-advisory
     :model/Segment                           metabase.segments.models.segment
     :model/SemanticSearchTokenTracking       metabase-enterprise.semantic-search.models.token-tracking
     :model/Session                           metabase.session.models.session
@@ -99,17 +110,17 @@
     :model/Table                             metabase.warehouse-schema.models.table
     :model/TaskHistory                       metabase.task-history.models.task-history
     :model/TaskRun                           metabase.task-history.models.task-run
-    :model/Tenant                            metabase-enterprise.tenants.model
+    :model/Tenant                            metabase-enterprise.tenants.models
     :model/Timeline                          metabase.timeline.models.timeline
     :model/TimelineEvent                     metabase.timeline.models.timeline-event
-    :model/Transform                         metabase.models.transforms.transform
-    :model/TransformJob                      metabase.models.transforms.transform-job
-    :model/TransformJobRun                   metabase.models.transforms.job-run
-    :model/TransformJobTransformTag          metabase.models.transforms.transform-job-transform-tag
-    :model/TransformRun                      metabase.models.transforms.transform-run
-    :model/TransformRunCancelation           metabase.models.transforms.transform-run-cancelation
-    :model/TransformTag                      metabase.models.transforms.transform-tag
-    :model/TransformTransformTag             metabase.models.transforms.transform-transform-tag
+    :model/Transform                         metabase.transforms.models.transform
+    :model/TransformJob                      metabase.transforms.models.transform-job
+    :model/TransformJobRun                   metabase.transforms.models.job-run
+    :model/TransformJobTransformTag          metabase.transforms.models.transform-job-transform-tag
+    :model/TransformRun                      metabase.transforms.models.transform-run
+    :model/TransformRunCancelation           metabase.transforms.models.transform-run-cancelation
+    :model/TransformTag                      metabase.transforms.models.transform-tag
+    :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value

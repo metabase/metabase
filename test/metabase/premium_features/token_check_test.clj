@@ -146,11 +146,13 @@
                            :hard-ttl        (t/seconds 1)})]
       (with-redefs [mdb/db-is-set-up? (constantly false)]
         (is (= {:valid false
+                :canonical? false
                 :status "Unable to validate token"
                 :error-details "Metabase DB is not yet set up"}
                (token-check/-check-token checker token)))
         (dotimes [_ 50] (token-check/-check-token checker token))
         (is (= {:valid false
+                :canonical? false
                 :status "Unable to validate token"
                 :error-details "Metabase DB is not yet set up"}
                (token-check/-check-token checker token))))
@@ -175,7 +177,7 @@
     (let [token       (tu/random-token)
           call-count  (atom 0)
           good-body   "{\"valid\":true,\"status\":\"fake\",\"features\":[\"fake\",\"features\"]}"
-          good-resp   {:valid true, :status "fake", :features ["fake" "features"]}
+          good-resp   {:valid true, :status "fake", :features ["fake" "features"], :canonical? true}
           local-cache (atom {})
           ;; no circuit breaker — it carries state between runs and causes flakes
           checker     (binding [token-check/*customize-checker* true]
@@ -210,6 +212,7 @@
             (age-cache-entry! token (+ (u/hours->ms 36) 1000) local-cache)
             (Thread/sleep 60) ;; expire local-cached-token-checker
             (is (= {:valid         false
+                    :canonical?    false
                     :status        "Unable to validate token"
                     :error-details "network failure!"}
                    (token-check/check-token checker token)))))
@@ -219,7 +222,7 @@
 (deftest token-status-setting-test
   (testing "If a `premium-embedding-token` has been set, the `token-status` setting should return the response
             from the store.metabase.com endpoint for that token."
-    (is (= {:valid false, :status "Token does not exist."}
+    (is (= {:valid false, :status "Token does not exist.", :canonical? true}
            (token-check/check-token (tu/random-token)))))
   (testing "If premium-embedding-token is nil, the token-status setting should also be nil."
     (mt/with-temporary-setting-values [premium-embedding-token nil]
@@ -314,6 +317,31 @@
                   "Request body should include mb-version")
               (is (contains? body "users")
                   "Request body should include users count"))))))))
+
+(deftest send-metering-events-preserves-value-types-test
+  (testing "metering values are not converted to strings before sending"
+    (let [fake-usage {"anthropic:claude-sonnet-4-6:tokens" 500
+                      "openai:gpt-4:tokens"                300}
+          request-data (atom nil)]
+      (mt/with-random-premium-token! [_token]
+        (with-redefs [token-check/metering-stats (constantly {:users          10
+                                                              :external-users 2
+                                                              :internal-users 8
+                                                              :domains        1
+                                                              :metabot-usage  fake-usage
+                                                              :metabot-tokens 800})
+                      http/post                 (fn [_url opts]
+                                                  (reset! request-data opts)
+                                                  {:status 200 :body "{}"})]
+          (token-check/send-metering-events!)
+          (let [body (json/decode (:body @request-data) keyword)]
+            (is (= 10 (:users body))
+                "numeric values should remain numeric after JSON round-trip")
+            (is (map? (:metabot-usage body))
+                "map values should remain maps after JSON round-trip")
+            (is (= fake-usage
+                   (update-keys (:metabot-usage body) name))
+                "nested map values should round-trip intact")))))))
 
 (deftest send-metering-events-error-handling-test
   (testing "send-metering-events! handles errors gracefully"
@@ -557,6 +585,7 @@
           token   (tu/random-token)]
       ;; error-catching wraps it, so we get the error-details response
       (is (= {:valid false
+              :canonical? false
               :status "Unable to validate token"
               :error-details "MetaStore unreachable"}
              (token-check/-check-token checker token))))))
@@ -609,3 +638,64 @@
           (is (nil? (t2/select-one :model/PremiumFeaturesCache :token_hash token-hash))))
         (finally
           (token-check/-clear-cache! checker))))))
+
+(deftest db-hash-aware-token-checker-db-not-set-up-test
+  (testing "When DB is not set up, delegates directly to inner checker without touching the DB"
+    (let [call-count    (atom 0)
+          good-response {:valid true :status "OK" :features ["sandboxes"]}
+          checker       (make-db-hash-aware-checker
+                         (fn [_token]
+                           (swap! call-count inc)
+                           good-response)
+                         {:soft-ttl (t/minutes 1) :hard-ttl (t/minutes 2)})
+          token         (tu/random-token)
+          bomb          (fn [& _] (throw (ex-info "DB should not be touched" {})))]
+      (with-redefs [mdb/db-is-set-up? (constantly false)
+                    token-check/read-cache-from-db bomb
+                    token-check/write-cache-to-db! bomb
+                    token-check/clear-db-cache! bomb]
+        (is (= good-response (token-check/-check-token checker token)))
+        (is (= 1 @call-count) "inner checker was called exactly once")
+        ;; clear-cache! should also skip DB without error
+        (token-check/-clear-cache! checker)))))
+
+;;; ------------------------------------------------ -set-premium-embedding-token! ------------------------------------------------
+
+(deftest set-premium-embedding-token-canonical-invalid-test
+  (testing "When MetaStore says the token is invalid (canonical), throws 400 with MetaStore's message"
+    (let [token (tu/random-token)]
+      (with-redefs [token-check/check-token (constantly {:valid        false
+                                                         :status       "Token expired"
+                                                         :error-details "Expired 2024-01-01"
+                                                         :canonical?   true})]
+        (let [e (try (token-check/-set-premium-embedding-token! token)
+                     nil
+                     (catch Exception e e))]
+          (is (some? e))
+          (is (= "Token expired" (ex-message e)))
+          (is (= 400 (:status-code (ex-data e))))
+          (is (= "Expired 2024-01-01" (:error-details (ex-data e)))))))))
+
+(deftest set-premium-embedding-token-non-canonical-failure-test
+  (testing "When token validation fails for non-canonical reasons (network etc), throws 503"
+    (let [token (tu/random-token)]
+      (with-redefs [token-check/check-token (constantly {:valid         false
+                                                         :status        "Unable to validate token"
+                                                         :error-details "Connection refused"})]
+        (let [e (try (token-check/-set-premium-embedding-token! token)
+                     nil
+                     (catch Exception e e))]
+          (is (some? e))
+          (is (= "Unable to validate token" (ex-message e)))
+          (is (= 503 (:status-code (ex-data e))))
+          (is (= "Connection refused" (:error-details (ex-data e)))))))))
+
+(deftest set-premium-embedding-token-valid-test
+  (testing "When token is valid, no exception is thrown and setting is persisted"
+    (let [token (tu/random-token)]
+      (with-redefs [token-check/check-token (constantly {:valid    true
+                                                         :status   "OK"
+                                                         :features ["test"]})]
+        (mt/with-temporary-setting-values [premium-embedding-token nil]
+          (token-check/-set-premium-embedding-token! token)
+          (is (= token (premium-features/premium-embedding-token))))))))

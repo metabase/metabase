@@ -5,18 +5,20 @@ import { t } from "ttag";
 
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
 import { Collections } from "metabase/entities/collections";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import type { State } from "metabase/redux/store";
 import { Modal } from "metabase/ui";
+import { connect } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Collection } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import type { CreateCollectionFormOwnProps } from "../components/CreateCollectionForm";
 import { CreateCollectionForm } from "../components/CreateCollectionForm";
 import type { CreateCollectionProperties } from "../components/CreateCollectionForm/CreateCollectionForm";
 
-interface CreateCollectionModalOwnProps
-  extends Omit<CreateCollectionFormOwnProps, "onCancel" | "onSubmit"> {
+interface CreateCollectionModalOwnProps extends Omit<
+  CreateCollectionFormOwnProps,
+  "onCancel" | "onSubmit"
+> {
   onCreate?: (collection: Collection) => void;
   onClose: () => void;
 }

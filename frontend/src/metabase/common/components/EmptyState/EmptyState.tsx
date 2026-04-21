@@ -85,7 +85,7 @@ export const EmptyState = ({
         </h2>
       )}
       {message && (
-        <Text role="status" color="text-secondary" mt="xs">
+        <Text role="status" c="text-secondary" mt="xs">
           {message}
         </Text>
       )}

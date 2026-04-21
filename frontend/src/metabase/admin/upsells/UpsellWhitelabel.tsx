@@ -1,15 +1,14 @@
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { UpsellBigCard } from "metabase/common/components/upsells/components";
+import S from "metabase/common/components/upsells/components/Upsells.module.css";
+import { useUpsellLink } from "metabase/common/components/upsells/components/use-upsell-link";
+import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
 import { getDocsUrl } from "metabase/selectors/settings";
-
-import { UpsellBigCard } from "./components";
-import S from "./components/Upsells.module.css";
-import { useUpsellLink } from "./components/use-upsell-link";
-import { UPGRADE_URL } from "./constants";
+import { useSelector } from "metabase/utils/redux";
 
 export const UpsellWhitelabel = ({ source }: { source: string }) => {
   const isWhitelabeled = useHasTokenFeature("whitelabel");

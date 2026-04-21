@@ -1,5 +1,4 @@
 import cx from "classnames";
-import type * as React from "react";
 import { useState } from "react";
 import { useAsyncFn } from "react-use";
 import { c, jt, t } from "ttag";
@@ -25,7 +24,6 @@ import type {
 } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 import type {
   GroupTableAccessPolicy,
   Table,
@@ -409,7 +407,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
         <span>
           {c(
             "{0} is a name of a variable being used by row and column security",
-          ).jt`${(<strong key="strong">{target[1][1]}</strong>)} variable`}
+          ).jt`${<strong key="strong">{target[1][1]}</strong>} variable`}
         </span>
       );
     } else if (target[0] === "dimension") {
@@ -426,7 +424,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
           }
           includeSensitiveFields
         >
-          {({ question }: { question: Question }) => {
+          {({ question }) => {
             if (!question) {
               return null;
             }
@@ -451,7 +449,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
                 {c(
                   "{0} is a name of a field being used by row and column security",
                 )
-                  .jt`${(<strong key="strong">{columnInfo.displayName}</strong>)} field`}
+                  .jt`${<strong key="strong">{columnInfo.displayName}</strong>} field`}
               </span>
             );
           }}

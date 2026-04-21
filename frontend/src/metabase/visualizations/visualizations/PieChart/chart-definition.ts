@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/utils/formatting";
 import {
   ChartSettingsError,
   MinRowsError,
@@ -73,7 +73,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     // This prevents showing "Which columns do you want to use" when
     // the piechart is displayed with no results in the dashboard
     if (rows.length < 1) {
-      throw new MinRowsError(1, 0);
+      throw new MinRowsError(0);
     }
     const isDimensionMissing =
       !settings["pie.dimension"] ||
@@ -81,7 +81,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         settings["pie.dimension"].every((col) => col == null));
     if (isDimensionMissing || !settings["pie.metric"]) {
       throw new ChartSettingsError(t`Which columns do you want to use?`, {
-        section: `Data`,
+        section: t`Data`,
       });
     }
   },
@@ -151,7 +151,9 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         !extra?.isDashboard || card?.display === "waterfall",
       getSection: (_series, _settings, extra) =>
         extra?.isDashboard ? t`Display` : t`Style`,
-      marginBottom: "0",
+      getWrapperStyle: () => ({
+        marginBottom: 0,
+      }),
       getProps: (_series, vizSettings, _onChange, _extra, onChangeSettings) => {
         const pieRows = vizSettings["pie.rows"];
         if (pieRows == null) {
@@ -197,7 +199,9 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       widget: "toggle",
       getDefault: getDefaultShowLegend,
       inline: true,
-      marginBottom: "1rem",
+      getWrapperStyle: () => ({
+        marginBottom: "1rem",
+      }),
     },
     "pie.show_total": {
       get section() {
@@ -209,7 +213,9 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       widget: "toggle",
       getDefault: getDefaultShowTotal,
       inline: true,
-      marginBottom: "1rem",
+      getWrapperStyle: () => ({
+        marginBottom: "1rem",
+      }),
     },
     "pie.show_labels": {
       get section() {
@@ -231,7 +237,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "radio",
       getDefault: getDefaultPercentVisibility,
-      props: {
+      getProps: () => ({
         options: [
           {
             get name() {
@@ -258,7 +264,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
             value: "both",
           },
         ],
-      },
+      }),
     },
     "pie.decimal_places": {
       get section() {
@@ -268,12 +274,12 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         return t`Number of decimal places`;
       },
       widget: "number",
-      props: {
+      getProps: () => ({
         get placeholder() {
           return t`Auto`;
         },
         options: { isInteger: true, isNonNegative: true },
-      },
+      }),
       getHidden: (_, settings) =>
         settings["pie.percent_visibility"] == null ||
         settings["pie.percent_visibility"] === "off",

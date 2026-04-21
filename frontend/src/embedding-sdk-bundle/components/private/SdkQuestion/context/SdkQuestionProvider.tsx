@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useState,
 } from "react";
 import { t } from "ttag";
 
@@ -14,11 +15,13 @@ import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/priv
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
-import { useSdkSelector } from "embedding-sdk-bundle/store";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
+import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
   getError,
   getIsGuestEmbed,
   getPlugins,
+  getSessionTokenState,
 } from "embedding-sdk-bundle/store/selectors";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
@@ -75,7 +78,22 @@ export const SdkQuestionProvider = ({
   onVisualizationChange,
 }: SdkQuestionProviderProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
+  const dispatch = useSdkDispatch();
   const navigation = useSdkInternalNavigationOptional();
+  const [isFirstRender, setIsFirstRender] = useState(true);
+  const { rawToken: tokenFromStore, error: tokenFetchError } =
+    useSdkSelector(getSessionTokenState);
+
+  // Store token so the refresh handler can check expiry. No need to await — not used here.
+  useEffect(() => {
+    if (rawToken && isGuestEmbed) {
+      dispatch(setInitialGuestToken(rawToken));
+    }
+  }, [rawToken, isGuestEmbed, dispatch]);
+
+  useEffect(() => {
+    setIsFirstRender(false);
+  }, []);
 
   const {
     resourceId: questionId,
@@ -84,7 +102,9 @@ export const SdkQuestionProvider = ({
   } = useExtractResourceIdFromJwtToken({
     isGuestEmbed,
     resourceId: rawQuestionId,
-    token: rawToken ?? undefined,
+    // Skip stale Redux token on first render (e.g. wizard re-issuing a token when toggling parameters); rawToken prop takes precedence.
+    // From the next render onward, tokenFromStore is used and the value is from a refreshed token.
+    token: (!isFirstRender ? tokenFromStore : null) ?? rawToken ?? undefined,
   });
 
   useSetupContentTranslations({ token });
@@ -244,15 +264,10 @@ export const SdkQuestionProvider = ({
   // Push the question name to the stack if the stack is empty (ie: this is the root question)
   // We need to wait for the question to load to have the name
   useEffect(() => {
-    if (
-      question &&
-      !!questionId &&
-      navigation &&
-      navigation.stack.length === 0
-    ) {
+    if (question && navigation && navigation.stack.length === 0) {
       navigation.push({
         type: "question",
-        id: questionId,
+        id: questionId ?? null,
         name: question.displayName() || t`Question`,
       });
     }
@@ -268,6 +283,10 @@ export const SdkQuestionProvider = ({
 
   if (tokenError) {
     return <SdkError message={tokenError} />;
+  }
+
+  if (tokenFetchError) {
+    return <SdkError message={tokenFetchError.message} />;
   }
 
   if (error) {

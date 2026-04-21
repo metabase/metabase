@@ -17,13 +17,13 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCollection,
   createMockRecentTableDatabaseInfo,
   createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 jest.mock("react-router-redux", () => ({
   push: jest.fn(() => ({
@@ -82,7 +82,10 @@ const setup = ({ isAdmin = true, checklist = {} } = {}) => {
     query: { include_only_uploadable: true },
     response: { data: [], total: 0 },
   });
-  fetchMock.get("path:/api/ee/embedding-hub/checklist", checklist);
+  fetchMock.get("path:/api/ee/embedding-hub/checklist", {
+    checklist,
+    "data-isolation-strategy": null,
+  });
 
   return renderWithProviders(<EmbeddingHub />, { storeInitialState: state });
 };
@@ -125,34 +128,8 @@ describe("EmbeddingHub", () => {
 
     await userEvent.click(within(dialog).getByText("Foo Bar Table"));
 
-    expect(mockPush).toHaveBeenCalledWith("/auto/dashboard/table/10");
-  });
-
-  it("has correct href link for Configure SSO card", async () => {
-    setup();
-
-    const configureSsoLink = screen.getByRole("link", {
-      name: /configure sso/i,
-    });
-    expect(configureSsoLink).toBeInTheDocument();
-
-    expect(configureSsoLink).toHaveAttribute(
-      "href",
-      "https://www.metabase.com/docs/latest/embedding/embedded-analytics-js.html?utm_source=product&utm_medium=docs&utm_campaign=embedding_hub&utm_content=secure-embeds&source_plan=oss#set-up-sso",
-    );
-  });
-
-  it("has correct href link for Configure data permissions card", async () => {
-    setup();
-
-    const configureDataPermissionsLink = screen.getByRole("link", {
-      name: /configure data permissions/i,
-    });
-    expect(configureDataPermissionsLink).toBeInTheDocument();
-
-    expect(configureDataPermissionsLink).toHaveAttribute(
-      "href",
-      "https://www.metabase.com/docs/latest/permissions/embedding.html?utm_source=product&utm_medium=docs&utm_campaign=embedding_hub&utm_content=configure-row-column-security&source_plan=oss#one-database-for-all-customers-commingled-setups",
+    expect(mockPush).toHaveBeenCalledWith(
+      "/auto/dashboard/table/10?returnToEmbeddingSetupGuide=true",
     );
   });
 
@@ -162,11 +139,10 @@ describe("EmbeddingHub", () => {
         "add-data": true,
         "create-dashboard": true,
         "create-test-embed": true,
-        "create-models": false,
         "configure-row-column-security": false,
         "embed-production": false,
-        "secure-embeds": false,
-        "setup-tenants": false,
+        "sso-configured": false,
+        "data-permissions-and-enable-tenants": false,
       },
     });
 

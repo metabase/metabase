@@ -1,11 +1,10 @@
 import { jt, t } from "ttag";
 
+import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { useSetting } from "metabase/common/hooks";
 import { getPlan, isProPlan } from "metabase/common/utils/plan";
-import { useSelector } from "metabase/lib/redux";
 import { getIsHosted } from "metabase/setup/selectors";
-
-import { UpsellBanner } from "./components";
+import { useSelector } from "metabase/utils/redux";
 
 export const UpsellHostingBanner = ({ location }: { location: string }) => {
   const isHosted = useSelector(getIsHosted);

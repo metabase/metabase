@@ -5,8 +5,9 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.interface :as mi]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms.core]
-   [metabase.transforms.util :as transforms.util]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
@@ -78,7 +79,6 @@
    [:creator_id pos-int?]
    [:collection_id [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
-   [:dependency_analysis_version :int]
    [:creator CreatorResponse]])
 
 (api.macros/defendpoint :post "/" :- TransformJobResponse
@@ -203,7 +203,7 @@
 (defn- add-next-run
   [{id :id :as job}]
   (if-let [start-time (-> id transforms.core/existing-trigger :next-fire-time)]
-    (assoc job :next_run {:start_time (str (transforms.util/->instant start-time))})
+    (assoc job :next_run {:start_time (str (transforms-base.u/->instant start-time))})
     job))
 
 (api.macros/defendpoint :get "/:job-id/transforms" :- [:sequential TransformResponse]
@@ -215,7 +215,7 @@
   (-> (transforms.core/job-transforms job-id)
       (#(do (api/check-403 (every? mi/can-read? %)) %))
       (t2/hydrate :creator)
-      transforms.util/add-source-readable))
+      transforms.u/add-source-readable))
 
 (api.macros/defendpoint :get "/" :- [:sequential TransformJobResponse]
   "Get all transform jobs."
@@ -231,12 +231,12 @@
   (let [jobs (t2/select :model/TransformJob {:order-by [[:created_at :desc]]})]
     (into []
           (comp (map add-next-run)
-                (transforms.util/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
-                (transforms.util/->date-field-filter-xf [:next_run :start_time] next-run-start-time)
-                (transforms.util/->status-filter-xf [:last_run :status] last-run-statuses)
-                (transforms.util/->tag-filter-xf [:tag_ids] tag-ids)
-                (map #(update % :last_run transforms.util/localize-run-timestamps))
-                (map #(update % :next_run transforms.util/localize-run-timestamps)))
+                (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
+                (transforms-base.u/->date-field-filter-xf [:next_run :start_time] next-run-start-time)
+                (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
+                (transforms-base.u/->tag-filter-xf [:tag_ids] tag-ids)
+                (map #(update % :last_run transforms-base.u/localize-run-timestamps))
+                (map #(update % :next_run transforms-base.u/localize-run-timestamps)))
           (t2/hydrate jobs :tag_ids :last_run))))
 
 (def ^{:arglists '([request respond raise])} routes

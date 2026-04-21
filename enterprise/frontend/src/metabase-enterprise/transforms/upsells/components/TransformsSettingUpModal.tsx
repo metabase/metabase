@@ -15,8 +15,10 @@ import {
 } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-interface TransformsSettingUpModalProps
-  extends Pick<ModalProps, "opened" | "onClose"> {
+interface TransformsSettingUpModalProps extends Pick<
+  ModalProps,
+  "opened" | "onClose"
+> {
   isPython?: boolean;
 }
 
@@ -25,7 +27,7 @@ export const TransformsSettingUpModal = ({
   opened,
   isPython = false,
 }: TransformsSettingUpModalProps) => {
-  const featureToCheck = isPython ? "transforms-python" : "transforms";
+  const featureToCheck = isPython ? "transforms-python" : "transforms-basic";
   useTokenRefreshUntil(featureToCheck, { intervalMs: 1000, skip: !opened });
   const isSettingUp = !hasPremiumFeature(featureToCheck);
 

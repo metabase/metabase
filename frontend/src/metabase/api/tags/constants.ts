@@ -35,9 +35,11 @@ export const TAG_TYPES = [
   "persisted-info",
   "persisted-model",
   "revision",
+  "group-table-access-policy",
   "schema",
   "segment",
   "session-properties",
+  "slack-app-info",
   "snippet",
   "subscription",
   "subscription-channel",
@@ -61,6 +63,11 @@ export const TAG_TYPES = [
   "unique-tasks",
   "user-key-value",
   "tenant",
+  "metabot",
+  "metabot-entities-list",
+  "metabot-prompt-suggestions",
+  "metabot-permissions",
+  "security-advisory",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {

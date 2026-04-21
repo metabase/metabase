@@ -85,6 +85,8 @@ export interface DatasetColumn {
 
   // model with customized metadata
   fk_target_field_id?: FieldId | null;
+
+  remapping?: Map<RowValue, string | number>;
 }
 
 export interface ResultsMetadata {
@@ -97,6 +99,7 @@ export interface DatasetData {
   insights?: Insight[] | null;
   results_metadata: ResultsMetadata;
   rows_truncated: number;
+  pivot_rows_truncated?: number;
   requested_timezone?: string;
   results_timezone?: string;
   download_perms?: DownloadPermission;
@@ -109,6 +112,8 @@ export interface DatasetData {
     "show-column-totals"?: boolean;
   };
   untranslatedRows?: RowValues[];
+
+  sourceRows?: (number | null)[][]; // present in pivoted data
 }
 
 export type JsonQuery = DatasetQuery & {
@@ -203,8 +208,13 @@ export type SingleSeriesWithTranslation = SingleSeries & {
   };
 };
 
+export type TransformedCard = Card & {
+  _seriesKey: string;
+  _transformed: true;
+};
+
 export type RawSeries = SingleSeries[];
-export type TransformedSeries = RawSeries & { _raw: Series };
+export type TransformedSeries = RawSeries & { _raw?: Series };
 export type MaybeTranslatedSeries = SingleSeriesWithTranslation[];
 export type Series = RawSeries | TransformedSeries;
 
@@ -246,6 +256,7 @@ export interface TemplateTag {
 
   // Table specific
   "table-id"?: TableId;
+  "emit-alias"?: boolean;
 }
 
 export type TemplateTags = Record<TemplateTagName, TemplateTag>;

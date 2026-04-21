@@ -1,10 +1,8 @@
-import type * as React from "react";
 import { useMemo, useRef } from "react";
 
 import { TippyPopoverWithTrigger } from "metabase/common/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { SelectList } from "metabase/common/components/SelectList";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
-import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import type { InputProps } from "../Input";
@@ -88,15 +86,18 @@ export const AutocompleteInput = ({
           {...rest}
           value={value}
           onClick={handleShowPopover}
-          onFocus={composeEventHandlers<React.FocusEvent<HTMLInputElement>>(
-            onFocus,
-            handleShowPopover,
-          )}
-          onChange={composeEventHandlers(handleChange, handleShowPopover)}
-          onBlur={composeEventHandlers<React.FocusEvent<HTMLInputElement>>(
-            onBlur,
-            closePopover,
-          )}
+          onFocus={(evt) => {
+            onFocus?.(evt);
+            handleShowPopover();
+          }}
+          onChange={(evt) => {
+            handleChange(evt);
+            handleShowPopover();
+          }}
+          onBlur={(evt) => {
+            onBlur?.(evt);
+            closePopover();
+          }}
         />
       )}
       placement="bottom-start"

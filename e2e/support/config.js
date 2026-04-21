@@ -16,6 +16,10 @@ import {
 } from "./commands/downloads/downloadUtils";
 import * as dbTasks from "./db_tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
+import {
+  startMockLlmServer,
+  stopMockLlmServer,
+} from "./helpers/e2e-mock-llm-tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
@@ -136,6 +140,8 @@ const defaultConfig = {
       copyDirectory,
       removeDirectory,
       signJwt,
+      startMockLlmServer,
+      stopMockLlmServer,
     });
 
     /********************************************************************
@@ -181,7 +187,7 @@ const defaultConfig = {
   viewportHeight: 800,
   viewportWidth: 1280,
   // enable video recording in run mode
-  video: true,
+  video: process.env["CYPRESS_VIDEO"] !== "false",
   videoCompression: true,
 };
 
@@ -213,7 +219,10 @@ const mainConfig = {
     },
   },
   retries: {
-    runMode: 2,
+    runMode:
+      process.env["CYPRESS_RETRIES"] != null
+        ? parseInt(process.env["CYPRESS_RETRIES"], 10)
+        : 1,
     openMode: 0,
   },
 };

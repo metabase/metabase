@@ -2,9 +2,9 @@ import { skipToken } from "@reduxjs/toolkit/query";
 import { useMemo } from "react";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { DataAttributes, InputDescriptionProps } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type { PythonTransformTableAliases } from "metabase-types/api";
 
@@ -34,8 +34,7 @@ export function PythonKeysetColumnSelect({
   // Get the first (and should be only) table ID
   // Incremental transforms are only supported for single-table Python transforms
   const tableId = useMemo(() => {
-    const tableIds = Object.values(sourceTables);
-    return tableIds.length === 1 ? tableIds[0] : null;
+    return sourceTables.length === 1 ? sourceTables[0].table_id : null;
   }, [sourceTables]);
 
   // Fetch metadata for the table

@@ -1,6 +1,7 @@
 (ns metabase.request.core
   "API namespace for stuff related to Ring (HTTP) requests, such as info associated with the current request."
   (:require
+   [metabase.premium-features.core :as premium-features]
    [metabase.request.cookies]
    [metabase.request.current]
    [metabase.request.session]
@@ -26,6 +27,7 @@
   metabase-embedded-session-cookie
   metabase-session-cookie
   metabase-session-timeout-cookie
+  session-timeout-seconds
   set-session-cookies
   set-session-timeout-cookie]
  [metabase.request.current
@@ -46,6 +48,7 @@
  [metabase.request.util
   DeviceInfo
   api-call?
+  auth-call?
   cacheable?
   describe-user-agent
   device-info
@@ -55,3 +58,10 @@
   https?
   ip-address
   public?])
+
+(defn enabled-session-timeout-seconds
+  "Return the session timeout in seconds if the session-timeout-config premium feature is enabled and a timeout is
+   configured, otherwise nil."
+  []
+  (when (premium-features/enable-session-timeout-config?)
+    (session-timeout-seconds)))

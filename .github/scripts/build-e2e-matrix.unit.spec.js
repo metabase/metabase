@@ -3,7 +3,7 @@ const { buildMatrix } = require("./build-e2e-matrix");
 describe("buildMatrix", () => {
   const options = {
     java: "11",
-    defaultRunner: "ubuntu-22.04",
+    defaultRunner: "${{ vars.DEFAULT_RUNNER_KEY }}",
   };
   const testBuildMatrix = (entry, chunks) =>
     buildMatrix(options, entry, chunks);

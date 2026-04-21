@@ -1,17 +1,15 @@
-import { createThunkAction } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { openUrl } from "metabase/redux/app";
+import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { createThunkAction } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, DashboardCard, VirtualCard } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
-
-import { isQuestionDashCard } from "../utils";
 
 import { getNewCardUrl } from "./getNewCardUrl";
-
-export const EDIT_QUESTION = "metabase/dashboard/EDIT_QUESTION";
 
 export const editQuestion = createThunkAction(
   EDIT_QUESTION,
@@ -43,7 +41,6 @@ export const editQuestion = createThunkAction(
  *         * (not in 0.24.2 yet: drag on line/area/bar visualization)
  *     - those all can be applied without or with a dashboard filter
  */
-export const NAVIGATE_TO_NEW_CARD = "metabase/dashboard/NAVIGATE_TO_NEW_CARD";
 type NavigateToNewCardFromDashboardArgs = {
   nextCard: Card | VirtualCard;
   previousCard: Card | VirtualCard;

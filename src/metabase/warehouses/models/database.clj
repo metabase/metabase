@@ -293,7 +293,7 @@
                  (t2/update! :model/Database (:id database) {:provider_name provider})
                  (catch Throwable provider-e
                    (log/warnf provider-e "Error during provider detection for database {:id %d}" (:id database)))))))
-         (when (:write_data_details database)
+         (when (driver.conn/database-write-data-details (driver.u/ensure-lib-database database))
            (let [write-details (driver.conn/without-resolution-telemetry
                                 (driver.conn/with-write-connection
                                   (driver.conn/effective-details database)))]
@@ -321,30 +321,12 @@
 (defn- set-new-database-permissions!
   [database]
   (when-not (is-destination? database)
-    (t2/with-transaction [_conn]
-      (let [all-users-group  (perms/all-users-group)
+    (perms/with-db-scoped-permissions-lock (u/the-id database)
+      (let [all-users-group          (perms/all-users-group)
             all-external-users-group (perms/all-external-users-group)
-            non-magic-groups (perms/non-magic-groups)
+            non-magic-groups         (perms/non-magic-groups)
             non-admin-groups         (conj non-magic-groups all-users-group all-external-users-group)]
-        (if (:is_audit database)
-          (doseq [group non-admin-groups]
-            (if-not (:is_tenant_group group)
-              (do
-                (perms/set-database-permission! group database :perms/view-data :unrestricted)
-                (perms/set-database-permission! group database :perms/create-queries :no)
-                (perms/set-database-permission! group database :perms/download-results :one-million-rows)
-                (perms/set-database-permission! group database :perms/manage-table-metadata :no)
-                (perms/set-database-permission! group database :perms/manage-database :no))
-              (do
-                (perms/set-database-permission! group database :perms/view-data :no)
-                (perms/set-database-permission! group database :perms/create-queries :no)
-                (perms/set-database-permission! group database :perms/download-results :no)
-                (perms/set-database-permission! group database :perms/manage-table-metadata :no)
-                (perms/set-database-permission! group database :perms/manage-database :no))))
-          (doseq [group non-admin-groups]
-            (if-not (:is_tenant_group group)
-              (perms/set-new-database-permissions! group database)
-              (perms/set-external-group-permissions! group database))))))))
+        (perms/set-default-database-permissions! database non-admin-groups)))))
 
 (t2/define-after-insert :model/Database
   [database]
@@ -667,7 +649,14 @@
                                     :import identity}
                :creator_id          (serdes/fk :model/User)
                :router_database_id (serdes/fk :model/Database)
-               :initial_sync_status {:export identity :import (constantly "complete")}}})
+               :initial_sync_status {:export identity :import (constantly "complete")}}
+   :defaults {:auto_run_queries true
+              :is_attached_dwh  false
+              :is_audit         false
+              :is_full_sync     true
+              :is_on_demand     false
+              :is_sample        false
+              :uploads_enabled  false}})
 
 (defmethod serdes/extract-query "Database"
   [model-name {:keys [where]}]
@@ -689,8 +678,23 @@
   (t2/select-one :model/Database :name id))
 
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
-  ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.
-  ["databases" name name])
+  ;; directory for the database with same-named file inside.
+  [{:label "databases"} {:label name :key name} {:label name :key name}])
+
+(defn assert-not-h2!
+  "Validate db is not h2 for serialization import"
+  [ingested]
+  (when (= :h2 (keyword (:engine ingested)))
+    (throw (ex-info "h2 is not supported for serialization import"
+                    {:engine (:engine ingested) :name (:name ingested)}))))
+
+(defmethod serdes/load-one! "Database"
+  [ingested maybe-local]
+  (assert-not-h2! ingested)
+  (serdes/default-load-one! (cond-> ingested
+                              (:details ingested)            (update :details driver/sanitize-db-details)
+                              (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details))
+                            maybe-local))
 
 (def ^{:arglists '([table-id])} table-id->database-id
   "Retrieve the `Database` ID for the given table-id."
@@ -717,7 +721,7 @@
 
 (defenterprise hydrate-router-user-attribute
   "OSS implementation. Hydrates router user attribute on the databases."
-  metabase-enterprise.database-routing.model
+  metabase-enterprise.database-routing.models
   [_k databases]
   (for [database databases]
     (assoc database :router_user_attribute nil)))

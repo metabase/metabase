@@ -1,9 +1,9 @@
 import cx from "classnames";
 import { useCallback, useMemo } from "react";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { useSelector } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 import { Flex, Text, Tooltip } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type { CommentReaction } from "metabase-types/api";
 
 import S from "./Discussion.module.css";
@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function Reaction({ reaction, onReaction, onReactionRemove }: Props) {
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
   const isCurrentUserReaction = useMemo(
     () => reaction.users.some((user) => user.id === currentUser?.id),
     [reaction.users, currentUser],

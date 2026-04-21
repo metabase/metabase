@@ -289,7 +289,7 @@
      [:source-table       {:optional true} [:ref ::id/table]]
      [:source-card        {:optional true} [:ref ::id/card]]
      [:page               {:optional true} [:ref ::page]]
-     [:limit              {:optional true} ::common/int-greater-than-or-equal-to-zero]]]
+     [:limit              {:optional true} nat-int?]]]
    [:fn
     {:error/message "A query must have exactly one of :source-table or :source-card"}
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
@@ -409,7 +409,7 @@
         (or
          (when (map? stage)
            (lib.util.match/match-lite (dissoc stage :joins :lib/stage-metadata)
-             [:field {:join-alias (join-alias :guard (and (some? join-alias)
+             [:field {:join-alias (join-alias :guard (and join-alias
                                                           (not (visible-join-alias? join-alias))))} _id-or-name]
              (str "Invalid :field reference in stage " i ": no join named " (pr-str join-alias))))
          (when (seq more)

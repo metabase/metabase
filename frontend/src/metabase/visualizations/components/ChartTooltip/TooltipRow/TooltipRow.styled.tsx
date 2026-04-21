@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { darken } from "metabase/lib/colors";
+import { darken } from "metabase/ui/colors";
 
 interface TooltipRowRootProps {
   isHeader?: boolean;

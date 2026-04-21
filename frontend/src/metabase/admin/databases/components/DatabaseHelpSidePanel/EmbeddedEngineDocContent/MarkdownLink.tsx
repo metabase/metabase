@@ -2,9 +2,9 @@ import type { ComponentProps } from "react";
 import { Link } from "react-router";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import type { State } from "metabase/redux/store";
 import { getDocsUrl } from "metabase/selectors/settings";
-import type { State } from "metabase-types/store";
+import { useSelector } from "metabase/utils/redux";
 
 export const MarkdownLink = ({ href, children }: ComponentProps<"a">) => {
   const parsedUrl = useSelector((state) => getParsedMDLinkUrl(state, href));

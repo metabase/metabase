@@ -1,5 +1,5 @@
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import MetabaseSettings from "metabase/lib/settings";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import MetabaseSettings from "metabase/utils/settings";
 import {
   createMockDatabase,
   createMockField,

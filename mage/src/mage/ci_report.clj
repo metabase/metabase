@@ -346,21 +346,25 @@
              (into {}))))))
 
 (defn- generate-report
-  "Generate markdown report"
-  [pr-number pr-info checks logs-by-job-id {:keys [detailed? progress-log]}]
+  "Generate markdown report.
+   pr-number and pr-info may be nil for branch/SHA reports."
+  [pr-number pr-info checks logs-by-job-id {:keys [detailed? progress-log branch sha]}]
   (let [{:keys [failed pending passed]} (categorize-checks checks)
-        branch (:headRefName pr-info)
-        sha (:headRefOid pr-info)
-        title (:title pr-info)
-        pr-url (:url pr-info)]
+        branch (or (:headRefName pr-info) branch)
+        sha    (or (:headRefOid pr-info) sha)]
 
-    (println (format "# CI Report for PR #%s: %s" pr-number title))
+    (if pr-number
+      (println (format "# CI Report for PR #%s: %s" pr-number (:title pr-info)))
+      (println (format "# CI Report for %s" (or branch sha))))
     (println)
     (println "## Metadata")
     (println)
-    (println (format "- **PR:** [#%s](%s)" pr-number pr-url))
-    (println (format "- **Branch:** `%s`" branch))
-    (println (format "- **SHA:** `%s`" sha))
+    (when pr-number
+      (println (format "- **PR:** [#%s](%s)" pr-number (:url pr-info))))
+    (when branch
+      (println (format "- **Branch:** `%s`" branch)))
+    (when sha
+      (println (format "- **SHA:** `%s`" sha)))
     (println (format "- **Mode:** %s" (if detailed? "Detailed (with expected/actual)" "Summary")))
     (println)
 
@@ -465,63 +469,154 @@
     (when (re-matches #"\d+" result)
       result)))
 
-(defn- parse-pr-arg
-  "Parse PR argument - could be a number or a URL"
+(defn- classify-arg
+  "Classify an argument as a PR number, commit SHA, or branch name.
+   Returns {:type (:pr|:branch|:sha), :value string}."
   [arg]
   (cond
-    ;; Already a number
-    (re-matches #"\d+" arg) arg
-    ;; GitHub PR URL - extract the number
+    ;; GitHub PR URL
     (re-find #"github\.com/.+/pull/(\d+)" arg)
-    (second (re-find #"github\.com/.+/pull/(\d+)" arg))
-    ;; Otherwise return as-is and let gh handle it
-    :else arg))
+    {:type :pr :value (second (re-find #"github\.com/.+/pull/(\d+)" arg))}
+    ;; All digits → PR number
+    (re-matches #"\d+" arg)
+    {:type :pr :value arg}
+    ;; Hex string 7-40 chars → commit SHA
+    (re-matches #"[0-9a-f]{7,40}" arg)
+    {:type :sha :value arg}
+    ;; Everything else → branch name
+    :else
+    {:type :branch :value arg}))
+
+(defn- normalize-check-state
+  "Map GitHub Check Runs API status/conclusion to the state strings
+   that categorize-checks expects (SUCCESS, FAILURE, PENDING, etc)."
+  [{:keys [status conclusion]}]
+  (if (= status "completed")
+    (case conclusion
+      "success"   "SUCCESS"
+      "skipped"   "SUCCESS"
+      "failure"   "FAILURE"
+      "timed_out" "FAILURE"
+      "cancelled" "FAILURE"
+      ;; action_required, stale, neutral
+      "FAILURE")
+    (case status
+      "in_progress" "IN_PROGRESS"
+      "queued"      "QUEUED"
+      "PENDING")))
+
+(defn- commit-check-runs
+  "Fetch check runs for a commit SHA. Returns vec of {:name :state :link} maps
+   matching the shape returned by pr-checks."
+  [sha]
+  (loop [page 1
+         all-runs []]
+    (when-let [result (gh-api (format "repos/%s/commits/%s/check-runs?per_page=100&page=%d"
+                                      repo sha page))]
+      (let [runs (:check_runs result)
+            accumulated (into all-runs runs)]
+        (if (< (count accumulated) (:total_count result))
+          (recur (inc page) accumulated)
+          (mapv (fn [run]
+                  {:name  (:name run)
+                   :state (normalize-check-state run)
+                   :link  (:html_url run)})
+                accumulated))))))
+
+(defn- resolve-branch-head
+  "Resolve a branch name to its latest CI commit SHA.
+   Uses the GitHub Actions runs API to find the most recent workflow run."
+  [branch]
+  (when-let [result (gh-api (format "repos/%s/actions/runs?branch=%s&per_page=1"
+                                    repo (java.net.URLEncoder/encode branch "UTF-8")))]
+    (get-in result [:workflow_runs 0 :head_sha])))
+
+(defn- run-pr-report!
+  "Generate report for a PR number. The original/primary code path."
+  [pr-number detailed?]
+  (log-progress (format "Fetching PR #%s info..." pr-number))
+  (let [info (pr-info pr-number)]
+    (when-not info
+      (binding [*out* *err*]
+        (println (format "Error: Could not fetch PR #%s" pr-number)))
+      (System/exit 1))
+    (log-success (format "Found PR on branch: %s" (:headRefName info)))
+    (log-progress "Checking PR status...")
+    (let [checks (pr-checks pr-number)
+          {:keys [failed pending]} (categorize-checks checks)]
+      (log-progress (format "Found %d failed, %d pending check(s)"
+                            (count failed) (count pending)))
+      (log-progress "Fetching failed job logs...")
+      (let [logs-by-job-id (if (pos? (count failed))
+                             (fetch-failed-logs-parallel failed {:detailed? detailed?})
+                             {})]
+        (when (seq logs-by-job-id)
+          (log-success "Retrieved logs"))
+        (log-progress (str "Generating report" (when detailed? " (detailed mode)") "..."))
+        (println)
+        (generate-report pr-number info checks logs-by-job-id
+                         {:detailed? detailed?
+                          :progress-log *progress-log*})
+        (log-success "Done!")))))
+
+(defn- run-commit-report!
+  "Generate report for a commit SHA (with optional branch name for display)."
+  [sha branch detailed?]
+  (log-progress (format "Fetching check runs for %s..." (subs sha 0 (min 12 (count sha)))))
+  (let [checks (commit-check-runs sha)]
+    (when-not checks
+      (binding [*out* *err*]
+        (println (format "Error: Could not fetch checks for %s" sha)))
+      (System/exit 1))
+    (let [{:keys [failed pending]} (categorize-checks checks)]
+      (log-progress (format "Found %d failed, %d pending check(s)"
+                            (count failed) (count pending)))
+      (log-progress "Fetching failed job logs...")
+      (let [logs-by-job-id (if (pos? (count failed))
+                             (fetch-failed-logs-parallel failed {:detailed? detailed?})
+                             {})]
+        (when (seq logs-by-job-id)
+          (log-success "Retrieved logs"))
+        (log-progress (str "Generating report" (when detailed? " (detailed mode)") "..."))
+        (println)
+        (generate-report nil nil checks logs-by-job-id
+                         {:detailed? detailed?
+                          :progress-log *progress-log*
+                          :branch branch
+                          :sha sha})
+        (log-success "Done!")))))
 
 (defn generate-report! [{:keys [arguments options]}]
   (binding [*progress-log* (atom [])]
     (let [detailed? (:detailed options)
-          pr-number (if (empty? arguments)
-                      ;; No args - try to get PR for current branch
-                      (do
-                        (log-progress "No PR specified, checking current branch...")
-                        (if-let [pr (get-current-branch-pr)]
-                          (do (log-success (format "Found PR #%s for current branch" pr))
-                              pr)
-                          (do
-                            (binding [*out* *err*]
-                              (println "Error: No PR found for current branch")
-                              (println "Usage: mage ci-report [--detailed] <pr-number or url>"))
-                            (System/exit 1))))
-                      ;; Parse the provided argument
-                      (parse-pr-arg (first arguments)))]
-      (log-progress (format "Fetching PR #%s info..." pr-number))
-
-      (let [pr-info (pr-info pr-number)]
-        (when-not pr-info
-          (binding [*out* *err*]
-            (println (format "Error: Could not fetch PR #%s" pr-number)))
-          (System/exit 1))
-
-        (log-success (format "Found PR on branch: %s" (:headRefName pr-info)))
-        (log-progress "Checking PR status...")
-
-        (let [checks (pr-checks pr-number)
-              {:keys [failed pending]} (categorize-checks checks)]
-
-          (log-progress (format "Found %d failed, %d pending check(s)"
-                                (count failed) (count pending)))
-
-          ;; Fetch logs for failed checks
-          (log-progress "Fetching failed job logs...")
-          (let [logs-by-job-id (if (pos? (count failed))
-                                 (fetch-failed-logs-parallel failed {:detailed? detailed?})
-                                 {})]
-            (when (seq logs-by-job-id)
-              (log-success "Retrieved logs"))
-
-            (log-progress (str "Generating report" (when detailed? " (detailed mode)") "..."))
-            (println)
-            (generate-report pr-number pr-info checks logs-by-job-id
-                             {:detailed? detailed?
-                              :progress-log *progress-log*})
-            (log-success "Done!")))))))
+          {:keys [type value]} (if (empty? arguments)
+                                 ;; No args: try PR first, fall back to branch
+                                 (do
+                                   (log-progress "No argument specified, checking current branch...")
+                                   (if-let [pr (get-current-branch-pr)]
+                                     (do (log-success (format "Found PR #%s for current branch" pr))
+                                         {:type :pr :value pr})
+                                     ;; No PR — use current branch name
+                                     (let [branch (sh "git" "rev-parse" "--abbrev-ref" "HEAD")]
+                                       (if branch
+                                         (do (log-progress (format "No PR found, using branch: %s" branch))
+                                             {:type :branch :value branch})
+                                         (do
+                                           (binding [*out* *err*]
+                                             (println "Error: No PR found and could not determine current branch")
+                                             (println "Usage: mage ci-report [--detailed] <pr-number|branch|sha>"))
+                                           (System/exit 1))))))
+                                 ;; Explicit argument
+                                 (classify-arg (first arguments)))]
+      (case type
+        :pr     (run-pr-report! value detailed?)
+        :branch (do
+                  (log-progress (format "Resolving branch '%s' to latest CI commit..." value))
+                  (let [sha (resolve-branch-head value)]
+                    (if sha
+                      (do (log-success (format "Resolved to SHA: %s" (subs sha 0 (min 12 (count sha)))))
+                          (run-commit-report! sha value detailed?))
+                      (do (binding [*out* *err*]
+                            (println (format "Error: No CI runs found for branch '%s'" value)))
+                          (System/exit 1)))))
+        :sha    (run-commit-report! value nil detailed?)))))

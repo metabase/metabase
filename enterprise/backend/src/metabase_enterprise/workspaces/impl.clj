@@ -10,9 +10,9 @@
    [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.api.common :as api]
    [metabase.driver.sql :as driver.sql]
-   [metabase.driver.sql.util :as sql.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (defn- query-ungranted-external-inputs
@@ -147,18 +147,6 @@
     table-id         (assoc table-id replacement)
     in-default-schema? (assoc [db-id nil table] replacement)))
 
-(defn- quote-name [driver s] (when s (sql.util/quote-name driver :table s)))
-
-(defn- quote-default-schema
-  "Return the quoted default schema for a database.
-   Pre-quotes the name because it will be spliced into SQL for unqualified references
-   (e.g. `orders` → `\"public\".\"orders\"` or `test-data`.`orders`).
-   These names don't appear in the original SQL, so macaw won't quote them for us."
-  [{:keys [engine details]}]
-  (quote-name engine (or (driver.sql/default-schema engine)
-                         ;; For MySQL and similar, use database name from connection details
-                         ((some-fn :dbname :db) details))))
-
 (defn- build-remapping
   "Build table remapping from the analyzed input and output tables.
 
@@ -202,7 +190,6 @@
                                        (or (driver.sql/default-schema engine)
                                            ((some-fn :dbname :db) details)))
                                      databases)
-        db-id->quoted    (u/index-by :id quote-default-schema databases)
         fallback-map     (merge
                           (table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
                           (table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))
@@ -229,13 +216,14 @@
         ;; When the table already has an explicit schema, Macaw will preserve it as-is.
         input-map        (reduce
                           (fn [m {:keys [db_id schema table table_id]}]
-                            (let [quoted-schema (db-id->quoted db_id)]
+                            (let [default-schema (db-id->default db_id)]
                               ;; Only add a mapping for unqualified references (nil schema).
                               ;; When the table already has an explicit schema, Macaw preserves it.
+                              ;; Use unquoted schema here; remap-sql-source handles quoting for SQL.
                               (cond-> m
-                                (and (nil? schema) (some? quoted-schema))
+                                (and (nil? schema) (some? default-schema))
                                 (assoc [db_id nil table] {:db-id  db_id
-                                                          :schema quoted-schema
+                                                          :schema default-schema
                                                           :table  table
                                                           :id     table_id}))))
                           {}
@@ -579,16 +567,17 @@
   (when-not (t2/exists? :model/WorkspaceOutputExternal :workspace_id workspace-id :graph_version [:>= graph-version])
     (let [external-tx-ids (extract-external-transform-ids entities)]
       (when (seq external-tx-ids)
+        ;; There are 4N + 3 queries for N transforms, we may want to optimize...
+        ;;    1 exists
+        ;;  + 1 select
+        ;;  + N × 2 upsert-transform-target-table! (2 queries each)
+        ;;  + 1 batch insert
+        ;; Worst case 8N + 3 on concurrent upsert conflicts.
         (let [transforms (t2/select [:model/Transform :id :target] :id [:in external-tx-ids])
               rows       (for [{tx-id :id, {:keys [database schema name]} :target} transforms]
                            (let [isolated-table    (ws.u/isolated-table-name schema name)
-                                 ;; TODO (Chris 2026-01-26) -- 2N + 1 is really not great here...
-                                 global-table-id   (t2/select-one-fn :id [:model/Table :id]
-                                                                     :db_id database :schema schema :name name)
-                                 isolated-table-id (t2/select-one-fn :id [:model/Table :id]
-                                                                     :db_id database
-                                                                     :schema isolated-schema
-                                                                     :name isolated-table)]
+                                 global-table-id   (table/upsert-transform-target-table! database schema name)
+                                 isolated-table-id (table/upsert-transform-target-table! database isolated-schema isolated-table)]
                              {:workspace_id      workspace-id
                               :transform_id      tx-id
                               :graph_version     graph-version

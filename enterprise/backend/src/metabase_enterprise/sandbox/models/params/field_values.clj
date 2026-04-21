@@ -22,9 +22,10 @@
   "Find the GTAP for current user that apply to table `table-id`."
   [table-id]
   (let [group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id api/*current-user-id*)
-        sandboxes (t2/select :model/Sandbox
-                             :group_id [:in group-ids]
-                             :table_id table-id)]
+        sandboxes (when (seq group-ids)
+                    (t2/select :model/Sandbox
+                               :group_id [:in group-ids]
+                               :table_id table-id))]
     (when sandboxes
       (sandboxing/assert-one-sandbox-per-table sandboxes)
       ;; there should be only one gtap per table and we only need one table here

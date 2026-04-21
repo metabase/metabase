@@ -1361,3 +1361,57 @@
               (-> (add-alias-info query)
                   lib/aggregations
                   first))))))
+
+(deftest ^:parallel inherited-temporal-unit-mismatch-in-nested-model-test
+  (testing "Breakout on a joined DateTime column in a nested model gets a ::desired-alias even when
+            :inherited-temporal-unit differs between field ref and returned column (#70231)"
+    (let [mp (lib.tu/mock-metadata-provider
+              meta/metadata-provider
+              ;; Model 1: orders joined with products, producing "Products__CREATED_AT"
+              {:cards [{:id            1
+                        :dataset-query (-> (lib/query meta/metadata-provider
+                                                      (lib.metadata/table meta/metadata-provider (meta/id :orders)))
+                                           (lib/join (lib/join-clause
+                                                      (lib.metadata/table meta/metadata-provider (meta/id :products))
+                                                      [(lib/= (lib.metadata/field meta/metadata-provider (meta/id :orders :product-id))
+                                                              (lib.metadata/field meta/metadata-provider (meta/id :products :id)))]))
+                                           lib/->legacy-MBQL)
+                        :database-id   (meta/id)
+                        :name          "Orders+Products"
+                        :type          :model}]})
+          ;; Model 2: queries model 1 with a breakout on Products__CREATED_AT bucketed by :day,
+          ;; plus an aggregation.
+          model-2-query (as-> (lib/query mp (lib.metadata/card mp 1)) $q
+                          (lib/breakout $q (-> (m/find-first (comp #{"Products__CREATED_AT"} :lib/source-column-alias)
+                                                             (lib/breakoutable-columns $q))
+                                               (lib/with-temporal-bucket :day)))
+                          (lib/aggregate $q (lib/count)))
+          ;; Inject stale :inherited-temporal-unit into the breakout field ref, simulating a card
+          ;; saved when the source column had :minute granularity.
+          ;; Legacy field refs are [:field name-or-id opts-map].
+          model-2-query (lib/update-query-stage
+                         model-2-query -1
+                         assoc-in [:breakouts 0 1 :inherited-temporal-unit] :minute)
+          mp (lib.tu/mock-metadata-provider
+              mp
+              {:cards [{:id            2
+                        :dataset-query model-2-query
+                        :database-id   (meta/id)
+                        :name          "Orders+Products Summary"
+                        :type          :model}]})
+          ;; Top-level query on model 2 — flattens stages and triggers the mismatch
+          query (lib/query mp (lib.metadata/card mp 2))]
+      (qp.store/with-metadata-provider mp
+        (driver/with-driver :h2
+          (let [with-aliases (-> query qp.preprocess/preprocess add/add-alias-info)
+                ;; The breakout lives in the inner flattened stage (from model 2)
+                breakout-stage (->> (:stages with-aliases)
+                                    (m/find-first :breakout))
+                created-at-brk (->> (:breakout breakout-stage)
+                                    (m/find-first (fn [[_tag _opts col-ref]]
+                                                    (and (string? col-ref)
+                                                         (str/includes? col-ref "CREATED_AT")))))]
+            (testing "breakout on joined CREATED_AT has non-nil ::add/desired-alias"
+              ;; Before the fix, ::add/desired-alias was nil because lib.equality/= failed
+              ;; due to :inherited-temporal-unit mismatch (:minute vs :day).
+              (is (some? (::add/desired-alias (second created-at-brk)))))))))))

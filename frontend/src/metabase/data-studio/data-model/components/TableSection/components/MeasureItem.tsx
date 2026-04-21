@@ -1,7 +1,6 @@
 import { Link } from "react-router";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { Card, Flex, Icon, Stack, Text } from "metabase/ui";
+import { Card, Ellipsified, Flex, Icon, Stack, Text } from "metabase/ui";
 import type { Measure } from "metabase-types/api";
 
 import S from "./MeasureItem.module.css";
@@ -25,7 +24,7 @@ export function MeasureItem({ measure, href }: MeasureItemProps) {
     >
       <Stack gap="xs">
         <Flex align="center" gap="sm">
-          <Icon name="sum" c="brand" />
+          <Icon name="ruler" c="brand" />
           <Ellipsified lines={1} tooltip={measure.name}>
             <Text fw="bold">{measure.name}</Text>
           </Ellipsified>

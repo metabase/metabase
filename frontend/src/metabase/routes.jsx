@@ -36,13 +36,15 @@ import { DocumentPageOuter } from "metabase/documents/routes";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 import { HomePage } from "metabase/home/components/HomePage";
 import { Onboarding } from "metabase/home/components/Onboarding";
-import { trackPageView } from "metabase/lib/analytics";
+import { MetabotQueryBuilder } from "metabase/metabot/components/MetabotQueryBuilder";
+import { getMetabotRoutes } from "metabase/metabot/routes";
+import { getMetricRoutes } from "metabase/metrics/routes";
+import { MetricsViewerPage } from "metabase/metrics-viewer";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_LANDING_PAGE,
-  PLUGIN_METABOT,
   PLUGIN_TABLE_EDITING,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
@@ -66,6 +68,7 @@ import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
 
+import { trackPageView } from "./analytics";
 import {
   CanAccessDataModel,
   CanAccessDataStudio,
@@ -126,11 +129,18 @@ export const getRoutes = (store) => {
           <Route path="logout" component={Logout} />
           <Route path="forgot_password" component={ForgotPassword} />
           <Route path="reset_password/:token" component={ResetPassword} />
+          {/* FE routes can sometimes be prioritized over BE
+              reloading will correctly pick the SSO flow back up from the BE  */}
+          <Route path="sso" onEnter={() => window.location.reload()} />
+          <Route
+            path="sso/:provider"
+            onEnter={() => window.location.reload()}
+          />
         </Route>
 
         {/* MAIN */}
         <Route component={IsAuthenticated}>
-          {PLUGIN_METABOT.getMetabotRoutes()}
+          {getMetabotRoutes()}
 
           {/* The global all hands routes, things in here are for all the folks */}
           <Route
@@ -262,8 +272,8 @@ export const getRoutes = (store) => {
               })}
             />
             <IndexRoute component={QueryBuilder} />
-            {PLUGIN_METABOT.getMetabotQueryBuilderRoute()}
             <Route path="notebook" component={QueryBuilder} />
+            <Route path="ask" component={MetabotQueryBuilder} />
             <Route path=":slug" component={QueryBuilder} />
             <Route path=":slug/notebook" component={QueryBuilder} />
             <Route path=":slug/metabot" component={QueryBuilder} />
@@ -287,15 +297,7 @@ export const getRoutes = (store) => {
             <Route path="metabot" component={QueryBuilder} />
           </Route>
 
-          {/* METRICS V2 */}
-          <Route path="/metric">
-            <IndexRoute component={QueryBuilder} />
-            <Route path="notebook" component={QueryBuilder} />
-            <Route path="query" component={QueryBuilder} />
-            <Route path=":slug" component={QueryBuilder} />
-            <Route path=":slug/notebook" component={QueryBuilder} />
-            <Route path=":slug/query" component={QueryBuilder} />
-          </Route>
+          {getMetricRoutes()}
 
           <Route path="browse">
             <IndexRedirect to="/browse/models" />
@@ -317,6 +319,8 @@ export const getRoutes = (store) => {
               to="databases/:dbId/schema/:schemaName"
             />
           </Route>
+
+          <Route path="explore" component={MetricsViewerPage} />
 
           <Route path="table">
             <Route path=":tableId/detail/:rowId" component={TableDetailPage} />

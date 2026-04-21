@@ -1,0 +1,9 @@
+.browseHeaderIconContainer {
+  display: flex;
+  align-items: center;
+  color: var(--mb-color-text-secondary);
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
+}

@@ -35,18 +35,19 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [mapv run! some empty? not-empty get-in #?(:clj for)]]))
 
 (defn- join? [x]
   (= (lib.dispatch/dispatch-value x) :mbql/join))
 
-(def ^:private Joinable
+(mr/def ::joinable
   [:or ::lib.schema.metadata/table ::lib.schema.metadata/card])
 
-(def ^:private JoinOrJoinable
+(mr/def ::join-or-joinable
   [:or
    [:ref ::lib.schema.join/join]
-   Joinable])
+   ::joinable])
 
 (declare with-join-alias)
 
@@ -115,7 +116,7 @@
   If `old-alias` is `nil`, updates the RHS of all 'standard' conditions (binary filter clauses with the operator from
   [[join-condition-operators]], the LHS expression with columns from [[join-condition-lhs-columns]], the RHS expression
   with columns from [[join-condition-rhs-columns]]). This currently doesn't handle more complex filter clauses that
-  were created without the 'normal' MLv2 functions used by the frontend; we can add this in the future if we need it."
+  were created without the 'normal' Lib functions used by the frontend; we can add this in the future if we need it."
   [join      :- ::lib.join.util/partial-join
    old-alias :- [:maybe ::lib.schema.join/alias]
    new-alias :- [:maybe ::lib.schema.join/alias]]
@@ -222,16 +223,20 @@
           ;; Every stage from the input `stage-number` down to 0.
           (range stage-index -1 -1))))
 
-(defmethod lib.metadata.calculation/display-name-method :mbql/join
-  [query _stage-number {[{:keys [source-table source-card], :as _first-stage}] :stages, :as _join} _style]
+(defn- stage-source-display-name
+  [query {:keys [source-table source-card], :as _stage}]
   (or
    (when source-table
      ((some-fn :display-name :name) (lib.metadata/table query source-table)))
    (when source-card
      (if-let [card-metadata (lib.metadata/card query source-card)]
        (lib.metadata.calculation/display-name query 0 card-metadata)
-       (lib.card/fallback-display-name source-card)))
-   (i18n/tru "Native Query")))
+       (lib.card/fallback-display-name source-card)))))
+
+(defmethod lib.metadata.calculation/display-name-method :mbql/join
+  [query _stage-number {[first-stage] :stages, :as _join} _style]
+  (or (stage-source-display-name query first-stage)
+      (i18n/tru "Native Query")))
 
 (defmethod lib.metadata.calculation/display-info-method :mbql/join
   [query stage-number join]
@@ -558,13 +563,13 @@
                              (str joined-name " - " home-name))
                         joined-name
                         home-name
-                        "source")]
+                        "__mb_source")]
     join-alias))
 
 (defn- add-alias-to-join-refs [query stage-number form join-alias join-cols]
   (lib.util.match/replace-lite form
     (field :guard (and (lib.util/field-clause? field)
-                       (boolean (lib.equality/find-matching-column query stage-number field join-cols))))
+                       (lib.equality/find-matching-column query stage-number field join-cols)))
     (with-join-alias field join-alias)))
 
 (defn- add-alias-to-condition
@@ -624,9 +629,12 @@
                                        (when (and (lib.util/field-clause? lhs) (lib.util/field-clause? rhs))
                                          [lhs rhs]))))
                            (:conditions a-join))
-         home-col   (select-home-column home-cols cond-fields)]
+         home-col   (select-home-column home-cols cond-fields)
+         source-name (stage-source-display-name query stage)
+         taken-names (cond-> (into [] (keep :alias) (:joins stage))
+                       source-name (conj source-name))]
      (-> (calculate-join-alias query a-join home-col)
-         (generate-unique-name (keep :alias (:joins stage)))))))
+         (generate-unique-name taken-names)))))
 
 (mu/defn add-default-alias :- ::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one or that specifically requests a
@@ -714,7 +722,7 @@
   ([query]
    (available-join-strategies query -1))
 
-  ;; stage number is not currently used, but it is taken as a parameter for consistency with the rest of MLv2
+  ;; stage number is not currently used, but it is taken as a parameter for consistency with the rest of Lib
   ([query         :- ::lib.schema/query
     _stage-number :- :int]
    (into []
@@ -750,7 +758,7 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    a-join       :- [:or ::lib.join.util/partial-join Joinable]]
+    a-join       :- [:or ::lib.join.util/partial-join ::joinable]]
    (let [a-join              (join-clause a-join)
          suggested-conditions (when (empty? (join-conditions a-join))
                                 (suggested-join-conditions query stage-number (joined-thing query a-join)))
@@ -763,7 +771,7 @@
      (lib.util/update-query-stage query stage-number update :joins (fn [existing-joins]
                                                                      (conj (vec existing-joins) a-join))))))
 
-(mu/defn joined-thing :- [:maybe Joinable]
+(mu/defn joined-thing :- [:maybe ::joinable]
   "Return metadata about the origin of `a-join` using `metadata-providerable` as the source of information."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    a-join                :- ::lib.join.util/partial-join]
@@ -832,7 +840,7 @@
   If you are changing the LHS of a condition for an existing join, pass in that existing join as `join-or-joinable` so
   we can filter out the columns added by it (it doesn't make sense to present the columns added by a join as options
   for its own LHS) or added by later joins (joins can only depend on things from previous joins). Otherwise you can
-  either pass in `nil` or the [[Joinable]] (Table or Card metadata) we're joining against when building a new
+  either pass in `nil` or the [[::joinable]] (Table or Card metadata) we're joining against when building a new
   join. (Things other than joins are ignored, but this argument is flexible for consistency with the signature
   of [[join-condition-rhs-columns]].) See #32005 for more info.
 
@@ -850,7 +858,7 @@
 
   ([query                  :- ::lib.schema/query
     stage-number           :- :int
-    join-or-joinable       :- [:maybe JoinOrJoinable]
+    join-or-joinable       :- [:maybe ::join-or-joinable]
     lhs-expression-or-nil  :- [:maybe ::lib.schema.expression/expression]
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
     _rhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]]
@@ -897,7 +905,7 @@
 
   ([query                  :- ::lib.schema/query
     stage-number           :- :int
-    join-or-joinable       :- JoinOrJoinable
+    join-or-joinable       :- ::join-or-joinable
     ;; not yet used, hopefully we will use in the future when present for filtering incompatible columns out.
     _lhs-expression-or-nil :- [:maybe ::lib.schema.expression/expression]
     rhs-expression-or-nil  :- [:maybe ::lib.schema.expression/expression]]
@@ -944,16 +952,16 @@
                                       [::target ::lib.schema.metadata/column]]]]]
   "Find FK columns in `source` pointing at a column in `target`. Includes the target column under the `::target` key.
 
-  `source` and `target` are `::current-stage` and a [[Joinable]], in either order; `::current-stage` means use the
+  `source` and `target` are `::current-stage` and a [[::joinable]], in either order; `::current-stage` means use the
   stage in `query` at `stage-number`."
   [query        :- ::lib.schema/query
    stage-number :- :int
    source       :- [:or
                     [:= ::current-stage]
-                    Joinable]
+                    ::joinable]
    target       :- [:or
                     [:= ::current-stage]
-                    Joinable]]
+                    ::joinable]]
   (let [current-stage-cols (fn []
                              (let [opts {:include-implicitly-joinable?                 false
                                          :include-implicitly-joinable-for-source-card? false}]
@@ -1046,11 +1054,11 @@
 ;;; with [[metabase.lib.field/fieldable-columns]] and be less confusing
 (mu/defn joinable-columns :- ::lib.metadata.calculation/visible-columns
   "Return information about the fields that you can pass to [[with-join-fields]] when constructing a join against
-  something [[Joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
+  something [[::joinable]] (i.e., a Table or Card) or manipulating an existing join. When passing in a join, currently
   selected columns (those in the join's `:fields`) will include `:selected true` information."
   [query            :- ::lib.schema/query
    stage-number     :- :int
-   join-or-joinable :- JoinOrJoinable]
+   join-or-joinable :- ::join-or-joinable]
   (let [a-join   (when (join? join-or-joinable)
                    join-or-joinable)
         source (if a-join
@@ -1141,7 +1149,7 @@
   3. Otherwise use `Previous results`.
 
   This function needs to be usable while we are in the process of constructing a join in the context of a given stage,
-  but also needs to work for rendering existing joins. Pass a join in for existing joins, or something [[Joinable]]
+  but also needs to work for rendering existing joins. Pass a join in for existing joins, or something [[::joinable]]
   for ones we are currently building."
   ([query join-or-joinable]
    (join-lhs-display-name query join-or-joinable nil))
@@ -1151,7 +1159,7 @@
 
   ([query                           :- ::lib.schema/query
     stage-number                    :- :int
-    join-or-joinable                :- [:maybe JoinOrJoinable]
+    join-or-joinable                :- [:maybe ::join-or-joinable]
     condition-lhs-expression-or-nil :- [:maybe [:or ::lib.schema.metadata/column :mbql.clause/field]]]
    (or
     (join-lhs-display-name-from-condition-lhs query stage-number join-or-joinable condition-lhs-expression-or-nil)

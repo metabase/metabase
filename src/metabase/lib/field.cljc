@@ -427,11 +427,12 @@
     [:base-type
      :inherited-temporal-unit
      :lib/original-binning
-     :lib/original-effective-type])
-   {:lib/binning       :binning
-    :lib/temporal-unit :temporal-unit
-    :lib/ref-name                     :name
-    :lib/ref-display-name             :display-name}))
+     :lib/original-effective-type
+     :qp/native-sandbox-column.force-coercion-strategy])
+   {:lib/binning          :binning
+    :lib/temporal-unit    :temporal-unit
+    :lib/ref-name         :name
+    :lib/ref-display-name :display-name}))
 
 (def ^:private field-ref-propagated-keys-for-non-inherited-columns
   "Keys that should get copied into `:field` ref options from column metadata ONLY when the column is not inherited.
@@ -447,9 +448,9 @@
     ;; types -- they're required for field name refs.
     [:lib/transformation-added-base-type])
    {:lib/join-alias :join-alias
-    :fk-field-id                  :source-field
-    :fk-join-alias                :source-field-join-alias
-    :fk-field-name                :source-field-name}))
+    :fk-field-id    :source-field
+    :fk-join-alias  :source-field-join-alias
+    :fk-field-name  :source-field-name}))
 
 (defn- select-renamed-keys [m old->new]
   (-> m
@@ -609,7 +610,7 @@
                  "hidden in the UI.")))
 
 (mu/defn add-field :- ::lib.schema/query
-  "Adds a given field (`ColumnMetadata`, as returned from eg. [[visible-columns]]) to the fields returned by the query.
+  "Adds a given field (column metadata), as returned from eg. [[visible-columns]]) to the fields returned by the query.
   Exactly what this means depends on the source of the field:
   - Source table/card, previous stage of the query, custom expression, aggregation or breakout:
       - Add it to the `:fields` list
@@ -757,7 +758,7 @@
 
 (mu/defn infer-has-field-values :- ::field-values-search-info.has-field-values
   "Determine the value of `:has-field-values` we should return for column metadata for frontend consumption to power
-  filter search widgets, either when returned by the the REST API or in MLv2 with [[field-values-search-info]].
+  filter search widgets, either when returned by the the REST API or in Lib with [[field-values-search-info]].
 
   Note that this value is not necessarily the same as the value of `has_field_values` in the application database.
   `has_field_values` may be unset, in which case we will try to infer it. `:auto-list` is not currently understood by

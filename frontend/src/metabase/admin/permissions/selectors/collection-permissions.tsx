@@ -1,6 +1,5 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
-import type { ReactElement } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -16,14 +15,19 @@ import {
 } from "metabase/entities/collections";
 import { Groups } from "metabase/entities/groups";
 import { SnippetCollections } from "metabase/entities/snippet-collections";
+import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
+import type {
+  CollectionTreeItem,
+  ExpandedCollection,
+  State,
+} from "metabase/redux/store";
 import {
   getGroupNameLocalized,
   getGroupSortOrder,
   getSpecialGroupType,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
-import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
+} from "metabase/utils/groups";
+import { isNotNull } from "metabase/utils/types";
 import type {
   Collection,
   CollectionId,
@@ -31,15 +35,16 @@ import type {
   CollectionPermissions,
   Group as GroupType,
 } from "metabase-types/api";
-import type {
-  CollectionTreeItem,
-  ExpandedCollection,
-  State,
-} from "metabase-types/store";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { Messages } from "../constants/messages";
-import type { DataPermissionValue, SpecialGroupType } from "../types";
+import {
+  DataPermission,
+  DataPermissionType,
+  type DataPermissionValue,
+  type PermissionEditorType,
+  type SpecialGroupType,
+} from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";
 
@@ -235,54 +240,12 @@ const getCollectionDisabledTooltip = (
   }
 };
 
-type PermissionOption = {
-  label: string;
-  value: string;
-  icon: string;
-  iconColor: string;
-};
-
-type PermissionConfirmation = {
-  title: string;
-  message: string;
-  confirmButtonText: string;
-  cancelButtonText: string;
-};
-
-export type CollectionPermissionEditorType = null | {
-  title: string;
-  filterPlaceholder: string;
-  columns: [{ name: string }, { name: string }];
-  entities: {
-    id: number;
-    name: string;
-    icon?: ReactElement;
-    permissions: {
-      toggleLabel: string | null;
-      hasChildren: boolean;
-      isDisabled: boolean;
-      disabledTooltip: string | null;
-      value: string;
-      warning: string | null;
-      confirmations: (
-        newValue: DataPermissionValue,
-      ) => (PermissionConfirmation | undefined)[];
-      options: PermissionOption[];
-    }[];
-  }[];
-};
-
 export const getCollectionsPermissionEditor = createSelector(
   getCollectionsPermissions,
   getCollectionEntity,
   Groups.selectors.getList,
   getNamespace,
-  (
-    permissions,
-    collection,
-    groups,
-    namespace,
-  ): CollectionPermissionEditorType => {
+  (permissions, collection, groups, namespace): PermissionEditorType | null => {
     if (!permissions || collection == null) {
       return null;
     }
@@ -357,6 +320,8 @@ export const getCollectionsPermissionEditor = createSelector(
           ) : undefined,
           permissions: [
             {
+              permission: DataPermission.COLLECTIONS,
+              type: DataPermissionType.COLLECTIONS,
               toggleLabel,
               hasChildren,
               isDisabled,

@@ -2,7 +2,6 @@ import { c, t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
 import { DateTime } from "metabase/common/components/DateTime";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
@@ -12,8 +11,8 @@ import {
   TableColumn,
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
-import { getIcon } from "metabase/lib/icon";
-import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
+import { Ellipsified, FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
 import type { SortingOptions } from "metabase-types/api/sorting";
 
 import type {

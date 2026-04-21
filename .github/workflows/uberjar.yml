@@ -12,6 +12,8 @@ on:
     branches:
       - master
       - internal-tools
+      - ai-service-port
+      - metabot-mbql-improvements
     paths-ignore:
       # config files
       - ".**"
@@ -30,7 +32,7 @@ on:
 
 jobs:
   check-existing-artifacts:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       ee_exists: ${{ steps.check-ee.outcome == 'success' }}
@@ -83,7 +85,7 @@ jobs:
     if: |
       !cancelled() &&
       contains(github.ref, 'release-x')
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
     outputs:
       java_version: ${{ fromJson(steps.dependencies.outputs.result).java_version }}
@@ -117,7 +119,7 @@ jobs:
       [check-existing-artifacts, get-build-requirements]
     if: always() && !cancelled() && needs.check-existing-artifacts.outputs.should_build == 'true' && (needs.get-build-requirements.result == 'success' || needs.get-build-requirements.result == 'skipped')
     name: Build MB ${{ matrix.edition }}
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
     strategy:
       matrix:
@@ -147,7 +149,7 @@ jobs:
           edition: ${{ matrix.edition }}
 
   check-jar-health:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     name: Is ${{ matrix.edition }} (java ${{ matrix.java-version }}) healthy?
     needs: [build, check-existing-artifacts]
     # We only care about the explicit JAR health check on push to `master` and the `release-` branches.

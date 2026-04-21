@@ -114,7 +114,7 @@ describe("EE", () => {
 
             cy.log("set up the second subscription");
             cy.button("Set up a new schedule").click();
-            cy.findByText("Hourly").click();
+            cy.findByDisplayValue("Hourly").click();
           });
 
           H.popover().findByRole("option", { name: "Daily" }).click();

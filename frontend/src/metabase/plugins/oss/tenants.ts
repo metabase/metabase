@@ -1,4 +1,5 @@
 import type React from "react";
+import type { SetStateAction } from "react";
 
 import type {
   OmniPickerCollectionItem,
@@ -10,11 +11,19 @@ import type {
   CollectionId,
   CollectionItemModel,
   CollectionNamespace,
+  DataSegregationStrategy,
   Group,
+  Tenant,
   User,
 } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
+
+export type CreatedTenantData = {
+  name: string;
+  slug: string;
+  dataIsolationFieldValue: string;
+};
 
 export type TenantCollectionPathItem = {
   id: CollectionId;
@@ -26,10 +35,35 @@ export type TenantCollectionPathItem = {
   is_tenant_dashboard?: boolean;
 };
 
+export type UseListActiveTenantsResult = {
+  data: Tenant[] | undefined;
+  isLoading: boolean;
+  error: unknown;
+};
+
 const getDefaultPluginTenants = () => ({
   isEnabled: false,
+  useListActiveTenants: (): UseListActiveTenantsResult => ({
+    data: undefined,
+    isLoading: false,
+    error: undefined,
+  }),
   userStrategyRoute: null as React.ReactElement | null,
   tenantsRoutes: null as React.ReactElement | null,
+  CreateTenantsOnboardingStep: PluginPlaceholder as React.ComponentType<{
+    onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+    tenants: CreatedTenantData[];
+    onTenantsChange: (value: SetStateAction<CreatedTenantData[]>) => void;
+    selectedFieldIds?: number[];
+    strategy?: DataSegregationStrategy | null;
+    rlsColumnName?: string | null;
+  }>,
+  TenantsSummaryOnboardingStep: PluginPlaceholder as React.ComponentType<{
+    tenants: CreatedTenantData[];
+    strategy?: DataSegregationStrategy | null;
+    rlsTableNames?: string[];
+    rlsColumnName?: string | null;
+  }>,
   EditUserStrategySettingsButton: PluginPlaceholder,
   FormTenantWidget: (_props: any) => null as React.ReactElement | null,
   TenantDisplayName: (_props: any) => null as React.ReactElement | null,
@@ -84,6 +118,7 @@ const getDefaultPluginTenants = () => ({
 
 export const PLUGIN_TENANTS: {
   isEnabled: boolean;
+  useListActiveTenants: () => UseListActiveTenantsResult;
   userStrategyRoute: React.ReactElement | null;
   useTenantMainNavbarData: () => {
     canAccessTenantSpecificCollections: boolean;
@@ -92,6 +127,20 @@ export const PLUGIN_TENANTS: {
     sharedTenantCollections: Collection[] | undefined;
   };
   tenantsRoutes: React.ReactElement | null;
+  CreateTenantsOnboardingStep: React.ComponentType<{
+    onTenantsCreated?: (tenants: CreatedTenantData[]) => void;
+    tenants: CreatedTenantData[];
+    onTenantsChange: (value: SetStateAction<CreatedTenantData[]>) => void;
+    selectedFieldIds?: number[];
+    strategy?: DataSegregationStrategy | null;
+    rlsColumnName?: string | null;
+  }>;
+  TenantsSummaryOnboardingStep: React.ComponentType<{
+    tenants: CreatedTenantData[];
+    strategy?: DataSegregationStrategy | null;
+    rlsTableNames?: string[];
+    rlsColumnName?: string | null;
+  }>;
   EditUserStrategySettingsButton: (props: {
     page: "people" | "tenants";
   }) => React.ReactElement | null;

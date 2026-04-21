@@ -2,62 +2,102 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.models.transforms.transform-run :as transform-run]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.models.transform-run :as transform-run]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest transform-stats-rolling-to-yesterday-test
-  (testing "completed runs appear in rolling stats, then move to yesterday's stats when end_time is backdated"
-    (mt/with-temp [:model/Transform {native-id :id} {}
-                   :model/Transform {python-id :id} {:source {:type            "python"
-                                                              :source-database (mt/id)}
-                                                     :target {:type     "table"
-                                                              :name     (str "test_python_" (random-uuid))
-                                                              :database (mt/id)}}]
-      (let [stats-before          (premium-features/transform-stats)
-            native-before         (:transform-native-runs stats-before)
-            rolling-native-before (:transform-rolling-native-runs stats-before)
-            python-before         (:transform-python-runs stats-before)
-            rolling-python-before (:transform-rolling-python-runs stats-before)
-            yesterday-utc         (t/minus (t/offset-date-time (t/zone-offset "+00")) (t/days 1))]
+(deftest transform-metered-as-test
+  (mt/with-premium-features #{:transforms-basic :writable-connection}
+    (is (= "transform-advanced"
+           (premium-features/transform-metered-as :native)
+           (premium-features/transform-metered-as :mbql))))
 
-        (testing "native"
-          (let [{run-id :id} (transform-run/start-run! native-id {:run_method "manual"})]
-            (transform-run/succeed-started-run! run-id)
+  (mt/with-premium-features #{:hosting :transforms-basic}
+    (is (= "transform-basic"
+           (premium-features/transform-metered-as :native)
+           (premium-features/transform-metered-as :mbql))))
 
-            (testing "completed run appears in rolling stats only"
-              (let [stats (premium-features/transform-stats)]
-                (is (= (inc rolling-native-before) (:transform-rolling-native-runs stats)))
-                (is (= native-before               (:transform-native-runs stats)))))
+  (mt/with-premium-features #{:transforms-python}
+    (is (= "transform-advanced"
+           (premium-features/transform-metered-as :python))))
 
-            (testing "a run for yesterday is visible under yesterday's stats only"
-              (t2/update! :model/TransformRun :id run-id {:end_time yesterday-utc})
-              (let [stats (premium-features/transform-stats)]
-                (is (= rolling-native-before (:transform-rolling-native-runs stats)))
-                (is (= (inc native-before)   (:transform-native-runs stats)))))))
+  (mt/with-premium-features #{}
+    (is (= nil
+           (premium-features/transform-metered-as :native)
+           (premium-features/transform-metered-as :mbql))))
 
-        (testing "python stats not modified by native runs"
-          (let [stats (premium-features/transform-stats)]
-            (is (= python-before (:transform-python-runs stats)))
-            (is (= rolling-python-before (:transform-rolling-python-runs stats)))))
+  (mt/with-premium-features #{:hosting :transforms-basic :transforms-python :writable-connection}
+    (is (= nil
+           (premium-features/transform-metered-as nil)
+           (premium-features/transform-metered-as :something-else)))))
 
-        (testing "python"
-          (let [{run-id :id} (transform-run/start-run! python-id {:run_method "manual"})]
-            (transform-run/succeed-started-run! run-id)
+(deftest transform-stats-aggregation-test
+  (testing "transform-stats buckets runs by the :metered_as captured at start-run! time"
+    (let [frozen-today     (t/offset-date-time 2037 6 15 12 0 0 0 (t/zone-offset "+00"))
+          frozen-yesterday (t/minus frozen-today (t/days 1))
+          mp               (mt/metadata-provider)]
+      (with-redefs [t/offset-date-time (constantly frozen-today)]
+        (mt/with-model-cleanup [:model/TransformRun]
+          (mt/with-temp [:model/Transform {mbql-id :id}
+                         {:source {:type  "query"
+                                   :query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                          :target {:type     "table"
+                                   :name     (str "test_mbql_" (random-uuid))
+                                   :database (mt/id)}}
+                         :model/Transform {python-id :id}
+                         {:source {:type            "python"
+                                   :source-database (mt/id)}
+                          :target {:type     "table"
+                                   :name     (str "test_python_" (random-uuid))
+                                   :database (mt/id)}}]
+            (let [run! (fn [transform-id end-time]
+                         (let [{id :id} (transform-run/start-run! transform-id {:run_method "manual"})]
+                           (transform-run/succeed-started-run! id)
+                           (t2/update! :model/TransformRun :id id {:end_time end-time})))]
 
-            (testing "completed run appears in rolling stats only"
-              (let [stats (premium-features/transform-stats)]
-                (is (= (inc rolling-python-before)  (:transform-rolling-python-runs stats)))
-                (is (= python-before                (:transform-python-runs stats)))))
+              (testing "with no premium features, mbql runs are not metered"
+                (mt/with-premium-features #{}
+                  (run! mbql-id frozen-yesterday)
+                  (run! mbql-id frozen-today))
+                (is (= {:transform-basic-runs            0
+                        :transform-advanced-runs         0
+                        :transform-usage-date            "2037-06-14"
+                        :transform-rolling-basic-runs    0
+                        :transform-rolling-advanced-runs 0
+                        :transform-rolling-usage-date    "2037-06-15"}
+                       (premium-features/transform-stats))))
 
-            (testing "a run for yesterday is visible under yesterday's state only"
-              (t2/update! :model/TransformRun :id run-id {:end_time yesterday-utc})
-              (let [stats (premium-features/transform-stats)]
-                (is (= rolling-python-before (:transform-rolling-python-runs stats)))
-                (is (= (inc python-before)   (:transform-python-runs stats)))))))))))
+              (testing "with :hosting :transforms-basic, mbql runs meter as basic"
+                (mt/with-premium-features #{:hosting :transforms-basic}
+                  (run! mbql-id frozen-yesterday)
+                  (run! mbql-id frozen-today))
+                (is (= {:transform-basic-runs            1
+                        :transform-advanced-runs         0
+                        :transform-usage-date            "2037-06-14"
+                        :transform-rolling-basic-runs    1
+                        :transform-rolling-advanced-runs 0
+                        :transform-rolling-usage-date    "2037-06-15"}
+                       (premium-features/transform-stats))))
+
+              (testing "with :hosting :transforms-basic :writable-connection :transforms-python,
+                      both mbql and python runs meter as advanced"
+                (mt/with-premium-features #{:hosting :transforms-basic :writable-connection :transforms-python}
+                  (run! mbql-id   frozen-yesterday)
+                  (run! python-id frozen-yesterday)
+                  (run! mbql-id   frozen-today)
+                  (run! python-id frozen-today))
+                (is (= {:transform-basic-runs            1
+                        :transform-advanced-runs         2
+                        :transform-usage-date            "2037-06-14"
+                        :transform-rolling-basic-runs    1
+                        :transform-rolling-advanced-runs 2
+                        :transform-rolling-usage-date    "2037-06-15"}
+                       (premium-features/transform-stats)))))))))))

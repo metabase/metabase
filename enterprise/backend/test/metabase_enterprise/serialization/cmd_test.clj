@@ -1,7 +1,6 @@
 (ns metabase-enterprise.serialization.cmd-test
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
@@ -34,7 +33,7 @@
         (snowplow-test/with-fake-snowplow-collector
           (ts/with-random-dump-dir [dump-dir "serdesv2-"]
             (let [coll (ts/create! :model/Collection :name "coll")
-                  card (ts/create! :model/Card :name "card" :collection_id (:id coll))]
+                  _card (ts/create! :model/Card :name "card" :collection_id (:id coll))]
               (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")
               (testing "Snowplow export event was sent"
                 (is (=? {"event"           "serialization"
@@ -66,8 +65,8 @@
                          "error_message" nil}
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))
 
-              (with-redefs [v2.storage/store-settings! (fn [_opts _settings]
-                                                         (throw (Exception. "Cannot load settings")))]
+              (with-redefs [v2.storage/store! (fn [_stream _backend]
+                                                (throw (Exception. "Cannot load settings")))]
                 (is (thrown? Exception
                              (cmd/export dump-dir "--collection" (str (:id coll)) "--no-data-model")))
                 (testing "Snowplow export event about error was sent"
@@ -91,9 +90,9 @@
               (let [ingest-file @#'v2.ingest/ingest-file]
                 ;; overriding ingest-file is weird, but ingest-one is a protocol function and with-redefs won't
                 ;; override that reliably
-                (with-redefs [v2.ingest/ingest-file (fn [file]
+                (with-redefs [v2.ingest/ingest-file (fn [^java.io.File file]
                                                       (cond-> (ingest-file file)
-                                                        (str/includes? (.getName file) (:entity_id card))
+                                                        (= (.getName file) "card.yaml")
                                                         (assoc :collection_id "DoesNotExist")))]
                   (is (thrown? Exception
                                (cmd/import dump-dir)))

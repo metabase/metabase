@@ -82,13 +82,13 @@ export function seriesSetting({
     display: {
       widget: "segmentedControl",
       title: t`Display type`,
-      props: {
+      getProps: () => ({
         options: [
           { value: "line", icon: "line" },
           { value: "area", icon: "area" },
           { value: "bar", icon: "bar" },
         ],
-      },
+      }),
       getHidden: (single, settings, _extra) =>
         !["line", "area", "bar", "combo"].includes(single.card.display ?? "") ||
         settings["stackable.stack_type"] != null,
@@ -119,13 +119,13 @@ export function seriesSetting({
     "line.interpolate": {
       title: t`Line shape`,
       widget: "segmentedControl",
-      props: {
+      getProps: () => ({
         options: [
           { icon: "straight", value: "linear" },
           { icon: "curved", value: "cardinal" },
           { icon: "stepped", value: "step-after" },
         ],
-      },
+      }),
       getHidden: (_single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       getDefault: (_single, _settings, extra) => {
@@ -137,13 +137,13 @@ export function seriesSetting({
     "line.style": {
       title: t`Line style`,
       widget: "segmentedControl",
-      props: {
+      getProps: () => ({
         options: [
           { icon: "line_style_solid", value: "solid" },
           { icon: "line_style_dashed", value: "dashed" },
           { icon: "line_style_dotted", value: "dotted" },
         ],
-      },
+      }),
       getDefault: (_series, settings) => getSeriesDefaultLineStyle(settings),
       getHidden: (_single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
@@ -152,13 +152,13 @@ export function seriesSetting({
     "line.size": {
       title: t`Line size`,
       widget: "segmentedControl",
-      props: {
+      getProps: () => ({
         options: [
           { name: "S", value: "S" },
           { name: "M", value: "M" },
           { name: "L", value: "L" },
         ],
-      },
+      }),
       getDefault: (_series, settings) => getSeriesDefaultLineSize(settings),
       getHidden: (_single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
@@ -167,13 +167,13 @@ export function seriesSetting({
     "line.marker_enabled": {
       title: t`Show dots on lines`,
       widget: "segmentedControl",
-      props: {
+      getProps: () => ({
         options: [
           { name: t`Auto`, value: null },
           { name: t`On`, value: true },
           { name: t`Off`, value: false },
         ],
-      },
+      }),
       getHidden: (_single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       getDefault: (_single, _settings, extra) => {
@@ -185,13 +185,13 @@ export function seriesSetting({
     "line.missing": {
       title: t`Replace missing values with`,
       widget: "select",
-      props: {
+      getProps: () => ({
         options: [
           { name: t`Zero`, value: "zero" },
           { name: t`Nothing`, value: "none" },
           { name: t`Linear Interpolated`, value: "interpolate" },
         ],
-      },
+      }),
       getHidden: (_single, settings) =>
         !LINE_DISPLAY_TYPES.has(settings["display"]),
       getDefault: (_single, _settings, extra) => {
@@ -203,15 +203,18 @@ export function seriesSetting({
     axis: {
       title: t`Y-axis position`,
       widget: "segmentedControl",
-      default: null,
-      getHidden: (single) => single.card.display === "row",
-      props: {
+      getHidden: (single, _seriesSettings, extra) =>
+        single.card.display === "row" ||
+        extra?.settings?.["graph.split_panels"] === true,
+      getDefault: (_single, _seriesSettings, extra) =>
+        extra?.settings?.["graph.split_panels"] === true ? "left" : null,
+      getProps: () => ({
         options: [
           { name: t`Auto`, value: null },
           { name: t`Left`, value: "left" },
           { name: t`Right`, value: "right" },
         ],
-      },
+      }),
       readDependencies: ["display"],
     },
     show_series_trendline: {
@@ -238,9 +241,9 @@ export function seriesSetting({
 
         return Boolean(
           series.length <= 1 || // no need to show series-level control if there's only one series
-            !settings["graph.show_values"] || // don't show it unless this chart has a global setting
-            (settings["stackable.stack_type"] &&
-              settings["graph.show_stack_values"] === "total"),
+          !settings["graph.show_values"] || // don't show it unless this chart has a global setting
+          (settings["stackable.stack_type"] &&
+            settings["graph.show_stack_values"] === "total"),
         );
       },
       getDefault: (_single, _seriesSettings, extra) =>
@@ -265,7 +268,10 @@ export function seriesSetting({
         getSettingDefinitionsForObject: () => COMMON_SETTINGS,
         component: ChartNestedSettingSeries,
         readDependencies: [SERIES_COLORS_SETTING_KEY, ...readDependencies],
-        noPadding: true,
+        getWrapperStyle: () => ({
+          marginLeft: 0,
+          marginRight: 0,
+        }),
         getExtraProps: (series) => ({
           seriesCardNames: series.reduce<Record<string, string>>(
             (memo, singleSeries) => {

@@ -17,6 +17,7 @@ const setup = ({
   remoteSyncEnabled = true,
   hasRemoteChanges = true,
   hasRemoteChangesDelay = 0,
+  hasRemoteChangesError = false,
   currentBranch = "main",
   syncType = "read-write",
   dirty = [],
@@ -26,6 +27,7 @@ const setup = ({
   remoteSyncEnabled?: boolean;
   hasRemoteChanges?: boolean;
   hasRemoteChangesDelay?: number;
+  hasRemoteChangesError?: boolean;
   currentBranch?: string | null;
   syncType?: "read-only" | "read-write";
   dirty?: ReturnType<typeof createMockDirtyEntity>[];
@@ -36,6 +38,7 @@ const setup = ({
     dirty,
     hasRemoteChanges,
     hasRemoteChangesDelay,
+    hasRemoteChangesError,
   });
   setupCollectionEndpoints();
   setupSessionEndpoints({ remoteSyncEnabled, currentBranch, syncType });
@@ -244,6 +247,20 @@ describe("GitSyncControls", () => {
       ).toBeInTheDocument();
       jest.advanceTimersByTime(10000);
       jest.useRealTimers();
+    });
+  });
+
+  describe("pull error handling", () => {
+    it("shows error message when remote changes check fails", async () => {
+      setup({ hasRemoteChangesError: true });
+
+      await userEvent.click(await screen.findByTestId("git-sync-controls"));
+
+      expect(
+        await screen.findByText(
+          "Failed to check for changes — check your authentication token",
+        ),
+      ).toBeInTheDocument();
     });
   });
 

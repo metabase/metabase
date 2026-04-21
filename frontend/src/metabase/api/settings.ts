@@ -21,6 +21,7 @@ export const settingsApi = Api.injectEndpoints({
       }),
       transformResponse: (response: SettingDefinition[]) =>
         _.indexBy(response, "key") as SettingDefinitionMap,
+      providesTags: ["session-properties"],
     }),
     getSetting: builder.query<
       EnterpriseSettingValue,
@@ -56,6 +57,9 @@ export const settingsApi = Api.injectEndpoints({
           tag("session-properties"),
           ...(key === "uploads-settings" ? [listTag("database")] : []),
           ...(key === "llm-anthropic-api-key" ? [listTag("llm-models")] : []),
+
+          // Enabling tenants creates the "all-external-users" permission group
+          ...(key === "use-tenants" ? [listTag("permissions-group")] : []),
         ]);
       },
     }),

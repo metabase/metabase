@@ -1,5 +1,5 @@
 (ns metabase.lib.equality
-  "Logic for determining whether two pMBQL queries are equal."
+  "Logic for determining whether two MBQL 5 queries are equal."
   (:refer-clojure :exclude [= every? some mapv empty? not-empty get-in #?(:clj for)])
   (:require
    [medley.core :as m]
@@ -24,7 +24,7 @@
    [metabase.util.performance :refer [every? some mapv empty? not-empty get-in #?(:clj for)]]))
 
 (defmulti =
-  "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
+  "Determine whether two already-normalized MBQL 5 maps, clauses, or other sorts of expressions are equal. The basic rule
   is that two things are considered equal if they are [[clojure.core/=]], or, if they are both maps, if they
   are [[clojure.core/=]] if you ignore all qualified keyword keys besides `:lib/type`."
   {:arglists '([x y])}
@@ -159,8 +159,12 @@ are known to be the same."
     ;; same bucketing
    (when (columns-not-equal-by-fn (comp ignore-default-temporal-bucket lib.temporal-bucket/raw-temporal-bucket) col-1 col-2)
      'temporal-bucket)
-    ;; check `:inherited-temporal-unit` as well if both columns have it.
-   (when (columns-not-equal-by-fn-when-non-nil-in-both (comp ignore-default-temporal-bucket :inherited-temporal-unit) col-1 col-2)
+    ;; check `:inherited-temporal-unit` as well if both columns have it, but only when neither column has an explicit
+    ;; temporal bucket. When both columns have the same explicit bucket (checked above), the inherited temporal unit is
+    ;; just historical metadata and shouldn't affect identity. See #70231.
+   (when (and (nil? (ignore-default-temporal-bucket (lib.temporal-bucket/raw-temporal-bucket col-1)))
+              (nil? (ignore-default-temporal-bucket (lib.temporal-bucket/raw-temporal-bucket col-2)))
+              (columns-not-equal-by-fn-when-non-nil-in-both (comp ignore-default-temporal-bucket :inherited-temporal-unit) col-1 col-2))
      :inherited-temporal-unit)
     ;; finally make sure they have the same `:lib/source-column-alias` (if both columns have it) or `:name` (if for
     ;; some reason they do not)
@@ -550,7 +554,7 @@ are known to be the same."
   to `needles` with the corresponding index into the `haystack`, or -1 if not found.
 
   DISCOURAGED: This is intended for use only by [[metabase.lib.js/find-column-indexes-from-legacy-refs]].
-  Other MLv2 code should use [[find-matching-column]] if the `haystack` is columns, or
+  Other Lib code should use [[find-matching-column]] if the `haystack` is columns, or
   [[find-matching-ref]] if it's refs."
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -575,7 +579,7 @@ are known to be the same."
     stage-number :- :int
     legacy-ref   :- :some
     metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
-   (find-matching-column query stage-number (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref) metadatas)))
+   (find-matching-column query stage-number (lib.convert/legacy-ref->mbql5 query stage-number legacy-ref) metadatas)))
 
 (defn mark-selected-columns
   "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching with

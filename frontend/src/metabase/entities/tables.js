@@ -18,12 +18,17 @@ import {
 import { Fields } from "metabase/entities/fields";
 import { Questions } from "metabase/entities/questions";
 import { Segments } from "metabase/entities/segments";
-import { color } from "metabase/lib/colors";
+import { TableSchema } from "metabase/schema";
+import {
+  getMetadata,
+  getMetadataUnfiltered,
+} from "metabase/selectors/metadata";
+import { color } from "metabase/ui/colors";
 import {
   createEntity,
   entityCompatibleQuery,
   notify,
-} from "metabase/lib/entities";
+} from "metabase/utils/entities";
 import {
   compose,
   createThunkAction,
@@ -32,12 +37,7 @@ import {
   withAction,
   withCachedDataAndRequestState,
   withNormalize,
-} from "metabase/lib/redux";
-import { TableSchema } from "metabase/schema";
-import {
-  getMetadata,
-  getMetadataUnfiltered,
-} from "metabase/selectors/metadata";
+} from "metabase/utils/redux";
 import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaId,

@@ -1,12 +1,13 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 
+import type { DefinedClauseName } from "metabase/querying/expressions";
+import * as Lib from "metabase-lib";
+
 import {
   ExpressionWidget,
   ExpressionWidgetHeader,
-} from "metabase/query_builder/components/expressions";
-import type { DefinedClauseName } from "metabase/querying/expressions";
-import * as Lib from "metabase-lib";
+} from "../../../components/expressions";
 
 import {
   FilterColumnPicker,
@@ -100,8 +101,8 @@ export function FilterPicker({
     (item: ColumnListItem | SegmentListItem | ExpressionClauseItem) => {
       return Boolean(
         filterIndex != null &&
-          "filterPositions" in item &&
-          item.filterPositions?.includes?.(filterIndex),
+        "filterPositions" in item &&
+        item.filterPositions?.includes?.(filterIndex),
       );
     },
     [filterIndex],

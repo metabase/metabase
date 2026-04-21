@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 import { ChartSettingGoalInput } from "metabase/visualizations/components/settings/ChartSettingGoalInput";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
@@ -76,7 +76,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
         return t`Goal`;
       },
       widget: ChartSettingGoalInput,
-      default: 0,
+      getDefault: () => 0,
       isValid: ([{ data }], settings) => {
         const goalSetting = settings["progress.goal"];
 
@@ -105,7 +105,7 @@ export const PROGRESS_CHART_DEFINITION: VisualizationDefinition = {
         return t`Color`;
       },
       widget: "color",
-      default: color("accent1"),
+      getDefault: () => color("accent1"),
     },
   },
 };

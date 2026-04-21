@@ -56,7 +56,7 @@
   [:and
    [:merge
     {:encode/serialize (fn [opts]
-                         (let [;; These keys were previously in metabase.lib.* namespaces and stripped
+                         (let [ ;; These keys were previously in metabase.lib.* namespaces and stripped
                                ;; by the (= namespace "lib") check. After renaming to :lib/* they'd
                                ;; survive serialization, so exclude them explicitly.
                                exclude (set (vals common/deprecated-lib-key-renames))]
@@ -143,7 +143,7 @@
      ;; Legacy key. Records the temporal unit that was originally on a field ref before it was changed or removed.
      ;; Produced by older queries and the `reconcile-breakout-and-order-by-bucketing` QP middleware. Used as a
      ;; fallback in `nest-breakouts` to determine column granularity when `:temporal-unit` is nil or `:default`.
-     ;; Not produced by MLv2 code; new queries will not contain this key.
+     ;; Not produced by Lib code; new queries will not contain this key.
      [:original-temporal-unit {:optional true} [:ref ::temporal-bucketing/unit]]]]
    (common/disallowed-keys
     (into {:strategy ":binning keys like :strategy are not allowed at the top level of :field options."}

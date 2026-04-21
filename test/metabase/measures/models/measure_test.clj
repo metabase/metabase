@@ -43,10 +43,9 @@
 
 (deftest identity-hash-test
   (testing "Measure hashes are composed of the measure name and table identity-hash"
-    (let [now #t "2022-09-01T12:34:56Z"]
-      (mt/with-temp [:model/Database db {:name "field-db" :engine :h2}
-                     :model/Table table {:schema "PUBLIC" :name "widget" :db_id (:id db)}
-                     :model/Measure measure {:name "total sales" :table_id (:id table) :created_at now
+    (let [now   #t "2022-09-01T12:34:56Z"
+          table (t2/select-one :model/Table (mt/id :venues))]
+      (mt/with-temp [:model/Measure measure {:name "total sales" :table_id (:id table) :created_at now
                                              :definition (measure-definition (lib/count))}]
         (is (= (serdes/raw-hash ["total sales" (serdes/identity-hash table) (:created_at measure)])
                (serdes/identity-hash measure)))))))
@@ -241,6 +240,69 @@
                                            :definition (measure-definition (lib/count))}]
       (mt/with-test-user :rasta
         (is (false? (mi/can-write? measure)))))))
+
+(deftest can-read?-superuser-test
+  (testing "Superusers can read measures"
+    (mt/with-temp [:model/Measure measure {:name "Test Measure"
+                                           :table_id (mt/id :venues)
+                                           :creator_id (mt/user->id :rasta)
+                                           :definition (measure-definition (lib/count))}]
+      (mt/with-test-user :crowberto
+        (is (true? (mi/can-read? measure)))))))
+
+(deftest can-read?-with-view-data-and-query-builder-test
+  (testing "Users with view-data :unrestricted and create-queries :query-builder can read measures"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/User {user-id :id} {}
+                     :model/Measure measure {:name "Test Measure"
+                                             :table_id (mt/id :venues)
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition (measure-definition (lib/count))}]
+        (perms/add-user-to-group! user-id group-id)
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/create-queries :query-builder)
+        (session/with-current-user user-id
+          (is (true? (mi/can-read? measure))))))))
+
+(deftest can-read?-with-manage-table-metadata-test
+  (testing "Users with manage-table-metadata :yes can read measures"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/User {user-id :id} {}
+                     :model/Measure measure {:name "Test Measure"
+                                             :table_id (mt/id :venues)
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition (measure-definition (lib/count))}]
+        (perms/add-user-to-group! user-id group-id)
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/manage-table-metadata :yes)
+        (session/with-current-user user-id
+          (is (true? (mi/can-read? measure))))))))
+
+(deftest can-read?-without-permissions-test
+  (testing "Users with no table permissions cannot read measures"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/Measure measure {:name "Test Measure"
+                                             :table_id (mt/id :venues)
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition (measure-definition (lib/count))}]
+        (session/with-current-user user-id
+          (is (false? (mi/can-read? measure))))))))
+
+(deftest can-read?-view-data-only-not-enough-test
+  (testing "Users with only view-data :unrestricted (no query builder perms) cannot read measures"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
+                     :model/User {user-id :id} {}
+                     :model/Measure measure {:name "Test Measure"
+                                             :table_id (mt/id :venues)
+                                             :creator_id (mt/user->id :rasta)
+                                             :definition (measure-definition (lib/count))}]
+        (perms/add-user-to-group! user-id group-id)
+        (data-perms/set-table-permission! group-id (mt/id :venues) :perms/view-data :unrestricted)
+        (session/with-current-user user-id
+          (is (false? (mi/can-read? measure))))))))
 
 (deftest can-create?-superuser-test
   (testing "Superusers can create measures"

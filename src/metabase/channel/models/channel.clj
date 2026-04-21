@@ -3,6 +3,7 @@
    [malli.core :as mc]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
+   [metabase.channel.template.handlebars :as handlebars]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.permissions.core :as perms]
@@ -70,10 +71,21 @@
 
 (defmethod serdes/hash-fields :model/Channel [_instance] [:name :type])
 
+(defmethod serdes/load-find-local "Channel"
+  [path]
+  (t2/select-one :model/Channel :name (:id (last path))))
+
+(defmethod serdes/generate-path "Channel" [_ channel]
+  [(serdes/infer-self-path "Channel" channel)])
+
+(defmethod serdes/storage-path "Channel" [channel _ctx]
+  [{:label "channels"} {:label (:name channel) :key (serdes/entity-id "Channel" channel)}])
+
 (defmethod serdes/make-spec "Channel"
   [_model-name _opts]
-  {:copy      [:name :description :type :details :active]
-   :transform {:created_at (serdes/date)}})
+  {:copy           [:name :description :type :details :active]
+   :transform      {:created_at (serdes/date)}
+   :defaults {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/ChannelTemplate                                    ;;
@@ -96,7 +108,10 @@
    [:multi {:dispatch (comp keyword :type)}
     [:email/handlebars-resource
      [:map
-      [:path string?]]]
+      [:path [:and
+              string?
+              [:fn {:error/message "invalid template path"}
+               handlebars/valid-template-path?]]]]]
     [:email/handlebars-text
      [:map
       [:body string?]]]]])
@@ -110,6 +125,26 @@
     [:channel/email
      [:map
       [:details ::ChannelTemplateEmailDetails]]]
+    [::mc/default :any]]])
+
+(mr/def ::ChannelTemplateEmailDetailsUserProvided
+  "Email template details schema for API-provided templates. Only handlebars-text is allowed;
+  handlebars-resource is restricted to internal use only."
+  [:map
+   [:type    (ms/enum-keywords-and-strings :email/handlebars-text)]
+   [:subject string?]
+   [:recipient-type {:optional true} (ms/enum-keywords-and-strings :cc :bcc)]
+   [:body    string?]])
+
+(mr/def ::ChannelTemplateUserProvided
+  "Channel Template schema for API-provided templates. Does not allow handlebars-resource."
+  [:merge
+   [:map
+    [:channel_type [:fn #(= "channel" (-> % keyword namespace))]]]
+   [:multi {:dispatch :channel_type}
+    [:channel/email
+     [:map
+      [:details ::ChannelTemplateEmailDetailsUserProvided]]]
     [::mc/default :any]]])
 
 (defn- check-valid-channel-template

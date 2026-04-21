@@ -3,7 +3,7 @@ import type { ChangeEvent, FocusEvent, KeyboardEvent } from "react";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
-import { useUnmountLayout } from "metabase/common/hooks/use-unmount-layout";
+import { useUnmountLayout } from "metabase/ui/hooks/use-unmount-layout";
 
 import { Textarea } from "../Textarea";
 
@@ -36,8 +36,12 @@ export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
 }: TextareaBlurChangeProps<T>) {
   const [internalValue, setInternalValue] = useState<T["value"]>("");
   const ref = useRef<HTMLTextAreaElement>(null);
+  const blurChangeFiredRef = useRef(false);
 
-  useLayoutEffect(() => setInternalValue(value), [value]);
+  useLayoutEffect(() => {
+    setInternalValue(value);
+    blurChangeFiredRef.current = false;
+  }, [value]);
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
@@ -55,7 +59,8 @@ export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
     (event: FocusEvent<HTMLTextAreaElement>) => {
       onBlur?.(event);
 
-      if (onBlurChange && (value || "") !== event.target.value) {
+      if (onBlurChange && String(value ?? "") !== event.target.value) {
+        blurChangeFiredRef.current = true;
         onBlurChange(event);
         setInternalValue(normalize(event.target.value) ?? undefined);
       }
@@ -74,7 +79,11 @@ export function TextareaBlurChange<T extends TextareaProps = TextareaProps>({
   );
 
   useUnmountLayout(() => {
-    const lastPropsValue = value || "";
+    if (blurChangeFiredRef.current) {
+      return;
+    }
+
+    const lastPropsValue = String(value ?? "");
     const currentValue = ref.current?.value || "";
 
     if (ref.current && lastPropsValue !== currentValue) {

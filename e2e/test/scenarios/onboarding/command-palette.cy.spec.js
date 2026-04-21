@@ -421,7 +421,7 @@ describe("command palette", () => {
       H.commandPaletteInput().should("exist").type("Me");
       cy.findByText("New metric").should("be.visible").click();
 
-      cy.location("pathname").should("eq", "/metric/query");
+      cy.location("pathname").should("eq", "/metric/new");
     });
   });
 
@@ -456,7 +456,7 @@ describe("command palette", () => {
 
   describe("ee", () => {
     beforeEach(() => {
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should have a 'New document' item", () => {
@@ -575,6 +575,16 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
       event_detail: "navigate-trash",
     });
 
+    cy.realPress("g").realPress("s");
+    cy.location("pathname").should("match", /^\/data-studio/);
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "keyboard_shortcut_performed",
+      event_detail: "navigate-data-studio",
+    });
+
+    cy.realPress("g").realPress("m");
+
     cy.log("shortcuts should not be enabled when working in a modal (ADM 658)");
 
     H.navigationSidebar().should("be.visible");
@@ -616,6 +626,17 @@ describe("shortcuts", { tags: ["@actions"] }, () => {
     cy.location("pathname").should("contain", "/admin/datamodel");
     cy.realPress("9");
     cy.location("pathname").should("contain", "/admin/tools");
+  });
+
+  it("should not navigate to data studio via shortcut for non-admin users", () => {
+    cy.signInAsNormalUser();
+    cy.visit("/");
+    cy.findByTestId("home-page")
+      .findByText(/see what metabase can do/i)
+      .should("exist");
+
+    cy.realPress("g").realPress("s");
+    cy.location("pathname").should("equal", "/");
   });
 
   it("should support dashboard shortcuts", () => {

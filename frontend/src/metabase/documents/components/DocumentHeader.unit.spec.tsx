@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupCommentEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockDocument, createMockUser } from "metabase-types/api/mocks";
 
@@ -28,7 +29,6 @@ const setup = ({
   onToggleBookmark = jest.fn(),
   onArchive = jest.fn(),
   onShowHistory = jest.fn(),
-  onToggleComments = jest.fn(),
 } = {}) => {
   const props = {
     document,
@@ -44,8 +44,12 @@ const setup = ({
     onToggleBookmark,
     onArchive,
     onShowHistory,
-    onToggleComments,
   };
+
+  setupCommentEndpoints([], {
+    target_type: "document",
+    target_id: document.id,
+  });
 
   renderWithProviders(<DocumentHeader {...props} />, {
     storeInitialState: {

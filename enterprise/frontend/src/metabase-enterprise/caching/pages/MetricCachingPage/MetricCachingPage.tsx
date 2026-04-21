@@ -10,17 +10,24 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
-import * as Urls from "metabase/lib/urls";
+import { MetricPageShell } from "metabase/metrics/components/MetricPageShell";
+import { metricUrls as defaultUrls } from "metabase/metrics/urls";
 import type { MetricSettingsPageProps } from "metabase/plugins/oss/caching";
 import { Card, Center } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import { getItemName } from "metabase-enterprise/caching/components/utils";
-import { MetricHeader } from "metabase-enterprise/data-studio/library/metrics/components/MetricHeader";
 import Question from "metabase-lib/v1/Question";
 import type { CacheableModel } from "metabase-types/api";
 
-const model: CacheableModel[] = ["question"];
+const cachingModel: CacheableModel[] = ["question"];
 
-export function MetricCachingPage({ params }: MetricSettingsPageProps) {
+export function MetricCachingPage({
+  params,
+  urls = defaultUrls,
+  renderBreadcrumbs,
+  showAppSwitcher,
+  showDataStudioLink = true,
+}: MetricSettingsPageProps) {
   const cardId = Urls.extractEntityId(params.cardId);
   const {
     card,
@@ -34,7 +41,7 @@ export function MetricCachingPage({ params }: MetricSettingsPageProps) {
     isLoading: isLoadingConfigs,
     error: configsError,
   } = useCacheConfigs({
-    model,
+    model: cachingModel,
     id: cardId,
   });
 
@@ -44,7 +51,7 @@ export function MetricCachingPage({ params }: MetricSettingsPageProps) {
     return { savedStrategy };
   }, [configs, cardId]);
 
-  const saveStrategy = useSaveStrategy(cardId ?? null, "question");
+  const saveStrategy = useSaveStrategy(cardId ?? null, "metric");
 
   const { confirmationModal, setIsStrategyFormDirty } =
     useConfirmIfFormIsDirty();
@@ -52,18 +59,28 @@ export function MetricCachingPage({ params }: MetricSettingsPageProps) {
   const isLoading = isLoadingCard || isLoadingConfigs;
   const error = cardError || configsError;
 
+  if (isLoading || error != null || card == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
+  }
+
   return (
     <PageContainer pos="relative" data-testid="metric-caching" gap="xl">
-      {card && <MetricHeader card={card} />}
-      {isLoading || error != null ? (
-        <Center h="100%">
-          <LoadingAndErrorWrapper loading={isLoading} error={error} />
-        </Center>
-      ) : question ? (
+      <MetricPageShell
+        card={card}
+        urls={urls}
+        renderBreadcrumbs={renderBreadcrumbs}
+        showAppSwitcher={showAppSwitcher}
+        showDataStudioLink={showDataStudioLink}
+      />
+      {question ? (
         <Card withBorder flex={1} p={0}>
           <StrategyForm
             targetId={question.id()}
-            targetModel="question"
+            targetModel="metric"
             targetName={getItemName("question", question)}
             setIsDirty={setIsStrategyFormDirty}
             saveStrategy={saveStrategy}

@@ -1,11 +1,8 @@
 (ns metabase.llm.api
-  "API endpoints for LLM-powered SQL generation (OSS)."
+  "API endpoints for OSS BYOK SQL generation."
   (:require
-   [buddy.core.codecs :as codecs]
-   [buddy.core.hash :as buddy-hash]
    [clojure.java.io :as io]
    [clojure.set :as set]
-   [clojure.string :as str]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -16,7 +13,9 @@
    [metabase.llm.anthropic :as llm.anthropic]
    [metabase.llm.context :as llm.context]
    [metabase.llm.settings :as llm.settings]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.metabot.core :as metabot]
+   [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -57,7 +56,7 @@
          (when-let [resource (io/resource resource-path)]
            (slurp resource)))))))
 
-(def ^:private sql-generation-prompt-template "llm/prompts/sql-generation-system.mustache")
+(def ^:private sql-generation-prompt-template "metabot/prompts/system/one-shot-sql-generation.mustache")
 
 (def ^:private datetime-formatter
   (DateTimeFormatter/ofPattern "yyyy-MM-dd HH:mm:ss"))
@@ -78,35 +77,6 @@
                                 :dialect_instructions dialect-instructions}
                          source-sql (assoc :source_sql source-sql))))
 
-(defn- track-token-usage!
-  "Track token usage for LLM API calls via Snowplow."
-  [{:keys [model prompt completion duration-ms user-id source tag]}]
-  (let [request-id      (-> (random-uuid)
-                            str
-                            ;; strip dashes and lower-case to mimic the ai-service uuid.hex formatting
-                            (str/replace "-" "")
-                            u/lower-case-en)
-        hashed-token    (some-> (not-empty (premium-features/premium-embedding-token))
-                                buddy-hash/sha256
-                                codecs/bytes->hex)
-        token-or-uuid   (or hashed-token
-                            (str "oss__" (analytics/analytics-uuid)))
-        ;; Just report 0.0 as estimated cost rather than providing an estimate that is guaranteed to get stale.
-        estimated-costs 0.0]
-    (snowplow/track-event! :snowplow/token_usage
-                           {:hashed-metabase-license-token token-or-uuid
-                            :request-id                    request-id
-                            :model-id                      model
-                            :total-tokens                  (+ prompt completion)
-                            :prompt-tokens                 prompt
-                            :completion-tokens             completion
-                            :estimated-costs-usd           estimated-costs
-                            :user-id                       user-id
-                            :duration-ms                   (some-> duration-ms long)
-                            :source                        source
-                            :tag                           tag}
-                           user-id)))
-
 (defn- track-sqlgen-event!
   "Track SQL generation usage via Snowplow simple_event."
   [{:keys [duration-ms result engine]}]
@@ -123,13 +93,16 @@
                                   [:display_name :string]]]]]
   "List available LLM models from the configured provider.
 
-   Requires LLM to be configured (Anthropic API key set in admin settings)."
+   Requires LLM to be configured for the selected provider in admin settings."
   [_route-params
    _query-params]
-  (when-not (llm.settings/llm-anthropic-api-key)
-    (throw (ex-info (tru "LLM is not configured. Please set an Anthropic API key in admin settings.")
+  (when-not (metabot.settings/llm-metabot-configured?)
+    (throw (ex-info (tru "LLM is not configured. Please configure the selected provider in admin settings.")
                     {:status-code 403})))
-  (llm.anthropic/list-models))
+  (let [provider-and-model (metabot.settings/llm-metabot-provider)
+        ai-proxy?          (metabot/metabase-provider? provider-and-model)
+        provider           (metabot/provider-and-model->provider provider-and-model)]
+    (metabot.self/list-models provider {:ai-proxy? ai-proxy?})))
 
 (def ^:private table-with-columns-schema
   "Schema for table metadata with columns returned by /extract-tables."
@@ -214,6 +187,8 @@
   (when-not (llm.settings/llm-anthropic-api-key)
     (throw (ex-info (tru "LLM SQL generation is not configured. Please set an Anthropic API key in admin settings.")
                     {:status-code 403})))
+  (when-let [limit-msg (metabot/check-usage-limits!)]
+    (throw (ex-info limit-msg {:status-code 429})))
   (throttle/with-throttling [(sql-gen-throttlers :ip-address) (request/ip-address request)
                              (sql-gen-throttlers :user-id)    api/*current-user-id*]
     (let [{:keys [prompt database_id source_sql referenced_entities]} body
@@ -250,15 +225,29 @@
             (let [{:keys [result usage duration-ms]} (llm.anthropic/chat-completion
                                                       {:system   system-prompt
                                                        :messages [{:role "user" :content prompt}]})]
-              (track-token-usage! (assoc usage
-                                         :duration-ms duration-ms
-                                         :user-id api/*current-user-id*
-                                         ;; for some reason, :source convention is snake_case and :tag is (mostly) kebab
-                                         :source "oss_metabot"
-                                         :tag "oss-sqlgen"))
-              (track-sqlgen-event! {:duration-ms (u/since-ms start-timer)
-                                    :result "success"
-                                    :engine engine})
+              (analytics/track-token-usage!
+               {:snowplow            true
+                :prometheus          true
+                :user-id             api/*current-user-id*
+                :request-id          (analytics/uuid->ai-service-hex-uuid (random-uuid))
+                :model-id            (:model usage)
+                :prompt-tokens       (:prompt usage)
+                :completion-tokens   (:completion usage)
+                :total-tokens        (+ (:prompt usage) (:completion usage))
+                :estimated-costs-usd 0.0
+                :duration-ms         (some-> duration-ms long)
+                ;; for some reason, :source convention is snake_case and :tag is (mostly) kebab
+                :source              "oss_metabot"
+                :tag                 "oss-sqlgen"})
+              (metabot/log-ai-usage!
+               {:source            "oss-sql-gen"
+                :model             (:model usage)
+                :prompt-tokens     (:prompt usage)
+                :completion-tokens (:completion usage)})
+              (track-sqlgen-event!
+               {:duration-ms (u/since-ms start-timer)
+                :result "success"
+                :engine engine})
               (let [sql                 (:sql result)
                     referenced-entities (mapv #(assoc % :model "table") tables)]
                 {:sql                 sql

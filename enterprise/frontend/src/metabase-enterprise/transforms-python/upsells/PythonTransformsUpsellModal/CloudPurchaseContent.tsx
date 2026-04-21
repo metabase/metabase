@@ -2,11 +2,11 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { trackUpsellClicked } from "metabase/admin/upsells/components/analytics";
+import { trackUpsellClicked } from "metabase/common/components/upsells/components/analytics";
 import type { BillingPeriod } from "metabase/data-studio/upsells/types";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Card, Divider, Flex, Group, Stack, Text } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api";
 import { TransformsSettingUpModal } from "metabase-enterprise/transforms/upsells/components/TransformsSettingUpModal";
 

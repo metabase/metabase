@@ -2,15 +2,11 @@ import * as d3 from "d3";
 import dayjs from "dayjs";
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatValue } from "metabase/lib/formatting";
-import type { OptionsType } from "metabase/lib/formatting/types";
-import {
-  getObjectEntries,
-  getObjectKeys,
-  getObjectValues,
-} from "metabase/lib/objects";
-import { isNotNull, isNumber } from "metabase/lib/types";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatValue } from "metabase/utils/formatting";
+import type { OptionsType } from "metabase/utils/formatting/types";
+import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
+import { isNotNull, isNumber } from "metabase/utils/types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   X_AXIS_DATA_KEY,
@@ -25,7 +21,6 @@ import type {
   DataKey,
   DateRange,
   DimensionModel,
-  Extent,
   NumericAxisScaleTransforms,
   NumericXAxisModel,
   SeriesExtents,
@@ -49,6 +44,7 @@ import { getLineAreaBarComparisonSettings } from "metabase/visualizations/lib/se
 import type {
   ColumnSettings,
   ComputedVisualizationSettings,
+  Extent,
   VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type {
@@ -80,7 +76,7 @@ export function shouldAutoSplitYAxis(
   seriesModels: SeriesModel[],
   seriesExtents: SeriesExtents,
 ) {
-  if (!settings["graph.y_axis.auto_split"]) {
+  if (!settings["graph.y_axis.auto_split"] || settings["graph.split_panels"]) {
     return false;
   }
 
@@ -244,6 +240,13 @@ const getYAxisSplit = (
   settings: ComputedVisualizationSettings,
   isAutoSplitSupported: boolean,
 ) => {
+  if (settings["graph.split_panels"]) {
+    const allKeys = new Set(
+      seriesModels.map((seriesModel) => seriesModel.dataKey),
+    );
+    return [allKeys, new Set<DataKey>()];
+  }
+
   const stackedKeys = new Set(
     stackModels.flatMap((stackModel) => stackModel.seriesKeys),
   );
@@ -384,7 +387,7 @@ function calculateNonStackedExtent(
 
 const NORMALIZED_RANGE: Extent = [0, 1];
 
-const getYAxisFormatter = (
+export const getYAxisFormatter = (
   column: DatasetColumn,
   settings: ComputedVisualizationSettings,
   stackType: StackType,
@@ -501,6 +504,7 @@ interface YAxisModelOptions {
   stackType?: StackType;
   formattingOptions?: OptionsType;
   gridSize?: VisualizationGridSize;
+  showLabel?: boolean;
 }
 
 export function getYAxisModel(
@@ -516,6 +520,7 @@ export function getYAxisModel(
     stackType = null,
     formattingOptions,
     gridSize,
+    showLabel = true,
   } = options;
 
   if (seriesKeys.length === 0) {
@@ -529,7 +534,7 @@ export function getYAxisModel(
     stackType,
   );
   const column = columnByDataKey[seriesKeys[0]];
-  const label = getYAxisLabel(seriesNames, settings);
+  const label = showLabel ? getYAxisLabel(seriesNames, settings) : undefined;
   const formatter = getYAxisFormatter(
     column,
     settings,
@@ -607,59 +612,62 @@ export function getYAxesModels(
     (stackModel) => stackModel.axis === "left",
   );
 
+  const leftAxisModel = getYAxisModel(
+    leftAxisSeriesKeys,
+    leftAxisSeriesNames,
+    transformedDataset,
+    settings,
+    columnByDataKey,
+    {
+      stackModels: leftStackModels,
+      stackType: settings["stackable.stack_type"] ?? null,
+      formattingOptions: { compact: isCompactFormatting },
+      gridSize,
+    },
+  );
+
+  const rightAxisModel = getYAxisModel(
+    rightAxisSeriesKeys,
+    rightAxisSeriesNames,
+    transformedDataset,
+    settings,
+    columnByDataKey,
+    {
+      stackModels: rightStackModels,
+      stackType:
+        settings["stackable.stack_type"] === "normalized"
+          ? null
+          : (settings["stackable.stack_type"] ?? null),
+      formattingOptions: { compact: isCompactFormatting },
+      gridSize,
+    },
+  );
+
+  const splitPanelYAxisModels = settings["graph.split_panels"]
+    ? seriesModels
+        .filter((seriesModel) => seriesModel.visible)
+        .map((seriesModel) =>
+          getYAxisModel(
+            [seriesModel.dataKey],
+            [seriesModel.name],
+            transformedDataset,
+            settings,
+            columnByDataKey,
+            {
+              formattingOptions: { compact: isCompactFormatting },
+              gridSize,
+              showLabel: false,
+            },
+          ),
+        )
+        .filter(isNotNull)
+    : undefined;
+
   return {
-    leftAxisModel: getYAxisModel(
-      leftAxisSeriesKeys,
-      leftAxisSeriesNames,
-      transformedDataset,
-      settings,
-      columnByDataKey,
-      {
-        stackModels: leftStackModels,
-        stackType: settings["stackable.stack_type"] ?? null,
-        formattingOptions: { compact: isCompactFormatting },
-        gridSize,
-      },
-    ),
-    rightAxisModel: getYAxisModel(
-      rightAxisSeriesKeys,
-      rightAxisSeriesNames,
-      transformedDataset,
-      settings,
-      columnByDataKey,
-      {
-        stackModels: rightStackModels,
-        stackType:
-          settings["stackable.stack_type"] === "normalized"
-            ? null
-            : (settings["stackable.stack_type"] ?? null),
-        formattingOptions: { compact: isCompactFormatting },
-        gridSize,
-      },
-    ),
+    leftAxisModel,
+    rightAxisModel,
+    splitPanelYAxisModels,
   };
-}
-
-type GetYAxisFormattingOptions = {
-  compactSeriesDataKeys: DataKey[];
-  axisSeriesKeysSet: Set<string>;
-  settings: ComputedVisualizationSettings;
-};
-
-export function getYAxisFormattingOptions({
-  compactSeriesDataKeys,
-  axisSeriesKeysSet,
-  settings,
-}: GetYAxisFormattingOptions): OptionsType {
-  const isCompact =
-    settings["graph.label_value_formatting"] === "compact" ||
-    compactSeriesDataKeys.some((dataKey) => axisSeriesKeysSet.has(dataKey));
-
-  if (isCompact) {
-    return { compact: isCompact };
-  }
-
-  return {};
 }
 
 const getFormatUnit = (
@@ -926,7 +934,7 @@ function getTimeSeriesXAxisInfo(
   // 2. count - how many intervals per tick?
   // 3. timezone - what timezone are values in? days vary in length by timezone
   const unit = minTimeseriesUnit(
-    getObjectValues(dimensionModel.columnByCardId)
+    Object.values(dimensionModel.columnByCardId)
       .map((column) =>
         isAbsoluteDateTimeUnit(column.unit) ? column.unit : null,
       )

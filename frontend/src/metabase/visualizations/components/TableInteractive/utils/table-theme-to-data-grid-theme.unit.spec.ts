@@ -65,4 +65,21 @@ describe("tableThemeToDataGridTheme", () => {
       textColor: undefined,
     });
   });
+
+  it("resolves em fontSize to px when baseFontSize is provided", () => {
+    const themeWithEmFontSize = {
+      ...mockTableTheme,
+      cell: { ...mockTableTheme.cell, fontSize: "0.893em" },
+    };
+
+    const result = tableThemeToDataGridTheme(themeWithEmFontSize, "14px");
+
+    expect(result.fontSize).toBe("12.5px");
+  });
+
+  it("keeps px fontSize unchanged when baseFontSize is provided", () => {
+    const result = tableThemeToDataGridTheme(mockTableTheme, "14px");
+
+    expect(result.fontSize).toBe("14px");
+  });
 });

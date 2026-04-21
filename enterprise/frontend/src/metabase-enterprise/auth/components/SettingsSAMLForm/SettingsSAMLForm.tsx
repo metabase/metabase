@@ -31,6 +31,7 @@ import {
 } from "metabase/forms";
 import { Flex, Stack, Text, Title } from "metabase/ui";
 import { useUpdateSamlMutation } from "metabase-enterprise/api";
+import { provisioningOptions } from "metabase-enterprise/auth/utils";
 import type { EnterpriseSettings } from "metabase-types/api";
 
 export type SAMLFormSettings = Pick<
@@ -340,7 +341,8 @@ function SamlUserProvisioning() {
       <AdminSettingInput
         name="saml-user-provisioning-enabled?"
         title={t`User provisioning`}
-        inputType="boolean"
+        inputType="radio"
+        options={provisioningOptions("SAML")}
       />
     </SettingsSection>
   );

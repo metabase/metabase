@@ -11,6 +11,7 @@ export type UseGetFieldValuesArgs = {
 
 export type UseGetFieldValuesResult = {
   data?: FieldValuesResponse | undefined;
+  isFetching: boolean;
   isLoading: boolean;
 };
 
@@ -24,6 +25,7 @@ export type UseSearchFieldValuesResult = {
   data?: FieldValue[];
   error?: unknown;
   isFetching: boolean;
+  isLoading: boolean;
 };
 
 export type UseGetRemappedFieldValueArgs = {
@@ -33,4 +35,6 @@ export type UseGetRemappedFieldValueArgs = {
 
 export type UseGetRemappedFieldValueResult = {
   data?: FieldValue | undefined;
+  isFetching: boolean;
+  isLoading: boolean;
 };

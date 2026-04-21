@@ -11,7 +11,7 @@ describe("scenarios > data studio > library", () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   it("should create library via UI and verify collections", () => {
@@ -94,7 +94,8 @@ describe("scenarios > data studio > library", () => {
   it("should let you move metrics into the library, even when empty", () => {
     H.createLibrary();
     H.createQuestion(TRUSTED_ORDERS_METRIC, { visitQuestion: true });
-    H.openQuestionActions("Duplicate");
+    H.DataStudio.Metrics.moreMenu().click();
+    H.popover().findByText("Duplicate").click();
     H.modal().findByTestId("dashboard-and-collection-picker-button").click();
 
     H.entityPickerModalItem(0, "Library").click();
@@ -237,6 +238,47 @@ describe("scenarios > data studio > library", () => {
       H.DataStudio.Library.libraryPage()
         .findByText("Reusable bits of code that save your time")
         .should("be.visible");
+    });
+
+    describe("read-only mode", () => {
+      beforeEach(() => {
+        H.setupGitSync();
+        H.configureGit("read-only");
+        H.createLibrary();
+      });
+
+      it("should hide +New button and empty state actions in read-only mode (UXW-3341)", () => {
+        H.DataStudio.Library.visit();
+
+        cy.log("Verify +New button is not visible");
+        H.DataStudio.Library.newButton().should("not.exist");
+
+        cy.log("Verify Data section empty state action is not visible");
+        H.DataStudio.Library.libraryPage()
+          .findByText(
+            "Cleaned, pre-transformed data sources ready for exploring",
+          )
+          .should("be.visible");
+        H.DataStudio.Library.libraryPage()
+          .findByRole("button", { name: "Publish a table" })
+          .should("not.exist");
+
+        cy.log("Verify Metrics section empty state action is not visible");
+        H.DataStudio.Library.libraryPage()
+          .findByText("Standardized calculations with known dimensions")
+          .should("be.visible");
+        H.DataStudio.Library.libraryPage()
+          .findByRole("link", { name: "New metric" })
+          .should("not.exist");
+
+        cy.log("Verify SQL snippets section empty state action is not visible");
+        H.DataStudio.Library.libraryPage()
+          .findByText("Reusable bits of code that save your time")
+          .should("be.visible");
+        H.DataStudio.Library.libraryPage()
+          .findByRole("link", { name: "New snippet" })
+          .should("not.exist");
+      });
     });
   });
 });

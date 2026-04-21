@@ -1,7 +1,7 @@
 import { action } from "@storybook/addon-actions";
 import type { StoryFn } from "@storybook/react";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/colors";
 
 import {
   ModalContent,

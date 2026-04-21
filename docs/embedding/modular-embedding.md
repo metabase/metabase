@@ -51,7 +51,7 @@ You can also go to **Admin > Embedding > Modular embedding** and click **New emb
 
 ### 2. Pick how to authenticate the embed
 
-{% include plans-blockquote.html feature="Authenticated modular embedding" convert_pro_link_to_embbedding=true %}
+{% include plans-blockquote.html feature="Authenticated modular embedding" convert_pro_link_to_embedding=true %}
 
 With SSO, Metabase can know who is viewing the embed, and it can unlock all of its bells and whistles (see this [comparison between SSO and guest embeds](./introduction.md#comparison-of-embedding-types)).
 
@@ -63,9 +63,9 @@ The exact customization options you see will depend on what type of entity you'r
 
 ![Embed flow options for AI chat](./images/embed-flow-options.png)
 
-If you are on Metabase OSS/Starter plans, you'll be able to select light or dark themes for your components. On Metabase Pro/Enterprise, you'll be also be able to pick specific colors for brand, text, and background in the embed wizard, and add more customization options through [appearance settings](./appearance.md) later.
+If you are on Metabase OSS/Starter plans, you'll be able to select light or dark themes for your components. On Metabase Pro/Enterprise, you'll also be able to pick specific colors for brand, text, and background in the embed wizard, and add more customization options through [appearance settings](./appearance.md) later.
 
-All the customization options you select in this wizard will be reflected in code snippet that the embed wizard will generate for you, and you'll be able to add more options later.
+All the customization options you select in this wizard will be reflected in the code snippet that the embed wizard will generate for you, and you'll be able to add more options later.
 
 For example, this code defines the font, color, and size for text, background colors, and colors for filters and summaries:
 
@@ -98,10 +98,10 @@ If you [create an embed through the built-in embed wizard](#create-a-new-embed),
 
 You'll add this code snippet to your app and refresh the page.
 
-The code snippets:
+The code snippet has three parts:
 
 - Loading the modular embedding library from your Metabase instance.
-- Set global configuration settings, like the URL of your Metabase and the `theme`. See [Page-level config](#page-level-config).
+- Setting global configuration settings, like the URL of your Metabase and the `theme`. See [Page-level config](#page-level-config).
 - The component(s) to embed, with their parameters. See [Components](./components.md).
 
 Here's an example snippet:
@@ -142,7 +142,7 @@ If you're embedding multiple components in a single page, you only need to inclu
 
 ## Each end user should have their own Metabase account
 
-{% include plans-blockquote.html feature="Modular embedding with SSO" convert_pro_link_to_embbedding=true %}
+{% include plans-blockquote.html feature="Modular embedding with SSO" convert_pro_link_to_embedding=true %}
 
 With SSO embeds, each end-user must have their own Metabase account. If you can't provision accounts for every end user, you have to use [Guest embeds](./guest-embedding.md) instead.
 
@@ -156,7 +156,7 @@ In addition to this, we consider shared accounts to be unfair usage. Fair usage 
 
 The exact customization options you see will depend on which type of entity you're embedding. These are the settings for authenticated embeds available on [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans. For guest embeds (OSS and paid), see [guest embedding options](./guest-embedding.md#component-attributes).
 
-When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see some or all the following customization options in the interactive creation flow. These options correspond to parameters in [components](./components.md).
+When you're creating a new embed using **Admin > Embedding > Setup guide > Embed in your code**, you'll see some or all of the following customization options in the interactive creation flow. These options correspond to parameters in [components](./components.md).
 
 - **Allow people to drill through on data points**: determines whether people can interact with the chart (or charts on a dashboard). Interactivity includes [drilling down](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/questions/drill-through) to individual records from aggregated questions, filtering on click, zooming in, etc. Disabling drill-through for an embedded _question_ also disables people's ability to add filters and summaries.
 

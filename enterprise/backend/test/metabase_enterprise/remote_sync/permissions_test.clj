@@ -562,7 +562,7 @@
 
 (deftest transform-superuser-can-read-test
   (testing "can_read should be true for superusers"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
                                                         :namespace :transforms}
@@ -581,7 +581,7 @@
 
 (deftest transform-non-superuser-cannot-read-test
   (testing "can_read should be false for non-superusers"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
                                                         :namespace :transforms}
@@ -600,7 +600,7 @@
 
 (deftest transform-globally-read-only-when-remote-sync-enabled-test
   (testing "can_write should be false for ALL transforms when remote-sync is enabled and type is read-only"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-only]
@@ -621,7 +621,7 @@
 
 (deftest transform-writable-when-remote-sync-read-write-test
   (testing "can_write should be true for transforms when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]
@@ -642,7 +642,7 @@
 
 (deftest transform-writable-when-remote-sync-disabled-test
   (testing "can_write should be true for transforms when remote-sync is not enabled"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :crowberto)
         ;; remote-sync-url is not set, so remote-sync-enabled returns false
         (mt/with-temporary-setting-values [settings/remote-sync-url nil
@@ -664,7 +664,7 @@
 
 (deftest transform-creation-blocked-in-read-only-mode-test
   (testing "can_create should be false for transforms when remote-sync is enabled and type is read-only"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-only]
@@ -684,7 +684,7 @@
 
 (deftest transform-creation-allowed-in-read-write-mode-test
   (testing "can_create should be true for transforms when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temporary-setting-values [settings/remote-sync-url "https://github.com/test/repo.git"
                                            settings/remote-sync-type :read-write]
@@ -704,7 +704,7 @@
 
 (deftest transform-non-superuser-cannot-write-test
   (testing "can_write should be false for non-superusers even when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
           (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"
@@ -724,7 +724,7 @@
 
 (deftest transform-non-superuser-cannot-create-test
   (testing "can_create should be false for non-superusers even when remote-sync-type is read-write"
-    (mt/with-premium-features #{:transforms}
+    (mt/with-premium-features #{:transforms-basic}
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
           (mt/with-temp [:model/Collection {coll-id :id} {:name "Transforms Collection"

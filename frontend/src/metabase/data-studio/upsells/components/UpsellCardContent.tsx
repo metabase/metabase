@@ -1,14 +1,13 @@
 import { useEffect } from "react";
 import { t } from "ttag";
 
-import { UpsellCta } from "metabase/admin/upsells/components/UpsellCta";
-import { UpsellGem } from "metabase/admin/upsells/components/UpsellGem";
+import { useCheckTrialAvailableQuery } from "metabase/api/cloud-proxy";
+import { UpsellCta } from "metabase/common/components/upsells/components/UpsellCta";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import {
   trackUpsellClicked,
   trackUpsellViewed,
-} from "metabase/admin/upsells/components/analytics";
-import { useCheckTrialAvailableQuery } from "metabase/api/cloud-proxy";
-import { useSelector } from "metabase/lib/redux";
+} from "metabase/common/components/upsells/components/analytics";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import {
@@ -24,6 +23,7 @@ import {
   Title,
   rem,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import S from "./UpsellCardContent.module.css";
 
@@ -43,7 +43,10 @@ export const UpsellCardContent = ({
   upgradeUrl,
   variant = "image-card",
 }: UpsellCardContentProps) => {
-  const { data: trialData } = useCheckTrialAvailableQuery();
+  const isHosted = useSelector(getIsHosted);
+  const { data: trialData } = useCheckTrialAvailableQuery(undefined, {
+    skip: !isHosted,
+  });
   const isTrialAvailable = trialData?.available ?? false;
 
   const leftSideSize = rem(280);
@@ -121,8 +124,8 @@ type UpsellCardLeftColumnContentProps = {
   title: string;
   description: string;
   bulletPoints?: string[];
-  upgradeOnClick: (() => void) | undefined;
-  upgradeUrl: string | undefined;
+  upgradeOnClick?: () => void;
+  upgradeUrl?: string;
 };
 
 const UpsellCardLeftColumnContent = ({

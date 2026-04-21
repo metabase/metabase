@@ -3,7 +3,12 @@ import type { CollectionEssentials } from "metabase-types/api/search";
 import type { SortDirection } from "./sorting";
 
 /** 'Model' as in 'type of object' */
-export type CacheableModel = "root" | "database" | "dashboard" | "question";
+export type CacheableModel =
+  | "root"
+  | "database"
+  | "dashboard"
+  | "question"
+  | "metric";
 
 export type CacheStrategyType =
   | "nocache"

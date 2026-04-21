@@ -138,7 +138,8 @@
                    source   (extract-source-from-field-ref query stage-number clause)
                    error    (cond-> (missing-column-error col-name)
                               source                                          (merge source)
-                              (and (seq fields)
+                              (and (not (:active column true))
+                                   (seq fields)
                                    (perf/some #(identical? clause %) fields)) (assoc :soft? true))]
                (vswap! bad-fields conj error)))))
        nil))

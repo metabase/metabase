@@ -4,14 +4,12 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase-enterprise.workspaces.api :as ws.api]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.execute :as ws.execute]
    [metabase-enterprise.workspaces.impl :as ws.impl]
    [metabase-enterprise.workspaces.isolation :as ws.isolation]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
    [metabase-enterprise.workspaces.util :as ws.u]
-   [metabase.api.macros :as api.macros]
    [metabase.audit-app.core :as audit]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
@@ -40,11 +38,13 @@
   "Alias for ws.tu/ws-url for convenience."
   ws.tu/ws-url)
 
-(def ^:private ->native
-  "It's convenient to construct queries using MBQL helper, but only native queries can be used in workspaces."
-  (comp mt/native-query ws.tu/mbql->native))
+(def ^:private q
+  "Alias for ws.tu/q for convenience."
+  ws.tu/q)
 
-;;; Authorization tests for all workspace routes are in service-user-authorization-test at the bottom of this file.
+(def ^:private ->native
+  "Alias for ws.tu/->native for convenience."
+  ws.tu/->native)
 
 (deftest workspace-crud-flow-test
   (let [workspace-name (str "Workspace " (random-uuid))
@@ -225,7 +225,7 @@
                    :model/User user-b {:first_name "UserB" :last_name "Test" :email "user-b@test.com" :is_superuser true}
                    :model/User user-c {:first_name "UserC" :last_name "Test" :email "user-c@test.com" :is_superuser true}]
       ;; mt/with-temp with users will trigger their cleanup and those tables fail with their fks to core_user
-      (mt/with-model-cleanup [:model/WorkspaceMerge :model/ApiKey]
+      (mt/with-model-cleanup [:model/WorkspaceMerge]
         ;; User A creates the workspace
         (let [{ws-id :id ws-name :name} (mt/user-http-request user-a :post 200 "ee/workspace"
                                                               {:name        (mt/random-name)
@@ -316,12 +316,12 @@
 
         (testing "No updates are propagated back to core app on merge failure"
           (let [update-transform! transforms.core/update-transform!]
-            (with-redefs [transforms.core/update-transform! (let [call-count (atom 0)]
-                                                              (fn [& args]
-                                                                (when (> @call-count 0)
-                                                                  (throw (Exception. "boom")))
-                                                                (swap! call-count inc)
-                                                                (apply update-transform! args)))]
+            (mt/with-dynamic-fn-redefs [transforms.core/update-transform! (let [call-count (atom 0)]
+                                                                            (fn [& args]
+                                                                              (when (> @call-count 0)
+                                                                                (throw (Exception. "boom")))
+                                                                              (swap! call-count inc)
+                                                                              (apply update-transform! args)))]
               (testing "API response: empty merged, single error"
                 (let [resp (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/merge"))]
                   (is (empty? (get-in resp [:merged :transforms])))
@@ -510,7 +510,7 @@
               (is (not= :archived (:status ws-after))))))))))
 
 (deftest merge-history-endpoint-test
-  (mt/with-premium-features #{:transforms :transforms-python :workspaces}
+  (mt/with-premium-features #{:transforms-basic :transforms-python :workspaces}
     (testing "GET /api/transform/:id/merge-history"
       (mt/with-temp [:model/Table     _table {:schema "public" :name "merge_history_test_table"}
                      :model/Transform x1     {:name        "Transform for history"
@@ -574,8 +574,8 @@
           _ (mt/user-http-request :crowberto :post 204
                                   (ws-url ws-id "/transform" ws-x-1-id "/archive"))]
       (testing "Failure on merge"
-        (with-redefs [transforms.core/delete-transform! (fn [& _args]
-                                                          (throw (Exception. "boom")))]
+        (mt/with-dynamic-fn-redefs [transforms.core/delete-transform! (fn [& _args]
+                                                                        (throw (Exception. "boom")))]
           (let [resp (mt/user-http-request :crowberto :post 500
                                            (ws-url ws-id "/transform" ws-x-1-id "/merge"))]
             (testing "Response"
@@ -676,7 +676,7 @@
              (mt/user-http-request :crowberto :post 400 (ws-url (:id workspace) "/transform")
                                    {:name   "Should Fail"
                                     :source {:type  "query"
-                                             :query (mt/mbql-query venues)}
+                                             :query (q :venues)}
                                     :target {:type "table"
                                              :name "should_fail"}}))))))
 
@@ -707,7 +707,7 @@
             (let [response (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                                  {:name   "New Transform"
                                                   :source {:type  "query"
-                                                           :query (->native (mt/mbql-query venues))}
+                                                           :query (->native (q :venues))}
                                                   :target {:type "table"
                                                            :name "new_transform_output"}})]
 
@@ -730,7 +730,7 @@
                    (mt/user-http-request :crowberto :post 400 (ws-url ws-id "/transform")
                                          {:name   "Should Fail"
                                           :source {:type  "query"
-                                                   :query (->native (mt/mbql-query venues))}
+                                                   :query (->native (q :venues))}
                                           :target {:type "table"
                                                    :name "should_fail"}})))))))))
 
@@ -747,7 +747,7 @@
                 (mt/user-http-request :crowberto :post 200 (ws-url ws-id "/transform")
                                       {:name   "Workspace Transform"
                                        :source {:type  "query"
-                                                :query (->native (mt/mbql-query transforms_products))}
+                                                :query (->native (q :transforms_products))}
                                        :target {:type "table"
                                                 :name table-name}})))
         (is (=? {:id ws-id, :status "ready"}
@@ -769,7 +769,7 @@
   (with-transform-cleanup! [orig-name "ws_tables_not_run_test"]
     (mt/with-temp [:model/Transform x1 {:name        "My X1"
                                         :source      {:type  "query"
-                                                      :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:limit 10})))}
+                                                      :query (->native (-> (q :orders) (lib/limit 10)))}
                                         :target      {:type     "table"
                                                       :database (mt/id)
                                                       :schema   "public"
@@ -834,7 +834,7 @@
                          :isolated {:transform_id ref-id
                                     #_#_:schema       (:schema workspace)
                                     :table        string?
-                                    :table_id     nil}}]}
+                                    :table_id     int?}}]}
                       (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table")))))
             (testing "and after we run the transform, id for isolated table appears"
               (is (=? {:status "succeeded"}
@@ -877,11 +877,11 @@
 (deftest validate-target-test
   (let [table (t2/select-one :model/Table :db_id (mt/id) :active true {:where [:not [:like :schema "mb__%"]]})]
     (ws.tu/with-workspaces! [ws {:name "test" :database_id (:db_id table)}]
-      (mt/with-temp [:model/WorkspaceTransform _x1 {:workspace_id (:id ws)
-                                                    :target       {:database (:db_id table)
-                                                                   :type     "table"
-                                                                   :schema   (:schema table)
-                                                                   :name     (str "q_" (:name table))}}]
+      (mt/with-temp [:model/WorkspaceTransform x1 {:workspace_id (:id ws)
+                                                   :target       {:database (:db_id table)
+                                                                  :type     "table"
+                                                                  :schema   (:schema table)
+                                                                  :name     (str "q_" (:name table))}}]
         (testing "Unique"
           (is (= "OK"
                  (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
@@ -916,7 +916,17 @@
                                          {:db_id  (:db_id table)
                                           :target {:type   "table"
                                                    :schema (:schema table)
-                                                   :name   (str "q_" (:name table))}})))))))))
+                                                   :name   (str "q_" (:name table))}})))))
+
+        (testing "No self-conflict when transform-id matches"
+          (is (= "OK"
+                 (mt/with-log-level [metabase.driver.sql-jdbc.sync.describe-table :fatal]
+                   (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform/validate/target")
+                                         {:db_id  (:db_id table)
+                                          :target {:type   "table"
+                                                   :schema (:schema table)
+                                                   :name   (str "q_" (:name table))}}
+                                         :transform-id (:ref_id x1))))))))))
 
 ;;;; Async workspace creation tests
 
@@ -979,7 +989,7 @@
       (let [transform (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform")
                                             {:name   "New Transform"
                                              :source {:type  "query"
-                                                      :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query venues)))}
+                                                      :query (->native (q :venues))}
                                              :target {:type     "table"
                                                       :database (mt/id)
                                                       :schema   "public"
@@ -1066,14 +1076,14 @@
         (let [tx1 (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform")
                                         {:name   "Transform 1"
                                          :source {:type  "query"
-                                                  :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                                  :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                          :target {:type   "table"
                                                   :schema target-schema
                                                   :name   "target_table_1"}})
               _tx2 (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform")
                                          {:name   "Transform 2"
                                           :source {:type  "query"
-                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                                   :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                           :target {:type   "table"
                                                    :schema target-schema
                                                    :name   "target_table_2"}})]
@@ -1108,7 +1118,7 @@
                                                (ws-url (:id workspace) "/transform" new-ref-id)
                                                {:name   "New Transform via Upsert"
                                                 :source {:type  "query"
-                                                         :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                                         :query (-> (q :orders) (lib/aggregate (lib/count)) ->native)}
                                                 :target {:type   "table"
                                                          :schema target-schema
                                                          :name   "upsert_test_table"}})]
@@ -1138,7 +1148,7 @@
                    (mt/user-http-request :crowberto :put 400
                                          (ws-url (:id workspace) "/transform" ref-id)
                                          {:source {:type  "query"
-                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                                   :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                           :target {:type   "table"
                                                    :schema target-schema
                                                    :name   "missing_name_test"}})))))
@@ -1158,7 +1168,7 @@
                                          (ws-url (:id workspace) "/transform" ref-id)
                                          {:name   "Test Transform"
                                           :source {:type  "query"
-                                                   :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}})))))))))
+                                                   :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}})))))))))
 
 (deftest upsert-transform-archived-workspace-test
   (testing "PUT /api/ee/workspace/:id/transform/:txid returns 400 for archived workspace"
@@ -1172,7 +1182,7 @@
                                      (ws-url (:id workspace) "/transform" new-ref-id)
                                      {:name   "New Transform"
                                       :source {:type  "query"
-                                               :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                               :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                       :target {:type   "table"
                                                :schema target-schema
                                                :name   "archived_ws_test"}})))))))
@@ -1185,7 +1195,7 @@
         (mt/user-http-request :crowberto :post 200 (ws-url (:id workspace) "/transform")
                               {:name   "Existing Transform"
                                :source {:type  "query"
-                                        :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                        :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                :target {:type   "table"
                                         :schema target-schema
                                         :name   "conflict_target_table"}})
@@ -1196,7 +1206,7 @@
                                        (ws-url (:id workspace) "/transform" new-ref-id)
                                        {:name   "Conflicting Transform"
                                         :source {:type  "query"
-                                                 :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                                 :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                         :target {:type   "table"
                                                  :schema target-schema
                                                  :name   "conflict_target_table"}}))))))))
@@ -1212,7 +1222,7 @@
                                 (ws-url (:id workspace) "/transform" new-ref-id)
                                 {:name   "First Transform"
                                  :source {:type  "query"
-                                          :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                          :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                  :target {:type     "table"
                                           :database (mt/id)
                                           :schema   target-schema
@@ -1232,7 +1242,7 @@
                                 (ws-url (:id workspace) "/transform" new-ref-id)
                                 {:name   "First Transform"
                                  :source {:type  "query"
-                                          :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                          :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                  :target {:type   "table"
                                           :schema target-schema
                                           :name   "status_transition_test"}})
@@ -1283,7 +1293,7 @@
         (let [target-schema (t2/select-one-fn :schema :model/Table (mt/id :orders))]
           (mt/with-temp [:model/Transform x1 {:name   "Transform"
                                               :source {:type  "query"
-                                                       :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
+                                                       :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                                               :target {:type     "table"
                                                        :database (mt/id)
                                                        :schema   target-schema
@@ -1380,7 +1390,7 @@
                                ws-2 {:name "Workspace 2"}]
         (let [body         {:name   "Transform for execute test"
                             :source {:type  "query"
-                                     :query (mt/native-query (ws.tu/mbql->native (mt/mbql-query orders {:aggregation [[:count]]})))}
+                                     :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                             :target {:type     "table"
                                      :database (mt/id)
                                      :schema   nil
@@ -1452,14 +1462,14 @@
                   :not_run   []}
                  (run!))))))))
 
-(deftest dry-run-workspace-transform-test
+(deftest dry-run-workspace-transform-api-test
   (testing "POST /api/ee/workspace/:id/transform/:txid/dry-run returns 404 if transform not in workspace"
     (ws.tu/with-workspaces! [ws1 {:name "Workspace 1"}
                              ws2 {:name "Workspace 2"}]
       (mt/with-temp [:model/Transform x1 {:name   "Transform in WS1"
                                           :source {:type  "query"
                                                    :query (mt/native-query
-                                                           {:query "SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world' ORDER BY 1"})}
+                                                           {:query "SELECT * FROM (SELECT 1 as id, 'hello' as name UNION ALL SELECT 2, 'world') t ORDER BY 1"})}
                                           :target {:type     "table"
                                                    :database (mt/id)
                                                    :schema   "public"
@@ -1567,7 +1577,7 @@
                   result))))
 
       (testing "returns results for multi-row queries"
-        (let [sql    "SELECT 1 as num UNION ALL SELECT 2 UNION ALL SELECT 3 ORDER BY 1"
+        (let [sql    "SELECT * FROM (SELECT 1 as num UNION ALL SELECT 2 UNION ALL SELECT 3) t ORDER BY 1"
               result (mt/user-http-request :crowberto :post 200
                                            (ws-url (:id ws) "/query")
                                            {:sql sql})]
@@ -1627,48 +1637,34 @@
                                      (ws-url (:id ws) "/query")
                                      {:sql "SELECT 1"})))))))
 
-#_(deftest ^:synchronized adhoc-query-remapping-test
-    (testing "POST /api/ee/workspace/:id/query remaps table references to isolated tables"
-      (ws.tu/with-workspaces! [ws {:name "Adhoc Query Remapping Test"}]
-        (let [target-schema (driver.sql/default-schema driver/*driver*)
-              target-table  (str "adhoc_remap_" (str/replace (str (random-uuid)) "-" "_"))
-              transform-def {:name   "Remapping Test Transform"
-                             :source {:type  "query"
-                                      :query (mt/native-query
-                                              {:query "SELECT 1 as id, 'remapped' as status"})}
-                             :target {:type     "table"
-                                      :database (mt/id)
-                                      :schema   target-schema
-                                      :name     target-table}}
-            ;; Add transform to workspace
-              ref-id        (:ref_id (mt/user-http-request :crowberto :post 200
-                                                           (ws-url (:id ws) "/transform")
-                                                           transform-def))
-              ws            (ws.tu/ws-done! (:id ws))]
-          ;; Run the transform to populate the isolated table
-          #_{:clj-kondo/ignore [:redundant-let]}
-          (let [run-result (mt/user-http-request :crowberto :post 200
-                                                 (ws-url (:id ws) "/transform/" ref-id "/run"))]
-            (is (= "succeeded" (:status run-result)) "Transform should run successfully"))
+(deftest ^:synchronized adhoc-query-remapping-test
+  (testing "POST /api/ee/workspace/:id/query remaps table references to isolated tables"
+    (ws.tu/with-workspaces! [ws {:name "Adhoc Query Remapping Test"}]
+      (let [default-schema (driver.sql/default-schema driver/*driver*)
+            target-schema  (or default-schema (sql.normalize/normalize-name driver/*driver* "public"))
+            target-table   (str "adhoc_remap_" (str/replace (str (random-uuid)) "-" "_"))
+            tx-def         {:name   "Remapping Test Transform"
+                            :source {:type  "query"
+                                     :query (mt/native-query
+                                             {:query "SELECT 1 as id, 'remapped' as status"})}
+                            :target {:type     "table"
+                                     :database (mt/id)
+                                     :schema   target-schema
+                                     :name     target-table}}
+            ref-id         (:ref_id (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform") tx-def))
+            ws             (ws.tu/ws-ready! ws)
+            run-result     (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/transform/" ref-id "/run"))]
+        (is (= "succeeded" (:status run-result)) "Transform should have run successfully")
+        (let [run-qry (fn [query-sql]
+                        (mt/user-http-request :crowberto :post 200 (ws-url (:id ws) "/query") {:sql query-sql}))
+              expected {:status "succeeded"
+                        :data   {:rows [[1 "remapped"]]
+                                 :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}]
           (testing "ad-hoc query can SELECT from transform output using schema-qualified table name"
-            (let [query-sql (str "SELECT * FROM " target-schema "." target-table)
-                  result    (mt/user-http-request :crowberto :post 200
-                                                  (ws-url (:id ws) "/query")
-                                                  {:sql query-sql})]
-              (is (=? {:status "succeeded"
-                       :data   {:rows [[1 "remapped"]]
-                                :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
-                      result))))
-
-          (testing "ad-hoc query can SELECT from transform output using unqualified table name"
-            (let [query-sql (str "SELECT * FROM " target-table)
-                  result    (mt/user-http-request :crowberto :post 200
-                                                  (ws-url (:id ws) "/query")
-                                                  {:sql query-sql})]
-              (is (=? {:status "succeeded"
-                       :data   {:rows [[1 "remapped"]]
-                                :cols [{:name #"(?i)id"} {:name #"(?i)status"}]}}
-                      result))))))))
+            (is (=? expected (run-qry (str "SELECT * FROM " target-schema "." target-table)))))
+          (when default-schema
+            (testing "ad-hoc query can SELECT from transform output using unqualified table name"
+              (is (=? expected (run-qry (str "SELECT * FROM " target-table)))))))))))
 
 (deftest ^:synchronized adhoc-query-uses-isolated-credentials-test
   (testing "POST /api/ee/workspace/:id/query executes with workspace isolated credentials"
@@ -1694,23 +1690,19 @@
    :schema   (driver.sql/default-schema driver/*driver*)
    :name     (str/replace (str "t_" (random-uuid)) "-" "_")})
 
-(defn- my-native-query [db-id sql & [card-mapping]]
-  ;; TODO (Chris 2025-12-11) -- don't build MBQL manually
-  ;; For some reason, when is use mt/native-query the transforms hook thinks this is MBQL.
-  ;; It's probably a dialect version issue.
-  {:database db-id
-   :lib/type :mbql/query
-   :stages   [{:lib/type      :mbql.stage/native
-               :native        sql
-               :template-tags (u/for-map [[tag card-id] card-mapping]
-                                [tag {:name         tag
-                                      :display-name tag
-                                      :type         :card
-                                      :card-id      card-id}])}]})
+(defn- my-native-query [_db-id sql & [card-mapping]]
+  (let [mp (mt/metadata-provider)]
+    (cond-> (lib/native-query mp sql)
+      card-mapping (lib/with-template-tags
+                     (u/for-map [[tag card-id] card-mapping]
+                       [tag {:name         tag
+                             :display-name tag
+                             :type         :card
+                             :card-id      card-id}])))))
 
 (deftest external-transforms-test
   (testing "GET /api/ee/workspace/id/external/transform"
-    (mt/with-premium-features #{:transforms :workspaces}
+    (mt/with-premium-features #{:transforms-basic :workspaces}
       (let [db-1 (mt/id)]
         (ws.tu/with-workspaces! [ws1 {:name "Our Workspace"}
                                  ws2 {:name "Their Workspace"}]
@@ -1725,7 +1717,7 @@
                                                                  :target (random-target db-1)}
                          :model/Transform          {xf4-id :id} {:name   "Not checked out - mbql"
                                                                  :source {:type     :query
-                                                                          :query    (mt/mbql-query venues)}
+                                                                          :query    (q :venues)}
                                                                  :target (random-target db-1)}
                          :model/Transform          {xf5-id :id} {:name   "Not checked out - native"
                                                                  :source {:type  "query"
@@ -1734,7 +1726,7 @@
                          ;; Native transform referencing a card - should be disabled once BOT-694 is implemented
                          :model/Card               {card-id :id} {:name          "Source Card"
                                                                   :database_id   db-1
-                                                                  :dataset_query (mt/mbql-query venues)}
+                                                                  :dataset_query (q :venues)}
                          :model/Transform          {xf6-id :id} {:name        "Not checked out - native with card dep"
                                                                  :source      {:type  "query"
                                                                                :query (my-native-query
@@ -1812,8 +1804,8 @@
             (testing "fallback populates global table_id from metabase_table"
               (is (= (:id table)
                      (-> result :outputs first :global :table_id))))
-            (testing "isolated table_id remains nil when table doesn't exist"
-              (is (nil? (-> result :outputs first :isolated :table_id))))))))))
+            (testing "isolated table_id is populated with transform target table"
+              (is (int? (-> result :outputs first :isolated :table_id))))))))))
 
 (deftest ^:parallel tables-endpoint-fallback-isolated-table-id-test
   (testing "GET /api/ee/workspace/:id/table uses fallback for null isolated_table_id"
@@ -2078,9 +2070,7 @@
   (testing "GET /api/ee/workspace/checkout returns checkout status for a transform"
     (mt/with-temp [:model/Transform tx {:name   "Native Transform"
                                         :source {:type  :query
-                                                 :query {:database (mt/id)
-                                                         :type     :native
-                                                         :native   {:query "SELECT 1"}}}
+                                                 :query (mt/native-query {:query "SELECT 1"})}
                                         :target {:type     "table"
                                                  :database (mt/id)
                                                  :schema   "public"
@@ -2118,7 +2108,7 @@
     (testing "MBQL transforms cannot be checked out"
       (mt/with-temp [:model/Transform tx {:name   "MBQL Transform"
                                           :source {:type  :query
-                                                   :query (mt/mbql-query venues)}
+                                                   :query (q :venues)}
                                           :target {:type     "table"
                                                    :database (mt/id)
                                                    :schema   "public"
@@ -2147,7 +2137,7 @@
   (testing "POST /api/ee/workspace/:id/transform blocks MBQL transform checkout"
     (mt/with-temp [:model/Transform tx {:name   "MBQL Transform"
                                         :source {:type  :query
-                                                 :query (mt/mbql-query venues)}
+                                                 :query (q :venues)}
                                         :target {:type     "table"
                                                  :database (mt/id)
                                                  :schema   "public"
@@ -2285,7 +2275,7 @@
     (ws.tu/with-workspaces! [ws {:name "Ungranted Run Test"}]
       (let [transform  {:name   "Transform with input"
                         :source {:type  "query"
-                                 :query (->native (mt/mbql-query orders {:aggregation [[:count]]}))}
+                                 :query (->native (-> (q :orders) (lib/aggregate (lib/count))))}
                         :target {:type     "table"
                                  :database (mt/id)
                                  :schema   "public"
@@ -2397,128 +2387,10 @@
 
 ;;; ============================================ Authorization Test Matrix ============================================
 
-(def ^:private admin-only-routes
-  "Routes that require superuser access"
-  [[:get  "/"]
-   [:post "/"]
-   [:get  "/enabled"]
-   [:get  "/database"]
-   [:get  "/checkout"]
-   [:put  "/:ws-id"]
-   [:post "/:ws-id/unarchive"]
-   [:delete "/:ws-id"]
-   [:post "/:ws-id/merge"]
-   [:post "/:ws-id/transform/:tx-id/merge"]
-   [:post "/:ws-id/input/grant"]
-   [:post "/test-resources"]])
-
-(def ^:private service-user-routes
-  "Routes that allow workspace service users ({:access :workspace})"
-  [[:get  "/:ws-id"]
-   [:get  "/:ws-id/table"]
-   [:get  "/:ws-id/log"]
-   [:get  "/:ws-id/graph"]
-   [:get  "/:ws-id/input/pending"]
-   [:get  "/:ws-id/problem"]
-   [:get  "/:ws-id/external/transform"]
-   [:get  "/:ws-id/transform"]
-   [:post "/:ws-id/archive"]
-   [:post "/:ws-id/transform"]
-   [:get  "/:ws-id/transform/:tx-id"]
-   [:put  "/:ws-id/transform/:tx-id"]
-   [:delete "/:ws-id/transform/:tx-id"]
-   [:post "/:ws-id/transform/:tx-id/archive"]
-   [:post "/:ws-id/transform/:tx-id/unarchive"]
-   [:post "/:ws-id/run"]
-   [:post "/:ws-id/transform/:tx-id/run"]
-   [:post "/:ws-id/transform/:tx-id/dry-run"]
-   [:post "/:ws-id/transform/validate/target"]
-   [:post "/:ws-id/query"]])
-
-(def ^:private permission-denied-msg "You don't have permissions to do that.")
-
-(deftest service-user-authorization-test
-  (ws.tu/with-workspaces! [ws1 {:name "Workspace 1"}
-                           ws2 {:name "Workspace 2"}]
-    (mt/with-temp [:model/WorkspaceTransform tx {:name         "Test Transform"
-                                                 :workspace_id (:id ws1)}]
-      (let [service-user-1 (:execution_user ws1)
-            service-user-2 (:execution_user ws2)
-            resolve-url    (fn [pattern]
-                             (-> pattern
-                                 (str/replace ":ws-id" (str (:id ws1)))
-                                 (str/replace ":tx-id" (:ref_id tx))
-                                 (->> (str "ee/workspace"))))]
-
-        ;; We don't test whether an admin can access the routes - that's implicit in the regular tests for each route.
-
-        (testing "Admin-only routes reject service users and other non-admins"
-          (doseq [[method pattern] admin-only-routes
-                  :let [url (resolve-url pattern)]]
-            (testing (str method " " pattern)
-              (is (= permission-denied-msg (mt/user-http-request :rasta method 403 url))
-                  "Should reject regular users")
-              (is (= permission-denied-msg (mt/user-http-request service-user-1 method 403 url))
-                  "Should reject even its own service user"))))
-
-        (testing "Workspace routes allow own service user, reject others"
-          (doseq [[method pattern] service-user-routes
-                  :let [url (resolve-url pattern)]]
-            (testing (str method " " pattern)
-              ;; We check for NOT 403 since some routes may 404 without full setup.
-              ;; If auth passes, we won't get the permission-denied message.
-              (let [resp (mt/user-http-request-full-response service-user-1 method url)]
-                (is (not= 403 (:status_code resp)) "Should allow its own service user")
-                (is (not= permission-denied-msg (:body resp)) "Should allow its own service user"))
-              (is (= permission-denied-msg (mt/user-http-request service-user-2 method 403 url))
-                  "Should reject other service users"))))))))
-
-(deftest service-user-access-metadata-matches-patterns-test
-  (testing "Endpoint {:access :workspace} metadata matches service-user-patterns"
-    (let [;; Get all endpoints from the workspace API namespace
-          endpoints          (api.macros/ns-routes 'metabase-enterprise.workspaces.api)
-          ;; Convert route path to the expected pattern suffix (what comes after /api/ee/workspace/\d+)
-          ;; e.g., /:ws-id/run -> /run, /:ws-id/transform/:tx-id -> /transform/[^/]+
-          route->suffix      (fn [route]
-                               (-> route
-                                   (str/replace #"^/:ws-id" "")  ; Remove ws-id prefix
-                                   (str/replace #"/:tx-id" "/[^/]+")))  ; tx-id is string
-          ;; Extract [method route] pairs with {:access :workspace} metadata
-          workspace-access   (into #{}
-                                   (keep (fn [[[method route _] info]]
-                                           (when (= :workspace (get-in info [:form :metadata :access]))
-                                             [method route])))
-                                   endpoints)
-          ;; Get the private vars from the API namespace
-          patterns           @#'ws.api/service-user-patterns
-          ws-prefix          @#'ws.api/ws-prefix
-          ;; Check the inverse: for each pattern, find endpoints that match
-          pattern->endpoints (fn [method pattern]
-                               (filter (fn [[[m route _] _info]]
-                                         (and (= m method)
-                                              (let [suffix           (route->suffix route)
-                                                    expected-pattern (str ws-prefix suffix "$")]
-                                                (= (str pattern) expected-pattern))))
-                                       endpoints))]
-
-      (testing "Every endpoint with {:access :workspace} is covered by service-user-patterns"
-        (doseq [[method route] workspace-access]
-          (testing (str method " " route)
-            (let [suffix           (route->suffix route)
-                  expected-pattern (str ws-prefix suffix "$")
-                  method-patterns  (get patterns method)]
-              (is (some #(= (str %) expected-pattern) method-patterns)
-                  (str "Endpoint has {:access :workspace} but no matching pattern in service-user-patterns. "
-                       "Expected pattern: " expected-pattern))))))
-
-      (testing "Every pattern in service-user-patterns matches only endpoints with {:access :workspace}"
-        (doseq [[method method-patterns] patterns
-                pattern                  method-patterns]
-          (let [matching-endpoints (pattern->endpoints method pattern)]
-            (testing (str method " " pattern)
-              (is (seq matching-endpoints)
-                  "Pattern doesn't match any endpoint. Remove the stale pattern.")
-              (doseq [[[_ route _] info] matching-endpoints]
-                (is (= :workspace (get-in info [:form :metadata :access]))
-                    (str "Pattern matches " route " but endpoint lacks {:access :workspace} metadata. "
-                         "Add the metadata or remove the pattern."))))))))))
+(deftest superuser-authorization-test
+  (testing "All workspace routes require superuser (spot-check)"
+    (ws.tu/with-workspaces! [ws {:name "Auth Test"}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "ee/workspace")))
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 (ws-url (:id ws))))))))

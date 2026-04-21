@@ -109,6 +109,7 @@ config:
     can-run-adhoc-query-check-threshold: 250
     check-for-updates: true
     config-from-file-sync-databases: true
+    csv-field-separator: ','
     custom-formatting: {}
     custom-geojson: null
     custom-geojson-enabled: true
@@ -202,6 +203,9 @@ config:
     login-page-illustration: default
     login-page-illustration-custom: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+    mcp-apps-cors-custom-origins: ''
+    mcp-apps-cors-enabled-clients: []
+    metabot-slack-signing-secret: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
     no-data-illustration: default
@@ -276,10 +280,11 @@ config:
     slack-app-token: null
     slack-bug-report-channel: metabase-bugs
     slack-connect-attribute-team-id: https://slack.com/team_id
-    slack-connect-authentication-mode: sso
+    slack-connect-authentication-mode: link-only
     slack-connect-client-id: null
     slack-connect-client-secret: null
     slack-connect-enabled: false
+    slack-connect-signing-secret-version: 0
     slack-connect-user-provisioning-enabled: true
     smtp-override-enabled: false
     source-address-header: X-Forwarded-For
@@ -292,6 +297,7 @@ config:
     sync-leaf-fields-limit: 1000
     synchronous-batch-updates: false
     thread-interrupt-escalation-timeout-ms: 0
+    transform-timeout: 240
     transforms-enabled: false
     unaggregated-query-row-limit: null
     uploads-settings: null

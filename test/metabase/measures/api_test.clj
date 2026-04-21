@@ -6,7 +6,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.util :as u]
@@ -23,7 +23,7 @@
 
 ;; ## Helper Fns
 
-(defn- pmbql-measure-definition
+(defn- mbql5-measure-definition
   "Create an MBQL5 measure definition with a sum aggregation."
   [table-id field-id]
   (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
@@ -89,7 +89,7 @@
                                   {:name        "A Measure"
                                    :description "I did it!"
                                    :table_id    (mt/id :venues)
-                                   :definition  (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))})))))
+                                   :definition  (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))})))))
 
 ;; ## PUT /api/measure
 
@@ -97,7 +97,7 @@
   (testing "PUT /api/measure/:id"
     (testing "test security. requires superuser perms"
       (mt/with-temp [:model/Measure measure {:table_id   (mt/id :venues)
-                                             :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+                                             :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "measure/" (:id measure))
                                      {:name             "abc"
@@ -124,7 +124,7 @@
 (deftest update-test
   (testing "PUT /api/measure/:id"
     (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
-                                                :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+                                                :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
       (is (=? {:name        "Updated Measure"
                :description nil
                :creator_id  (mt/user->id :rasta)
@@ -141,13 +141,13 @@
                 :description      nil
                 :table_id         (mt/id :venues)
                 :revision_message "I got me some revisions"
-                :definition       (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}))))))
+                :definition       (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}))))))
 
 (deftest partial-update-test
   (testing "PUT /api/measure/:id"
     (testing "Can I update a measure's name without specifying all fields?"
       (mt/with-temp [:model/Measure measure {:table_id   (mt/id :venues)
-                                             :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+                                             :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
         ;; just make sure API call doesn't barf
         (is (some? (mt/user-http-request :crowberto :put 200 (str "measure/" (u/the-id measure))
                                          {:name             "Cool name"
@@ -157,7 +157,7 @@
   (testing "PUT /api/measure/:id"
     (testing "Can we archive a Measure with the PUT endpoint?"
       (mt/with-temp [:model/Measure {:keys [id]} {:table_id   (mt/id :venues)
-                                                  :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+                                                  :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
         (is (map? (mt/user-http-request :crowberto :put 200 (str "measure/" id)
                                         {:archived true, :revision_message "Archive the Measure"})))
         (is (true?
@@ -168,7 +168,7 @@
     (testing "Can we unarchive a Measure with the PUT endpoint?"
       (mt/with-temp [:model/Measure {:keys [id]} {:archived   true
                                                   :table_id   (mt/id :venues)
-                                                  :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+                                                  :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
         (is (map? (mt/user-http-request :crowberto :put 200 (str "measure/" id)
                                         {:archived false, :revision_message "Unarchive the Measure"})))
         (is (= false
@@ -180,7 +180,7 @@
   (testing "GET /api/measure/:id"
     (testing "test security. Requires manage-table-metadata perms for the Table it references"
       (mt/with-temp [:model/Measure measure {:table_id   (mt/id :venues)
-                                             :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+                                             :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
         (mt/with-no-data-perms-for-all-users!
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :get 403 (str "measure/" (u/the-id measure))))))))))
@@ -189,7 +189,7 @@
   (testing "GET /api/measure/:id"
     (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
                                                 :table_id   (mt/id :venues)
-                                                :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+                                                :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
       (mt/with-full-data-perms-for-all-users!
         (is (=? {:name        "Mock Measure"
                  :description nil
@@ -202,18 +202,55 @@
                  :definition  map?}
                 (mt/user-http-request :rasta :get 200 (format "measure/%d" id))))))))
 
+(deftest fetch-measure-saves-dimensions-on-read-test
+  (testing "GET /api/measure/:id saves dimensions and dimension_mappings to the database"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (testing "no dimensions saved initially"
+        (let [initial-measure (t2/select-one :model/Measure :id id)]
+          (is (nil? (:dimensions initial-measure)))
+          (is (nil? (:dimension_mappings initial-measure)))))
+      (testing "response contains dimensions with active status"
+        (mt/with-full-data-perms-for-all-users!
+          (let [response (mt/user-http-request :rasta :get 200 (format "measure/%d" id))]
+            (is (seq (:dimensions response)))
+            (is (seq (:dimension_mappings response)))
+            (is (every? #(= "status/active" (:status %)) (:dimensions response))))))
+      (testing "dimensions persisted to database"
+        (let [updated-measure (t2/select-one :model/Measure :id id)]
+          (is (seq (:dimensions updated-measure)))
+          (is (seq (:dimension_mappings updated-measure))))))))
+
+(deftest fetch-measure-dimensions-have-has-field-values-test
+  (testing "GET /api/measure/:id returns dimensions with has-field-values populated"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [response   (mt/user-http-request :rasta :get 200 (format "measure/%d" id))
+              dimensions (:dimensions response)]
+          (is (seq dimensions) "should have dimensions")
+          (testing "at least some dimensions have has-field-values"
+            (let [dims-with-hfv (filter :has-field-values dimensions)]
+              (is (seq dims-with-hfv)
+                  "at least some dimensions should have has-field-values")
+              (doseq [dim dims-with-hfv]
+                (is (#{"list" "search" "none"} (:has-field-values dim))
+                    (str "dimension " (:name dim) " has-field-values should be list, search, or none"))))))))))
+
 (deftest list-test
   (testing "GET /api/measure/"
     (mt/with-temp [:model/Measure {id-1 :id} {:name       "Measure 1"
                                               :table_id   (mt/id :venues)
-                                              :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}
+                                              :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}
                    :model/Measure {id-2 :id} {:name       "Measure 2"
                                               :table_id   (mt/id :products)
-                                              :definition (pmbql-measure-definition (mt/id :products) (mt/id :products :price))}
+                                              :definition (mbql5-measure-definition (mt/id :products) (mt/id :products :price))}
                    ;; archived measures shouldn't show up
                    :model/Measure {id-3 :id} {:archived   true
                                               :table_id   (mt/id :venues)
-                                              :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+                                              :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
       (mt/with-full-data-perms-for-all-users!
         (is (=? [{:id                     id-1
                   :name                   "Measure 1"
@@ -268,7 +305,7 @@
 (deftest api-accepts-mbql4-on-put-test
   (testing "PUT /api/measure/:id accepts MBQL4 definitions and returns MBQL5"
     (mt/with-temp [:model/Measure {measure-id :id} {:table_id   (mt/id :venues)
-                                                    :definition (pmbql-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+                                                    :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
       (testing "MBQL4 fragment format"
         (let [response (mt/user-http-request
                         :crowberto :put 200 (str "measure/" measure-id)
@@ -294,15 +331,68 @@
                               {:name       "Venue Count"
                                :table_id   (mt/id :venues)
                                :definition (mbql4-fragment-definition (mt/id :venues) [[:count]])})
-            ;; Query using the measure
-            measure-query {:database (mt/id)
-                           :type     :query
-                           :query    {:source-table (mt/id :venues)
-                                      :aggregation  [[:measure measure-id]]}}
-            ;; Equivalent direct query
-            direct-query  {:database (mt/id)
-                           :type     :query
-                           :query    {:source-table (mt/id :venues)
-                                      :aggregation  [[:count]]}}]
+            measure-query (mt/mbql-query venues {:aggregation [[:measure measure-id]]})
+            direct-query  (mt/mbql-query venues {:aggregation [[:count]]})]
         (is (= (mt/rows (qp/process-query direct-query))
                (mt/rows (qp/process-query measure-query))))))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                       Dimension Endpoint Tests                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- hydrate-measure
+  "Fetch measure via API to hydrate dimensions."
+  [measure-id]
+  (mt/user-http-request :crowberto :get 200 (str "measure/" measure-id)))
+
+(defn- find-dimension-by-name
+  "Find a dimension by column name from hydrated measure."
+  [measure column-name]
+  (some #(when (= column-name (:name %)) %) (:dimensions measure)))
+
+(deftest dimension-values-test
+  (testing "GET /api/measure/:id/dimension/:dimension-key/values"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [hydrated  (hydrate-measure id)
+              price-dim (find-dimension-by-name hydrated "PRICE")]
+          (when price-dim
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (format "measure/%d/dimension/%s/values" id (:id price-dim)))]
+              (is (contains? response :values))
+              (is (contains? response :field_id))
+              (is (contains? response :has_more_values))
+              ;; Price values are 1, 2, 3, 4
+              (is (seq (:values response))))))))))
+
+(deftest dimension-search-test
+  (testing "GET /api/measure/:id/dimension/:dimension-key/search"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [hydrated (hydrate-measure id)
+              name-dim (find-dimension-by-name hydrated "NAME")]
+          (when name-dim
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (format "measure/%d/dimension/%s/search" id (:id name-dim))
+                                                 :query "Red")]
+              ;; Should return matching venue names
+              (is (sequential? response)))))))))
+
+(deftest dimension-remapping-test
+  (testing "GET /api/measure/:id/dimension/:dimension-key/remapping"
+    (mt/with-temp [:model/Measure {:keys [id]} {:creator_id (mt/user->id :crowberto)
+                                                :table_id   (mt/id :venues)
+                                                :definition (mbql5-measure-definition (mt/id :venues) (mt/id :venues :price))}]
+      (mt/with-full-data-perms-for-all-users!
+        (let [hydrated  (hydrate-measure id)
+              price-dim (find-dimension-by-name hydrated "PRICE")]
+          (when price-dim
+            (let [response (mt/user-http-request :rasta :get 200
+                                                 (format "measure/%d/dimension/%s/remapping" id (:id price-dim))
+                                                 :value "2")]
+              ;; Should return [value] or [value, display-name]
+              (is (= [2] response)))))))))

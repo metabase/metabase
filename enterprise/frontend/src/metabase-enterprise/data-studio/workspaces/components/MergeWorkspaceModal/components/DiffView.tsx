@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import EditorS from "metabase/query_builder/components/NativeQueryEditor/CodeMirrorEditor/CodeMirrorEditor.module.css";
+import EditorS from "metabase/querying/components/CodeMirrorEditor/CodeMirrorEditor.module.css";
 import { Flex, Loader, Stack, Text } from "metabase/ui";
 import type {
   WorkspaceId,

@@ -6,7 +6,7 @@ import {
   setupTablesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { Collection, Measure, Table } from "metabase-types/api";
 import {
   createMockCollection,
@@ -147,6 +147,10 @@ describe("PublishedTableMeasureBreadcrumbs", () => {
       id: 44,
       display_name: "Unpublished Table",
       collection_id: null,
+    });
+
+    setupCollectionByIdEndpoint({
+      collections: [createMockCollection({ id: "root" })],
     });
 
     setup({ table: tableNoCollection, collection: null });

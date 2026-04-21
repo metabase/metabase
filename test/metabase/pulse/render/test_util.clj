@@ -14,9 +14,9 @@
    [metabase.channel.render.js.svg :as js.svg]
    [metabase.channel.shared :as channel.shared]
    [metabase.notification.payload.execute :as notification.execute]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.test :as qp]
    [toucan2.core :as t2])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument AbstractElement$ExtendedNamedNodeHashMap)

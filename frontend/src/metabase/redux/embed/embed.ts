@@ -5,7 +5,6 @@ import {
 } from "@reduxjs/toolkit";
 import { compose, pick } from "underscore";
 
-import { parseSearchOptions } from "metabase/lib/browser";
 import {
   DEFAULT_EMBEDDING_ENTITY_TYPES,
   setDataPicker,
@@ -14,8 +13,9 @@ import {
 import type {
   InteractiveEmbeddingOptions,
   InteractiveEmbeddingOptionsState,
-} from "metabase-types/store";
-import type { EmbeddingDataPicker } from "metabase-types/store/embedding-data-picker";
+} from "metabase/redux/store";
+import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
+import { parseSearchOptions } from "metabase/utils/browser";
 
 export const createSlice = buildCreateSlice({
   creators: { asyncThunk: asyncThunkCreator },
@@ -42,19 +42,6 @@ const ALLOWED_INTERACTIVE_EMBEDDING_OPTIONS = (
 )
   // These 2 properties belongs in embedding-data-picker reducer
   .concat("entity_types", "data_picker");
-
-export const urlParameterToBoolean = (
-  urlParameter: string | string[] | boolean | undefined,
-) => {
-  if (urlParameter === undefined) {
-    return undefined;
-  }
-  if (Array.isArray(urlParameter)) {
-    return Boolean(urlParameter.at(-1));
-  } else {
-    return Boolean(urlParameter);
-  }
-};
 
 interface Location {
   search: string;

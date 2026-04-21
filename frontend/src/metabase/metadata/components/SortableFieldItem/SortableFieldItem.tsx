@@ -1,9 +1,8 @@
 import cx from "classnames";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { Sortable } from "metabase/common/components/Sortable";
 import { getColumnIcon } from "metabase/common/utils/columns";
-import { Box, Card, Flex, Icon, Text, rem } from "metabase/ui";
+import { Box, Card, Ellipsified, Flex, Icon, Text, rem } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Field } from "metabase-types/api";
 

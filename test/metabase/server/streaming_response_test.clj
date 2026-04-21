@@ -21,7 +21,8 @@
    (jakarta.servlet AsyncContext ServletOutputStream)
    (jakarta.servlet.http HttpServletResponse)
    (java.io ByteArrayOutputStream Closeable InputStream)
-   (java.util.concurrent Executors Future)
+   (java.util.concurrent CountDownLatch Executors Future TimeUnit)
+   (java.util.concurrent.atomic AtomicBoolean)
    (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)))
 
 (set! *warn-on-reflection* true)
@@ -223,6 +224,7 @@
                                                      ([byytes offset length]
                                                       (.write os ^bytes byytes offset length))))))
                                    :async-context (reify AsyncContext
+                                                    (addListener [_ _])
                                                     (complete [_]
                                                       (deliver complete-promise true)))})
         (is (true?
@@ -541,9 +543,77 @@
                    (deliver interrupted? true))))
              os
              finished-chan
-             canceled-chan)
+             canceled-chan
+             (AtomicBoolean. false))
             (is (true? (deref task-started? 5000 ::timed-out)))
             (a/>!! canceled-chan ::request-canceled)
             (is (true? (deref interrupted? 5000 ::timed-out)))
             (is (true? (deref complete-promise 5000 ::timed-out)))
             (is (= :canceled (a/poll! finished-chan)))))))))
+
+(deftest write-error-recycled-response-test
+  (testing "write-error! is a no-op when *completed?* is true (response may be recycled)"
+    (let [os (ByteArrayOutputStream.)]
+      (binding [streaming-response/*response*
+                (reify HttpServletResponse
+                  (isCommitted [_] (throw (NullPointerException. "response recycled")))
+                  (setStatus [_ _] (throw (NullPointerException. "response recycled")))
+                  (setContentType [_ _] (throw (NullPointerException. "response recycled"))))
+                streaming-response/*completed?*
+                (AtomicBoolean. true)]
+        (streaming-response/write-error! os {:error "test error"} :api 500))
+      (is (zero? (.size os))
+          "Nothing should be written when async context is already completed"))))
+
+(deftest async-timeout-completes-context-once-test
+  (testing "Only one of timeout callback or worker thread should call .complete"
+    (let [complete-count (atom 0)
+          completed?     (AtomicBoolean. false)
+          mock-context   (reify AsyncContext
+                           (complete [_]
+                             (swap! complete-count inc)))]
+      (is (true? (.compareAndSet completed? false true))
+          "Timeout callback should win compareAndSet")
+      (.complete mock-context)
+      (is (false? (.compareAndSet completed? false true))
+          "Worker thread's compareAndSet should return false")
+      (is (= 1 @complete-count)
+          ".complete should only have been called once"))))
+
+(deftest async-timeout-integration-test
+  (testing "Jetty async timeout does not cause NPE when worker thread finishes later"
+    (with-streaming-response-thread-pool!
+      (let [complete-called  (CountDownLatch. 1)
+            task-started     (CountDownLatch. 1)
+            task-can-finish  (CountDownLatch. 1)
+            finished-chan    (a/promise-chan)
+            canceled-chan    (a/promise-chan)
+            completed?       (AtomicBoolean. false)]
+        (with-open [os (ByteArrayOutputStream.)]
+          (#'streaming-response/do-f-async
+           (reify AsyncContext
+             (complete [_]
+               (.countDown complete-called)))
+           (reify HttpServletResponse
+             (isCommitted [_] false)
+             (setStatus [_ _] (when (.get completed?)
+                                (throw (NullPointerException. "recycled"))))
+             (setContentType [_ _] (when (.get completed?)
+                                     (throw (NullPointerException. "recycled")))))
+           (fn [_os _canceled-chan]
+             (.countDown task-started)
+             (.await task-can-finish 5 TimeUnit/SECONDS)
+             (throw (ex-info "Query failed" {})))
+           os
+           finished-chan
+           canceled-chan
+           completed?)
+          (is (true? (.await task-started 5 TimeUnit/SECONDS))
+              "Worker thread should start")
+          (.set completed? true)
+          (.countDown task-can-finish)
+          (testing "Wait for worker thread to reach finally block"
+            (is (some? (a/<!! (a/go (a/alt! finished-chan ([v] v)
+                                            (a/timeout 5000) ([_] ::timed-out)))))))
+          (is (false? (.await complete-called 100 TimeUnit/MILLISECONDS))
+              "Worker thread should not call .complete when timeout already completed the context"))))))

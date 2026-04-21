@@ -8,7 +8,6 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.analytics.stats :as stats]
-   [metabase.config.core :as config]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.parameters.chain-filter-test :as chain-filter-test]
    [metabase.parameters.custom-values :as custom-values]
@@ -19,6 +18,7 @@
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot.test-util :as api.pivots]
+   [metabase.server.instance :as server.instance]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [metabase.test.util :as tu]
@@ -537,7 +537,7 @@
       (mt/with-temp [:model/Card {uuid :public_uuid} (card-with-date-field-filter)]
         ;; make sure the URL doesn't include /api/ at the beginning like it normally would
         (binding [client/*url-prefix* ""]
-          (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
+          (mt/with-temporary-setting-values [site-url (str "http://localhost:" (server.instance/server-port) client/*url-prefix*)]
             (is (= "count\n107\n"
                    (client/real-client :get 200 (str "public/question/" uuid ".csv")
                                        :parameters (json/encode [{:id     "_DATE_"
@@ -698,6 +698,29 @@
                            (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
                     (is (= "An error occurred."
                            (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))))
+
+(deftest public-dashboard-action-prefill-validates-dashcard-belongs-to-dashboard-test
+  (testing "GET prefill should validate that the dashcard belongs to the dashboard"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+        (mt/with-actions-test-data-tables #{"venues" "categories"}
+          (mt/with-actions-test-data-and-actions-enabled
+            (mt/with-actions [{card-id :id} {:type :model, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
+                              {:keys [action-id]} {:type :implicit
+                                                   :kind "row/update"}]
+              (let [public-uuid (str (random-uuid))]
+                (mt/with-temp [:model/Dashboard {public-dashboard-id :id} {:public_uuid public-uuid}
+                               :model/DashboardCard _public-dashcard {:dashboard_id public-dashboard-id}
+                               :model/Dashboard {other-dashboard-id :id} {}
+                               :model/DashboardCard other-dashcard {:dashboard_id other-dashboard-id
+                                                                    :action_id    action-id
+                                                                    :card_id      card-id}]
+                  (testing "dashcard from a different dashboard should 404"
+                    (is (= "Not found."
+                           (client/client :get 404
+                                          (format "public/dashboard/%s/dashcard/%s/execute"
+                                                  public-uuid (:id other-dashcard))
+                                          :parameters (json/encode {:id 1}))))))))))))))
 
 (deftest get-public-dashboard-actions-test
   (testing "GET /api/public/dashboard/:uuid"

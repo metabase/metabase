@@ -167,7 +167,7 @@ describe("scenarios > account > notifications", () => {
           H.createQuestionAlert({
             admin_id,
             card_id,
-            cron_schedule: "0 0 2 * * ?",
+            cron_schedule: "0 0 3 * * ?",
             handlers: [
               {
                 channel_type: "channel/email",
@@ -187,11 +187,11 @@ describe("scenarios > account > notifications", () => {
       openUserNotifications();
 
       cy.findByTestId("notifications-list").within(() => {
-        cy.findByText("Check daily at 2:00 AM").should("exist");
+        cy.findByText("Check daily at 3:00 AM").should("exist");
 
         const notificationCard = () =>
           cy
-            .findByText("Check daily at 2:00 AM")
+            .findByText("Check daily at 3:00 AM")
             .closest("[data-testid=notification-alert-item]")
             .should("exist");
 

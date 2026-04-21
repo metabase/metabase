@@ -17,6 +17,7 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
+  VisualizationDefinition,
   VisualizationPassThroughProps,
   VisualizationProps,
   VisualizationSettingsDefinitions,
@@ -199,7 +200,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     title: t`Switch positive / negative colors?`,
     widget: "toggle",
     inline: true,
-    default: VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
+    getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.switch_positive_negative"],
   },
   "scalar.compact_primary_number": {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -208,7 +209,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
     title: t`Compact number`,
     widget: "toggle",
     inline: true,
-    default: VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
+    getDefault: () => VIZ_SETTINGS_DEFAULTS["scalar.compact_primary_number"],
   },
   ...columnSettings({
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -233,7 +234,7 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   click_behavior: {},
 };
 
-Object.assign(SmartScalar, {
+const SmartScalarViz: VisualizationDefinition = {
   getUiName: () => t`Trend`,
   identifier: "smartscalar",
   iconName: "smartscalar",
@@ -265,4 +266,6 @@ Object.assign(SmartScalar, {
   },
 
   hasEmptyState: true,
-});
+};
+
+Object.assign(SmartScalar, SmartScalarViz);

@@ -157,37 +157,53 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
 
     it("should enable drill-through when drills is true", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" drills />
-      `);
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Limited Orders",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-dashboard dashboard-id="${dashboard_id}" drills />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("be.visible");
+        H.getSimpleEmbedIframeContent()
+          .findAllByText("37.65")
+          .first()
+          .should("be.visible")
+          .click();
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("be.visible");
+      });
     });
 
     it("should disable drill-through when drills is false", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" drills="false" />
-      `);
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Limited Orders",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-dashboard dashboard-id="${dashboard_id}" drills="false" />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("not.exist");
+        cy.wait("@getDashCardQuery");
+
+        H.getSimpleEmbedIframeContent()
+          .findAllByText("37.65")
+          .first()
+          .should("be.visible")
+          .click({ force: true });
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("not.exist");
+      });
     });
   });
 
@@ -276,37 +292,63 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
 
     it("should enable drill-through when drills is true", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" drills />
-      `);
+      H.createQuestion({
+        name: "Limited Orders",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: { id: questionId } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-question question-id="${questionId}" drills />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("be.visible");
+        cy.wait("@getCardQuery");
+
+        // Wait for the table to finish rendering before interacting,
+        // as column auto-sizing can cause re-renders that detach elements.
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("table-root")
+          .should("have.attr", "data-rows-count", "5");
+
+        H.getSimpleEmbedIframeContent()
+          .findAllByText("37.65")
+          .first()
+          .should("be.visible")
+          .click({ force: true });
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("be.visible");
+      });
     });
 
     it("should disable drill-through when drills is false", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" drills="false" />
-      `);
+      H.createQuestion({
+        name: "Limited Orders",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: { id: questionId } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-question question-id="${questionId}" drills="false" />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("not.exist");
+        cy.wait("@getCardQuery");
+
+        // Wait for the table to finish rendering before interacting,
+        // as column auto-sizing can cause re-renders that detach elements.
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("table-root")
+          .should("have.attr", "data-rows-count", "5");
+
+        H.getSimpleEmbedIframeContent()
+          .findByText("37.65")
+          .should("be.visible")
+          .click({ force: true });
+
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("not.exist");
+      });
     });
 
     it("should allow saving a question when `is-save-enabled` is true", () => {
@@ -390,6 +432,10 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
   });
 
   describe("<metabase-metabot>", () => {
+    beforeEach(() => {
+      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    });
+
     it("should handle scrolling gracefully (metabase#67399)", () => {
       const question = `
       Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
@@ -431,9 +477,9 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         cy.log("metabot chat should be interactive");
         cy.findByText("Ask questions to AI.").should("be.visible");
         cy.findByPlaceholderText("Ask AI a question...").type("Foo{enter}");
-        cy.findByText(
-          "Metabot is currently offline. Please try again later.",
-        ).should("be.visible");
+        cy.findByText(/Sorry, an error occurred:.*If this persists/).should(
+          "be.visible",
+        );
 
         cy.log(
           "uses sidebar layout by default when no layout attribute is provided",

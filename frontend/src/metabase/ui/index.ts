@@ -11,6 +11,12 @@ export type {
   PolymorphicComponentProps,
   MantineColorsTuple,
 } from "@mantine/core";
-export { useHover } from "@mantine/hooks";
+export { useHover, useElementSize } from "@mantine/hooks";
 
 export * from "./components";
+export type {
+  MetabaseComponentTheme,
+  ChartColor,
+  ColorCssVariableOrString,
+} from "./component-theme";
+export { DEFAULT_METABASE_COMPONENT_THEME } from "./component-theme";

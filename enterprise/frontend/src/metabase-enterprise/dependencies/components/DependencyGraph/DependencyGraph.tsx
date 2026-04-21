@@ -1,4 +1,3 @@
-import { skipToken } from "@reduxjs/toolkit/query";
 import {
   Background,
   Controls,
@@ -8,12 +7,17 @@ import {
   useEdgesState,
   useNodesState,
 } from "@xyflow/react";
-import { useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Group, useColorScheme } from "metabase/ui";
-import { useGetDependencyGraphQuery } from "metabase-enterprise/api";
 import type {
   DependencyEntry,
   DependencyGraph,
@@ -46,23 +50,23 @@ const PRO_OPTIONS = {
 };
 
 type DependencyGraphProps = {
-  graph?: DependencyGraph | WorkspaceDependencyGraph | null;
+  graph?: DependencyGraph | WorkspaceDependencyGraph;
   isFetching?: boolean;
   error?: unknown;
-  getGraphUrl: (entry?: DependencyEntry) => string;
-  withEntryPicker?: boolean;
-  headerRightSide?: React.ReactNode;
   entry?: DependencyEntry;
   nodeTypes?: typeof NODE_TYPES;
   edgeTypes?: typeof EDGE_TYPES;
+  headerRightSide?: ReactNode;
+  withEntryPicker?: boolean;
   openLinksInNewTab?: boolean;
+  getGraphUrl: (entry?: DependencyEntry) => string;
 };
 
 export function DependencyGraph({
   entry,
-  graph: externalGraph,
-  isFetching: isFetchingExternally = false,
-  error: externalError,
+  graph,
+  isFetching = false,
+  error,
   getGraphUrl,
   withEntryPicker,
   headerRightSide = null,
@@ -70,14 +74,6 @@ export function DependencyGraph({
   edgeTypes = EDGE_TYPES,
   openLinksInNewTab = true,
 }: DependencyGraphProps) {
-  const shouldFetch = entry != null && !externalGraph;
-  const dependencyGraph = useGetDependencyGraphQuery(
-    shouldFetch ? entry : skipToken,
-  );
-  const isFetching = isFetchingExternally || dependencyGraph.isFetching;
-  const graph = externalGraph ?? dependencyGraph.data;
-  const error = externalError ?? dependencyGraph.error;
-
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selection, setSelection] = useState<GraphSelection | null>(null);
@@ -92,19 +88,23 @@ export function DependencyGraph({
     return selection != null ? findNode(nodes, selection) : null;
   }, [nodes, selection]);
 
-  useEffect(() => {
-    if (entry == null || error != null) {
+  useLayoutEffect(() => {
+    if (graph == null) {
       setNodes([]);
       setEdges([]);
-      setSelection(null);
     } else if (graph != null) {
       const { nodes: initialNodes, edges: initialEdges } =
         getInitialGraph(graph);
       setNodes(initialNodes);
       setEdges(initialEdges);
+    }
+  }, [graph, setNodes, setEdges]);
+
+  useLayoutEffect(() => {
+    if (selection != null && selectedNode == null) {
       setSelection(null);
     }
-  }, [entry, graph, error, setNodes, setEdges]);
+  }, [selection, selectedNode, setSelection]);
 
   useEffect(() => {
     if (error != null) {

@@ -1,8 +1,8 @@
 import { c, msgid, ngettext, t } from "ttag";
 
-import * as Urls from "metabase/lib/urls";
-import type { NamedUser } from "metabase/lib/user";
 import type { IconName } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
+import type { NamedUser } from "metabase/utils/user";
 import visualizations from "metabase/visualizations";
 import type {
   AnalysisFindingError,
@@ -14,6 +14,7 @@ import type {
   DependencyNode,
   DependencyType,
   Field,
+  SourceReplacementEntry,
   Transform,
   VisualizationDisplay,
 } from "metabase-types/api";
@@ -115,7 +116,7 @@ export function getNodeIconWithType(
     case "segment":
       return "segment";
     case "measure":
-      return "sum";
+      return "ruler";
   }
 }
 
@@ -486,6 +487,22 @@ export function getNodeFieldsLabelWithCount(fieldCount: number) {
     `${fieldCount} fields`,
     fieldCount,
   );
+}
+
+export function getNodeSourceReplacementEntry(
+  node: DependencyNode,
+): SourceReplacementEntry | null {
+  switch (node.type) {
+    case "table":
+      return { id: node.id, type: node.type };
+    case "card":
+      if (node.data.type === "question" || node.data.type === "model") {
+        return { id: node.id, type: node.type };
+      }
+      return null;
+    default:
+      return null;
+  }
 }
 
 export function getCardType(groupType: DependencyGroupType): CardType | null {

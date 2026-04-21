@@ -1,12 +1,11 @@
 import type { Location, LocationDescriptor } from "history";
-import { Component } from "react";
-import * as React from "react";
+import { Component, cloneElement } from "react";
 import { Route } from "react-router";
 import { push } from "react-router-redux";
 
 import { Modal } from "metabase/common/components/Modal";
-import { connect } from "metabase/lib/redux";
-import MetabaseSettings from "metabase/lib/settings";
+import { connect } from "metabase/utils/redux";
+import MetabaseSettings from "metabase/utils/settings";
 
 type RouteParams = Record<string, string | undefined>;
 
@@ -91,7 +90,7 @@ const ModalWithRoute = (
 // Base props that any modal rendered by ModalRoute must accept.
 // Modal components typically narrow `params` to specific keys (e.g., { alertId?: string }),
 // but they must accept the full ComposedModalProps shape.
-type ModalComponentProps = {
+export type ModalComponentProps = {
   params: RouteParams;
   location: Location;
   onClose: () => void;
@@ -110,7 +109,7 @@ class _ModalRoute extends Route {
     const { modal, modalProps, noWrap } = element.props;
 
     if (modal) {
-      element = React.cloneElement(element, {
+      element = cloneElement(element, {
         component: ModalWithRoute(modal, modalProps, noWrap),
       });
 

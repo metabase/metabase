@@ -39,8 +39,8 @@
    [:name              ::lib.schema.common/non-blank-string]
    [:database-type     [:maybe ::lib.schema.common/non-blank-string]] ; blank if the Field is all NULL & untyped, i.e. in Mongo
    [:base-type         ::lib.schema.common/base-type]
-   [:database-position ::lib.schema.common/int-greater-than-or-equal-to-zero]
-   [:position                   {:optional true} ::lib.schema.common/int-greater-than-or-equal-to-zero]
+   [:database-position nat-int?]
+   [:position                   {:optional true} nat-int?]
    [:semantic-type              {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]
    [:effective-type             {:optional true} [:maybe ::lib.schema.common/base-type]]
    [:coercion-strategy          {:optional true} [:maybe ms/CoercionStrategy]]

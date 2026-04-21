@@ -23,19 +23,19 @@ import {
 import { Link } from "metabase/common/components/Link";
 import { updateMentionsCache } from "metabase/documents/documents.slice";
 import {
-  type IconModel,
-  type ObjectWithModel,
-  getIcon,
-} from "metabase/lib/icon";
-import { useDispatch } from "metabase/lib/redux";
-import { modelToUrl } from "metabase/lib/urls/modelToUrl";
-import { extractEntityId } from "metabase/lib/urls/utils";
-import {
   METABSE_PROTOCOL_MD_LINK,
   parseMetabaseProtocolMarkdownLink,
 } from "metabase/metabot/utils/links";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { Icon } from "metabase/ui";
+import {
+  type IconModel,
+  type ObjectWithModel,
+  getIcon,
+} from "metabase/utils/icon";
+import { useDispatch } from "metabase/utils/redux";
+import { modelToUrl } from "metabase/utils/urls/modelToUrl";
+import { extractEntityId } from "metabase/utils/urls/utils";
 import type {
   Card,
   CardDisplayType,
@@ -430,6 +430,7 @@ export const useEntityData = (
       };
     }
     case "indexed-entity":
+    case "measure":
     case null:
       return { entity: null, isLoading: false, error: null };
     default:
@@ -439,7 +440,7 @@ export const useEntityData = (
 };
 
 export const SmartLinkComponent = memo(
-  ({ node }: NodeViewProps) => {
+  ({ node, updateAttributes }: NodeViewProps) => {
     const { entityId, model, label } = node.attrs;
 
     const {
@@ -455,9 +456,10 @@ export const SmartLinkComponent = memo(
       if (entity) {
         const name =
           "display_name" in entity ? entity.display_name : entity?.name;
+        updateAttributes({ label: name });
         dispatch(updateMentionsCache({ entityId, model, name }));
       }
-    }, [dispatch, entity, entityId, model]);
+    }, [updateAttributes, dispatch, entity, entityId, model]);
 
     const showLoading = isLoading && !entity;
     if (showLoading) {

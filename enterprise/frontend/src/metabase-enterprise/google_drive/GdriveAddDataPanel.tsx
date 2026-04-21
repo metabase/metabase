@@ -3,11 +3,9 @@ import type { PropsWithChildren } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { UpsellStorage } from "metabase/admin/upsells";
 import { skipToken } from "metabase/api";
+import { UpsellStorage } from "metabase/common/components/upsells/UpsellStorage";
 import { useHasTokenFeature, useStoreUrl } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
-import { getSubpathSafeUrl } from "metabase/lib/urls";
 import {
   CONTENT_MAX_WIDTH,
   ContactAdminAlert,
@@ -26,6 +24,8 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import { getSubpathSafeUrl } from "metabase/utils/urls";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import {
   DriveConnectionDisplay,

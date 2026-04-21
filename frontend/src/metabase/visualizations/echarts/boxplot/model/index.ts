@@ -1,6 +1,6 @@
 import { memoize } from "metabase/common/hooks/use-memoized-callback";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatValue } from "metabase/lib/formatting";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatValue } from "metabase/utils/formatting";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   X_AXIS_DATA_KEY,
@@ -26,7 +26,6 @@ import type {
   ChartDataset,
   DataKey,
   Datum,
-  Extent,
   LabelFormatter,
   SeriesExtents,
   SeriesFormatters,
@@ -35,7 +34,10 @@ import type {
 import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  ComputedVisualizationSettings,
+  Extent,
+} from "metabase/visualizations/types";
 import {
   type DatasetColumn,
   type RawSeries,

@@ -20,7 +20,7 @@
                                                     ["segment" 1]]
                                                    [:metric 1]]))))
 
-(defn- pmbql-segment-definition
+(defn- mbql5-segment-definition
   "Create an MBQL5 segment definition"
   [table-id field-id value]
   (let [metadata-provider (lib-be/application-database-metadata-provider (t2/select-one-fn :db_id :model/Table :id table-id))
@@ -63,9 +63,9 @@
                                                       :dataset_query (mt/mbql-query venues {:aggregation [[:count]]
                                                                                             :breakout    [$category_id]})}
                  :model/Segment {segment-id-a :id} {:table_id (mt/id :venues)
-                                                    :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :category_id) nil)}
+                                                    :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :category_id) nil)}
                  :model/Segment {segment-id-b :id} {:table_id (mt/id :venues)
-                                                    :definition (pmbql-segment-definition (mt/id :venues) (mt/id :venues :name) nil)}
+                                                    :definition (mbql5-segment-definition (mt/id :venues) (mt/id :venues :name) nil)}
                  :model/Card       {card-id-a :id} {:table_id      (mt/id :venues)
                                                     :dataset_query (mt/mbql-query venues
                                                                      {:aggregation [[:sum $price]]

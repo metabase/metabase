@@ -1854,3 +1854,355 @@
 
 (define-migration MoveExistingAtSymbolUserAttributes
   (reserve-at-symbol-user-attributes/migrate!))
+
+(define-reversible-migration UnifySourceTablesFormat
+  (let [tables [{:table :transform           :pks [:id]                  :where [:= :source_type "python"]}
+                {:table :workspace_transform :pks [:workspace_id :ref_id]}]
+        python? (fn [source]
+                  (= "python" (get (json-out source false) "type")))
+        all-rows (into []
+                       (mapcat (fn [{:keys [table pks] w :where}]
+                                 (->> (t2/query (cond-> {:select (into [:source] pks)
+                                                         :from   [table]}
+                                                  w (assoc :where w)))
+                                      (filter #(or w (python? (:source %))))
+                                      (map #(assoc % ::table table ::pks pks)))))
+                       tables)
+        all-ids  (into #{}
+                       (mapcat (fn [{:keys [source]}]
+                                 (let [st (get (json-out source false) "source-tables")]
+                                   (when (map? st)
+                                     (filter int? (vals st))))))
+                       all-rows)
+        metadata (when (seq all-ids)
+                   (into {}
+                         (map (fn [{:keys [id db_id schema name]}]
+                                [id {"database_id" db_id "schema" schema "table" name}]))
+                         (t2/query {:select [:id :db_id :schema :name]
+                                    :from   [:metabase_table]
+                                    :where  [:in :id all-ids]})))]
+    (doseq [{:keys [source] :as row} all-rows]
+      (let [parsed (json-out source false)
+            st     (get parsed "source-tables")]
+        (when (map? st)
+          (let [entries (mapv (fn [[alias v]]
+                                (if (int? v)
+                                  ;; Integer value: backfill all metadata (database_id, schema, table) from DB.
+                                  (merge {"alias" alias "table_id" v}
+                                         (get metadata v))
+                                  ;; Ref-map value: already has database_id/schema/table; table_id is
+                                  ;; resolved lazily by normalize-source-tables when the transform is saved via the API.
+                                  (assoc v "alias" alias)))
+                              st)
+                pks     (::pks row)]
+            (t2/query {:update (::table row)
+                       :set    {:source (json-in (assoc parsed "source-tables" entries))}
+                       :where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
+  (let [convert-back
+        (fn [source-json]
+          (let [parsed (json-out source-json false)]
+            (when-let [st (get parsed "source-tables")]
+              (when (sequential? st)
+                (let [m (into {} (map (fn [entry]
+                                        [(get entry "alias")
+                                         (or (get entry "table_id") entry)]))
+                              st)]
+                  (json-in (assoc parsed "source-tables" m)))))))
+        tables  [{:table :transform           :pks [:id]                  :where [:= :source_type "python"]}
+                 {:table :workspace_transform :pks [:workspace_id :ref_id]}]
+        python? (fn [source]
+                  (= "python" (get (json-out source false) "type")))]
+    (doseq [{:keys [table pks] w :where} tables]
+      (doseq [row (cond->> (t2/query (cond-> {:select (into [:source] pks)
+                                              :from   [table]}
+                                       w (assoc :where w)))
+                    (not w) (filter #(python? (:source %))))]
+        (when-let [new-source (convert-back (:source row))]
+          (t2/query {:update table
+                     :set    {:source new-source}
+                     :where  (into [:and] (map #(vector := % (get row %)) pks))}))))))
+(define-migration FixClickHouseUploadDBSchemaNames
+  "This data migration is meant to fix the issues seen in #69667, #68298 and #65945.
+   We made the driver feature `schemas` conditional on the `enable-multiple-db` DB connection setting.
+   So for DBs with `enable-multiple-db` set to false (such as our cloud hosted upload DBs), the `schemas` feature was
+   false. This meant that when a user disabled uploads, or changed their upload DBs, and then re-enabled uploads or
+   changed their upload DB back, the `uploads_schema_name` field of the DB was set to null. So any uploads made after
+   the `uploads_schema_name` field was set to null were created as tables with a null `schema`. For example:
+   ;; metabase_database
+   | id | engine     | name      | uploads_enabled | uploads_schema_name |
+   | 2  | clickhouse | upload_db | true            | null                | ;; `uploads_schema_name` set to null after disabling and re-enabling uploads
+   ;; metabase_table
+   | id | db_id | name | schema | active | is_upload |
+   | 1  | 2     | t1   | db_foo | true   | true      | ;; created before uploads_schema_name was set to null
+   | 2  | 2     | t2   | null   | true   | true      | ;; created after uploads_schema_name was set to null
+   On the clickhouse DB these tables are still created in a schema, particularly the one specified in the `dbname`
+   field of the DB `details`. This meant that the next time the DB sync ran, it would find this table under that
+   schema, and would not find that table with a null schema. So then it would create a new table with the same name
+   and a schema, and mark the old table with the null schema as inactive. For example:
+   ;; metabase_table
+   | id | db_id | name | schema | active | is_upload |
+   | 1  | 2     | t1   | db_foo | true   | true      | ;; this table has a schema so it's synced correctly
+   | 2  | 2     | t2   | null   | false  | true      | ;; this table is now inactive since it has a null schema and isn't found by sync
+   | 3  | 2     | t2   | db_foo | true   | false     | ;; this is the new table created by sync with the same name and a schema
+   We create models based on upload tables, and since the upload tables got marked as inactive, attempting to access
+   these models would give an inactive table error."
+  ;; Look for a clickhouse DB with uploads_enabled
+  (let [clickhouse-upload-db (t2/query {:select [:id :details :uploads_schema_name]
+                                        :from [:metabase_database]
+                                        :where [:and
+                                                [:= :engine "clickhouse"]
+                                                [:= :uploads_enabled true]]})
+        ;; If this DB has a null `uploads_schema_name`, then set the `uploads_schema_name` to the value of the `dbname`
+        set-uploads-schema-name! (fn [{:keys [id details uploads_schema_name]}]
+                                   (let [decrypted-details (encrypted-json-out details)
+                                         db-name (:dbname decrypted-details)]
+                                     (when (and db-name (not uploads_schema_name))
+                                       (t2/query {:update :metabase_database
+                                                  :set    {:uploads_schema_name db-name}
+                                                  :where  [:= :id id]}))))]
+    (if (< 1 (count clickhouse-upload-db))
+      (log/warn "FixClickHouseUploadDBSchemaNames: expected at most 1 ClickHouse upload database, found" (count clickhouse-upload-db))
+      (do
+        (run! set-uploads-schema-name! clickhouse-upload-db)
+        ;; Look for any inactive upload tables with a null schema
+        (let [inactive-upload-tables (t2/query {:select [:mt.id :mt.name :mt.db_id :md.uploads_schema_name]
+                                                :from [[:metabase_table :mt]]
+                                                :join [[:metabase_database :md] [:= :mt.db_id :md.id]]
+                                                :where [:and
+                                                        [:= :md.engine "clickhouse"]
+                                                        [:= :md.uploads_enabled true]
+                                                        [:not= :md.uploads_schema_name nil]
+                                                        [:= :mt.schema nil]
+                                                        [:= :mt.active false]
+                                                        [:= :mt.is_upload true]]})
+              retire-and-revive-upload-table! (fn [{:keys [id name db_id uploads_schema_name]}]
+                                                ;; Look for an active non-upload table with the same name and the correct `uploads_schema_name`
+                                                ;; Set it to be inactive and rename it to satisfy the (db_id, name, schema) unique key
+                                                (t2/query {:update :metabase_table
+                                                           :set {:active false
+                                                                 :name (str name "_retired_69667")}
+                                                           :where [:and
+                                                                   [:= :name name]
+                                                                   [:= :schema uploads_schema_name]
+                                                                   [:= :active true]
+                                                                   [:= :is_upload false]
+                                                                   [:= :db_id db_id]]})
+                                                ;; Set the inactive upload table to be active and set the schema to the correct `uploads_schema_name`
+                                                (t2/query {:update :metabase_table
+                                                           :set {:active true
+                                                                 :schema uploads_schema_name}
+                                                           :where [:= :id id]}))]
+          (run! retire-and-revive-upload-table! inactive-upload-tables))))))
+
+(defn- legacy-checkpoint-column-name
+  "Extract the column name from a legacy column-unique-key string.
+   Uses the same format as [[metabase.lib.metadata.column/unpack-unique-key]]:
+   `column-unique-key-v<version>$<column-key>`."
+  [unique-key]
+  (when-let [[_match _version column-key] (re-find #"^column-unique-key-v(\d+)\$(.+$)" unique-key)]
+    column-key))
+
+(defn- legacy-checkpoint-source-table-id
+  "Extract the source table ID from a parsed transform source for checkpoint migration.
+   Returns nil for native transforms (which can't be migrated)."
+  [parsed]
+  (case (keyword (:type parsed))
+    :query  (get-in parsed [:query :stages 0 :source-table])
+    :python (let [source-tables (:source-tables parsed)]
+              (cond
+                ;; vec format: [{:alias "t" :table_id 42}]
+                (sequential? source-tables)
+                (when (= 1 (count source-tables))
+                  (:table_id (first source-tables)))
+                ;; map format: {"t" 42} or {"t" {:table_id 42}}
+                (map? source-tables)
+                (when (= 1 (count source-tables))
+                  (let [v (first (vals source-tables))]
+                    (if (map? v) (:table_id v) v)))))
+    nil))
+
+(defn- resolve-checkpoint-field-id
+  "Try to resolve a legacy checkpoint-filter-unique-key to a field ID."
+  [parsed]
+  (when-let [unique-key (get-in parsed [:source-incremental-strategy :checkpoint-filter-unique-key])]
+    (when-let [column-name (legacy-checkpoint-column-name unique-key)]
+      (when-let [table-id (legacy-checkpoint-source-table-id parsed)]
+        (when (int? table-id)
+          (t2/select-one-pk :model/Field
+                            :table_id table-id
+                            :name column-name
+                            :active true))))))
+
+(define-migration RemoveLegacyIncrementalStrategies
+  (doseq [{:keys [id source]} (t2/select [:transform :id :source])]
+    (let [parsed (json-out source true)]
+      (when (:source-incremental-strategy parsed)
+        (if-let [field-id (resolve-checkpoint-field-id parsed)]
+          ;; Migrate: replace legacy keys with checkpoint-filter-field-id
+          (let [migrated (update parsed :source-incremental-strategy
+                                 (fn [s]
+                                   (-> s
+                                       (dissoc :checkpoint-filter-unique-key :checkpoint-filter)
+                                       (assoc :checkpoint-filter-field-id field-id))))]
+            (t2/query {:update :transform
+                       :set    {:source (json-in migrated)}
+                       :where  [:= :id id]}))
+          ;; Can't migrate: strip incremental strategy
+          (t2/query {:update :transform
+                     :set    {:source (json-in (dissoc parsed :source-incremental-strategy))}
+                     :where  [:= :id id]}))))))
+
+(defn- batched-data-layer-update!
+  "Update `metabase_table.data_layer` in 500K ID-range chunks to avoid timeout on large instances.
+   Computes min/max ID once and strides through the range. A final unbounded UPDATE catches any
+   rows inserted during the migration."
+  [from-values case-expr]
+  (let [batch-size 500000
+        {:keys [min-id max-id]} (t2/query-one
+                                 {:select [[[:min :id] :min-id]
+                                           [[:max :id] :max-id]]
+                                  :from   [:metabase_table]})]
+    (when (and min-id max-id)
+      (loop [start (long min-id)]
+        (when (<= start (long max-id))
+          (t2.execute/query-one
+           {:update :metabase_table
+            :set    {:data_layer case-expr}
+            :where  [:and
+                     [:>= :id start]
+                     [:< :id (+ start batch-size)]
+                     [:not-in :data_layer from-values]]})
+          (recur (+ start batch-size))))
+      ;; catch any rows inserted above the original max-id during the migration
+      (t2.execute/query-one
+       {:update :metabase_table
+        :set    {:data_layer case-expr}
+        :where  [:and
+                 [:> :id max-id]
+                 [:not-in :data_layer from-values]]}))))
+
+;; Intentionally not using define-reversible-migration here to avoid wrapping in a transaction.
+;; A single long transaction on millions of rows can hit connection/transaction timeouts.
+;; Each batch runs as its own implicit transaction instead.
+;; Partial completion is safe: :model/Table's transform-data-layer handles on-read conversion
+;; of any unconverted rows in both directions (58<->59).
+(defrecord DropMedallionNamesForDataLayer []
+  CustomTaskChange
+  (execute [_ _database]
+    (batched-data-layer-update!
+     ["hidden" "internal" "final"]
+     [:case [:= :data_layer "copper"] "hidden" :else "final"]))
+  (getConfirmationMessage [_]
+    "Custom migration: DropMedallionNamesForDataLayer")
+  (setUp [_])
+  (validate [_ _database]
+    (ValidationErrors.))
+  (setFileOpener [_ _resourceAccessor])
+
+  CustomTaskRollback
+  (rollback [_ _database]
+    (when (should-execute-change?)
+      (batched-data-layer-update!
+       ["copper" "bronze" "silver" "gold"]
+       [:case [:= :data_layer "hidden"] "copper" :else "bronze"]))))
+
+(defn- find-table-id
+  "Find a metabase_table by db-id, schema, and name using case-insensitive matching,
+   preferring an exact case match when one exists."
+  [db-id schema table-name]
+  (:id (first (t2/query {:select   [:id]
+                         :from     [:metabase_table]
+                         :where    [:and
+                                    [:= :db_id db-id]
+                                    (if (some? schema)
+                                      [:= [:lower :schema] [:lower schema]]
+                                      [:is :schema nil])
+                                    [:= [:lower :name] [:lower table-name]]]
+                         :order-by [[[:case
+                                      [:and
+                                       [:= :name table-name]
+                                       (if (some? schema)
+                                         [:= :schema schema]
+                                         [:is :schema nil])]
+                                      0
+                                      :else 1]
+                                     :asc]]
+                         :limit    1}))))
+
+(define-migration BackfillTransformTargetTables
+  ;; For each transform that has a target (database, schema, name), ensure a metabase_table row exists.
+  ;; If the table already exists (active or inactive), do nothing. Otherwise, insert a transform target row.
+  (let [;; Reproduces humanization/name->human-readable-name :simple (can't call library code in migrations)
+        acronyms  #{"id" "url" "ip" "uid" "uuid" "guid"}
+        cap-word  (fn [word]
+                    (let [lower (lower-case-en word)]
+                      (if (contains? acronyms lower)
+                        (upper-case-en word)
+                        (if (= word (upper-case-en word))
+                          (str/capitalize word)
+                          (str (str/capitalize (subs word 0 1)) (subs word 1))))))
+        humanize  (fn [s]
+                    (when (seq s)
+                      (let [result (str/join " " (for [part  (str/split s #"[-_\s]+")
+                                                       :when (not (str/blank? part))]
+                                                   (cap-word part)))]
+                        (if (str/blank? result) s result))))
+        upsert-table! (fn [db-id schema table-name]
+                        (or (find-table-id db-id schema table-name)
+                            (try
+                              (t2/query {:insert-into :metabase_table
+                                         :values      [{:db_id               db-id
+                                                        :schema              schema
+                                                        :name                table-name
+                                                        :display_name        (humanize table-name)
+                                                        :active              false
+                                                        :transform_target    true
+                                                        :data_source         "metabase-transform"
+                                                        :data_authority      "computed"
+                                                        :initial_sync_status "complete"
+                                                        :created_at          :%now
+                                                        :updated_at          :%now}]})
+                              (find-table-id db-id schema table-name)
+                              (catch Exception _
+                                (find-table-id db-id schema table-name)))))]
+    ;; Create provisional tables for transform targets that don't exist yet
+    (run! (fn [{:keys [target target_db_id]}]
+            (let [target-map (json-out target false)]
+              (when-let [table-name (get target-map "name")]
+                (let [schema (get target-map "schema")
+                      db-id  target_db_id]
+                  (upsert-table! db-id schema table-name)))))
+          (t2/reducible-query {:select [:target :target_db_id]
+                               :from   [:transform]
+                               :where  [:not= :target_db_id nil]})))
+  ;; Invalidate workspace caches so the app re-analyzes and backfills workspace_ table FKs lazily
+  (t2/query {:update :workspace_transform
+             :set    {:analysis_version [:+ :analysis_version 1]
+                      :definition_changed true}})
+  (t2/query {:update :workspace
+             :set    {:graph_version [:+ :graph_version 1]}}))
+
+(define-migration BackfillTransformTargetTableId
+  ;; For each transform with a non-null target_db_id, extract the table_id from the target JSON column.
+  ;; If table_id is present in the JSON, use it directly.
+  ;; If table_id is missing but name is present, look up the table by (db_id, schema, name).
+  (run! (fn [{:keys [id target target_db_id]}]
+          (let [target-map (json-out target false)
+                table-id   (or (get target-map "table_id")
+                               (when-let [table-name (get target-map "name")]
+                                 (find-table-id target_db_id (get target-map "schema") table-name)))]
+            (when table-id
+              (t2/query {:update :transform
+                         :set    {:target_table_id table-id}
+                         :where  [:= :id id]}))))
+        (t2/reducible-query {:select [:id :target :target_db_id]
+                             :from   [:transform]
+                             :where  [:and
+                                      [:not= :target_db_id nil]
+                                      [:= :target_table_id nil]]}))
+  ;; Invalidate workspace caches so they recalculate with target_table_id
+  (t2/query {:update :workspace_transform
+             :set    {:analysis_version [:+ :analysis_version 1]
+                      :definition_changed true}})
+  (t2/query {:update :workspace
+             :set    {:graph_version [:+ :graph_version 1]}}))

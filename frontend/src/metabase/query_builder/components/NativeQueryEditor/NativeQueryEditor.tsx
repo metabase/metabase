@@ -12,12 +12,22 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_METABOT, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { getMetabotVisible } from "metabase/metabot/state";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
-import type { QueryModalType } from "metabase/query_builder/constants";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
+import {
+  CodeMirrorEditor,
+  type CodeMirrorEditorProps,
+  type CodeMirrorEditorRef,
+} from "metabase/querying/components/CodeMirrorEditor";
+import type { QueryModalType } from "metabase/querying/constants";
+import type {
+  SelectionRange,
+  SidebarFeatures,
+} from "metabase/querying/editor/types";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -30,11 +40,6 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
-import {
-  CodeMirrorEditor,
-  type CodeMirrorEditorProps,
-  type CodeMirrorEditorRef,
-} from "./CodeMirrorEditor";
 import S from "./NativeQueryEditor.module.css";
 import { NativeQueryEditorRunButton } from "./NativeQueryEditorRunButton/NativeQueryEditorRunButton";
 import { NativeQueryEditorTopBar } from "./NativeQueryEditorTopBar/NativeQueryEditorTopBar";
@@ -45,7 +50,6 @@ import {
   RESIZE_CONSTRAINT_OFFSET,
   THRESHOLD_FOR_AUTO_CLOSE,
 } from "./constants";
-import type { SelectionRange, SidebarFeatures } from "./types";
 import {
   canFormatForEngine,
   formatQuery,
@@ -59,6 +63,7 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   className?: string;
   closeSnippetModal?: () => void;
   databaseIsDisabled?: (database: Database) => boolean;
+  databaseDisabledTooltip?: (database: Database) => string | undefined;
   editorContext?: "question" | "action";
   extraButton?: ReactNode;
   handleResize?: () => void;
@@ -66,7 +71,7 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   hasParametersList?: boolean;
   hasRunButton?: boolean;
   hasTopBar?: boolean;
-  highlightedLineNumbers?: number;
+  highlightedLineNumbers?: number[];
   insertSnippet?: (snippet: NativeQuerySnippet) => void;
   isInitiallyOpen?: boolean;
   isNativeEditorOpen: boolean;
@@ -121,6 +126,7 @@ export const NativeQueryEditor = forwardRef<
     className,
     closeSnippetModal,
     databaseIsDisabled,
+    databaseDisabledTooltip,
     editorContext,
     extensions,
     handleResize: handleResizeFromProps,
@@ -194,7 +200,7 @@ export const NativeQueryEditor = forwardRef<
   // do not show reference sidebar on small screens automatically
   const screenSize = useNotebookScreenSize();
   const isMetabotSidebarOpen = useSelector((state) =>
-    PLUGIN_METABOT.getMetabotVisible(state, "omnibot"),
+    getMetabotVisible(state, "omnibot"),
   );
   const shouldOpenDataReference =
     screenSize !== "small" && !isMetabotSidebarOpen;
@@ -318,6 +324,7 @@ export const NativeQueryEditor = forwardRef<
           setDatasetQuery={setDatasetQuery}
           onFormatQuery={handleFormatQuery}
           databaseIsDisabled={databaseIsDisabled}
+          databaseDisabledTooltip={databaseDisabledTooltip}
           readOnly={readOnly}
         >
           {topBarInnerContent}

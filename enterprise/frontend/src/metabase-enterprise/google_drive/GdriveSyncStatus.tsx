@@ -3,12 +3,12 @@ import { usePrevious } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { Api, skipToken } from "metabase/api";
 import { tag } from "metabase/api/tags";
 import { getErrorMessage } from "metabase/api/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 import StatusLarge from "metabase/status/components/StatusLarge";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import { EnterpriseApi } from "metabase-enterprise/api/api";
 import type { DatabaseId, GdrivePayload } from "metabase-types/api";
@@ -28,7 +28,7 @@ export const GdriveSyncStatus = () => {
   const res = useGetGsheetsFolderQuery(!showGdrive ? skipToken : undefined);
   const { data: gdriveFolder, error: apiError } = res;
 
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
   const isCurrentUser = currentUser?.id === gdriveFolder?.created_by_id;
 
   const status = getStatus({ status: gdriveFolder?.status, error: apiError });

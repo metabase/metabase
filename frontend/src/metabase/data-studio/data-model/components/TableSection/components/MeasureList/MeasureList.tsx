@@ -4,9 +4,9 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMeasureCreateStarted } from "metabase/data-studio/analytics";
 import { getUserCanWriteMeasures } from "metabase/data-studio/selectors";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { Button, Group, Icon, Stack } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { ConcreteTableId, Table } from "metabase-types/api";
 
 import S from "../../TableSection.module.css";
@@ -61,7 +61,9 @@ export function MeasureList({ table }: MeasureListProps) {
         <EmptyState
           className={S.EmptyState}
           spacing="sm"
-          illustrationElement={<Icon name="sum" size={32} c="text-secondary" />}
+          illustrationElement={
+            <Icon name="ruler" size={32} c="text-secondary" />
+          }
           title={t`No measures yet`}
           message={t`Create a measure to define a reusable aggregation for this table.`}
         />

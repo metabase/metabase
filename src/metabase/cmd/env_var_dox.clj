@@ -69,7 +69,7 @@
   "Formats an environment variable name with the 'MB_' prefix
    Example: MB_ENV_VAR_NAME or MB_OLD_SETTING [DEPRECATED]"
   [env-var]
-  (let [base-name (str "MB_" (u/->SCREAMING_SNAKE_CASE_EN (:munged-name env-var)))]
+  (let [base-name (setting/env-var-name (:name env-var))]
     (if (:deprecated env-var)
       (str base-name " [DEPRECATED]")
       base-name)))

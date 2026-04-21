@@ -3,10 +3,8 @@
    and edited within a workspace."
   (:require
    [clojure.string :as str]
-   [medley.core :as m]
-   [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
+   [metabase.transforms.models.transform :as transform]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -24,25 +22,9 @@
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
 
-;; TODO (Chris 2025-12-11) -- we need to share a bunch of stuff with transforms, i think we'll need to reorganize modules
-;;      suggestion: add a transforms-interfaces module which both transforms and workspaces depend on.
-
-(defn- transform-source-out-DUPLICATED [m]
-  (-> m
-      mi/json-out-without-keywordization
-      (update-keys keyword)
-      (m/update-existing :query lib-be/normalize-query)
-      (m/update-existing :type keyword)
-      (m/update-existing :source-incremental-strategy #(update-keys % keyword))))
-
-(defn- transform-source-in-DUPLICATED [m]
-  (-> m
-      (m/update-existing :query (comp lib/prepare-for-serialization lib-be/normalize-query))
-      mi/json-in))
-
 (t2/deftransforms :model/WorkspaceTransform
   {:ref_id {:in identity :out str/trim}
-   :source {:out transform-source-out-DUPLICATED, :in transform-source-in-DUPLICATED}
+   :source {:out transform/transform-source-out, :in transform/transform-source-in}
    :target mi/transform-json})
 
 (t2/define-before-insert :model/WorkspaceTransform

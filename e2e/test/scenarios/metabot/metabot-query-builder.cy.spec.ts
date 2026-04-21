@@ -18,176 +18,195 @@ const allOrdersQuestion = {
 };
 
 describe("Metabot Query Builder", () => {
-  describe("OSS", { tags: "@OSS" }, () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
+  });
+
+  it("should redirect to notebook when llm-metabot-configured? is false", () => {
+    H.updateSetting("llm-anthropic-api-key", "");
+    cy.visit("/question/ask");
+    cy.url().should("include", "/question#");
+    cy.findByTestId("metabot-send-message").should("not.exist");
+  });
+
+  it("should redirect to notebook when metabot-enabled? is false", () => {
+    H.updateSetting("metabot-enabled?", false);
+
+    cy.log(
+      "visiting '/question/ask' should redirect to notebook when metabot is disabled",
+    );
+    cy.visit("/question/ask");
+    cy.url().should("include", "/question#");
+    cy.findByTestId("metabot-send-message").should("not.exist");
+  });
+
+  it("should not show AI exploration in new button when metabot is disabled", () => {
+    H.updateSetting("metabot-enabled?", false);
+    cy.visit("/");
+
+    cy.log("'AI exploration' option should not appear in new button");
+    H.newButton().click();
+    H.popover().findByText("AI exploration").should("not.exist");
+  });
+
+  it("should be able to successfully generate a notebook query", () => {
+    // visit home page
+    cy.visit("/");
+
+    // go to new button and click "AI exploration"
+    H.newButton("AI exploration").click();
+
+    // should show page
+    cy.url().should("include", "/question/ask");
+    cy.findByTestId("metabot-send-message").should("be.visible");
+
+    // should have disabled send button
+    cy.findByTestId("metabot-send-message").should("be.disabled");
+
+    // should be able to type into the input
+    metabotPromptInput().type("Show me all orders");
+
+    // should be able to send prompt
+    const questionHash = H.adhocQuestionHash(allOrdersQuestion);
+    H.mockMetabotResponse({
+      body: mockNavigateToResponse(`/question#${questionHash}`),
+      delay: 100,
+    });
+    cy.findByTestId("metabot-send-message").click();
+
+    // should see loading state, send button should be disabled
+    cy.findByTestId("metabot-send-message").should("be.disabled");
+    cy.findByTestId("metabot-send-message").should(
+      "have.attr",
+      "data-loading",
+      "true",
+    );
+
+    // request body should include nlq profile
+    cy.wait("@metabotAgent").then(({ request }) => {
+      expect(request.body.profile_id).to.eq("nlq");
     });
 
-    it("should not be available in OSS", () => {
-      cy.visit("/");
+    // when we receive a navigate_to, we should be taken to a question
+    cy.url().should("include", "/question#");
+    cy.findByTestId("qb-header").should("contain", "Orders");
+  });
 
-      // "AI exploration" option should not appear in new button
-      H.newButton().click();
-      H.popover().findByText("AI exploration").should("not.exist");
+  it("should support clicking suggested prompts", () => {
+    // mock suggested prompts
+    cy.intercept("GET", "/api/metabot/metabot/*/prompt-suggestions*", {
+      prompts: [{ prompt: "Show me all orders" }],
+    });
 
-      // visiting /question/ask should redirect to an empty notebook query
-      cy.visit("/question/ask");
-      cy.url().should("include", "/question#");
+    // visit AI exploration page
+    cy.visit("/question/ask");
+    cy.findByTestId("metabot-send-message").should("be.visible");
+
+    // click suggested prompt
+    const questionHash = H.adhocQuestionHash(allOrdersQuestion);
+    H.mockMetabotResponse({
+      body: mockNavigateToResponse(`/question#${questionHash}`),
+    });
+    cy.get("main").findByText("Show me all orders").click();
+
+    // should be taken to a question
+    cy.wait("@metabotAgent");
+    cy.url().should("include", "/question#");
+    cy.findByTestId("qb-header").should("contain", "Orders");
+  });
+
+  it("should handle errors", () => {
+    // visit AI exploration page
+    cy.visit("/question/ask");
+    cy.findByTestId("metabot-send-message").should("be.visible");
+
+    // mock the agent request to fail
+    H.mockMetabotResponse({ statusCode: 500 });
+
+    // send a prompt
+    metabotPromptInput().type("Show me all orders");
+    cy.findByTestId("metabot-send-message").click();
+
+    // should show error
+    cy.get("main")
+      .findByText("Something went wrong. Please try again.")
+      .should("be.visible");
+  });
+
+  it("should handle getting no navigate_to", () => {
+    // visit AI exploration page
+    cy.visit("/question/ask");
+    cy.findByTestId("metabot-send-message").should("be.visible");
+
+    // mock a response without a navigate_to data part
+    H.mockMetabotResponse({
+      body: mockTextOnlyResponse("I need more information to help you."),
+    });
+
+    // send a prompt
+    metabotPromptInput().type("Show me something");
+    cy.findByTestId("metabot-send-message").click();
+    cy.wait("@metabotAgent");
+
+    // should be taken to /question/notebook with the sidebar open
+    cy.url().should("include", "/question/notebook");
+    H.assertChatVisibility("visible");
+  });
+
+  it("should not reuse the nlq profile after falling back to notebook chat", () => {
+    cy.intercept("POST", "/api/metabot/agent-streaming", (req) => {
+      req.reply({
+        statusCode: 200,
+        body: mockTextOnlyResponse("ok"),
+        headers: {
+          "content-type": "text/event-stream; charset=utf-8",
+        },
+      });
+    }).as("metabotAgent");
+
+    cy.visit("/");
+    H.newButton("AI exploration").click();
+    cy.url().should("include", "/question/ask");
+
+    metabotPromptInput().type("Show me all orders");
+    cy.findByTestId("metabot-send-message").click();
+
+    cy.wait("@metabotAgent").then(({ request }) => {
+      expect(request.body.profile_id).to.eq("nlq");
+    });
+
+    cy.url().should("include", "/question/notebook");
+    H.assertChatVisibility("visible");
+
+    H.sendMetabotMessage("Try again");
+
+    cy.wait("@metabotAgent").then(({ request }) => {
+      expect(request.body.profile_id).to.be.undefined;
     });
   });
 
-  describe("EE", () => {
-    beforeEach(() => {
-      H.restore();
-      cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
-      cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
+  it("should cancel requests if the user leaves the page", () => {
+    // visit AI exploration page
+    cy.visit("/question/ask");
+    cy.findByTestId("metabot-send-message").should("be.visible");
+
+    // send a prompt with a delayed response
+    H.mockMetabotResponse({
+      body: mockTextOnlyResponse("This should be canceled"),
+      delay: 2000,
     });
+    metabotPromptInput().type("Show me something");
+    cy.findByTestId("metabot-send-message").click();
 
-    it("should redirect to notebook when metabot-enabled? is false", () => {
-      H.updateSetting("metabot-enabled?", false);
+    // click on the logo in the app bar to leave the page
+    cy.findByTestId("main-logo-link").click();
 
-      cy.log(
-        "visiting '/question/ask' should redirect to notebook when metabot is disabled",
-      );
-      cy.visit("/question/ask");
-      cy.url().should("include", "/question#");
-      cy.findByTestId("metabot-send-message").should("not.exist");
-    });
-
-    it("should not show AI exploration in new button when metabot is disabled", () => {
-      H.updateSetting("metabot-enabled?", false);
-      cy.visit("/");
-
-      cy.log("'AI exploration' option should not appear in new button");
-      H.newButton().click();
-      H.popover().findByText("AI exploration").should("not.exist");
-    });
-
-    it("should be able to successfully generate a notebook query", () => {
-      // visit home page
-      cy.visit("/");
-
-      // go to new button and click "AI exploration"
-      H.newButton("AI exploration").click();
-
-      // should show page
-      cy.url().should("include", "/question/ask");
-      cy.findByTestId("metabot-send-message").should("be.visible");
-
-      // should have disabled send button
-      cy.findByTestId("metabot-send-message").should("be.disabled");
-
-      // should be able to type into the input
-      metabotPromptInput().type("Show me all orders");
-
-      // should be able to send prompt
-      const questionHash = H.adhocQuestionHash(allOrdersQuestion);
-      H.mockMetabotResponse({
-        body: mockNavigateToResponse(`/question#${questionHash}`),
-        delay: 100,
-      });
-      cy.findByTestId("metabot-send-message").click();
-
-      // should see loading state, send button should be disabled
-      cy.findByTestId("metabot-send-message").should("be.disabled");
-      cy.findByTestId("metabot-send-message").should(
-        "have.attr",
-        "data-loading",
-        "true",
-      );
-
-      // request body should include nlq profile
-      cy.wait("@metabotAgent").then(({ request }) => {
-        expect(request.body.profile_id).to.eq("nlq");
-      });
-
-      // when we receive a navigate_to, we should be taken to a question
-      cy.url().should("include", "/question#");
-      cy.findByTestId("qb-header").should("contain", "Orders");
-    });
-
-    it("should support clicking suggested prompts", () => {
-      // mock suggested prompts
-      cy.intercept("GET", "/api/ee/metabot-v3/metabot/*/prompt-suggestions*", {
-        prompts: [{ prompt: "Show me all orders" }],
-      });
-
-      // visit AI exploration page
-      cy.visit("/question/ask");
-      cy.findByTestId("metabot-send-message").should("be.visible");
-
-      // click suggested prompt
-      const questionHash = H.adhocQuestionHash(allOrdersQuestion);
-      H.mockMetabotResponse({
-        body: mockNavigateToResponse(`/question#${questionHash}`),
-      });
-      cy.get("main").findByText("Show me all orders").click();
-
-      // should be taken to a question
-      cy.wait("@metabotAgent");
-      cy.url().should("include", "/question#");
-      cy.findByTestId("qb-header").should("contain", "Orders");
-    });
-
-    it("should handle errors", () => {
-      // visit AI exploration page
-      cy.visit("/question/ask");
-      cy.findByTestId("metabot-send-message").should("be.visible");
-
-      // mock the agent request to fail
-      H.mockMetabotResponse({ statusCode: 500 });
-
-      // send a prompt
-      metabotPromptInput().type("Show me all orders");
-      cy.findByTestId("metabot-send-message").click();
-
-      // should show error
-      cy.get("main")
-        .findByText("Something went wrong. Please try again.")
-        .should("be.visible");
-    });
-
-    it("should handle getting no navigate_to", () => {
-      // visit AI exploration page
-      cy.visit("/question/ask");
-      cy.findByTestId("metabot-send-message").should("be.visible");
-
-      // mock a response without a navigate_to data part
-      H.mockMetabotResponse({
-        body: mockTextOnlyResponse("I need more information to help you."),
-      });
-
-      // send a prompt
-      metabotPromptInput().type("Show me something");
-      cy.findByTestId("metabot-send-message").click();
-      cy.wait("@metabotAgent");
-
-      // should be taken to /question/notebook with the sidebar open
-      cy.url().should("include", "/question/notebook");
-      H.assertChatVisibility("visible");
-    });
-
-    it("should cancel requests if the user leaves the page", () => {
-      // visit AI exploration page
-      cy.visit("/question/ask");
-      cy.findByTestId("metabot-send-message").should("be.visible");
-
-      // send a prompt with a delayed response
-      H.mockMetabotResponse({
-        body: mockTextOnlyResponse("This should be canceled"),
-        delay: 2000,
-      });
-      metabotPromptInput().type("Show me something");
-      cy.findByTestId("metabot-send-message").click();
-
-      // click on the logo in the app bar to leave the page
-      cy.findByTestId("main-logo-link").click();
-
-      // check that the agent request was canceled
-      cy.get("@metabotAgent").its("state").should("eq", "Errored");
-    });
+    // check that the agent request was canceled
+    cy.get("@metabotAgent").its("state").should("eq", "Errored");
   });
 });
 

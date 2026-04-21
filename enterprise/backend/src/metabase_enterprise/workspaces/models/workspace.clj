@@ -7,6 +7,11 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+;; NOTE: The `workspace` table still has an `execution_user` column in the DB. This was used by the service-user
+;; mechanism removed in c42c2ef1f20. It is no longer read or written by any code, but remains because the associated
+;; CoreUser rows may own dependent resources (e.g. transforms) that would cascade on delete.
+;; The `api_key_id` column and its associated API key rows were cleaned up in migration v60.2026-03-07.
+
 (methodical/defmethod t2/table-name :model/Workspace [_model] :workspace)
 
 (def ^:private base-statuses

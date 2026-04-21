@@ -1,23 +1,21 @@
 import * as Tippy from "@tippyjs/react";
 import cx from "classnames";
-import * as React from "react";
 import { useMemo } from "react";
 import * as ReactIs from "react-is";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 import { isReactDOMTypeElement } from "metabase-types/guards";
 
 const TippyComponent = Tippy.default;
 
-export interface TooltipProps
-  extends Partial<
-    Pick<
-      Tippy.TippyProps,
-      "delay" | "reference" | "placement" | "maxWidth" | "offset"
-    >
-  > {
+export interface TooltipProps extends Partial<
+  Pick<
+    Tippy.TippyProps,
+    "delay" | "reference" | "placement" | "maxWidth" | "offset"
+  >
+> {
   preventOverflow?: boolean;
   tooltip?: React.ReactNode;
   children?: React.ReactNode;
@@ -122,6 +120,6 @@ export function Tooltip({
       />
     );
   } else {
-    return <React.Fragment>{children}</React.Fragment>;
+    return <>{children}</>;
   }
 }

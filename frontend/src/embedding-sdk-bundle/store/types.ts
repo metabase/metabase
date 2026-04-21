@@ -16,10 +16,11 @@ import type {
 } from "embedding-sdk-bundle/types/ui";
 import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
 
 export type EmbeddingSessionTokenState = {
   token: MetabaseEmbeddingSessionToken | null;
+  rawToken: string | null; // Raw JWT string for guest embeds token refresh
   loading: boolean;
   error: SerializedError | null;
 };
@@ -42,6 +43,7 @@ export type SdkState = {
   usageProblem: null | SdkUsageProblem;
   errorComponent: null | SdkErrorComponent;
   fetchRefreshTokenFn: null | MetabaseAuthConfig["fetchRequestToken"];
+  pluginsReady: boolean;
 };
 
 export interface SdkStoreState extends State {

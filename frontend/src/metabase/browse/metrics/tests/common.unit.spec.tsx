@@ -75,21 +75,22 @@ describe("BrowseMetrics (OSS)", () => {
     ).toHaveLength(3);
   });
 
-  it("should render links that point directly to /metric/{id}-{slug} (metabase#55166)", async () => {
+  it("should render links that point to metric detail page", async () => {
     const { history } = setup({ metricCount: 5 });
     const table = await screen.findByRole("table", {
       name: /Table of metrics/,
     });
     expect(
       within(table).getByRole("link", { name: /Metric 1/ }),
-    ).toHaveAttribute("href", "/metric/1-metric-1");
+    ).toHaveAttribute("href", "/metric/1");
     expect(
       within(table).getByRole("link", { name: /Metric 2/ }),
-    ).toHaveAttribute("href", "/metric/2-metric-2");
+    ).toHaveAttribute("href", "/metric/2");
 
     expect(screen.queryByTestId("metric-detail-page")).not.toBeInTheDocument();
     await userEvent.click(within(table).getByText("Metric 1"));
     expect(screen.getByTestId("metric-detail-page")).toBeInTheDocument();
-    expect(history?.getCurrentLocation().pathname).toBe("/metric/1-metric-1");
+    const location = history?.getCurrentLocation();
+    expect(location?.pathname).toBe("/metric/1");
   });
 });

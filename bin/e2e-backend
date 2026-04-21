@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PORT="${MB_JETTY_PORT:-4000}"
+
+if curl -sf "http://localhost:$PORT/api/health" > /dev/null 2>&1; then
+  echo "⚠️  Backend already running on :$PORT — reusing it. If you need a different MB_EDITION, kill it first: lsof -ti:$PORT | xargs kill"
+  exit 0
+fi
+
+exec node e2e/runner/start-backend.js

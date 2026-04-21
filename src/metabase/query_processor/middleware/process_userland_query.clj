@@ -14,6 +14,7 @@
    [metabase.queries.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -42,11 +43,12 @@
 (defn- save-execution-metadata!*
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
   [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
-  (when-not (:cache_hit query-execution)
-    (query/save-query-and-update-average-execution-time! query query-hash running-time))
-  (if-not context
-    (log/warn "Cannot save QueryExecution, missing :context")
-    (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))))
+  (tracing/with-span :db-app "db-app.save-query-execution" {}
+    (when-not (:cache_hit query-execution)
+      (query/save-query-and-update-average-execution-time! query query-hash running-time))
+    (if-not context
+      (log/warn "Cannot save QueryExecution, missing :context")
+      (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query)))))
 
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."

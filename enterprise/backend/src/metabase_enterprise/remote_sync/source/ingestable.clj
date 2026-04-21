@@ -17,21 +17,30 @@
   (serialization/read-timestamps (yaml/parse-string file-content {:key-fn serialization/parse-key})))
 
 (defn- ingest-all
+  "Returns {:entities {stripped-hierarchy [hierarchy content]}, :errors [Exception...]}.
+  Dotfiles are silently skipped (editor temp files, see #41567).
+  Non-dotfile YAML parse/read failures are collected in :errors."
   [snapshot]
-  (into {} (for [path (source.p/list-files snapshot)
-                 :when (and (not (str/starts-with? path "."))
-                            (str/ends-with? path ".yaml"))
-                 :let [content (try
-                                 (source.p/read-file snapshot path)
-                                 (catch Exception e
-                                   (log/error e "Error reading file" path)))
-                       loaded (try
-                                (when content
-                                  (serdes/path (ingest-content content)))
-                                (catch Exception e
-                                  (log/error e "Error reading file" path)))]
-                 :when loaded]
-             [(serialization/strip-labels loaded) [loaded content]])))
+  (let [errors (atom [])]
+    {:entities (into {} (for [path (source.p/list-files snapshot)
+                              :when (and (not (str/starts-with? path "."))
+                                         (str/ends-with? path ".yaml"))
+                              :let [content (try
+                                              (source.p/read-file snapshot path)
+                                              (catch Exception e
+                                                (log/warn (u/strip-error e "Error reading file during ingestion"))
+                                                (swap! errors conj (ex-info (format "Failed to read file: %s" path) {:file path} e))
+                                                nil))
+                                    loaded (try
+                                             (when content
+                                               (serdes/path (ingest-content content)))
+                                             (catch Exception e
+                                               (log/warn (u/strip-error e "Error parsing file during ingestion"))
+                                               (swap! errors conj (ex-info (format "Failed to parse file: %s" path) {:file path} e))
+                                               nil))]
+                              :when loaded]
+                          [(serialization/strip-labels loaded) [loaded content]]))
+     :errors @errors}))
 
 ;; Wraps another Ingestable calling a callback when a file is ingested
 (defrecord CallbackIngestable [ingestable callback]
@@ -41,7 +50,10 @@
 
   (ingest-one [_ serdes-path]
     (u/prog1 (serialization/ingest-one ingestable serdes-path)
-      (callback <> serdes-path))))
+      (callback <> serdes-path)))
+
+  (ingest-errors [_]
+    (serialization/ingest-errors ingestable)))
 
 (defn wrap-progress-ingestable
   "Wraps an Ingestable to track and update progress during ingestion.
@@ -83,7 +95,10 @@
                root-dependencies))
             (serialization/ingest-list ingestable)))
   (ingest-one [_ serdes-path]
-    (serialization/ingest-one ingestable serdes-path)))
+    (serialization/ingest-one ingestable serdes-path))
+
+  (ingest-errors [_]
+    (serialization/ingest-errors ingestable)))
 
 (defn wrap-root-dep-ingestable
   "Wraps an Ingestable to filter items by root dependencies.
@@ -96,17 +111,26 @@
   [root-dependencies ingestable]
   (->RootDependencyIngestable ingestable root-dependencies (atom {})))
 
+(defn- populate-cache! [cache errors-atom ingest-fn]
+  (when-not @cache
+    (let [result (ingest-fn)]
+      (reset! cache (:entities result))
+      (reset! errors-atom (:errors result)))))
+
 ;; Wraps a snapshot object providing the ingestable interface for serdes
-(defrecord IngestableSnapshot [^SourceSnapshot snapshot cache]
+(defrecord IngestableSnapshot [^SourceSnapshot snapshot cache errors-atom]
   serialization/Ingestable
   (ingest-list [_]
-    (keys (or @cache (reset! cache (ingest-all snapshot)))))
+    (populate-cache! cache errors-atom #(ingest-all snapshot))
+    (keys @cache))
 
   (ingest-one [_ serdes-path]
-    (when-not @cache
-      (reset! cache (ingest-all snapshot)))
+    (populate-cache! cache errors-atom #(ingest-all snapshot))
     (when-let [target (get @cache (serialization/strip-labels serdes-path))]
       (try
         (ingest-content (second target))
         (catch Exception e
-          (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e)))))))
+          (throw (ex-info "Unable to ingest file" {:abs-path serdes-path} e))))))
+
+  (ingest-errors [_]
+    (or @errors-atom [])))

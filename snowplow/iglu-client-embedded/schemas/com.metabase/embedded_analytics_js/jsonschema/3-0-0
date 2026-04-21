@@ -1,0 +1,121 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Modular embedding configuration with extensible component tracking",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "embedded_analytics_js",
+    "format": "jsonschema",
+    "version": "3-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "The type of event being recorded. For example, when the modular embedding is initialized, or when the Metabase configuration is updated.",
+      "type": "string",
+      "enum": [
+        "setup"
+      ],
+      "maxLength": 1024
+    },
+    "global": {
+      "description": "Global configuration for modular embedding.",
+      "type": "object",
+      "properties": {
+        "auth_method": {
+          "description": "Authentication method used for the modular embedding.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "session",
+            "api_key",
+            "sso",
+            "guest"
+          ],
+          "maxLength": 1024
+        },
+        "locale_used": {
+          "description": "Whether the locale has been set",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "components": {
+      "description": "Configuration for embedded components",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A single embedded component and its properties",
+        "properties": {
+          "name": {
+            "description": "Component name (e.g., dashboard, question, exploration, browser, metabot, etc.)",
+            "type": "string",
+            "maxLength": 255
+          },
+          "properties": {
+            "description": "Properties and their value counts",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "A single property and its value counts",
+              "properties": {
+                "name": {
+                  "description": "Property name",
+                  "type": "string",
+                  "maxLength": 255
+                },
+                "values": {
+                  "description": "Value counts for this property",
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "description": "A single property value and its count",
+                    "properties": {
+                      "group": {
+                        "type": "string",
+                        "description": "The value group (e.g., 'true', 'false', 'auto', 'sidebar', 'stacked')",
+                        "maxLength": 255
+                      },
+                      "value": {
+                        "type": "integer",
+                        "description": "Count for this group",
+                        "minimum": 0,
+                        "maximum": 2147483647
+                      }
+                    },
+                    "required": [
+                      "group",
+                      "value"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "name",
+                "values"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "name",
+          "properties"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "event",
+    "global",
+    "components"
+  ],
+  "additionalProperties": true
+}

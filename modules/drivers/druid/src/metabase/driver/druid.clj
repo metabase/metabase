@@ -65,4 +65,4 @@
   :sunday)
 
 (defmethod driver/llm-sql-dialect-resource :druid [_]
-  "llm/prompts/dialects/druid.md")
+  "metabot/prompts/dialects/druid.md")

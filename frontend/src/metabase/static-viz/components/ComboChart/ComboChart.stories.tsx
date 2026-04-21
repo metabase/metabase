@@ -1,11 +1,11 @@
 import type { StoryFn } from "@storybook/react";
 import { updateIn } from "icepick";
 
-import { color } from "metabase/lib/colors";
 import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
+import { color } from "metabase/ui/colors";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
@@ -1094,6 +1094,30 @@ export const SymlogDecimals = {
   render: Template,
   args: {
     rawSeries: data.symlogDecimals,
+    renderingContext,
+  },
+};
+
+export const LineChartSplitPanelsTimeseriesDifferentRanges = {
+  render: Template,
+  args: {
+    rawSeries: data.lineChartSplitPanelsTimeseriesDifferentRanges,
+    renderingContext,
+  },
+};
+
+export const ComboSplitPanelsMixedSeriesDisplaySettings = {
+  render: Template,
+  args: {
+    rawSeries: data.comboSplitPanelsMixedSeriesDisplaySettings,
+    renderingContext,
+  },
+};
+
+export const BarSplitPanelsOrdinalMixedTicksWidthsPerPanel = {
+  render: Template,
+  args: {
+    rawSeries: data.barSplitPanelsOrdinalMixedTicksWidthsPerPanel,
     renderingContext,
   },
 };

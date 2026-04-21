@@ -2,13 +2,9 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
 import { BigIntNumberInput } from "metabase/querying/common/components/BigIntNumberInput";
-import {
-  type NumberOrEmptyValue,
-  useNumberFilter,
-} from "metabase/querying/filters/hooks/use-number-filter";
 import { Box, Flex, Text } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 
 import { FilterOperatorPicker } from "../FilterOperatorPicker";
@@ -17,6 +13,8 @@ import { FilterPickerHeader } from "../FilterPickerHeader";
 import { NumberFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
+
+import { type NumberOrEmptyValue, useNumberFilter } from "./hooks";
 
 export function NumberFilterPicker({
   autoFocus,

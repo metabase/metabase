@@ -1,10 +1,9 @@
 import type { LocationDescriptor } from "history";
-import type { MouseEvent } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import type { RecentItem } from "metabase-types/api";
 
 import { BASIC_ACTION_ORDER } from "./hooks/useCommandPaletteBasicActions";
@@ -141,6 +140,3 @@ export const locationDescriptorToURL = (
     return `${pathname}${queryString}${hashString}`;
   }
 };
-
-export const isNormalClick = (e: MouseEvent): boolean =>
-  !e.ctrlKey && !e.shiftKey && !e.metaKey && !e.altKey && e.button === 0;

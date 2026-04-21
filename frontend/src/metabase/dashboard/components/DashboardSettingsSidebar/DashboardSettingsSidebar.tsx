@@ -8,9 +8,9 @@ import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { toggleAutoApplyFilters } from "metabase/dashboard/actions/parameters";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { isDashboardCacheable } from "metabase/dashboard/utils";
-import { useDispatch } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { Switch, useModalsStack } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type { CacheableDashboard, Dashboard } from "metabase-types/api";
 
 export function DashboardSettingsSidebar() {
@@ -82,7 +82,9 @@ const DashboardSidesheetBody = ({
   const canWrite = dashboard.can_write && !dashboard.archived;
 
   const isCacheable = isDashboardCacheable(dashboard);
-  const showCaching = canWrite && PLUGIN_CACHING.isGranularCachingEnabled();
+  const showCaching =
+    (dashboard.can_set_cache_policy ?? canWrite) &&
+    PLUGIN_CACHING.isGranularCachingEnabled();
 
   if (dashboard.archived) {
     return null;

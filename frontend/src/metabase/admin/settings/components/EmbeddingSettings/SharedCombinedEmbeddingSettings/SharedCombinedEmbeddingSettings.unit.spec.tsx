@@ -1,13 +1,14 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
   findRequests,
   setupEmbeddableEntitiesEndpoints,
+  setupGenerateRandomTokenEndpoint,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
   setupUpdateSettingsEndpoint,
+  setupUpsellEndpoints,
   setupUserKeyValueEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -26,14 +27,12 @@ const setup = async ({ enabled }: { enabled: boolean }) => {
   setupSettingsEndpoints([]);
   setupUpdateSettingEndpoint();
   setupUpdateSettingsEndpoint();
+  setupUpsellEndpoints();
   setupEmbeddableEntitiesEndpoints({
     dashboards: [createMockDashboard({ name: "My cool dashboard" })],
     cards: [createMockCard({ name: "My cool card" })],
   });
-
-  fetchMock.get("path:/api/util/random_token", {
-    token: "fake-token",
-  });
+  setupGenerateRandomTokenEndpoint("fake-token");
   setupUserKeyValueEndpoints({
     namespace: "user_acknowledgement",
     key: "upsell-embedded-analytics-js",
