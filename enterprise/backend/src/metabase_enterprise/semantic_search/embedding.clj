@@ -274,26 +274,39 @@
 
 ;;;; OpenAI provider
 
+(defn- openai-config-snapshot
+  "Normalize the OpenAI settings once. Trims both values and treats empty-after-trim as missing,
+  since `llm-openai-api-base-url` has no trimming setter and a surrounding-whitespace value would
+  otherwise pass a blank check and then build a malformed endpoint URL. Returns a map with
+  `:api-key` / `:base-url` (both trimmed, non-empty) when ready, and `:problem` (a
+  `{:message ... :setting ...}` map describing the first missing prerequisite) otherwise."
+  []
+  (let [api-key  (some-> (semantic-settings/openai-api-key) str/trim not-empty)
+        base-url (some-> (semantic-settings/openai-api-base-url) str/trim not-empty)]
+    {:api-key  api-key
+     :base-url base-url
+     :problem  (cond
+                 (nil? api-key)
+                 {:message "OpenAI API key not configured"      :setting "llm-openai-api-key"}
+                 (nil? base-url)
+                 {:message "OpenAI API base URL not configured" :setting "llm-openai-api-base-url"})}))
+
 (defn openai-config-problem
   "Returns nil when the OpenAI provider is ready to use, otherwise a map
   `{:message ... :setting ...}` describing the first missing prerequisite.
   Shared by [[openai-resolve-config!]] and config-only readiness callers (see
   [[metabase-enterprise.semantic-search.core/provider-ready?]]) so the two paths
-  cannot drift — e.g. a cleared base URL has to fail both checks together."
+  cannot drift — e.g. a cleared or whitespace-only base URL has to fail both checks together."
   []
-  (cond
-    (str/blank? (semantic-settings/openai-api-key))
-    {:message "OpenAI API key not configured"      :setting "llm-openai-api-key"}
-    (str/blank? (semantic-settings/openai-api-base-url))
-    {:message "OpenAI API base URL not configured" :setting "llm-openai-api-base-url"}))
+  (:problem (openai-config-snapshot)))
 
 (defn- openai-resolve-config!
   "Returns [endpoint api-key] or throws if not configured."
   []
-  (when-let [{:keys [message setting]} (openai-config-problem)]
-    (throw (ex-info message {:setting setting})))
-  [(str (semantic-settings/openai-api-base-url) "/v1/embeddings")
-   (semantic-settings/openai-api-key)])
+  (let [{:keys [api-key base-url problem]} (openai-config-snapshot)]
+    (when problem
+      (throw (ex-info (:message problem) {:setting (:setting problem)})))
+    [(str base-url "/v1/embeddings") api-key]))
 
 (defmethod get-embedding "openai" [embedding-model text & {:as opts}]
   (let [[endpoint api-key] (openai-resolve-config!)]

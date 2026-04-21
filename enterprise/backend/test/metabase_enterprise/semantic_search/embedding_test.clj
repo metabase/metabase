@@ -73,6 +73,25 @@
              #"OpenAI API key not configured"
              (embedding/get-embeddings-batch embedding-model ["test text"])))))))
 
+(deftest test-openai-config-problem-whitespace
+  (testing "whitespace-only OpenAI settings are reported as missing"
+    ;; The base-url setter does not trim, so a padded-to-empty value would otherwise pass the
+    ;; old str/blank? check and produce a malformed endpoint URL at call time.
+    (with-redefs [semantic.settings/openai-api-key      (constantly "   ")
+                  semantic.settings/openai-api-base-url (constantly "https://api.openai.com")]
+      (is (=? {:setting "llm-openai-api-key"}
+              (embedding/openai-config-problem))))
+    (with-redefs [semantic.settings/openai-api-key      (constantly "sk-test")
+                  semantic.settings/openai-api-base-url (constantly "   ")]
+      (is (=? {:setting "llm-openai-api-base-url"}
+              (embedding/openai-config-problem)))))
+  (testing "padded-but-valid settings resolve to a trimmed endpoint URL"
+    (with-redefs [semantic.settings/openai-api-key      (constantly "  sk-test  ")
+                  semantic.settings/openai-api-base-url (constantly "  https://api.openai.com  ")]
+      (is (nil? (embedding/openai-config-problem)))
+      (is (= ["https://api.openai.com/v1/embeddings" "sk-test"]
+             (#'embedding/openai-resolve-config!))))))
+
 (deftest test-token-counting
   (testing "count-tokens returns reasonable counts for text"
     (is (= 2 (#'embedding/count-tokens "Hello world")))
