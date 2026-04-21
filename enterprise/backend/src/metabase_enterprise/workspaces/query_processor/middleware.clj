@@ -39,3 +39,17 @@
                                                                 sql
                                                                 remapping
                                                                 {:allow-unused? true}))))))
+
+(defenterprise apply-workspace-table-remapping
+  "Pre-processing middleware. Rewrites MBQL table references (`:source-table`, joins) for workspace
+   transforms. Runs after sandboxing so that production sandbox filters materialize before the
+   table reference is redirected to its workspace copy.
+
+   Expects `[:middleware :workspace-table-remapping :tables]` to be a map of
+   `table-id -> {:schema \"ws_schema\" :name \"table_name\"}`."
+  :feature :workspaces
+  [{{remapping :workspace-table-remapping} :middleware :as query}]
+  (if (or (not remapping) (empty? (:tables remapping)))
+    query
+    ;; TODO: walk stages + joins, swap :source-table references according to remapping :tables.
+    query))
