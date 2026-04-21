@@ -97,6 +97,7 @@
    (the metabot_message PK) since `metabot_feedback` is a 1:1 extension of `metabot_message`."
   [:map
    [:message_id        ms/PositiveInt]
+   [:external_id       [:maybe :string]]
    [:positive          :boolean]
    [:issue_type        [:maybe :string]]
    [:freeform_feedback [:maybe :string]]

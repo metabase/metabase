@@ -136,6 +136,7 @@
   (api/check-404 (t2/exists? :model/MetabotConversation :id conversation-id))
   (let [rows     (t2/select :model/MetabotFeedback
                             {:select    [:metabot_feedback.message_id
+                                         [:mm.external_id :external_id]
                                          :metabot_feedback.positive
                                          :metabot_feedback.issue_type
                                          :metabot_feedback.freeform_feedback
@@ -155,6 +156,7 @@
                                      :id [:in user-ids]))]
     (mapv (fn [row]
             {:message_id        (:message_id row)
+             :external_id       (:external_id row)
              :positive          (:positive row)
              :issue_type        (:issue_type row)
              :freeform_feedback (:freeform_feedback row)

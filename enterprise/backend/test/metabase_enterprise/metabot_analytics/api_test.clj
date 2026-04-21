@@ -247,7 +247,12 @@
             (is (nil? (:slack_permalink response)))
             (is (= "gpt-5" (:model response))
                 "model comes from the first assistant message's profile_id, ignoring user-message placeholders")
-            (is (= 2 (count (:chat_messages response)))))
+            (is (= 2 (count (:chat_messages response))))
+            (let [assistant-chat (last (:chat_messages response))]
+              (is (= "agent" (:role assistant-chat)))
+              (is (= "text" (:type assistant-chat)))
+              (is (string? (:externalId assistant-chat))
+                  "agent text chat messages surface the parent metabot_message.external_id as :externalId so the admin UI can jump to them")))
           (finally
             (delete-conversations! [conversation-id])))))))
 
@@ -638,6 +643,8 @@
               (is (= [true false] (map :positive response)))
               (is (= [msg-1 msg-2] (map :message_id response)))
               (is (= "not-factual" (:issue_type (second response))))
+              (is (every? (comp string? :external_id) response)
+                  "each feedback row carries the parent metabot_message.external_id so the admin UI can link to it")
               (is (= {:id         user-id
                       :email      "crowberto@metabase.com"
                       :first_name "Crowberto"

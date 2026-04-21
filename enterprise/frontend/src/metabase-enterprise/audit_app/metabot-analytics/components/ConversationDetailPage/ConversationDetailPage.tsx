@@ -9,11 +9,13 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
+import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Anchor,
+  Badge,
   Box,
   Button,
   Card,
@@ -139,6 +141,16 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           </Stack>
         </Flex>
 
+        <SimpleGrid cols={4}>
+          <StatCard label={t`Messages`} value={String(messageCount)} />
+          <StatCard
+            label={t`Total tokens`}
+            value={totalTokens.toLocaleString()}
+          />
+          <StatCard label={t`Queries run`} value={String(queryCount)} />
+          <StatCard label={t`Searches`} value={String(searchCount)} />
+        </SimpleGrid>
+
         {feedback.length > 0 && (
           <Box>
             <Title order={3}>{t`Feedback`}</Title>
@@ -149,16 +161,6 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
             </Stack>
           </Box>
         )}
-
-        <SimpleGrid cols={4}>
-          <StatCard label={t`Messages`} value={String(messageCount)} />
-          <StatCard
-            label={t`Total tokens`}
-            value={totalTokens.toLocaleString()}
-          />
-          <StatCard label={t`Queries run`} value={String(queryCount)} />
-          <StatCard label={t`Searches`} value={String(searchCount)} />
-        </SimpleGrid>
 
         <Box>
           <Title order={4}>{t`Conversation`}</Title>
@@ -190,10 +192,15 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
 }
 
 function FeedbackCard({ feedback }: { feedback: ConversationFeedback }) {
-  const submitterName = feedback.user
-    ? getUserName(feedback.user) || feedback.user.email
-    : t`Unknown`;
   const sentimentLabel = feedback.positive ? t`Positive` : t`Negative`;
+
+  const jumpToMessage = () => {
+    const el =
+      feedback.external_id && document.getElementById(feedback.external_id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
 
   return (
     <Card withBorder shadow="none" p="md">
@@ -203,27 +210,28 @@ function FeedbackCard({ feedback }: { feedback: ConversationFeedback }) {
             <Icon
               name={feedback.positive ? "thumbs_up" : "thumbs_down"}
               size={20}
-              c={feedback.positive ? "success" : "error"}
+              c="text-secondary"
             />
             <Text fw={700}>{sentimentLabel}</Text>
             {feedback.issue_type && (
-              <Text size="sm" c="text-secondary">
-                {`· ${feedback.issue_type}`}
-              </Text>
+              <Badge variant="light">
+                {getIssueTypeLabel(feedback.issue_type)}
+              </Badge>
             )}
           </Flex>
-          <Flex gap="xs" align="center">
-            <Text size="sm" c="text-secondary">
-              {submitterName}
-            </Text>
-            <Text size="sm" c="text-tertiary">
-              {`· `}
-              <DateTime value={feedback.created_at} />
-            </Text>
-          </Flex>
+          {feedback.external_id && (
+            <Anchor
+              component="button"
+              type="button"
+              size="sm"
+              onClick={jumpToMessage}
+            >
+              {t`Jump to message`}
+            </Anchor>
+          )}
         </Flex>
         {feedback.freeform_feedback && (
-          <Text size="sm">{feedback.freeform_feedback}</Text>
+          <Text>{feedback.freeform_feedback}</Text>
         )}
       </Stack>
     </Card>

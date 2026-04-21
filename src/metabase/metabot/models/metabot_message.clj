@@ -15,3 +15,8 @@
   {:usage mi/transform-json
    :data  mi/transform-json
    :role  mi/transform-keyword})
+
+(t2/define-before-insert :model/MetabotMessage
+  [message]
+  (cond-> message
+    (nil? (:external_id message)) (assoc :external_id (str (random-uuid)))))

@@ -59,6 +59,7 @@ export type GeneratedQuery = {
 
 export type ConversationFeedback = {
   message_id: number;
+  external_id: string | null;
   positive: boolean;
   issue_type: string | null;
   freeform_feedback: string | null;

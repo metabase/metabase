@@ -154,8 +154,9 @@ export const AgentMessage = ({
   hideActions,
   ...props
 }: AgentMessageProps) => {
+  const anchorId = message.type === "text" ? message.externalId : undefined;
   return (
-    <MessageContainer chatRole={message.role} {...props}>
+    <MessageContainer chatRole={message.role} id={anchorId} {...props}>
       {message.type === "text" && (
         <AIMarkdown
           className={Styles.message}
@@ -185,38 +186,41 @@ export const AgentMessage = ({
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
             </Tooltip>
-            {showFeedbackButtons && setFeedbackMessage && (
-              <>
-                <Tooltip label={t`Give positive feedback`}>
-                  <FeedbackButton
-                    data-testid="metabot-chat-message-thumbs-up"
-                    icon="thumbs_up"
-                    hasBeenClicked={submittedFeedback === "positive"}
-                    disabled={!!submittedFeedback}
-                    onClick={() =>
-                      setFeedbackMessage({
-                        messageId: message.id,
-                        positive: true,
-                      })
-                    }
-                  />
-                </Tooltip>
-                <Tooltip label={t`Give negative feedback`}>
-                  <FeedbackButton
-                    data-testid="metabot-chat-message-thumbs-down"
-                    icon="thumbs_down"
-                    hasBeenClicked={submittedFeedback === "negative"}
-                    disabled={!!submittedFeedback}
-                    onClick={() =>
-                      setFeedbackMessage({
-                        messageId: message.id,
-                        positive: false,
-                      })
-                    }
-                  />
-                </Tooltip>
-              </>
-            )}
+            {showFeedbackButtons &&
+              setFeedbackMessage &&
+              message.type === "text" &&
+              message.externalId && (
+                <>
+                  <Tooltip label={t`Give positive feedback`}>
+                    <FeedbackButton
+                      data-testid="metabot-chat-message-thumbs-up"
+                      icon="thumbs_up"
+                      hasBeenClicked={submittedFeedback === "positive"}
+                      disabled={!!submittedFeedback}
+                      onClick={() =>
+                        setFeedbackMessage({
+                          messageId: message.externalId!,
+                          positive: true,
+                        })
+                      }
+                    />
+                  </Tooltip>
+                  <Tooltip label={t`Give negative feedback`}>
+                    <FeedbackButton
+                      data-testid="metabot-chat-message-thumbs-down"
+                      icon="thumbs_down"
+                      hasBeenClicked={submittedFeedback === "negative"}
+                      disabled={!!submittedFeedback}
+                      onClick={() =>
+                        setFeedbackMessage({
+                          messageId: message.externalId!,
+                          positive: false,
+                        })
+                      }
+                    />
+                  </Tooltip>
+                </>
+              )}
 
             {onRetry && (
               <Tooltip label={t`Retry`}>
@@ -386,7 +390,11 @@ export const Messages = ({
             onCopy={onAgentMessageCopy}
             showFeedbackButtons={showFeedbackButtons}
             setFeedbackMessage={setFeedbackModal}
-            submittedFeedback={feedbackState.submitted[message.id]}
+            submittedFeedback={
+              message.type === "text" && message.externalId
+                ? feedbackState.submitted[message.externalId]
+                : undefined
+            }
             hideActions={
               isDoingScience || messages[index + 1]?.role === "agent"
             }
