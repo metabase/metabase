@@ -116,38 +116,30 @@
          ;; no matches — force an empty result
          [:= 1 0])))))
 
+(defn- ordered-list-query
+  "Base list query with a deterministic `updated_at desc` ordering applied — used by both
+  pagination paths so the page you land on is stable."
+  [filters]
+  (assoc (base-list-query filters)
+         :order-by [[:notification.updated_at :desc]]))
+
 (defn- count-query
   "Count matching distinct notifications for `filters`, without pagination. Reuses [[base-list-query]]
   so the WHERE/JOIN shape stays identical."
   [filters]
   (-> (base-list-query filters)
       (assoc :select [[[:count [:distinct :notification.id]] :count]])
-      (dissoc :select-distinct :order-by)))
-
-(defn- sort-by-last-sent-desc
-  "Sort rows by :last_sent_at descending, nulls last. Used in the health-filtered path where we've
-  already materialized the full result set in memory."
-  [rows]
-  (sort (fn [a b]
-          (let [ta (:last_sent_at a)
-                tb (:last_sent_at b)]
-            (cond
-              (and (nil? ta) (nil? tb)) 0
-              (nil? ta)                  1
-              (nil? tb)                  -1
-              :else                      (compare tb ta))))
-        rows))
+      (dissoc :select-distinct)))
 
 (defn- list-unfiltered-by-health
-  "Default list path — pagination and sort happen in SQL. Health + `:last_sent_at` are computed
-  only for the current page. O(page-size) work per request."
+  "Default list path — pagination happens in SQL. Health + `:last_sent_at` are computed only for
+  the current page. O(page size) work per request."
   [{:keys [limit offset] :as filters}]
   (let [base-filters (dissoc filters :limit :offset :health)
         page-rows    (t2/select :model/Notification
-                                (-> (base-list-query base-filters)
-                                    (assoc :order-by [[:notification.updated_at :desc]]
-                                           :limit    limit
-                                           :offset   offset)))
+                                (assoc (ordered-list-query base-filters)
+                                       :limit  limit
+                                       :offset offset))
         enriched     (notification-admin.health/compute-for-rows page-rows)
         total        (or (:count (t2/query-one (count-query base-filters))) 0)]
     {:data   (vec (models.notification/hydrate-notification enriched))
@@ -157,15 +149,14 @@
 
 (defn- list-filtered-by-health
   "Health-filtered path — we must materialize every matching row so we can compute health and
-  filter on it. O(matching rows) in memory. Kept simple and documented; firefighter use case
-  where exactness matters more than scale."
+  filter on it. O(matching rows) in memory; firefighter use case where exactness matters more
+  than scale."
   [{:keys [limit offset health] :as filters}]
   (let [rows     (t2/select :model/Notification
-                            (base-list-query (dissoc filters :limit :offset :health)))
+                            (ordered-list-query (dissoc filters :limit :offset :health)))
         enriched (notification-admin.health/compute-for-rows rows)
         matching (filter #(= health (:health %)) enriched)
-        sorted   (sort-by-last-sent-desc matching)
-        page     (->> sorted (drop offset) (take limit))]
+        page     (->> matching (drop offset) (take limit))]
     {:data   (vec (models.notification/hydrate-notification page))
      :total  (count matching)
      :limit  limit
