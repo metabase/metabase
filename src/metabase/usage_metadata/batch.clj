@@ -271,53 +271,52 @@
    (process-day! bucket-date {:advance-watermark? true}))
   ([bucket-date {:keys [advance-watermark?]
                  :or   {advance-watermark? true}}]
-   (binding [usage-metadata.extract/*field->table-id* (atom {})]
-     (let [hash-counts      (execution-hash-counts-for-day bucket-date)
-           raw-hashes       (mapv :hash hash-counts)
-           hash->count      (into {} (map (fn [{:keys [hash n]}] [(hash-key hash) n])) hash-counts)
-           initial-stats    {:bucket-date          bucket-date
-                             :query-execution-rows (reduce + 0 (vals hash->count))
-                             :joined-rows          0
-                             :segment-tuples       0
-                             :metric-tuples        0
-                             :dimension-tuples     0
-                             :profile-observations 0
-                             :skipped-rows         {}
-                             :segments             {}
-                             :metrics              {}
-                             :dimensions           {}
-                             :seen-hashes          #{}}
-           after-stream     (if (seq raw-hashes)
-                              (transduce
-                               (map t2.realize/realize)
-                               (completing (partial process-query-row bucket-date hash->count))
-                               initial-stats
-                               (t2/reducible-select [:model/Query :query_hash :query]
-                                                    :query_hash [:in raw-hashes]))
-                              initial-stats)
-           seen-hashes      (:seen-hashes after-stream)
-           day-stats        (reduce-kv
-                             (fn [stats hash-bb n]
-                               (if (contains? seen-hashes hash-bb)
-                                 stats
-                                 (add-skip stats :missing-query n)))
-                             (dissoc after-stream :seen-hashes)
-                             hash->count)
-           dimension-rows   (counts->rows (:dimensions day-stats))
-           profile-rows     (profile-rows-for-dimensions bucket-date dimension-rows)
-           payload          {:segments   (counts->rows (:segments day-stats))
-                             :metrics    (counts->rows (:metrics day-stats))
-                             :dimensions dimension-rows
-                             :profiles   profile-rows}]
-       (usage-metadata.store/replace-day! bucket-date payload)
-       (when advance-watermark?
-         (usage-metadata.settings/usage-metadata-last-completed-day! (str bucket-date)))
-       (assoc day-stats
-              :watermark-advanced? advance-watermark?
-              :segment-rollup-rows (count (:segments payload))
-              :metric-rollup-rows (count (:metrics payload))
-              :dimension-rollup-rows (count (:dimensions payload))
-              :profile-observations (count (:profiles payload)))))))
+   (let [hash-counts      (execution-hash-counts-for-day bucket-date)
+         raw-hashes       (mapv :hash hash-counts)
+         hash->count      (into {} (map (fn [{:keys [hash n]}] [(hash-key hash) n])) hash-counts)
+         initial-stats    {:bucket-date          bucket-date
+                           :query-execution-rows (reduce + 0 (vals hash->count))
+                           :joined-rows          0
+                           :segment-tuples       0
+                           :metric-tuples        0
+                           :dimension-tuples     0
+                           :profile-observations 0
+                           :skipped-rows         {}
+                           :segments             {}
+                           :metrics              {}
+                           :dimensions           {}
+                           :seen-hashes          #{}}
+         after-stream     (if (seq raw-hashes)
+                            (transduce
+                             (map t2.realize/realize)
+                             (completing (partial process-query-row bucket-date hash->count))
+                             initial-stats
+                             (t2/reducible-select [:model/Query :query_hash :query]
+                                                  :query_hash [:in raw-hashes]))
+                            initial-stats)
+         seen-hashes      (:seen-hashes after-stream)
+         day-stats        (reduce-kv
+                           (fn [stats hash-bb n]
+                             (if (contains? seen-hashes hash-bb)
+                               stats
+                               (add-skip stats :missing-query n)))
+                           (dissoc after-stream :seen-hashes)
+                           hash->count)
+         dimension-rows   (counts->rows (:dimensions day-stats))
+         profile-rows     (profile-rows-for-dimensions bucket-date dimension-rows)
+         payload          {:segments   (counts->rows (:segments day-stats))
+                           :metrics    (counts->rows (:metrics day-stats))
+                           :dimensions dimension-rows
+                           :profiles   profile-rows}]
+     (usage-metadata.store/replace-day! bucket-date payload)
+     (when advance-watermark?
+       (usage-metadata.settings/usage-metadata-last-completed-day! (str bucket-date)))
+     (assoc day-stats
+            :watermark-advanced? advance-watermark?
+            :segment-rollup-rows (count (:segments payload))
+            :metric-rollup-rows (count (:metrics payload))
+            :dimension-rollup-rows (count (:dimensions payload))
+            :profile-observations (count (:profiles payload))))))
 
 (defn reprocess-day!
   "Manual entrypoint for reprocessing any UTC day without advancing the scheduled watermark."
