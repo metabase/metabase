@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   useAdminListNotificationsQuery,
@@ -16,7 +16,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { addUndo } from "metabase/redux/undo";
-import { Flex, Title } from "metabase/ui";
+import { Box, Flex, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { NotificationId } from "metabase-types/api";
@@ -194,9 +194,31 @@ export const NotificationsAdminPage = ({ location }: WithRouterProps) => {
       <SettingsSection>
         <Title order={1}>{t`Notifications`}</Title>
 
-        <Flex gap="md" justify="space-between" wrap="wrap" align="flex-end">
-          <NotificationsFilters state={urlState} onChange={patchUrlState} />
+        <NotificationsFilters state={urlState} onChange={patchUrlState} />
 
+        <NotificationsTable
+          notifications={notifications}
+          error={error}
+          isLoading={isFetching}
+          selectedIds={selectedIds}
+          onToggleRow={handleToggleRow}
+          onToggleAll={handleToggleAll}
+          onRowClick={handleRowClick}
+        />
+
+        <Flex
+          align="center"
+          justify="space-between"
+          p="md"
+          data-testid="notifications-admin-footer"
+        >
+          <Box fw={700}>
+            {ngettext(
+              msgid`${total} alert found`,
+              `${total} alerts found`,
+              total,
+            )}
+          </Box>
           <PaginationControls
             page={urlState.page}
             pageSize={PAGE_SIZE}
@@ -208,16 +230,6 @@ export const NotificationsAdminPage = ({ location }: WithRouterProps) => {
             onNextPage={() => patchUrlState({ page: urlState.page + 1 })}
           />
         </Flex>
-
-        <NotificationsTable
-          notifications={notifications}
-          error={error}
-          isLoading={isFetching}
-          selectedIds={selectedIds}
-          onToggleRow={handleToggleRow}
-          onToggleAll={handleToggleAll}
-          onRowClick={handleRowClick}
-        />
 
         <BulkActionBar
           opened={selectedCount > 0}
