@@ -47,7 +47,7 @@ function changeColor(label: string, value: string) {
     cy.findByText(label).parent().parent().click();
   });
 
-  H.popover().should("be.visible").find("input").clear().type(value);
+  H.popover().should("be.visible").find("input").first().clear().type(value);
 
   cy.realPress("Escape");
 }
