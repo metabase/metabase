@@ -4,46 +4,82 @@
    [clojure.test :refer :all]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defn- with-owned-message!
+  "Create a conversation + assistant message owned by `user-id` and call `f` with
+   the message's external_id, cleaning up afterwards."
+  [user-id f]
+  (let [conversation-id (str (random-uuid))
+        external-id     (str (random-uuid))]
+    (try
+      (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id})
+      (t2/insert-returning-pks!
+       :model/MetabotMessage
+       {:conversation_id conversation-id
+        :role            "assistant"
+        :profile_id      "gpt-x"
+        :external_id     external-id
+        :total_tokens    5
+        :data            [{:type "text" :text "hi"}]})
+      (f external-id)
+      (finally
+        (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
+        (t2/delete! :model/MetabotConversation :id conversation-id)))))
 
 (deftest feedback-endpoint-test
   (let [store-url  "http://hm.example"
         fake-token "test-fake-token-for-feedback"]
-    (testing "Submits feedback to Harbormaster with token and base URL"
+    (testing "Persists feedback locally and proxies a Harbormaster payload built from DB state"
       (mt/with-temporary-setting-values [store-api-url store-url]
-        (let [captured     (atom nil)
-              feedback     {:metabot_id        1
-                            :feedback          {:positive          true
-                                                :message_id        "m-1"
-                                                :freeform_feedback "ok"}
-                            :conversation_data {}
-                            :version           "v0.0.0"
-                            :submission_time   "2025-01-01T00:00:00Z"
-                            :is_admin          false}
-              expected-url (str store-url "/api/v2/metabot/feedback/" fake-token)]
-          (mt/with-dynamic-fn-redefs
-            [premium-features/premium-embedding-token (constantly fake-token)
-             http/post (fn [url opts]
-                         (reset! captured {:url  url
-                                           :body (json/decode+kw (:body opts))}))]
-            (let [_resp (mt/user-http-request :rasta :post 204 "metabot/feedback" feedback)]
-              (is (= {:url expected-url :body feedback}
-                     @captured)))))))
+        (with-owned-message!
+          (mt/user->id :rasta)
+          (fn [external-id]
+            (let [captured     (atom nil)
+                  body         {:metabot_id        1
+                                :message_id        external-id
+                                :positive          true
+                                :freeform_feedback "ok"}
+                  expected-url (str store-url "/api/v2/metabot/feedback/" fake-token)]
+              (mt/with-dynamic-fn-redefs
+                [premium-features/premium-embedding-token (constantly fake-token)
+                 http/post (fn [url opts]
+                             (reset! captured {:url  url
+                                               :body (json/decode+kw (:body opts))}))]
+                (mt/user-http-request :rasta :post 204 "metabot/feedback" body)
+                (is (= expected-url (:url @captured)))
+                (let [sent (:body @captured)]
+                  (is (= 1 (:metabot_id sent)))
+                  (is (= {:message_id        external-id
+                          :positive          true
+                          :issue_type        nil
+                          :freeform_feedback "ok"}
+                         (:feedback sent)))
+                  (is (map? (:conversation_data sent)))
+                  (is (contains? sent :version))
+                  (is (contains? sent :submission_time))
+                  (is (false? (:is_admin sent))))))))))
 
-    (testing "Returns 500 when http post fails"
+    (testing "404s when the message_id does not resolve to a message the caller owns"
+      (mt/user-http-request :rasta :post 404 "metabot/feedback"
+                            {:metabot_id 1
+                             :message_id (str (random-uuid))
+                             :positive   true}))
+
+    (testing "Returns 400 when the premium token is missing"
       (mt/with-temporary-setting-values [store-api-url store-url]
-        (mt/with-dynamic-fn-redefs
-          [premium-features/premium-embedding-token (constantly fake-token)
-           http/post (fn [_url _opts]
-                       (throw (ex-info "boom" {:status 404})))]
-          (mt/user-http-request :rasta :post 500 "metabot/feedback" {:any "payload"}))))
-
-    (testing "Throws when premium token is missing"
-      (mt/with-dynamic-fn-redefs
-        [premium-features/premium-embedding-token (constantly nil)]
-        (mt/user-http-request :rasta :post 400 "metabot/feedback" {:foo "bar"})))))
+        (with-owned-message!
+          (mt/user->id :rasta)
+          (fn [external-id]
+            (mt/with-dynamic-fn-redefs
+              [premium-features/premium-embedding-token (constantly nil)]
+              (mt/user-http-request :rasta :post 400 "metabot/feedback"
+                                    {:metabot_id 1
+                                     :message_id external-id
+                                     :positive   true}))))))))
 
 (deftest usage-get-returns-token-status-usage-test
   (mt/with-premium-features #{:metabot-v3}

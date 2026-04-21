@@ -85,6 +85,7 @@
    "ImplicitAction"
    "LoginHistory"
    "MetabotConversation"
+   "MetabotFeedback"
    "MetabotGroupLimit"
    "MetabotInstanceLimit"
    "MetabotMessage"

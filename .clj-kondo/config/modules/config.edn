@@ -1239,7 +1239,7 @@
               transforms-base
               util
               warehouses}
-   :model-exports #{:model/AiUsageLog :model/MetabotConversation :model/MetabotMessage}
+   :model-exports #{:model/AiUsageLog :model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard

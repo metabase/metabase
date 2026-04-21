@@ -590,7 +590,7 @@
                             (format "ee/metabot-analytics/conversations/%s"
                                     (str (random-uuid)))))))
 
-(deftest ^:parallel get-conversation-detail-feedback-test
+(deftest get-conversation-detail-feedback-test
   (mt/with-premium-features #{:audit-app}
     (testing "GET /api/ee/metabot-analytics/conversations/:id surfaces user-submitted feedback on the :feedback key, ordered by submission time"
       (let [conversation-id (str (random-uuid))

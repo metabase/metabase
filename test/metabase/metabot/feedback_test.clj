@@ -7,6 +7,8 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
+(set! *warn-on-reflection* true)
+
 (defn- payload
   [{:keys [message-id positive issue-type freeform]
     :or   {positive   true
@@ -28,7 +30,7 @@
            :total_tokens    5
            :data            [{:type "text" :text "hi"}]})))
 
-(deftest ^:parallel persist-feedback-resolves-by-external-id-test
+(deftest persist-feedback-resolves-by-external-id-test
   (testing "persist-feedback! looks up the rated message by metabot_message.external_id"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [conversation-id (str (random-uuid))
@@ -53,7 +55,7 @@
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))
 
-(deftest ^:parallel persist-feedback-writes-one-row-per-message-test
+(deftest persist-feedback-writes-one-row-per-message-test
   (testing "each message in a conversation gets its own feedback row, keyed by message id"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [conversation-id (str (random-uuid))
@@ -79,7 +81,7 @@
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))
 
-(deftest ^:parallel persist-feedback-updates-existing-row-test
+(deftest persist-feedback-updates-existing-row-test
   (testing "persist-feedback! updates the existing row for the same message and bumps updated_at"
     (mt/with-temp [:model/User {user-id :id} {}]
       (let [conversation-id (str (random-uuid))
@@ -110,7 +112,7 @@
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))
 
-(deftest ^:parallel persist-feedback-unknown-external-id-404-test
+(deftest persist-feedback-unknown-external-id-404-test
   (testing "persist-feedback! throws 404 when external_id does not resolve to a message"
     (mt/with-temp [:model/User {user-id :id} {}]
       (mt/with-current-user user-id
@@ -118,7 +120,7 @@
                               (metabot.feedback/persist-feedback!
                                (payload {:message-id (str (random-uuid))}))))))))
 
-(deftest ^:parallel persist-feedback-rejects-non-owner-test
+(deftest persist-feedback-rejects-non-owner-test
   (testing "persist-feedback! throws 404 and writes nothing when the current user doesn't own the conversation"
     (mt/with-temp [:model/User {owner-id     :id} {}
                    :model/User {stranger-id  :id} {}]

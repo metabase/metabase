@@ -133,6 +133,7 @@
     :model/Metabot
     :model/MetabotConversation
     :model/MetabotMessage
+    :model/MetabotFeedback
     :model/MetabotPrompt]
    (when config/ee-available?
      [:model/MetabotPermissions
