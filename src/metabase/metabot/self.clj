@@ -181,7 +181,7 @@
                  :source              source
                  :tag                 tag})
                (usage/log-ai-usage!
-                {:source            (or tag source "unknown")
+                {:source            (or source tag "unknown")
                  :model             model
                  :prompt-tokens     prompt
                  :completion-tokens completion

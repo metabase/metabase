@@ -224,10 +224,11 @@
     (try
       (transduce dispatch-xf (constantly nil) nil
                  (agent/run-agent-loop
-                  {:messages   messages
-                   :state      {}
-                   :profile-id :slackbot
-                   :context    context}))
+                  {:messages      messages
+                   :state         {}
+                   :profile-id    :slackbot
+                   :context       context
+                   :tracking-opts {:source "slackbot"}}))
       (finally
         ;; Persist whatever parts we collected, even if the pipeline threw.
         (let [parts @parts-atom]
