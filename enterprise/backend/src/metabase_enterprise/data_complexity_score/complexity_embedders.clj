@@ -5,8 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase-enterprise.semantic-search.core :as semantic-search]
-   [metabase.util :as u]
-   [metabase.util.log :as log]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,21 +45,21 @@
   batching constraints (e.g. `openai-max-tokens-per-batch`) are honoured — calling
   `get-embeddings-batch` directly would send every distinct entity name in one request and blow
   past upstream limits on larger catalogs.
-  Returns `nil` when the config is incomplete (missing provider or model-name). Any thrown error
-  from the underlying dispatcher is caught and converted into a nil vector collection so the
-  fn-embedder shape drops every name and the synonym axis degrades gracefully per the embedder
-  contract."
+
+  Returns `nil` when the config is incomplete (missing provider or model-name). Runtime errors
+  from the underlying dispatcher (invalid API key, network failure, rate limits, etc.) propagate
+  so `score-synonym-pairs` surfaces them as `:error` on the synonym-pairs result instead of the
+  embedder silently returning an empty map. Config-level prerequisites (API key set, base URL set)
+  should be validated by the caller before instantiating this embedder so a known-misconfigured
+  provider never reaches the dispatcher — see
+  [[metabase-enterprise.semantic-search.core/provider-ready?]]."
   [{:keys [provider model-name] :as embedding-model}]
   (when (and (seq provider) (seq model-name))
     (fn-embedder
      (fn [names]
-       (try
-         (let [text->vec (semantic-search/process-embeddings-streaming
-                          embedding-model names identity)]
-           ;; Preserve input order so the zipmap in fn-embedder lines names up with their vectors.
-           ;; Names dropped by create-batches (oversized texts) map to nil here and fn-embedder
-           ;; filters them out — matching the "no vector → no synonym signal" contract.
-           (map text->vec names))
-         (catch Throwable t
-           (log/warn t "provider-embedder: embedding streaming failed; disabling synonym axis")
-           nil))))))
+       (let [text->vec (semantic-search/process-embeddings-streaming
+                        embedding-model names identity)]
+         ;; Preserve input order so the zipmap in fn-embedder lines names up with their vectors.
+         ;; Names dropped by create-batches (oversized texts) map to nil here and fn-embedder
+         ;; filters them out — matching the "no vector → no synonym signal" contract.
+         (map text->vec names))))))

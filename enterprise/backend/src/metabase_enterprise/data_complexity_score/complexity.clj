@@ -78,11 +78,11 @@
        (str/starts-with? model-name "text-embedding-3")))
 
 (defn- validate-synonym-config
-  "Normalize and validate a `{:provider :model-name :vector-dimensions}` config pulled from the
-  `ee-complexity-synonym-*` settings. Returns the trimmed/validated map when the config is usable,
-  or `nil` (with a warning identifying the specific problem) when it isn't. Callers use `nil` to
-  fall back to the search-index embedder so a typo never silently drops synonym scoring to zero
-  while `:meta` still reports the misconfigured model as active."
+  "Normalize and validate the shape of a `{:provider :model-name :vector-dimensions}` config pulled
+  from the `ee-complexity-synonym-*` settings. Returns the trimmed/validated map when the config is
+  structurally usable, or `nil` (with a warning identifying the specific problem) when it isn't.
+  Shape-only — provider readiness (API key set, base URL set, etc.) is checked separately in
+  [[resolve-synonym-embedder]] via [[semantic-search/provider-ready?]]."
   [{:keys [provider model-name vector-dimensions]}]
   (let [provider*   (some-> provider str/trim)
         model-name* (some-> model-name str/trim)]
@@ -525,26 +525,33 @@
 (defn- resolve-synonym-embedder
   "Pick the default synonym-axis embedder, threshold, and model metadata based on the
   `ee-complexity-synonym-*` settings. Returns `{:fn embedder-fn :threshold t :model-meta m}`.
-  When the settings are unset — or fail validation (blank provider, typo, OpenAI
-  text-embedding-3* without a dimensions value, etc.) — the search-index embedder is used with a
-  threshold calibrated for the search model (Arctic). `:model-meta` is only populated from the
-  custom config after validation passes, so `:meta.embedding-model` never advertises a model that
-  the synonym axis couldn't actually reach."
+  When the settings are unset, fail shape validation (blank provider, typo, OpenAI
+  text-embedding-3* without a dimensions value, etc.), or the selected provider's own
+  prerequisites are missing (openai without an API key, ai-service without a base URL or key),
+  the search-index embedder is used with a threshold calibrated for the search model (Arctic).
+  `:model-meta` is only populated from the custom config after both shape validation and
+  provider-readiness checks pass, so `:meta.embedding-model` never advertises a model that the
+  synonym axis couldn't actually reach."
   []
   (let [override-threshold (settings/ee-complexity-synonym-threshold)
         cfg                (validate-synonym-config
                             {:provider          (settings/ee-complexity-synonym-provider)
                              :model-name        (settings/ee-complexity-synonym-model-name)
                              :vector-dimensions (settings/ee-complexity-synonym-model-dimensions)})
+        ready-cfg          (when (and cfg (semantic-search/provider-ready? (:provider cfg))) cfg)
         search-index-default
         {:fn         semantic-search/search-index-embedder
          :threshold  (or override-threshold default-synonym-similarity-threshold)
          :model-meta (semantic-search/active-embedding-model)}]
-    (if-let [embed-fn (some-> cfg embedders/provider-embedder)]
+    (when (and cfg (not ready-cfg))
+      (log/warnf (str "Complexity: ee-complexity-synonym-provider=%s is missing its prerequisite "
+                      "settings (API key or base URL); falling back to search-index embedder.")
+                 (pr-str (:provider cfg))))
+    (if-let [embed-fn (some-> ready-cfg embedders/provider-embedder)]
       {:fn         embed-fn
        :threshold  (or override-threshold
-                       (default-threshold-for (:provider cfg) (:model-name cfg)))
-       :model-meta (select-keys cfg [:provider :model-name])}
+                       (default-threshold-for (:provider ready-cfg) (:model-name ready-cfg)))
+       :model-meta (select-keys ready-cfg [:provider :model-name])}
       search-index-default)))
 
 (defn complexity-scores
