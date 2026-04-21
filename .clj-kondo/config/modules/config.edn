@@ -1016,9 +1016,9 @@
   {:team "UX West"
    :api  #{metabase.internal-stats.core}
    :uses #{app-db
-           models
-           util}
-   :model-imports #{:model/Card
+           models}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
                     :model/Dashboard
                     :model/MetabotMessage
                     :model/QueryExecution
@@ -2263,11 +2263,11 @@
    ;; :model/TransformRun directly. Remove once the module is agnostic to global
    ;; versus workspace transforms. See https://linear.app/metabase/issue/BOT-1143
    :model-imports #{:model/Database
-                    :model/DatabaseRouter
                     :model/Table
                     :model/Transform
                     :model/TransformRun}
-   :uses #{driver
+   :uses #{database-routing
+           driver
            events
            lib
            lib-be
@@ -3194,7 +3194,7 @@
            task
            tracing
            util}
-   :model-imports #{:model/Card :model/Collection :model/ModelIndex}}
+   :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 
   enterprise/serialization
   {:team "Graphy"

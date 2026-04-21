@@ -76,6 +76,7 @@ export const DataStudio = {
   Runs: {
     list: () => cy.findByTestId("transforms-run-list"),
     content: () => cy.findByTestId("transforms-run-content"),
+    sidebar: () => cy.findByTestId("run-list-sidebar"),
   },
   Dependencies: {
     content: () => cy.findByTestId("transforms-dependencies-content"),
