@@ -11,3 +11,4 @@ export const FOOTER_HEIGHT = 30;
 export const PINNED_BORDER_SEPARATOR_WIDTH = 3;
 export const DATASET_INDEX_ATTRIBUTE_NAME = "data-dataset-index";
 export const VIRTUAL_INDEX_ATTRIBUTE_NAME = "data-index";
+export const FALLBACK_ID_FOR_EMPTY_COLUMN_NAME = "\0_EMPTY_COLUMN_ID";
