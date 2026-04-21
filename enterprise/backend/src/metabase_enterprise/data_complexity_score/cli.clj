@@ -40,6 +40,7 @@
 
 (def ^:private cli-options
   [["-r" "--representation-dir PATH" "Directory of representation JSON files (required)."]
+   ["-e" "--embeddings PATH"         "Explicit embeddings JSON file. Overrides embeddings.json in the directory."]
    ["-o" "--output PATH"             "Write EDN result to this file instead of stdout."]
    ["-h" "--help"                    "Show this message."]])
 
@@ -60,12 +61,14 @@
 
 (defn- run-cli
   "Pure core of the CLI: validates options, loads representation, computes the score. Returns the
-  result map so tests can call this directly without intercepting `System/exit`."
-  [{:keys [representation-dir]}]
+  result map so tests can call this directly without intercepting `System/exit`. Propagates
+  `load-dir`'s `ex-info` (e.g. missing `--embeddings` override) so the caller can decide how to
+  render it — `-main` converts the resolved-path variant into a user-facing `fail!`."
+  [{:keys [representation-dir embeddings]}]
   (when-not representation-dir
     (fail! "Missing --representation-dir option"))
   (validate-dir! representation-dir)
-  (let [{:keys [library universe embedder]} (representation/load-dir representation-dir)]
+  (let [{:keys [library universe embedder]} (representation/load-dir representation-dir :embeddings-path embeddings)]
     (complexity/score-from-entities library universe embedder {})))
 
 ;; `-main` is invoked via `clj -M:ee:dev -m …cli`, not via an AOT'd jar, so `(:gen-class)` is unnecessary.
@@ -77,5 +80,10 @@
     (cond
       (:help options) (do (output! (usage summary)) (System/exit 0))
       (seq errors)    (apply fail! errors)
-      :else           (write-result! (run-cli options) (:output options))))
+      :else           (try
+                        (write-result! (run-cli options) (:output options))
+                        (catch clojure.lang.ExceptionInfo e
+                          (if (:resolved-path (ex-data e))
+                            (fail! (ex-message e))
+                            (throw e))))))
   (System/exit 0))
