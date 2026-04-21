@@ -151,6 +151,9 @@ Metabase's reference documentation.
 - [AI overview](./ai/start.md)
 - [Metabot](./ai/metabot.md)
 - [AI settings](./ai/settings.md)
+- [AI usage controls](./ai/usage-controls.md)
+- [AI customization](./ai/customization.md)
+- [AI system prompts](./ai/system-prompts.md)
 - [Agent API](./ai/agent-api.md)
 - [MCP server](./ai/mcp.md)
 
