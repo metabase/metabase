@@ -9,11 +9,22 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { formatNotificationSchedule } from "metabase/notifications/utils";
-import { Badge, Box, Checkbox, Flex, Group, Icon, Tooltip } from "metabase/ui";
+import {
+  Badge,
+  Box,
+  Checkbox,
+  Ellipsified,
+  Flex,
+  Group,
+  Icon,
+  Tooltip,
+} from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import type {
   AdminNotificationListItem,
   NotificationChannelType,
+  NotificationHandler,
+  NotificationHealth,
   NotificationId,
 } from "metabase-types/api";
 
@@ -24,7 +35,7 @@ import {
   getHealthLabel,
 } from "./utils";
 
-const COLUMN_COUNT = 9;
+const COLUMN_COUNT = 8;
 
 type Props = {
   notifications: AdminNotificationListItem[];
@@ -70,14 +81,13 @@ export const NotificationsTable = ({
               disabled={notifications.length === 0}
             />
           </Box>
-          <Box component="th" w={80}>{t`ID`}</Box>
+          <Box component="th" w={72}>{t`ID`}</Box>
           <th>{t`Card`}</th>
           <th>{t`Creator`}</th>
-          <Box component="th" w={120}>{t`Recipients`}</Box>
           <th>{t`Schedule`}</th>
-          <Box component="th" w={120}>{t`Channel`}</Box>
-          <Box component="th" w={160}>{t`Last sent`}</Box>
-          <Box component="th" w={160}>{t`Health`}</Box>
+          <Box component="th" miw={110}>{t`Recipients`}</Box>
+          <Box component="th" miw={180}>{t`Last sent`}</Box>
+          <Box component="th" miw={120}>{t`Health`}</Box>
         </tr>
       </thead>
 
@@ -127,7 +137,6 @@ const NotificationRow = memo(function NotificationRow({
   onRowClick,
 }: NotificationRowProps) {
   const isOrphanedCard = notification.health === "orphaned_card";
-  const isOrphanedCreator = notification.health === "orphaned_creator";
 
   const handlers = useMemo(
     () => notification.handlers ?? [],
@@ -151,12 +160,14 @@ const NotificationRow = memo(function NotificationRow({
   const scheduleLabels = subscriptions
     .map((subscription) => formatNotificationSchedule(subscription))
     .filter((value): value is string => Boolean(value));
+  const scheduleText =
+    scheduleLabels.length > 0 ? scheduleLabels.join(", ") : "—";
 
   return (
     <tr
       data-testid={`notification-row-${notification.id}`}
+      className={onRowClick ? CS.cursorPointer : undefined}
       onClick={onRowClick ? () => onRowClick(notification.id) : undefined}
-      style={onRowClick ? { cursor: "pointer" } : undefined}
     >
       <td onClick={(event) => event.stopPropagation()}>
         <Checkbox
@@ -170,40 +181,31 @@ const NotificationRow = memo(function NotificationRow({
         <CardCell notification={notification} isOrphaned={isOrphanedCard} />
       </td>
       <td>
-        <CreatorCell
-          notification={notification}
-          isOrphaned={isOrphanedCreator}
+        <CreatorCell notification={notification} />
+      </td>
+      <td>
+        <Ellipsified style={{ maxWidth: 220 }} tooltip={scheduleText}>
+          {scheduleText}
+        </Ellipsified>
+      </td>
+      <td>
+        <RecipientsCell
+          channels={channels}
+          recipientCount={recipientCount}
+          handlers={handlers}
         />
       </td>
-      <td>{recipientCount}</td>
-      <td>{scheduleLabels.length > 0 ? scheduleLabels.join(", ") : "—"}</td>
-      <td>
-        <Group gap="xs">
-          {channels.map((channel) => (
-            <Tooltip key={channel} label={getChannelLabel(channel)}>
-              <Icon
-                name={getChannelIconName(channel)}
-                aria-label={getChannelLabel(channel)}
-              />
-            </Tooltip>
-          ))}
-        </Group>
-      </td>
-      <td>
+      <td style={{ whiteSpace: "nowrap" }}>
         {notification.last_sent_at ? (
-          <Tooltip
-            label={<DateTime value={notification.last_sent_at} unit="minute" />}
-          >
-            <span>{dayjs(notification.last_sent_at).fromNow()}</span>
+          <Tooltip label={dayjs(notification.last_sent_at).fromNow()}>
+            <DateTime value={notification.last_sent_at} unit="minute" />
           </Tooltip>
         ) : (
           "—"
         )}
       </td>
       <td>
-        <Badge color={getHealthColor(notification.health)} variant="light">
-          {getHealthLabel(notification.health)}
-        </Badge>
+        <HealthBadge health={notification.health} />
       </td>
     </tr>
   );
@@ -219,37 +221,82 @@ const CardCell = ({ notification, isOrphaned }: CardCellProps) => {
   const cardId = notification.payload?.card_id;
   const name = card?.name ?? (cardId != null ? `#${cardId}` : t`Unknown card`);
 
-  return (
-    <Group gap="xs" onClick={(event) => event.stopPropagation()}>
-      {cardId != null && !isOrphaned ? (
-        <Link variant="brand" to={Urls.question({ id: cardId, name })}>
+  if (cardId != null && !isOrphaned) {
+    return (
+      <Ellipsified style={{ maxWidth: 260 }} tooltip={name}>
+        <Link
+          variant="brand"
+          to={Urls.question({ id: cardId, name })}
+          onClick={(event) => event.stopPropagation()}
+        >
           {name}
         </Link>
-      ) : (
-        <span>{name}</span>
-      )}
-      {isOrphaned && (
-        <Badge color="warning" variant="light">{t`Deleted`}</Badge>
-      )}
-    </Group>
+      </Ellipsified>
+    );
+  }
+  return (
+    <Ellipsified style={{ maxWidth: 260 }} tooltip={name}>
+      <span>{name}</span>
+    </Ellipsified>
   );
 };
 
 type CreatorCellProps = {
   notification: AdminNotificationListItem;
-  isOrphaned: boolean;
 };
 
-const CreatorCell = ({ notification, isOrphaned }: CreatorCellProps) => {
+const CreatorCell = ({ notification }: CreatorCellProps) => {
   const creator = notification.creator;
   const name = creator?.common_name ?? creator?.email ?? t`Unknown`;
+  return (
+    <Ellipsified style={{ maxWidth: 180 }} tooltip={name}>
+      {name}
+    </Ellipsified>
+  );
+};
+
+type RecipientsCellProps = {
+  channels: NotificationChannelType[];
+  recipientCount: number;
+  handlers: NotificationHandler[];
+};
+
+const HealthBadge = ({ health }: { health: NotificationHealth }) => (
+  <Badge
+    color={getHealthColor(health)}
+    variant="light"
+    styles={{ label: { overflow: "visible" } }}
+  >
+    {getHealthLabel(health)}
+  </Badge>
+);
+
+const RecipientsCell = ({
+  channels,
+  recipientCount,
+  handlers,
+}: RecipientsCellProps) => {
+  const tooltipLabel =
+    handlers
+      .map((handler) => {
+        const label = getChannelLabel(handler.channel_type);
+        const count = handler.recipients?.length ?? 0;
+        return count > 0 ? `${label}: ${count}` : label;
+      })
+      .join(" · ") || undefined;
 
   return (
-    <Group gap="xs">
-      <span>{name}</span>
-      {isOrphaned && (
-        <Badge color="warning" variant="light">{t`Deactivated`}</Badge>
-      )}
-    </Group>
+    <Tooltip label={tooltipLabel} disabled={!tooltipLabel}>
+      <Group gap="xs" wrap="nowrap">
+        {channels.map((channel) => (
+          <Icon
+            key={channel}
+            name={getChannelIconName(channel)}
+            aria-label={getChannelLabel(channel)}
+          />
+        ))}
+        <span>{recipientCount}</span>
+      </Group>
+    </Tooltip>
   );
 };

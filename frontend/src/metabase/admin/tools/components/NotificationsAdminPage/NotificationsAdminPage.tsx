@@ -16,7 +16,7 @@ import { PaginationControls } from "metabase/common/components/PaginationControl
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { addUndo } from "metabase/redux/undo";
-import { Box, Flex, Title } from "metabase/ui";
+import { Box, Flex, Icon, Title, Tooltip } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { NotificationId } from "metabase-types/api";
@@ -192,7 +192,14 @@ export const NotificationsAdminPage = ({ location }: WithRouterProps) => {
   return (
     <SettingsPageWrapper>
       <SettingsSection>
-        <Title order={1}>{t`Notifications`}</Title>
+        <Flex align="center" gap="sm">
+          <Title order={1}>{t`Notifications`}</Title>
+          <Tooltip
+            label={t`Every alert in this Metabase. Filter, re-assign ownership, or archive alerts across the instance.`}
+          >
+            <Icon name="info" />
+          </Tooltip>
+        </Flex>
 
         <NotificationsFilters state={urlState} onChange={patchUrlState} />
 

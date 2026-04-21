@@ -5,6 +5,7 @@ import type {
   SchemaName,
   SegmentId,
   TableId,
+  TaskRunDateFilterOption,
   TaskRunEntityType,
   TaskRunType,
 } from "metabase-types/api";
@@ -167,13 +168,17 @@ export function adminToolsTasksRunsFor(opts: {
   runType: TaskRunType;
   entityType: TaskRunEntityType;
   entityId: number;
+  startedAt?: TaskRunDateFilterOption;
 }) {
-  const params = new URLSearchParams({
+  const params: Record<string, string> = {
     "run-type": opts.runType,
     "entity-type": opts.entityType,
     "entity-id": String(opts.entityId),
-  });
-  return `${adminToolsTasksRuns()}?${params.toString()}`;
+  };
+  if (opts.startedAt) {
+    params["started-at"] = opts.startedAt;
+  }
+  return `${adminToolsTasksRuns()}?${new URLSearchParams(params).toString()}`;
 }
 
 export function adminToolsJobs() {

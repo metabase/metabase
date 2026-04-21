@@ -1,26 +1,28 @@
 import dayjs from "dayjs";
 import { useCallback, useState } from "react";
 import type { WithRouterProps } from "react-router";
+import { Link } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
   useAdminNotificationDetailQuery,
   useBulkNotificationActionMutation,
+  useListTaskRunsQuery,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
-import { Link } from "metabase/common/components/Link";
+import { Link as MBLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import AdminS from "metabase/css/admin.module.css";
 import { formatNotificationSchedule } from "metabase/notifications/utils";
 import { addUndo } from "metabase/redux/undo";
 import {
+  Anchor,
   Badge,
   Box,
   Button,
-  Divider,
   Flex,
+  Grid,
   Group,
   Icon,
   Stack,
@@ -34,12 +36,14 @@ import type {
   AdminNotificationDetail,
   NotificationHandler,
   NotificationRecipient,
+  TaskRun,
 } from "metabase-types/api";
 
 import {
   SettingsPageWrapper,
   SettingsSection,
 } from "../../../components/SettingsSection";
+import { TaskRunStatusBadge } from "../TaskRunStatusBadge";
 
 import { ChangeOwnerModal } from "./ChangeOwnerModal";
 import {
@@ -48,6 +52,8 @@ import {
   getHealthColor,
   getHealthLabel,
 } from "./utils";
+
+const RECENT_RUNS_LIMIT = 5;
 
 type RouteParams = {
   notificationId: string;
@@ -184,19 +190,17 @@ export const NotificationDetailPage = ({
           onChangeOwner={() => setIsChangeOwnerOpen(true)}
         />
 
-        <Divider />
-
-        <InfoSection
-          notification={notification}
-          isOrphanedCreator={isOrphanedCreator}
-          onChangeOwner={() => setIsChangeOwnerOpen(true)}
-        />
-
-        <Divider />
-
-        <RecipientsSection handlers={handlers} />
-
-        <Divider />
+        <Grid gutter="xl">
+          <Grid.Col span={{ base: 12, lg: 6 }}>
+            <DetailsSection
+              notification={notification}
+              isOrphanedCreator={isOrphanedCreator}
+            />
+          </Grid.Col>
+          <Grid.Col span={{ base: 12, lg: 6 }}>
+            <RecipientsSection handlers={handlers} />
+          </Grid.Col>
+        </Grid>
 
         <SendHistorySection notification={notification} />
 
@@ -215,16 +219,18 @@ export const NotificationDetailPage = ({
 };
 
 const BackLink = ({ onClick }: { onClick: () => void }) => (
-  <Group gap="xs">
-    <Button
-      variant="subtle"
-      size="compact-sm"
-      leftSection={<Icon name="chevronleft" size={12} />}
-      onClick={onClick}
-    >
+  <Anchor
+    component="button"
+    type="button"
+    onClick={onClick}
+    c="text-secondary"
+    underline="never"
+  >
+    <Flex align="center" gap="xs">
+      <Icon name="chevronleft" />
       {t`Back to notifications`}
-    </Button>
-  </Group>
+    </Flex>
+  </Anchor>
 );
 
 type DetailHeaderProps = {
@@ -251,31 +257,28 @@ const DetailHeader = ({
 
   return (
     <Flex justify="space-between" align="flex-start" gap="md" wrap="wrap">
-      <Stack gap="xs">
+      <Stack gap={4}>
         <Group gap="sm" align="center">
-          <Title order={2}>{t`Notification #${notification.id}`}</Title>
-          <Badge variant="light">{t`Alert`}</Badge>
+          {cardId != null && !isOrphanedCard ? (
+            <Title order={2}>
+              <MBLink
+                variant="brand"
+                to={Urls.question({ id: cardId, name: cardName })}
+              >
+                {cardName}
+              </MBLink>
+            </Title>
+          ) : (
+            <Title order={2}>{cardName}</Title>
+          )}
           <Badge color={getHealthColor(notification.health)} variant="light">
             {getHealthLabel(notification.health)}
           </Badge>
-        </Group>
-
-        <Group gap="xs">
-          <Text c="text-secondary">{t`Target:`}</Text>
-          {cardId != null && !isOrphanedCard ? (
-            <Link
-              variant="brand"
-              to={Urls.question({ id: cardId, name: cardName })}
-            >
-              {cardName}
-            </Link>
-          ) : (
-            <Text>{cardName}</Text>
-          )}
           {isOrphanedCard && (
             <Badge color="error" variant="light">{t`Deleted`}</Badge>
           )}
         </Group>
+        <Text c="text-secondary" size="sm">{t`Alert #${notification.id}`}</Text>
       </Stack>
 
       <Group gap="sm">
@@ -309,55 +312,55 @@ const DetailHeader = ({
   );
 };
 
-type InfoSectionProps = {
+type DetailsSectionProps = {
   notification: AdminNotificationDetail;
   isOrphanedCreator: boolean;
-  onChangeOwner: () => void;
 };
 
-const InfoSection = ({
+const DetailsSection = ({
   notification,
   isOrphanedCreator,
-  onChangeOwner,
-}: InfoSectionProps) => {
+}: DetailsSectionProps) => {
   const creator = notification.creator;
   const handlers = notification.handlers ?? [];
   const subscriptions = notification.subscriptions ?? [];
 
   return (
-    <Stack gap="sm">
-      <Title order={4}>{t`Details`}</Title>
+    <Stack gap="md">
+      <Title order={3}>{t`Details`}</Title>
 
       <InfoRow label={t`Creator`}>
-        <Group gap="xs">
+        <Group gap="xs" wrap="nowrap">
           {creator ? (
-            <>
-              <Text>{creator.common_name ?? creator.email ?? t`Unknown`}</Text>
-              {creator.email && (
-                <Text c="text-secondary">{`<${creator.email}>`}</Text>
-              )}
-            </>
+            <Text>
+              {creator.common_name ?? creator.email ?? t`Unknown`}
+              {creator.email ? (
+                <Text component="span" c="text-secondary">
+                  {" "}
+                  {`<${creator.email}>`}
+                </Text>
+              ) : null}
+            </Text>
           ) : (
             <Text c="text-secondary">{t`Unknown`}</Text>
           )}
           {isOrphanedCreator && (
             <Badge color="warning" variant="light">{t`Deactivated`}</Badge>
           )}
-          <Button variant="subtle" size="compact-sm" onClick={onChangeOwner}>
-            {t`Change owner`}
-          </Button>
         </Group>
       </InfoRow>
 
       <InfoRow label={t`Schedule`}>
         {subscriptions.length > 0 ? (
           <Stack gap={2}>
-            {subscriptions.map((subscription) => (
-              <ScheduleLine
-                key={subscription.id ?? subscription.cron_schedule}
-                subscription={subscription}
-              />
-            ))}
+            {subscriptions.map((subscription) => {
+              const formatted = formatNotificationSchedule(subscription);
+              return (
+                <Text key={subscription.id ?? subscription.cron_schedule}>
+                  {formatted ?? subscription.cron_schedule}
+                </Text>
+              );
+            })}
           </Stack>
         ) : (
           <Text c="text-secondary">{t`No schedule`}</Text>
@@ -386,10 +389,8 @@ const InfoSection = ({
 
       <InfoRow label={t`Last sent`}>
         {notification.last_sent_at ? (
-          <Tooltip
-            label={<DateTime value={notification.last_sent_at} unit="minute" />}
-          >
-            <span>{dayjs(notification.last_sent_at).fromNow()}</span>
+          <Tooltip label={dayjs(notification.last_sent_at).fromNow()}>
+            <DateTime value={notification.last_sent_at} unit="minute" />
           </Tooltip>
         ) : (
           <Text c="text-secondary">{t`Never`}</Text>
@@ -407,21 +408,12 @@ const InfoRow = ({
   children: React.ReactNode;
 }) => (
   <Flex gap="md" align="flex-start">
-    <Box w={140} style={{ flexShrink: 0 }}>
-      <Text c="text-secondary">{label}</Text>
-    </Box>
+    <Text fw="bold" w={120} style={{ flexShrink: 0 }}>
+      {label}
+    </Text>
     <Box style={{ flex: 1 }}>{children}</Box>
   </Flex>
 );
-
-const ScheduleLine = ({
-  subscription,
-}: {
-  subscription: AdminNotificationDetail["subscriptions"][number];
-}) => {
-  const formatted = formatNotificationSchedule(subscription);
-  return <Text>{formatted ?? subscription.cron_schedule}</Text>;
-};
 
 const ChannelLine = ({ handler }: { handler: NotificationHandler }) => {
   const label = getChannelLabel(handler.channel_type);
@@ -475,34 +467,25 @@ const RecipientsSection = ({
   );
 
   return (
-    <Stack gap="sm">
-      <Title order={4}>{t`Recipients`}</Title>
+    <Stack gap="md">
+      <Title order={3}>{t`Recipients`}</Title>
       {recipients.length === 0 ? (
         <Text c="text-secondary">{t`No recipients`}</Text>
       ) : (
-        <table className={AdminS.ContentTable}>
-          <thead>
-            <tr>
-              <th>{t`Name`}</th>
-              <th>{t`Email / channel`}</th>
-              <th>{t`Status`}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recipients.map(({ handler, recipient }, index) => (
-              <RecipientRow
-                key={`${handler.id ?? "handler"}-${recipient.id ?? index}`}
-                recipient={recipient}
-              />
-            ))}
-          </tbody>
-        </table>
+        <Stack gap="xs">
+          {recipients.map(({ handler, recipient }, index) => (
+            <RecipientLine
+              key={`${handler.id ?? "handler"}-${recipient.id ?? index}`}
+              recipient={recipient}
+            />
+          ))}
+        </Stack>
       )}
     </Stack>
   );
 };
 
-const RecipientRow = ({ recipient }: { recipient: NotificationRecipient }) => {
+const RecipientLine = ({ recipient }: { recipient: NotificationRecipient }) => {
   if (recipient.type === "notification-recipient/user") {
     const user = recipient.user;
     // `recipients-detail` hydration drops deactivated users (sets :user nil on
@@ -511,38 +494,27 @@ const RecipientRow = ({ recipient }: { recipient: NotificationRecipient }) => {
     const isActive = user != null;
     const name = user?.common_name ?? user?.email ?? t`Deactivated user`;
     return (
-      <tr>
-        <td>{name}</td>
-        <td>{user?.email ?? "—"}</td>
-        <td>
-          {isActive ? (
-            <Badge color="success" variant="light">{t`Active`}</Badge>
-          ) : (
-            <Badge color="warning" variant="light">{t`Deactivated`}</Badge>
-          )}
-        </td>
-      </tr>
+      <Flex gap="sm" align="center" wrap="wrap">
+        <Text fw="bold">{name}</Text>
+        {user?.email && <Text c="text-secondary">{user.email}</Text>}
+        {!isActive && (
+          <Badge color="warning" variant="light">{t`Deactivated`}</Badge>
+        )}
+      </Flex>
     );
   }
   if (recipient.type === "notification-recipient/raw-value") {
     return (
-      <tr>
-        <td>—</td>
-        <td>{recipient.details?.value ?? "—"}</td>
-        <td>
-          <Badge variant="light">{t`External`}</Badge>
-        </td>
-      </tr>
+      <Flex gap="sm" align="center" wrap="wrap">
+        <Text>{recipient.details?.value ?? "—"}</Text>
+        <Badge variant="light">{t`External`}</Badge>
+      </Flex>
     );
   }
   return (
-    <tr>
-      <td>{t`Group`}</td>
-      <td>—</td>
-      <td>
-        <Badge variant="light">{t`Group`}</Badge>
-      </td>
-    </tr>
+    <Flex gap="sm" align="center">
+      <Badge variant="light">{t`Group`}</Badge>
+    </Flex>
   );
 };
 
@@ -552,28 +524,71 @@ const SendHistorySection = ({
   notification: AdminNotificationDetail;
 }) => {
   const cardId = notification.payload?.card_id;
+
+  const { data: taskRunsData, isLoading } = useListTaskRunsQuery(
+    cardId != null
+      ? {
+          limit: RECENT_RUNS_LIMIT,
+          offset: 0,
+          "run-type": "alert",
+          "entity-type": "card",
+          "entity-id": cardId,
+        }
+      : undefined,
+    { skip: cardId == null },
+  );
+
   if (cardId == null) {
     return null;
   }
+
+  const taskRuns = taskRunsData?.data ?? [];
   const runsUrl = Urls.adminToolsTasksRunsFor({
     runType: "alert",
     entityType: "card",
     entityId: cardId,
+    startedAt: "past30days~",
   });
+
   return (
-    <Stack gap="xs" align="flex-start">
-      <Title order={4}>{t`Send history`}</Title>
-      <Text c="text-secondary">
-        {t`Send runs for this alert (and every other alert on the same card) live on the Tasks > Runs page.`}
+    <Stack gap="md">
+      <Title order={3}>{t`Send history`}</Title>
+      {isLoading ? (
+        <Text c="text-secondary">{t`Loading…`}</Text>
+      ) : taskRuns.length === 0 ? (
+        <Text c="text-secondary">{t`No send runs yet.`}</Text>
+      ) : (
+        <Stack gap="xs">
+          {taskRuns.map((taskRun) => (
+            <SendHistoryRow key={taskRun.id} taskRun={taskRun} />
+          ))}
+        </Stack>
+      )}
+
+      <Flex align="center" gap="xs">
+        <Anchor component={Link} to={runsUrl} c="text-secondary">
+          <Flex align="center" gap="xs">
+            {t`View all runs for this card`}
+            <Icon name="external" size={12} />
+          </Flex>
+        </Anchor>
+      </Flex>
+
+      <Text c="text-tertiary" size="sm">
+        {t`Runs are shared across every alert on the same card.`}
       </Text>
-      <Button
-        component={Link}
-        to={runsUrl}
-        variant="subtle"
-        rightSection={<Icon name="external" size={12} />}
-      >
-        {t`View runs for this card`}
-      </Button>
     </Stack>
+  );
+};
+
+const SendHistoryRow = ({ taskRun }: { taskRun: TaskRun }) => {
+  const detailUrl = Urls.adminToolsTaskRunDetails(taskRun.id);
+  return (
+    <Flex align="center" gap="sm">
+      <Anchor component={Link} to={detailUrl}>
+        <DateTime value={taskRun.started_at} unit="minute" />
+      </Anchor>
+      <TaskRunStatusBadge taskRun={taskRun} />
+    </Flex>
   );
 };

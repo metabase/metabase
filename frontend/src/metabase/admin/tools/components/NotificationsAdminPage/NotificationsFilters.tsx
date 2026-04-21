@@ -56,11 +56,11 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
   const healthOptions = getHealthOptions();
   const channelOptions = getChannelOptions();
   return (
-    <Flex gap="md" wrap="wrap" align="flex-end">
+    <Flex gap="md" wrap="wrap">
       <Select
-        label={t`Status`}
         data={statusOptions}
         value={state.status}
+        placeholder={t`Filter by status`}
         onChange={(value) => {
           if (value) {
             onChange({
@@ -70,14 +70,13 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
           }
         }}
         allowDeselect={false}
-        w={140}
+        w={160}
       />
 
       <Select
-        label={t`Health`}
-        placeholder={t`Any`}
         data={healthOptions}
         value={state.health}
+        placeholder={t`Filter by health`}
         onChange={(value) =>
           onChange({
             health: (value as NotificationHealth | null) ?? null,
@@ -86,6 +85,20 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
         }
         clearable
         w={180}
+      />
+
+      <Select
+        data={channelOptions}
+        value={state.channel}
+        placeholder={t`Filter by channel`}
+        onChange={(value) =>
+          onChange({
+            channel: (value as NotificationChannelType | null) ?? null,
+            page: 0,
+          })
+        }
+        clearable
+        w={160}
       />
 
       <CreatorPicker
@@ -101,21 +114,6 @@ export const NotificationsFilters = ({ state, onChange }: Props) => {
       <RecipientEmailInput
         value={state.recipient_email}
         onChange={(recipient_email) => onChange({ recipient_email, page: 0 })}
-      />
-
-      <Select
-        label={t`Channel`}
-        placeholder={t`Any`}
-        data={channelOptions}
-        value={state.channel}
-        onChange={(value) =>
-          onChange({
-            channel: (value as NotificationChannelType | null) ?? null,
-            page: 0,
-          })
-        }
-        clearable
-        w={160}
       />
     </Flex>
   );
@@ -139,8 +137,7 @@ const RecipientEmailInput = ({ value, onChange }: RecipientEmailInputProps) => {
 
   return (
     <TextInput
-      label={t`Recipient email`}
-      placeholder={t`someone@example.com`}
+      placeholder={t`Filter by recipient email`}
       value={email}
       onChange={(event) => setEmail(event.currentTarget.value)}
       w={220}
@@ -169,8 +166,7 @@ const CreatorPicker = ({ value, onChange }: CreatorPickerProps) => {
 
   return (
     <Select
-      label={t`Creator`}
-      placeholder={isLoading ? t`Loading…` : t`Any`}
+      placeholder={isLoading ? t`Loading…` : t`Filter by creator`}
       data={options}
       value={value == null ? null : String(value)}
       onChange={(next) => onChange(next ? Number(next) : null)}
@@ -226,8 +222,7 @@ const CardPicker = ({ value, onChange }: CardPickerProps) => {
 
   return (
     <Select
-      label={t`Card`}
-      placeholder={t`Search cards`}
+      placeholder={t`Filter by card`}
       data={options}
       value={value == null ? null : String(value)}
       onChange={(next) => onChange(next ? Number(next) : null)}
@@ -237,7 +232,7 @@ const CardPicker = ({ value, onChange }: CardPickerProps) => {
       nothingFoundMessage={
         isFetching ? t`Searching…` : t`Type to search for a card`
       }
-      w={240}
+      w={220}
     />
   );
 };

@@ -132,9 +132,9 @@ export function getHealthLabel(health: NotificationHealth): string {
     case "healthy":
       return t`Healthy`;
     case "orphaned_card":
-      return t`Orphaned card`;
+      return t`Orphaned`;
     case "orphaned_creator":
-      return t`Deactivated creator`;
+      return t`No owner`;
     case "failing":
       return t`Failing`;
     case "abandoned":
