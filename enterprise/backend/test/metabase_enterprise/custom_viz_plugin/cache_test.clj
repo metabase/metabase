@@ -8,6 +8,11 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(use-fixtures :each
+  (fn [thunk]
+    (mt/with-temporary-setting-values [custom-viz-enabled true]
+      (thunk))))
+
 ;;; ------------------------------------------------ URL Validation ------------------------------------------------
 
 (deftest validate-repo-url-test

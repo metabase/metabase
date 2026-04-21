@@ -11,6 +11,11 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each
+  (fn [thunk]
+    (mt/with-temporary-setting-values [custom-viz-enabled true]
+      (thunk))))
+
 ;;; ------------------------------------------------ Display Type Detection ------------------------------------------------
 
 (deftest custom-viz-display?-test

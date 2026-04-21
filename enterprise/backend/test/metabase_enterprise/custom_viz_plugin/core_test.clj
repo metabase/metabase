@@ -8,6 +8,11 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each
+  (fn [thunk]
+    (mt/with-temporary-setting-values [custom-viz-enabled true]
+      (thunk))))
+
 ;;; ------------------------------------------------ OSS Stubs ------------------------------------------------
 
 (deftest oss-resolve-bundle-test

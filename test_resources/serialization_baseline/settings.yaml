@@ -18,6 +18,7 @@ custom-geojson: null
 custom-geojson-enabled: null
 custom-homepage: null
 custom-homepage-dashboard: null
+custom-viz-enabled: null
 default-maps-enabled: null
 disable-cors-on-localhost: null
 email-max-recipients-per-second: null

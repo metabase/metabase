@@ -15,6 +15,11 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
+(use-fixtures :each
+  (fn [thunk]
+    (mt/with-temporary-setting-values [custom-viz-enabled true]
+      (thunk))))
+
 (defmacro ^:private with-dev-mode-enabled [& body]
   `(with-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
      ~@body))
