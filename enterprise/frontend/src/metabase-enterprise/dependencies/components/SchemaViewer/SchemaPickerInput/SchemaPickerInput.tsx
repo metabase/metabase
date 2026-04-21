@@ -28,13 +28,11 @@ import S from "./SchemaPickerInput.module.css";
 interface SchemaPickerInputProps {
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
-  onChange?: () => void;
 }
 
 export function SchemaPickerInput({
   databaseId,
   schema,
-  onChange,
 }: SchemaPickerInputProps) {
   const dispatch = useDispatch();
   const [opened, { open, close, toggle }] = useDisclosure(databaseId == null);
@@ -97,20 +95,18 @@ export function SchemaPickerInput({
       if (schemas.length === 1) {
         // Single schema - include it in the URL
         const url = Urls.dataStudioErdSchema(selectedDatabaseId, schemas[0]);
-        onChange?.();
         dispatch(push(url));
         setSelectedDatabaseId(null);
         close();
       } else if (schemas.length === 0) {
         // No schemas - just use database
         const url = Urls.dataStudioErdDatabase(selectedDatabaseId);
-        onChange?.();
         dispatch(push(url));
         setSelectedDatabaseId(null);
         close();
       }
     }
-  }, [schemas, selectedDatabaseId, onChange, dispatch, close]);
+  }, [schemas, selectedDatabaseId, dispatch, close]);
 
   const handleDatabaseClick = useCallback((dbId: DatabaseId) => {
     setSelectedDatabaseId(dbId);
@@ -124,13 +120,12 @@ export function SchemaPickerInput({
       const dbIdForNavigation = popoverSchemaListDbId;
       if (dbIdForNavigation != null) {
         const url = Urls.dataStudioErdSchema(dbIdForNavigation, schemaName);
-        onChange?.();
         dispatch(push(url));
         setSelectedDatabaseId(null);
         close();
       }
     },
-    [popoverSchemaListDbId, onChange, dispatch, close],
+    [popoverSchemaListDbId, dispatch, close],
   );
 
   const handleBack = useCallback(() => {

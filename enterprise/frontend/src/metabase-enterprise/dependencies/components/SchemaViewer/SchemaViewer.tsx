@@ -6,7 +6,6 @@ import {
   ReactFlow,
   useEdgesState,
   useNodesState,
-  useViewport,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
@@ -35,11 +34,11 @@ import type {
 
 import { SchemaViewerEdge } from "./Edge";
 import { SchemaViewerNodeLayout } from "./NodeLayout";
+import { SchemaViewerNodeSearch } from "./NodeSearch";
 import { SchemaPickerInput } from "./SchemaPickerInput";
 import S from "./SchemaViewer.module.css";
 import { SchemaViewerContext } from "./SchemaViewerContext";
 import { SchemaViewerTableNode } from "./TableNode";
-import { TableSelectorInput } from "./TableSelectorInput";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { useSchemaViewerShareUrl } from "./useSchemaViewerShareUrl";
@@ -62,15 +61,6 @@ const DEFAULT_ZOOM = 0.3;
 const FIT_VIEW_OPTIONS = { minZoom: DEFAULT_ZOOM, maxZoom: DEFAULT_ZOOM };
 
 const DEFAULT_HOPS = 1;
-
-function ZoomIndicator() {
-  const { zoom } = useViewport();
-  return (
-    <Text fw={700} c="text-secondary" fz="sm">
-      {Math.round(zoom * 100)}%
-    </Text>
-  );
-}
 
 interface FitToNewNodesProps {
   nodeIds: readonly string[] | null;
@@ -377,24 +367,6 @@ export function SchemaViewer({
     hasPendingPrefsToApply,
   ]);
 
-  const handleTableSelectionChange = useCallback(
-    (tableIds: ConcreteTableId[]) => {
-      if (databaseId != null) {
-        setTableSelection({
-          tableIds,
-          forDatabaseId: databaseId,
-          forSchema: schema,
-          isUserModified: true, // User made a manual change
-        });
-        setSavedPrefs({
-          table_ids: tableIds,
-          hops,
-        });
-      }
-    },
-    [databaseId, schema, hops, setSavedPrefs],
-  );
-
   const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
     [],
   );
@@ -455,10 +427,18 @@ export function SchemaViewer({
     }
   }, [clipboard, shareUrl]);
 
-  const handleSchemaPickerChange = useCallback(() => {
-    setNodes([]);
-    setEdges([]);
-  }, [setNodes, setEdges]);
+  // Clear the canvas whenever the database/schema context changes, regardless
+  // of how it was changed (picker click, direct URL navigation, history
+  // back/forward). Without this, the previous schema's nodes linger on screen
+  // until the new fetch resolves and the sync effect replaces them.
+  const prevContextForClearRef = useRef(currentContextKey);
+  useEffect(() => {
+    if (prevContextForClearRef.current !== currentContextKey) {
+      prevContextForClearRef.current = currentContextKey;
+      setNodes([]);
+      setEdges([]);
+    }
+  }, [currentContextKey, setNodes, setEdges]);
 
   // Double-click on an edge: alternate between zooming to the source node
   // (first double-click, or any time the previous was "target") and the
@@ -654,7 +634,6 @@ export function SchemaViewer({
         />
         <Panel position="top-right">
           <Group gap="sm">
-            <ZoomIndicator />
             {shareUrl != null && (
               <Tooltip
                 label={
@@ -679,20 +658,11 @@ export function SchemaViewer({
         {nodes.length > 0 && <SchemaViewerNodeLayout />}
         <Panel className={S.entryInput} position="top-left">
           <Group gap="sm">
-            <SchemaPickerInput
-              databaseId={databaseId}
-              schema={schema}
-              onChange={handleSchemaPickerChange}
+            <SchemaPickerInput databaseId={databaseId} schema={schema} />
+            <SchemaViewerNodeSearch
+              key={currentContextKey ?? ""}
+              nodes={nodes}
             />
-            {effectiveSelectedTableIds != null && (
-              <TableSelectorInput
-                nodes={nodes}
-                allTables={isFetchingTables ? [] : (allTables ?? [])}
-                selectedTableIds={effectiveSelectedTableIds}
-                isUserModified={isUserModified}
-                onSelectionChange={handleTableSelectionChange}
-              />
-            )}
           </Group>
         </Panel>
         {isFetching && (
