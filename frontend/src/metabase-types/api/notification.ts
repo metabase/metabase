@@ -217,7 +217,16 @@ export type NotificationSendHistoryEntry = {
   error_message?: string;
 };
 
-export type AdminNotificationDetail = AdminNotificationListItem & {
-  send_history: NotificationSendHistoryEntry[];
+export type AdminNotificationDetail = AdminNotificationListItem;
+
+export type AdminNotificationSendHistoryParams = {
+  id: NotificationId;
+  limit?: number;
+  offset?: number;
+};
+
+export type AdminNotificationSendHistoryResponse = {
+  data: NotificationSendHistoryEntry[];
+  total: number;
 };
 //#endregion

@@ -6,11 +6,13 @@ import { t } from "ttag";
 
 import {
   useAdminNotificationDetailQuery,
+  useAdminNotificationSendHistoryQuery,
   useBulkNotificationActionMutation,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import AdminS from "metabase/css/admin.module.css";
 import { formatNotificationSchedule } from "metabase/notifications/utils";
@@ -34,6 +36,7 @@ import * as Urls from "metabase/utils/urls";
 import type {
   AdminNotificationDetail,
   NotificationHandler,
+  NotificationId,
   NotificationRecipient,
   NotificationSendHistoryEntry,
 } from "metabase-types/api";
@@ -200,7 +203,7 @@ export const NotificationDetailPage = ({
 
         <Divider />
 
-        <SendHistorySection history={notification.send_history ?? []} />
+        <SendHistorySection notificationId={notification.id} />
 
         <ChangeOwnerModal
           opened={isChangeOwnerOpen}
@@ -548,34 +551,62 @@ const RecipientRow = ({ recipient }: { recipient: NotificationRecipient }) => {
   );
 };
 
+const SEND_HISTORY_PAGE_SIZE = 20;
+
 const SendHistorySection = ({
-  history,
+  notificationId,
 }: {
-  history: NotificationSendHistoryEntry[];
-}) => (
-  <Stack gap="sm">
-    <Title order={4}>{t`Send history`}</Title>
-    {history.length === 0 ? (
-      <Text c="text-secondary">{t`No send history available`}</Text>
-    ) : (
-      <table className={AdminS.ContentTable}>
-        <thead>
-          <tr>
-            <th>{t`Timestamp`}</th>
-            <th>{t`Status`}</th>
-            <th>{t`Duration`}</th>
-            <th>{t`Error`}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {history.map((entry, index) => (
-            <SendHistoryRow key={index} entry={entry} />
-          ))}
-        </tbody>
-      </table>
-    )}
-  </Stack>
-);
+  notificationId: NotificationId;
+}) => {
+  const [page, setPage] = useState(0);
+  const { data, isFetching, error } = useAdminNotificationSendHistoryQuery({
+    id: notificationId,
+    limit: SEND_HISTORY_PAGE_SIZE,
+    offset: page * SEND_HISTORY_PAGE_SIZE,
+  });
+
+  const entries = data?.data ?? [];
+  const total = data?.total ?? 0;
+
+  return (
+    <Stack gap="sm">
+      <Title order={4}>{t`Send history`}</Title>
+      {isFetching || error ? (
+        <LoadingAndErrorWrapper loading={isFetching} error={error} />
+      ) : entries.length === 0 ? (
+        <Text c="text-secondary">{t`No send history available`}</Text>
+      ) : (
+        <>
+          <table className={AdminS.ContentTable}>
+            <thead>
+              <tr>
+                <th>{t`Timestamp`}</th>
+                <th>{t`Status`}</th>
+                <th>{t`Duration`}</th>
+                <th>{t`Error`}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((entry, index) => (
+                <SendHistoryRow key={index} entry={entry} />
+              ))}
+            </tbody>
+          </table>
+          <Flex justify="flex-end">
+            <PaginationControls
+              page={page}
+              pageSize={SEND_HISTORY_PAGE_SIZE}
+              itemsLength={entries.length}
+              total={total}
+              onPreviousPage={() => setPage(Math.max(0, page - 1))}
+              onNextPage={() => setPage(page + 1)}
+            />
+          </Flex>
+        </>
+      )}
+    </Stack>
+  );
+};
 
 const SendHistoryRow = ({ entry }: { entry: NotificationSendHistoryEntry }) => {
   const [expanded, setExpanded] = useState(false);

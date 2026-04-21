@@ -48,13 +48,13 @@ export const ChangeOwnerModal = ({
     }
   };
 
+  const title =
+    count === 1
+      ? t`Change owner of 1 alert`
+      : t`Change owner of ${count} alerts`;
+
   return (
-    <Modal
-      opened={opened}
-      onClose={handleClose}
-      title={t`Change owner of ${count} ${count === 1 ? t`alert` : t`alerts`}`}
-      size="md"
-    >
+    <Modal opened={opened} onClose={handleClose} title={title} size="md">
       <Flex direction="column" gap="md">
         <Select
           label={t`New owner`}

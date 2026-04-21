@@ -511,38 +511,60 @@
 ;; GET /:id (Task B9 — detail endpoint)
 ;; ---------------------------------------------------------------------------------------------
 
-(deftest detail-returns-notification-with-send-history-test
-  (testing "GET /:id returns the hydrated notification + :send_history ordered newest-first"
+(deftest detail-returns-notification-with-health-test
+  (testing "GET /:id returns the hydrated notification with :health and :last_sent_at"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
+                     :model/NotificationCard {nc :id}      {:card_id card-id}
+                     :model/Notification     {nid :id}     {:payload_type :notification/card
+                                                            :payload_id   nc
+                                                            :creator_id   (mt/user->id :crowberto)}]
+        (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/admin/notifications/" nid))]
+          (is (= nid (:id resp)))
+          (is (contains? resp :health))
+          (is (contains? resp :last_sent_at))
+          (testing "send history is loaded separately and is not on the detail response"
+            (is (not (contains? resp :send_history)))))))))
+
+(deftest send-history-endpoint-paginates-test
+  (testing "GET /:id/send-history returns {:data :total} ordered newest-first and respects limit/offset"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id} {:archived false}
                      :model/NotificationCard {nc :id}      {:card_id card-id}
                      :model/Notification     {nid :id}     {:payload_type :notification/card
                                                             :payload_id   nc
                                                             :creator_id   (mt/user->id :crowberto)}
-                     :model/TaskHistory      _th-older     {:task         "notification-send"
+                     :model/TaskHistory      _older        {:task         "notification-send"
                                                             :task_details {:notification_id nid}
                                                             :status       :success
                                                             :started_at   (t/instant "2026-04-19T10:00:00Z")
                                                             :ended_at     (t/instant "2026-04-19T10:00:01Z")
                                                             :duration     1000}
-                     :model/TaskHistory      _th-newer     {:task         "notification-send"
+                     :model/TaskHistory      _newer        {:task         "notification-send"
                                                             :task_details {:notification_id nid}
                                                             :status       :failed
                                                             :started_at   (t/instant "2026-04-20T10:00:00Z")
                                                             :ended_at     (t/instant "2026-04-20T10:00:02Z")
                                                             :duration     2000}]
-        (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/admin/notifications/" nid))]
-          (is (= nid (:id resp)))
-          (is (contains? resp :health))
-          (is (contains? resp :last_sent_at))
-          (is (sequential? (:send_history resp)))
-          (is (= 2 (count (:send_history resp))))
-          (let [[first-entry second-entry] (:send_history resp)]
-            (is (= "failed" (:status first-entry)))
-            (is (= 2000 (:duration_ms first-entry)))
-            (is (some? (:timestamp first-entry)))
-            (is (= "success" (:status second-entry)))
-            (is (= 1000 (:duration_ms second-entry)))))))))
+        (testing "first page returns both rows newest-first"
+          (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/admin/notifications/" nid "/send-history"))]
+            (is (= 2 (:total resp)))
+            (is (= 2 (count (:data resp))))
+            (is (= "failed" (:status (first (:data resp)))))
+            (is (= "success" (:status (second (:data resp)))))))
+        (testing "limit + offset paginate correctly"
+          (let [page-1 (mt/user-http-request :crowberto :get 200
+                                             (str "ee/admin/notifications/" nid "/send-history")
+                                             :limit 1 :offset 0)
+                page-2 (mt/user-http-request :crowberto :get 200
+                                             (str "ee/admin/notifications/" nid "/send-history")
+                                             :limit 1 :offset 1)]
+            (is (= 2 (:total page-1)))
+            (is (= 2 (:total page-2)))
+            (is (= 1 (count (:data page-1))))
+            (is (= 1 (count (:data page-2))))
+            (is (= "failed" (:status (first (:data page-1)))))
+            (is (= "success" (:status (first (:data page-2)))))))))))
 
 (deftest detail-404-for-missing-id-test
   (testing "GET /:id returns 404 for a non-existent notification id"
@@ -575,16 +597,14 @@
                                                             :creator_id   (mt/user->id :crowberto)}]
         (mt/user-http-request :rasta :get 403 (str "ee/admin/notifications/" nid))))))
 
-(deftest detail-send-history-limited-to-20-test
-  (testing "GET /:id :send_history is capped at 20 entries, newest first"
+(deftest send-history-defaults-to-20-per-page-test
+  (testing "GET /:id/send-history defaults to 20 entries per page, newest first"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id} {:archived false}
                      :model/NotificationCard {nc :id}      {:card_id card-id}
                      :model/Notification     {nid :id}     {:payload_type :notification/card
                                                             :payload_id   nc
                                                             :creator_id   (mt/user->id :crowberto)}]
-        ;; 25 task_history rows with staggered timestamps. After the endpoint's desc sort, only
-        ;; the 20 newest should come back (indices 5..24).
         (let [inserted-ids (doall
                             (for [i (range 25)]
                               (let [started (t/plus (t/instant "2026-04-01T00:00:00Z") (t/minutes i))
@@ -598,11 +618,11 @@
                                                             :ended_at     ended
                                                             :duration     1000})))))]
           (try
-            (let [resp    (mt/user-http-request :crowberto :get 200 (str "ee/admin/notifications/" nid))
-                  history (:send_history resp)]
-              (is (= 20 (count history)))
+            (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/admin/notifications/" nid "/send-history"))]
+              (is (= 25 (:total resp)))
+              (is (= 20 (count (:data resp))))
               (testing "sorted newest-first"
-                (let [timestamps (map :timestamp history)]
+                (let [timestamps (map :timestamp (:data resp))]
                   (is (= timestamps (reverse (sort timestamps)))))))
             (finally
               (t2/delete! :model/TaskHistory :id [:in inserted-ids]))))))))

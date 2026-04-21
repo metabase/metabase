@@ -45,11 +45,12 @@
    [:duration_ms                    [:maybe :int]]
    [:error_message {:optional true} ms/NonBlankString]])
 
-(mr/def ::detail-response
-  [:merge
-   ::list-row
-   [:map
-    [:send_history [:sequential ::send-history-entry]]]])
+(mr/def ::detail-response ::list-row)
+
+(mr/def ::send-history-response
+  [:map
+   [:data  [:sequential ::send-history-entry]]
+   [:total ms/IntGreaterThanOrEqualToZero]])
 
 (mr/def ::bulk-response
   [:map
@@ -194,14 +195,14 @@
 (def ^:private send-history-lookback-days 90)
 (def ^:private send-history-scan-limit 5000)
 
-(defn- send-history-for-notification
-  "Return up to [[send-history-limit]] most-recent `notification-send` rows for `notification-id`,
-  newest first. `task_history.notification_id` is inside a JSON text column; we bound the fetch
-  by time + row count, then filter in Clojure (same approach as `health.clj`).
+(defn- matching-task-history-entries
+  "Fetch recent `notification-send` task_history rows for `notification-id`, filter/project them in
+  Clojure, and return the full projected seq (not yet limited). Bounded by time window + row cap
+  — see ns docs.
 
-  On failure, `do-with-task-history` rewrites `task_details` to `{:status :failed :message ...
-  :original-info <caller's task_details>}`, so the notification id can live at either the top
-  level or nested under `:original-info`."
+  `do-with-task-history` rewrites `task_details` on failure into
+  `{:status :failed :message ... :original-info <caller's task_details>}`, so the notification id
+  can live at either the top level or nested under `:original-info`."
   [notification-id]
   (let [cutoff (t/minus (t/offset-date-time) (t/days send-history-lookback-days))
         rows   (t2/select [:model/TaskHistory :status :started_at :duration :task_details]
@@ -214,7 +215,6 @@
                    (let [nid (or (:notification_id task_details)
                                  (get-in task_details [:original-info :notification_id]))]
                      (= nid notification-id))))
-         (take send-history-limit)
          (mapv (fn [{:keys [status started_at duration task_details]}]
                  (cond-> {:timestamp   started_at
                           :status      (name (or status :unknown))
@@ -224,30 +224,52 @@
                    (assoc :error_message (:message task_details))))))))
 
 (defn- get-notification-detail
-  "Fetch a single card-type notification by id and enrich it with `:health`, `:last_sent_at`, and
-  `:send_history`. Returns nil if the notification doesn't exist or isn't a card-type notification
-  — the caller maps that to a 404."
+  "Fetch a single card-type notification by id and enrich it with `:health` and `:last_sent_at`.
+  Send history is loaded separately via `GET /:id/send-history`. Returns nil if the notification
+  doesn't exist or isn't a card-type notification — the caller maps that to a 404."
   [id]
   (when-let [row (t2/select-one :model/Notification :id id :payload_type :notification/card)]
-    (let [[enriched] (notification-admin.health/compute-for-rows [row])
-          hydrated   (models.notification/hydrate-notification enriched)]
-      (assoc hydrated :send_history (send-history-for-notification id)))))
+    (let [[enriched] (notification-admin.health/compute-for-rows [row])]
+      (models.notification/hydrate-notification enriched))))
 
 (api.macros/defendpoint :get "/:id" :- ::detail-response
-  "Get a single card-type notification with health, last_sent_at, and recent send history. 404 if
-  the notification doesn't exist or isn't a card-type notification."
+  "Get a single card-type notification with health and last_sent_at. Send history is paginated
+  separately via `GET /:id/send-history`. 404 if the notification doesn't exist or isn't a
+  card-type notification."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (get-notification-detail id)))
 
+(api.macros/defendpoint :get "/:id/send-history" :- ::send-history-response
+  "Paginated recent `notification-send` task_history rows for `:id`. Rows ordered newest first;
+  see [[send-history-lookback-days]] and [[send-history-scan-limit]] for the time/row bounds."
+  [{:keys [id]}    :- [:map [:id ms/PositiveInt]]
+   {:keys [limit offset]} :- [:map
+                              [:limit  {:default send-history-limit} ms/PositiveInt]
+                              [:offset {:default 0}                  ms/IntGreaterThanOrEqualToZero]]]
+  (api/check-superuser)
+  (api/check-404 (t2/select-one :model/Notification :id id :payload_type :notification/card))
+  (let [all (matching-task-history-entries id)]
+    {:data  (->> all (drop offset) (take limit) vec)
+     :total (count all)}))
+
 (defn- bulk-update!
   [action owner-id ids]
   (case (keyword action)
-    :archive      (t2/update! :model/Notification :id [:in ids] {:active false})
-    :unarchive    (t2/update! :model/Notification :id [:in ids] {:active true})
+    :archive      (t2/update! :model/Notification
+                              :id           [:in ids]
+                              :payload_type :notification/card
+                              {:active false})
+    :unarchive    (t2/update! :model/Notification
+                              :id           [:in ids]
+                              :payload_type :notification/card
+                              {:active true})
     :change-owner (do (api/check (integer? owner-id) [400 "owner_id required for change-owner"])
-                      (t2/update! :model/Notification :id [:in ids] {:creator_id owner-id}))))
+                      (t2/update! :model/Notification
+                                  :id           [:in ids]
+                                  :payload_type :notification/card
+                                  {:creator_id owner-id}))))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
   "Bulk-archive, -unarchive, or -change-owner a set of notifications. Runs inside a transaction.

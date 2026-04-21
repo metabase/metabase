@@ -77,7 +77,11 @@
                               :limit    task-history-row-limit})]
       (reduce
        (fn [acc {:keys [status ended_at task_details]}]
-         (let [nid (:notification_id task_details)]
+         ;; `do-with-task-history` rewrites task_details on failure into
+         ;; `{:status :failed :message ... :original-info <caller's task_details>}`,
+         ;; so notification_id can live at either level.
+         (let [nid (or (:notification_id task_details)
+                       (get-in task_details [:original-info :notification_id]))]
            (if (and nid (contains? nid-set nid))
              (cond-> acc
                (not (get-in acc [nid :latest]))
