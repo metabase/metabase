@@ -274,13 +274,26 @@
 
 ;;;; OpenAI provider
 
+(defn openai-config-problem
+  "Returns nil when the OpenAI provider is ready to use, otherwise a map
+  `{:message ... :setting ...}` describing the first missing prerequisite.
+  Shared by [[openai-resolve-config!]] and config-only readiness callers (see
+  [[metabase-enterprise.semantic-search.core/provider-ready?]]) so the two paths
+  cannot drift — e.g. a cleared base URL has to fail both checks together."
+  []
+  (cond
+    (str/blank? (semantic-settings/openai-api-key))
+    {:message "OpenAI API key not configured"      :setting "llm-openai-api-key"}
+    (str/blank? (semantic-settings/openai-api-base-url))
+    {:message "OpenAI API base URL not configured" :setting "llm-openai-api-base-url"}))
+
 (defn- openai-resolve-config!
   "Returns [endpoint api-key] or throws if not configured."
   []
-  (let [api-key (semantic-settings/openai-api-key)]
-    (when-not api-key
-      (throw (ex-info "OpenAI API key not configured" {:setting "llm-openai-api-key"})))
-    [(str (semantic-settings/openai-api-base-url) "/v1/embeddings") api-key]))
+  (when-let [{:keys [message setting]} (openai-config-problem)]
+    (throw (ex-info message {:setting setting})))
+  [(str (semantic-settings/openai-api-base-url) "/v1/embeddings")
+   (semantic-settings/openai-api-key)])
 
 (defmethod get-embedding "openai" [embedding-model text & {:as opts}]
   (let [[endpoint api-key] (openai-resolve-config!)]

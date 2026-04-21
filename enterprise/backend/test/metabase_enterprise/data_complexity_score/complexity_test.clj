@@ -1370,3 +1370,52 @@
                 "provider-ready? passes with an API key set, so :meta reflects the configured model")
             (is (some? @captured)
                 "the provider-embedder path was actually taken")))))))
+
+(deftest ^:sequential complexity-scores-openai-blank-base-url-falls-back-test
+  (testing "provider=openai with an API key but a blank base URL still falls back"
+    ;; Guards drift between provider-ready? and openai-resolve-config!: before the shared
+    ;; openai-config-problem helper existed, readiness only looked at the API key, so a cleared
+    ;; base URL would publish :meta.embedding-model for a provider that would immediately throw on
+    ;; the next embedding call.
+    (let [batch-called? (atom false)]
+      (with-redefs [semantic-layer-settings/ee-complexity-synonym-provider         (constantly "openai")
+                    semantic-layer-settings/ee-complexity-synonym-model-name       (constantly "text-embedding-3-small")
+                    semantic-layer-settings/ee-complexity-synonym-model-dimensions (constantly 512)
+                    semantic-layer-settings/ee-complexity-synonym-threshold        (constantly nil)
+                    ss.settings/openai-api-key      (constantly "sk-test-redacted")
+                    ss.settings/openai-api-base-url (constantly "")
+                    ss.embedding/get-embeddings-batch (fn [& _] (reset! batch-called? true) [])
+                    ss.embedders/try-active-index-state (constantly nil)]
+        (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                    complexity/universe-entities (constantly [(entity :name "orders")])]
+          (let [{:keys [meta]} (complexity/complexity-scores)]
+            (is (false? @batch-called?)
+                "provider-embedder must not be reached when the base URL is blank")
+            (is (not (contains? meta :embedding-model))
+                ":meta must not advertise openai when the base URL isn't configured")))))))
+
+(deftest ^:sequential complexity-scores-synonym-axis-error-populates-meta-test
+  (testing "dispatcher failure surfaces as :error on the synonym-pairs component and scores 0"
+    ;; End-to-end partner to provider-embedder-propagates-errors-test: that test stops at the
+    ;; embedder throwing; this one verifies the upstream contract it unlocks — score-synonym-pairs
+    ;; catches the throw, so the silent-zero-with-lying-meta case shows up as {:score 0 :error ...}
+    ;; on the user-facing result instead of an unannotated zero.
+    (with-redefs [semantic-layer-settings/ee-complexity-synonym-provider         (constantly "ollama")
+                  semantic-layer-settings/ee-complexity-synonym-model-name       (constantly "all-minilm")
+                  semantic-layer-settings/ee-complexity-synonym-model-dimensions (constantly 384)
+                  semantic-layer-settings/ee-complexity-synonym-threshold        (constantly nil)
+                  ss.embedding/get-embeddings-batch (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")
+                                                                            (entity :name "invoices")])
+                                  complexity/universe-entities (constantly [(entity :name "orders")
+                                                                            (entity :name "invoices")])]
+        (let [{:keys [library universe meta]} (complexity/complexity-scores)]
+          (is (=? {:pairs 0 :score 0 :error "boom"}
+                  (get-in library [:components :synonym-pairs]))
+              "library synonym axis scored zero with :error from the underlying throw")
+          (is (=? {:pairs 0 :score 0 :error "boom"}
+                  (get-in universe [:components :synonym-pairs]))
+              "universe synonym axis scored zero with :error from the underlying throw")
+          (is (= {:provider "ollama" :model-name "all-minilm"}
+                 (:embedding-model meta))
+              ":meta still reflects the configured provider — the failure is on the axis, not the config"))))))

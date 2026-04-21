@@ -32,12 +32,14 @@
   "True when `provider`'s mandatory prerequisite settings are populated on this instance. Config-only
   presence check — no network call. Returning false means the provider's embedding dispatcher would
   throw on config resolution (missing API key, missing base URL), so callers can decide to fall back
-  to a different embedder rather than advertise a model they can't actually reach. Ollama is always
+  to a different embedder rather than advertise a model they can't actually reach. The `openai`
+  branch delegates to [[semantic.embedding/openai-config-problem]] so this readiness gate stays in
+  lockstep with what the dispatcher's own `openai-resolve-config!` enforces. Ollama is always
   reported as ready because its endpoint is hardcoded and readiness can only be decided at call
   time — deeper runtime failures still propagate from [[get-embeddings-batch]]."
   [provider]
   (case provider
-    "openai"     (not (str/blank? (semantic.settings/openai-api-key)))
+    "openai"     (nil? (metabase-enterprise.semantic-search.embedding/openai-config-problem))
     "ai-service" (and (not (str/blank? (semantic.settings/ee-embedding-service-base-url)))
                       (not (str/blank? (semantic.settings/ee-embedding-service-api-key))))
     "ollama"     true
