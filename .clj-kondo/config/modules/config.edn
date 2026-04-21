@@ -160,15 +160,21 @@
    :uses    #{agent-lib
               api
               auth-identity
+              dashboards
+              events
               lib
               llm
               metabot
+              queries
               query-processor
               request
               server
               settings
               util}
-   :model-imports #{:model/User}}
+   :model-imports #{:model/Card
+                    :model/Dashboard
+                    :model/DashboardCard
+                    :model/User}}
 
   agent-lib
   {:team "Metabot"
