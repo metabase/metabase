@@ -11,6 +11,11 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { CreateOrEditQuestionAlertModalWithQuestion } from "metabase/notifications/modals/CreateOrEditQuestionAlertModal/CreateOrEditQuestionAlertModal";
 import { ALERT_TYPE_ROWS, getAlertType } from "metabase/notifications/utils";
 import { zoomInRow } from "metabase/query_builder/actions";
+import {
+  getIsShowingRawTable,
+  getUiControls,
+} from "metabase/query_builder/selectors";
+import { useSelector } from "metabase/utils/redux";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";
@@ -30,7 +35,21 @@ const ALLOWED_VISUALIZATION_PROPS = [
   "hideLegend",
 ];
 
-export class VisualizationResult extends Component {
+export function VisualizationResult(props) {
+  const isRawTable = useSelector(getIsShowingRawTable);
+  const scrollToLastColumn = useSelector(
+    (state) => getUiControls(state)?.scrollToLastColumn ?? false,
+  );
+  return (
+    <VisualizationResultInner
+      {...props}
+      isRawTable={isRawTable}
+      scrollToLastColumn={scrollToLastColumn}
+    />
+  );
+}
+
+class VisualizationResultInner extends Component {
   state = {
     showCreateAlertModal: false,
   };
@@ -69,6 +88,8 @@ export class VisualizationResult extends Component {
       isShowingSummarySidebar,
       editSummary,
       renderEmptyMessage,
+      isRawTable,
+      scrollToLastColumn,
     } = this.props;
     const { showCreateAlertModal } = this.state;
 
@@ -142,6 +163,8 @@ export class VisualizationResult extends Component {
             isEditing={true}
             isObjectDetail={false}
             isQueryBuilder={true}
+            isRawTable={isRawTable}
+            scrollToLastColumn={scrollToLastColumn}
             isShowingSummarySidebar={isShowingSummarySidebar}
             isRunning={isRunning}
             editSummary={editSummary}

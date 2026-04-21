@@ -24,7 +24,7 @@ import {
   createMockTokenStatus,
 } from "metabase-types/api/mocks";
 
-import { MetabotSetup } from "./MetabotSetup";
+import { MetabotSetup, MetabotSetupInner } from "./MetabotSetup";
 import type { MetabotApiKeyProvider } from "./utils";
 
 const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
@@ -80,7 +80,9 @@ const DEFAULT_RESPONSES: Record<MetabotProvider, MetabotSettingsResponse> = {
 };
 
 type MetabotUsageQuota = {
+  is_locked?: boolean;
   tokens: number | null;
+  free_tokens?: number | null;
   updated_at: string | null;
 };
 
@@ -104,6 +106,7 @@ type MetabotSettingsUpdateBody = {
 type SetupOptions = {
   isHosted?: boolean;
   hasDeprecatedMetabaseAiProvider?: boolean;
+  offerMetabaseManagedAi?: boolean;
   llmProxyConfigured?: boolean;
   savedProviderValue?: string | null;
   isConfigured?: boolean;
@@ -123,11 +126,13 @@ type SetupOptions = {
   settingUpdateResponse?: number | { status: number; body?: unknown };
   responses?: Partial<Record<MetabotProvider, MetabotSettingsApiResponse>>;
   updateResponse?: MetabotSettingsResponse;
+  renderAsModal?: boolean;
 };
 
 async function setup({
   isHosted = false,
-  hasDeprecatedMetabaseAiProvider = false,
+  hasDeprecatedMetabaseAiProvider,
+  offerMetabaseManagedAi,
   llmProxyConfigured = isHosted,
   savedProviderValue = "anthropic/claude-haiku-4-5",
   isConfigured = true,
@@ -150,6 +155,7 @@ async function setup({
     value: "anthropic/claude-sonnet-4-5",
     models: DEFAULT_RESPONSES.anthropic.models,
   },
+  renderAsModal = false,
 }: SetupOptions = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
@@ -161,19 +167,23 @@ async function setup({
     ...apiKeyValues,
   };
 
+  const createTokenFeatureFlags = (features: TokenStatusFeature[]) =>
+    createMockTokenFeatures({
+      hosting: isHosted,
+      "offer-metabase-ai-managed":
+        offerMetabaseManagedAi ??
+        (isHosted || features.includes("offer-metabase-ai-managed")),
+      "metabase-ai-managed": features.includes("metabase-ai-managed"),
+      "metabot-v3":
+        hasDeprecatedMetabaseAiProvider ?? features.includes("metabot-v3"),
+    });
+
   const sessionProperties = createMockSettings({
     "is-hosted?": isHosted,
     "llm-proxy-configured?": llmProxyConfigured,
     "llm-metabot-provider": savedProviderValue,
     "llm-metabot-configured?": isConfigured,
-    "token-features": createMockTokenFeatures({
-      hosting: isHosted,
-      "offer-metabase-ai-managed": isHosted,
-      "metabase-ai-managed": tokenStatusFeatures.includes(
-        "metabase-ai-managed",
-      ),
-      "metabot-v3": hasDeprecatedMetabaseAiProvider,
-    }),
+    "token-features": createTokenFeatureFlags(tokenStatusFeatures),
     "token-status": createMockTokenStatus({
       features: tokenStatusFeatures,
       "store-users": isStoreUser
@@ -233,14 +243,9 @@ async function setup({
     });
 
     fetchMock.post("path:/api/premium-features/token/refresh", () => {
-      sessionProperties["token-features"] = createMockTokenFeatures({
-        hosting: isHosted,
-        "offer-metabase-ai-managed": isHosted,
-        "metabase-ai-managed": refreshedTokenStatusFeatures.includes(
-          "metabase-ai-managed",
-        ),
-        "metabot-v3": hasDeprecatedMetabaseAiProvider,
-      });
+      sessionProperties["token-features"] = createTokenFeatureFlags(
+        refreshedTokenStatusFeatures,
+      );
       sessionProperties["token-status"] = createMockTokenStatus({
         features: refreshedTokenStatusFeatures,
       });
@@ -349,18 +354,21 @@ async function setup({
     return 204;
   });
 
-  const { history, store } = renderWithProviders(
-    <Route path="/admin/metabot*" component={MetabotSetup} />,
-    {
-      withRouter: true,
-      initialRoute: "/admin/metabot",
-      storeInitialState: {
-        settings,
-      },
-    },
-  );
+  const storeInitialState = { settings };
+  const view = renderAsModal
+    ? renderWithProviders(<MetabotSetupInner isModal onClose={jest.fn()} />, {
+        storeInitialState,
+      })
+    : renderWithProviders(
+        <Route path="/admin/metabot*" component={MetabotSetup} />,
+        {
+          withRouter: true,
+          initialRoute: "/admin/metabot",
+          storeInitialState,
+        },
+      );
 
-  if (!isHosted) {
+  if (!isHosted && !renderAsModal) {
     await screen.findByText(
       isConfigured
         ? /Connected to|Connect to an AI provider/
@@ -369,8 +377,7 @@ async function setup({
   }
 
   return {
-    history,
-    store,
+    ...view,
   };
 }
 
@@ -449,6 +456,51 @@ describe("MetabotSetup", () => {
       screen.getByRole("button", { name: "Disconnect" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Not connected")).not.toBeInTheDocument();
+  });
+
+  it("shows Connect instead of Disconnect when the configured API key input is dirty", async () => {
+    await setup();
+    await screen.findByLabelText("API key");
+
+    expect(
+      screen.getByRole("button", { name: "Disconnect" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Connect" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.clear(screen.getByLabelText("API key"));
+    await userEvent.type(screen.getByLabelText("API key"), "sk-ant-rotated");
+
+    expect(screen.getByRole("button", { name: "Connect" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Disconnect" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/metabot/settings")).toBe(
+        true,
+      );
+    });
+
+    const request = fetchMock.callHistory
+      .calls("path:/api/metabot/settings")
+      .find(
+        (call) =>
+          call.request?.method === "PUT" || call.options?.method === "PUT",
+      );
+
+    expect(request?.options?.body).toBe(
+      JSON.stringify({ provider: "anthropic", "api-key": "sk-ant-rotated" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Disconnect" }),
+      ).toBeInTheDocument();
+    });
   });
 
   it("shows the disconnected title when not configured", async () => {
@@ -693,9 +745,12 @@ describe("MetabotSetup", () => {
       ),
     ).toBe(false);
 
-    const settingsRequest = fetchMock.callHistory
-      .calls("path:/api/metabot/settings")
-      .find((call) => call.request?.method === "PUT");
+    const [settingsRequest] = fetchMock.callHistory.calls(
+      "path:/api/metabot/settings",
+      {
+        method: "PUT",
+      },
+    );
 
     expect(settingsRequest?.options?.body).toBe(
       JSON.stringify({ provider: "metabase", model: "" }),
@@ -752,9 +807,12 @@ describe("MetabotSetup", () => {
         ).toBe(true);
       });
 
-      const request = fetchMock.callHistory
-        .calls("path:/api/ee/cloud-add-ons/metabase-ai-managed")
-        .find((call) => call.request?.method === "POST");
+      const [request] = fetchMock.callHistory.calls(
+        "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+        {
+          method: "POST",
+        },
+      );
 
       expect(request?.options?.body).toBe(
         JSON.stringify({ terms_of_service: true }),
@@ -824,7 +882,7 @@ describe("MetabotSetup", () => {
     expect(screen.getByText("$4.25 per 1M tokens")).toBeInTheDocument();
   });
 
-  it("shows usage summary for the connected Metabase provider", async () => {
+  it("shows included usage for the connected Metabase provider while still within the free limit", async () => {
     const updatedAt = "2026-04-02T19:29:12Z";
     await setup({
       isHosted: true,
@@ -834,6 +892,31 @@ describe("MetabotSetup", () => {
       metabotUsageQuotas: [
         {
           tokens: 250000,
+          free_tokens: 1000000,
+          updated_at: updatedAt,
+        },
+      ],
+    });
+
+    expect(await screen.findByText("Included use")).toBeInTheDocument();
+    expect(screen.getByText("Free trial tokens")).toBeInTheDocument();
+    expect(screen.getByText("250,000 / 1,000,000")).toBeInTheDocument();
+    expect(screen.getByText("Price per token afterward")).toBeInTheDocument();
+    expect(screen.queryByText("Current billing cycle")).not.toBeInTheDocument();
+    expect(screen.queryByText("Total tokens")).not.toBeInTheDocument();
+  });
+
+  it("shows the normal usage summary for the connected Metabase provider after free tokens run out", async () => {
+    const updatedAt = "2026-04-02T19:29:12Z";
+    await setup({
+      isHosted: true,
+      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
+      tokenStatusFeatures: ["metabase-ai-managed"],
+      metabasePricePerUnit: 4.25,
+      metabotUsageQuotas: [
+        {
+          tokens: 1250000,
+          free_tokens: 1000000,
           updated_at: updatedAt,
         },
       ],
@@ -842,11 +925,106 @@ describe("MetabotSetup", () => {
     expect(
       await screen.findByText("Current billing cycle"),
     ).toBeInTheDocument();
-    expect(await screen.findByText("250,000")).toBeInTheDocument();
+    expect(await screen.findByText("1,250,000")).toBeInTheDocument();
     expect(screen.queryByText("Unavailable")).not.toBeInTheDocument();
     expect(screen.getByText("Total tokens")).toBeInTheDocument();
     expect(screen.getByText("Total cost")).toBeInTheDocument();
+    expect(screen.getByText("Price per token")).toBeInTheDocument();
     expect(screen.getByText("$1.06")).toBeInTheDocument();
+    expect(screen.queryByText("Included use")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Price per token afterward"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disconnects when clicking use a different AI provider from the locked managed-provider state", async () => {
+    await setup({
+      isHosted: true,
+      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
+      tokenStatusFeatures: ["metabase-ai-managed"],
+      metabotUsageQuotas: [
+        {
+          is_locked: true,
+          tokens: 250000,
+          updated_at: "2026-04-02T19:29:12Z",
+        },
+      ],
+    });
+
+    expect(
+      await screen.findByText("You've run out of AI service tokens"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/You've used all of your included AI service tokens\./),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Current billing cycle")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Use a different AI provider" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Start paid subscription" }),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Use a different AI provider" }),
+    );
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/setting")).toBe(true);
+    });
+
+    const request = fetchMock.callHistory
+      .calls("path:/api/setting")
+      .find((call) => call.request?.method === "PUT");
+
+    expect(request?.options?.body).toBe(
+      JSON.stringify({
+        "llm-metabot-provider": null,
+      }),
+    );
+
+    expect(
+      await screen.findByText("Connect to an AI provider"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Provider")).toHaveValue("");
+    expect(
+      screen.queryByText("You've run out of AI service tokens"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("resets the form in modal mode without updating settings", async () => {
+    await setup({
+      isHosted: true,
+      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
+      tokenStatusFeatures: ["metabase-ai-managed"],
+      metabotUsageQuotas: [
+        {
+          is_locked: true,
+          tokens: 250000,
+          updated_at: "2026-04-02T19:29:12Z",
+        },
+      ],
+      renderAsModal: true,
+    });
+
+    expect(await screen.findByLabelText("Provider")).toHaveValue("");
+
+    await selectProvider("Metabase");
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Use a different AI provider",
+      }),
+    );
+
+    expect(await screen.findByLabelText("Provider")).toHaveValue("");
+    expect(
+      screen.queryByRole("button", { name: "Use a different AI provider" }),
+    ).not.toBeInTheDocument();
+    expect(
+      fetchMock.callHistory
+        .calls("path:/api/setting")
+        .some((call) => call.request?.method === "PUT"),
+    ).toBe(false);
   });
 
   it("saves when picking a model", async () => {
@@ -866,9 +1044,12 @@ describe("MetabotSetup", () => {
       );
     });
 
-    const request = fetchMock.callHistory
-      .calls("path:/api/metabot/settings")
-      .find((call) => call.request?.method === "PUT");
+    const [request] = fetchMock.callHistory.calls(
+      "path:/api/metabot/settings",
+      {
+        method: "PUT",
+      },
+    );
 
     expect(request?.options?.body).toBe(
       JSON.stringify({ provider: "anthropic", model: "claude-sonnet-4-5" }),
@@ -901,9 +1082,9 @@ describe("MetabotSetup", () => {
       expect(fetchMock.callHistory.called("path:/api/setting")).toBe(true);
     });
 
-    const request = fetchMock.callHistory
-      .calls("path:/api/setting")
-      .find((call) => call.request?.method === "PUT");
+    const [request] = fetchMock.callHistory.calls("path:/api/setting", {
+      method: "PUT",
+    });
 
     expect(request?.options?.body).toBe(
       JSON.stringify({
@@ -924,15 +1105,20 @@ describe("MetabotSetup", () => {
   it("disconnects the Metabase-managed provider by removing the add-on before clearing the provider setting", async () => {
     await setup({
       isHosted: true,
-      tokenStatusFeatures: ["metabase-ai-managed"],
+      tokenStatusFeatures: ["metabase-ai-managed", "offer-metabase-ai-managed"],
       savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
     });
 
-    await screen.findByText("Current billing cycle");
+    await screen.findByText("Connected to Metabase");
     await userEvent.click(
       await screen.findByRole("button", { name: "Disconnect" }),
     );
 
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/ee/cloud-add-ons/metabase-ai-tiered",
+      ),
+    ).toBe(false);
     await waitFor(() => {
       expect(
         fetchMock.callHistory.called(
@@ -945,12 +1131,15 @@ describe("MetabotSetup", () => {
       expect(fetchMock.callHistory.called("path:/api/setting")).toBe(true);
     });
 
-    const removeRequest = fetchMock.callHistory
-      .calls("path:/api/ee/cloud-add-ons/metabase-ai-managed")
-      .find((call) => call.request?.method === "DELETE");
-    const request = fetchMock.callHistory
-      .calls("path:/api/setting")
-      .find((call) => call.request?.method === "PUT");
+    const [removeRequest] = fetchMock.callHistory.calls(
+      "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+      {
+        method: "DELETE",
+      },
+    );
+    const [request] = fetchMock.callHistory.calls("path:/api/setting", {
+      method: "PUT",
+    });
 
     expect(removeRequest).toBeDefined();
     expect(request?.options?.body).toBe(
@@ -965,6 +1154,103 @@ describe("MetabotSetup", () => {
       callHistory.indexOf(removeRequest as (typeof callHistory)[number]),
     ).toBeLessThan(
       callHistory.indexOf(request as (typeof callHistory)[number]),
+    );
+  });
+
+  it("disconnects the tiered Metabase provider by removing the add-on before clearing the provider setting", async () => {
+    await setup({
+      isHosted: true,
+      tokenStatusFeatures: ["metabot-v3", "offer-metabase-ai-managed"],
+      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
+    });
+
+    await screen.findByText("Connected to Metabase");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Disconnect" }),
+    );
+
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+      ),
+    ).toBe(false);
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          "path:/api/ee/cloud-add-ons/metabase-ai-tiered",
+        ),
+      ).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called("path:/api/setting")).toBe(true);
+    });
+
+    const [removeRequest] = fetchMock.callHistory.calls(
+      "path:/api/ee/cloud-add-ons/metabase-ai-tiered",
+      {
+        method: "DELETE",
+      },
+    );
+    const [request] = fetchMock.callHistory.calls("path:/api/setting", {
+      method: "PUT",
+    });
+
+    expect(removeRequest).toBeDefined();
+    expect(request?.options?.body).toBe(
+      JSON.stringify({
+        "llm-metabot-provider": null,
+      }),
+    );
+
+    const callHistory = fetchMock.callHistory.calls();
+
+    expect(
+      callHistory.indexOf(removeRequest as (typeof callHistory)[number]),
+    ).toBeLessThan(
+      callHistory.indexOf(request as (typeof callHistory)[number]),
+    );
+  });
+
+  it("does not disconnect the tiered Metabase provider if no offer-metabase-ai-managed is set", async () => {
+    await setup({
+      isHosted: true,
+      offerMetabaseManagedAi: false,
+      tokenStatusFeatures: ["metabot-v3"],
+      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
+    });
+
+    await screen.findByText("Connected to Metabase");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Disconnect" }),
+    );
+
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+      ),
+    ).toBe(false);
+    expect(
+      fetchMock.callHistory.called(
+        "path:/api/ee/cloud-add-ons/metabase-ai-tiered",
+      ),
+    ).toBe(false);
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called("path:/api/setting", { method: "PUT" }),
+      ).toBe(true);
+    });
+
+    const [request] = fetchMock.callHistory.calls("path:/api/setting", {
+      method: "PUT",
+    });
+
+    expect(request?.options?.body).toBe(
+      JSON.stringify({
+        "llm-metabot-provider": null,
+      }),
     );
   });
 

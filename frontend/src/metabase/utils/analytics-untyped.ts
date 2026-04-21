@@ -1,9 +1,11 @@
+import type { EnhancedStore } from "@reduxjs/toolkit";
 import * as Snowplow from "@snowplow/browser-tracker";
 
+import type { State } from "metabase/redux/store";
 import { getUserId } from "metabase/selectors/user";
 import Settings from "metabase/utils/settings";
 
-export const trackPageView = (url) => {
+export const trackPageView = (url: string): void => {
   if (!url || !Settings.trackingEnabled()) {
     return;
   }
@@ -12,21 +14,24 @@ export const trackPageView = (url) => {
     trackSnowplowPageView(getSanitizedUrl(url));
   }
 };
-export const createTracker = (store) => {
+
+export const createTracker = (store: EnhancedStore<State>): void => {
   if (Settings.snowplowEnabled()) {
     createSnowplowTracker(store);
   }
 };
 
-const createSnowplowPlugin = (store) => {
+const createSnowplowPlugin = (store: EnhancedStore<State>) => {
   return {
     beforeTrack: () => {
       const userId = getUserId(store.getState());
-      userId && Snowplow.setUserId(String(userId));
+      if (userId) {
+        Snowplow.setUserId(String(userId));
+      }
     },
     contexts: () => {
       const id = Settings.get("analytics-uuid");
-      const version = Settings.get("version", {});
+      const version = Settings.get("version") ?? {};
       const createdAt = Settings.get("instance-creation");
       const tokenFeatures = Settings.get("token-features");
 
@@ -36,7 +41,7 @@ const createSnowplowPlugin = (store) => {
           data: {
             id,
             version: {
-              tag: version.tag,
+              tag: (version as { tag?: string }).tag,
             },
             created_at: createdAt,
             token_features: tokenFeatures,
@@ -47,8 +52,8 @@ const createSnowplowPlugin = (store) => {
   };
 };
 
-const createSnowplowTracker = (store) => {
-  Snowplow.newTracker("sp", Settings.snowplowUrl(), {
+const createSnowplowTracker = (store: EnhancedStore<State>): void => {
+  Snowplow.newTracker("sp", Settings.snowplowUrl() ?? "", {
     appId: "metabase",
     platform: "web",
     eventMethod: "post",
@@ -60,15 +65,15 @@ const createSnowplowTracker = (store) => {
   });
 };
 
-const trackSnowplowPageView = (url) => {
+const trackSnowplowPageView = (url: string): void => {
   Snowplow.setReferrerUrl("#");
   Snowplow.setCustomUrl(url);
   Snowplow.trackPageView();
 };
 
-const getSanitizedUrl = (url) => {
-  const urlWithoutSlug = url.replace(/(\/\d+)-[^\/]+$/, (match, path) => path);
-  const urlWithoutHost = new URL(urlWithoutSlug, Settings.snowplowUrl());
+const getSanitizedUrl = (url: string): string => {
+  const urlWithoutSlug = url.replace(/(\/\d+)-[^/]+$/, (match, path) => path);
+  const urlWithoutHost = new URL(urlWithoutSlug, Settings.snowplowUrl() ?? "");
 
   return urlWithoutHost.href;
 };

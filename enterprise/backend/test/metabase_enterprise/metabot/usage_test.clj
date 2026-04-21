@@ -40,7 +40,8 @@
              {:source            "log-test"
               :model             "anthropic/claude-test"
               :prompt-tokens     100
-              :completion-tokens 50})
+              :completion-tokens 50
+              :ai-proxied        true})
             (try
               (is (= (inc before-count)
                      (t2/count :model/AiUsageLog :user_id user-id :source "log-test")))
@@ -50,7 +51,8 @@
                 (is (= 100 (:prompt_tokens row)))
                 (is (= 50 (:completion_tokens row)))
                 (is (= 150 (:total_tokens row)))
-                (is (= user-id (:user_id row))))
+                (is (= user-id (:user_id row)))
+                (is (true? (:ai_proxied row))))
               (finally
                 (t2/delete! :model/AiUsageLog :user_id user-id :source "log-test")))))))))
 
@@ -121,6 +123,22 @@
               (is (= crowberto-id (:user_id row))))
             (finally
               (t2/delete! :model/AiUsageLog :source "explicit-user-test"))))))))
+
+(deftest log-ai-usage!-ai-proxied-defaults-to-nil-test
+  (mt/with-premium-features #{:ai-controls}
+    (testing "log-ai-usage! stores nil for ai_proxied when not provided"
+      (mt/with-test-user :rasta
+        (usage/log-ai-usage!
+         {:source            "proxied-default-test"
+          :model             "test/model"
+          :prompt-tokens     1
+          :completion-tokens 1})
+        (try
+          (let [row (t2/select-one :model/AiUsageLog :source "proxied-default-test"
+                                   {:order-by [[:id :desc]]})]
+            (is (nil? (:ai_proxied row))))
+          (finally
+            (t2/delete! :model/AiUsageLog :source "proxied-default-test")))))))
 
 ;;; ------------------------------------------ check-usage-limits! ------------------------------------------
 

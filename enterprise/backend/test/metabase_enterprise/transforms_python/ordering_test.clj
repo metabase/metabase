@@ -55,7 +55,7 @@
                        :model/Transform {t2 :id}     (py-tx [(transforms.tu/source-table-entry "output_1" table1)] "output_2")]
           (is (= {t1 #{}
                   t2 #{t1}}
-                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2]])))))))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2} (t2/select :model/Transform :id [:in [t1 t2]]))))))))))
 
 (deftest python-transform-multiple-dependencies-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
@@ -73,7 +73,7 @@
           (is (= {t1 #{}
                   t2 #{}
                   t3 #{t1 t2}}
-                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))))
 
 (deftest mixed-transform-ordering-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python :transforms/table)
@@ -98,4 +98,4 @@
           (is (= {t1 #{}
                   t2 #{t1}
                   t3 #{t2}}
-                 (ordering/transform-ordering (t2/select :model/Transform :id [:in [t1 t2 t3]])))))))))
+                 (:dependencies (ordering/transform-ordering #{t1 t2 t3} (t2/select :model/Transform :id [:in [t1 t2 t3]]))))))))))

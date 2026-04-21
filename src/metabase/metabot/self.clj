@@ -156,7 +156,7 @@
     - `:session-id` — conversation UUID string
     - `:source`     — the source of the request (e.g., 'metabot_agent', 'document_generate_content').
                       Indicates which API endpoint or workflow initiated the LLM call."
-  [{:keys [model profile-id request-id session-id source tag]}]
+  [{:keys [model profile-id request-id session-id source tag ai-proxy?]}]
   (let [start-ms      (u/start-timer)]
     (map (fn [part]
            (when (= (:type part) :usage)
@@ -187,7 +187,8 @@
                  :completion-tokens completion
                  :conversation-id   session-id
                  :profile-id        profile-id
-                 :request-id        request-id})))
+                 :request-id        request-id
+                 :ai-proxied        (boolean ai-proxy?)})))
            part))))
 
 (defn- report-tool-usage-xf
@@ -276,7 +277,7 @@
      (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)]
        (log/info "Calling LLM" {:provider    provider :model model :parts (count parts) :tools (count tools)
                                 :tool-choice tool-choice :ai-proxy? ai-proxy?})
-       (let [tracking-opts  (assoc tracking-opts :model provider-and-model)
+       (let [tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
              streaming-opts (cond-> {:model model :input parts :tools (vals tools) :ai-proxy? ai-proxy?}
                               system-msg        (assoc :system system-msg)
                               (and (seq tools)
@@ -318,8 +319,11 @@
   Returns the parsed JSON map from the forced tool call."
   [provider-and-model messages json-schema temperature max-tokens tracking-opts]
   (let [{:keys [provider stream-fn model ai-proxy?]} (parse-provider-model provider-and-model)
-        _ (log/info "Calling LLM (structured)" {:provider provider :model model :msg-count (count messages)})
-        tracking-opts  (assoc tracking-opts :model provider-and-model)
+        _ (log/info "Calling LLM (structured)" {:provider provider
+                                                :model model
+                                                :msg-count (count messages)
+                                                :ai-proxy? ai-proxy?})
+        tracking-opts  (assoc tracking-opts :model provider-and-model :ai-proxy? ai-proxy?)
         streaming-opts {:model       model
                         :input       messages
                         :schema      json-schema
