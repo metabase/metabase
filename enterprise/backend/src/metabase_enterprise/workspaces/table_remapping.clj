@@ -1,4 +1,4 @@
-(ns metabase.table-remapping.core
+(ns metabase-enterprise.workspaces.table-remapping
   "Internal API for table-to-table remapping. Used by workspace isolation to redirect
    queries from production tables to workspace tables."
   (:require
