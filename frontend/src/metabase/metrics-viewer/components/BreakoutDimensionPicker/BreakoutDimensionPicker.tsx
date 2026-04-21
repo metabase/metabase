@@ -1,12 +1,10 @@
 import type { ReactNode } from "react";
 import { useCallback, useMemo } from "react";
 
-import {
-  AccordionList,
-  type Section,
-} from "metabase/common/components/AccordionList";
+import { DimensionPickerList } from "metabase/common/components/DimensionPickerList";
 import {
   type DimensionOption,
+  type ListSection,
   groupIntoSections,
 } from "metabase/common/components/DimensionPill";
 import { HoverParent } from "metabase/common/components/MetadataInfo/ColumnInfoIcon";
@@ -40,7 +38,7 @@ export function BreakoutDimensionPicker({
     [definition],
   );
 
-  const sections: Section<DimensionOption>[] = useMemo(() => {
+  const sections: ListSection<DimensionOption>[] = useMemo(() => {
     const items: DimensionOption[] = [...dimensions.values()].map((dim) => ({
       ...dim,
       dimension: dim.dimensionMetadata,
@@ -126,8 +124,7 @@ export function BreakoutDimensionPicker({
 
   return (
     <Flex direction="column" mah="25rem" py="xs" className={S.pickerContainer}>
-      <AccordionList
-        className={S.dimensionList}
+      <DimensionPickerList
         sections={sections}
         onChange={handleChange}
         renderItemName={renderItemName}
@@ -135,9 +132,7 @@ export function BreakoutDimensionPicker({
         renderItemExtra={renderItemExtra}
         renderItemWrapper={renderItemWrapper}
         itemIsSelected={itemIsSelected}
-        alwaysExpanded
-        maxHeight={Infinity}
-        width="16rem"
+        w="16rem"
       />
     </Flex>
   );

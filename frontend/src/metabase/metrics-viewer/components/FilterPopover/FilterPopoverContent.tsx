@@ -2,7 +2,7 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { AccordionList } from "metabase/common/components/AccordionList";
+import { DimensionPickerList } from "metabase/common/components/DimensionPickerList";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import type {
   DimensionListItem,
@@ -177,16 +177,13 @@ function DimensionList({
   }, []);
 
   return (
-    <AccordionList<DimensionListItem, DimensionSection>
+    <DimensionPickerList
       className={S.dimensionList}
       sections={sections}
       onChange={onSelect}
       renderItemName={(item) => item.name}
       renderItemIcon={renderItemIcon}
-      width="100%"
-      maxHeight={Infinity}
-      searchable={false}
-      alwaysExpanded
+      w="100%"
     />
   );
 }

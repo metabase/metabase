@@ -1,10 +1,10 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { AccordionList } from "metabase/common/components/AccordionList";
+import { DimensionPickerList } from "metabase/common/components/DimensionPickerList";
 import { trackMetricsViewerDimensionTabAdded } from "metabase/metrics-viewer/analytics";
 import type { TabInfo } from "metabase/metrics-viewer/utils/tabs";
-import { ActionIcon, Icon, Popover } from "metabase/ui";
+import { ActionIcon, Box, Icon, Popover, Text, TextInput } from "metabase/ui";
 
 import type { MetricSourceId } from "../../../types/viewer-state";
 import type {
@@ -27,6 +27,24 @@ type AddDimensionPopoverProps = {
   onAddTab: (tabInfo: TabInfo) => void;
 };
 
+function filterSectionsBySearch(
+  sections: DimensionPickerSection[],
+  searchText: string,
+): DimensionPickerSection[] {
+  if (!searchText) {
+    return sections;
+  }
+  const lower = searchText.toLowerCase();
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) =>
+        item.name.toLowerCase().includes(lower),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
 export function AddDimensionPopover({
   availableDimensions,
   sourceOrder,
@@ -36,6 +54,7 @@ export function AddDimensionPopover({
   canAddScalarTab,
 }: AddDimensionPopoverProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
 
   const sections = useMemo(
     () =>
@@ -82,8 +101,24 @@ export function AddDimensionPopover({
     ];
   }
 
+  const filteredSections = useMemo(
+    () => filterSectionsBySearch(finalSections, searchText),
+    [finalSections, searchText],
+  );
+
+  const hasNoResults = filteredSections.length === 0 && searchText.length > 0;
+
   return (
-    <Popover opened={isOpen} onChange={setIsOpen} position="bottom-start">
+    <Popover
+      opened={isOpen}
+      onChange={(open) => {
+        setIsOpen(open);
+        if (!open) {
+          setSearchText("");
+        }
+      }}
+      position="bottom-start"
+    >
       <Popover.Target>
         <ActionIcon
           className={S.addButton}
@@ -95,17 +130,33 @@ export function AddDimensionPopover({
         </ActionIcon>
       </Popover.Target>
       <Popover.Dropdown p={0} className={S.dropdown}>
-        <AccordionList
-          className={S.dimensionPicker}
-          sections={finalSections}
-          onChange={handleSelect}
-          renderItemIcon={renderItemIcon}
-          alwaysExpanded
-          globalSearch
-          searchable
-          maxHeight={300}
-          width="17.5rem"
-        />
+        <Box className={S.searchSection} p="sm">
+          <TextInput
+            placeholder={t`Search for a dimension...`}
+            value={searchText}
+            onChange={(event) => setSearchText(event.currentTarget.value)}
+            leftSection={<Icon name="search" size={16} />}
+            size="sm"
+            radius="md"
+          />
+        </Box>
+        <Box className={S.listSection}>
+          {hasNoResults ? (
+            <Box p="xl" w="17.5rem">
+              <Text c="text-secondary" ta="center" size="sm">
+                {t`No dimensions found`}
+              </Text>
+            </Box>
+          ) : (
+            <DimensionPickerList
+              sections={filteredSections}
+              onChange={handleSelect}
+              renderItemIcon={renderItemIcon}
+              renderItemName={(item) => item.name}
+              w="17.5rem"
+            />
+          )}
+        </Box>
       </Popover.Dropdown>
     </Popover>
   );

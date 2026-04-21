@@ -2,13 +2,13 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  AccordionList,
-  type Section,
-} from "metabase/common/components/AccordionList";
+import { DimensionPickerList } from "metabase/common/components/DimensionPickerList";
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
 import DPS from "metabase/common/components/DimensionPill/DimensionPill.module.css";
-import { groupIntoSections } from "metabase/common/components/DimensionPill/utils";
+import {
+  type ListSection,
+  groupIntoSections,
+} from "metabase/common/components/DimensionPill/utils";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import {
   Badge,
@@ -166,16 +166,14 @@ function SingleMetricContent({
   );
 
   return (
-    <AccordionList
+    <DimensionPickerList
       className={S.dimensionList}
       sections={sections}
       onChange={handleSelect}
       renderItemName={renderItemName}
       renderItemIcon={renderItemIcon}
       itemIsSelected={itemIsSelected}
-      alwaysExpanded
-      maxHeight={Infinity}
-      width={240}
+      w={240}
     />
   );
 }
@@ -237,7 +235,7 @@ function MetricAccordionItem({
   onDimensionChange,
   onClose,
 }: MetricAccordionItemProps) {
-  const sections: Section<DimensionOption>[] = useMemo(
+  const sections: ListSection<DimensionOption>[] = useMemo(
     () => groupIntoSections(source.availableOptions),
     [source.availableOptions],
   );
@@ -275,16 +273,14 @@ function MetricAccordionItem({
       </UnstyledButton>
       {showDimensions && (
         <Box pb="sm">
-          <AccordionList
+          <DimensionPickerList
             className={S.dimensionList}
             sections={sections}
             onChange={handleSelect}
             renderItemName={renderItemName}
             renderItemIcon={renderItemIcon}
             itemIsSelected={itemIsSelected}
-            alwaysExpanded
-            maxHeight={Infinity}
-            width="100%"
+            w="100%"
           />
         </Box>
       )}

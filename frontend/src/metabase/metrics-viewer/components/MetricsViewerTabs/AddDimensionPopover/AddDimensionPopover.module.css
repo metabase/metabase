@@ -3,9 +3,16 @@
 }
 
 .dropdown {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
 }
 
-.dimensionPicker {
-  color: var(--mb-color-brand);
+.searchSection {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.listSection {
+  overflow-y: auto;
+  max-height: 300px;
 }

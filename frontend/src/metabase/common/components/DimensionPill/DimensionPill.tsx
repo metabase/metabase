@@ -2,17 +2,14 @@ import cx from "classnames";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  AccordionList,
-  type Section,
-} from "metabase/common/components/AccordionList";
+import { DimensionPickerList } from "metabase/common/components/DimensionPickerList";
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import type { IconName } from "metabase/ui";
 import { Divider, Flex, Icon, Popover, Text } from "metabase/ui";
 import type { DimensionGroup, DimensionMetadata } from "metabase-lib/metric";
 
 import S from "./DimensionPill.module.css";
-import { groupIntoSections } from "./utils";
+import { type ListSection, groupIntoSections } from "./utils";
 
 export interface DimensionOption {
   name: string;
@@ -47,7 +44,9 @@ const REMOVE_ACTION: RemoveAction = {
   icon: "close",
 };
 
-const REMOVE_SECTIONS: Section<RemoveAction>[] = [{ items: [REMOVE_ACTION] }];
+const REMOVE_SECTIONS: ListSection<RemoveAction>[] = [
+  { items: [REMOVE_ACTION] },
+];
 
 function renderItemName(item: DimensionOption | RemoveAction) {
   return item.displayName;
@@ -106,7 +105,7 @@ export function DimensionPill({
     pillLabel = label;
   }
 
-  const sections: Section<DimensionOption>[] = useMemo(
+  const sections: ListSection<DimensionOption>[] = useMemo(
     () => groupIntoSections(options),
     [options],
   );
@@ -134,31 +133,25 @@ export function DimensionPill({
       </Popover.Target>
       <Popover.Dropdown px={0} py="xs" mah={300} className={S.dropdown}>
         {hasMultipleOptions && (
-          <AccordionList
-            className={S.dimensionList}
+          <DimensionPickerList
             sections={sections}
             onChange={handleSelect}
             renderItemName={renderItemName}
             renderItemIcon={renderItemIcon}
             itemIsSelected={dimensionItemIsSelected}
-            alwaysExpanded
-            maxHeight={Infinity}
-            width={240}
+            w={240}
           />
         )}
         {canRemove && (
           <>
             {hasMultipleOptions && <Divider my="xs" />}
-            <AccordionList
-              className={S.dimensionList}
+            <DimensionPickerList
               sections={REMOVE_SECTIONS}
               onChange={handleRemove}
               renderItemName={renderItemName}
               renderItemIcon={renderItemIcon}
               itemIsSelected={removeItemIsSelected}
-              alwaysExpanded
-              maxHeight={Infinity}
-              width={240}
+              w={240}
             />
           </>
         )}
