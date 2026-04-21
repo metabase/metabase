@@ -15,9 +15,12 @@ jobs:
       - name: get Emotion file count
         id: get-emotion-file-count
         run: |
-          total=$(./bin/count-emotion-files.sh | awk '/^Total:/ {print $2}')
-          echo "$total files importing @emotion/*"
-          echo "EMOTION_FILES=$total" >> $GITHUB_OUTPUT
+          oss=$(git grep -l -E "from ['\"]@emotion/" -- 'frontend/src/metabase/**/*.ts' 'frontend/src/metabase/**/*.tsx' 'frontend/src/metabase/**/*.js' 'frontend/src/metabase/**/*.jsx' | wc -l)
+          ee=$(git grep -l -E "from ['\"]@emotion/" -- 'enterprise/frontend/src/metabase-enterprise/**/*.ts' 'enterprise/frontend/src/metabase-enterprise/**/*.tsx' 'enterprise/frontend/src/metabase-enterprise/**/*.js' 'enterprise/frontend/src/metabase-enterprise/**/*.jsx' | wc -l)
+
+          echo "$(($oss+$ee)) files importing @emotion/*"
+
+          echo "EMOTION_FILES=$(($oss+$ee))" >> $GITHUB_OUTPUT
       - name: Upload count to Stats
         uses: actions/github-script@v7
         env:
