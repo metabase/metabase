@@ -5,7 +5,7 @@ import type { State } from "metabase/redux/store";
 import { getUserId } from "metabase/selectors/user";
 import Settings from "metabase/utils/settings";
 
-export const createTracker = (store: EnhancedStore<State>): void => {
+export const createSnowplowTracker = (store: EnhancedStore<State>): void => {
   if (!Settings.snowplowEnabled()) {
     return;
   }
