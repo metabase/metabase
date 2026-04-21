@@ -175,6 +175,41 @@
               (is (re-find #"does-not-exist\.json" (ex-message ex)))
               (is (re-find #"embeddings/does-not-exist\.json" (:resolved-path (ex-data ex)))))))))))
 
+(deftest ^:parallel run-cli-validation-errors-throw-not-exit-test
+  (testing "run-cli throws ex-info (never calls System/exit) for all validation failures"
+    (testing "missing --representation-dir throws {:cli-validation true}"
+      (let [ex (try (#'cli/run-cli {}) nil
+                    (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? ex))
+        (is (true? (:cli-validation (ex-data ex))))
+        (is (re-find #"Missing --representation-dir" (ex-message ex)))))
+    (testing "non-existent --representation-dir throws {:cli-validation true}"
+      (let [ex (try (#'cli/run-cli {:representation-dir "/nonexistent/path/abc123-not-a-dir"})
+                    nil
+                    (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? ex))
+        (is (true? (:cli-validation (ex-data ex))))
+        (is (re-find #"does not exist" (ex-message ex)))))
+    (testing "--representation-dir pointing at a file (not a directory) throws {:cli-validation true}"
+      (let [tmp-file (doto (java.io.File/createTempFile "not-a-dir-" ".tmp") .deleteOnExit)
+            ex       (try (#'cli/run-cli {:representation-dir (.getAbsolutePath tmp-file)}) nil
+                          (catch clojure.lang.ExceptionInfo e e))]
+        (is (some? ex))
+        (is (true? (:cli-validation (ex-data ex))))
+        (is (re-find #"must be a directory" (ex-message ex)))))))
+
+(deftest main-translates-validation-errors-to-fail-test
+  ;; Not ^:parallel: uses `with-redefs` on the CLI's private `fail!` to assert without exiting.
+  (testing "-main converts ex-info {:cli-validation true} from run-cli into fail! + exit 1"
+    (let [fail-calls (atom [])]
+      (with-redefs [cli/fail! (fn [& msgs]
+                                (swap! fail-calls conj (vec msgs))
+                                (throw (ex-info "mocked-exit" {::mock :exit})))]
+        (try (#'cli/-main "--representation-dir" "/nonexistent/path/xyz-not-a-dir")
+             (catch clojure.lang.ExceptionInfo _ nil)))
+      (is (= 1 (count @fail-calls)) "fail! should be invoked exactly once")
+      (is (re-find #"does not exist" (ffirst @fail-calls))))))
+
 (deftest main-converts-missing-embeddings-to-fail-test
   ;; Not ^:parallel: uses `with-redefs` on the CLI's private `fail!` to assert on the user-facing
   ;; failure path without terminating the JVM.
