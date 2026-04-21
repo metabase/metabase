@@ -13,9 +13,8 @@ import {
   getCollectionType,
   normalizedCollection,
 } from "metabase/entities/collections/utils";
-import { compose } from "metabase/redux";
+import { compose, withAction } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
-import { withAction } from "metabase/redux/utils";
 import { color } from "metabase/ui/colors";
 
 import {

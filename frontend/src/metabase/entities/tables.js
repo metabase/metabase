@@ -23,8 +23,8 @@ import {
   createThunkAction,
   useDispatch,
   useSelector,
+  withAction,
 } from "metabase/redux";
-import { withAction } from "metabase/redux/utils";
 import { TableSchema } from "metabase/schema";
 import {
   getMetadata,

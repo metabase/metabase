@@ -14,6 +14,7 @@ import {
   createAction,
   createThunkAction,
   handleActions,
+  withAction,
 } from "metabase/redux";
 import { FieldSchema } from "metabase/schema";
 import {
@@ -28,7 +29,6 @@ import {
   entityCompatibleQuery,
   notify,
   updateData,
-  withAction,
   withCachedDataAndRequestState,
   withNormalize,
 } from "./utils";
