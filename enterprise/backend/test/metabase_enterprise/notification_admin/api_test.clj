@@ -590,4 +590,3 @@
                                                             :payload_id   nc
                                                             :creator_id   (mt/user->id :crowberto)}]
         (mt/user-http-request :rasta :get 403 (str "ee/notifications/" nid))))))
-
