@@ -558,6 +558,9 @@ export type UnsavedChangesWarningDisplayedEvent = ValidateEvent<{
   target_id: number | null;
 }>;
 
+export type SecurityCenterPageViewedEvent = ValidateEvent<{
+  event: "security_center_page_viewed";
+}>;
 export type SimpleEvent =
   | CustomSMTPSetupClickedEvent
   | CustomSMTPSetupSuccessEvent
@@ -611,4 +614,5 @@ export type SimpleEvent =
   | RemoteSyncEvent
   | ClickActionPerformedEvent
   | DataStudioEvent
-  | UnsavedChangesWarningDisplayedEvent;
+  | UnsavedChangesWarningDisplayedEvent
+  | SecurityCenterPageViewedEvent;

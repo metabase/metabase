@@ -55,9 +55,9 @@ body:where(:global(.mb-wrapper)) {
   * so we need to target exactly just tooltips.
   */
 [role="tooltip"]:is(
-    [data-theme~="tooltip"],
-    :global(.emotion-Tooltip-tooltip)
-  ) {
+  [data-theme~="tooltip"],
+  :global(.emotion-Tooltip-tooltip)
+) {
   --mb-color-text-primary: color-mix(
     in srgb,
     var(--mb-color-text-primary-inverse) 90%,

@@ -316,25 +316,45 @@
    ;; if this is a dataset with no tables (for example when using [[metabase.actions.test-util/with-empty-db]]) then we
    ;; can consider the dataset to already be loaded
    (empty? (:table-definitions dbdef))
-   ;; otherwise, check and make sure the first table in the dbdef has been created.
+   ;; otherwise, probe the first table directly. Retry a few times because fresh connections may be routed to
+   ;; Redshift compute nodes that haven't propagated DDL changes yet (eventual consistency).
    (let [session-schema (unique-session-schema)
          tabledef       (first (:table-definitions dbdef))
-         ;; table-name should be something like test_data_venues
-         table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
-     (sql-jdbc.execute/do-with-connection-with-options
-      driver
-      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
-      {:write? false}
-      (fn [^java.sql.Connection conn]
-        (with-open [rset (.getTables (.getMetaData conn)
-                                     #_catalog        (if tx/*use-routing-details*
-                                                        (tx/db-test-env-var :redshift :db-routing)
-                                                        (tx/db-test-env-var :redshift :db))
-                                     #_schema-pattern session-schema
-                                     #_table-pattern  table-name
-                                     #_types          (into-array String ["TABLE"]))]
-          ;; if the ResultSet returns anything we know the table is already loaded.
-          (.next rset)))))))
+         table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))
+         jdbc-spec      (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver))
+         probe-sql      (format "SELECT 1 FROM \"%s\".\"%s\" LIMIT 0" session-schema table-name)
+         probe!         (fn []
+                          (sql-jdbc.execute/do-with-connection-with-options
+                           driver jdbc-spec {:write? false}
+                           (fn [^java.sql.Connection conn]
+                             (jdbc/query {:connection conn} [probe-sql])
+                             true)))]
+     (try
+       (probe!)
+       (catch com.amazon.redshift.util.RedshiftException e
+         (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
+           false
+           (throw e)))
+       (catch Exception e
+         ;; Transient error (timeout, network, etc.) - retry once after a short delay.
+         (log/warnf e "dataset-already-loaded? probe failed for %s.%s, retrying" session-schema table-name)
+         (Thread/sleep 1000)
+         (try
+           (probe!)
+           (catch com.amazon.redshift.util.RedshiftException e2
+             (if (re-find #"relation .* does not exist" (or (ex-message e2) ""))
+               false
+               (throw e2)))))))))
+
+(defmethod driver/database-supports? [:redshift :test/use-fake-sync]
+  [_driver _feature _database]
+  ;; Use real sync in tests on master/release branches to catch sync regressions.
+  ;; Use fake sync in tests on feature branches for speed (~10 min savings per test run).
+  (not (tx/on-master-or-release-branch?)))
+
+(defmethod tx/fake-sync-schema :redshift
+  [_driver]
+  (unique-session-schema))
 
 (defn drop-if-exists-and-create-roles!
   [driver details roles]

@@ -100,8 +100,8 @@ export function FilterPicker({
     (item: ColumnListItem | SegmentListItem | ExpressionClauseItem) => {
       return Boolean(
         filterIndex != null &&
-          "filterPositions" in item &&
-          item.filterPositions?.includes?.(filterIndex),
+        "filterPositions" in item &&
+        item.filterPositions?.includes?.(filterIndex),
       );
     },
     [filterIndex],

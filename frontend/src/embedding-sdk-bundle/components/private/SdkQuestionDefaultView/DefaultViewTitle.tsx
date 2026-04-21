@@ -8,8 +8,10 @@ import { useSdkQuestionContext } from "../SdkQuestion/context";
 
 import type { SdkQuestionDefaultViewProps } from "./SdkQuestionDefaultView";
 
-interface DefaultViewTitleTextProps
-  extends Pick<SdkQuestionDefaultViewProps, "withResetButton" | "title"> {
+interface DefaultViewTitleTextProps extends Pick<
+  SdkQuestionDefaultViewProps,
+  "withResetButton" | "title"
+> {
   isQuestionChanged?: boolean;
   onReset?: () => void;
   originalName?: string | null;

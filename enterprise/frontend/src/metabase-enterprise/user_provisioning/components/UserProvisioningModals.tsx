@@ -11,8 +11,7 @@ import { ScimTextWarning } from "./ScimTextWarning";
 
 type BaseUserProvisiongModalProps = Pick<ModalProps, "opened" | "onClose">;
 
-interface UserProvisioningFirstEnabledModalProps
-  extends BaseUserProvisiongModalProps {
+interface UserProvisioningFirstEnabledModalProps extends BaseUserProvisiongModalProps {
   scimBaseUrl: string;
   unmaskedScimToken: string;
   scimError: any;
@@ -60,8 +59,7 @@ export const UserProvisioningFirstEnabledModal = ({
   );
 };
 
-interface UserProvisioningRegenerateTokenModalsProps
-  extends BaseUserProvisiongModalProps {}
+interface UserProvisioningRegenerateTokenModalsProps extends BaseUserProvisiongModalProps {}
 
 export const UserProvisioningRegenerateTokenModal = ({
   opened,

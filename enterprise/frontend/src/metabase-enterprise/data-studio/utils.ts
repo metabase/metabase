@@ -132,7 +132,7 @@ export const useGetResolvedLibraryCollection = ({
 
   const hasStuff = Boolean(
     libraryCollection &&
-      (libraryCollection?.below?.length || libraryCollection?.here?.length),
+    (libraryCollection?.below?.length || libraryCollection?.here?.length),
   );
   const { data: libraryItems, isLoading: isLoadingItems } =
     useListCollectionItemsQuery(

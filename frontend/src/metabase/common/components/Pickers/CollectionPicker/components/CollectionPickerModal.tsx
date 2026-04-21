@@ -233,7 +233,7 @@ export const CollectionPickerModal = ({
             leftSection={<Icon name="add_to_dash" />}
             disabled={Boolean(
               selectedItem?.can_write === false ||
-                (selectedItem && isNamespaceRoot(selectedItem)),
+              (selectedItem && isNamespaceRoot(selectedItem)),
             )}
           >
             {t`New dashboard`}

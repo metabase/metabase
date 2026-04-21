@@ -154,12 +154,12 @@ function UpdateTargetForm({
                 <Stack gap="sm">
                   <Radio
                     value="false"
-                    label={jt`Keep ${(<strong key="table">{target.name}</strong>)}`}
+                    label={jt`Keep ${<strong key="table">{target.name}</strong>}`}
                     data-testid="keep-target-radio"
                   />
                   <Radio
                     value="true"
-                    label={jt`Delete ${(<strong key="table">{target.name}</strong>)}`}
+                    label={jt`Delete ${<strong key="table">{target.name}</strong>}`}
                     data-testid="delete-target-radio"
                   />
                 </Stack>

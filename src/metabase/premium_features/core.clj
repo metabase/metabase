@@ -24,6 +24,7 @@
   assert-has-feature
   assert-has-any-features
   ee-feature-error
+  is-trial?
   has-any-features?
   has-feature?
   log-enabled?
@@ -31,7 +32,9 @@
   plan-alias
   quotas
   TokenStatus
-  clear-cache!]
+  clear-cache!
+  token-check-url
+  transform-stats]
 
  (metabase.premium-features.settings
   active-users-count
@@ -86,6 +89,7 @@
   offer-metabase-ai-trial?
   offer-metabase-ai-paid?
   premium-embedding-token
+  security-center-enabled?
   site-uuid-for-premium-features-token-checks
   table-data-editing?
   token-features

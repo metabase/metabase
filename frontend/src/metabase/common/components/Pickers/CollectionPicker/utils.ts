@@ -15,7 +15,7 @@ export const isFolderFactory =
   (item: CollectionPickerItem): boolean => {
     return Boolean(
       item.model === "collection" &&
-        models.some((model) => item?.here?.includes(model)),
+      models.some((model) => item?.here?.includes(model)),
     );
   };
 
