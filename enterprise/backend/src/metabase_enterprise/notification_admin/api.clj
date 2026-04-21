@@ -131,44 +131,38 @@
       (assoc :select [[[:count [:distinct :notification.id]] :count]])
       (dissoc :select-distinct)))
 
-(defn- list-unfiltered-by-health
-  "Default list path — pagination happens in SQL. Health + `:last_sent_at` are computed only for
-  the current page. O(page size) work per request."
+(defn- page+total
+  "Return `{:rows <page of enriched notification rows> :total <int>}`.
+
+  Health is computed post-query, so there are two internal paths:
+    - No `:health` filter: push pagination + sort into SQL and compute health only for the page
+      (O(page size) per request).
+    - `:health` filter set: materialize the full matching set, compute health, filter in memory,
+      paginate (O(matching rows); firefighter use case)."
+  [{:keys [limit offset health] :as filters}]
+  (let [base-filters (dissoc filters :limit :offset :health)]
+    (if health
+      (let [all (->> (t2/select :model/Notification (ordered-list-query base-filters))
+                     notification-admin.health/compute-for-rows
+                     (filter #(= health (:health %))))]
+        {:rows  (->> all (drop offset) (take limit))
+         :total (count all)})
+      {:rows  (notification-admin.health/compute-for-rows
+               (t2/select :model/Notification
+                          (assoc (ordered-list-query base-filters)
+                                 :limit  limit
+                                 :offset offset)))
+       :total (or (:count (t2/query-one (count-query base-filters))) 0)})))
+
+(defn- list-notifications
+  "Shared implementation for `GET /`. Paginates, enriches with health, hydrates, shapes the
+  standard `{:data :total :limit :offset}` response."
   [{:keys [limit offset] :as filters}]
-  (let [base-filters (dissoc filters :limit :offset :health)
-        page-rows    (t2/select :model/Notification
-                                (assoc (ordered-list-query base-filters)
-                                       :limit  limit
-                                       :offset offset))
-        enriched     (notification-admin.health/compute-for-rows page-rows)
-        total        (or (:count (t2/query-one (count-query base-filters))) 0)]
-    {:data   (vec (models.notification/hydrate-notification enriched))
+  (let [{:keys [rows total]} (page+total filters)]
+    {:data   (vec (models.notification/hydrate-notification rows))
      :total  total
      :limit  limit
      :offset offset}))
-
-(defn- list-filtered-by-health
-  "Health-filtered path — we must materialize every matching row so we can compute health and
-  filter on it. O(matching rows) in memory; firefighter use case where exactness matters more
-  than scale."
-  [{:keys [limit offset health] :as filters}]
-  (let [rows     (t2/select :model/Notification
-                            (ordered-list-query (dissoc filters :limit :offset :health)))
-        enriched (notification-admin.health/compute-for-rows rows)
-        matching (filter #(= health (:health %)) enriched)
-        page     (->> matching (drop offset) (take limit))]
-    {:data   (vec (models.notification/hydrate-notification page))
-     :total  (count matching)
-     :limit  limit
-     :offset offset}))
-
-(defn- list-notifications
-  "Shared implementation for `GET /`. Two paths: SQL-side pagination for the default case, full
-  in-memory materialization when a `:health` filter is set (health is post-query computed)."
-  [{:keys [health] :as filters}]
-  (if health
-    (list-filtered-by-health filters)
-    (list-unfiltered-by-health filters)))
 
 ;; snake_case query params are intentional here — they match the existing
 ;; `metabase.notification.api.notification` endpoints so clients can share param names between
