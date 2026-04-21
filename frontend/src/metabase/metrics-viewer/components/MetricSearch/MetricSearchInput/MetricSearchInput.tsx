@@ -81,6 +81,7 @@ export function MetricSearchInput({
     pendingFocusRef,
     handleInputFocus,
     handleInputBlur,
+    handleEditExpression,
     handleChange,
     handleSelect,
     handleRemoveItem,
@@ -173,16 +174,21 @@ export function MetricSearchInput({
                   : undefined;
 
                 return (
-                  <span key={`${entry.id}-${entryIndex}`}>
+                  <span
+                    key={`${entry.id}-${entryIndex}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <MetricExpressionPill
                       expressionEntry={entry}
                       metricNames={metricNames}
                       colors={expressionColors}
-                      onClick={(e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        handleContainerClick(e);
+                      onNameChange={(newName) => {
+                        const updated = [...formulaEntities];
+                        updated[entryIndex] = { ...entry, name: newName };
+                        onFormulaEntitiesChange(updated);
                       }}
                       onRemove={() => handleRemoveItem(entryIndex)}
+                      onEdit={() => handleEditExpression(entryIndex)}
                     />
                   </span>
                 );
