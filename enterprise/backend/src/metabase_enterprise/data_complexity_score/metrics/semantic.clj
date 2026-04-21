@@ -10,7 +10,7 @@
 
    Variables:
      :synonym-pairs              (scored)  edges on G
-     :synonym-edge-density       (value)   edges / |V| × 100
+     :synonym-edge-density       (value)   |E| / |V| × 100
      :synonym-components         (value)   connected-component count (union-find)
      :synonym-largest-component  (value)   max component size
      :synonym-avg-component      (value)   mean size over components with ≥2 members
@@ -173,7 +173,9 @@
 ;;; ----------------------------- scoring entrypoint ------------------------------
 
 (defn- empty-block
-  "Zero-valued variable block used when the embedder yields nothing (level 1 or a failure)."
+  "Zero-valued variable block used when the embedder yields nothing (level 1 or a failure).
+  With no vertices there is nothing to form a component from, so component counts are 0 and the
+  ratios are nil (undefined denominators)."
   [extra]
   (common/dimension-block
    (cond-> [[:synonym-pairs             (common/scored (:synonym-pairs weights) 0)]
@@ -185,6 +187,21 @@
             [:synonym-avg-degree        (common/value nil)]
             [:synonym-degree-summary    (common/value {:p50 0 :p90 0 :max 0})]]
      extra (conj extra))))
+
+(defn- singleton-block
+  "Variable block for a one-vertex graph: one trivial component of size 1, no edges. The ratios
+  are well-defined (0 edges / 1 vertex = 0), so unlike `empty-block` we emit 0.0 rather than nil
+  for `edge-density` and `avg-degree`."
+  []
+  (common/dimension-block
+   [[:synonym-pairs             (common/scored (:synonym-pairs weights) 0)]
+    [:synonym-edge-density      (common/value 0.0)]
+    [:synonym-components        (common/value 1)]
+    [:synonym-largest-component (common/value 1)]
+    [:synonym-avg-component     (common/value nil)]
+    [:synonym-clustering-coef   (common/value nil)]
+    [:synonym-avg-degree        (common/value 0.0)]
+    [:synonym-degree-summary    (common/value {:p50 0 :p90 0 :max 0})]]))
 
 (defn score
   "Compute the Semantic dimension block.
@@ -198,15 +215,17 @@
                                         :error error))
     (let [vecs (entity-vectors entities name->vec)
           n    (alength vecs)]
-      (if (< n 2)
-        (empty-block nil)
+      (cond
+        (zero? n) (empty-block nil)
+        (= 1 n)   (singleton-block)
+        :else
         (let [{:keys [^objects adj edges]} (build-adjacency vecs synonym-similarity-threshold)
               comps                        (union-find-components adj n)
               multi                        (filter #(>= (long %) 2) comps)
               largest                      (if (seq comps) (apply max comps) 0)
               avg-comp                     (when (seq multi)
                                              (double (/ (reduce + 0 multi) (count multi))))
-              edge-density                 (* 100.0 (/ (* 2.0 ^long edges) (double n)))
+              edge-density                 (* 100.0 (/ (double ^long edges) (double n)))
               clustering                   (clustering-coefficient adj n)
               avg-degree                   (double (/ (* 2.0 ^long edges) (double n)))
               degrees                      (degree-summary adj n)]

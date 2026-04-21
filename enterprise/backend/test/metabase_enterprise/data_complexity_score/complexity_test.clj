@@ -408,7 +408,7 @@
 (defn- complexity-events! []
   (->> (snowplow-test/pop-event-data-and-user-id!)
        (map :data)
-       (filter #(= "semantic_complexity_scored" (get % "event")))))
+       (filter #(= "data_complexity_scored" (get % "event")))))
 
 (deftest ^:sequential emit-snowplow-publishes-totals-and-variables-test
   (testing "one event per catalog-total + one per (catalog × dimension × variable)"
@@ -425,7 +425,7 @@
               axis-of #(set (map (fn [e] (get e "axis")) %))]
           (testing "every event carries event name + formula version + level"
             (is (every? (fn [e]
-                          (and (= "semantic_complexity_scored" (get e "event"))
+                          (and (= "data_complexity_scored" (get e "event"))
                                (integer? (get e "formula_version"))
                                (integer? (get e "level"))))
                         events)))

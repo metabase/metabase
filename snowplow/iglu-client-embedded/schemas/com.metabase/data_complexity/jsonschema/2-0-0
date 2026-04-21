@@ -1,0 +1,148 @@
+{
+    "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+    "description": "Semantic-layer complexity score — one event per (catalog, axis) pair. Formula v3 shape: events carry a `level` (scoring tier), an optional `dimension` (scale/nominal/semantic/metadata, absent on the aggregate `total` event), and a `measurement` that may be a non-negative number (integer or float) since several variables are ratios.",
+    "self": {
+        "vendor": "com.metabase",
+        "name": "data_complexity",
+        "format": "jsonschema",
+        "version": "2-0-0"
+    },
+    "type": "object",
+    "required": [
+        "event",
+        "catalog",
+        "axis",
+        "formula_version",
+        "level"
+    ],
+    "properties": {
+        "event": {
+            "description": "Event name",
+            "type": "string",
+            "enum": [
+                "data_complexity_scored"
+            ],
+            "maxLength": 64
+        },
+        "catalog": {
+            "description": "Which catalog of the semantic layer was scored",
+            "type": "string",
+            "enum": [
+                "library",
+                "universe",
+                "metabot"
+            ],
+            "maxLength": 16
+        },
+        "dimension": {
+            "description": "Which dimension this axis belongs to. Absent on the aggregate catalog-total event.",
+            "type": [
+                "string",
+                "null"
+            ],
+            "enum": [
+                "scale",
+                "nominal",
+                "semantic",
+                "structural",
+                "metadata",
+                null
+            ],
+            "maxLength": 16
+        },
+        "axis": {
+            "description": "Which score axis this event carries: the aggregate total, or one of the per-dimension variables. See `metrics/{scale,nominal,semantic,metadata}.clj` for the source list.",
+            "type": "string",
+            "enum": [
+                "total",
+                "entity_count",
+                "field_count",
+                "collection_tree_size",
+                "fields_per_entity",
+                "measure_to_dim_ratio",
+                "name_collisions",
+                "repeated_measures",
+                "field_level_collisions",
+                "name_collisions_density",
+                "name_concentration",
+                "synonym_pairs",
+                "synonym_edge_density",
+                "synonym_components",
+                "synonym_largest_component",
+                "synonym_avg_component",
+                "synonym_clustering_coef",
+                "synonym_avg_degree",
+                "synonym_degree_summary",
+                "description_coverage",
+                "field_description_coverage",
+                "semantic_type_coverage",
+                "curated_metric_coverage",
+                "embedding_coverage",
+                "description_quality"
+            ],
+            "maxLength": 32
+        },
+        "score": {
+            "description": "The weighted score for this axis. Present on the catalog total and on scored variables; absent on descriptive variables (ratios, graph analytics, metadata coverage).",
+            "type": [
+                "integer",
+                "null"
+            ],
+            "minimum": 0,
+            "maximum": 2147483647
+        },
+        "measurement": {
+            "description": "Pre-score raw measurement for this axis — count, pair count, or ratio. Integer or float depending on the axis. Absent on the aggregate total and on axes whose value is non-numeric (e.g. degree summary maps).",
+            "type": [
+                "number",
+                "null"
+            ],
+            "minimum": 0
+        },
+        "error": {
+            "description": "Error message when this axis could not be computed (synonym_pairs only, when the embedder fails).",
+            "type": [
+                "string",
+                "null"
+            ],
+            "maxLength": 1024
+        },
+        "formula_version": {
+            "description": "Version of the scoring formula; bumps when the formula changes in a way that breaks historical comparisons.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2147483647
+        },
+        "level": {
+            "description": "Scoring tier in effect. Level 0 short-circuits; level 1 is DB-only; level ≥2 adds the embedding-backed semantic dimension.",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+        },
+        "synonym_threshold": {
+            "description": "Cosine-similarity threshold used for the synonym_pairs axis. Absent when the semantic dimension was not computed (level < 2).",
+            "type": [
+                "number",
+                "null"
+            ],
+            "minimum": 0,
+            "maximum": 1
+        },
+        "embedding_model_provider": {
+            "description": "Provider of the embedding model used for synonym scoring, if any.",
+            "type": [
+                "string",
+                "null"
+            ],
+            "maxLength": 64
+        },
+        "embedding_model_name": {
+            "description": "Name of the embedding model used for synonym scoring, if any.",
+            "type": [
+                "string",
+                "null"
+            ],
+            "maxLength": 128
+        }
+    }
+}
