@@ -1,4 +1,7 @@
-import fetchMock, { type UserRouteConfig } from "fetch-mock";
+import fetchMock, {
+  type RouteResponse,
+  type UserRouteConfig,
+} from "fetch-mock";
 
 import type {
   MetabotGroupLimit,
@@ -18,6 +21,8 @@ import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metab
 
 const METABASE_MANAGED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
   "metabase-ai-managed";
+const METABASE_TIERED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
+  "metabase-ai-tiered";
 const METABASE_MANAGED_AI_UNIT_MULTIPLIER = 1_000_000;
 
 export function setupMetabotsEndpoints(
@@ -163,10 +168,12 @@ type SetupMetabaseManagedAiEndpointsOptions = {
   billingPeriodMonths?: number;
   metabasePricePerUnit?: number;
   metabotUsageQuota?: {
+    is_locked?: boolean;
     tokens: number | null;
+    free_tokens?: number | null;
     updated_at: string | null;
   } | null;
-  purchaseCloudAddOnResponse?: number | { status: number; body: unknown };
+  purchaseCloudAddOnResponse?: RouteResponse;
   removeCloudAddOnResponse?: number | { status: number; body: unknown };
 };
 
@@ -178,7 +185,9 @@ export function setupMetabaseManagedAiEndpoints({
   removeCloudAddOnResponse = 200,
 }: SetupMetabaseManagedAiEndpointsOptions = {}) {
   fetchMock.get("path:/api/ee/metabot/usage", {
+    is_locked: metabotUsageQuota?.is_locked ?? false,
     tokens: metabotUsageQuota?.tokens ?? null,
+    free_tokens: metabotUsageQuota?.free_tokens ?? null,
     updated_at: metabotUsageQuota?.updated_at ?? null,
   });
 
@@ -216,6 +225,11 @@ export function setupMetabaseManagedAiEndpoints({
 
   fetchMock.delete(
     `path:/api/ee/cloud-add-ons/${METABASE_MANAGED_AI_PRODUCT_TYPE}`,
+    removeCloudAddOnResponse,
+  );
+
+  fetchMock.delete(
+    `path:/api/ee/cloud-add-ons/${METABASE_TIERED_AI_PRODUCT_TYPE}`,
     removeCloudAddOnResponse,
   );
 }

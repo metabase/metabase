@@ -6,22 +6,24 @@
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]))
+   [metabase.premium-features.core :as premium-features]
+   [metabase.util :as u]))
 
 (def ^:private metabot-usage-response-schema
   [:map
+   [:is_locked [:maybe boolean?]]
    [:tokens [:maybe int?]]
-   [:updated-at [:maybe :string]]])
+   [:updated_at [:maybe :string]]])
 
 (defn- meter-value
   [meters meter-key]
-  (or (some-> meter-key keyword meters)
-      (some-> meter-key meters)))
+  (some-> meter-key keyword meters))
 
 (defn- default-metabase-meter-key
   []
   (some-> metabot.settings/default-metabase-llm-metabot-provider
           provider-util/strip-metabase-prefix
+          u/qualified-name
           (str/replace-first "/" ":")
           (str ":tokens")))
 
@@ -39,5 +41,7 @@
   (perms/check-has-application-permission :setting)
   (let [meter (some-> (premium-features/token-status)
                       meter-entry)]
-    {:tokens     (:meter-value meter)
-     :updated-at (:meter-updated-at meter)}))
+    {:is_locked   (:is-locked meter)
+     :tokens      (:meter-value meter)
+     :free_tokens (:meter-free-units meter)
+     :updated_at  (:meter-updated-at meter)}))

@@ -40,7 +40,7 @@ const elements = [
     pattern: "frontend/src/metabase-lib/*/**",
   }),
   createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
-  createElement({ type: "basic", name: "api" }),
+  createElement({ type: "shared", name: "api" }),
   // shared
   createElement({ type: "shared", name: "common", enforceOutgoing: true }),
   createElement({ type: "shared", name: "querying" }),

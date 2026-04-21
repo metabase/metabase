@@ -560,10 +560,6 @@
                 :schema schema
                 :description description))
 
-(defn- perm-user-info []
-  {:user-id       api/*current-user-id*
-   :is-superuser? api/*is-superuser?*})
-
 (defn- format-field-metadata
   "Formats a Field record for the /metadata endpoint response. Includes effective_type only when it differs from base_type."
   [{:keys [id table_id parent_id fk_target_field_id name description base_type database_type effective_type semantic_type coercion_strategy]}]
@@ -577,26 +573,44 @@
                 :semantic_type semantic_type
                 :coercion_strategy coercion_strategy))
 
-(defn- perm-mapping []
+(defn- perm-user-info
+  "User information used to check permissions."
+  []
+  {:user-id       api/*current-user-id*
+   :is-superuser? api/*is-superuser?*})
+
+(defn- perm-mapping
+  "Permission mapping used to filter databases and tables to those visible to the current user.
+  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or `Query builder and native`)."
+  []
   {:perms/view-data      :unrestricted
    :perms/create-queries :query-builder})
 
 (defn- write-json-array!
-  "Streams a reducible collection as a JSON array to a Writer, applying `format-fn` to each row."
+  "Streams a reducible collection as a JSON array to a Writer, applying `format-fn` to each row.
+
+  `run!` is required here because it dispatches through `reduce`, which consumes the
+  `IReduceInit` returned by `t2/reducible-select` row-by-row without materializing.
+  `doseq` cannot be used: it walks a seq, and producing a seq from the reducible
+  would realize every row into memory — defeating the point of streaming."
   [^java.io.Writer writer reducible format-fn]
   (.write writer "[")
   (let [first? (volatile! true)]
-    (reduce (fn [_ row]
-              (if @first?
-                (vreset! first? false)
-                (.write writer ","))
-              (json/encode-to (format-fn row) writer {}))
-            nil
-            reducible))
+    (run! (fn [row]
+            (if @first?
+              (vreset! first? false)
+              (.write writer ","))
+            (json/encode-to (format-fn row) writer {}))
+          reducible))
   (.write writer "]"))
 
 (defn- write-databases-metadata!
-  "Streams the databases/tables/fields metadata as JSON to the given OutputStream."
+  "Streams the databases/tables/fields metadata as JSON to the given OutputStream.
+
+  Warehouses with large schemas can produce gigabytes of metadata, so streaming is
+  required — materializing the full response in memory would OOM the server. Each
+  section is written directly to the underlying writer as rows are pulled from a
+  reducible query, keeping memory usage bounded regardless of schema size."
   [^java.io.OutputStream os]
   (let [db-filter [:and
                    [:= :d.is_audit false]
@@ -636,41 +650,59 @@
     (.write writer "}")
     (.flush writer)))
 
+(mr/def ::database-info
+  [:map
+   [:id ::lib.schema.id/database]
+   [:name :string]
+   [:engine :string]])
+
+(mr/def ::table-info
+  [:map
+   [:id ::lib.schema.id/table]
+   [:db_id ::lib.schema.id/database]
+   [:name :string]
+   [:schema {:optional true} :string]
+   [:description {:optional true} :string]])
+
+(mr/def ::field-info
+  [:map
+   [:id ::lib.schema.id/field]
+   [:table_id ::lib.schema.id/table]
+   [:name :string]
+   [:parent_id {:optional true} ::lib.schema.id/field]
+   [:fk_target_field_id {:optional true} ::lib.schema.id/field]
+   [:description {:optional true} :string]
+   [:base_type :string]
+   [:database_type {:optional true} :string]
+   [:effective_type {:optional true} :string]
+   [:semantic_type {:optional true} :string]
+   [:coercion_strategy {:optional true} :string]])
+
 (mr/def ::databases-metadata-response
   [:map
-   [:databases [:sequential [:map
-                             [:id ::lib.schema.id/database]
-                             [:name :string]
-                             [:engine :string]]]]
-   [:tables [:sequential [:map
-                          [:id ::lib.schema.id/table]
-                          [:db_id ::lib.schema.id/database]
-                          [:name :string]
-                          [:schema {:optional true} :string]
-                          [:description {:optional true} :string]]]]
-   [:fields [:sequential [:map
-                          [:id ::lib.schema.id/field]
-                          [:table_id ::lib.schema.id/table]
-                          [:name :string]
-                          [:parent_id {:optional true} ::lib.schema.id/field]
-                          [:fk_target_field_id {:optional true} ::lib.schema.id/field]
-                          [:description {:optional true} :string]
-                          [:base_type :string]
-                          [:database_type {:optional true} :string]
-                          [:effective_type {:optional true} :string]
-                          [:semantic_type {:optional true} :string]
-                          [:coercion_strategy {:optional true} :string]]]]])
+   [:databases [:sequential ::database-info]]
+   [:tables    [:sequential ::table-info]]
+   [:fields    [:sequential ::field-info]]])
 
 (api.macros/defendpoint :get "/metadata"
   :- (server.streaming-response/streaming-response-schema ::databases-metadata-response)
   "Get metadata (databases, tables, and fields) for all databases visible to the current user.
   Returns a flat structure with three arrays: databases, tables, and fields.
-  Response is streamed for efficiency with large schemas."
+  Response is streamed for efficiency with large schemas.
+
+  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or
+  `Query builder and native`) permissions on each database and table."
   []
   (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
                       (write-databases-metadata! os)))
 
 ;;; ----------------------------------------- POST /api/database/metadata -----------------------------------------
+
+(def ^:private import-batch-size
+  "Row batch size for bulk INSERTs and IN-list UPDATEs in POST /api/database/metadata.
+  For an 8-column field row, 2000 × 8 = 16k prepared-statement parameters per
+  statement — well under Postgres' 65535 cap and MySQL's default max_allowed_packet."
+  2000)
 
 (defn- engine-name
   "Normalize engine (stored as string or keyword) to a string for lookup."
@@ -712,13 +744,44 @@
                    [[table_id (path field)] id]))
             rows))))
 
+(def ^:private max-resolution-depth
+  "Safety cap on `parent_id` chain walks (`incoming-field-path`, `resolution-depth`)
+  so a malformed payload with cycles or deep chains can't stack-overflow or stall
+  the import."
+  100)
+
 (defn- incoming-field-path
-  "[name1 ... leaf] path of an incoming field, walking parent_id in the payload."
+  "[name1 ... leaf] path of an incoming field, walking parent_id in the payload.
+  Cycle-safe: if the parent chain loops or exceeds `max-resolution-depth` the walk
+  terminates at that point, treating the field as effectively rooted there."
   [incoming-by-id field-id]
-  (when-some [{:keys [name parent_id]} (get incoming-by-id field-id)]
-    (if parent_id
-      (conj (incoming-field-path incoming-by-id parent_id) name)
-      [name])))
+  (loop [id field-id, path (), seen #{}, depth 0]
+    (if (or (contains? seen id) (>= depth max-resolution-depth))
+      (vec path)
+      (if-some [{:keys [name parent_id]} (get incoming-by-id id)]
+        (let [path' (conj path name)]
+          (if parent_id
+            (recur parent_id path' (conj seen id) (inc depth))
+            (vec path')))
+        (vec path)))))
+
+(defn- resolution-depth
+  "Minimum insert-wave at which a new field can be written. Depth 0 means the
+  field's parent is already resolvable on the target — nil parent, matched parent
+  (already in `in-fld->target`), or orphan parent (payload references a parent that
+  isn't in the `fields[]` array). Depth N means the parent is itself a new field
+  that must be inserted at wave N-1 first. Cycles and chains deeper than
+  `max-resolution-depth` fall back to 0 (root-level insert)."
+  [incoming-by-id in-fld->target field-id]
+  (loop [id field-id, depth 0, seen #{}]
+    (if (or (>= depth max-resolution-depth) (contains? seen id))
+      0
+      (let [{:keys [parent_id]} (get incoming-by-id id)]
+        (cond
+          (nil? parent_id)                      depth
+          (contains? in-fld->target parent_id)  depth
+          (nil? (get incoming-by-id parent_id)) depth
+          :else (recur parent_id (inc depth) (conj seen id)))))))
 
 (defn- new-table-row
   [target-db-id {:keys [schema name description]}]
@@ -730,16 +793,17 @@
     (some? description) (assoc :description description)))
 
 (defn- new-field-row
-  "Row for inserting a new field. parent_id and fk_target_field_id are intentionally
-  omitted — they're set in the references pass after every field exists."
+  "Row for inserting a new field. `parent_id` is resolved by `import-fields!` at
+  INSERT time (see that function's docstring for why); `fk_target_field_id` is
+  resolved in a later pass after every field exists."
   [target-tbl-id
    {:keys [name base_type description database_type effective_type semantic_type coercion_strategy]}]
-  (cond-> {:table_id  target-tbl-id
-           :name      name
-           :base_type (or base_type :type/*)
-           :active    true}
+  (cond-> {:table_id      target-tbl-id
+           :name          name
+           :base_type     base_type
+           :database_type (or database_type "NULL")
+           :active        true}
     (some? description)       (assoc :description description)
-    (some? database_type)     (assoc :database_type database_type)
     (some? effective_type)    (assoc :effective_type effective_type)
     (some? semantic_type)     (assoc :semantic_type semantic_type)
     (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)))
@@ -754,33 +818,33 @@
     (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)
     (some? effective_type)    (assoc :effective_type effective_type)))
 
+(defn- batched-insert-returning-pks!
+  "INSERT `rows` in chunks of `import-batch-size`, returning a vector of pks in
+  input order. `into []` drives the transducer to completion, so every chunk's
+  `t2/insert-returning-pks!` — and its side effects — runs before this returns."
+  [model rows]
+  (into []
+        (mapcat (fn [chunk] (t2/insert-returning-pks! model chunk)))
+        (partition-all import-batch-size rows)))
+
 (defn- import-tables!
-  "Phase 1. Match by (target-db, schema, name) against a full lookup of the target's
-  active tables; UPDATE matched rows' description, bulk INSERT the rest."
-  [state tables in-db->target]
-  (let [target-lookup (build-target-table-lookup (vals in-db->target))
-        to-insert     (volatile! [])]
-    (doseq [{:keys [id db_id schema name description] :as tbl} tables]
-      (let [target-db-id (in-db->target db_id)
-            existing-id  (when target-db-id (target-lookup [target-db-id schema name]))]
-        (cond
-          (nil? target-db-id)
-          (swap! state update-in [:tables :missing] conj
-                 (cond-> {:db_id db_id :name name}
-                   (some? schema) (assoc :schema schema)))
-
-          existing-id
-          (do
-            (when (some? description)
-              (t2/update! :model/Table existing-id {:description description}))
-            (swap! state #(-> %
-                              (update-in [:tables :matched] inc)
-                              (assoc-in [:in-tbl->target id] existing-id))))
-
-          :else
-          (vswap! to-insert conj [id (new-table-row target-db-id tbl)]))))
+  "Phase 1 (per-DB). Match tables by (schema, name) against `target-lookup` (a
+  `{[target-db-id schema name] -> target-table-id}` map already scoped to this DB);
+  UPDATE matched rows' description per-row, chunked-INSERT the rest via
+  `batched-insert-returning-pks!`."
+  [state tables target-db-id target-lookup]
+  (let [to-insert (volatile! [])]
+    (doseq [{:keys [id schema name description] :as tbl} tables]
+      (if-some [existing-id (target-lookup [target-db-id schema name])]
+        (do
+          (when (some? description)
+            (t2/update! :model/Table existing-id {:description description}))
+          (swap! state #(-> %
+                            (update-in [:tables :matched] inc)
+                            (assoc-in [:in-tbl->target id] existing-id))))
+        (vswap! to-insert conj [id (new-table-row target-db-id tbl)])))
     (when-some [rows (seq @to-insert)]
-      (let [new-ids (t2/insert-returning-pks! :model/Table (mapv second rows))]
+      (let [new-ids (batched-insert-returning-pks! :model/Table (mapv second rows))]
         (swap! state (fn [s]
                        (reduce (fn [s [[incoming-id _] new-id]]
                                  (-> s
@@ -790,12 +854,20 @@
                                (map vector rows new-ids))))))))
 
 (defn- import-fields!
-  "Phase 2. Match incoming fields against the target by full (table, parent-path, name)
-  using `build-target-field-pathmap`; UPDATE matched rows with editable metadata (minus
-  parent_id / fk_target_field_id), bulk INSERT the rest with parent_id left NULL."
-  [state fields incoming-by-id in-tbl->target]
-  (let [path-lookup (build-target-field-pathmap (vals in-tbl->target))
-        to-insert   (volatile! [])]
+  "Phase 2 (per-DB). Classify each incoming field as matched / missing / new, then
+  insert new fields in depth-ordered waves so every child's parent_id is resolved
+  at INSERT time. Matched rows get per-row UPDATE of editable metadata; parent_id
+  on matched rows is never changed and fk_target_field_id is handled by
+  `resolve-fk-references!`.
+
+  Waves are required — not just convenient — because the `idx_unique_field` DB
+  constraint is on `(name, table_id, COALESCE(parent_id, 0))`. Inserting children
+  with `parent_id = NULL` would make every root-level row (and every child of a
+  not-yet-inserted parent) share `unique_field_helper = 0`, so sibling nested
+  leaves that share a leaf name collide. Writing `parent_id` at INSERT time keeps
+  each such row under a distinct helper key."
+  [state fields incoming-by-id in-tbl->target path-lookup]
+  (let [to-insert (volatile! [])]
     (doseq [{:keys [id table_id] :as fld} fields]
       (let [target-tbl  (in-tbl->target table_id)
             path        (when target-tbl (incoming-field-path incoming-by-id id))
@@ -815,37 +887,80 @@
                               (assoc-in [:in-fld->target id] existing-id))))
 
           :else
-          (vswap! to-insert conj [id (new-field-row target-tbl fld)]))))
-    (when-some [rows (seq @to-insert)]
-      (let [new-ids (t2/insert-returning-pks! :model/Field (mapv second rows))]
-        (swap! state (fn [s]
-                       (reduce (fn [s [[incoming-id _] new-id]]
-                                 (-> s
-                                     (update-in [:fields :created] inc)
-                                     (assoc-in [:in-fld->target incoming-id] new-id)
-                                     (update :created-fld-ids conj incoming-id)))
-                               s
-                               (map vector rows new-ids))))))))
+          (vswap! to-insert conj [id fld target-tbl]))))
+    (let [matched-map (:in-fld->target @state)
+          by-depth    (reduce (fn [acc [id :as triple]]
+                                (let [depth (resolution-depth incoming-by-id matched-map id)]
+                                  (update acc depth (fnil conj []) triple)))
+                              (sorted-map)
+                              @to-insert)]
+      (vreset! to-insert nil)
+      (doseq [[_depth entries] by-depth]
+        (let [in-fld->target (:in-fld->target @state)
+              rows (mapv (fn [[_id fld target-tbl]]
+                           (let [base (new-field-row target-tbl fld)
+                                 pid  (get in-fld->target (:parent_id fld))]
+                             (cond-> base
+                               pid (assoc :parent_id pid))))
+                         entries)
+              new-ids (batched-insert-returning-pks! :model/Field rows)]
+          (swap! state (fn [s]
+                         (reduce (fn [s [[incoming-id _ _] new-id]]
+                                   (-> s
+                                       (update-in [:fields :created] inc)
+                                       (assoc-in [:in-fld->target incoming-id] new-id)))
+                                 s
+                                 (map vector entries new-ids)))))))))
 
-(defn- resolve-field-references!
-  "Phase 3. Link parent_id and fk_target_field_id now that every resolvable field has a
-  target id. parent_id is only set on rows we just created — matched rows keep their
-  existing parent so we never restructure a nested field in place. fk_target_field_id is
-  user-editable and is updated for both matched and created rows."
-  [fields in-fld->target created-fld-ids]
-  (doseq [{:keys [id parent_id fk_target_field_id]} fields]
-    (let [tid   (in-fld->target id)
-          patch (cond-> {}
-                  (and (contains? created-fld-ids id) (some? parent_id))
-                  (assoc :parent_id (in-fld->target parent_id))
+(defn- classify-fk
+  "Classify a field's `fk_target_field_id` against the incoming payload:
+  `:same-db` when the target resolves to the same incoming DB; `:cross-db` when
+  it resolves to a different DB; `nil` when the field has no FK, or the target
+  isn't in the payload, or its DB can't be determined."
+  [incoming-by-id table->db {:keys [fk_target_field_id table_id]}]
+  (when-some [target (get incoming-by-id fk_target_field_id)]
+    (let [src (table->db table_id)
+          dst (table->db (:table_id target))]
+      (cond
+        (nil? dst)  nil
+        (= src dst) :same-db
+        :else       :cross-db))))
 
-                  (some? fk_target_field_id)
-                  (assoc :fk_target_field_id (in-fld->target fk_target_field_id)))]
-      (when (and tid (seq patch))
-        (t2/update! :model/Field tid patch)))))
+(defn- fk-pairs-of-kind
+  "Return `[[self-tid fk-tid] ...]` for every field in `fields` whose fk classifies
+  as `kind` and whose self-id AND fk target both resolved in `in-fld->target`."
+  [fields incoming-by-id table->db in-fld->target kind]
+  (into []
+        (keep (fn [{:keys [id fk_target_field_id] :as fld}]
+                (when (= kind (classify-fk incoming-by-id table->db fld))
+                  (let [self-tid (in-fld->target id)
+                        fk-tid   (in-fld->target fk_target_field_id)]
+                    (when (and self-tid fk-tid) [self-tid fk-tid])))))
+        fields))
+
+(defn- resolve-fk-references!
+  "Phase 3. Write `fk_target_field_id` for each `[self-tid fk-tid]` pair, grouping
+  by `fk-tid` so many sources pointing at the same target collapse into a single
+  `UPDATE ... WHERE id IN (...)`, chunked to `import-batch-size` ids per statement.
+  `parent_id` is NOT handled here — it's written at INSERT time by `import-fields!`."
+  [pairs]
+  (let [buckets (reduce (fn [acc [self-tid fk-tid]]
+                          (update acc fk-tid (fnil conj []) self-tid))
+                        {}
+                        pairs)]
+    (doseq [[fk-tid ids] buckets
+            id-chunk     (partition-all import-batch-size ids)]
+      (t2/update! :model/Field :id [:in id-chunk] {:fk_target_field_id fk-tid}))))
 
 (defn- import-metadata!*
-  "Core logic for POST /metadata. See the endpoint doc for behavior."
+  "Core logic for POST /metadata. See the endpoint doc for behavior.
+
+  Runs a separate `t2/with-transaction` per matched target DB: each DB's tables,
+  fields, and same-DB FK references are imported in isolation so one DB's failure
+  does not roll back the rest, and memory usage is bounded by the largest single
+  DB's target-field-pathmap rather than the whole payload. After every per-DB
+  transaction has committed, a final transaction resolves `fk_target_field_id`
+  references that cross DB boundaries."
   [{:keys [databases tables fields]}]
   (let [db-by-key      (build-db-lookup)
         in-db->target  (into {}
@@ -856,24 +971,76 @@
         missing-dbs    (mapv #(select-keys % [:name :engine])
                              (remove #(in-db->target (:id %)) databases))
         incoming-by-id (m/index-by :id fields)
-        state          (atom {:tables          {:matched 0 :created 0 :missing []}
-                              :fields          {:matched 0 :created 0 :missing []}
-                              :in-tbl->target  {}
-                              :in-fld->target  {}
-                              :created-fld-ids #{}})]
-    (t2/with-transaction [_conn]
-      (import-tables! state tables in-db->target)
-      (import-fields! state fields incoming-by-id (:in-tbl->target @state))
-      (let [{:keys [in-fld->target created-fld-ids]} @state]
-        (resolve-field-references! fields in-fld->target created-fld-ids)))
-    (let [{:keys [tables fields]} @state]
-      {:databases {:matched (count in-db->target) :missing missing-dbs}
-       :tables    tables
-       :fields    fields})))
+        table->db      (into {} (map (juxt :id :db_id)) tables)
+        tables-by-db   (group-by :db_id tables)
+        fields-by-db   (group-by #(table->db (:table_id %)) fields)
+        ;; Tables/fields whose DB isn't matched, or fields whose table_id isn't in
+        ;; tables[], can't be placed — record as missing up front so per-DB loops
+        ;; only handle processable rows.
+        missing-tables (into []
+                             (keep (fn [{:keys [db_id schema name]}]
+                                     (when-not (in-db->target db_id)
+                                       (cond-> {:db_id db_id :name name}
+                                         (some? schema) (assoc :schema schema)))))
+                             tables)
+        missing-fields (into []
+                             (keep (fn [{:keys [id table_id]}]
+                                     (let [incoming-db (table->db table_id)]
+                                       (when (or (nil? incoming-db)
+                                                 (not (in-db->target incoming-db)))
+                                         {:table_id table_id
+                                          :path     (incoming-field-path incoming-by-id id)}))))
+                             fields)
+        global-state   (atom {:tables         {:matched 0 :created 0 :missing missing-tables}
+                              :fields         {:matched 0 :created 0 :missing missing-fields}
+                              :in-fld->target {}
+                              :failed-dbs     []})]
+    (doseq [[incoming-db-id target-db-id] in-db->target]
+      (let [db-tables (get tables-by-db incoming-db-id [])
+            db-fields (get fields-by-db incoming-db-id [])
+            db-state  (atom {:tables         (:tables @global-state)
+                             :fields         (:fields @global-state)
+                             :in-tbl->target {}
+                             :in-fld->target (:in-fld->target @global-state)})]
+        (try
+          (t2/with-transaction [_conn]
+            (let [target-tbl-lookup (build-target-table-lookup [target-db-id])]
+              (import-tables! db-state db-tables target-db-id target-tbl-lookup))
+            (let [in-tbl->target (:in-tbl->target @db-state)
+                  path-lookup    (build-target-field-pathmap (vals in-tbl->target))]
+              (import-fields! db-state db-fields incoming-by-id in-tbl->target path-lookup))
+            (resolve-fk-references!
+             (fk-pairs-of-kind db-fields incoming-by-id table->db
+                               (:in-fld->target @db-state) :same-db)))
+          (swap! global-state
+                 (fn [g]
+                   (-> g
+                       (assoc :tables (:tables @db-state))
+                       (assoc :fields (:fields @db-state))
+                       (update :in-fld->target merge (:in-fld->target @db-state)))))
+          (catch Throwable t
+            (log/errorf t "POST /api/database/metadata: import failed for db %s (target %s)"
+                        incoming-db-id target-db-id)
+            (swap! global-state update :failed-dbs conj
+                   {:id incoming-db-id :target target-db-id :error (.getMessage t)})))))
+    (let [cross-db-pairs (fk-pairs-of-kind fields incoming-by-id table->db
+                                           (:in-fld->target @global-state) :cross-db)]
+      (when (seq cross-db-pairs)
+        (t2/with-transaction [_conn]
+          (resolve-fk-references! cross-db-pairs))))
+    (let [{tbl-report :tables fld-report :fields failed-dbs :failed-dbs} @global-state]
+      {:databases (cond-> {:matched (count in-db->target)
+                           :missing missing-dbs}
+                    (seq failed-dbs) (assoc :failed failed-dbs))
+       :tables    tbl-report
+       :fields    fld-report})))
 
 (mr/def ::metadata-import-report
   [:map
-   [:databases [:map [:matched :int] [:missing [:sequential :map]]]]
+   [:databases [:map
+                [:matched :int]
+                [:missing [:sequential :map]]
+                [:failed {:optional true} [:sequential :map]]]]
    [:tables    [:map [:matched :int] [:created :int] [:missing [:sequential :map]]]]
    [:fields    [:map [:matched :int] [:created :int] [:missing [:sequential :map]]]]])
 
@@ -896,8 +1063,16 @@
   also populated from the payload. Keys absent from the payload (including null values)
   are left untouched on matched entities.
 
-  Returns counts of matched + created entities per type plus a list of entities in the
-  payload that could not be placed (their parent was missing on the target)."
+  Processing is isolated per target database: each matched DB imports in its own
+  transaction so a failure on one DB does not roll back the others. DBs whose
+  transaction failed appear under `databases.failed` in the response along with
+  the error message; every other DB's tables, fields, and same-DB `fk_target_field_id`
+  references still commit. Cross-database `fk_target_field_id` references are
+  resolved in a final pass after all per-DB transactions have committed.
+
+  Returns counts of matched + created entities per type, a list of entities in the
+  payload that could not be placed (their parent was missing on the target), and,
+  when any DB failed, a `databases.failed` list naming each failed DB."
   [_route-params
    _query-params
    body :- ::databases-metadata-response]

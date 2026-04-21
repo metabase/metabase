@@ -19,7 +19,7 @@ describe("scenarios > admin > permissions > application", () => {
     H.restore();
     cy.signInAsAdmin();
     // H.activateToken("pro-self-hosted");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
   });
 
   it("shows permissions help", () => {

@@ -89,7 +89,7 @@ To edit a metric:
 
 ## Explore and compare metrics
 
-You can explore metrics, break them out by different dimensions, and compare metrics and [measures](../data-studio/data-structure.md#measures) to each other in the [Metrics Explorer](../questions/metrics-explorer.md).
+You can explore metrics, break them out by different dimensions, and compare metrics and [measures](../data-studio/measures.md) to each other in the [Metrics Explorer](../questions/metrics-explorer.md).
 
 ![Metrics explorer](./images/metric-explorer.png)
 
@@ -166,7 +166,7 @@ Prefer using the [Library](../data-studio/library.md#metrics) to let people know
 
 ## Further reading
 
-- [Measures](../data-studio/data-structure.md#measures)
+- [Measures](../data-studio/measures.md)
 - [Models](./models.md)
 - [Segments](./segments.md)
 - [SQL Snippets](../questions/native-editor/snippets.md)

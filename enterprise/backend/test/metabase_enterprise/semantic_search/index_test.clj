@@ -466,74 +466,87 @@
                  (#'semantic.index/batch-resolve-personal-owner-ids
                   [user1-personal-coll-id user2-sub-coll-id shared-coll-id nil]))))))))
 
-(deftest filter-can-read-indexed-entity-test
+(deftest filter-read-permitted-indexed-entity-test
   (mt/with-premium-features #{:semantic-search}
-    (testing "filter-can-read-indexed-entity function"
-      (mt/with-temp [:model/Collection {coll-id :id} {}
-                     :model/Card model-1 (assoc (mt/card-with-source-metadata-for-query
-                                                 (mt/mbql-query products {:fields [$id $title]
-                                                                          :limit 1}))
-                                                :type "model"
-                                                :name "Readable Model"
-                                                :database_id (mt/id)
-                                                :collection_id coll-id)
-                     :model/Card model-2 (assoc (mt/card-with-source-metadata-for-query
-                                                 (mt/mbql-query products {:fields [$id $title]
-                                                                          :limit 1}))
-                                                :type "model"
-                                                :name "Unreadable Model"
-                                                :database_id (mt/id)
-                                                :collection_id coll-id)
-                     :model/ModelIndex model-index-1 {:model_id (:id model-1)
-                                                      :pk_ref (mt/$ids :products $id)
-                                                      :value_ref (mt/$ids :products $title)
-                                                      :schedule "0 0 0 * * *"
-                                                      :state "initial"
-                                                      :creator_id (mt/user->id :rasta)}
-                     :model/ModelIndex model-index-2 {:model_id (:id model-2)
-                                                      :pk_ref (mt/$ids :products $id)
-                                                      :value_ref (mt/$ids :products $title)
-                                                      :schedule "0 0 0 * * *"
-                                                      :state "initial"
-                                                      :creator_id (mt/user->id :rasta)}]
-        (let [indexed-entity-docs [{:id (str (:id model-index-1) ":123")
+    (testing "filter-read-permitted routes indexed-entity docs through the collection_id-only fast path"
+      (mt/with-temp [:model/Collection {readable-coll-id :id} {}
+                     :model/Collection {unreadable-coll-id :id} {}]
+        (let [indexed-entity-docs [{:id "1:123"
                                     :model "indexed-entity"
-                                    :content "Test Entity 1"}
-                                   {:id (str (:id model-index-2) ":456")
+                                    :collection_id readable-coll-id}
+                                   {:id "2:456"
                                     :model "indexed-entity"
-                                    :content "Test Entity 2"}
-                                   {:id "invalid:789"
+                                    :collection_id unreadable-coll-id}
+                                   {:id "3:789"
                                     :model "indexed-entity"
-                                    :content "Invalid Entity"}]]
+                                    :collection_id nil}]]
 
-          (testing "returns all entities when user can read all parent cards"
+          (testing "keeps all entities when user has root permissions"
             (binding [api/*current-user-permissions-set* (atom #{"/"})]
-              (let [result (#'semantic.index/filter-can-read-indexed-entity indexed-entity-docs)]
-                (is (= 2 (count result)))
-                (is (= #{(str (:id model-index-1) ":123") (str (:id model-index-2) ":456")}
-                       (set (map :id result)))))))
+              (let [result (#'semantic.index/filter-read-permitted indexed-entity-docs)]
+                (is (= 3 (count result))))))
 
-          (testing "returns no entities when user cannot read any parent cards"
+          (testing "drops all entities when user has no permissions"
             (binding [api/*current-user-permissions-set* (atom #{})]
-              (let [result (#'semantic.index/filter-can-read-indexed-entity indexed-entity-docs)]
+              (let [result (#'semantic.index/filter-read-permitted indexed-entity-docs)]
                 (is (= 0 (count result))))))
 
-          (testing "returns subset when user can read some parent cards"
-            (with-redefs [mi/can-read? (fn [card] (= (:id card) (:id model-1)))]
-              (let [result (#'semantic.index/filter-can-read-indexed-entity indexed-entity-docs)]
+          (testing "keeps only entities in readable collections"
+            (binding [api/*current-user-permissions-set* (atom #{(format "/collection/%d/read/" readable-coll-id)})]
+              (let [result (#'semantic.index/filter-read-permitted indexed-entity-docs)]
                 (is (= 1 (count result)))
-                (is (= (str (:id model-index-1) ":123") (:id (first result)))))))
+                (is (= "1:123" (:id (first result)))))))
+
+          (testing "memoizes permission check per collection_id across docs"
+            (let [calls (atom 0)
+                  real-can-read? mi/can-read?]
+              (with-redefs [mi/can-read? (fn [& args]
+                                           (swap! calls inc)
+                                           (apply real-can-read? args))]
+                (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                  (#'semantic.index/filter-read-permitted
+                   (repeat 50 {:id "1:1" :model "indexed-entity" :collection_id readable-coll-id}))
+                  (is (= 1 @calls) "expected one can-read? call for the single distinct collection_id")))))
 
           (testing "handles empty input"
-            (is (= [] (#'semantic.index/filter-can-read-indexed-entity []))))
+            (is (= [] (#'semantic.index/filter-read-permitted [])))))))))
 
-          (testing "handles invalid entity IDs"
-            (let [invalid-only-docs [{:id "invalid:789" :model "indexed-entity" :content "Invalid"}]]
-              (is (= [] (#'semantic.index/filter-can-read-indexed-entity invalid-only-docs)))))
+(deftest filter-read-permitted-dispatch-test
+  (mt/with-premium-features #{:semantic-search}
+    (testing "fast path dispatches through the per-search-model t2 model"
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (binding [api/*current-user-permissions-set* (atom #{"/"})]
 
-          (testing "handles non-existent model indexes"
-            (let [non-existent-docs [{:id "99999:123" :model "indexed-entity" :content "Non-existent"}]]
-              (is (= [] (#'semantic.index/filter-can-read-indexed-entity non-existent-docs))))))))))
+          (testing "card and dashboard in the same collection do NOT share a memo bucket"
+            ;; Card dispatches through :model/Card, Dashboard through :model/Dashboard. Their
+            ;; `can-read?` answers happen to agree today (both route through
+            ;; `can-read-audit-helper` which ignores the model keyword for non-Collection models),
+            ;; but the dispatch MUST still hit each model's own defmethod so future divergence
+            ;; cannot silently ride on Card's semantics.
+            (let [calls (atom 0)
+                  real-can-read? mi/can-read?]
+              (with-redefs [mi/can-read? (fn [& args]
+                                           (swap! calls inc)
+                                           (apply real-can-read? args))]
+                (#'semantic.index/filter-read-permitted
+                 [{:id 1 :model "card" :collection_id coll-id}
+                  {:id 2 :model "dashboard" :collection_id coll-id}])
+                (is (= 2 @calls)
+                    "card and dashboard must dispatch separately even for the same collection_id"))))
+
+          (testing "card and indexed-entity share the :model/Card memo bucket"
+            ;; indexed-entity is deliberately routed through :model/Card — its index row's
+            ;; `collection_id` is the parent Card's, denormalized at ingest time.
+            (let [calls (atom 0)
+                  real-can-read? mi/can-read?]
+              (with-redefs [mi/can-read? (fn [& args]
+                                           (swap! calls inc)
+                                           (apply real-can-read? args))]
+                (#'semantic.index/filter-read-permitted
+                 [{:id 1   :model "card"            :collection_id coll-id}
+                  {:id "1:99" :model "indexed-entity" :collection_id coll-id}])
+                (is (= 1 @calls)
+                    "card and indexed-entity both dispatch through :model/Card and memoize together")))))))))
 
 (deftest to-boolean-test
   (testing "to-boolean function correctly converts various input types to booleans"
