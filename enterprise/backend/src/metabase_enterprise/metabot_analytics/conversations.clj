@@ -130,39 +130,27 @@
 
 (defn fetch-conversation-feedback
   "Return all `metabot_feedback` rows for messages in `conversation-id`, ordered by submission time.
-   Each row carries its `message_id` (PK + FK) and trimmed submitter user info.
+   The submitter is always the conversation owner (enforced at write), so we don't hydrate a
+   per-row user — callers already know the conversation's user from the detail response.
    404s if the conversation does not exist."
   [conversation-id]
   (api/check-404 (t2/exists? :model/MetabotConversation :id conversation-id))
-  (let [rows     (t2/select :model/MetabotFeedback
-                            {:select    [:metabot_feedback.message_id
-                                         [:mm.external_id :external_id]
-                                         :metabot_feedback.positive
-                                         :metabot_feedback.issue_type
-                                         :metabot_feedback.freeform_feedback
-                                         :metabot_feedback.created_at
-                                         :metabot_feedback.updated_at
-                                         :metabot_feedback.user_id]
-                             :from      [:metabot_feedback]
-                             :join      [[:metabot_message :mm]
-                                         [:= :mm.id :metabot_feedback.message_id]]
-                             :where     [:= :mm.conversation_id conversation-id]
-                             :order-by  [[:metabot_feedback.created_at :asc]
-                                         [:metabot_feedback.message_id :asc]]})
-        user-ids (into #{} (keep :user_id) rows)
-        users    (when (seq user-ids)
-                   (t2/select-pk->fn #(select-keys % [:id :email :first_name :last_name])
-                                     [:model/User :id :email :first_name :last_name]
-                                     :id [:in user-ids]))]
-    (mapv (fn [row]
-            {:message_id        (:message_id row)
-             :external_id       (:external_id row)
-             :positive          (:positive row)
-             :issue_type        (:issue_type row)
-             :freeform_feedback (:freeform_feedback row)
-             :created_at        (:created_at row)
-             :updated_at        (:updated_at row)
-             :user              (get users (:user_id row))})
+  (let [rows (t2/select :model/MetabotFeedback
+                        {:select   [:metabot_feedback.message_id
+                                    [:mm.external_id :external_id]
+                                    :metabot_feedback.positive
+                                    :metabot_feedback.issue_type
+                                    :metabot_feedback.freeform_feedback
+                                    :metabot_feedback.created_at
+                                    :metabot_feedback.updated_at]
+                         :from     [:metabot_feedback]
+                         :join     [[:metabot_message :mm]
+                                    [:= :mm.id :metabot_feedback.message_id]]
+                         :where    [:= :mm.conversation_id conversation-id]
+                         :order-by [[:metabot_feedback.created_at :asc]
+                                    [:metabot_feedback.message_id :asc]]})]
+    (mapv #(select-keys % [:message_id :external_id :positive :issue_type
+                           :freeform_feedback :created_at :updated_at])
           rows)))
 
 (defn fetch-conversation-detail

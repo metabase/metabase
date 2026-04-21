@@ -13,6 +13,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defn submit-to-harbormaster!
   "Submit metabot feedback to Harbormaster via the Store API.
    Returns the HTTP response on success, or nil if the token or Store API URL is missing."
@@ -41,43 +43,47 @@
    :submission_time   (str (java.time.OffsetDateTime/now))
    :is_admin          (boolean api/*is-superuser?*)})
 
+(defn- resolve-rated-message
+  "Return the `metabot_message` row (`:id` + `:conversation_id`) identified by
+   `external-id`, but only if the current user owns the enclosing conversation.
+   Returns nil (and logs a warning) for unknown or unauthorized lookups."
+  [external-id]
+  (when (seq external-id)
+    (let [message  (t2/select-one [:model/MetabotMessage :id :conversation_id]
+                                  :external_id external-id)
+          owner-id (when-let [conv-id (:conversation_id message)]
+                     (t2/select-one-fn :user_id :model/MetabotConversation :id conv-id))]
+      (cond
+        (nil? message)
+        (log/warnf "No metabot_message found for external_id %s; skipping feedback persist"
+                   external-id)
+
+        (not= owner-id api/*current-user-id*)
+        (log/warnf "User %s tried to rate a message in conversation they do not own; skipping"
+                   api/*current-user-id*)
+
+        :else message))))
+
+(defn- upsert-feedback!
+  "Insert or update the `metabot_feedback` row for `message-row-id`."
+  [message-row-id {:keys [positive issue_type freeform_feedback]}]
+  (let [base-fields {:positive          positive
+                     :issue_type        issue_type
+                     :freeform_feedback freeform_feedback}]
+    (t2/with-transaction [_conn]
+      (if (t2/exists? :model/MetabotFeedback :message_id message-row-id)
+        (t2/update! :model/MetabotFeedback message-row-id
+                    (assoc base-fields :updated_at (java.time.OffsetDateTime/now)))
+        (t2/insert! :model/MetabotFeedback (assoc base-fields :message_id message-row-id))))))
+
 (defn persist-feedback!
   "Upsert a `metabot_feedback` row for the rated message. Returns the resolved
-   `metabot_message` row (with `:id` and `:conversation_id`) on success, nil on
-   no-op.
+   `metabot_message` row on success, nil when the lookup/authorization path
+   declines (unknown external_id, non-owner, or missing `positive`).
 
-   `message_id` is resolved via `metabot_message.external_id`. Only the user who
-   owns the referenced conversation may rate its messages; other submissions are
-   dropped."
-  [{:keys [message_id positive issue_type freeform_feedback]}]
-  (let [message  (when (seq message_id)
-                   (t2/select-one [:model/MetabotMessage :id :conversation_id]
-                                  :external_id message_id))
-        owner-id (when-let [conv-id (:conversation_id message)]
-                   (t2/select-one-fn :user_id :model/MetabotConversation :id conv-id))]
-    (cond
-      (nil? positive)
-      nil
-
-      (nil? message)
-      (do (log/warnf "No metabot_message found for external_id %s; skipping feedback persist"
-                     message_id)
-          nil)
-
-      (not= owner-id api/*current-user-id*)
-      (do (log/warnf "User %s tried to rate a message in conversation they do not own; skipping"
-                     api/*current-user-id*)
-          nil)
-
-      :else
-      (let [message-row-id (:id message)
-            base-fields    {:positive          positive
-                            :issue_type        issue_type
-                            :freeform_feedback freeform_feedback
-                            :user_id           api/*current-user-id*}]
-        (t2/with-transaction [_conn]
-          (if (t2/exists? :model/MetabotFeedback :message_id message-row-id)
-            (t2/update! :model/MetabotFeedback message-row-id
-                        (assoc base-fields :updated_at (java.time.OffsetDateTime/now)))
-            (t2/insert! :model/MetabotFeedback (assoc base-fields :message_id message-row-id))))
-        message))))
+   DB exceptions from the upsert propagate to the caller."
+  [{:keys [message_id positive] :as body}]
+  (when (some? positive)
+    (when-let [message (resolve-rated-message message_id)]
+      (upsert-feedback! (:id message) body)
+      message)))

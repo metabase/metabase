@@ -43,15 +43,6 @@ databaseChangeLog:
                     nullable: true
                   remarks: 'Optional freeform comment'
               - column:
-                  name: user_id
-                  type: int
-                  constraints:
-                    nullable: true
-                    referencedTableName: core_user
-                    referencedColumnNames: id
-                    foreignKeyName: fk_metabot_feedback_user_id
-                  remarks: 'User who submitted the feedback'
-              - column:
                   name: created_at
                   type: ${timestamp_type}
                   defaultValueComputed: current_timestamp

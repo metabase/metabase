@@ -21,13 +21,14 @@
                 ip-address (assoc :ip_address ip-address))))
 
 (defn- insert-message!
-  [{:keys [conversation-id created-at role profile-id total-tokens data deleted-at]}]
+  [{:keys [conversation-id created-at role profile-id total-tokens data deleted-at external-id]}]
   (t2/insert! :model/MetabotMessage
               (cond-> {:conversation_id conversation-id
                        :role            role
                        :profile_id      profile-id
                        :total_tokens    total-tokens
-                       :data            data}
+                       :data            data
+                       :external_id     (or external-id (str (random-uuid)))}
                 created-at (assoc :created_at created-at)
                 deleted-at (assoc :deleted_at deleted-at))))
 
@@ -43,16 +44,14 @@
     (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]})))
 
 (defn- insert-feedback!
-  [{:keys [message-id positive issue-type freeform user-id created-at updated-at]}]
+  [{:keys [message-id positive issue-type freeform created-at updated-at]}]
   (t2/insert! :model/MetabotFeedback
               (cond-> {:message_id        message-id
                        :positive          positive
                        :issue_type        issue-type
-                       :freeform_feedback freeform
-                       :user_id           user-id}
+                       :freeform_feedback freeform}
                 created-at (assoc :created_at created-at)
-                updated-at (assoc :updated_at updated-at)))
-  message-id)
+                updated-at (assoc :updated_at updated-at))))
 
 (defn- offset-date-time
   [s]
@@ -616,6 +615,7 @@
                                :role            "assistant"
                                :profile_id      "gpt-5"
                                :total_tokens    5
+                               :external_id     (str (random-uuid))
                                :data            [{:type "text" :text "first answer"}]}))
                 msg-2 (first (t2/insert-returning-pks!
                               :model/MetabotMessage
@@ -624,17 +624,16 @@
                                :role            "assistant"
                                :profile_id      "gpt-5"
                                :total_tokens    7
+                               :external_id     (str (random-uuid))
                                :data            [{:type "text" :text "second answer"}]}))]
             (insert-feedback! {:message-id msg-1
                                :positive   true
                                :freeform   "great"
-                               :user-id    user-id
                                :created-at jan-2})
             (insert-feedback! {:message-id msg-2
                                :positive   false
                                :issue-type "not-factual"
                                :freeform   "wrong"
-                               :user-id    user-id
                                :created-at jan-3})
             (let [response (mt/user-http-request :crowberto :get 200
                                                  (format "ee/metabot-analytics/conversations/%s/feedback"
@@ -645,11 +644,8 @@
               (is (= "not-factual" (:issue_type (second response))))
               (is (every? (comp string? :external_id) response)
                   "each feedback row carries the parent metabot_message.external_id so the admin UI can link to it")
-              (is (= {:id         user-id
-                      :email      "crowberto@metabase.com"
-                      :first_name "Crowberto"
-                      :last_name  "Corv"}
-                     (:user (first response))))))
+              (is (every? #(not (contains? % :user)) response)
+                  "feedback rows do not hydrate a per-row user — the submitter is always the conversation owner")))
           (finally
             (delete-conversations! [conversation-id])))))))
 

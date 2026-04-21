@@ -46,8 +46,7 @@
                 (is (= msg-id (:message_id row)))
                 (is (false? (:positive row)))
                 (is (= "not-factual" (:issue_type row)))
-                (is (= "bad answer" (:freeform_feedback row)))
-                (is (= user-id (:user_id row))))))
+                (is (= "bad answer" (:freeform_feedback row))))))
           (finally
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))

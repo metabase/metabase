@@ -27,6 +27,7 @@ databaseChangeLog:
         - sql:
             dbms: h2
             sql: UPDATE metabot_message SET external_id = RANDOM_UUID() WHERE external_id IS NULL
+      rollback: []
 
   - changeSet:
       id: v61.2026-04-21T10:00:02
@@ -36,6 +37,7 @@ databaseChangeLog:
         - sql:
             dbms: postgresql
             sql: UPDATE metabot_message SET external_id = gen_random_uuid()::text WHERE external_id IS NULL
+      rollback: []
 
   - changeSet:
       id: v61.2026-04-21T10:00:03
@@ -45,6 +47,7 @@ databaseChangeLog:
         - sql:
             dbms: mysql,mariadb
             sql: UPDATE metabot_message SET external_id = UUID() WHERE external_id IS NULL
+      rollback: []
 
   - changeSet:
       id: v61.2026-04-21T10:00:04

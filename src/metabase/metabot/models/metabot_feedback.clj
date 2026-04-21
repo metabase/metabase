@@ -1,4 +1,7 @@
 (ns metabase.metabot.models.metabot-feedback
+  "User-submitted feedback (thumbs up/down plus optional issue category and
+   freeform comment) for a single `MetabotMessage`. 1:1 extension: the PK is
+   also the FK to [[metabase.metabot.models.metabot-message]]."
   (:require
    [methodical.core :as methodical]
    [toucan2.core :as t2]))

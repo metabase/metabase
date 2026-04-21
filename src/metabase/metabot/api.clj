@@ -214,11 +214,15 @@
 
 (defn- override-message-id-xf
   "Replace the message id on `:start` and `:usage` parts so the client and the
-  persisted `metabot_message.external_id` share one value."
+  persisted `metabot_message.external_id` share one value.
+
+  Dissocs `:messageId` too — `format-start-line` in `metabase.metabot.self.core`
+  prefers `:messageId` over `:id` when both are present, so leaving the provider's
+  original `:messageId` intact would silently win over our override."
   [external-id]
   (map (fn [part]
          (case (:type part)
-           (:start :usage) (assoc part :id external-id)
+           (:start :usage) (-> part (assoc :id external-id) (dissoc :messageId))
            part))))
 
 (defn- native-agent-streaming-request
@@ -348,12 +352,9 @@
             [:issue_type        {:optional true} [:maybe :string]]
             [:freeform_feedback {:optional true} [:maybe :string]]]]
   (metabot.config/check-metabot-enabled!)
-  (let [_message (try
-                   (metabot.feedback/persist-feedback! body)
-                   (catch Exception e
-                     ;; ex-message only — a bare `log/error e` would dump conversation data via ex-info.
-                     (log/errorf "Failed to persist Metabot feedback locally: %s" (ex-message e))
-                     nil))]
+  ;; Let DB write exceptions propagate as 500 — we want to see local persist failures.
+  ;; Authz / missing-message cases return nil from persist-feedback! and still 204.
+  (let [_message (metabot.feedback/persist-feedback! body)]
     (comment
       (when _message
         (try

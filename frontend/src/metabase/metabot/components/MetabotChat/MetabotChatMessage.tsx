@@ -199,7 +199,7 @@ export const AgentMessage = ({
                       disabled={!!submittedFeedback}
                       onClick={() =>
                         setFeedbackMessage({
-                          messageId: message.externalId!,
+                          messageId: message.externalId ?? "",
                           positive: true,
                         })
                       }
@@ -213,7 +213,7 @@ export const AgentMessage = ({
                       disabled={!!submittedFeedback}
                       onClick={() =>
                         setFeedbackMessage({
-                          messageId: message.externalId!,
+                          messageId: message.externalId ?? "",
                           positive: false,
                         })
                       }

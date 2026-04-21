@@ -29,7 +29,10 @@ export const getIssueTypeLabel = (value: string): string => {
     case "other":
       return t`Other`;
     default:
-      return value;
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`Unknown Metabot feedback issue_type: ${value}`);
+      }
+      return t`Other`;
   }
 };
 

@@ -160,7 +160,7 @@
                             http/post                                (fn [url opts]
                                                                        (real-http-post url (assoc opts :decompress-body false)))
                             metabot.context/create-context           identity
-                            api/store-native-parts!                  (fn [_conv-id _prof-id _ip _embed-url parts]
+                            api/store-native-parts!                  (fn [_conv-id _prof-id _ip _embed-url _external-id parts]
                                                                        (reset! stored-parts parts))
                             sr/async-cancellation-poll-interval-ms   5]
                 (testing "Closing stream body will drop connection to LLM"
@@ -680,7 +680,7 @@
       (try
         (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider provider]
           (#'api/store-native-parts!
-           conv-id "internal" nil nil
+           conv-id "internal" nil nil (str (random-uuid))
            [{:type :start :id "msg-1"}
             {:type :text :text "Hello"}
             ;; SSE usage parts carry bare model names (from provider API response)

@@ -65,7 +65,6 @@ export type ConversationFeedback = {
   freeform_feedback: string | null;
   created_at: string;
   updated_at: string;
-  user: MetabotUserInfo | null;
 };
 
 export type ConversationDetail = {

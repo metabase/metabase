@@ -17,14 +17,15 @@
                 created-at (assoc :created_at created-at))))
 
 (defn- insert-message!
-  [{:keys [conversation-id role profile-id total-tokens data created-at]
+  [{:keys [conversation-id role profile-id total-tokens data created-at external-id]
     :or   {role "assistant" profile-id "gpt-5" total-tokens 0 data []}}]
   (t2/insert! :model/MetabotMessage
               (cond-> {:conversation_id conversation-id
                        :role            role
                        :profile_id      profile-id
                        :total_tokens    total-tokens
-                       :data            data}
+                       :data            data
+                       :external_id     (or external-id (str (random-uuid)))}
                 created-at (assoc :created_at created-at))))
 
 (defn- cleanup! [ids]
