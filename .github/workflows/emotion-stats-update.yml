@@ -1,3 +1,6 @@
+# Weekly count of files importing @emotion/*, uploaded to stats.metabase.com.
+# Feeds the "Emotion CSS Elimination Progress" chart tracking the migration
+# off Emotion onto Mantine (+ CSS modules as a fallback).
 name: Emotion Stats Update
 
 on:
@@ -7,6 +10,7 @@ on:
 
 jobs:
   emotion-stats:
+    # Prevent scheduled runs on forks from hitting our stats instance.
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
@@ -39,6 +43,7 @@ jobs:
               }
             ];
 
+            // tableId 76283 = "Emotion Files" table on stats.metabase.com
             uploadCsvToMb({
               baseUrl: 'https://stats.metabase.com',
               tableId: 76283,
