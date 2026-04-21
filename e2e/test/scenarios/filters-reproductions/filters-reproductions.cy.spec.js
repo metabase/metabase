@@ -951,8 +951,8 @@ describe("issue 35043", () => {
               "base-type": "type/DateTime",
             },
           ],
-          "2024-04-15",
-          "2024-05-22",
+          "2027-04-15",
+          "2027-05-22",
         ],
         limit: 5,
       },
@@ -963,12 +963,12 @@ describe("issue 35043", () => {
 
     cy.findByTestId("filters-visibility-control").click();
     cy.findByTestId("filter-pill")
-      .should("have.text", "Created At is Apr 15 – May 22, 2024")
+      .should("have.text", "Created At is Apr 15 – May 22, 2027")
       .click();
 
     cy.findByTestId("date-filter-picker").within(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.findByDisplayValue("May 22, 2024").type("{backspace}2").blur();
+      cy.findByDisplayValue("May 22, 2027").type("{backspace}2").blur();
       cy.findByDisplayValue("May 22, 2022").should("exist");
 
       cy.button("Update filter").click();
@@ -977,7 +977,7 @@ describe("issue 35043", () => {
 
     cy.findByTestId("filter-pill").should(
       "have.text",
-      "Created At is May 22, 2022 – Apr 15, 2024",
+      "Created At is May 22, 2022 – Apr 15, 2027",
     );
   });
 });
@@ -1498,7 +1498,7 @@ describe("issue QUE-2567", () => {
               5,
               "day",
             ],
-            Bar: ["datetime", "2025-12-24"],
+            Bar: ["datetime", "2028-12-24"],
           },
         },
       },

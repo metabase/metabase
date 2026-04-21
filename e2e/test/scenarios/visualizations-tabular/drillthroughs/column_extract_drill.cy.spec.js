@@ -20,7 +20,7 @@ const DATE_CASES = [
   },
   {
     option: "Day of week",
-    value: "Tuesday",
+    value: "Friday",
     example: "Monday, Tuesday",
   },
   {
@@ -35,8 +35,8 @@ const DATE_CASES = [
   },
   {
     option: "Year",
-    value: "2,025",
-    example: "2023, 2024",
+    value: "2,028",
+    example: "2026, 2027",
   },
 ];
 
@@ -195,7 +195,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       extractColumnAndCheck({
         column: "Min of Created At",
         option: "Year",
-        value: "2,022",
+        value: "2,025",
         extraction: "Extract day, month…",
       });
     });
@@ -221,7 +221,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       extractColumnAndCheck({
         column: "Created At",
         option: "Year",
-        value: "2,025",
+        value: "2,028",
         extraction: "Extract day, month…",
       });
       H.openNotebook();
@@ -232,7 +232,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       });
       H.popover().button("Update").should("not.be.disabled").click();
       H.visualize();
-      cy.findByRole("gridcell", { name: "2,027" }).should("be.visible");
+      cy.findByRole("gridcell", { name: "2,030" }).should("be.visible");
     });
 
     it("should use current user locale for string expressions", () => {
@@ -242,8 +242,8 @@ describe("extract action", { viewportWidth: 1600 }, () => {
       H.openOrdersTable({ limit: 1 });
       extractColumnAndCheck({
         column: "Created At",
-        option: "Tag in der Woche",
-        value: "Dienstag",
+        option: "Wochentag",
+        value: "Freitag",
         extraction: "Auszug Tag, Monat…",
       });
     });
@@ -414,7 +414,7 @@ describe("extract action", { viewportWidth: 1600 }, () => {
     extractColumnAndCheck({
       column: "Created At",
       option: "Year",
-      value: "2,025",
+      value: "2,028",
       extraction: "Extract day, month…",
     });
 
