@@ -64,6 +64,7 @@
                                                                            :history         history
                                                                            :conversation_id conversation-id
                                                                            :state           state}
+                                                                          nil
                                                                           nil)
                                                                          consume-streaming-response
                                                                          str/split-lines

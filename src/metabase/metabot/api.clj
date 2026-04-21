@@ -54,7 +54,7 @@
 
 (defn- store-aiservice-messages!
   "Store messages that are going from ai-service"
-  [conversation-id profile-id ip-address messages]
+  [conversation-id profile-id ip-address embed-url messages]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -68,7 +68,8 @@
                               (fn [existing]
                                 (cond-> {:user_id api/*current-user-id*}
                                   state                         (assoc :state state)
-                                  (nil? (:ip_address existing)) (assoc :ip_address ip-address))))
+                                  (nil? (:ip_address existing)) (assoc :ip_address ip-address)
+                                  (nil? (:embed_url existing))  (assoc :embed_url embed-url))))
     ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert! :model/MetabotMessage
                 {:conversation_id conversation-id
@@ -138,7 +139,7 @@
   avoiding the intermediate 'aisdk messages' format.
 
   Parts format: [{:type :text :text \"...\"} {:type :tool-input ...} ...]"
-  [conversation-id profile-id ip-address parts]
+  [conversation-id profile-id ip-address embed-url parts]
   (let [state-part (u/seek #(and (= :data (:type %))
                                  (= "state" (:data-type %)))
                            parts)
@@ -158,7 +159,8 @@
                                   (fn [existing]
                                     (cond-> {:user_id api/*current-user-id*
                                              :state   (:data state-part)}
-                                      (nil? (:ip_address existing)) (assoc :ip_address ip-address)))))
+                                      (nil? (:ip_address existing)) (assoc :ip_address ip-address)
+                                      (nil? (:embed_url existing))  (assoc :embed_url embed-url)))))
       (t2/insert! :model/MetabotMessage
                   {:conversation_id conversation-id
                    :data            content
@@ -219,7 +221,7 @@
 
   When `:debug?` is true, enables debug logging which emits a `debug_log` data
   part at the end of the stream with full LLM request/response data per iteration."
-  [{:keys [metabot-id profile-id message context history conversation-id state debug? ip-address]}]
+  [{:keys [metabot-id profile-id message context history conversation-id state debug? ip-address embed-url]}]
   (let [enriched-context (metabot.context/create-context context)
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
@@ -242,11 +244,12 @@
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))
           (finally
-            (store-native-parts! conversation-id profile-id ip-address (into [] (combine-text-parts-xf) @parts-atom))))))))
+            (store-native-parts! conversation-id profile-id ip-address embed-url
+                                 (into [] (combine-text-parts-xf) @parts-atom))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
-  [{:keys [metabot_id profile_id message context history conversation_id state debug]} ip-address]
+  [{:keys [metabot_id profile_id message context history conversation_id state debug]} ip-address embed-url]
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
@@ -254,7 +257,7 @@
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
     (check-conversation-owner! conversation_id)
-    (store-aiservice-messages! conversation_id profile-id ip-address [message])
+    (store-aiservice-messages! conversation_id profile-id ip-address embed-url [message])
 
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request
@@ -266,7 +269,8 @@
       :conversation-id conversation_id
       :state           state
       :debug?          debug?
-      :ip-address      ip-address})))
+      :ip-address      ip-address
+      :embed-url       embed-url})))
 
 (defn- legacy->modern-query
   [query]
@@ -313,7 +317,7 @@
    req]
   (metabot.context/log body :llm.log/fe->be)
   (let [body* (m/update-existing body [:context :user_is_viewing] upgrade-viewing-queries)]
-    (streaming-request body* (request/ip-address req))))
+    (streaming-request body* (request/ip-address req) (request/referer req))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

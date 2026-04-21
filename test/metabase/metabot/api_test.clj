@@ -159,7 +159,7 @@
                             http/post                                (fn [url opts]
                                                                        (real-http-post url (assoc opts :decompress-body false)))
                             metabot.context/create-context           identity
-                            api/store-native-parts!                  (fn [_conv-id _prof-id _ip parts]
+                            api/store-native-parts!                  (fn [_conv-id _prof-id _ip _embed-url parts]
                                                                        (reset! stored-parts parts))
                             sr/async-cancellation-poll-interval-ms   5]
                 (testing "Closing stream body will drop connection to LLM"
@@ -589,7 +589,7 @@
       (try
         (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider provider]
           (#'api/store-native-parts!
-           conv-id "internal" nil
+           conv-id "internal" nil nil
            [{:type :start :id "msg-1"}
             {:type :text :text "Hello"}
             ;; SSE usage parts carry bare model names (from provider API response)
@@ -757,6 +757,7 @@
                                 :conversation_id (str (random-uuid))
                                 :state           {}
                                 :debug           false}
+                               nil
                                nil)
         (testing "metabot-id is included in the arguments"
           (is (some? (:metabot-id @captured-args))
@@ -783,12 +784,69 @@
         (mt/with-test-user :rasta
           (testing "first writer wins: initial call captures the IP, later calls do not overwrite it"
             (let [conversation-id (str (random-uuid))]
-              (api/streaming-request (request-body conversation-id) "1.2.3.4")
+              (api/streaming-request (request-body conversation-id) "1.2.3.4" nil)
               (is (= "1.2.3.4" (ip-for conversation-id)))
-              (api/streaming-request (request-body conversation-id) "5.6.7.8")
+              (api/streaming-request (request-body conversation-id) "5.6.7.8" nil)
               (is (= "1.2.3.4" (ip-for conversation-id)))))
           (testing "null IP on pre-feature rows is backfilled on next call"
             (let [conversation-id (str (random-uuid))]
               (t2/insert! :model/MetabotConversation {:id conversation-id :user_id (mt/user->id :rasta)})
-              (api/streaming-request (request-body conversation-id) "9.9.9.9")
+              (api/streaming-request (request-body conversation-id) "9.9.9.9" nil)
               (is (= "9.9.9.9" (ip-for conversation-id))))))))))
+
+(deftest streaming-request-embed-url-test
+  (mt/with-model-cleanup [:model/MetabotMessage
+                          [:model/MetabotConversation :created_at]]
+    (let [request-body  (fn [conversation-id]
+                          {:metabot_id      metabot.config/embedded-metabot-id
+                           :profile_id      nil
+                           :message         "hi"
+                           :context         {}
+                           :history         []
+                           :conversation_id conversation-id
+                           :state           {}
+                           :debug           false})
+          embed-url-for (fn [conversation-id]
+                          (:embed_url (t2/select-one :model/MetabotConversation :id conversation-id)))]
+      (with-redefs [metabot.config/check-metabot-enabled! (constantly nil)
+                    api/native-agent-streaming-request    (constantly nil)]
+        (mt/with-test-user :rasta
+          (testing "first writer wins: initial call captures the Referer, later calls do not overwrite it"
+            (let [conversation-id (str (random-uuid))]
+              (api/streaming-request (request-body conversation-id) nil "https://host.example.com/page")
+              (is (= "https://host.example.com/page" (embed-url-for conversation-id)))
+              (api/streaming-request (request-body conversation-id) nil "https://other.example.com/other")
+              (is (= "https://host.example.com/page" (embed-url-for conversation-id)))))
+          (testing "null embed_url on pre-feature rows is backfilled on next call"
+            (let [conversation-id (str (random-uuid))]
+              (t2/insert! :model/MetabotConversation {:id conversation-id :user_id (mt/user->id :rasta)})
+              (api/streaming-request (request-body conversation-id) nil "https://host.example.com/backfilled")
+              (is (= "https://host.example.com/backfilled" (embed-url-for conversation-id)))))
+          (testing "missing Referer leaves embed_url null"
+            (let [conversation-id (str (random-uuid))]
+              (api/streaming-request (request-body conversation-id) nil nil)
+              (is (nil? (embed-url-for conversation-id))))))))))
+
+(deftest agent-streaming-endpoint-captures-referer-test
+  (testing "POST /metabot/agent-streaming captures the Referer header as embed_url"
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (with-redefs [openrouter/openrouter (fn [_]
+                                              (mut/mock-llm-response
+                                               [{:type :start :id "msg-1"}
+                                                {:type :text :text "hi"}
+                                                {:type  :usage       :usage {:promptTokens 1 :completionTokens 1}
+                                                 :model "test-model" :id    "msg-1"}]))]
+          (mt/with-model-cleanup [:model/MetabotMessage
+                                  [:model/MetabotConversation :created_at]]
+            (let [conversation-id (str (random-uuid))
+                  referer         "https://customer.example.com/dashboard"]
+              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                    {:request-options {:headers {"referer" referer}}}
+                                    {:message         "hello"
+                                     :context         {}
+                                     :conversation_id conversation-id
+                                     :history         []
+                                     :state           {}})
+              (is (= referer
+                     (:embed_url (t2/select-one :model/MetabotConversation :id conversation-id)))))))))))
