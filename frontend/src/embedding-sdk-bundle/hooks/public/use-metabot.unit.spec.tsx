@@ -354,7 +354,7 @@ describe("useMetabot", () => {
   describe("messages[n].Component", () => {
     const TestMessageComponent = ({ drills }: { drills?: true }) => {
       const { messages } = useMetabot();
-      const chartMessage = messages.find((m) => m.type === "chart");
+      const chartMessage = messages.find((message) => message.type === "chart");
       if (!chartMessage) {
         return null;
       }
@@ -403,7 +403,9 @@ describe("useMetabot", () => {
 
       const TestCapture = () => {
         const { messages } = useMetabot();
-        const chartMessages = messages.filter((m) => m.type === "chart");
+        const chartMessages = messages.filter(
+          (message) => message.type === "chart",
+        );
         if (chartMessages[0]) {
           firstComponent = chartMessages[0].Component;
         }
