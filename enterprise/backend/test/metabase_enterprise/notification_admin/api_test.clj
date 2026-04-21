@@ -258,29 +258,21 @@
           (is (= "orphaned_creator" (:health row))))))))
 
 (deftest health-failing-test
-  (testing "health=:failing when the latest TaskRun for the notification has status=:failed"
+  (testing "health=:failing when the latest alert-type TaskRun for the card is :failed"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id}    {:archived false}
                      :model/NotificationCard {nc :id}         {:card_id card-id}
-                     :model/Notification     {nid :id :as _n} {:payload_type :notification/card
+                     :model/Notification     {nid :id}        {:payload_type :notification/card
                                                                :payload_id   nc
                                                                :creator_id   (mt/user->id :crowberto)}
-                     :model/TaskRun          {run-id :id}     {:run_type    :alert
+                     :model/TaskRun          _run             {:run_type    :alert
                                                                :entity_type :card
                                                                :entity_id   card-id
                                                                :status      :failed
                                                                :started_at  (t/instant)
-                                                               :ended_at    (t/instant)}
-                     :model/TaskHistory      _th              {:task         "notification-send"
-                                                               :run_id       run-id
-                                                               :task_details {:notification_id nid}
-                                                               :status       :success
-                                                               :started_at   (t/instant)
-                                                               :ended_at     (t/instant)}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
-              row            (find-row-by-id data nid)]
-          (is (some? row))
-          (is (= "failing" (:health row))))))))
+                                                               :ended_at    (t/instant)}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
+          (is (= "failing" (:health (find-row-by-id data nid)))))))))
 
 (deftest health-abandoned-test
   (testing "health=:abandoned when the latest TaskRun has status=:abandoned (orphaned run)"
@@ -290,94 +282,37 @@
                      :model/Notification     {nid :id}        {:payload_type :notification/card
                                                                :payload_id   nc
                                                                :creator_id   (mt/user->id :crowberto)}
-                     :model/TaskRun          {run-id :id}     {:run_type    :alert
+                     :model/TaskRun          _run             {:run_type    :alert
                                                                :entity_type :card
                                                                :entity_id   card-id
                                                                :status      :abandoned
                                                                :started_at  (t/instant)
-                                                               :ended_at    (t/instant)}
-                     :model/TaskHistory      _th              {:task         "notification-send"
-                                                               :run_id       run-id
-                                                               :task_details {:notification_id nid}
-                                                               :status       :success
-                                                               :started_at   (t/instant)
-                                                               :ended_at     (t/instant)}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
-              row            (find-row-by-id data nid)]
-          (is (some? row))
-          (is (= "abandoned" (:health row))))))))
-
-(deftest health-uses-task-run-not-parent-task-history-test
-  (testing "health=:failing even when parent notification-send row is :success, if the TaskRun rolled up a child failure"
-    (mt/with-premium-features #{:audit-app}
-      (mt/with-temp [:model/Card             {card-id :id}    {:archived false}
-                     :model/NotificationCard {nc :id}         {:card_id card-id}
-                     :model/Notification     {nid :id}        {:payload_type :notification/card
-                                                               :payload_id   nc
-                                                               :creator_id   (mt/user->id :crowberto)}
-                     ;; TaskRun rolled up to :failed because a child channel-send failed,
-                     ;; but the parent notification-send row completed :success (swallowed exceptions).
-                     :model/TaskRun          {run-id :id}     {:run_type    :alert
-                                                               :entity_type :card
-                                                               :entity_id   card-id
-                                                               :status      :failed
-                                                               :started_at  (t/instant)
-                                                               :ended_at    (t/instant)}
-                     :model/TaskHistory      _th-parent       {:task         "notification-send"
-                                                               :run_id       run-id
-                                                               :task_details {:notification_id nid}
-                                                               :status       :success
-                                                               :started_at   (t/instant)
-                                                               :ended_at     (t/instant)}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
-              row            (find-row-by-id data nid)]
-          (is (= "failing" (:health row))
-              "the run-level status should win, not the task-history-level parent status"))))))
+                                                               :ended_at    (t/instant)}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")]
+          (is (= "abandoned" (:health (find-row-by-id data nid)))))))))
 
 (deftest last-sent-at-test
-  (testing "last_sent_at is populated from the latest successful TaskRun for the page's rows"
+  (testing "last_sent_at is populated from the latest successful TaskRun for the notification's card"
     (mt/with-premium-features #{:audit-app}
-      (mt/with-temp [:model/Card             {card-id :id}   {:archived false}
-                     :model/NotificationCard {nc1 :id}       {:card_id card-id}
-                     :model/NotificationCard {nc2 :id}       {:card_id card-id}
-                     :model/NotificationCard {nc3 :id}       {:card_id card-id}
-                     :model/Notification     {n-early :id}   {:payload_type :notification/card
-                                                              :payload_id   nc1
-                                                              :creator_id   (mt/user->id :crowberto)}
-                     :model/Notification     {n-recent :id}  {:payload_type :notification/card
-                                                              :payload_id   nc2
+      (mt/with-temp [:model/Card             {card-a :id}    {:archived false}
+                     :model/Card             {card-b :id}    {:archived false}
+                     :model/NotificationCard {nc-a :id}      {:card_id card-a}
+                     :model/NotificationCard {nc-b :id}      {:card_id card-b}
+                     :model/Notification     {n-sent :id}    {:payload_type :notification/card
+                                                              :payload_id   nc-a
                                                               :creator_id   (mt/user->id :crowberto)}
                      :model/Notification     {n-unsent :id}  {:payload_type :notification/card
-                                                              :payload_id   nc3
+                                                              :payload_id   nc-b
                                                               :creator_id   (mt/user->id :crowberto)}
-                     :model/TaskRun          {run-early :id} {:run_type    :alert
+                     :model/TaskRun          _run            {:run_type    :alert
                                                               :entity_type :card
-                                                              :entity_id   card-id
+                                                              :entity_id   card-a
                                                               :status      :success
-                                                              :started_at  (t/instant "2020-01-01T00:00:00Z")
-                                                              :ended_at    (t/instant "2020-01-01T00:00:01Z")}
-                     :model/TaskRun          {run-recent :id} {:run_type    :alert
-                                                               :entity_type :card
-                                                               :entity_id   card-id
-                                                               :status      :success
-                                                               :started_at  (t/instant "2024-01-01T00:00:00Z")
-                                                               :ended_at    (t/instant "2024-01-01T00:00:01Z")}
-                     :model/TaskHistory      _th-early       {:task         "notification-send"
-                                                              :run_id       run-early
-                                                              :task_details {:notification_id n-early}
-                                                              :status       :success
-                                                              :started_at   (t/instant "2020-01-01T00:00:00Z")
-                                                              :ended_at     (t/instant "2020-01-01T00:00:01Z")}
-                     :model/TaskHistory      _th-recent      {:task         "notification-send"
-                                                              :run_id       run-recent
-                                                              :task_details {:notification_id n-recent}
-                                                              :status       :success
-                                                              :started_at   (t/instant "2024-01-01T00:00:00Z")
-                                                              :ended_at     (t/instant "2024-01-01T00:00:01Z")}]
+                                                              :started_at  (t/instant "2024-01-01T00:00:00Z")
+                                                              :ended_at    (t/instant "2024-01-01T00:00:01Z")}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               by-id          (into {} (map (juxt :id identity) data))]
-          (is (some? (:last_sent_at (by-id n-early))))
-          (is (some? (:last_sent_at (by-id n-recent))))
+          (is (some? (:last_sent_at (by-id n-sent))))
           (is (nil? (:last_sent_at (by-id n-unsent)))))))))
 
 (deftest response-shape-includes-pagination-metadata-test
@@ -392,37 +327,33 @@
 (deftest filter-by-health-test
   (testing "?health=<state> returns only rows matching that computed health state"
     (mt/with-premium-features #{:audit-app}
-      (mt/with-temp [:model/User             {inactive :id} {:is_active false}
-                     :model/Card             {ok-card :id}  {:archived false}
-                     :model/Card             {bad-card :id} {:archived true}
-                     :model/NotificationCard {nc-ok :id}    {:card_id ok-card}
-                     :model/NotificationCard {nc-bad :id}   {:card_id bad-card}
-                     :model/NotificationCard {nc-orph :id}  {:card_id ok-card}
-                     :model/NotificationCard {nc-fail :id}  {:card_id ok-card}
-                     :model/Notification     healthy-n      {:payload_type :notification/card
-                                                             :payload_id   nc-ok
-                                                             :creator_id   (mt/user->id :crowberto)}
-                     :model/Notification     orph-card-n    {:payload_type :notification/card
-                                                             :payload_id   nc-bad
-                                                             :creator_id   (mt/user->id :crowberto)}
-                     :model/Notification     orph-user-n    {:payload_type :notification/card
-                                                             :payload_id   nc-orph
-                                                             :creator_id   inactive}
-                     :model/Notification     failing-n      {:payload_type :notification/card
-                                                             :payload_id   nc-fail
-                                                             :creator_id   (mt/user->id :crowberto)}
-                     :model/TaskRun          {run-id :id}   {:run_type    :alert
-                                                             :entity_type :card
-                                                             :entity_id   ok-card
-                                                             :status      :failed
-                                                             :started_at  (t/instant)
-                                                             :ended_at    (t/instant)}
-                     :model/TaskHistory      _th            {:task         "notification-send"
-                                                             :run_id       run-id
-                                                             :task_details {:notification_id (:id failing-n)}
-                                                             :status       :success
-                                                             :started_at   (t/instant)
-                                                             :ended_at     (t/instant)}]
+      (mt/with-temp [:model/User             {inactive :id}     {:is_active false}
+                     :model/Card             {healthy-card :id} {:archived false}
+                     :model/Card             {orph-card :id}    {:archived true}
+                     :model/Card             {user-card :id}    {:archived false}
+                     :model/Card             {fail-card :id}    {:archived false}
+                     :model/NotificationCard {nc-healthy :id}   {:card_id healthy-card}
+                     :model/NotificationCard {nc-orph-card :id} {:card_id orph-card}
+                     :model/NotificationCard {nc-orph-user :id} {:card_id user-card}
+                     :model/NotificationCard {nc-failing :id}   {:card_id fail-card}
+                     :model/Notification     healthy-n          {:payload_type :notification/card
+                                                                 :payload_id   nc-healthy
+                                                                 :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification     orph-card-n        {:payload_type :notification/card
+                                                                 :payload_id   nc-orph-card
+                                                                 :creator_id   (mt/user->id :crowberto)}
+                     :model/Notification     orph-user-n        {:payload_type :notification/card
+                                                                 :payload_id   nc-orph-user
+                                                                 :creator_id   inactive}
+                     :model/Notification     failing-n          {:payload_type :notification/card
+                                                                 :payload_id   nc-failing
+                                                                 :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          _run               {:run_type    :alert
+                                                                 :entity_type :card
+                                                                 :entity_id   fail-card
+                                                                 :status      :failed
+                                                                 :started_at  (t/instant)
+                                                                 :ended_at    (t/instant)}]
         (testing "health=healthy"
           (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                      :health "healthy")

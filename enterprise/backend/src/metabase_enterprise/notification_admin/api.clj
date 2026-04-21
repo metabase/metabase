@@ -116,50 +116,58 @@
          ;; no matches — force an empty result
          [:= 1 0])))))
 
-(defn- ordered-list-query
-  "Base list query with a deterministic `updated_at desc` ordering applied — used by both
-  pagination paths so the page you land on is stable."
-  [filters]
-  (assoc (base-list-query filters)
-         :order-by [[:notification.updated_at :desc]]))
+(defn- scoped-list-query
+  "Base list query for `filters`, plus an optional `WHERE id IN (id-whitelist)` clause and
+  deterministic `updated_at desc` ordering. `id-whitelist` nil = no whitelist (full base query);
+  empty set = force empty result."
+  [filters id-whitelist]
+  (cond-> (base-list-query filters)
+    (and id-whitelist (seq id-whitelist))
+    (sql.helpers/where [:in :notification.id id-whitelist])
+
+    (and id-whitelist (empty? id-whitelist))
+    (sql.helpers/where [:= 1 0])
+
+    true
+    (assoc :order-by [[:notification.updated_at :desc]])))
 
 (defn- count-query
-  "Count matching distinct notifications for `filters`, without pagination. Reuses [[base-list-query]]
-  so the WHERE/JOIN shape stays identical."
-  [filters]
-  (-> (base-list-query filters)
+  "Count matching distinct notifications. Mirrors [[scoped-list-query]]'s WHERE/JOIN shape."
+  [filters id-whitelist]
+  (-> (scoped-list-query filters id-whitelist)
       (assoc :select [[[:count [:distinct :notification.id]] :count]])
-      (dissoc :select-distinct)))
+      (dissoc :select-distinct :order-by)))
 
-(defn- page+total
-  "Return `{:rows <page of enriched notification rows> :total <int>}`.
-
-  Health is computed post-query, so there are two internal paths:
-    - No `:health` filter: push pagination + sort into SQL and compute health only for the page
-      (O(page size) per request).
-    - `:health` filter set: materialize the full matching set, compute health, filter in memory,
-      paginate (O(matching rows); firefighter use case)."
-  [{:keys [limit offset health] :as filters}]
-  (let [base-filters (dissoc filters :limit :offset :health)]
-    (if health
-      (let [all (->> (t2/select :model/Notification (ordered-list-query base-filters))
-                     notification-admin.health/compute-for-rows
-                     (filter #(= health (:health %))))]
-        {:rows  (->> all (drop offset) (take limit))
-         :total (count all)})
-      {:rows  (notification-admin.health/compute-for-rows
-               (t2/select :model/Notification
-                          (assoc (ordered-list-query base-filters)
-                                 :limit  limit
-                                 :offset offset)))
-       :total (or (:count (t2/query-one (count-query base-filters))) 0)})))
+(defn- ids-matching-health
+  "Return the set of notification ids within `filters` that match `health`. Runs a lightweight
+  SELECT id, creator_id over the base query (not full rows) and lets `health/compute-for-rows`
+  classify; that helper only needs `:id` and `:creator_id`."
+  [health filters]
+  (let [rows     (t2/query (-> (base-list-query filters)
+                               (assoc :select [[:notification.id :id]
+                                               [:notification.creator_id :creator_id]])
+                               (dissoc :select-distinct)))
+        enriched (notification-admin.health/compute-for-rows rows)]
+    (into #{} (comp (filter #(= health (:health %))) (map :id)) enriched)))
 
 (defn- list-notifications
-  "Shared implementation for `GET /`. Paginates, enriches with health, hydrates, shapes the
-  standard `{:data :total :limit :offset}` response."
-  [{:keys [limit offset] :as filters}]
-  (let [{:keys [rows total]} (page+total filters)]
-    {:data   (vec (models.notification/hydrate-notification rows))
+  "Shared implementation for `GET /`. Pagination always runs in SQL. When a `:health` filter is
+  set we first compute the matching id set via a lightweight scan (id + creator_id only, so the
+  shared `compute-for-rows` helper can classify), then scope the main query to `WHERE id IN
+  (ids)`. Health is re-computed for the page's hydrated rows so the response field is present.
+  O(|matching base rows|) for the classify scan + O(page size) for the main fetch."
+  [{:keys [limit offset health] :as filters}]
+  (let [base-filters (dissoc filters :limit :offset :health)
+        id-whitelist (when health (ids-matching-health health base-filters))
+        page-rows    (t2/select :model/Notification
+                                (assoc (scoped-list-query base-filters id-whitelist)
+                                       :limit  limit
+                                       :offset offset))
+        enriched     (notification-admin.health/compute-for-rows page-rows)
+        total        (if (and id-whitelist (empty? id-whitelist))
+                       0
+                       (or (:count (t2/query-one (count-query base-filters id-whitelist))) 0))]
+    {:data   (vec (models.notification/hydrate-notification enriched))
      :total  total
      :limit  limit
      :offset offset}))

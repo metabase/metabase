@@ -1,17 +1,15 @@
 (ns metabase-enterprise.notification-admin.health
   "Compute `:health` and `:last_sent_at` for notification-admin rows.
 
-  The real send outcome lives on `:model/TaskRun` (status `:success|:failed|:abandoned`). We locate
-  TaskRuns for a notification by walking recent `notification-send` `task_history` rows and
-  following their `:run_id` to the corresponding TaskRun — a notification's id lives inside
-  `task_details` (JSON), so we scan a bounded, time-windowed slice in memory. See
-  [[task-history-lookback-days]] and [[task-history-row-limit]].
+  Health is derived from three signals:
+    - `orphaned_card`: the notification's target card is missing or archived.
+    - `orphaned_creator`: the notification's creator is a deactivated user.
+    - Most recent alert-type `:model/TaskRun` for the notification's card:
+      `:failed` → `:failing`, `:abandoned` → `:abandoned`, `:success` → healthy.
 
-  Why TaskRun instead of task_history: a `notification-send` task_history row marks the parent
-  fire as `:success` even when an individual channel-send child fails (exceptions are caught per
-  handler in `metabase.notification.send/send-notification-sync!`). `task_run.complete-task-run!`
-  correctly rolls the run status up from ALL child task_history rows, so a failing channel send
-  properly flips the run's status to `:failed`."
+  Granularity note: TaskRuns are keyed by `(run_type=:alert, entity_type=:card, entity_id=<card-id>)`.
+  If multiple notifications share a card, they share the run status. For v1 we accept that
+  approximation — it matches what admins see on `Tasks > Runs` filtered by card."
   (:require
    [java-time.api :as t]
    [metabase.util :as u]
@@ -19,122 +17,91 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private task-history-lookback-days
-  "Only consider `notification-send` task_history rows from the last N days when computing health.
-  A row older than this will be treated as if no send has happened."
+(def ^:private task-run-lookback-days
+  "Only consider TaskRuns from the last N days when computing health. Anything older is treated as
+  if no send has happened."
   90)
 
-(def ^:private task-history-row-limit
-  "Hard cap on the number of `notification-send` rows we read to compute health. High enough to
-  cover thousands of alerts × weeks of activity; low enough to keep worst-case memory bounded."
-  50000)
-
-(defn- orphaned-card-ids
-  "Return the set of notification ids (from `nids`) whose associated card is missing or archived."
+(defn- nid->card-id
+  "Return `{notification-id card-id}` for the given notification ids, joining through
+  `notification_card`. Non-card-type notifications don't appear in the map."
   [nids]
   (when (seq nids)
-    (let [rows           (t2/query {:select [[:notification.id :notification_id]
-                                             [:notification_card.card_id :card_id]]
-                                    :from   [:notification]
-                                    :join   [:notification_card
-                                             [:= :notification_card.id :notification.payload_id]]
-                                    :where  [:and
-                                             [:= :notification.payload_type "notification/card"]
-                                             [:in :notification.id nids]]})
-          nid->card-id   (u/index-by :notification_id :card_id rows)
-          card-ids       (set (vals nid->card-id))
-          card->archived (if (seq card-ids)
-                           (t2/select-fn->fn :id :archived :model/Card :id [:in card-ids])
-                           {})]
-      (->> nids
-           (filter (fn [nid]
-                     (let [cid (get nid->card-id nid)]
-                       (or (nil? cid)
-                           (not (contains? card->archived cid))
-                           (true? (get card->archived cid))))))
-           set))))
+    (u/index-by :notification_id :card_id
+                (t2/query {:select [[:notification.id :notification_id]
+                                    [:notification_card.card_id :card_id]]
+                           :from   [:notification]
+                           :join   [:notification_card
+                                    [:= :notification_card.id :notification.payload_id]]
+                           :where  [:and
+                                    [:= :notification.payload_type "notification/card"]
+                                    [:in :notification.id nids]]}))))
+
+(defn- card->archived?
+  [card-ids]
+  (if (seq card-ids)
+    (t2/select-fn->fn :id :archived :model/Card :id [:in card-ids])
+    {}))
 
 (defn- inactive-creator-ids
-  "Return the set of notification ids whose `creator_id` is a deactivated (or missing) user."
+  "Return the set of creator-ids (from the given notifications) that point to deactivated or
+  missing users."
   [nid+creator-pairs]
   (let [creator-ids (->> nid+creator-pairs (map second) (remove nil?) set)
-        ;; `:model/User`'s default-fields selection omits `:is_active`, so we project it explicitly.
+        ;; :model/User's default-fields selection omits :is_active; project it explicitly.
         active?     (if (seq creator-ids)
                       (u/index-by :id :is_active
                                   (t2/select [:model/User :id :is_active] :id [:in creator-ids]))
                       {})]
-    (->> nid+creator-pairs
-         (filter (fn [[_ creator-id]]
-                   (or (nil? creator-id)
-                       (not (get active? creator-id)))))
-         (map first)
-         set)))
+    (into #{} (keep (fn [[nid creator-id]]
+                      (when (or (nil? creator-id) (not (get active? creator-id)))
+                        nid)))
+          nid+creator-pairs)))
 
-(defn- latest-task-run-by-notification
-  "Return `{notification-id {:latest {:status :ended_at} :last-sent <instant>}}` for each
-  notification, where `:latest` is the most recent TaskRun and `:last-sent` is the ended_at of the
-  most recent `:success` TaskRun. Bounded by time + row cap — see ns docs. Filters + orders by
-  `started_at` because it's the indexed column on `task_history` (ended_at is not)."
-  [nids]
-  (when (seq nids)
-    (let [nid-set  (set nids)
-          cutoff   (t/minus (t/offset-date-time) (t/days task-history-lookback-days))
-          ;; Newest first, so the per-notification run_id list comes out ordered.
-          th-rows  (t2/select [:model/TaskHistory :run_id :task_details]
-                              :task "notification-send"
-                              {:where    [:and [:> :started_at cutoff] [:not= :run_id nil]]
-                               :order-by [[:started_at :desc]]
-                               :limit    task-history-row-limit})
-          nid->run-ids (reduce
-                        (fn [acc {:keys [run_id task_details]}]
-                          ;; `do-with-task-history` rewrites task_details on failure into
-                          ;; `{:status :failed :message ... :original-info <caller's task_details>}`,
-                          ;; so notification_id can live at either level.
-                          (let [nid (or (:notification_id task_details)
-                                        (get-in task_details [:original-info :notification_id]))]
-                            (if (and nid run_id (contains? nid-set nid))
-                              (update acc nid (fnil conj []) run_id)
-                              acc)))
-                        {}
-                        th-rows)
-          all-run-ids (into #{} cat (vals nid->run-ids))
-          runs        (if (seq all-run-ids)
-                        (u/index-by :id (t2/select [:model/TaskRun :id :status :ended_at]
-                                                   :id [:in all-run-ids]))
-                        {})]
-      (into {}
-            (keep (fn [[nid run-ids]]
-                    (let [ordered   (keep runs run-ids)
-                          latest    (first ordered)
-                          last-sent (some #(when (= :success (:status %)) %) ordered)]
-                      (when latest
-                        [nid {:latest    {:status   (:status latest)
-                                          :ended_at (:ended_at latest)}
-                              :last-sent (:ended_at last-sent)}]))))
-            nid->run-ids))))
+(defn- latest-run-by-card
+  "Return `{card-id {:status :ended_at}}` for each card's most recent alert-type TaskRun within
+  the lookback window."
+  [card-ids]
+  (when (seq card-ids)
+    (let [cutoff (t/minus (t/offset-date-time) (t/days task-run-lookback-days))
+          runs   (t2/select [:model/TaskRun :entity_id :status :ended_at :started_at]
+                            {:where    [:and
+                                        [:= :run_type "alert"]
+                                        [:= :entity_type "card"]
+                                        [:in :entity_id card-ids]
+                                        [:> :started_at cutoff]]
+                             :order-by [[:started_at :desc]]})]
+      (reduce (fn [acc {:keys [entity_id status ended_at]}]
+                (if (contains? acc entity_id)
+                  acc
+                  (assoc acc entity_id {:status status :ended_at ended_at})))
+              {}
+              runs))))
 
 (defn compute-for-rows
   "Given a seq of notification rows (at minimum `:id` and `:creator_id`), return them assoc'd with
   `:health` (one of `:healthy | :orphaned_card | :orphaned_creator | :failing | :abandoned` —
-  precedence in that order) and `:last_sent_at` (ended_at of the most recent successful send,
-  or nil)."
+  precedence in that order) and `:last_sent_at` (ended_at of the most recent successful run for
+  the card, or nil)."
   [rows]
-  (let [rows              (vec rows)
-        nids              (map :id rows)
-        nid+creator-pairs (map (juxt :id :creator_id) rows)
-        orphan-cards      (orphaned-card-ids nids)
-        orphan-creators   (inactive-creator-ids nid+creator-pairs)
-        run-info          (latest-task-run-by-notification nids)]
+  (let [rows         (vec rows)
+        nids         (map :id rows)
+        nid->card    (nid->card-id nids)
+        card-ids     (set (vals nid->card))
+        archived?    (card->archived? card-ids)
+        orphan-users (inactive-creator-ids (map (juxt :id :creator_id) rows))
+        card->run    (latest-run-by-card card-ids)]
     (mapv
      (fn [row]
-       (let [nid     (:id row)
-             latest  (get-in run-info [nid :latest])
-             sent-at (get-in run-info [nid :last-sent])
-             health  (cond
-                       (contains? orphan-cards nid)      :orphaned_card
-                       (contains? orphan-creators nid)   :orphaned_creator
-                       (= :failed    (:status latest))   :failing
-                       (= :abandoned (:status latest))   :abandoned
-                       :else                              :healthy)]
+       (let [nid      (:id row)
+             cid      (get nid->card nid)
+             run      (get card->run cid)
+             health   (cond
+                        (or (nil? cid) (true? (get archived? cid))) :orphaned_card
+                        (contains? orphan-users nid)                :orphaned_creator
+                        (= :failed    (:status run))                :failing
+                        (= :abandoned (:status run))                :abandoned
+                        :else                                        :healthy)
+             sent-at  (when (= :success (:status run)) (:ended_at run))]
          (assoc row :health health :last_sent_at sent-at)))
      rows)))
