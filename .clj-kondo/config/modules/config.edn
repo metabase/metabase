@@ -2147,7 +2147,7 @@
            tracing
            util}
    :model-imports #{:model/Card :model/Dashboard :model/Database}
-   :model-exports #{:model/TaskHistory}}
+   :model-exports #{:model/TaskHistory :model/TaskRun}}
 
   tenants
   {:team "Admin Webapp"
@@ -3028,6 +3028,7 @@
                     :model/NotificationHandler
                     :model/NotificationRecipient
                     :model/TaskHistory
+                    :model/TaskRun
                     :model/User}}
 
   enterprise/permission-debug
