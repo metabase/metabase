@@ -214,7 +214,7 @@ function FeedbackCard({ feedback }: { feedback: ConversationFeedback }) {
             />
             <Text fw={700}>{sentimentLabel}</Text>
             {feedback.issue_type && (
-              <Badge variant="light">
+              <Badge variant="light" bg="background-error" c="error">
                 {getIssueTypeLabel(feedback.issue_type)}
               </Badge>
             )}

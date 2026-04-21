@@ -10,7 +10,6 @@ import type {
   SuggestedTransform,
   Transform,
   UnsavedCard,
-  Version,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -250,16 +249,10 @@ export type DeleteSuggestedMetabotPromptRequest = {
 
 export interface MetabotFeedback {
   metabot_id: MetabotId;
-  feedback: {
-    positive: boolean;
-    message_id: string;
-    issue_type?: string | undefined;
-    freeform_feedback: string;
-  };
-  conversation_data: any;
-  version: Version;
-  submission_time: string;
-  is_admin: boolean;
+  message_id: string;
+  positive: boolean;
+  issue_type?: string;
+  freeform_feedback?: string;
 }
 
 /* Metabot v3 - Entity Types */

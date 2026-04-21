@@ -123,3 +123,22 @@
   "Convert a seq of `MetabotMessage` model instances into a flat `MetabotChatMessage` vector."
   [messages]
   (into [] (mapcat message->chat-messages) messages))
+
+(defn conversation-detail
+  "Reconstruct a conversation-with-chat-messages snapshot from the DB. Shared by
+   the `GET /api/metabot/conversations/:id` endpoint and feedback submission
+   (which proxies to Harbormaster and needs the same conversation context).
+
+   Returns nil if the conversation does not exist."
+  [conversation-id]
+  (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
+    (let [messages (t2/select :model/MetabotMessage
+                              {:where    [:and
+                                          [:= :conversation_id conversation-id]
+                                          [:= :deleted_at nil]]
+                               :order-by [[:created_at :asc]]})]
+      {:conversation_id (:id conversation)
+       :created_at      (:created_at conversation)
+       :summary         (:summary conversation)
+       :user_id         (:user_id conversation)
+       :chat_messages   (messages->chat-messages messages)})))

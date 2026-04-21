@@ -337,7 +337,7 @@ export const Messages = ({
   const [submitMetabotFeedback] = useSubmitMetabotFeedbackMutation();
 
   const submitFeedback = async (metabotFeedback: MetabotFeedback) => {
-    const { message_id, positive } = metabotFeedback.feedback;
+    const { message_id, positive } = metabotFeedback;
 
     try {
       await submitMetabotFeedback(metabotFeedback).unwrap();

@@ -338,17 +338,31 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/feedback"
-  "Persist Metabot feedback locally. (Harbormaster proxying is disabled for now.)"
+  "Persist Metabot feedback locally. Harbormaster proxying is disabled."
   [_route-params
    _query-params
-   feedback :- :map]
+   body :- [:map
+            [:metabot_id        ms/PositiveInt]
+            [:message_id        ms/NonBlankString]
+            [:positive          :boolean]
+            [:issue_type        {:optional true} [:maybe :string]]
+            [:freeform_feedback {:optional true} [:maybe :string]]]]
   (metabot.config/check-metabot-enabled!)
-  (try
-    (metabot.feedback/persist-feedback! feedback)
-    (catch Exception e
-      ;; ex-message only — `log/error e` would dump the whole feedback payload (including the
-      ;; conversation snapshot with embedded chart SVGs) via the ex-info data.
-      (log/errorf "Failed to persist Metabot feedback locally: %s" (ex-message e))))
+  (let [_message (try
+                   (metabot.feedback/persist-feedback! body)
+                   (catch Exception e
+                     ;; ex-message only — a bare `log/error e` would dump conversation data via ex-info.
+                     (log/errorf "Failed to persist Metabot feedback locally: %s" (ex-message e))
+                     nil))]
+    (comment
+      (when _message
+        (try
+          (api/check-400 (metabot.feedback/submit-to-harbormaster!
+                          (metabot.feedback/harbormaster-payload body _message))
+                         "Cannot submit feedback. The license token and/or Store API URL are missing!")
+          (catch Exception e
+            (log/errorf "Failed to submit feedback to Harbormaster: %s" (ex-message e))
+            (throw e))))))
   api/generic-204-no-content)
 
 (def ^:private metabot-provider-schema

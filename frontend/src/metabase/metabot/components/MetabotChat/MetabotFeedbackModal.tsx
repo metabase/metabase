@@ -2,13 +2,11 @@ import { useFormikContext } from "formik";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
-import { useSetting } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
 import { useMetabotName } from "metabase/metabot/hooks";
-import { getMetabotId, getMetabotState } from "metabase/metabot/state";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getMetabotId } from "metabase/metabot/state";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
@@ -65,30 +63,18 @@ export const MetabotFeedbackModal = ({
   positive,
 }: MetabotFeedbackModalProps) => {
   const applicationName = useSelector(getApplicationName);
-  const isAdmin = useSelector(getUserIsAdmin);
-  const version = useSetting("version");
   const metabotName = useMetabotName();
-
   const metabotId = useSelector(getMetabotId);
-  const metabotState = useSelector(getMetabotState);
 
   const handleSubmit = (
-    values: Pick<
-      MetabotFeedback["feedback"],
-      "issue_type" | "freeform_feedback"
-    >,
+    values: Pick<MetabotFeedback, "issue_type" | "freeform_feedback">,
   ) =>
     onSubmit({
-      version,
       metabot_id: metabotId,
-      feedback: {
-        message_id: messageId,
-        positive,
-        ...values,
-      },
-      conversation_data: metabotState,
-      is_admin: isAdmin,
-      submission_time: new Date().toISOString(),
+      message_id: messageId,
+      positive,
+      issue_type: values.issue_type || undefined,
+      freeform_feedback: values.freeform_feedback,
     });
 
   return (
@@ -135,7 +121,7 @@ export const MetabotFeedbackModal = ({
               />
             </Stack>
 
-            <Text size="sm" color="text-secondary">
+            <Text size="sm" c="text-secondary">
               {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- this is a translation context string, not shown to users */}
               {c("{0} is the name of the application, usually 'Metabase'")
                 .t`Please submit this report to ${applicationName}. Note that it may contain sensitive data from your conversation.`}

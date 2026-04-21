@@ -127,4 +127,20 @@ describe("metabot > feedback", () => {
 
     expect(feedbackEndpoint.calls()).toHaveLength(1);
   });
+
+  it("should post the server-minted external_id as message_id", async () => {
+    const { feedbackEndpoint, modal } = await setupWithNegativeFeedback();
+
+    await typeFeedback(modal, "some details");
+    await submitFeedback(modal);
+
+    expect(feedbackEndpoint.calls()).toHaveLength(1);
+    const body = await feedbackEndpoint.calls()[0].request?.json();
+    expect(body).toEqual({
+      metabot_id: expect.any(Number),
+      message_id: "msg_test_favorite",
+      positive: false,
+      freeform_feedback: "some details",
+    });
+  });
 });

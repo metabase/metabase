@@ -10,11 +10,10 @@
     :or   {positive   true
            freeform   "looks good"
            issue-type nil}}]
-  {:metabot_id 1
-   :feedback   {:positive          positive
-                :message_id        message-id
-                :issue_type        issue-type
-                :freeform_feedback freeform}})
+  {:message_id        message-id
+   :positive          positive
+   :issue_type        issue-type
+   :freeform_feedback freeform})
 
 (defn- insert-message!
   [conversation-id external-id]
@@ -42,7 +41,8 @@
                                         :issue-type "not-factual"
                                         :freeform   "bad answer"}))
                     row      (t2/select-one :model/MetabotFeedback :message_id msg-id)]
-                (is (= msg-id returned))
+                (is (= msg-id (:id returned)))
+                (is (= conversation-id (:conversation_id returned)))
                 (is (= msg-id (:message_id row)))
                 (is (false? (:positive row)))
                 (is (= "not-factual" (:issue_type row)))
@@ -139,4 +139,4 @@
     (mt/with-temp [:model/User {user-id :id} {}]
       (mt/with-current-user user-id
         (is (nil? (metabot.feedback/persist-feedback!
-                   {:feedback {:message_id (str (random-uuid))}})))))))
+                   {:message_id (str (random-uuid))})))))))
