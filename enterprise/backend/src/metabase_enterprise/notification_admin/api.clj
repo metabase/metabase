@@ -101,10 +101,9 @@
    :where  [:= :sub.rn 1]})
 
 (def ^:private health-expr
-  "SQL `CASE` expression classifying a notification's health from the joined
-  `report_card`/`core_user`/latest-run columns. Shared between the `:__health` projection in
-  [[base-list-query]] and the [[health-where]] filter so classification has one source of truth.
-  Precedence (top-down): `orphaned_card > orphaned_creator > failing > abandoned > healthy`."
+  "SQL `CASE` classifying a notification's health from the joined report_card / core_user /
+  latest-run columns. Shared between the SELECT projection and the `:health` WHERE filter so
+  they can't drift."
   [:case
    [:or [:= :c.id nil] [:= :c.archived true]] "orphaned_card"
    [:= :cu.is_active false]                   "orphaned_creator"
@@ -113,14 +112,13 @@
    :else                                      "healthy"])
 
 (def ^:private last-sent-at-expr
-  "SQL expression for `:last_sent_at`: `ended_at` of the latest alert-run, but only when it
-  succeeded. Any non-success status (including in-flight `started`) resolves to NULL."
+  "`ended_at` of the latest alert-run, but only when it succeeded. A `:failed`/`:abandoned` run
+  also has `ended_at` populated — this `CASE` is what keeps those out of `last_sent_at`."
   [:case [:= :lr.status "success"] :lr.ended_at :else nil])
 
 (defn- base-list-query
-  "Select notifications plus the projected `:__health` / `:__last_sent_at` consumed by
-  [[enrich-row]]. The health-related joins run unconditionally because [[health-expr]] references
-  them on every row."
+  "Select notifications plus `:health` / `:last_sent_at` computed inline. The health joins run
+  unconditionally because [[health-expr]] references them on every row."
   [{:keys [status creator_id card_id recipient_email channel]}]
   (cond-> {:select-distinct [:notification.id
                              :notification.active
@@ -129,8 +127,8 @@
                              :notification.updated_at
                              :notification.payload_type
                              :notification.payload_id
-                             [health-expr       :__health]
-                             [last-sent-at-expr :__last_sent_at]]
+                             [health-expr       :health]
+                             [last-sent-at-expr :last_sent_at]]
            :from            [:notification]
            :where           [:= :notification.payload_type "notification/card"]}
 
@@ -183,14 +181,10 @@
       (assoc :select [[[:count [:distinct :notification.id]] :count]])
       (dissoc :select-distinct :order-by)))
 
-(defn- enrich-row
-  "Promote SQL-projected `:__health` / `:__last_sent_at` to the response keys `:health` /
-  `:last_sent_at`, and strip the internal columns."
+(defn- coerce-health
+  "`:health` comes from SQL as a string; coerce to the keyword the response schema expects."
   [row]
-  (-> row
-      (assoc :health       (keyword (:__health row))
-             :last_sent_at (:__last_sent_at row))
-      (dissoc :__health :__last_sent_at)))
+  (update row :health keyword))
 
 (defn- list-notifications
   "Single SQL query. Health joins (card, creator, latest-run window) are always applied so we can
@@ -202,7 +196,7 @@
                                        :limit  limit
                                        :offset offset))
         total        (or (:count (t2/query-one (count-query base-filters))) 0)]
-    {:data   (vec (models.notification/hydrate-notification (mapv enrich-row page-rows)))
+    {:data   (vec (models.notification/hydrate-notification (mapv coerce-health page-rows)))
      :total  total
      :limit  limit
      :offset offset}))
@@ -241,7 +235,7 @@
                                 (-> (list-query {})
                                     (sql.helpers/where [:= :notification.id id])
                                     (dissoc :order-by)))]
-    (models.notification/hydrate-notification (enrich-row row))))
+    (models.notification/hydrate-notification (coerce-health row))))
 
 (api.macros/defendpoint :get "/:id" :- ::detail-response
   "Get a single card-type notification with health and last_sent_at. 404 if the notification
