@@ -691,7 +691,7 @@ function assertDbRoutingDisabled() {
 function setupModelPersistence() {
   interceptPerformanceRoutes();
   cy.visit("/admin/performance/models");
-  cy.findByTestId("admin-layout-content").findByText("Disabled").click();
+  cy.findByTestId("admin-layout-content").findByLabelText("Disabled").click();
   cy.wait("@enablePersistence");
 }
 
@@ -717,7 +717,7 @@ function enableModelActionsViaApi(databaseId: DatabaseId) {
 
 function enableGlobalModelPersistence() {
   cy.visit("/admin/performance/models");
-  cy.findByText("Disabled").click();
+  cy.findByLabelText("Disabled").click();
 }
 
 function workspacesSection() {

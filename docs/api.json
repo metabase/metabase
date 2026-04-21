@@ -13956,95 +13956,83 @@
           "required" : [ "enabled" ]
         }
       },
+      "metabase.warehouses-rest.api.database-info" : {
+        "type" : "object",
+        "properties" : {
+          "engine" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "engine" ]
+      },
       "metabase.warehouses-rest.api.databases-metadata-response" : {
         "type" : "object",
         "properties" : {
           "databases" : {
             "type" : "array",
             "items" : {
-              "type" : "object",
-              "properties" : {
-                "engine" : {
-                  "type" : "string"
-                },
-                "id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                },
-                "name" : {
-                  "type" : "string"
-                }
-              },
-              "required" : [ "id", "name", "engine" ]
+              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.database-info"
             }
           },
           "fields" : {
             "type" : "array",
             "items" : {
-              "type" : "object",
-              "properties" : {
-                "base_type" : {
-                  "type" : "string"
-                },
-                "id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-                },
-                "coercion_strategy" : {
-                  "type" : "string"
-                },
-                "name" : {
-                  "type" : "string"
-                },
-                "semantic_type" : {
-                  "type" : "string"
-                },
-                "table_id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-                },
-                "effective_type" : {
-                  "type" : "string"
-                },
-                "parent_id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-                },
-                "database_type" : {
-                  "type" : "string"
-                },
-                "description" : {
-                  "type" : "string"
-                },
-                "fk_target_field_id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-                }
-              },
-              "required" : [ "id", "table_id", "name", "base_type" ]
+              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.field-info"
             }
           },
           "tables" : {
             "type" : "array",
             "items" : {
-              "type" : "object",
-              "properties" : {
-                "db_id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                },
-                "description" : {
-                  "type" : "string"
-                },
-                "id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-                },
-                "name" : {
-                  "type" : "string"
-                },
-                "schema" : {
-                  "type" : "string"
-                }
-              },
-              "required" : [ "id", "db_id", "name" ]
+              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.table-info"
             }
           }
         },
         "required" : [ "databases", "tables", "fields" ]
+      },
+      "metabase.warehouses-rest.api.field-info" : {
+        "type" : "object",
+        "properties" : {
+          "base_type" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "coercion_strategy" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "semantic_type" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          },
+          "effective_type" : {
+            "type" : "string"
+          },
+          "parent_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "database_type" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "fk_target_field_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          }
+        },
+        "required" : [ "id", "table_id", "name", "base_type" ]
       },
       "metabase.warehouses-rest.api.metadata-import-report" : {
         "type" : "object",
@@ -14105,6 +14093,27 @@
           }
         },
         "required" : [ "databases", "tables", "fields" ]
+      },
+      "metabase.warehouses-rest.api.table-info" : {
+        "type" : "object",
+        "properties" : {
+          "db_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "db_id", "name" ]
       },
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON"
@@ -21192,7 +21201,7 @@
       "get" : {
         "operationId" : "get-api-database-metadata",
         "summary" : "GET /api/database/metadata",
-        "description" : "Get metadata (databases, tables, and fields) for all databases visible to the current user.\n  Returns a flat structure with three arrays: databases, tables, and fields.\n  Response is streamed for efficiency with large schemas.",
+        "description" : "Get metadata (databases, tables, and fields) for all databases visible to the current user.\n  Returns a flat structure with three arrays: databases, tables, and fields.\n  Response is streamed for efficiency with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -24474,6 +24483,46 @@
                 }
               }
             }
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-cloud-add-ons-product-type",
+        "summary" : "DELETE /api/ee/cloud-add-ons/{product-type}",
+        "description" : "Remove an add-on.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "product-type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : { },
+                    "status" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
           }
         },
         "tags" : [ "/api/ee/cloud-add-ons" ]

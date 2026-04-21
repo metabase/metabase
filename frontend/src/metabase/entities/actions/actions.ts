@@ -206,7 +206,7 @@ export const Actions = createEntity({
         undo({}, t`action`, archived ? t`archived` : t`unarchived`),
       ),
   },
-  reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
+  reducer: (state, { type, payload }: { type: string; payload: any }) => {
     switch (type) {
       case CREATE_PUBLIC_LINK: {
         const { id, uuid } = payload;

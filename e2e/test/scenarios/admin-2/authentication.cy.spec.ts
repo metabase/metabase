@@ -115,14 +115,14 @@ describe("scenarios > admin > settings > user provisioning", () => {
 
       cy.log("should be able to disable scim and info stay");
       scimToggle().click();
-      scimToggle().findByText("Disabled");
+      scimSetting().findByLabelText("Disabled").should("exist");
       scimEndpointInput().should("be.visible");
       scimTokenInput().should("be.visible");
       cy.findByRole("button", { name: /Regenerate/ }).should("be.disabled");
 
       cy.log("should be able to re-enable");
       scimToggle().click();
-      scimToggle().findByText("Enabled");
+      scimSetting().findByLabelText("Enabled").should("exist");
     });
 
     it("should warn users that saml user provisioning will be disabled before enabling scim", () => {
@@ -137,9 +137,9 @@ describe("scenarios > admin > settings > user provisioning", () => {
         cy.findByText(samlWarningMessage).should("exist");
 
         cy.log("message should not exist once scim has been enabled");
-        scimToggle().findByText("Disabled");
+        scimSetting().findByText("Disabled");
         scimToggle().click();
-        scimToggle().findByText("Enabled");
+        scimSetting().findByText("Enabled");
       });
 
       H.modal().within(() => {
@@ -199,7 +199,10 @@ describe("scenarios > admin > settings > user provisioning", () => {
 });
 
 function scimToggle() {
-  return cy.findByTestId("scim-enabled-setting").findByText(/Enabled|Disabled/);
+  return scimSetting().findByLabelText(/Enabled|Disabled/);
+}
+function scimSetting() {
+  return cy.findByTestId("scim-enabled-setting");
 }
 
 function scimEndpointInput() {
