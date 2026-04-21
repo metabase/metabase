@@ -12,23 +12,23 @@ const ruleTester = new RuleTester({
 
 const VALID_CASES = [
   {
-    code: `import { trackSchemaEvent } from "metabase/utils/analytics";`,
+    code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/analytics.ts",
   },
   {
-    code: `import { trackSchemaEvent } from "metabase/utils/analytics";`,
+    code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/analytics.tsx",
   },
   {
-    code: `import { trackSchemaEvent } from "metabase/utils/analytics";`,
+    code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/analytics.js",
   },
   {
-    code: `import { trackSchemaEvent } from "metabase/utils/analytics";`,
+    code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/analytics.jsx",
   },
   {
-    code: `import { trackSchemaEvent } from "metabase/utils/analytics";`,
+    code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "frontend/src/metabase/dashboard/analytics.ts",
   },
   {
@@ -46,43 +46,43 @@ const errorMessage = /are only allowed in files named "analytics"/;
 const INVALID_CASES = [
   {
     name: "Detect import in non-analytics .tsx file",
-    code: `import { trackSchemaEvent } from "metabase/utils/analytics";`,
+    code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/Component.tsx",
     error: errorMessage,
   },
   {
     name: "Detect import in non-analytics .ts file",
-    code: `import { trackSchemaEvent } from "metabase/utils/analytics";`,
+    code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/utils.ts",
     error: errorMessage,
   },
   {
     name: "Detect type import in non-analytics .ts file",
-    code: `import type { SchemaType } from "metabase/utils/analytics";`,
+    code: `import type { SchemaType } from "metabase/analytics";`,
     filename: "/path/to/utils.ts",
     error: errorMessage,
   },
   {
     name: "Detect import in non-analytics .js file",
-    code: `import { trackSchemaEvent } from "metabase/utils/analytics";`,
+    code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/helper.js",
     error: errorMessage,
   },
   {
     name: "Detect import in non-analytics .jsx file",
-    code: `import { trackSchemaEvent } from "metabase/utils/analytics";`,
+    code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/Component.jsx",
     error: errorMessage,
   },
   {
     name: "Detect multiple imports from analytics",
-    code: `import { trackSchemaEvent, trackSimpleEvent } from "metabase/utils/analytics";`,
+    code: `import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";`,
     filename: "/path/to/DashCard.tsx",
     error: errorMessage,
   },
   {
     name: "Detect default import from analytics",
-    code: `import analytics from "metabase/utils/analytics";`,
+    code: `import analytics from "metabase/analytics";`,
     filename: "/path/to/Component.tsx",
     error: errorMessage,
   },
