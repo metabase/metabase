@@ -165,6 +165,9 @@ export function mergeSharedCollections(
           ]
         : null,
 
+      // The shared namespace tree also uses ROOT_COLLECTION.id as its root,
+      // so top-level tenant collections appear as children of "root" in
+      // sharedCollectionsById. Re-parent them to sharedSyntheticRoot instead.
       parent:
         collection.parent?.id === ROOT_COLLECTION.id
           ? sharedSyntheticRoot
