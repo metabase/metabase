@@ -25,7 +25,8 @@
   active-embedding-model
   search-index-embedder]
  [metabase-enterprise.semantic-search.embedding
-  get-embeddings-batch])
+  get-embeddings-batch
+  process-embeddings-streaming])
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."

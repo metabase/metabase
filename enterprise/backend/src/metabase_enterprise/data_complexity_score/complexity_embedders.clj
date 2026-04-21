@@ -41,8 +41,11 @@
 (defn provider-embedder
   "Route the synonym axis through the semantic-search embedding dispatcher for a specific
   `{:provider :model-name :vector-dimensions}` config, independent of the active search-index
-  model. `embedding-model` is passed straight to
-  [[metabase-enterprise.semantic-search.embedding/get-embeddings-batch]].
+  model. Goes via
+  [[metabase-enterprise.semantic-search.embedding/process-embeddings-streaming]] so provider-level
+  batching constraints (e.g. `openai-max-tokens-per-batch`) are honoured — calling
+  `get-embeddings-batch` directly would send every distinct entity name in one request and blow
+  past upstream limits on larger catalogs.
   Returns `nil` when the config is incomplete (missing provider or model-name). Any thrown error
   from the underlying dispatcher is caught and converted into a nil vector collection so the
   fn-embedder shape drops every name and the synonym axis degrades gracefully per the embedder
@@ -52,7 +55,12 @@
     (fn-embedder
      (fn [names]
        (try
-         (semantic-search/get-embeddings-batch embedding-model names)
+         (let [text->vec (semantic-search/process-embeddings-streaming
+                          embedding-model names identity)]
+           ;; Preserve input order so the zipmap in fn-embedder lines names up with their vectors.
+           ;; Names dropped by create-batches (oversized texts) map to nil here and fn-embedder
+           ;; filters them out — matching the "no vector → no synonym signal" contract.
+           (map text->vec names))
          (catch Throwable t
-           (log/warn t "provider-embedder: get-embeddings-batch failed; disabling synonym axis")
+           (log/warn t "provider-embedder: embedding streaming failed; disabling synonym axis")
            nil))))))
