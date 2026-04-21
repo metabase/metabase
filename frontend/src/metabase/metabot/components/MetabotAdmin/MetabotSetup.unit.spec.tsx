@@ -10,6 +10,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { defer } from "metabase/lib/promise";
 import { reinitialize } from "metabase/plugins";
 import type {
   MetabotProvider,
@@ -120,9 +121,11 @@ type SetupOptions = {
   tokenStatusFeatures?: TokenStatusFeature[];
   refreshedTokenStatusFeatures?: TokenStatusFeature[];
   purchaseCloudAddOnResponse?: number | { status: number; body: unknown };
+  deferPurchaseCloudAddOnResponse?: boolean;
   removeCloudAddOnResponse?: number | { status: number; body: unknown };
   apiKeyValues?: Partial<Record<MetabotProvider, string | null>>;
   pauseUpdateResponse?: boolean;
+  deferMetabotSettingsUpdateResponse?: boolean;
   settingUpdateResponse?: number | { status: number; body?: unknown };
   responses?: Partial<Record<MetabotProvider, MetabotSettingsApiResponse>>;
   updateResponse?: MetabotSettingsResponse;
@@ -146,9 +149,11 @@ async function setup({
   tokenStatusFeatures = [],
   refreshedTokenStatusFeatures = tokenStatusFeatures,
   purchaseCloudAddOnResponse = 200,
+  deferPurchaseCloudAddOnResponse = false,
   removeCloudAddOnResponse = 200,
   apiKeyValues,
   pauseUpdateResponse = false,
+  deferMetabotSettingsUpdateResponse = false,
   settingUpdateResponse = 204,
   responses,
   updateResponse = {
@@ -159,6 +164,9 @@ async function setup({
 }: SetupOptions = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
+
+  const purchaseCloudAddOnDeferred = defer<void>();
+  const updateMetabotSettingsDeferred = defer<void>();
 
   const mergedApiKeyValues: Record<MetabotApiKeyProvider, string | null> = {
     anthropic: "**********45",
@@ -238,7 +246,12 @@ async function setup({
       billingPeriodMonths: metabaseBillingPeriodMonths,
       metabasePricePerUnit,
       metabotUsageQuota: metabotUsageQuotas?.[0] ?? null,
-      purchaseCloudAddOnResponse,
+      purchaseCloudAddOnResponse: deferPurchaseCloudAddOnResponse
+        ? async () => {
+            await purchaseCloudAddOnDeferred.promise;
+            return purchaseCloudAddOnResponse;
+          }
+        : purchaseCloudAddOnResponse,
       removeCloudAddOnResponse,
     });
 
@@ -270,6 +283,12 @@ async function setup({
   fetchMock.put("path:/api/metabot/settings", (call) => {
     if (pauseUpdateResponse) {
       return new Promise(() => undefined);
+    }
+
+    if (deferMetabotSettingsUpdateResponse) {
+      return updateMetabotSettingsDeferred.promise.then(() =>
+        handleMetabotSettingsUpdate(call),
+      );
     }
 
     return handleMetabotSettingsUpdate(call);
@@ -378,6 +397,10 @@ async function setup({
 
   return {
     ...view,
+    resolvePurchaseCloudAddOnResponse: () =>
+      purchaseCloudAddOnDeferred.resolve(),
+    resolveMetabotSettingsUpdateResponse: () =>
+      updateMetabotSettingsDeferred.resolve(),
   };
 }
 
@@ -757,25 +780,33 @@ describe("MetabotSetup", () => {
     );
   });
 
-  it("polls until the Metabase provider feature is enabled, then saves the default Metabase model", async () => {
+  it("waits for the purchase and settings save before showing Metabase AI as ready", async () => {
+    let resolvePurchaseCloudAddOnResponse = () => {};
+    let resolveMetabotSettingsUpdateResponse = () => {};
+
     try {
       jest.useFakeTimers({ advanceTimers: true });
       const user = userEvent.setup({
         advanceTimers: jest.advanceTimersByTime,
       });
 
-      await setup({
+      ({
+        resolvePurchaseCloudAddOnResponse,
+        resolveMetabotSettingsUpdateResponse,
+      } = await setup({
         isHosted: true,
         savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
         isConfigured: false,
         isStoreUser: true,
         tokenStatusFeatures: [],
         refreshedTokenStatusFeatures: ["metabase-ai-managed"],
+        deferPurchaseCloudAddOnResponse: true,
+        deferMetabotSettingsUpdateResponse: true,
         updateResponse: {
           value: "metabase/anthropic/claude-sonnet-4-6",
           models: DEFAULT_RESPONSES.metabase.models,
         },
-      });
+      }));
 
       await selectProvider("Metabase");
       const termsCheckbox = await screen.findByRole("checkbox", {
@@ -798,6 +829,10 @@ describe("MetabotSetup", () => {
       expect(
         await screen.findByText("Setting up Metabot AI, please wait"),
       ).toBeInTheDocument();
+      expect(screen.queryByText("Metabot AI is ready")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Current billing cycle"),
+      ).not.toBeInTheDocument();
 
       await waitFor(() => {
         expect(
@@ -818,10 +853,17 @@ describe("MetabotSetup", () => {
         JSON.stringify({ terms_of_service: true }),
       );
 
-      await Promise.resolve();
+      expect(
+        fetchMock.callHistory
+          .calls("path:/api/metabot/settings")
+          .some(
+            (call) =>
+              call.request?.method === "PUT" || call.options?.method === "PUT",
+          ),
+      ).toBe(false);
 
       act(() => {
-        jest.advanceTimersByTime(11 * 1000);
+        jest.advanceTimersByTime(1000);
       });
 
       await waitFor(() => {
@@ -830,6 +872,24 @@ describe("MetabotSetup", () => {
             "path:/api/premium-features/token/refresh",
           ),
         ).toBe(true);
+      });
+
+      expect(
+        screen.getByText("Setting up Metabot AI, please wait"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Metabot AI is ready")).not.toBeInTheDocument();
+      expect(
+        fetchMock.callHistory
+          .calls("path:/api/metabot/settings")
+          .some(
+            (call) =>
+              call.request?.method === "PUT" || call.options?.method === "PUT",
+          ),
+      ).toBe(false);
+
+      await act(async () => {
+        resolvePurchaseCloudAddOnResponse();
+        await Promise.resolve();
       });
 
       await waitFor(() => {
@@ -845,8 +905,23 @@ describe("MetabotSetup", () => {
       });
 
       expect(
-        await screen.findByText("Metabot AI is ready"),
+        screen.getByText("Setting up Metabot AI, please wait"),
       ).toBeInTheDocument();
+      expect(screen.queryByText("Metabot AI is ready")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Current billing cycle"),
+      ).not.toBeInTheDocument();
+
+      await act(async () => {
+        resolveMetabotSettingsUpdateResponse();
+        await Promise.resolve();
+      });
+
+      expect(
+        await screen.findByRole("button", { name: "Done" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Metabot AI is ready")).toBeInTheDocument();
+      expect(screen.getByText("Current billing cycle")).toBeInTheDocument();
       expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: "Connect" }),
@@ -865,7 +940,25 @@ describe("MetabotSetup", () => {
       expect(settingsRequest?.options?.body).toBe(
         JSON.stringify({ provider: "metabase", model: "" }),
       );
+
+      const callHistory = fetchMock.callHistory.calls();
+      const [purchaseRequest] = fetchMock.callHistory.calls(
+        "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+        {
+          method: "POST",
+        },
+      );
+
+      if (!settingsRequest || !purchaseRequest) {
+        throw new Error("Expected purchase and settings requests to exist");
+      }
+
+      expect(callHistory.indexOf(purchaseRequest)).toBeLessThan(
+        callHistory.indexOf(settingsRequest),
+      );
     } finally {
+      resolvePurchaseCloudAddOnResponse();
+      resolveMetabotSettingsUpdateResponse();
       jest.useRealTimers();
     }
   });

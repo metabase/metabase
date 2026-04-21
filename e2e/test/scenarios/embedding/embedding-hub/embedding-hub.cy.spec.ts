@@ -254,7 +254,7 @@ describe("scenarios - embedding hub", () => {
     it("should link to user strategy when tenants are disabled", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.visit("/admin/embedding/setup-guide");
 
@@ -269,7 +269,7 @@ describe("scenarios - embedding hub", () => {
     it("should link to tenants page when tenants are enabled", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       H.updateSetting("use-tenants", true);
       cy.visit("/admin/embedding/setup-guide");
@@ -300,7 +300,7 @@ describe("scenarios - embedding hub", () => {
     it("permissions setup page should mark steps as completed", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
@@ -360,7 +360,7 @@ describe("scenarios - embedding hub", () => {
     it('"Enable tenants and create shared collection" button should enable tenants and create a shared collection', () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.log("create an x-ray dashboard via the embedding setup guide");
       cy.visit("/admin/embedding/setup-guide");
@@ -480,7 +480,7 @@ describe("scenarios - embedding hub", () => {
     it("enable-tenants step should not be marked as completed when tenants are enabled but no shared collection exists", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.log("enable tenants via setting without creating a shared collection");
       H.updateSetting("use-tenants", true);
@@ -507,7 +507,7 @@ describe("scenarios - embedding hub", () => {
     it('"Enable tenants and create shared collection" button should be disabled when already set up', () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.log("enable tenants and create a shared collection");
       H.updateSetting("use-tenants", true);
@@ -535,7 +535,7 @@ describe("scenarios - embedding hub", () => {
     it("selecting database routing strategy should show documentation link in step 3", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
@@ -575,7 +575,7 @@ describe("scenarios - embedding hub", () => {
       beforeEach(() => {
         H.restore("setup");
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
 
         cy.log("enable tenants and create shared collection");
         H.updateSetting("use-tenants", true);
@@ -784,7 +784,7 @@ describe("scenarios - embedding hub", () => {
       it("shows autocomplete suggestions for organization_id based on selected field values", () => {
         H.restore("setup");
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
 
         cy.visit("/admin/embedding/setup-guide/permissions");
 
@@ -847,7 +847,7 @@ describe("scenarios - embedding hub", () => {
     it("shows RLS data permissions description in summary", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
@@ -930,7 +930,7 @@ describe("scenarios - embedding hub", () => {
     it("should create sandboxes for multiple tables via row-level security setup", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.intercept("PUT", "/api/permissions/graph").as(
         "updatePermissionsGraph",
@@ -1091,7 +1091,7 @@ describe("scenarios - embedding hub", () => {
     it("should update existing sandboxes when changing column selection", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.intercept("PUT", "/api/permissions/graph").as(
         "updatePermissionsGraph",
@@ -1211,7 +1211,7 @@ describe("scenarios - embedding hub", () => {
       () => {
         H.restore("postgres-writable");
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
 
         cy.log(
           'reset "multi_schema" fixture: creates Domestic and Wild schemas, each with tables',
@@ -1354,7 +1354,7 @@ describe("scenarios - embedding hub", () => {
     beforeEach(() => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       H.updateSetting("use-tenants", true);
 
@@ -1664,7 +1664,7 @@ describe("scenarios - embedding hub", () => {
     beforeEach(() => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       H.updateSetting("use-tenants", true);
 

@@ -10,6 +10,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.metabot.tools.deftool :as deftool]
    [metabase.metabot.tools.entity-details :as entity-details]
@@ -35,13 +36,18 @@
   30)
 
 (def ^:private ^:const default-query-row-limit
-  "Default row limit for table queries when no limit is specified."
+  "Default row cap when :limit is omitted from a table query request."
   200)
 
-(def ^:private ^:const max-query-row-limit
-  "Hard cap on rows returned by the combined query endpoint, keeping result sets lean for LLM context windows.
-   Agents can paginate via continuation tokens for more."
+(def ^:private ^:const page-size
+  "Rows returned per page when paginating the combined query endpoint via continuation tokens.
+   Also used as the query processor's per-call row constraint."
   200)
+
+(def ^:private ^:const max-total-row-limit
+  "Ceiling on the user-requested :limit for the combined query endpoint. Agents can paginate
+   through up to this many rows across pages."
+  2000)
 
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
 
@@ -282,6 +288,25 @@
      :field-id    field-id
      :limit       (or (request/limit) default-field-values-limit)})))
 
+(defn- coerce-query-list
+  "Defensive coercion for `/v1/search`'s query arguments. Some MCP clients (notably
+   Codex) serialize array args through a string layer, so a caller that intended to
+   send `[\"orders\"]` may actually send `\"[\\\"orders\\\"]\"`. Accept either shape:
+   an array is returned as-is; a string that parses as a JSON array of non-blank
+   strings is unwrapped; any other string is treated as a single-element query."
+  [v]
+  (cond
+    (nil? v)        nil
+    (sequential? v) v
+    (string? v)     (or (try
+                          (let [parsed (json/decode+kw v)]
+                            (when (and (sequential? parsed)
+                                       (every? #(and (string? %) (not (str/blank? %))) parsed))
+                              parsed))
+                          (catch Exception _ nil))
+                        [v])
+    :else           v))
+
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
   "Search for tables and metrics.
 
@@ -289,18 +314,24 @@
   Reciprocal Rank Fusion when both query types are provided."
   {:scope "agent:search"
    :tool  {:name "search"
-           :description "Search for tables and metrics in Metabase. Use term_queries for keyword search or semantic_queries for natural language search."
+           :description (str "Search for tables and metrics in Metabase. "
+                             "Use term_queries for keyword search or semantic_queries for natural language search. "
+                             "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
   [_route-params
    _query-params
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
    :- [:map
-       [:term_queries     {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-       [:semantic_queries {:optional true} [:maybe [:sequential ms/NonBlankString]]]]]
+       [:term_queries {:optional true
+                       :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
+        [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
+       [:semantic_queries {:optional true
+                           :tool/description "Natural-language search queries as an array of strings, for example [\"how much revenue did we make\"]."}
+        [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]]]
   (let [results (metabot-search/search
-                 {:term-queries     (or term-queries [])
-                  :semantic-queries (or semantic-queries [])
+                 {:term-queries     (or (coerce-query-list term-queries) [])
+                  :semantic-queries (or (coerce-query-list semantic-queries) [])
                   :entity-types     ["table" "metric"]
                   :limit            (or (request/limit) 50)})]
     {:data        results
@@ -563,12 +594,12 @@
   [body]
   (let [body  (cond-> body (not (:limit body)) (assoc :limit default-query-row-limit))
         query (construct-query* body)]
-    {:query (-> query json/encode u/encode-base64)}))
+    {:query (-> query lib/prepare-for-serialization json/encode u/encode-base64)}))
 
 (defn- construct-metric-query
   "Build a query from a metric using filters and group_by."
   [body]
-  {:query (-> (construct-query* body) json/encode u/encode-base64)})
+  {:query (-> (construct-query* body) lib/prepare-for-serialization json/encode u/encode-base64)})
 
 (api.macros/defendpoint :post "/v1/construct-query" :- ::construct-query-response
   "Construct an MBQL query from a table or metric.
@@ -597,28 +628,70 @@
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
 (defn- generate-continuation-token
-  "Build a base64-encoded continuation token containing the query and next-page pagination info."
-  [query-map limit page]
+  "Build a base64-encoded continuation token carrying the query and next-page pagination info.
+   :limit is the user's total row cap across all pages, not the per-page size."
+  [query-map total-limit page]
   (-> {:query      query-map
-       :pagination {:limit limit :page (inc page)}}
+       :pagination {:limit total-limit :page (inc page)}}
       json/encode
       u/encode-base64))
 
 (defn- decode-continuation-token
-  "Decode a base64-encoded continuation token into {:query ... :pagination ...}."
+  "Decode a base64-encoded continuation token into {:query ... :pagination ...}.
+   The token is client-supplied, so sanity-check the pagination ints to turn
+   garbage into a 400 rather than a downstream 500. This is robustness, not a
+   security boundary — a caller can always issue a fresh program to run any
+   query they want."
   [token]
-  (-> token u/decode-base64 json/decode+kw))
+  (let [decoded (-> token u/decode-base64 json/decode+kw)
+        {:keys [limit page]} (:pagination decoded)]
+    (api/check (and (int? limit) (pos? limit))
+               [400 "Invalid continuation token: limit must be a positive integer"])
+    (api/check (and (int? page) (pos? page))
+               [400 "Invalid continuation token: page must be a positive integer"])
+    decoded))
+
+(defn- total-row-limit
+  "The user's requested :limit, defaulted when absent and capped at the combined
+   endpoint's hard maximum. This is the app-level total-row budget enforced across
+   paginated responses; each page's QP-level cap comes from `:page.items`, which
+   `remaining-page-rows` clamps to respect this total."
+  [body]
+  (min (or (:limit body) default-query-row-limit)
+       max-total-row-limit))
+
+(defn- rows-before-page
+  "Total rows consumed by the pages preceding `page`. Single source of truth for
+   the page-size * (page - 1) arithmetic used by both sizing and pagination-exit."
+  [page]
+  (* (dec page) page-size))
+
+(defn- remaining-page-rows
+  "Rows to request for this page, respecting the user's total cap.
+   Returns at most page-size, and never more than remaining rows under the cap."
+  [total-limit page]
+  (max 0 (min page-size (- total-limit (rows-before-page page)))))
+
+(defn- more-pages-available?
+  "True when this page was filled to its requested size *and* the total cap still
+   has room for more rows — i.e. we should emit a continuation token."
+  [page total-limit rows-returned items]
+  (and (= rows-returned items)
+       (< (rows-before-page (inc page)) total-limit)))
 
 (defn- build-query-for-execution
-  "Construct a pMBQL query map from table_id or metric_id params. Returns {:query <map> :limit <int>}.
-   The JSON round-trip strips lib metadata so the query is a plain pMBQL map suitable for token serialization."
+  "Construct a pMBQL query map from table_id or metric_id params. Returns {:query <map> :total-limit <int>}.
+   The query is stripped of lib metadata so it can be serialized into a continuation token."
   [body]
-  (let [limit (min (or (:limit body) default-query-row-limit) max-query-row-limit)
-        query (construct-query* (assoc body :limit limit))]
-    {:query (json/decode+kw (json/encode query)) :limit limit}))
+  (let [total-limit (total-row-limit body)
+        query       (construct-query* (assoc body :limit total-limit))]
+    {:query (lib/prepare-for-serialization query) :total-limit total-limit}))
 
 (defn- apply-page-to-query
-  "Apply :page clause to the last stage of a pMBQL query map."
+  "Set `:page` on the last stage of a serialized pMBQL query map. Operates on the
+  plain-map form because the continuation-token path only has that shape available —
+  rehydrating to a live lib query here would require a metadata provider we don't
+  currently plumb through the token."
   [query-map page items]
   (let [stages   (:stages query-map)
         last-idx (dec (count stages))]
@@ -634,11 +707,23 @@
                            :context     :agent})))
 
 (defn- prepare-combined-query
-  "Apply the tighter row cap used by the combined query endpoint."
+  "Apply the tighter row cap used by the combined query endpoint. Each page is bounded
+   by page-size; the user's total-limit is enforced separately via pagination."
   [query]
   (assoc (prepare-agent-query query)
-         :constraints {:max-results           max-query-row-limit
-                       :max-results-bare-rows max-query-row-limit}))
+         :constraints {:max-results           page-size
+                       :max-results-bare-rows page-size}))
+
+(defn- initial-page-state
+  "Normalize the two /v1/query entry points into a single {:query :total-limit :page}
+   shape. A fresh request constructs the query and computes a total-row budget from
+   its `:limit`; a continuation token carries that state from a prior response."
+  [body]
+  (if-let [token (:continuation_token body)]
+    (let [{:keys [query pagination]} (decode-continuation-token token)]
+      {:query query :total-limit (:limit pagination) :page (:page pagination)})
+    (let [{:keys [query total-limit]} (build-query-for-execution body)]
+      {:query query :total-limit total-limit :page 1})))
 
 (api.macros/defendpoint :post "/v1/query"
   :- (streaming-response/streaming-response-schema ::query-response)
@@ -661,13 +746,9 @@
   [_route-params
    _query-params
    body :- ::query-request]
-  (let [{:keys [query limit page]}
-        (if-let [token (:continuation_token body)]
-          (let [{:keys [query pagination]} (decode-continuation-token token)]
-            {:query query :limit (:limit pagination) :page (:page pagination)})
-          (let [{:keys [query limit]} (build-query-for-execution body)]
-            {:query query :limit limit :page 1}))
-        pmbql-with-page (apply-page-to-query query page limit)]
+  (let [{:keys [query total-limit page]} (initial-page-state body)
+        items           (remaining-page-rows total-limit page)
+        pmbql-with-page (apply-page-to-query query page items)]
     (qp.streaming/streaming-response
      [rff :api]
       (qp/process-query
@@ -676,8 +757,8 @@
         rff
         (fn [result]
           (assoc result :continuation_token
-                 (when (= (:row_count result) limit)
-                   (generate-continuation-token query limit page)))))))))
+                 (when (more-pages-available? page total-limit (:row_count result) items)
+                   (generate-continuation-token query total-limit page)))))))))
 
 ;;; ------------------------------------------------- Execute Query --------------------------------------------------
 
