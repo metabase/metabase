@@ -8,23 +8,13 @@ import {
   useDeleteEmbeddingThemeMutation,
   useListEmbeddingThemesQuery,
 } from "metabase/api/embedding-theme";
-import { EmptyState } from "metabase/common/components/EmptyState";
-import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
 import { useHasTokenFeature, useToast } from "metabase/common/hooks";
-import {
-  Button,
-  Flex,
-  Icon,
-  Loader,
-  SimpleGrid,
-  Stack,
-  Text,
-  Title,
-} from "metabase/ui";
+import { Loader, SimpleGrid, Stack, Text, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 
 import { DeleteThemeModal } from "./DeleteThemeModal";
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
+import { NewThemeCard } from "./NewThemeCard";
 
 export function EmbeddingThemeListingApp() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
@@ -85,45 +75,24 @@ function EmbeddingThemeListingAppInner() {
   return (
     <Stack mx="auto" gap="xl" maw={1200}>
       <Stack gap="xs">
-        <Flex justify="space-between" align="center">
-          <Title order={1}>{t`Themes`}</Title>
-
-          <Button
-            variant="filled"
-            onClick={handleCreateTheme}
-            leftSection={<Icon name="add" size={12} />}
-          >{t`New theme`}</Button>
-        </Flex>
-
+        <Title order={1}>{t`Themes`}</Title>
         <Text c="text-secondary">
           {t`Configure themes for Embedded Analytics JS and SDK for React`}
         </Text>
       </Stack>
 
-      {/* Theme cards */}
-      {themes && themes.length > 0 ? (
-        <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-          {themes.map((theme) => (
-            <EmbeddingThemeCard
-              key={theme.id}
-              theme={theme}
-              onEdit={() =>
-                dispatch(push(`/admin/embedding/themes/${theme.id}`))
-              }
-              onDuplicate={() => handleDuplicateTheme(theme.id)}
-              onDelete={() => setThemeToDelete(theme.id)}
-            />
-          ))}
-        </SimpleGrid>
-      ) : (
-        <Stack align="center" justify="center" h={200}>
-          {/** This would only show up when an admin intentionally deletes the default themes. */}
-          <EmptyState
-            message={t`Create your first theme to get started`}
-            illustrationElement={<NoObjectError mb="-3rem" />}
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
+        {themes?.map((theme) => (
+          <EmbeddingThemeCard
+            key={theme.id}
+            theme={theme}
+            onEdit={() => dispatch(push(`/admin/embedding/themes/${theme.id}`))}
+            onDuplicate={() => handleDuplicateTheme(theme.id)}
+            onDelete={() => setThemeToDelete(theme.id)}
           />
-        </Stack>
-      )}
+        ))}
+        <NewThemeCard onClick={handleCreateTheme} />
+      </SimpleGrid>
 
       <DeleteThemeModal
         isOpen={themeToDelete !== null}
