@@ -13,6 +13,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.test :as mt]))
 
 (deftest ^:parallel no-op-when-no-remapping-test
@@ -175,3 +176,23 @@
             (is (str/includes? sql (:name orders))))
           (testing "join alias is preserved (aliases live on the join clause, not on table metadata)"
             (is (str/includes? sql "\"Products\""))))))))
+
+(deftest no-op-when-workspaces-feature-disabled-test
+  (testing "dispatching var returns query unchanged when :workspaces premium feature is off"
+    ;; Calls the public `defenterprise` dispatching var (not the ee impl) so the feature gate
+    ;; runs. With no premium features, `defenterprise` routes to the OSS stub in
+    ;; `metabase.query-processor.middleware.enterprise`, which returns the query unchanged even
+    ;; though a matching `TableRemapping` row exists.
+    (mt/with-premium-features #{}
+      (let [mp       (mt/metadata-provider)
+            db-id    (mt/id)
+            orders   (lib.metadata/table mp (mt/id :orders))
+            {from-schema :schema
+             from-name   :name} orders
+            query    (lib/query mp orders)]
+        (mt/with-temp [:model/TableRemapping _ {:database_id     db-id
+                                                :from_schema     from-schema
+                                                :from_table_name from-name
+                                                :to_schema       "ws_feature_off"
+                                                :to_table_name   "orders_copy"}]
+          (is (= query (qp.middleware.enterprise/apply-workspace-table-remapping query))))))))
