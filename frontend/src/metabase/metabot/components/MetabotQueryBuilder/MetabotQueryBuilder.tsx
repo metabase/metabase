@@ -14,6 +14,7 @@ import { useRouter } from "metabase/router";
 import {
   Box,
   Button,
+  Group,
   Icon,
   Paper,
   Stack,
@@ -206,16 +207,19 @@ const MetabotQueryBuilderInner = () => {
               ) : (
                 <div />
               )}
-              <Button
-                className={S.sendButton}
-                variant="filled"
-                disabled={inputDisabled}
-                loading={isDoingScience}
-                onClick={handleEditorSubmit}
-                data-testid="metabot-send-message"
-              >
-                <Icon name="arrow_up" />
-              </Button>
+              <Group gap="sm" align="center">
+                <MetabotUsageIndicator />
+                <Button
+                  className={S.sendButton}
+                  variant="filled"
+                  disabled={inputDisabled}
+                  loading={isDoingScience}
+                  onClick={handleEditorSubmit}
+                  data-testid="metabot-send-message"
+                >
+                  <Icon name="arrow_up" />
+                </Button>
+              </Group>
             </Box>
           </Paper>
 
@@ -239,8 +243,6 @@ const MetabotQueryBuilderInner = () => {
               </UnstyledButton>
             ))}
           </Box>
-
-          <MetabotUsageIndicator variant="detailed" />
         </Stack>
       </Box>
     </Box>

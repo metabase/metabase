@@ -22,7 +22,6 @@ import { useSelector } from "metabase/utils/redux";
 
 import { useMetabotAgent, useMetabotName } from "../../hooks";
 import type { MetabotConfig } from "../Metabot";
-import { MetabotUsageIndicator } from "../MetabotUsageIndicator/MetabotUsageIndicator";
 
 import Styles from "./MetabotChat.module.css";
 import { MetabotChatEditor } from "./MetabotChatEditor";
@@ -90,7 +89,6 @@ export const MetabotChat = ({
         </Flex>
 
         <Flex gap="sm" align="center">
-          <MetabotUsageIndicator variant="compact" />
           <Tooltip label={t`Clear conversation`} position="bottom">
             <ActionIcon
               onClick={handleResetChat}
