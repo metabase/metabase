@@ -1,6 +1,7 @@
 (ns metabase.premium-features.settings
   "Impls for settings that need to fetch token status live in [[metabase.premium-features.token-check]]."
   (:require
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -287,8 +288,21 @@
   "Should we allow users to edit the data within tables?"
   :table-data-editing)
 
+(define-premium-feature security-center-enabled?
+  "True if the current instance has Security Center access.
+   Requires the `:admin-security-center` feature flag, a non-trial subscription,
+   and a self-hosted instance."
+  :admin-security-center
+  :getter (fn []
+            (and (has-feature? :admin-security-center)
+                 (not (is-hosted?))
+                 (not ((requiring-resolve 'metabase.premium-features.token-check/is-trial?)))
+                 (or config/is-test? config/is-e2e?
+                     (not= (mdb/db-type) :h2)))))
+
 (defn- -token-features []
-  {:advanced_permissions           (enable-advanced-permissions?)
+  {:admin_security_center          (security-center-enabled?)
+   :advanced_permissions           (enable-advanced-permissions?)
    :ai_sql_fixer                   (enable-ai-sql-fixer?)
    :ai_sql_generation              (enable-ai-sql-generation?)
    :ai_entity_analysis             (enable-ai-entity-analysis?)

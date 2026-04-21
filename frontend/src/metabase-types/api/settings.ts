@@ -6,6 +6,7 @@ import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
+import type { NotificationRecipient } from "./notification";
 import type { UserId } from "./user";
 
 export interface FormattingSettings {
@@ -296,6 +297,7 @@ export const tokenFeatures = [
   "etl_connections",
   "etl_connections_pg",
   "semantic_search",
+  "admin_security_center",
 ] as const;
 
 export type TokenFeature = (typeof tokenFeatures)[number];
@@ -423,6 +425,8 @@ interface AdminSettings {
   "show-simple-embed-terms": boolean | null;
   "embedding-homepage": EmbeddingHomepageStatus;
   "setup-license-active-at-setup": boolean;
+  "security-center-email-recipients": NotificationRecipient[] | null;
+  "security-center-slack-channel": string | null;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;

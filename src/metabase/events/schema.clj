@@ -161,3 +161,17 @@
   [:map {:closed true}
    [:user-id [:maybe pos-int?]]
    [:model [:or :keyword :string]]])
+
+;; security advisory events
+
+(mr/def :event/security-advisory-match
+  [:map {:closed true}
+   [:object [:map
+             [:advisory_id       :string]
+             [:severity          [:enum :critical :high :medium :low]]
+             [:title             :string]
+             [:description       :string]
+             [:match_status      [:enum :active :error]]
+             [:advisory_url      {:optional true} [:maybe :string]]
+             [:remediation       :string]
+             [:affected_versions [:sequential :map]]]]])

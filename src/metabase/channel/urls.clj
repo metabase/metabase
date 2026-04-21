@@ -113,3 +113,8 @@
   "Return an appropriate URL for linking to caching log details."
   [^Integer persisted-info-id]
   (format "%s/admin/tools/model-caching/%d" (site-url) persisted-info-id))
+
+(defn security-center-url
+  "Url for the Security Center"
+  []
+  (format "%s/admin/security-center" (site-url)))

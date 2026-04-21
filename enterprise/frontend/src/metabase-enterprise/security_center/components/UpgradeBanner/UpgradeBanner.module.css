@@ -1,0 +1,20 @@
+.root {
+  padding: var(--mantine-spacing-md) var(--mantine-spacing-lg);
+  background-color: color-mix(in srgb, var(--mb-color-warning) 15%, white);
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid var(--mb-color-warning);
+}
+
+.icon {
+  flex-shrink: 0;
+  color: var(--mb-color-warning);
+}
+
+.text {
+  flex: 1;
+}
+
+.link {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
