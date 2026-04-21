@@ -22,7 +22,6 @@
    [metabase.util.string :as string]
    [toucan2.core :as t2])
   (:import
-   (clojure.lang ExceptionInfo)
    (org.h2.jdbc JdbcSQLSyntaxErrorException)
    (org.postgresql.util PSQLException)))
 
