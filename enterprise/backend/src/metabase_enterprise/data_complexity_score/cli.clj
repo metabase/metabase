@@ -35,8 +35,10 @@
 (defn- validate-dir! [path]
   (let [f (io/file path)]
     (cond
-      (not (.exists f))       (fail! (str "--representation-dir does not exist: " path))
-      (not (.isDirectory f))  (fail! (str "--representation-dir must be a directory: " path)))))
+      (not (.exists f))       (throw (ex-info (str "--representation-dir does not exist: " path)
+                                              {:cli-validation true :path path}))
+      (not (.isDirectory f))  (throw (ex-info (str "--representation-dir must be a directory: " path)
+                                              {:cli-validation true :path path})))))
 
 (def ^:private cli-options
   [["-r" "--representation-dir PATH" "Directory of representation JSON files (required)."]
@@ -61,12 +63,13 @@
 
 (defn- run-cli
   "Pure core of the CLI: validates options, loads representation, computes the score. Returns the
-  result map so tests can call this directly without intercepting `System/exit`. Propagates
-  `load-dir`'s `ex-info` (e.g. missing `--embeddings` override) so the caller can decide how to
-  render it — `-main` converts the resolved-path variant into a user-facing `fail!`."
+  result map so tests can call this directly without intercepting `System/exit`. Throws `ex-info`
+  for validation failures (with `:cli-validation true` in the ex-data) and propagates `load-dir`'s
+  `ex-info` (e.g. missing `--embeddings` override). `-main` converts those into user-facing
+  `fail!`; library callers can inspect the ex-data and render errors their own way."
   [{:keys [representation-dir embeddings]}]
   (when-not representation-dir
-    (fail! "Missing --representation-dir option"))
+    (throw (ex-info "Missing --representation-dir option" {:cli-validation true})))
   (validate-dir! representation-dir)
   (let [{:keys [library universe embedder]} (representation/load-dir representation-dir :embeddings-path embeddings)]
     (complexity/score-from-entities library universe embedder {})))
@@ -83,7 +86,8 @@
       :else           (try
                         (write-result! (run-cli options) (:output options))
                         (catch clojure.lang.ExceptionInfo e
-                          (if (:resolved-path (ex-data e))
-                            (fail! (ex-message e))
-                            (throw e))))))
+                          (let [data (ex-data e)]
+                            (if (or (:cli-validation data) (:resolved-path data))
+                              (fail! (ex-message e))
+                              (throw e)))))))
   (System/exit 0))
