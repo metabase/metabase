@@ -1,11 +1,11 @@
+import { INITIALIZE } from "metabase/redux/dashboard";
+import { createMockStoreDashboard } from "metabase/redux/store/mocks";
 import { createMockDashboard } from "metabase-types/api/mocks";
-import { createMockStoreDashboard } from "metabase-types/store/mocks";
 
 import {
   ADD_DASHCARD_IDS_TO_LOADING_QUEUE,
   CLOSE_SIDEBAR,
   FETCH_DASHBOARD_CARD_DATA,
-  INITIALIZE,
   REMOVE_PARAMETER,
   SET_DASHBOARD_ATTRIBUTES,
   SET_EDITING_DASHBOARD,

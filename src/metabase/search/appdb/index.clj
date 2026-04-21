@@ -64,6 +64,13 @@
       (log/debugf "Sync tracking atoms: %s" indexes)
       (reset! *indexes* indexes))))
 
+(defn sync-from-restored-db!
+  "Re-sync tracking atoms with the current database state.
+   Used after snapshot restore where the index tables are already present."
+  []
+  (reset! next-sync-at nil)
+  (sync-tracking-atoms!))
+
 ;; This exists only to be mocked.
 (defn- now [] (System/nanoTime))
 
@@ -105,8 +112,8 @@
 
 (defn- drop-table! [table]
   (boolean
-   (when (and table (exists? table))
-     (t2/query (sql.helpers/drop-table (keyword (table-name table)))))))
+   (when table
+     (t2/query (sql.helpers/drop-table :if-exists (keyword (table-name table)))))))
 
 (defn- orphan-indexes []
   (map (comp keyword u/lower-case-en :table_name)
@@ -119,6 +126,8 @@
                             ;; legacy table names
                             [:in [:lower :table_name]
                              (mapv #(vector :inline %) ["search_index" "search_index_next" "search_index_retired"])]]
+                           ;; Exclude temp tables — they are managed by with-temp-index-table
+                           [:not-like [:lower :table_name] [:inline "%\\_temp"]]
                            [:not-in [:lower :table_name]
                             [:raw
                              (str "("
@@ -251,7 +260,8 @@
                         :updated_at :model_updated_at})
       (assoc :updated_at :%now)
       (update :display_data json/encode)
-      (update :legacy_input json/encode)
+      ;; legacy_input is already JSON-encoded in ->document; encode only if it's still a map (e.g., in tests)
+      (update :legacy_input #(if (string? %) % (json/encode %)))
       (dissoc :native_query)
       (merge (specialization/extra-entry-fields entity))))
 
@@ -261,22 +271,37 @@
   (or (instance? PSQLException (ex-cause e))
       (instance? JdbcSQLSyntaxErrorException (ex-cause e))))
 
-(defn- safe-batch-upsert! [table-name entries]
+(defn- retry-upsert-ex [table-type table-name-before table-name-after e-before e-after]
+  (ex-info "Failed retrying search index batch upsert"
+           {:table-type                table-type
+            :table-name-before-refresh table-name-before
+            :table-name-after-refresh  table-name-after
+            :initial-exception-class   (class e-before)
+            :initial-exception-message (ex-message e-before)}
+           e-after))
+
+(defn- safe-batch-upsert!
+  "A version of batch-upsert! that no-ops for missing indexes, and handles stale index tracking metadata.
+
+  Returns the name of the table that was written to, or nil if there is none being tracked.
+  We recover gracefully the first time if the tracking atom was stale, but do not check again on retry."
+  [table-type table-name-fn entries]
   ;; For convenience, no-op if we are not tracking any table.
-  (when table-name
-    (try
-      (specialization/batch-upsert! table-name entries)
-      (catch Exception e
-        (if (table-not-found-exception? e)
-          ;; If resetting tracking atoms resolves the issue (which is likely happened because of stale tracking data),
-          ;; suppress the issue - but throw it all the way to the caller if the issue persists
-          (try
-            (sync-tracking-atoms!)
-            (specialization/batch-upsert! table-name entries)
-            (catch Exception e2
-              (log/error e2 "Error syncing index tracking atoms after table not found exception")
-              (throw e)))
-          (throw e))))))
+  (when-let [table-name (table-name-fn)]
+    (let [upsert! (fn [t] (specialization/batch-upsert! t entries) t)]
+      (try
+        (upsert! table-name)
+        (catch Exception e
+          ;; Only suppress failures related to a legitimately non-existent table
+          (if (or (not (table-not-found-exception? e)) (exists? table-name))
+            (throw e)
+            (when-let [refreshed-table-name (do (sync-tracking-atoms!) (table-name-fn))]
+              (if (= table-name refreshed-table-name)
+                (throw (ex-info "Currently tracked index does not exist" e {:table-name table-name}))
+                (try
+                  (upsert! refreshed-table-name)
+                  (catch Exception e2
+                    (retry-upsert-ex table-type table-name refreshed-table-name e e2)))))))))))
 
 (defn- batch-update!
   "Create the given search index entries in bulk. Commits after each batch"
@@ -294,19 +319,22 @@
 
   (let [reindexing? (and (= :search/reindexing context) (not search.ingestion/*force-sync*))
         do-writes   (fn []
-                      (let [active-table    (active-table)
-                            entries          (map document->entry documents)
-                            ;; No need to update the active index if we are doing a full index and it will be swapped out soon. Most updates are no-ops anyway.
-                            active-updated?  (when-not (and active-table (pending-table) reindexing?)
-                                               (safe-batch-upsert! active-table entries))
-                            pending-updated? (safe-batch-upsert! (pending-table) entries)]
-                        (when (or active-updated? pending-updated?)
+                      (let [entries         (map document->entry documents)
+                            ;; No need to update the active index if we are doing a full index, as this table will be
+                            ;; swapped out soon. Most updates would be no-ops anyway.
+                            active-updated  (when-not (and reindexing? (pending-table))
+                                              (safe-batch-upsert! :active active-table entries))
+                            pending-updated (safe-batch-upsert! :pending pending-table entries)]
+                        (when (or active-updated pending-updated)
                           (u/prog1 (->> entries (map :model) frequencies)
                             (when reindexing?
                               (t2/query ["commit"]))
                             (log/trace "indexed documents for " <>)
-                            (when active-updated?
-                              (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-table))))))))]
+                            (when active-updated
+                              (try
+                                (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-updated)))
+                                (catch Exception e
+                                  (log/warnf e "Unable to measure active search index size (%s)" active-updated))))))))]
     (if reindexing?
       ;; New connection used for performing the updates which commit periodically without impacting any outer transactions.
       (t2/with-connection [_conn (mdb/data-source)]

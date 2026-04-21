@@ -549,7 +549,7 @@
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
   {:pre [(map? details)]}
-  (driver-api/spec :h2 (cond-> details
+  (driver-api/spec :h2 (cond-> (driver/sanitize-db-details details)
                          (string? (:db details)) (update :db connection-string-set-safe-options))))
 
 (defmethod sql-jdbc.sync/active-tables :h2
@@ -752,4 +752,4 @@
         (.executeBatch ^Statement stmt)))))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]
-  "llm/prompts/dialects/h2.md")
+  "metabot/prompts/dialects/h2.md")

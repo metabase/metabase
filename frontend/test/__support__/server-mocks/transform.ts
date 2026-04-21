@@ -82,7 +82,7 @@ export function setupRunInspectorQueryEndpoint(
   response: Dataset,
 ) {
   fetchMock.post(
-    `path:/api/transform/${transformId}/inspect/${lensId}/query`,
+    `path:/api/ee/transforms/${transformId}/inspect/${lensId}/query`,
     response,
   );
 }

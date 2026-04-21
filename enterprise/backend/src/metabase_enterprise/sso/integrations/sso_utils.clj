@@ -2,9 +2,10 @@
   "Functions shared by the various SSO implementations"
   (:require
    [clojure.string :as str]
-   [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase-enterprise.sso.settings :as ee-sso-settings]
    [metabase.api.common :as api]
    [metabase.appearance.core :as appearance]
+   [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -28,15 +29,15 @@
 
 (defmethod check-user-provisioning :saml
   [_]
-  (maybe-throw-user-provisioning (sso-settings/saml-user-provisioning-enabled?)))
+  (maybe-throw-user-provisioning (ee-sso-settings/saml-user-provisioning-enabled?)))
 
 (defmethod check-user-provisioning :ldap
   [_]
-  (maybe-throw-user-provisioning (sso-settings/ldap-user-provisioning-enabled?)))
+  (maybe-throw-user-provisioning (ee-sso-settings/ldap-user-provisioning-enabled?)))
 
 (defmethod check-user-provisioning :jwt
   [_]
-  (maybe-throw-user-provisioning (sso-settings/jwt-user-provisioning-enabled?)))
+  (maybe-throw-user-provisioning (ee-sso-settings/jwt-user-provisioning-enabled?)))
 
 (defmethod check-user-provisioning :slack-connect
   [_]
@@ -44,7 +45,7 @@
 
 (defmethod check-user-provisioning :oidc
   [_]
-  (maybe-throw-user-provisioning (sso-settings/oidc-user-provisioning-enabled?)))
+  (maybe-throw-user-provisioning (ee-sso-settings/oidc-user-provisioning-enabled?)))
 
 (defn relative-uri?
   "Checks that given `uri` is not an absolute (so no scheme and no host)."

@@ -1,6 +1,7 @@
 import * as LibMetric from "metabase-lib/metric";
 
 import {
+  GEO_DIM_IDX,
   GEO_METRIC,
   REVENUE_METRIC,
   createMetricMetadata,
@@ -21,15 +22,6 @@ const REV_DIM_IDX = {
   BOOLEAN: 3,
 };
 
-const GEO_DIM_IDX = {
-  STATE: 0,
-  COUNTRY: 1,
-  CITY: 2,
-  LATITUDE: 3,
-  LONGITUDE: 4,
-  DATE_TIME: 5,
-};
-
 describe("getTabConfig", () => {
   it("returns config for time tab", () => {
     expect(getTabConfig("time")).toEqual(
@@ -38,7 +30,6 @@ describe("getTabConfig", () => {
         autoCreate: true,
         matchMode: "aggregate",
         fixedId: "time",
-        fixedLabel: "Time",
         defaultDisplayType: "line",
         availableDisplayTypes: [
           { type: "line", icon: "line" },
@@ -56,7 +47,6 @@ describe("getTabConfig", () => {
         autoCreate: true,
         matchMode: "aggregate",
         fixedId: "geo",
-        fixedLabel: "Location",
         defaultDisplayType: "map",
         availableDisplayTypes: [
           { type: "map", icon: "pinmap" },
@@ -154,6 +144,12 @@ describe("TAB_TYPE_REGISTRY", () => {
       expect(
         geoConfig.dimensionPredicate(geoDimensions[GEO_DIM_IDX.COUNTRY]),
       ).toBe(true);
+    });
+
+    it("geo predicate rejects city dimensions", () => {
+      expect(
+        geoConfig.dimensionPredicate(geoDimensions[GEO_DIM_IDX.CITY]),
+      ).toBe(false);
     });
 
     it("geo predicate rejects latitude dimensions", () => {

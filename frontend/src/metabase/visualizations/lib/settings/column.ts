@@ -13,9 +13,9 @@ import {
   getDateStyleOptionsForUnit,
   getTimeStyleOptions,
   numberFormatterForOptions,
-} from "metabase/lib/formatting";
-import { hasHour } from "metabase/lib/formatting/datetime-utils";
-import MetabaseSettings from "metabase/lib/settings";
+} from "metabase/utils/formatting";
+import { hasHour } from "metabase/utils/formatting/datetime-utils";
+import MetabaseSettings from "metabase/utils/settings";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { ChartNestedSettingColumns } from "metabase/visualizations/components/settings/ChartNestedSettingColumns";
 import { ChartSettingTableColumns } from "metabase/visualizations/components/settings/ChartSettingTableColumns";
@@ -156,7 +156,9 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     },
     isValid: ({ unit }, settings) => {
       const options = getDateStyleOptionsForUnit(unit ?? "default");
-      return !!_.findWhere(options, { value: settings.date_style });
+      return !!_.findWhere(options, {
+        value: settings.date_style ?? undefined,
+      });
     },
     getProps: ({ unit }, settings) => ({
       options: getDateStyleOptionsForUnit(
@@ -177,7 +179,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Date separators`;
     },
     widget: "radio",
-    default: "/",
+    getDefault: () => "/",
     getProps: (_column, settings) => {
       const style = /\//.test(settings.date_style ?? "")
         ? (settings.date_style ?? "")
@@ -198,11 +200,11 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Abbreviate days and months`;
     },
     widget: "toggle",
-    default: false,
+    getDefault: () => false,
     inline: true,
     getHidden: ({ unit }, settings) => {
       const format = getDateFormatFromStyle(
-        settings.date_style,
+        settings.date_style ?? undefined,
         unit ?? "default",
       );
       return !format || !format.match(/MMMM|dddd/);
@@ -230,7 +232,7 @@ export const DATE_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
       return t`Time style`;
     },
     widget: "radio",
-    default: "h:mm A",
+    getDefault: () => "h:mm A",
     getProps: (column) => ({
       options: getTimeStyleOptions(column.unit ?? "default"),
     }),

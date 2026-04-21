@@ -71,10 +71,21 @@
 
 (defmethod serdes/hash-fields :model/Channel [_instance] [:name :type])
 
+(defmethod serdes/load-find-local "Channel"
+  [path]
+  (t2/select-one :model/Channel :name (:id (last path))))
+
+(defmethod serdes/generate-path "Channel" [_ channel]
+  [(serdes/infer-self-path "Channel" channel)])
+
+(defmethod serdes/storage-path "Channel" [channel _ctx]
+  [{:label "channels"} {:label (:name channel) :key (serdes/entity-id "Channel" channel)}])
+
 (defmethod serdes/make-spec "Channel"
   [_model-name _opts]
-  {:copy      [:name :description :type :details :active]
-   :transform {:created_at (serdes/date)}})
+  {:copy           [:name :description :type :details :active]
+   :transform      {:created_at (serdes/date)}
+   :defaults {:active true}})
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                       :model/ChannelTemplate                                    ;;

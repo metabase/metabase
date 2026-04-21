@@ -1,0 +1,552 @@
+name: URL Functions
+entity_id: uwAeNRHymXTD1G_7lWV1d
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: table
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- PEOPLE
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - expressions:
+    - - host
+      - lib/expression-name: Source Host
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PEOPLE
+          - SOURCE
+    - - domain
+      - lib/expression-name: Source Domain
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PEOPLE
+          - SOURCE
+    - - subdomain
+      - lib/expression-name: Source Subdomain
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PEOPLE
+          - SOURCE
+    - - path
+      - lib/expression-name: Source Path
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PEOPLE
+          - SOURCE
+    limit: 10
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - PEOPLE
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/BigInteger
+  database_type: BIGINT
+  display_name: ID
+  effective_type: type/BigInteger
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - ID
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - ID
+  name: ID
+  position: 0
+  semantic_type: type/PK
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: ID
+  lib/desired-column-alias: ID
+  lib/original-display-name: ID
+  lib/original-name: ID
+  lib/source: source/table-defaults
+  lib/source-column-alias: ID
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Address
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - ADDRESS
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - ADDRESS
+  name: ADDRESS
+  position: 1
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: ADDRESS
+  lib/desired-column-alias: ADDRESS
+  lib/original-display-name: Address
+  lib/original-name: ADDRESS
+  lib/source: source/table-defaults
+  lib/source-column-alias: ADDRESS
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Email
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - EMAIL
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - EMAIL
+  name: EMAIL
+  position: 2
+  semantic_type: type/Email
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: EMAIL
+  lib/desired-column-alias: EMAIL
+  lib/original-display-name: Email
+  lib/original-name: EMAIL
+  lib/source: source/table-defaults
+  lib/source-column-alias: EMAIL
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Password
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - PASSWORD
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - PASSWORD
+  name: PASSWORD
+  position: 3
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: PASSWORD
+  lib/desired-column-alias: PASSWORD
+  lib/original-display-name: Password
+  lib/original-name: PASSWORD
+  lib/source: source/table-defaults
+  lib/source-column-alias: PASSWORD
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - NAME
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - NAME
+  name: NAME
+  position: 4
+  semantic_type: type/Name
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: NAME
+  lib/desired-column-alias: NAME
+  lib/original-display-name: Name
+  lib/original-name: NAME
+  lib/source: source/table-defaults
+  lib/source-column-alias: NAME
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: City
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - CITY
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - CITY
+  name: CITY
+  position: 5
+  semantic_type: type/City
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: CITY
+  lib/desired-column-alias: CITY
+  lib/original-display-name: City
+  lib/original-name: CITY
+  lib/source: source/table-defaults
+  lib/source-column-alias: CITY
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Longitude
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - LONGITUDE
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - LONGITUDE
+  name: LONGITUDE
+  position: 6
+  semantic_type: type/Longitude
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: LONGITUDE
+  lib/desired-column-alias: LONGITUDE
+  lib/original-display-name: Longitude
+  lib/original-name: LONGITUDE
+  lib/source: source/table-defaults
+  lib/source-column-alias: LONGITUDE
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: State
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - STATE
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - STATE
+  name: STATE
+  position: 7
+  semantic_type: type/State
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: STATE
+  lib/desired-column-alias: STATE
+  lib/original-display-name: State
+  lib/original-name: STATE
+  lib/source: source/table-defaults
+  lib/source-column-alias: STATE
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Source
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - SOURCE
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - SOURCE
+  name: SOURCE
+  position: 8
+  semantic_type: type/Source
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: SOURCE
+  lib/desired-column-alias: SOURCE
+  lib/original-display-name: Source
+  lib/original-name: SOURCE
+  lib/source: source/table-defaults
+  lib/source-column-alias: SOURCE
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Date
+  database_type: DATE
+  display_name: Birth Date
+  effective_type: type/Date
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - BIRTH_DATE
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - BIRTH_DATE
+  name: BIRTH_DATE
+  position: 9
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: BIRTH_DATE
+  lib/desired-column-alias: BIRTH_DATE
+  lib/original-display-name: Birth Date
+  lib/original-name: BIRTH_DATE
+  lib/source: source/table-defaults
+  lib/source-column-alias: BIRTH_DATE
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: CHARACTER VARYING
+  display_name: Zip
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - ZIP
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - ZIP
+  name: ZIP
+  position: 10
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: ZIP
+  lib/desired-column-alias: ZIP
+  lib/original-display-name: Zip
+  lib/original-name: ZIP
+  lib/source: source/table-defaults
+  lib/source-column-alias: ZIP
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Float
+  database_type: DOUBLE PRECISION
+  display_name: Latitude
+  effective_type: type/Float
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - LATITUDE
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - LATITUDE
+  name: LATITUDE
+  position: 11
+  semantic_type: type/Latitude
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: LATITUDE
+  lib/desired-column-alias: LATITUDE
+  lib/original-display-name: Latitude
+  lib/original-name: LATITUDE
+  lib/source: source/table-defaults
+  lib/source-column-alias: LATITUDE
+  qp/implicit-field?: true
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - PEOPLE
+    - CREATED_AT
+  - null
+  id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  - CREATED_AT
+  name: CREATED_AT
+  position: 12
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - PEOPLE
+  visibility_type: normal
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/table-defaults
+  lib/source-column-alias: CREATED_AT
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Source Host
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Source Host
+  name: Source Host
+  source: fields
+  lib/deduplicated-name: Source Host
+  lib/desired-column-alias: Source Host
+  lib/expression-name: Source Host
+  lib/original-name: Source Host
+  lib/source: source/expressions
+  lib/source-column-alias: Source Host
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Source Domain
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Source Domain
+  name: Source Domain
+  source: fields
+  lib/deduplicated-name: Source Domain
+  lib/desired-column-alias: Source Domain
+  lib/expression-name: Source Domain
+  lib/original-name: Source Domain
+  lib/source: source/expressions
+  lib/source-column-alias: Source Domain
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Source Subdomain
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Source Subdomain
+  name: Source Subdomain
+  source: fields
+  lib/deduplicated-name: Source Subdomain
+  lib/desired-column-alias: Source Subdomain
+  lib/expression-name: Source Subdomain
+  lib/original-name: Source Subdomain
+  lib/source: source/expressions
+  lib/source-column-alias: Source Subdomain
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: Source Path
+  effective_type: type/Text
+  field_ref:
+  - expression
+  - Source Path
+  name: Source Path
+  source: fields
+  lib/deduplicated-name: Source Path
+  lib/desired-column-alias: Source Path
+  lib/expression-name: Source Path
+  lib/original-name: Source Path
+  lib/source: source/expressions
+  lib/source-column-alias: Source Path
+  qp/implicit-field?: true
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: uwAeNRHymXTD1G_7lWV1d
+  label: url_functions
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

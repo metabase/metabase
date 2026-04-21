@@ -17,8 +17,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -676,7 +676,7 @@
              (->> (magic/automagic-analysis (t2/select-one :model/Field :id (mt/id :venues :price)) {})
                   :dashcards
                   (mapcat (comp :breakout :query :dataset_query :card)))
-             [:field _ (_ :guard :binning)] true))))))
+             [:field _ {:binning &truthy}] true))))))
 
 (deftest no-values-test
   (mt/test-driver :mongo

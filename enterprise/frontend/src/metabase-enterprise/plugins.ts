@@ -10,8 +10,7 @@ import "./license";
 
 // PLUGINS THAT USE hasPremiumFeature (import initialization functions):
 import { initializePlugin as initializeAdvancedPermissions } from "./advanced_permissions";
-import { initializePlugin as initializeAiEntityAnalysis } from "./ai-entity-analysis";
-import { initializePlugin as initializeAiSqlFixer } from "./ai-sql-fixer";
+import { initializePlugin as initializeAiControls } from "./ai-controls";
 import { initializePlugin as initializeApplicationPermissions } from "./application_permissions";
 import { initializePlugin as initializeAuditApp } from "./audit_app";
 import { initializePlugin as initializeAuth } from "./auth";
@@ -38,6 +37,7 @@ import { initializePlugin as initializeRemoteSync } from "./remote_sync";
 import { initializePlugin as initializeReplacement } from "./replacement";
 import { initializePlugin as initializeResourceDownloads } from "./resource_downloads";
 import { initializePlugin as initializeSandboxes } from "./sandboxes";
+import { initializePlugin as initializeSecurityCenter } from "./security_center";
 import { initializePlugin as initializeSemanticSearch } from "./semantic_search";
 import { initializePlugin as initializeSharing } from "./sharing";
 import { initializePlugin as initializeSmtpOverride } from "./smtp-override";
@@ -47,6 +47,7 @@ import { initializePlugin as initializeTableEditing } from "./table-editing";
 import { initializePlugin as initializeTenants } from "./tenants";
 import { initializePlugin as initializeTools } from "./tools";
 import { initializePlugin as initializeTransforms } from "./transforms";
+import { initializePlugin as initializeTransformsInspector } from "./transforms-inspector";
 import { initializePlugin as initializeTransformsPython } from "./transforms-python";
 import { initializePlugin as initializeUploadManagement } from "./upload_management";
 import { initializePlugin as initializeUserProvisioning } from "./user_provisioning";
@@ -78,9 +79,8 @@ export function initializePlugins() {
   initializeSharing();
   initializeModeration();
   initializeAdvancedPermissions();
-  initializeAiSqlFixer();
-  initializeAiEntityAnalysis();
   initializeAuditApp();
+  initializeMetabot();
   initializeModelPersistence();
   initializeFeatureLevelPermissions();
   initializeApplicationPermissions();
@@ -90,15 +90,17 @@ export function initializePlugins() {
   initializeResourceDownloads();
   initializeUserProvisioning();
   initializeCleanUp();
-  initializeMetabot();
   initializeDatabaseReplication();
   initializeTableEditing();
   initializeDependencies();
+  initializeSecurityCenter();
   initializeSemanticSearch();
   initializeTransforms();
+  initializeTransformsInspector();
   initializeTransformsPython();
   initializeSupport();
   initializeTenants?.();
   initializeWorkspaces();
   initializeWritableConnection();
+  initializeAiControls();
 }

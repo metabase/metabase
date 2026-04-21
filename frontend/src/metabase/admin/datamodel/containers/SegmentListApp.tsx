@@ -11,12 +11,12 @@ import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
 import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
 import { Segments } from "metabase/entities/segments";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { connect } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Segment } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 interface Props {
   isAdmin: boolean;

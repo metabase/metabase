@@ -230,11 +230,12 @@
    :started_at   (t/offset-date-time)})
 
 (deftest new-impl-test
-  (mt/with-temp [:model/QueryExecution _ (merge query-execution-defaults
-                                                {:error "some error"})
-                 :model/QueryExecution _ (merge query-execution-defaults
-                                                {:error "some error"})
-                 :model/QueryExecution _ query-execution-defaults]
+  (mt/with-temp [:model/QueryExecution {id1 :id} (merge query-execution-defaults
+                                                        {:error "some error"})
+                 :model/QueryExecution {id2 :id} (merge query-execution-defaults
+                                                        {:error "some error"})
+                 :model/QueryExecution {id3 :id} query-execution-defaults]
+    (t2/delete! :model/QueryExecution :id [:not-in [id1 id2 id3]])
     (is (= (old-execution-metrics)
            (#'stats/execution-metrics))
         "the new version of the executions metrics works the same way the old one did")))
@@ -566,11 +567,14 @@
     :enhancements
     :etl-connections
     :etl-connections-pg
-    :llm-autodescription
+    :offer-metabase-ai-managed
     :query-reference-validation
+    :metabase-ai-managed
+    :metabot-v3
     :cloud-custom-smtp
     :session-timeout-config
-    :sso-oidc})
+    :sso-oidc
+    :admin-security-center})
 
 (deftest every-feature-is-accounted-for-test
   (testing "Is every premium feature either tracked under the :features key, or intentionally excluded?"

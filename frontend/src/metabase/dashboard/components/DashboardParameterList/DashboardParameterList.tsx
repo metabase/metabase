@@ -9,19 +9,18 @@ import {
 } from "metabase/dashboard/actions";
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { useDispatch } from "metabase/lib/redux";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
+import { useDispatch } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 
-export interface DashboardParameterListProps
-  extends Pick<
-    ComponentProps<typeof ParametersList>,
-    | "widgetsWithinPortal"
-    | "widgetsPopoverPosition"
-    | "vertical"
-    | "hasTestIdProps"
-  > {
+export interface DashboardParameterListProps extends Pick<
+  ComponentProps<typeof ParametersList>,
+  | "widgetsWithinPortal"
+  | "widgetsPopoverPosition"
+  | "vertical"
+  | "hasTestIdProps"
+> {
   className?: string;
   parameters: UiParameter[];
   isSortable?: boolean;

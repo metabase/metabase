@@ -405,7 +405,7 @@ describe("issue 18502", () => {
     });
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("April 2022");
+    cy.findByText("April 2025");
   });
 });
 
@@ -1089,7 +1089,7 @@ describe("issue 31769", () => {
     });
   });
 
-  it("shouldn't drop joins using MLv2 format (metabase#31769)", () => {
+  it("shouldn't drop joins using Lib/MBQL 5 (metabase#31769)", () => {
     H.selectSavedQuestionsToJoin("Q1", "Q2");
 
     H.popover().findByText("Products → Category").click();
@@ -1173,12 +1173,12 @@ describe("issue 27521", () => {
 
     H.visualize();
     assertTableHeader(0, "ID");
-    assertTableHeader(1, "Orders → ID");
+    assertTableHeader(1, "Orders_2 → ID");
 
     H.saveQuestion("Q1");
 
     assertTableHeader(0, "ID");
-    assertTableHeader(1, "Orders → ID");
+    assertTableHeader(1, "Orders_2 → ID");
 
     cy.log("Create second question (Products + Q1)");
     H.newButton("Question").click();
@@ -1198,7 +1198,7 @@ describe("issue 27521", () => {
     });
 
     H.popover().findByText("ID").click();
-    H.popover().findByText("Orders → ID").should("be.visible").click();
+    H.popover().findByText("Orders_2 → ID").should("be.visible").click();
     H.getNotebookStep("join")
       .findByLabelText("Right column")
       .findByText("Q1 → ID")

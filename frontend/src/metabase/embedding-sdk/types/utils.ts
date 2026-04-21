@@ -1,11 +1,4 @@
-/**
- * Makes every property in the object optional.
- *
- * @inline
- **/
-export type DeepPartial<T> = {
-  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
-};
+export type { DeepPartial } from "metabase/utils/types";
 
 // https://www.raygesualdo.com/posts/flattening-object-keys-with-typescript-types/
 export type FlattenObjectKeys<

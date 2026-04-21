@@ -2,7 +2,10 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import {
+  deactivateSuggestedTransform,
+  getMetabotSuggestedTransform,
+} from "metabase/metabot/state";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getMetadata } from "metabase/selectors/metadata";
 import { RunStatus } from "metabase/transforms/components/RunStatus";
@@ -11,12 +14,9 @@ import {
   getInitialPythonSource,
 } from "metabase/transforms/pages/NewTransformPage/utils";
 import { Box, Button, Group, Icon, Stack } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { useDryRunWorkspaceTransformMutation } from "metabase-enterprise/api";
 import { useWorkspaceTransformRun } from "metabase-enterprise/data-studio/workspaces/hooks";
-import {
-  deactivateSuggestedTransform,
-  getMetabotSuggestedTransform,
-} from "metabase-enterprise/metabot/state";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {

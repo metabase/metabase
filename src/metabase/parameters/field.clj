@@ -8,6 +8,7 @@
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.field.search-values-query :as search-values-query]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -86,7 +87,11 @@
   "Search for values of a field given by `field-id` that contain `query`."
   [field-id     :- ::lib.schema.id/field
    query-string :- [:maybe :string]]
-  (let [field        (api/read-check (t2/select-one :model/Field :id field-id))
+  (let [field        (if qp.perms/*param-values-query*
+                       ;; When fetching param values for a card/dashboard the user can read, skip the Field
+                       ;; read-check which requires create-queries permission on the table.
+                       (api/check-404 (t2/select-one :model/Field :id field-id))
+                       (api/read-check (t2/select-one :model/Field :id field-id)))
         search-field (or (some->> (chain-filter/remapped-field-id field-id)
                                   (t2/select-one :model/Field :id))
                          field)]

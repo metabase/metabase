@@ -1,0 +1,56 @@
+(ns metabase.metabot.tools.charts.create-test
+  (:require
+   [clojure.string :as str]
+   [clojure.test :refer :all]
+   [metabase.metabot.tools.charts.create :as create-chart]))
+
+(deftest create-chart-test
+  (testing "creates a chart from a query"
+    (let [queries-state {"q-123" {:query-id "q-123"
+                                  :query-content "SELECT * FROM orders"
+                                  :database 1}}
+          result (create-chart/create-chart
+                  {:query-id "q-123"
+                   :chart-type :bar
+                   :queries-state queries-state})]
+      (is (contains? result :chart-id))
+      (is (string? (:chart-id result)))
+      (is (= :bar (:chart-type result)))
+      (is (= "q-123" (:query-id result)))
+      (is (str/includes? (:chart-content result) "<chart"))
+      (is (str/includes? (:chart-content result) "bar"))
+      (is (str/starts-with? (:chart-link result) "metabase://chart/"))
+      (is (contains? result :instructions))))
+
+  (testing "creates chart with different types"
+    (let [queries-state {"q-456" {:query-id "q-456"
+                                  :sql "SELECT COUNT(*) FROM users"
+                                  :database 1}}]
+      (doseq [chart-type [:line :pie :table :scatter :area]]
+        (let [result (create-chart/create-chart
+                      {:query-id "q-456"
+                       :chart-type chart-type
+                       :queries-state queries-state})]
+          (is (= chart-type (:chart-type result))
+              (str "Chart type " chart-type " should be set correctly"))))))
+
+  (testing "throws error for invalid chart type"
+    (let [queries-state {"q-789" {:query-id "q-789"
+                                  :query-content "SELECT 1"
+                                  :database 1}}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Invalid chart type"
+           (create-chart/create-chart
+            {:query-id "q-789"
+             :chart-type :invalid-type
+             :queries-state queries-state})))))
+
+  (testing "throws error when query not found"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Query not found"
+         (create-chart/create-chart
+          {:query-id "nonexistent"
+           :chart-type :bar
+           :queries-state {}})))))

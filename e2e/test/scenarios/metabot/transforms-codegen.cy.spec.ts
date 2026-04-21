@@ -83,10 +83,12 @@ describe(
       H.resetTestTable({ type: "postgres", table: "many_schemas" });
       H.resetSnowplow();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
+      H.updateSetting("transforms-enabled", true);
+      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SOURCE_TABLE });
 
-      cy.intercept("POST", "/api/ee/metabot-v3/agent-streaming").as("agentReq");
+      cy.intercept("POST", "/api/metabot/agent-streaming").as("agentReq");
       cy.intercept("POST", "/api/transform").as("createTransform");
       cy.intercept("PUT", "/api/transform/*").as("updateTransform");
     });

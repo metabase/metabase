@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { P, match } from "ts-pattern";
 import { c, t } from "ttag";
 
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useDocsUrl, useHasEmailSetup } from "metabase/common/hooks";
 import type {
   MetabaseColors,
@@ -18,6 +19,7 @@ import {
   Icon,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 
 import { UPSELL_CAMPAIGN_BEHAVIOR } from "../analytics";
@@ -262,9 +264,19 @@ const BehaviorSection = () => {
   return (
     <Card p="md">
       <Flex align="center" justify="space-between" gap="xs" mb="md">
-        <Text size="lg" fw="bold">
-          {t`Behavior`}
-        </Text>
+        <Flex align="center" gap="xs">
+          <Text size="lg" fw="bold">
+            {t`Behavior`}
+          </Text>
+          {!isSimpleEmbedFeatureAvailable && (
+            // eslint-disable-next-line metabase/no-literal-metabase-strings -- Only admins can see the EmbedJS Wizard
+            <Tooltip label={t`Available on Metabase Pro plans`}>
+              <Flex align="center">
+                <UpsellGem />
+              </Flex>
+            </Tooltip>
+          )}
+        </Flex>
         {!!behaviorDocsParams?.page && (
           <Anchor
             data-testid="behavior-docs-link"

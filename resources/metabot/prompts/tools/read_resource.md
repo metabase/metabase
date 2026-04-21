@@ -5,21 +5,6 @@ You can request multiple resources in a single call by providing a list of URIs,
 
 # Supported URI Patterns
 
-
-## Archived Message resources
-- metabase://archived_message/{id} - Get archived message details
-
-**Examples:**
-- Want to see the full contents of a specific archived message? → `metabase://archived_message/123`
-
-**Best Practices:**
-
-- Use archived message URIs to read the full contents of an archived message when needed for context.
-- Always check the archived message summary for relevant information before making decisions or generating responses.
-- Only fetch specific archived messages via read_resource when the archived message summary indicates they may be
-  relevant to the current task.
-
-
 ## Table resources
 - metabase://table/{id} - Get basic table info
 - metabase://table/{id}/fields - Get table details with available fields
@@ -39,6 +24,14 @@ You can request multiple resources in a single call by providing a list of URIs,
 - Want model structure (fields without value information)? → `metabase://model/456/fields`
 - Want detailed field information (sample values for format patterns)? → `metabase://model/456/fields/1`
 
+## Question resources
+- metabase://question/{id} - Get basic question info
+- metabase://question/{id}/fields - Get question details with available fields
+- metabase://question/{id}/fields/{field_id} - Get detailed field information with sample values and metadata
+
+**Examples:**
+- Want question structure (fields without value information)? → `metabase://question/456/fields`
+- Want detailed field information (sample values for format patterns)? → `metabase://question/456/fields/1`
 
 ## Metric resources
 - metabase://metric/{id} - Get basic metric info

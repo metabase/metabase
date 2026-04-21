@@ -10,9 +10,9 @@
    [metabase.lib.test-util.macros :as lib.tu.macros]
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (defn- add-implicit-clauses

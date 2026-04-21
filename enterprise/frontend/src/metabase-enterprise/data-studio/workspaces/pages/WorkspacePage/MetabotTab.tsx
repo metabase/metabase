@@ -1,7 +1,10 @@
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { MetabotChat } from "metabase/metabot/components/MetabotChat";
+import type { MetabotSuggestionActions } from "metabase/metabot/context";
+import {
+  MetabotProvider,
+  useRegisterMetabotSuggestionActions,
+} from "metabase/metabot/context";
 import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
-import type { MetabotSuggestionActions } from "metabase-enterprise/metabot/context";
-import { useRegisterMetabotSuggestionActions } from "metabase-enterprise/metabot/context";
 import type {
   DraftTransformSource,
   TaggedTransform,
@@ -40,9 +43,6 @@ export const MetabotTab = ({
   source,
   suggestionActions,
 }: MetabotTabProps) => {
-  const MetabotProvider = PLUGIN_METABOT.getMetabotProvider();
-  const MetabotChat = PLUGIN_METABOT.MetabotChat;
-
   return (
     <MetabotProvider>
       <MetabotContextRegistration transform={transform} source={source} />

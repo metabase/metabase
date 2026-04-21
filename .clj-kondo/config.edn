@@ -68,6 +68,7 @@
   :metabase/modules                                          {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
   :metabase/namespace-name                                   {:level :warning}
   :metabase/no-jsqlparser-imports                            {:level :warning}
+  :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
   :metabase/validate-defendpoint-route-uses-kebab-case       {:level :warning}
@@ -176,13 +177,16 @@
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
      metabase.channel.core/send!
+     metabase.warehouses.models.database/assert-not-h2!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      metabase.notification.models/create-notification!
+     metabase.oauth-server.core/reset-provider!
      metabase.pulse.send/send-pulse!
      metabase-enterprise.transforms-python.python-runner-test/execute!
      ;; Workspace isolation functions are safe in parallel tests because they operate on
      ;; isolated, test-specific workspaces and databases that don't affect other tests
      metabase-enterprise.workspaces.isolation/destroy-workspace-isolation!
+     metabase.lib-metric.ast.plan/validate-arithmetic-ast!
      metabase-enterprise.workspaces.isolation/ensure-database-isolation!
      metabase-enterprise.workspaces.test-util/create-ready-ws!
      ;; Safe in tests, where we typically use a private, temporary index per thread.
@@ -469,14 +473,15 @@
   metabase.premium-features.settings/define-premium-feature                             clojure.core/def
   metabase.pulse.dashboard-subscription-test/with-dashboard-sub-for-card                clojure.core/let
   metabase.pulse.send-test/with-pulse-for-card                                          clojure.core/let
-  metabase.query-processor.pipeline-queries-test/pmbql-query                       clojure.core/->
-  metabase.query-processor.pipeline-queries-test/run-pmbql-query                   clojure.core/->
+  metabase.query-processor.pipeline-queries-test/mbql5-query                            clojure.core/->
+  metabase.query-processor.pipeline-queries-test/run-mbql5-query                        clojure.core/->
   metabase.query-processor.error-type/deferror                                          clojure.core/def
   metabase.query-processor.middleware.cache.impl/with-reducible-deserialized-results    clojure.core/let
   metabase.query-processor.middleware.process-userland-query-test/with-query-execution! clojure.core/let
   metabase.query-processor.setup/with-qp-setup                                          clojure.core/let
   metabase.search.api-test/do-test-users                                                clojure.core/let
   metabase.settings.core/define-multi-setting                                           clojure.core/def
+  metabase.api-scope.core/defscope                                                      clj-kondo.lint-as/def-catch-all
   metabase.settings.core/defsetting                                                     clj-kondo.lint-as/def-catch-all
   metabase.settings.models.setting.multi-setting/define-multi-setting                   clojure.core/def
   metabase.settings.models.setting/defsetting                                           clj-kondo.lint-as/def-catch-all
@@ -487,6 +492,7 @@
   metabase.task.impl/defjob                                                             clojure.core/defn
   metabase.test.data.interface/defdataset                                               clojure.core/def
   metabase.test.data.interface/defdataset-edn                                           clojure.core/def
+  metabase.test.embedded-postgres.core/with-system                                      clojure.core/let
   metabase.test.gentest/defgentest                                                      clojure.test/deftest
   metabase.test/defdataset                                                              clojure.core/def
   metabase.test/let-url                                                                 clojure.core/let
@@ -552,6 +558,7 @@
    metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.dependencies.api-test/with-dependents-test!                                                           hooks.common/with-two-bindings
    metabase-enterprise.metabot-v3.tools.dependencies-test/with-dependent-transforms!                                         hooks.common/with-two-bindings
+   metabase-enterprise.metabot.tools.dependencies-test/with-dependent-transforms!                                            hooks.common/with-two-bindings
    metabase-enterprise.semantic-search.db.connection/with-migrate-tx                                                         hooks.common/let-one-with-optional-value
    metabase-enterprise.serialization.api-test/with-serialization-test-data!                                                  hooks.common/with-three-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
@@ -586,6 +593,8 @@
    metabase.lib.schema.mbql-clause/define-catn-mbql-clause                                                                   hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.schema.mbql-clause/define-mbql-clause                                                                        hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.schema.mbql-clause/define-tuple-mbql-clause                                                                  hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
+   methodical.core/defmethod                                                                                                 hooks.metabase.toucan.table-name/lint-defmethod
+   methodical.macros/defmethod                                                                                               hooks.metabase.toucan.table-name/lint-defmethod
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/mbql-5-query                                                                                hooks.metabase.test.data/mbql-query
@@ -793,7 +802,7 @@
     :private-call                                        {:level :off}
     :metabase/defsetting-must-specify-export             {:level :off}
     :metabase/defsetting-namespace                       {:level :off}
-    :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn
+    :metabase/test-helpers-use-non-thread-safe-functions {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
 
     :discouraged-var
     {metabase.driver/database-supports? {:level :off}

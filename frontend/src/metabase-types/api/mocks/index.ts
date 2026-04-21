@@ -1,6 +1,5 @@
 export * from "./actions";
 export * from "./activity";
-export * from "./ai-sql-fixer";
 export * from "./alert";
 export * from "./automagic-dashboards";
 export * from "./bookmark";
@@ -45,7 +44,6 @@ export * from "./task";
 export * from "./tenant";
 export * from "./timeline";
 export * from "./transform";
-export * from "./undo";
 export * from "./user";
 export * from "./util";
 export * from "./workspace";

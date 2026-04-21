@@ -12,11 +12,11 @@
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
-   [metabase.models.transforms.transform-run :as transform-run]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.feature-gating :as transforms.gating]
+   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.settings :as transforms.settings]
    [metabase.util :as u]
    [toucan2.core :as t2])
@@ -123,6 +123,7 @@
             ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
                   (canceling/chan-start-run! run-id cancel-chan)
                   (run-transform! cancel-chan source-range-params))]
+        (transforms-base.u/save-watermark! (:id transform) source-range-params)
         (transform-run/succeed-started-run! run-id)
         ret))
     (catch Throwable t

@@ -63,11 +63,25 @@
                       (throw e)))))]
         (reduce loader ctx deps)))))
 
+(defn- safe-local-id
+  "Looks up the local primary key for `path`, swallowing any exception from the DB lookup.
+
+  [[path-error-data]] is called from catch blocks inside the outer load transaction. When the original
+  failure was a SQL error it will have poisoned the transaction, so any subsequent query (including
+  [[serdes/load-find-local]]) will throw `current transaction is aborted, commands ignored until end of
+  transaction block` and shadow the real cause. We prefer losing `:local-id` over losing the exception chain."
+  [path]
+  (try
+    (when-let [entity (serdes/load-find-local path)]
+      ((t2/select-pks-fn entity) entity))
+    (catch Exception e
+      (log/debugf e "Could not look up local id for %s while building load error data" (serdes/log-path-str path))
+      nil)))
+
 (defn- path-error-data [error-type expanding path]
   (let [last-model (:model (last path))]
     {:path       (mapv (partial into {}) path)
-     :local-id   (when-let [entity (serdes/load-find-local path)]
-                   ((t2/select-pks-fn entity) entity))
+     :local-id   (safe-local-id path)
      :deps-chain expanding
      :model      last-model
      :table      (some->> last-model (keyword "model") t2/table-name)
@@ -143,8 +157,8 @@
                                :error ::not-found}))))
           (log/debug "Local" {:path (serdes/log-path-str path)})
           ctx)
-        (let [_                  (log/info "Loading" (cond-> {:path (serdes/log-path-str path)}
-                                                       (circular path) (assoc :stripped true)))
+        (let [_                  (log/trace "Loading" (cond-> {:path (serdes/log-path-str path)}
+                                                        (circular path) (assoc :stripped true)))
               ;; Use the abstract path as attached by the ingestion process, not the original one we were passed.
               rebuilt-path       (serdes/path ingested)
               ;; If nil or absent :entity_id is taken as a signal to create a new entity
@@ -216,8 +230,18 @@
         ;; guide the import, and make sure all containers are imported before contents, etc.
         (when backfill?
           (serdes.backfill/backfill-ids!))
-        (let [contents (serdes.ingest/ingest-list ingestion)
-              ctx (new-context ingestion)]
+        (let [contents      (serdes.ingest/ingest-list ingestion)
+              ingest-errors (serdes.ingest/ingest-errors ingestion)
+              ctx           (cond-> (new-context ingestion)
+                              (seq ingest-errors) (update :errors into ingest-errors))]
+          (when (and (seq ingest-errors) (not continue-on-error))
+            (let [file-names (mapv #(or (:file (ex-data %)) (ex-message %)) ingest-errors)]
+              (throw (ex-info (format "Failed to read %d file(s) during ingestion: %s"
+                                      (count ingest-errors)
+                                      (str/join ", " file-names))
+                              {:ingest-errors ingest-errors
+                               :files         file-names}
+                              (first ingest-errors)))))
           (log/infof "Starting deserialization, total %s documents" (count contents))
           (reduce (fn [ctx item]
                     (try

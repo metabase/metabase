@@ -549,4 +549,4 @@
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))
 
 (defmethod driver/llm-sql-dialect-resource :athena [_]
-  "llm/prompts/dialects/athena.md")
+  "metabot/prompts/dialects/athena.md")

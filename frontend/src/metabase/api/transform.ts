@@ -1,4 +1,4 @@
-import { isResourceNotFoundError } from "metabase/lib/errors";
+import { isResourceNotFoundError } from "metabase/utils/errors";
 import type {
   CreateTransformRequest,
   Dataset,
@@ -212,14 +212,14 @@ export const transformApi = Api.injectEndpoints({
     >({
       query: (id) => ({
         method: "GET",
-        url: `/api/transform/${id}/inspect`,
+        url: `/api/ee/transforms/${id}/inspect`,
       }),
       providesTags: (_, _error, id) => [idTag("transform", id)],
     }),
     getInspectorLens: builder.query<InspectorLens, GetInspectorLensRequest>({
       query: ({ transformId, lensId, lensParams }) => ({
         method: "GET",
-        url: `/api/transform/${transformId}/inspect/${lensId}`,
+        url: `/api/ee/transforms/${transformId}/inspect/${lensId}`,
         params: lensParams,
       }),
       providesTags: provideInspectorLensTags,
@@ -227,7 +227,7 @@ export const transformApi = Api.injectEndpoints({
     runInspectorQuery: builder.query<Dataset, RunInspectorQueryRequest>({
       query: ({ transformId, lensId, query, lensParams }) => ({
         method: "POST",
-        url: `/api/transform/${transformId}/inspect/${lensId}/query`,
+        url: `/api/ee/transforms/${transformId}/inspect/${lensId}/query`,
         body: { query, lens_params: lensParams },
       }),
     }),

@@ -29,10 +29,7 @@ describe("scenarios > metrics > search", () => {
     H.commandPalette()
       .findByRole("option", { name: ORDERS_SCALAR_METRIC.name })
       .click();
-    cy.wait("@metricDataset");
-    H.MetricsViewer.searchBarPills()
-      .contains("Count of orders")
-      .should("be.visible");
+    H.MetricPage.aboutPage().should("be.visible");
   });
 
   it("should be able to search for metrics on the search page", () => {
@@ -53,25 +50,18 @@ describe("scenarios > metrics > search", () => {
       cy.findByText("1 result").should("be.visible");
       cy.findByText(ORDERS_SCALAR_METRIC.name).click();
     });
-    cy.wait("@metricDataset");
-    H.MetricsViewer.searchBarPills()
-      .contains("Count of orders")
-      .should("be.visible");
+    H.MetricPage.aboutPage().should("be.visible");
   });
 
   it("should see metrics in recent items in global search", () => {
     H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
       H.visitMetric(card.id);
-      cy.wait("@dataset");
     });
-    H.navigationSidebar().findByText("Home").click();
+    cy.visit("/");
     H.commandPaletteSearch(ORDERS_SCALAR_METRIC.name, false);
     H.commandPalette()
       .findByRole("option", { name: ORDERS_SCALAR_METRIC.name })
       .click();
-    cy.wait("@metricDataset");
-    H.MetricsViewer.searchBarPills()
-      .contains("Count of orders")
-      .should("be.visible");
+    H.MetricPage.aboutPage().should("be.visible");
   });
 });

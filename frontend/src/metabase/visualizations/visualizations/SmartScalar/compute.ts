@@ -1,14 +1,14 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { formatValue } from "metabase/lib/formatting";
-import { formatDateTimeRangeWithUnit } from "metabase/lib/formatting/date";
-import type { OptionsType } from "metabase/lib/formatting/types";
-import { isNumber } from "metabase/lib/types";
-import { isEmpty } from "metabase/lib/validate";
 import type { ColorGetter } from "metabase/ui/colors/types";
+import { formatValue } from "metabase/utils/formatting";
+import { formatDateTimeRangeWithUnit } from "metabase/utils/formatting/date";
+import type { OptionsType } from "metabase/utils/formatting/types";
+import { isNumber } from "metabase/utils/types";
+import { isEmpty } from "metabase/utils/validate";
 import { computeChange } from "metabase/visualizations/lib/numeric";
+import { findPreviousNonEmptyRowIndex } from "metabase/visualizations/lib/trend-helpers";
 import type { ColumnSettings } from "metabase/visualizations/types";
 import { COMPARISON_TYPES } from "metabase/visualizations/visualizations/SmartScalar/constants";
 import {
@@ -272,12 +272,12 @@ function getCurrentMetricData({
   }
 
   // get latest value and date
-  const latestRowIndex = _.findLastIndex(rows, (row) => {
-    const date = row[dimensionColIndex];
-    const value = row[metricColIndex];
-
-    return !isEmpty(value) && !isEmpty(date);
-  });
+  const latestRowIndex = findPreviousNonEmptyRowIndex(
+    rows,
+    dimensionColIndex,
+    metricColIndex,
+    rows.length,
+  );
   if (latestRowIndex === -1) {
     throw Error("No rows contain a valid value.");
   }
@@ -430,16 +430,12 @@ function computeComparisonPreviousValue({
   nextDate: string | undefined;
   dateUnitSettings: DateUnitSettings;
 }) {
-  const previousRowIndex = _.findLastIndex(rows, (row, i) => {
-    if (i >= nextValueRowIndex) {
-      return false;
-    }
-
-    const date = row[dimensionColIndex];
-    const value = row[metricColIndex];
-
-    return !isEmpty(value) && !isEmpty(date);
-  });
+  const previousRowIndex = findPreviousNonEmptyRowIndex(
+    rows,
+    dimensionColIndex,
+    metricColIndex,
+    nextValueRowIndex,
+  );
 
   // if no row exists with non-null date and non-null value
   if (previousRowIndex === -1) {

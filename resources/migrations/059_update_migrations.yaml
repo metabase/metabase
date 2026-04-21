@@ -1226,34 +1226,6 @@ databaseChangeLog:
             constraintName: unique_python_library_entity_id
 
   - changeSet:
-      id: v59.2026-01-27T13:00:00
-      author: wotbrew
-      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            changeSetExecuted:
-              id: v58.2026-01-27T13:00:00
-              author: wotbrew
-              changeLogFile: migrations/058_update_migrations.yaml
-      changes:
-        - sql:
-            sql: >-
-              UPDATE metabase_table
-              SET data_layer = CASE data_layer
-                WHEN 'copper' THEN 'hidden'
-                ELSE 'final'
-              END
-      rollback:
-        - sql:
-            sql: >-
-              UPDATE metabase_table
-              SET data_layer = CASE data_layer
-                WHEN 'hidden' THEN 'copper'
-                ELSE 'bronze'
-              END
-
-  - changeSet:
       id: v59.2026-01-28T10:00:00
       author: metamben
       comment: Add stale column to analysis_finding for asynchronous dependent updates
@@ -3475,6 +3447,40 @@ databaseChangeLog:
                   remarks: The high checkpoint value for this run (inclusive upper bound)
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v59.2026-03-17T10:30:03
+      author: nvoxland
+      comment: When rolling back, make sure any transform permissions that were added are removed. Because 58 doesn't know about them and errors
+      changes:
+        - output:
+            message: Placeholder for managing transform permissions on rollback
+            target: STDOUT
+      rollback: delete from data_permissions where perm_type='perms/transforms';
+
+
+
+  - changeSet:
+      id: v59.2026-03-17T13:00:00
+      author: bronsa
+      comment: Drop medallion names for data_layer enum use (hidden, internal instead)
+      preConditions:
+        - onFail: MARK_RAN
+        - and:
+            - not:
+                changeSetExecuted:
+                  id: v58.2026-01-27T13:00:00
+                  author: wotbrew
+                  changeLogFile: migrations/058_update_migrations.yaml
+            - not:
+                changeSetExecuted:
+                  id: v59.2026-01-27T13:00:00
+                  author: wotbrew
+                  changeLogFile: migrations/059_update_migrations.yaml
+      runInTransaction: false
+      changes:
+        - customChange:
+            class: "metabase.app_db.custom_migrations.DropMedallionNamesForDataLayer"
 
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

@@ -2,18 +2,28 @@ import { useMemo } from "react";
 import _ from "underscore";
 
 import {
+  setOrUnsetParameterValues,
+  setParameterValue,
+} from "metabase/dashboard/actions/parameters";
+import {
   getDashCardById,
   getDashboardComplete,
   getParameterValuesBySlugMap,
   getParameters,
 } from "metabase/dashboard/selectors";
-import { getLinkTargets } from "metabase/lib/click-behavior";
-import { useStore } from "metabase/lib/redux";
+import { Dashboards } from "metabase/entities/dashboards";
+import { Questions } from "metabase/entities/questions";
+import type { State } from "metabase/redux/store";
 import { getUserAttributes } from "metabase/selectors/user";
+import { useStore } from "metabase/utils/redux";
 import type { ClickObject } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
-import type { DashCardId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type {
+  ClickBehavior,
+  DashCardId,
+  EntityCustomDestinationClickBehavior,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 type EntityObject = {
   id: number | string;
@@ -96,6 +106,8 @@ function createGetExtraDataForClick(
       dashboard,
       dashcard,
       userAttributes,
+      setOrUnsetParameterValues,
+      setParameterValue,
     };
   };
 }
@@ -117,3 +129,42 @@ export const useClickBehaviorData = ({
 
   return { getExtraDataForClick };
 };
+
+export function getLinkTargets(settings?: VisualizationSettings) {
+  const { click_behavior, column_settings = {} } = settings || {};
+  return [
+    click_behavior,
+    ...Object.values(column_settings).map(
+      (settings) => settings.click_behavior,
+    ),
+  ]
+    .filter(hasLinkedQuestionOrDashboard)
+    .map(mapLinkedEntityToEntityQuery);
+}
+
+function hasLinkedQuestionOrDashboard({
+  type,
+  linkType,
+}: {
+  type?: ClickBehavior["type"];
+  linkType?: EntityCustomDestinationClickBehavior["linkType"];
+} = {}) {
+  if (type === "link") {
+    return linkType === "question" || linkType === "dashboard";
+  }
+  return false;
+}
+
+function mapLinkedEntityToEntityQuery({
+  linkType,
+  targetId,
+}: {
+  linkType: EntityCustomDestinationClickBehavior["linkType"];
+  targetId: EntityCustomDestinationClickBehavior["targetId"];
+}) {
+  return {
+    entity: linkType === "question" ? Questions : Dashboards,
+    entityType: linkType,
+    entityId: targetId,
+  };
+}

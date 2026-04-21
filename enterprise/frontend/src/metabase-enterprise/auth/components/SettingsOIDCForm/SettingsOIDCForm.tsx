@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -8,6 +8,12 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
+import { GroupMappingsWidgetView } from "metabase/admin/settings/components/widgets/GroupMappingsWidget/GroupMappingsWidgetView";
+import {
+  useClearGroupMembershipMutation,
+  useDeletePermissionsGroupMutation,
+  useListPermissionsGroupsQuery,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -20,9 +26,9 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Flex, Stack, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import {
   type CustomOidcConfig,
   type OidcCheckRequest,
@@ -33,6 +39,7 @@ import {
   useUpdateCustomOidcMutation,
 } from "metabase-enterprise/api";
 import { provisioningOptions } from "metabase-enterprise/auth/utils";
+import type { Group, GroupId } from "metabase-types/api";
 
 function getOidcFormSchema() {
   return Yup.object({
@@ -50,6 +57,8 @@ function getOidcFormSchema() {
     "attribute-email": Yup.string().nullable().default("email"),
     "attribute-firstname": Yup.string().nullable().default("given_name"),
     "attribute-lastname": Yup.string().nullable().default("family_name"),
+    "group-sync-enabled": Yup.boolean().default(false),
+    "group-attribute": Yup.string().nullable().default("groups"),
   });
 }
 
@@ -63,6 +72,8 @@ interface OIDCFormValues {
   "attribute-email": string | null;
   "attribute-firstname": string | null;
   "attribute-lastname": string | null;
+  "group-sync-enabled": boolean;
+  "group-attribute": string | null;
 }
 
 function providerToFormValues(
@@ -79,10 +90,13 @@ function providerToFormValues(
       "attribute-email": "email",
       "attribute-firstname": "given_name",
       "attribute-lastname": "family_name",
+      "group-sync-enabled": false,
+      "group-attribute": "groups",
     };
   }
 
   const attributeMap = provider["attribute-map"] ?? {};
+  const groupSync = provider["group-sync"] ?? {};
 
   return {
     "login-prompt": provider["login-prompt"] ?? "",
@@ -94,11 +108,14 @@ function providerToFormValues(
     "attribute-email": attributeMap["email"] ?? "email",
     "attribute-firstname": attributeMap["first_name"] ?? "given_name",
     "attribute-lastname": attributeMap["last_name"] ?? "family_name",
+    "group-sync-enabled": groupSync.enabled ?? false,
+    "group-attribute": groupSync["group-attribute"] ?? "groups",
   };
 }
 
 function formValuesToProvider(
   values: OIDCFormValues,
+  groupMappings: Record<string, number[]>,
 ): Partial<CustomOidcConfig> {
   const scopes = values.scopes
     ? values.scopes
@@ -126,6 +143,11 @@ function formValuesToProvider(
     scopes,
     enabled: true,
     "attribute-map": attributeMap,
+    "group-sync": {
+      enabled: values["group-sync-enabled"],
+      "group-attribute": values["group-attribute"] ?? undefined,
+      "group-mappings": groupMappings,
+    },
   };
 
   if (values["client-secret"]) {
@@ -150,6 +172,16 @@ export function SettingsOIDCForm() {
     providers && providers.length > 0 ? providers[0] : null;
   const isExisting = existingProvider !== null;
   const isEnabled = existingProvider?.enabled ?? false;
+
+  const providerMappings = useMemo(
+    () => existingProvider?.["group-sync"]?.["group-mappings"] ?? {},
+    [existingProvider],
+  );
+  const groupMappingsRef = useRef<Record<string, number[]>>(providerMappings);
+
+  useEffect(() => {
+    groupMappingsRef.current = providerMappings;
+  }, [providerMappings]);
 
   const initialValues = useMemo(
     () => providerToFormValues(existingProvider),
@@ -202,7 +234,10 @@ export function SettingsOIDCForm() {
       // Run the connection check before saving — will throw on failure
       await runCheck(values);
 
-      const providerData = formValuesToProvider(values);
+      const providerData = formValuesToProvider(
+        values,
+        groupMappingsRef.current,
+      );
 
       if (isExisting && existingProvider) {
         const { key: _key, ...updateData } = providerData;
@@ -214,7 +249,54 @@ export function SettingsOIDCForm() {
         await createProvider(providerData as CustomOidcConfig).unwrap();
       }
     },
-    [isExisting, existingProvider, createProvider, updateProvider, runCheck],
+    [
+      isExisting,
+      existingProvider,
+      createProvider,
+      updateProvider,
+      runCheck,
+      groupMappingsRef,
+    ],
+  );
+
+  const { data: allGroupsData } = useListPermissionsGroupsQuery(undefined);
+  const allGroups = (allGroupsData ?? []) as Group[];
+  const [deleteGroupMutation] = useDeletePermissionsGroupMutation();
+  const [clearGroupMembershipMutation] = useClearGroupMembershipMutation();
+
+  const handleDeleteGroup = useCallback(
+    async ({ id }: { id: number }) => {
+      await deleteGroupMutation(id).unwrap();
+    },
+    [deleteGroupMutation],
+  );
+
+  const handleClearGroupMember = useCallback(
+    async ({ id }: { id: number }) => {
+      await clearGroupMembershipMutation(id).unwrap();
+    },
+    [clearGroupMembershipMutation],
+  );
+
+  const handleUpdateGroupMappings = useCallback(
+    async ({ value }: { key: string; value: Record<string, GroupId[]> }) => {
+      if (!existingProvider) {
+        return;
+      }
+      groupMappingsRef.current = value;
+      const existingGroupSync = existingProvider["group-sync"] ?? {};
+      await updateProvider({
+        key: existingProvider.key,
+        provider: {
+          "group-sync": {
+            enabled: existingGroupSync.enabled ?? false,
+            "group-attribute": existingGroupSync["group-attribute"],
+            "group-mappings": value,
+          },
+        },
+      }).unwrap();
+    },
+    [existingProvider, updateProvider],
   );
 
   const handleToggleEnabled = useCallback(async () => {
@@ -328,6 +410,39 @@ export function SettingsOIDCForm() {
                     />
                   </Stack>
                 </FormSection>
+
+                {isExisting && (
+                  <FormSection
+                    title={t`Synchronize group membership with your SSO`}
+                  >
+                    <Text c="text-secondary" mb="lg">
+                      {t`To enable this, you'll need to create mappings to tell ${applicationName} which group(s) your users should be added to based on the SSO group they're in.`}
+                    </Text>
+                    <Stack gap="md">
+                      <GroupMappingsWidgetView
+                        setting={{ key: "group-sync-enabled" }}
+                        mappings={
+                          existingProvider?.["group-sync"]?.[
+                            "group-mappings"
+                          ] ?? {}
+                        }
+                        updateSetting={handleUpdateGroupMappings}
+                        allGroups={allGroups}
+                        deleteGroup={handleDeleteGroup}
+                        clearGroupMember={handleClearGroupMember}
+                        mappingSetting="oidc-group-mappings"
+                        groupHeading={t`Group name`}
+                        groupPlaceholder={t`Group name`}
+                      />
+                      <FormTextInput
+                        name="group-attribute"
+                        label={t`Group attribute name`}
+                        description={t`The OIDC claim that contains group membership information.`}
+                        nullable
+                      />
+                    </Stack>
+                  </FormSection>
+                )}
 
                 <FormSection title={t`Optional settings`} collapsible>
                   <Stack gap="md">

@@ -24,7 +24,6 @@
    [metabase.query-processor.metadata :as qp.metadata]
    [metabase.query-processor.middleware.add-remaps :as qp.add-remaps]
    [metabase.query-processor.middleware.normalize-query :as qp.middleware.normalize]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -238,7 +237,8 @@
   "Build the version of [[qp.pipeline/*reduce*]] used at the top level for running pivot queries."
   [info         :- [:maybe ::lib.schema.info/info]
    more-queries :- [:sequential ::lib.schema/query]
-   vrf          :- [:fn {:error/message "volatile"} volatile?]]
+   vrf          :- [:fn {:error/message "volatile"} volatile?]
+   pivot-limit  :- [:maybe nat-int?]]
   (when (seq more-queries)
     ;; execute holds open a connection from [[execute-reducible-query]] so we need to manage connections
     ;; in the reducing part reduce fn. The default run fn is what orchestrates this together and we just
@@ -247,10 +247,18 @@
       ;; signature usually has metadata in place of driver but we are hijacking
       (fn multiple-reducing [rff {::keys [driver]} query]
         (assert driver (format "Expected 'metadata' returned by %s" `append-queries-execute-fn))
-        (let [respond (fn respond* [metadata reducible-rows]
-                        (let [rf (rff metadata)]
+        (let [master-row-count (volatile! 0)
+              respond (fn respond* [metadata reducible-rows]
+                        (let [rf (rff metadata)
+                              counting-rf (fn counting-rf*
+                                            ([] (rf))
+                                            ([acc] (rf acc))
+                                            ([acc row]
+                                             (vswap! master-row-count inc)
+                                             (rf acc row)))]
+                          (assert (ifn? rf))
                           (try
-                            (transduce identity (completing rf) reducible-rows)
+                            (transduce identity (completing counting-rf) reducible-rows)
                             (catch Throwable e
                               (throw (ex-info (tru "Error reducing result rows: {0}" (ex-message e))
                                               {:type qp.error-type/qp}
@@ -259,36 +267,48 @@
               ;; we don't want that now do we. Replace the reduce function with something simple that's not going to do
               ;; anything crazy like close our output stream prematurely; we can let the top-level reduce function worry
               ;; about that.
-              acc     (binding [qp.pipeline/*execute* orig-execute
-                                qp.pipeline/*reduce*  (fn [rff metadata reducible-rows]
-                                                        (let [rf (rff metadata)]
-                                                          (transduce identity rf reducible-rows)))]
-                        (-> (qp.pipeline/*execute* driver query respond)
-                            (process-queries-append-results more-queries @vrf info)))]
+              first-result (binding [qp.pipeline/*execute* orig-execute
+                                     qp.pipeline/*reduce*  (fn [rff metadata reducible-rows]
+                                                             (let [rf (rff metadata)]
+                                                               (transduce identity rf reducible-rows)))]
+                             (qp.pipeline/*execute* driver query respond))
+              truncated?   (and pivot-limit (>= @master-row-count pivot-limit))
+              acc          (if truncated?
+                             first-result
+                             (binding [qp.pipeline/*execute* orig-execute
+                                       qp.pipeline/*reduce* (fn [rff metadata reducible-rows]
+                                                              (let [rf (rff metadata)]
+                                                                (transduce identity rf reducible-rows)))]
+                               (process-queries-append-results first-result more-queries @vrf info)))
+              result       (@vrf acc)]
           ;; completion arity can't be threaded because the value is derefed too early
-          (qp.pipeline/*result* (@vrf acc)))))))
+          (qp.pipeline/*result* (cond-> result
+                                  (and truncated? (map? result))
+                                  (assoc-in [:data :pivot_rows_truncated] @master-row-count))))))))
 
 (mu/defn- append-queries-rff-and-fns
   "RFF and QP pipeline functions to use when executing pivot queries."
   [info         :- [:maybe ::lib.schema.info/info]
    rff          :- ::qp.schema/rff
-   more-queries :- [:sequential ::lib.schema/query]]
+   more-queries :- [:sequential ::lib.schema/query]
+   pivot-limit  :- [:maybe nat-int?]]
   (let [vrf (volatile! nil)]
-    {:rff     (append-queries-rff rff vrf)
-     :execute (append-queries-execute-fn more-queries)
-     :reduce  (append-queries-reduce-fn info more-queries vrf)}))
+    {:rff      (append-queries-rff rff vrf)
+     :execute  (append-queries-execute-fn more-queries)
+     :reduce   (append-queries-reduce-fn info more-queries vrf pivot-limit)}))
 
 (mu/defn- process-multiple-queries
   "Allows the query processor to handle multiple queries, stitched together to appear as one"
   [[{:keys [info], :as first-query} & more-queries] :- [:sequential ::lib.schema/query]
-   rff                                              :- ::qp.schema/rff]
+   rff                                              :- ::qp.schema/rff
+   pivot-limit                                      :- [:maybe nat-int?]]
   (if (empty? more-queries)
     ;; Single query - use normal QP pipeline to preserve userland metadata
     (qp/process-query (cond-> first-query
                         (seq info) qp/userland-query)
                       rff)
     ;; Multiple queries - use custom pivot pipeline
-    (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries)
+    (let [{:keys [rff execute reduce]} (append-queries-rff-and-fns info rff more-queries pivot-limit)
           first-query                  (cond-> first-query
                                          (seq info) qp/userland-query)]
       (binding [qp.pipeline/*execute* (or execute qp.pipeline/*execute*)
@@ -359,7 +379,7 @@
         show-column-totals (get viz-settings "pivot.show_column_totals" true)
         metadata-provider             (or (:lib/metadata query)
                                           (lib-be/application-database-metadata-provider (:database query)))
-        mlv2-query                    (lib/query metadata-provider query)
+        mbql5-query                    (lib/query metadata-provider query)
         breakouts                     (into []
                                             (map-indexed (fn [i col]
                                                            (cond-> col
@@ -369,12 +389,12 @@
                                                              ;; match a column that has a join-alias but whose source is a
                                                              ;; model
                                                              (contains? col :lib/card-id) (assoc :lib/source :source/card))))
-                                            (concat (lib/breakouts-metadata mlv2-query)
-                                                    (lib/aggregations-metadata mlv2-query)))
+                                            (concat (lib/breakouts-metadata mbql5-query)
+                                                    (lib/aggregations-metadata mbql5-query)))
         index-in-breakouts            (fn index-in-breakouts [legacy-ref]
                                         (try
                                           (::idx (lib.equality/find-column-for-legacy-ref
-                                                  mlv2-query
+                                                  mbql5-query
                                                   -1
                                                   legacy-ref
                                                   breakouts))
@@ -461,6 +481,20 @@
            :qp.pivot/num-remapped-breakouts   num-remapped-breakouts
            :qp.pivot/remapped-indexes         remap)))
 
+(def ^:dynamic ^:private *pivot-max-result-rows*
+  "Maximum number of result rows for each pivot sub-query. Divided by the number of aggregations since each aggregation
+  adds a column to the output, so fewer rows are needed to fill the pivot table."
+  200000)
+
+(defn- pivot-query-max-rows
+  "Calculate the per-sub-query row limit for pivot queries: `floor(pivot-max-result-rows / num-aggregations)`.
+  Falls back to `pivot-max-result-rows` if there are no aggregations (shouldn't happen for pivot queries)."
+  [query]
+  (let [num-aggs (count (lib/aggregations query))]
+    (if (pos? num-aggs)
+      (quot *pivot-max-result-rows* num-aggs)
+      *pivot-max-result-rows*)))
+
 (mu/defn run-pivot-query
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
   yourself."
@@ -470,16 +504,19 @@
   ([query :- ::qp.schema/any-query
     rff   :- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
-   (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
-     (qp.setup/with-qp-setup [query query]
-       (let [query       (qp.middleware.normalize/normalize-preprocessing-middleware query) ; normalize to MBQL 5 if needed.
-             rff         (or rff qp.reducible/default-rff)
-             pivot-opts  (or
-                          (pivot-options query (get query :viz-settings))
-                          (pivot-options query (get-in query [:info :visualization-settings]))
-                          (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
-             query       (-> query
-                             (assoc-in [:middleware :pivot-options] pivot-opts)
-                             add-canonical-col-info)
-             all-queries (generate-queries query pivot-opts)]
-         (process-multiple-queries all-queries rff))))))
+   (qp.setup/with-qp-setup [query query]
+     (let [query       (qp.middleware.normalize/normalize-preprocessing-middleware query) ; normalize to MBQL 5 if needed.
+           rff         (or rff qp.reducible/default-rff)
+           pivot-opts  (or
+                        (pivot-options query (get query :viz-settings))
+                        (pivot-options query (get-in query [:info :visualization-settings]))
+                        (not-empty (select-keys query [:pivot-rows :pivot-cols :pivot-measures :show-row-totals :show-column-totals])))
+           pivot-limit (pivot-query-max-rows query)
+           query       (-> query
+                           (assoc-in [:middleware :pivot-options] pivot-opts)
+                           (assoc-in [:constraints :max-results] pivot-limit)
+                           (cond-> (get-in query [:constraints :max-results-bare-rows])
+                             (update-in [:constraints :max-results-bare-rows] min pivot-limit))
+                           add-canonical-col-info)
+           all-queries (generate-queries query pivot-opts)]
+       (process-multiple-queries all-queries rff pivot-limit)))))

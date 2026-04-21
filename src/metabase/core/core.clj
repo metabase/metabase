@@ -3,7 +3,6 @@
    [clojure.string :as str]
    [clojure.tools.trace :as trace]
    [environ.core :as env]
-   [java-time.api :as t]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api-routes.core :as api-routes]
@@ -20,6 +19,7 @@
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.initialization-status.core :as init-status]
+   [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
@@ -222,10 +222,12 @@
 
   (init-status/set-progress! 0.85)
   (embed.settings/check-and-sync-settings-on-startup! env/env)
+  (llm.startup/check-and-sync-settings-on-startup!)
   (init-status/set-progress! 0.9)
   (setting/migrate-encrypted-settings!)
   (database/check-health!)
   (startup/run-startup-logic!)
+  (setting/log-deprecated-env-var-usage!)
   (init-status/set-progress! 0.95)
   (task/start-scheduler!)
   (queue/start-listeners!)
@@ -236,10 +238,10 @@
   "General application initialization function which should be run once at application startup. Calls [[init!*]] and
   records the duration of startup."
   []
-  (let [start-time          (t/zoned-date-time)
-        jvm-start-time      (.getStartTime (ManagementFactory/getRuntimeMXBean))]
+  (let [timer          (u/start-timer)
+        jvm-start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))]
     (init!*)
-    (let [init-duration-ms  (.toMillis (t/duration start-time (t/zoned-date-time)))
+    (let [init-duration-ms   (u/since-ms timer)
           jvm-to-complete-ms (u/since-ms-wall-clock jvm-start-time)]
       (log/infof "Metabase Initialization COMPLETE in %s (JVM uptime: %s)"
                  (u/format-milliseconds init-duration-ms)

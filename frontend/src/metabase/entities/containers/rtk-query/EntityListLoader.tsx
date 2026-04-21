@@ -8,13 +8,13 @@ import {
   LoadingAndErrorWrapper as DefaultLoadingAndErrorWrapper,
   type LoadingAndErrorWrapperProps,
 } from "metabase/common/components/LoadingAndErrorWrapper";
-import { capitalize } from "metabase/lib/formatting";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   setRequestError,
   setRequestLoaded,
   setRequestLoading,
 } from "metabase/redux/requests";
+import { capitalize } from "metabase/utils/formatting";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { isObject } from "metabase-types/guards";
 
 import type {
@@ -237,14 +237,12 @@ export function EntityListLoader<Entity, EntityWrapper>({
 
   useEffect(() => {
     if (isFetching) {
-      // @ts-expect-error - invalid typings in redux-actions package
       dispatch(setRequestLoading(requestStatePath, queryKey));
     }
   }, [dispatch, isFetching, requestStatePath, queryKey]);
 
   useEffect(() => {
     if (rtkError) {
-      // @ts-expect-error - invalid typings in redux-actions package
       dispatch(setRequestError(requestStatePath, queryKey, rtkError));
     }
   }, [dispatch, rtkError, requestStatePath, queryKey]);
@@ -277,7 +275,6 @@ export function EntityListLoader<Entity, EntityWrapper>({
       // NOTE Atte Keinänen 8/23/17:
       // Dispatch `setRequestLoaded` after clearing the call stack because we want to the actual data to be updated
       // before we notify components via `state.requests.fetches` that fetching the data is completed
-      // @ts-expect-error - invalid typings in redux-actions package
       setTimeout(() => dispatch(setRequestLoaded(requestStatePath, queryKey)));
     }
   }, [

@@ -21,6 +21,7 @@ export const settingsApi = Api.injectEndpoints({
       }),
       transformResponse: (response: SettingDefinition[]) =>
         _.indexBy(response, "key") as SettingDefinitionMap,
+      providesTags: ["session-properties"],
     }),
     getSetting: builder.query<
       EnterpriseSettingValue,

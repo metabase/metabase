@@ -39,7 +39,7 @@ case(isEmpty([Feedback]), true, false)
 
 You can combine `isEmpty` with the [`case` expression](./case.md) to replace empty strings with something more descriptive.
 
-For example, you can create a new custom column that will contain `"No feedback"` when the original `[Feedback]` column is empty or null, and the feedback value when `[Feedback]` is has a non-empty value. The custom expression to do it is:
+For example, you can create a new custom column that will contain `"No feedback"` when the original `[Feedback]` column is empty or null, and the feedback value when `[Feedback]` has a non-empty value. The custom expression to do it is:
 
 ```
 case(isEmpty([Feedback]), "No feedback.", [Feedback])

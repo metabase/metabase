@@ -7,13 +7,13 @@ import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import Detail from "metabase/reference/components/Detail";
 import { EditHeader } from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import * as actions from "metabase/reference/reference";
 import { getShallowFields as getFields } from "metabase/selectors/metadata";
+import { connect } from "metabase/utils/redux";
 
 import {
   getDatabase,

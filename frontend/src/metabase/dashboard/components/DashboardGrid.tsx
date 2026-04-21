@@ -17,21 +17,20 @@ import {
 } from "metabase/common/components/Pickers/QuestionPicker";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
-import {
-  getVisibleCardIds,
-  isQuestionDashCard,
-} from "metabase/dashboard/utils";
+import { getVisibleCardIds } from "metabase/dashboard/utils";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import type { State } from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
+import { Box, Flex, type FlexProps } from "metabase/ui";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
 import {
   GRID_ASPECT_RATIO,
   GRID_BREAKPOINTS,
   GRID_COLUMNS,
   GRID_WIDTH,
   MIN_ROW_HEIGHT,
-} from "metabase/lib/dashboard_grid";
-import { connect } from "metabase/lib/redux";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { addUndo } from "metabase/redux/undo";
-import { Box, Flex, type FlexProps } from "metabase/ui";
+} from "metabase/utils/dashboard_grid";
+import { connect } from "metabase/utils/redux";
 import LegendS from "metabase/visualizations/components/Legend.module.css";
 import { VisualizerModal } from "metabase/visualizer/components/VisualizerModal";
 import {
@@ -47,7 +46,6 @@ import type {
   DashboardTabId,
   VisualizerVizDefinition,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import type { SetDashCardAttributesOpts } from "../actions";
 import {
@@ -358,8 +356,8 @@ class DashboardGridInner extends Component<
   getIsLastDashboardQuestionDashcard = (dc: BaseDashboardCard): boolean => {
     return Boolean(
       dc.card.dashboard_id !== null &&
-        dc.card_id &&
-        this.state.dashcardCountByCardId[dc.card_id] <= 1,
+      dc.card_id &&
+      this.state.dashcardCountByCardId[dc.card_id] <= 1,
     );
   };
 

@@ -80,7 +80,8 @@
 
               (get-manifest [user status]
                 (testing (format "get slack manifest %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :get status "slack/manifest")))]
+                  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+                    (mt/user-http-request user :get status "slack/manifest"))))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
           (mt/with-premium-features #{}

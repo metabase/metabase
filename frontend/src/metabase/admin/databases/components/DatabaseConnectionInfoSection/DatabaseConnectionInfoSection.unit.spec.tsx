@@ -8,9 +8,9 @@ import {
 } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { DatabaseConnectionInfoSection } from "./DatabaseConnectionInfoSection";
 
@@ -174,6 +174,18 @@ describe("DatabaseConnectionInfoSection", () => {
           ).toBe(1);
         });
       });
+    });
+  });
+
+  describe("Cloud-attached databases", () => {
+    it("should not show the sync actions", async () => {
+      setup({ database: createMockDatabase({ is_attached_dwh: true }) });
+      expect(
+        screen.queryByText(/Sync database schema/i),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Re-scan field values/i),
+      ).not.toBeInTheDocument();
     });
   });
 });

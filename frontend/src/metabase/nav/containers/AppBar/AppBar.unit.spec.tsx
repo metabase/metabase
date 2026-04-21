@@ -7,19 +7,14 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupDashboardEndpoints,
+  setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { DEFAULT_INTERACTIVE_EMBEDDING_OPTIONS } from "metabase/redux/embed";
-import type { Card } from "metabase-types/api";
-import {
-  createMockCard,
-  createMockCollection,
-  createMockDashboard,
-} from "metabase-types/api/mocks";
 import type {
   DashboardState,
   InteractiveEmbeddingOptions,
-} from "metabase-types/store";
+} from "metabase/redux/store";
 import {
   createMockAppState,
   createMockDashboardState,
@@ -27,7 +22,13 @@ import {
   createMockEmbedState,
   createMockQueryBuilderState,
   createMockStoreDashboard,
-} from "metabase-types/store/mocks";
+} from "metabase/redux/store/mocks";
+import type { Card } from "metabase-types/api";
+import {
+  createMockCard,
+  createMockCollection,
+  createMockDashboard,
+} from "metabase-types/api/mocks";
 
 import AppBar from "./AppBar";
 
@@ -277,6 +278,7 @@ function setup({
   // Need to set the location because CollectionBreadcrumbs uses the useLocation()
   window.history.pushState({}, "", initialRoute);
 
+  setupUserMetabotPermissionsEndpoint();
   setupCollectionsEndpoints({
     collections: [FOO_COLLECTION],
   });

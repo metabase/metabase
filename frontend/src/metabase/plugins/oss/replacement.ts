@@ -1,27 +1,44 @@
-import type { ComponentType } from "react";
+import type { ComponentType, ReactElement, ReactNode } from "react";
 
-import type { ReplaceSourceEntry } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
+import type { SourceReplacementEntry } from "metabase-types/api";
 
 import { PluginPlaceholder } from "../components/PluginPlaceholder";
 
-export type ReplaceDataSourceModalProps = {
-  initialSource?: ReplaceSourceEntry;
-  initialTarget?: ReplaceSourceEntry;
-  isOpened: boolean;
+export type SourceReplacementModalProps = {
+  initialSource?: SourceReplacementEntry;
+  initialTarget?: SourceReplacementEntry;
+  opened: boolean;
   onClose: () => void;
+};
+
+export type SourceReplacementButtonChildProps = {
+  tooltip: string | undefined;
+  isDisabled: boolean;
+};
+
+export type SourceReplacementButtonProps = {
+  children: (props: SourceReplacementButtonChildProps) => ReactNode;
 };
 
 type ReplacementPlugin = {
   isEnabled: boolean;
-  canUserReplaceSources: (state: State) => boolean;
-  ReplaceDataSourceModal: ComponentType<ReplaceDataSourceModalProps>;
+  canReplaceSources: (state: State) => boolean;
+  getTransformToolsRoutes: () => ReactElement | null;
+  SourceReplacementButton: ComponentType<SourceReplacementButtonProps>;
+  SourceReplacementModal: ComponentType<SourceReplacementModalProps>;
+  SourceReplacementStatus: ComponentType;
+  TransformToolsMenu: ComponentType;
 };
 
 const getDefaultReplacementPlugin = (): ReplacementPlugin => ({
   isEnabled: false,
-  canUserReplaceSources: () => false,
-  ReplaceDataSourceModal: PluginPlaceholder,
+  canReplaceSources: () => false,
+  getTransformToolsRoutes: () => null,
+  SourceReplacementButton: PluginPlaceholder,
+  SourceReplacementModal: PluginPlaceholder,
+  SourceReplacementStatus: PluginPlaceholder,
+  TransformToolsMenu: PluginPlaceholder,
 });
 
 export const PLUGIN_REPLACEMENT = getDefaultReplacementPlugin();

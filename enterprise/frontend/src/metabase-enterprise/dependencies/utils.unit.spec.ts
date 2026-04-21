@@ -57,7 +57,6 @@ import {
   getErrorTypeLabelWithCount,
   getNodeCreatedAt,
   getNodeCreatedBy,
-  getNodeDataSourceEntry,
   getNodeDescription,
   getNodeIcon,
   getNodeId,
@@ -66,6 +65,7 @@ import {
   getNodeLastEditedBy,
   getNodeLink,
   getNodeLocationInfo,
+  getNodeSourceReplacementEntry,
   getNodeTypeInfo,
   getNodeViewCount,
   getSearchQuery,
@@ -956,6 +956,6 @@ describe("getNodeDataSourceEntry", () => {
       expected: null,
     },
   ])("should return $expected for $description", ({ node, expected }) => {
-    expect(getNodeDataSourceEntry(node)).toEqual(expected);
+    expect(getNodeSourceReplacementEntry(node)).toEqual(expected);
   });
 });

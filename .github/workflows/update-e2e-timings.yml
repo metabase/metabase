@@ -18,6 +18,7 @@ on:
 
 jobs:
   collect-and-average-timings:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
     env:
@@ -64,7 +65,7 @@ jobs:
           echo "Branch name will be: $BRANCH_NAME"
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
           token: ${{ steps.app-token.outputs.token }}
           branch: ${{ env.BRANCH_NAME }}

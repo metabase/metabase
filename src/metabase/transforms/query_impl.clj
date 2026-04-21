@@ -36,7 +36,7 @@
                                                            :db/engine             (name driver)}
            (let [conn-spec         (driver/connection-spec driver db)
                  transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
-                 exec-result
+                 _exec-result
                  (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
                    (transforms.u/run-cancelable-transform!
                     run-id transform driver transform-details
@@ -53,13 +53,8 @@
                         (when-not (= :succeeded (:status result))
                           (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
                         result))))]
-             ;; Post-processing: sync, transform_id, events, secondary indexes (after succeed-started-run!)
-             (transforms-base.u/complete-execution! transform
-                                                    {:run-id               run-id
-                                                     :source-range-params  (:source-range-params exec-result)
-                                                     :with-stage-timing-fn (fn [rid stage thunk]
-                                                                             (transforms.instrumentation/with-stage-timing [rid stage]
-                                                                               (thunk)))})))))
+             ;; Post-processing: sync, transform_id, events
+             (transforms-base.u/complete-execution! transform {})))))
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)

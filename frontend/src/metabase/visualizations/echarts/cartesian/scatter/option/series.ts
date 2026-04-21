@@ -51,6 +51,7 @@ export function buildEChartsScatterSeries(
   bubbleSizeDomain: Extent | null,
   yAxisIndex: number,
   renderingContext: RenderingContext,
+  xAxisIndex?: number,
 ): ScatterSeriesOption {
   const bubbleSizeDataKey =
     "bubbleSizeDataKey" in seriesModel
@@ -60,6 +61,7 @@ export function buildEChartsScatterSeries(
     id: seriesModel.dataKey,
     type: "scatter",
     yAxisIndex,
+    ...(xAxisIndex != null ? { xAxisIndex } : {}),
     symbolSize: getBubbleDiameterScale(bubbleSizeDomain, bubbleSizeDataKey),
     encode: {
       y: seriesModel.dataKey,
@@ -80,5 +82,6 @@ export function buildEChartsScatterSeries(
         opacity: CHART_STYLE.opacity.blur,
       },
     },
+    progressive: 0,
   };
 }

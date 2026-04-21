@@ -1,5 +1,5 @@
 import { Api } from "metabase/api";
-import type { DataSegregationStrategy } from "metabase/embedding/embedding-hub";
+import type { DataSegregationStrategy } from "metabase-types/api";
 
 import { listTag } from "./tags";
 
@@ -11,6 +11,7 @@ type CheckListApiStep =
   | "embed-production"
   | "sso-configured"
   | "enable-tenants"
+  | "move-dashboard-to-shared"
   | "create-tenants"
   | "setup-data-segregation-strategy"
   | "data-permissions-and-enable-tenants"

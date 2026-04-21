@@ -1,6 +1,6 @@
 (ns metabase-enterprise.workspaces.api.common
   "Shared schemas, validations, and handler logic for workspace API routes.
-  Used by both `workspaces.api` and `agent-api.workspace` (agent routes)."
+  Used by `workspaces.api` only currently, but may be shared with agent APIs in future."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -26,6 +26,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.models.table :as table]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -79,7 +80,7 @@
 
 ;;; ------------------------------------------------- Utilities ------------------------------------------------------
 
-(defn flag-enabled?
+(defn- flag-enabled?
   "Coerce a flag parameter (true, false, or 1) to boolean."
   [v]
   (boolean (#{1 true} v)))
@@ -230,6 +231,10 @@
           ;; Check for internal target conflict AFTER adding database to target
           _         (api/check-400 (not (internal-target-conflict? ws-id (:target body)))
                                    (deferred-tru "Another transform in this workspace already targets that table"))
+          ;; Eagerly create global target table row so it's immediately visible
+          {:keys [database schema name]} (:target body)
+          _         (when (and database name)
+                      (table/upsert-transform-target-table! database schema name))
           transform (ws.common/add-to-changeset! api/*current-user-id* workspace :transform global-id body
                                                  :ref-id ref-id)]
       (-> (select-malli-keys WorkspaceTransform workspace-transform-alias transform)
@@ -360,8 +365,7 @@
                                   (target->spec driver table-id-map))))
 
 ;;; ---------------------------------------- Shared endpoint handlers ----------------------------------------
-;; These functions contain the handler logic shared between the regular workspace API
-;; (`workspaces/api.clj`) and the agent workspace API (`agent-api/workspace.clj`).
+;; These functions contain the handler logic for the workspace API (`workspaces/api.clj`).
 ;; Each `defendpoint` becomes a thin wrapper that calls the corresponding function here.
 
 (def ^:private log-limit "Maximum number of recent workspace log items to show" 20)
@@ -406,14 +410,18 @@
         ;; Build a map of [d s t] => id for every table that has been synced since the output row was written.
         fallback-map     (merge
                           (ws.impl/table-ids-fallbacks :global_schema :global_table :global_table_id all-outputs)
-                          (ws.impl/table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))]
+                          (ws.impl/table-ids-fallbacks :isolated_schema :isolated_table :isolated_table_id all-outputs))
+        table-ids        (into (into #{} (keep :isolated_table_id) all-outputs) (vals fallback-map))
+        active-table-ids (t2/select-fn-set :id [:model/Table :id] :id [:in table-ids] :active true)]
     {:inputs  (sort-by (juxt :db_id :schema :table) inputs)
      :outputs (sort-by
                (juxt :db_id (comp (juxt :schema :table) :global))
                (concat
                 ;; Workspace transform outputs
                 (for [{:keys [ref_id db_id global_schema global_table global_table_id
-                              isolated_schema isolated_table isolated_table_id]} outputs]
+                              isolated_schema isolated_table isolated_table_id]} outputs
+                      :let [isolated_table_id (or isolated_table_id
+                                                  (get fallback-map [db_id isolated_schema isolated_table]))]]
                   {:db_id    db_id
                    :global   {:transform_id nil
                               :schema       global_schema
@@ -422,10 +430,14 @@
                    :isolated {:transform_id ref_id
                               :schema       isolated_schema
                               :table        isolated_table
-                              :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))}})
+                              :table_id     isolated_table_id
+                              :active       (contains? active-table-ids isolated_table_id)}})
+
                 ;; External transform outputs
                 (for [{:keys [transform_id db_id global_schema global_table global_table_id
-                              isolated_schema isolated_table isolated_table_id]} external-outputs]
+                              isolated_schema isolated_table isolated_table_id]} external-outputs
+                      :let [isolated_table_id (or isolated_table_id
+                                                  (get fallback-map [db_id isolated_schema isolated_table]))]]
                   {:db_id    db_id
                    :global   {:transform_id transform_id
                               :schema       global_schema
@@ -434,7 +446,8 @@
                    :isolated {:transform_id transform_id
                               :schema       isolated_schema
                               :table        isolated_table
-                              :table_id     (or isolated_table_id (get fallback-map [db_id isolated_schema isolated_table]))}})))}))
+                              :table_id     isolated_table_id
+                              :active       (contains? active-table-ids isolated_table_id)}})))}))
 
 (defn get-workspace-log
   "Handler body for GET /:ws-id/log."
@@ -574,7 +587,7 @@
       (not (or target-db-id ws-db-id))
       {:status 403 :body (deferred-tru "Must target a database")}
 
-      (when-let [schema (:schema target)] (str/starts-with? schema "mb__isolation_"))
+      (when-let [schema (:schema target)] (driver.u/workspace-isolated-schema? schema))
       {:status 403 :body (deferred-tru "Must not target an isolated workspace schema")}
 
       ;; Within a workspace, we defer blocking on conflicts outside the workspace
@@ -593,6 +606,7 @@
   (let [workspace (t2/select-one :model/Workspace :id ws-id)
         _         (api/check-404 workspace)
         _         (api/check-400 (not= :archived (:base_status workspace)) "Cannot execute archived workspace")
+        _         (check-transforms-enabled! (:database_id workspace))
         graph     (ws.impl/get-or-calculate-graph! workspace)]
     (ws.impl/execute-workspace! workspace graph {:stale-only? (flag-enabled? stale_only)})))
 
@@ -673,7 +687,11 @@
           ;; If target is changing, check for conflicts with other transforms (excluding this one)
           (when (:target body)
             (api/check-400 (not (internal-target-conflict? ws-id (:target merged-body) tx-id))
-                           (deferred-tru "Another transform in this workspace already targets that table")))
+                           (deferred-tru "Another transform in this workspace already targets that table"))
+            ;; Eagerly create global target table row so it's immediately visible
+            (let [{:keys [database schema name]} (:target merged-body)]
+              (when (and database name)
+                (table/upsert-transform-target-table! database schema name))))
           (t2/update! :model/WorkspaceTransform {:workspace_id ws-id :ref_id tx-id} merged-body)
           ;; If source or target changed, increment versions for re-analysis
           (when source-or-target-changed?

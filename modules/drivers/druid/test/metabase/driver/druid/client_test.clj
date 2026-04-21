@@ -5,7 +5,7 @@
    [metabase.driver.druid.client :as druid.client]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.test :as mt]))
 

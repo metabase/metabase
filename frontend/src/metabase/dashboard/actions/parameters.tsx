@@ -13,7 +13,6 @@ import {
 import { getParameterMappings } from "metabase/dashboard/actions/auto-wire-parameters/utils";
 import { updateDashboard } from "metabase/dashboard/actions/save";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
-import { createAction, createThunkAction } from "metabase/lib/redux";
 import {
   type NewParameterOpts,
   createParameter,
@@ -21,9 +20,13 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
+import { selectTab, setParameterValues } from "metabase/redux/dashboard";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
+import { isQuestionDashCard } from "metabase/utils/dashboard";
+import { createAction, createThunkAction } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
@@ -47,7 +50,6 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 import { isDimensionTarget } from "metabase-types/guards";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import {
   trackAutoApplyFiltersDisabled,
@@ -78,7 +80,6 @@ import {
   findDashCardForInlineParameter,
   hasInlineParameters,
   isDashcardInlineParameter,
-  isQuestionDashCard,
   setDashboardHeaderParameterIndex,
   supportsInlineParameters,
 } from "../utils";
@@ -89,7 +90,6 @@ import {
   setDashboardAttributes,
   setMultipleDashCardAttributes,
 } from "./core";
-import { selectTab } from "./tabs";
 import { closeSidebar, setSidebar } from "./ui";
 
 type SingleParamUpdater = (p: Parameter) => Parameter;
@@ -837,9 +837,6 @@ export const setParameterValue = createThunkAction(
   },
 );
 
-export const SET_PARAMETER_VALUES = "metabase/dashboard/SET_PARAMETER_VALUES";
-export const setParameterValues = createAction(SET_PARAMETER_VALUES);
-
 // Auto-apply filters
 const APPLY_DRAFT_PARAMETER_VALUES =
   "metabase/dashboard/APPLY_DRAFT_PARAMETER_VALUES";
@@ -1036,10 +1033,6 @@ export const setParameterIndex = createThunkAction(
     );
   },
 );
-
-export const SHOW_ADD_PARAMETER_POPOVER =
-  "metabase/dashboard/SHOW_ADD_PARAMETER_POPOVER";
-export const showAddParameterPopover = createAction(SHOW_ADD_PARAMETER_POPOVER);
 
 export const HIDE_ADD_PARAMETER_POPOVER =
   "metabase/dashboard/HIDE_ADD_PARAMETER_POPOVER";

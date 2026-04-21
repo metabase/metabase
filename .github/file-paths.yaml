@@ -200,6 +200,10 @@ cljs:
   - ".github/workflows/cljs.yml"
   - "shadow-cljs.edn"
 
+serialization_baseline:
+  - ".github/workflows/serialization.yml"
+  - "test_resources/serialization_baseline/**"
+
 openapi:
   - ".github/workflows/openapi.yml"
   - "src/metabase/api/**"

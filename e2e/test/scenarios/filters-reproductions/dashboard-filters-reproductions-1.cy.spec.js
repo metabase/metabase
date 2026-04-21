@@ -218,11 +218,11 @@ describe("issue 12720, issue 47172", () => {
     cy.findAllByTestId("dashcard-container").contains(title).click();
 
     cy.location("search").should("contain", dashboardFilter.default);
-    H.filterWidget().contains("After January 1, 2026");
+    H.filterWidget().contains("After January 1, 2029");
   }
-  // After January 1st, 2026
+  // After January 1st, 2029
   const dashboardFilter = {
-    default: "2026-01-01~",
+    default: "2029-01-01~",
     id: "d3b78b27",
     name: "Date Filter",
     slug: "date_filter",
@@ -585,7 +585,7 @@ describe("issue 16663", () => {
     id: "f8ae0c97",
     type: "date/quarter-year",
     sectionId: "date",
-    default: "Q1-2023",
+    default: "Q1-2026",
   };
 
   const dashboardDetails = { parameters: [FILTER] };
@@ -853,10 +853,10 @@ describe("issue 17775", () => {
   it("should be able to apply dashboard filter to a custom column (metabase#17775)", () => {
     H.filterWidget().click();
 
-    setQuarterAndYear({ quarter: "Q1", year: "2023" });
+    setQuarterAndYear({ quarter: "Q1", year: "2026" });
 
     cy.findAllByText("44.43").should("have.length", 2);
-    cy.findAllByText("March 26, 2023, 8:45 AM").should("have.length", 2);
+    cy.findAllByText("March 26, 2026, 8:45 AM").should("have.length", 2);
   });
 });
 
@@ -1820,7 +1820,10 @@ describe("issue 25374", () => {
 
     H.saveDashboard();
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    H.getDashboardCard().findByRole("gridcell").should("have.text", "3");
+    H.getDashboardCard()
+      .findByTestId("table-body")
+      .findByTestId("cell-data")
+      .should("have.text", "3");
 
     cy.button("Clear").click();
     cy.wait("@dashcardQuery");
@@ -1832,7 +1835,10 @@ describe("issue 25374", () => {
 
     cy.button("Reset filter to default state").click();
     cy.wait("@dashcardQuery");
-    H.getDashboardCard().findByRole("gridcell").should("have.text", "3");
+    H.getDashboardCard()
+      .findByTestId("table-body")
+      .findByTestId("cell-data")
+      .should("have.text", "3");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
 
     // Drill-through and go to the question
@@ -1856,7 +1862,10 @@ describe("issue 25374", () => {
       .type("1,2,3");
     H.saveDashboard();
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    H.getDashboardCard().findByRole("gridcell").should("have.text", "3");
+    H.getDashboardCard()
+      .findByTestId("table-body")
+      .findByTestId("cell-data")
+      .should("have.text", "3");
 
     cy.button("Clear").click();
     cy.wait("@dashcardQuery");
@@ -1871,14 +1880,17 @@ describe("issue 25374", () => {
     cy.wait("@dashcardQuery");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
     cy.location("search").should("eq", "?equal_to=1%2C2%2C3");
-    H.getDashboardCard().findByRole("gridcell").should("have.text", "3");
+    H.getDashboardCard()
+      .findByTestId("table-body")
+      .findByTestId("cell-data")
+      .should("have.text", "3");
 
     // Drill-through and go to the question
     H.getDashboardCard(0).findByText(questionDetails.name).click();
     cy.wait("@cardQuery");
 
     H.tableHeaderColumn("COUNT(*)");
-    H.tableInteractiveBody().findByRole("gridcell").should("have.text", "3");
+    H.tableInteractiveBody().findByTestId("cell-data").should("have.text", "3");
 
     cy.location("search").should("eq", "?num=1%2C2%2C3");
   });
@@ -1944,7 +1956,9 @@ describe("issue 25908", () => {
         // Note the capital first letter
         cy.visit(`/dashboard/${dashboard_id}?text_contains=Li`);
         cy.wait("@dashcardQuery");
-        cy.findAllByRole("row").should("have.length", CASE_INSENSITIVE_ROWS);
+        H.tableInteractiveBody()
+          .findAllByRole("row")
+          .should("have.length", CASE_INSENSITIVE_ROWS);
       },
     );
   });

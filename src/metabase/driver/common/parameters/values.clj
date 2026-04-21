@@ -30,8 +30,8 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.middleware.limit :as limit]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util.persisted-cache :as qp.persistence]
    [metabase.util :as u]
@@ -246,7 +246,7 @@
                       {:query (qp.persistence/persisted-info-native-query
                                (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                                persisted-info)})
-                    (qp.compile/compile (limit/disable-max-results query))))))
+                    (qp.compile/compile (qp/disable-max-results query))))))
       (catch ExceptionInfo e
         (throw (ex-info
                 (tru "The sub-query from referenced question #{0} failed with the following error: {1}"

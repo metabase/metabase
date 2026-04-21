@@ -496,7 +496,7 @@ describe("scenarios > dashboard > parameters", () => {
       "eq",
       "?category=Widget&title=Awesome+Concrete+Shoes&vendor=McClure-Lockman",
     );
-    cy.findAllByRole("row").should("have.length", 1);
+    H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
 
     // It should not reset previously defined filters when exiting 'edit' mode without making any changes (metabase#5332, metabase#17139)
     H.editDashboard();
@@ -509,7 +509,7 @@ describe("scenarios > dashboard > parameters", () => {
       "eq",
       "?category=Widget&title=Awesome+Concrete+Shoes&vendor=McClure-Lockman",
     );
-    cy.findAllByRole("row").should("have.length", 1);
+    H.tableInteractiveBody().findAllByRole("row").should("have.length", 1);
   });
 
   describe("when the user does not have self-service data permissions", () => {

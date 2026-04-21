@@ -57,7 +57,7 @@ jobs:
 
       - name: Upload coverage to codecov.io
         if: always()
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./target/coverage/codecov.json
@@ -104,7 +104,7 @@ jobs:
 
       - name: Upload coverage to codecov.io
         if: always()
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./target/coverage/codecov.json

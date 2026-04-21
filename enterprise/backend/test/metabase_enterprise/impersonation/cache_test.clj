@@ -3,8 +3,8 @@
    [clojure.core.async :as a]
    [clojure.test :refer [deftest testing is]]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (deftest impersonated-users-get-a-different-cache

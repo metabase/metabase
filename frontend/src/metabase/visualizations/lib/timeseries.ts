@@ -30,7 +30,7 @@ export function dimensionIsTimeseries({ cols, rows = [] }: DatasetData, i = 0) {
     }
 
     if (
-      (typeof value === "number" || typeof value === "string") &&
+      !(typeof value === "number" || typeof value === "string") ||
       !isValidIso8601(value)
     ) {
       return false;

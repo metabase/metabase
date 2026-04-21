@@ -10,7 +10,7 @@ import type {
   Table,
 } from "@tanstack/react-table";
 import type { VirtualItem, Virtualizer } from "@tanstack/react-virtual";
-import type { InitialTableState } from "@tanstack/table-core/src/types";
+import type { InitialTableState } from "@tanstack/table-core";
 import type {
   CSSProperties,
   KeyboardEvent,
@@ -205,8 +205,9 @@ export interface TreeTableStylesProps {
 /**
  * Props for TreeTable component.
  */
-export interface TreeTableProps<TData extends TreeNodeData>
-  extends TreeTableStylesProps {
+export interface TreeTableProps<
+  TData extends TreeNodeData,
+> extends TreeTableStylesProps {
   instance: TreeTableInstance<TData>;
 
   showCheckboxes?: boolean;
@@ -270,8 +271,9 @@ export type TreeTableRowPinnedPosition = Exclude<RowPinningPosition, false>;
 /**
  * Props for TreeTableRow component.
  */
-export interface TreeTableRowProps<TData extends TreeNodeData>
-  extends TreeTableStylesProps {
+export interface TreeTableRowProps<
+  TData extends TreeNodeData,
+> extends TreeTableStylesProps {
   row: Row<TData>;
   rowIndex: number;
   virtualItemOrPinnedPosition: VirtualItem | TreeTableRowPinnedPosition;
@@ -301,8 +303,9 @@ export interface TreeTableRowProps<TData extends TreeNodeData>
 /**
  * Props for TreeTableHeader component.
  */
-export interface TreeTableHeaderProps<TData extends TreeNodeData>
-  extends TreeTableStylesProps {
+export interface TreeTableHeaderProps<
+  TData extends TreeNodeData,
+> extends TreeTableStylesProps {
   table: Table<TData>;
   columnWidths: Record<string, number>;
   showCheckboxes: boolean;

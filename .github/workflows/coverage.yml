@@ -7,6 +7,7 @@ on:
 
 jobs:
   fe-test-coverage:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 60
     steps:
@@ -22,7 +23,7 @@ jobs:
             --coverage \
             --testTimeout=60000
       - name: Upload coverage to codecov.io
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@1af58845a975a7985b0beb0cbe6fbbb71a41dbad # v5
         with:
           files: ./coverage/lcov.info
           flags: front-end

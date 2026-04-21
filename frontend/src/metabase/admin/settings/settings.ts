@@ -1,9 +1,9 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 
-import { createThunkAction } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
+import type { State } from "metabase/redux/store";
 import { SettingsApi } from "metabase/services";
-import type { State } from "metabase-types/store";
+import { createThunkAction } from "metabase/utils/redux";
 
 // ACTION TYPES AND ACTION CREATORS
 
@@ -23,23 +23,6 @@ export const initializeSettings = createThunkAction(
       console.error("error fetching settings", error);
       throw error;
     }
-  },
-);
-
-export const UPDATE_SETTING = "metabase/admin/settings/UPDATE_SETTING";
-export const updateSetting = createThunkAction(
-  UPDATE_SETTING,
-  function (setting) {
-    return async function (dispatch) {
-      try {
-        await SettingsApi.put(setting);
-      } catch (error) {
-        console.error("error updating setting", setting, error);
-        throw error;
-      } finally {
-        await dispatch(reloadSettings());
-      }
-    };
   },
 );
 

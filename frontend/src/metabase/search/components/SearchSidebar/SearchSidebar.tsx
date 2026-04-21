@@ -1,3 +1,4 @@
+import { useState } from "react";
 import _ from "underscore";
 
 import { useShowOtherUsersCollections } from "metabase/common/hooks/use-show-other-users-collections";
@@ -27,6 +28,10 @@ type SearchSidebarProps = {
 };
 
 export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
+  const [openFilterKey, setOpenFilterKey] = useState<FilterTypeKeys | null>(
+    null,
+  );
+
   const filterMap: Record<FilterTypeKeys, SearchFilterComponent> = {
     [SearchFilterKeys.Type]: TypeFilter,
     [SearchFilterKeys.CreatedBy]: CreatedByFilter,
@@ -75,6 +80,16 @@ export const SearchSidebar = ({ value, onChange }: SearchSidebarProps) => {
           data-testid={`${key}-search-filter`}
           value={filterValue}
           onChange={(value) => onOutputChange(key, Filter.toUrl(value))}
+          isOpen={openFilterKey === key}
+          onOpenChange={(isOpen) => {
+            if (isOpen) {
+              setOpenFilterKey(key);
+            } else if (openFilterKey === key) {
+              // Only close if this filter is still the one that's open
+              // This prevents race condition when clicking another filter
+              setOpenFilterKey(null);
+            }
+          }}
         />
       );
     }

@@ -838,8 +838,10 @@ export function verifyDashcardCellValues({
 
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.getDashboardCard(dashcardIndex)
-      .findByRole("row")
-      .findAllByRole("gridcell")
+      .findByTestId("table-body")
+      .findAllByRole("row")
+      .first()
+      .findAllByTestId("cell-data")
       .eq(valueIndex)
       .should("have.text", value);
   }
@@ -853,6 +855,9 @@ export function verifyDashcardCellValues({
     const value = values[valueIndex];
 
     // eslint-disable-next-line metabase/no-unsafe-element-filtering
-    cy.findAllByRole("gridcell").eq(valueIndex).should("have.text", value);
+    H.tableInteractiveBody()
+      .findAllByTestId("cell-data")
+      .eq(valueIndex)
+      .should("have.text", value);
   }
 }

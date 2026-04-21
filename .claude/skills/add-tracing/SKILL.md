@@ -1,4 +1,4 @@
---b-
+---
 name: add-tracing
 description: Add OpenTelemetry tracing spans to Clojure code following Metabase tracing conventions. Use when instrumenting backend code with trace coverage.
 ---

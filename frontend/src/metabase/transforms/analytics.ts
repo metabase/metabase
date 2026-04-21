@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 import type {
   InspectorCardId,
   InspectorLensId,
@@ -6,7 +6,8 @@ import type {
   TransformJobId,
 } from "metabase-types/api";
 
-import type { LensKey } from "./pages/TransformInspectPage/types";
+/** Lens ID concatenated with params */
+type LensKey = string;
 
 export function trackTransformTriggerManualRun({
   transformId,

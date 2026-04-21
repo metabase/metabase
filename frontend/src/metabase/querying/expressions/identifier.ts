@@ -1,4 +1,4 @@
-import { FK_SYMBOL } from "metabase/lib/formatting/constants";
+import { FK_SYMBOL } from "metabase/utils/formatting/constants";
 
 import { quoteString } from "./string";
 
@@ -18,10 +18,6 @@ export function formatIdentifier(name: string) {
 
 export function formatMetricName(metricName: string) {
   return formatIdentifier(metricName);
-}
-
-export function formatMeasureName(measureName: string) {
-  return formatIdentifier(measureName);
 }
 
 export function formatSegmentName(segmentName: string) {

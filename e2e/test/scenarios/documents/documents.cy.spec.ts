@@ -746,7 +746,8 @@ describe("documents", () => {
       });
 
       it("should support keyboard and mouse selection in suggestions without double highlight", () => {
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
+        H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
         H.visitDocument("@documentId");
 
         H.documentContent().click();
@@ -1848,10 +1849,9 @@ describe("documents", () => {
       cy.intercept("GET", "/api/document/*").as("documentReload");
       cy.findByTestId("document-history-list")
         .findByText(/created this/)
-        .parent()
-        .within(() => {
-          cy.findByTestId("question-revert-button").click();
-        });
+        .closest('[data-testid="revision-history-event"]')
+        .findByTestId("question-revert-button")
+        .click();
       cy.wait(["@revert", "@documentReload"]);
 
       cy.log("Verify document was reverted");

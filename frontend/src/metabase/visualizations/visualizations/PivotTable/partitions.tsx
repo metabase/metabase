@@ -7,7 +7,7 @@ import { PivotTableSettingLabel } from "./PivotTable.styled";
 
 export interface Partition {
   name: "rows" | "columns" | "values";
-  columnFilter: (col: DatasetColumn | undefined) => boolean;
+  columnFilter: (col: DatasetColumn) => boolean;
   title: React.ReactNode;
 }
 

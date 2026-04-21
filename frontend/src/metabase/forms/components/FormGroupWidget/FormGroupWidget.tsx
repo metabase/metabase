@@ -8,8 +8,10 @@ import type { SelectProps } from "metabase/ui";
 import { Loader, Select } from "metabase/ui";
 import type { GroupId } from "metabase-types/api";
 
-interface FormGroupWidgetProps
-  extends Omit<SelectProps, "value" | "error" | "data"> {
+interface FormGroupWidgetProps extends Omit<
+  SelectProps,
+  "value" | "error" | "data"
+> {
   name: string;
   nullable?: boolean;
 }

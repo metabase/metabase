@@ -2,15 +2,16 @@ import { useState } from "react";
 import { useMount } from "react-use";
 import { match } from "ts-pattern";
 
-import { useSelector } from "metabase/lib/redux";
-import { DataReference } from "metabase/query_builder/components/dataref/DataReference";
-import { SnippetSidebar } from "metabase/query_builder/components/template_tags/SnippetSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
-import { getSampleDatabaseId } from "metabase/query_builder/selectors";
 import { Box } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeQuerySnippet, RowValue } from "metabase-types/api";
+
+import { DataReference } from "../../../../components/DataReference/DataReference";
+import { SnippetSidebar } from "../../../../components/SnippetSidebar";
+import { getSampleDatabaseId } from "../../../../selectors";
 
 import S from "./NativeQuerySidebar.module.css";
 
@@ -77,7 +78,7 @@ function QueryDataReferenceSidebar({
   useMount(() => {
     const databaseId = question.databaseId();
     if (dataReferenceStack.length === 0 && databaseId !== null) {
-      pushDataReferenceStack({ type: "database", item: { id: databaseId } });
+      pushDataReferenceStack({ type: "database", id: databaseId });
     }
   });
 

@@ -1,15 +1,16 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import { setUIControls } from "metabase/query_builder/actions";
-import { CombineColumns } from "metabase/query_builder/components/expressions";
-import { trackColumnCombineViaColumnHeader } from "metabase/querying/analytics";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Box, Title } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type {
   ClickActionPopoverProps,
   Drill,
 } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
+
+import { trackColumnCombineViaColumnHeader } from "../../analytics";
+import { CombineColumns } from "../../components/expressions";
 
 export const combineColumnsDrill: Drill<Lib.CombineColumnsDrillThruInfo> = ({
   question,

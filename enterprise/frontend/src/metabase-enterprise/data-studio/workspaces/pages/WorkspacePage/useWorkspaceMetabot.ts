@@ -3,29 +3,29 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useLazyGetTransformQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
-import { getIsWorkspace } from "metabase/selectors/routing";
-import { METABOT_PROFILE_OVERRIDES } from "metabase-enterprise/metabot/constants";
+import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
 import type {
   ApplySuggestionPayload,
   ApplySuggestionResult,
   MetabotSuggestionActions,
-} from "metabase-enterprise/metabot/context";
-import { useMetabotAgent } from "metabase-enterprise/metabot/hooks/use-metabot-agent";
-import { useMetabotReactions } from "metabase-enterprise/metabot/hooks/use-metabot-reactions";
+} from "metabase/metabot/context";
+import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
+import { useMetabotAgent } from "metabase/metabot/hooks/use-metabot-agent";
+import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
 import type {
   MetabotConverstationState,
   MetabotState,
-} from "metabase-enterprise/metabot/state";
+} from "metabase/metabot/state";
 import {
   activateSuggestedTransform,
   updateSuggestedTransformId,
-} from "metabase-enterprise/metabot/state/actions";
-import { metabotActions } from "metabase-enterprise/metabot/state/reducer";
-import { getMetabotState } from "metabase-enterprise/metabot/state/selectors";
+} from "metabase/metabot/state/actions";
+import { metabotActions } from "metabase/metabot/state/reducer";
+import { getMetabotState } from "metabase/metabot/state/selectors";
+import { getIsWorkspace } from "metabase/selectors/routing";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { useEnterpriseSelector } from "metabase-enterprise/redux";
 import type {
   DatabaseId,

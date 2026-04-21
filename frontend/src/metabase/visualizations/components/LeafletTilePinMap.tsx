@@ -3,8 +3,8 @@ import type { ContextType } from "react";
 
 import { EmbeddingEntityContext } from "metabase/embedding/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { GET } from "metabase/lib/api";
-import { isWithinIframe } from "metabase/lib/dom";
+import { GET } from "metabase/utils/api";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type { DashboardId } from "metabase-types/api";
 
 import { getTileUrl } from "../lib/map";
@@ -182,8 +182,7 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
         GET(tileUrl, {
           fetch: true,
           signal: controller.signal,
-          transformResponse: ({ response }: { response: Response }) => response,
-          // TODO: Remove  casting after api.js is migrated to TS
+          transformResponse: ({ response }) => response,
         })() as Promise<Response>
       )
         .then((response) => response.blob())

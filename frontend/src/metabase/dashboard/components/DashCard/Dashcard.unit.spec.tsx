@@ -12,10 +12,15 @@ import {
   within,
 } from "__support__/ui";
 import * as dashboardSelectors from "metabase/dashboard/selectors";
+import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
 } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import {
+  createMockDashboardState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import registerVisualizations from "metabase/visualizations/register";
 import type { DashCardDataMap } from "metabase-types/api";
 import {
@@ -35,15 +40,12 @@ import {
   createMockTable,
   createMockTextDashboardCard,
 } from "metabase-types/api/mocks";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import type { DashCardProps } from "./DashCard";
 import { DashCard } from "./DashCard";
 
 registerVisualizations();
+registerDashboardVisualizations();
 
 const TEST_DATABASE_ID = 1;
 const TEST_TABLE_ID = 2;

@@ -2,8 +2,8 @@ import dayjs from "dayjs";
 import { match } from "ts-pattern";
 
 import { useRegisterMetabotContextProvider } from "metabase/metabot";
-import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
-import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { CHART_ANALYSIS_RENDER_FORMATS } from "metabase/metabot/utils/chart-analysis";
 import {
   getChartImagePngDataUri,
   getChartSelector,
@@ -161,8 +161,9 @@ function getVisualizationDataUri(question: Question) {
   const display = question.card().display;
 
   const format =
-    PLUGIN_AI_ENTITY_ANALYSIS.chartAnalysisRenderFormats[display] ??
-    ("none" as const);
+    (CHART_ANALYSIS_RENDER_FORMATS as Record<string, "png" | "svg" | "none">)[
+      display
+    ] ?? ("none" as const);
 
   return match(format)
     .with("none", () => undefined)
@@ -258,7 +259,7 @@ export const registerQueryBuilderMetabotContextFn = async ({
 };
 
 export const useRegisterQueryBuilderMetabotContext = () => {
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
 
   useRegisterMetabotContextProvider(
     async (state) => {

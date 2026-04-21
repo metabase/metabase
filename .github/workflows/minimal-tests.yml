@@ -8,6 +8,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+  checks: write
+  actions: read
+
 jobs:
   # Only run if the PR has the minimal-tests label
   check-label:
@@ -70,8 +76,7 @@ jobs:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
@@ -118,8 +123,7 @@ jobs:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
@@ -151,8 +155,7 @@ jobs:
           input-path: ./target/junit
           output-name: frontend-unit
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.run-tests.outcome }}

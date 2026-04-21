@@ -1,3 +1,7 @@
+import {
+  DIMENSION_PREDICATES,
+  getGeoSubtype,
+} from "metabase/metrics/common/utils/dimension-types";
 import type { IconName } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -8,40 +12,53 @@ import type {
   MetricsViewerTabType,
 } from "../types/viewer-state";
 
-import {
-  getGeoSubtype,
-  getMapRegionForDimension,
-  isGeoDimension,
-} from "./geo-dimensions";
+import { getDefinitionColumnName } from "./definition-builder";
+import { getMapRegionForDimension } from "./geo-dimensions";
 
-// ── Shared types ──
+// ── Types ──
 
 export interface ChartTypeOption {
   type: MetricsViewerDisplayType;
   icon: IconName;
 }
 
-interface DisplayTypeDefinition {
-  supportsMultipleSeries: boolean;
-  getSettings: (
-    def: MetricDefinition,
-    dimension: DimensionMetadata,
-  ) => VisualizationSettings;
-}
+type DisplayTypeDefinition =
+  | {
+      dimensionRequired: true;
+      supportsMultipleSeries: boolean;
+      supportsStacking: boolean;
+      getSettings: (
+        def: MetricDefinition,
+        dimension: DimensionMetadata,
+      ) => VisualizationSettings;
+      combineSettings?: (
+        settings: VisualizationSettings[],
+      ) => VisualizationSettings;
+    }
+  | {
+      dimensionRequired: false;
+      supportsMultipleSeries: boolean;
+      supportsStacking: boolean;
+      getSettings: (def: MetricDefinition) => VisualizationSettings;
+      combineSettings?: (
+        settings: VisualizationSettings[],
+      ) => VisualizationSettings;
+    };
 
 interface BaseTabTypeDefinition {
   type: MetricsViewerTabType;
-  autoCreate: boolean;
   dimensionPredicate: (dimension: DimensionMetadata) => boolean;
+  autoCreate: boolean;
   dimensionSubtype?: (dimension: DimensionMetadata) => string | null;
   defaultDisplayType: MetricsViewerDisplayType;
   availableDisplayTypes: ChartTypeOption[];
+  minDimensions: number;
+  index?: number;
 }
 
 interface AggregateTabType extends BaseTabTypeDefinition {
   matchMode: "aggregate";
   fixedId: string;
-  fixedLabel: string;
 }
 
 interface ExactColumnTabType extends BaseTabTypeDefinition {
@@ -50,7 +67,7 @@ interface ExactColumnTabType extends BaseTabTypeDefinition {
 
 export type TabTypeDefinition = AggregateTabType | ExactColumnTabType;
 
-// ── Tab type registry ──
+// ── Chart type presets ──
 
 const STANDARD_CHART_TYPES: ChartTypeOption[] = [
   { type: "line", icon: "line" },
@@ -68,57 +85,67 @@ const NUMERIC_CHART_TYPES: ChartTypeOption[] = [
   { type: "scatter", icon: "bubble" },
 ];
 
+// ── Tab type registry ──
+
 export const TAB_TYPE_REGISTRY: TabTypeDefinition[] = [
   {
     type: "time",
+    dimensionPredicate: DIMENSION_PREDICATES.time,
     autoCreate: true,
     matchMode: "aggregate",
     fixedId: "time",
-    fixedLabel: "Time",
-    dimensionPredicate: LibMetric.isDateOrDateTime,
     defaultDisplayType: "line",
     availableDisplayTypes: STANDARD_CHART_TYPES,
+    minDimensions: 1,
   },
   {
     type: "geo",
+    dimensionPredicate: DIMENSION_PREDICATES.geo,
     autoCreate: true,
     matchMode: "aggregate",
     fixedId: "geo",
-    fixedLabel: "Location",
-    dimensionPredicate: isGeoDimension,
     dimensionSubtype: getGeoSubtype,
     defaultDisplayType: "map",
     availableDisplayTypes: GEO_CHART_TYPES,
+    minDimensions: 1,
+  },
+  {
+    type: "scalar",
+    autoCreate: true,
+    matchMode: "aggregate",
+    fixedId: "scalar",
+    dimensionPredicate: () => false,
+    defaultDisplayType: "scalar",
+    availableDisplayTypes: [{ type: "scalar", icon: "number" }],
+    index: 5,
+    minDimensions: 0,
   },
   {
     type: "category",
+    dimensionPredicate: DIMENSION_PREDICATES.category,
     autoCreate: true,
     matchMode: "exact-column",
-    dimensionPredicate: (dimension) =>
-      LibMetric.isCategory(dimension) &&
-      !isGeoDimension(dimension) &&
-      !LibMetric.isBoolean(dimension),
     defaultDisplayType: "bar",
     availableDisplayTypes: STANDARD_CHART_TYPES,
+    minDimensions: 1,
   },
   {
     type: "boolean",
+    dimensionPredicate: DIMENSION_PREDICATES.boolean,
     autoCreate: true,
     matchMode: "exact-column",
-    dimensionPredicate: LibMetric.isBoolean,
     defaultDisplayType: "bar",
     availableDisplayTypes: STANDARD_CHART_TYPES,
+    minDimensions: 1,
   },
   {
     type: "numeric",
+    dimensionPredicate: DIMENSION_PREDICATES.numeric,
     autoCreate: false,
     matchMode: "exact-column",
-    dimensionPredicate: (dimension) =>
-      LibMetric.isNumeric(dimension) &&
-      !LibMetric.isID(dimension) &&
-      !LibMetric.isCoordinate(dimension),
     defaultDisplayType: "bar",
     availableDisplayTypes: NUMERIC_CHART_TYPES,
+    minDimensions: 1,
   },
 ];
 
@@ -165,13 +192,6 @@ function getChartSettings(
   };
 }
 
-function getPieSettings(
-  _def: MetricDefinition,
-  _dimension: DimensionMetadata,
-): VisualizationSettings {
-  return {};
-}
-
 function getScatterSettings(
   def: MetricDefinition,
   dimension: DimensionMetadata,
@@ -204,15 +224,69 @@ function getMapSettings(
   };
 }
 
+function getScalarSettings(def: MetricDefinition): VisualizationSettings {
+  return {
+    "scalar.field": getDefinitionColumnName(def) ?? undefined,
+  };
+}
+
+function combineColors(
+  settings: VisualizationSettings[],
+): VisualizationSettings {
+  // getStoredSettingsForSeries only looks at settings on the first series
+  return settings.reduce((acc, setting) => {
+    return {
+      ...acc,
+      series_settings: {
+        ...acc["series_settings"],
+        ...setting["series_settings"],
+      },
+    };
+  });
+}
+
 export const DISPLAY_TYPE_REGISTRY: Record<
   MetricsViewerDisplayType,
   DisplayTypeDefinition
 > = {
-  line: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  area: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  bar: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  row: { supportsMultipleSeries: true, getSettings: getChartSettings },
-  scatter: { supportsMultipleSeries: true, getSettings: getScatterSettings },
-  map: { supportsMultipleSeries: false, getSettings: getMapSettings },
-  pie: { supportsMultipleSeries: false, getSettings: getPieSettings },
+  line: {
+    dimensionRequired: true,
+    supportsMultipleSeries: true,
+    supportsStacking: true,
+    getSettings: getChartSettings,
+    combineSettings: combineColors,
+  },
+  area: {
+    dimensionRequired: true,
+    supportsMultipleSeries: true,
+    supportsStacking: true,
+    getSettings: getChartSettings,
+    combineSettings: combineColors,
+  },
+  bar: {
+    dimensionRequired: true,
+    supportsMultipleSeries: true,
+    supportsStacking: true,
+    getSettings: getChartSettings,
+    combineSettings: combineColors,
+  },
+  scatter: {
+    dimensionRequired: true,
+    supportsMultipleSeries: true,
+    supportsStacking: true,
+    getSettings: getScatterSettings,
+    combineSettings: combineColors,
+  },
+  map: {
+    dimensionRequired: true,
+    supportsMultipleSeries: false,
+    supportsStacking: true,
+    getSettings: getMapSettings,
+  },
+  scalar: {
+    dimensionRequired: false,
+    supportsMultipleSeries: false,
+    supportsStacking: true,
+    getSettings: getScalarSettings,
+  },
 };

@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { useDocsUrl } from "metabase/common/hooks";
 import { FormSelect } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { TitleSection } from "metabase/transforms/components/TitleSection";
@@ -22,6 +21,7 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type { TransformSource } from "metabase-types/api";
 import type { TransformType } from "metabase-types/api/transform";
@@ -79,7 +79,7 @@ export const IncrementalTransformSettings = ({
         return t`Incremental transforms are only supported for single data source transforms.`;
       }
       if (isNativeWithoutTableTags) {
-        return t`Incremental transforms for native queries require at least one table variable.`;
+        return t`Incremental transforms for native queries require a table variable.`;
       }
       if (!hasCheckpointOptions) {
         return t`Incremental transforms require at least one numeric or temporal source field.`;

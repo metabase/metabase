@@ -157,6 +157,14 @@
     (doseq [e (search.engine/active-engines)]
       (search.engine/reset-tracking! e))))
 
+(defn sync-from-restored-db!
+  "Reconcile all search engine state with the current database.
+   Use after snapshot restore instead of reindex! to avoid redundant work."
+  []
+  (when (supports-index?)
+    (doseq [e (search.engine/active-engines)]
+      (search.engine/sync-from-restored-db! e))))
+
 (defn update!
   "Given a new or updated instance, put all the corresponding search entries if needed in the queue."
   [instance & [always?]]

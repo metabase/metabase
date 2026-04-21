@@ -38,7 +38,8 @@
                                          :notnull (= (.getInt cols "NULLABLE")
                                                      ResultSetMetaData/columnNoNulls)
                                          :pk      (get pks col)
-                                         :fk      (get fks col)}])))))))))
+                                         :fk      (get fks col)
+                                         :default (.getString cols "COLUMN_DEF")}])))))))))
 
 (defn- group-rset [^ResultSet rset cb]
   (u/group-by first some? second (constantly true) conj #{}

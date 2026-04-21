@@ -1341,4 +1341,4 @@
          result)))))
 
 (defmethod driver/llm-sql-dialect-resource :mysql [_]
-  "llm/prompts/dialects/mysql.md")
+  "metabot/prompts/dialects/mysql.md")

@@ -1,0 +1,30 @@
+<samples_vs_results>
+**What you can see:**
+- Sample values from metadata tools showing FORMAT patterns (capitalization, codes, date formats)
+
+**What you CANNOT see:**
+- Actual query results after building queries
+- Complete list of all possible values in the full dataset
+
+**CRITICAL: Everything is sample-based**
+Think of metadata tools like `df.sample()` - you see a preview, not the full data:
+- Values shown: Limited preview (5-10 examples)
+- User's data likely has MORE values than samples show
+
+**When user requests a value NOT in your samples:**
+
+✓ **DO THIS:** Build the query anyway
+1. Use the format pattern you observed (capitalization, structure, etc.)
+2. Build the query with the user's requested value
+3. Disclose: "Note: '[value]' wasn't in samples ([sample values you saw]). I built the query following the format pattern, but results may be affected if the actual data uses different terminology."
+
+❌ **DON'T DO THIS:** Ask for clarification
+- Don't say "I don't see that value, did you mean...?"
+- Trust that users know their data better than your samples show
+
+**Example:**
+- Samples: ["Product", "Sales", "Marketing"]
+- User asks: "Data team expenses"
+- ✓ Build query for "Data" (capitalized like samples) + disclose
+- ❌ "I don't see Data in samples. Which team did you mean?"
+</samples_vs_results>

@@ -284,7 +284,12 @@
         (keep (fn [table-col]
                 (when-let [native-col (m/find-first #(= (:name %) (:name table-col))
                                                     native-cols)]
-                  (merge native-col table-col))))
+                  (cond-> (merge native-col table-col)
+                    ;; If the table column would have had a coercion strategy applied, add some metadata keys to
+                    ;; ensure the strategy is propagated to the first MBQL stage.
+                    (:coercion-strategy table-col)
+                    (assoc :qp/native-sandbox-column.force-coercion-strategy (:coercion-strategy table-col)
+                           :qp/native-sandbox-column.propagate-coercion?     true)))))
         original-table-cols))
 
 (mu/defn- apply-sandbox-to-stage :- [:and
@@ -405,7 +410,7 @@
   [{::keys [original-metadata] :as query} rff]
   (fn merge-sandboxing-metadata-rff* [metadata]
     (let [metadata (assoc metadata :is_sandboxed (boolean (lib.util.match/match-lite query
-                                                            {:query-permissions/sandboxed-table sandboxed?} sandboxed?)))
+                                                            {:query-permissions/sandboxed-table &truthy} true)))
           metadata (if original-metadata
                      (merge-metadata original-metadata metadata)
                      metadata)]

@@ -1,0 +1,122 @@
+name: Window Function - Offset
+entity_id: ErQY8K5Tep4xBc3VY_-1e
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: line
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: query
+database_id: Sample Database
+table_id:
+- Sample Database
+- PUBLIC
+- ORDERS
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - aggregation:
+    - - sum
+      - {}
+      - - field
+        - base-type: type/Float
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - TOTAL
+    - - offset
+      - {}
+      - - sum
+        - {}
+        - - field
+          - base-type: type/Float
+          - - Sample Database
+            - PUBLIC
+            - ORDERS
+            - TOTAL
+      - -1
+    breakout:
+    - - field
+      - temporal-unit: month
+      - - Sample Database
+        - PUBLIC
+        - ORDERS
+        - CREATED_AT
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - ORDERS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: TIMESTAMP WITH TIME ZONE
+  display_name: 'Created At: Month'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Sample Database
+    - PUBLIC
+    - ORDERS
+    - CREATED_AT
+  - temporal-unit: month
+  id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  - CREATED_AT
+  inherited_temporal_unit: month
+  name: CREATED_AT
+  position: 7
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id:
+  - Sample Database
+  - PUBLIC
+  - ORDERS
+  unit: month
+  visibility_type: normal
+  lib/breakout?: true
+  lib/deduplicated-name: CREATED_AT
+  lib/desired-column-alias: CREATED_AT
+  lib/original-display-name: Created At
+  lib/original-name: CREATED_AT
+  lib/source: source/table-defaults
+  lib/source-column-alias: CREATED_AT
+  lib/temporal-unit: month
+- base_type: type/Float
+  display_name: Sum of Total
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 0
+  name: sum
+  source: aggregation
+  lib/deduplicated-name: sum
+  lib/desired-column-alias: sum
+  lib/original-name: sum
+  lib/source: source/aggregations
+  lib/source-column-alias: sum
+- base_type: type/Float
+  display_name: offset
+  effective_type: type/Float
+  field_ref:
+  - aggregation
+  - 1
+  name: offset
+  source: aggregation
+  lib/deduplicated-name: offset
+  lib/desired-column-alias: offset
+  lib/original-name: offset
+  lib/source: source/aggregations
+  lib/source-column-alias: offset
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: ErQY8K5Tep4xBc3VY_-1e
+  label: window_function___offset
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

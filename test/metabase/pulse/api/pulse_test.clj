@@ -16,7 +16,7 @@
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.queries-rest.api.card-test :as api.card-test]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.http-client :as client]
@@ -1292,9 +1292,69 @@
                                                       :id "U1DYU9W3WZ2"
                                                       :display-name "@user1"}]}]
         (is (= [{:name "channel", :type "select", :displayName "Post to",
-                 :options ["#foo" "#general" "@user1"], :required true}]
+                 :options [{:displayName "#foo"     :id "CAAS3DD9XND"}
+                           {:displayName "#general" :id "C3MJRZ9EUVA"}
+                           {:displayName "@user1"   :id "U1DYU9W3WZ2"}], :required true}]
                (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                    (get-in [:channels :slack :fields]))))))
+
+    (testing "Duplicate Slack channel display names are deduplicated"
+      (mt/with-temporary-setting-values [channel.settings/slack-channels-and-usernames-last-updated
+                                         (t/zoned-date-time)
+
+                                         channel.settings/slack-app-token "test-token"
+
+                                         channel.settings/slack-cached-channels-and-usernames
+                                         {:channels [{:type "channel"
+                                                      :name "channel"
+                                                      :display-name "#channel"
+                                                      :id "C001"}
+                                                     {:type "channel"
+                                                      :name "channel"
+                                                      :display-name "#channel"
+                                                      :id "C002"}
+                                                     {:type "channel"
+                                                      :name "general"
+                                                      :display-name "#general"
+                                                      :id "C003"}]}]
+        (is (= [{:displayName "#channel" :id "C001"}
+                {:displayName "#general" :id "C003"}]
+               (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
+                   (get-in [:channels :slack :fields])
+                   first
+                   :options)))
+        (is (apply distinct?
+                   (map :displayName
+                        (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
+                            (get-in [:channels :slack :fields])
+                            first
+                            :options))))))
+
+    (testing "Duplicate Slack channel IDs are deduplicated, keeping the first entry"
+      (mt/with-temporary-setting-values [channel.settings/slack-channels-and-usernames-last-updated
+                                         (t/zoned-date-time)
+
+                                         channel.settings/slack-app-token "test-token"
+
+                                         channel.settings/slack-cached-channels-and-usernames
+                                         {:channels [{:type "channel"
+                                                      :name "old-name"
+                                                      :display-name "#old-name"
+                                                      :id "C001"}
+                                                     {:type "channel"
+                                                      :name "new-name"
+                                                      :display-name "#new-name"
+                                                      :id "C001"}
+                                                     {:type "channel"
+                                                      :name "general"
+                                                      :display-name "#general"
+                                                      :id "C003"}]}]
+        (is (= [{:displayName "#old-name" :id "C001"}
+                {:displayName "#general"  :id "C003"}]
+               (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
+                   (get-in [:channels :slack :fields])
+                   first
+                   :options)))))
 
     (testing "When slack is not configured, `form_input` returns no channels"
       (mt/with-temporary-setting-values [channel.settings/slack-app-token nil]

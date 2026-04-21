@@ -8,6 +8,7 @@ export const menuOverrides = {
       radius: "sm",
       shadow: "md",
       withinPortal: true,
+      returnFocus: false,
     },
     classNames: {
       dropdown: MenuStyles.dropdown,

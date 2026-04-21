@@ -2,9 +2,9 @@ import type { Location } from "history";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Modal } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import { useCreateTenantMutation } from "metabase-enterprise/api";
 import type { Tenant } from "metabase-types/api";
 

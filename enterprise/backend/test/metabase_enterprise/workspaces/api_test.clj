@@ -834,7 +834,7 @@
                          :isolated {:transform_id ref-id
                                     #_#_:schema       (:schema workspace)
                                     :table        string?
-                                    :table_id     nil}}]}
+                                    :table_id     int?}}]}
                       (mt/user-http-request :crowberto :get 200 (ws-url (:id workspace) "/table")))))
             (testing "and after we run the transform, id for isolated table appears"
               (is (=? {:status "succeeded"}
@@ -1577,7 +1577,7 @@
                   result))))
 
       (testing "returns results for multi-row queries"
-        (let [sql    "SELECT 1 as num UNION ALL SELECT 2 UNION ALL SELECT 3 ORDER BY 1"
+        (let [sql    "SELECT * FROM (SELECT 1 as num UNION ALL SELECT 2 UNION ALL SELECT 3) t ORDER BY 1"
               result (mt/user-http-request :crowberto :post 200
                                            (ws-url (:id ws) "/query")
                                            {:sql sql})]
@@ -1804,8 +1804,8 @@
             (testing "fallback populates global table_id from metabase_table"
               (is (= (:id table)
                      (-> result :outputs first :global :table_id))))
-            (testing "isolated table_id remains nil when table doesn't exist"
-              (is (nil? (-> result :outputs first :isolated :table_id))))))))))
+            (testing "isolated table_id is populated with transform target table"
+              (is (int? (-> result :outputs first :isolated :table_id))))))))))
 
 (deftest ^:parallel tables-endpoint-fallback-isolated-table-id-test
   (testing "GET /api/ee/workspace/:id/table uses fallback for null isolated_table_id"

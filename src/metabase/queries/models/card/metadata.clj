@@ -80,7 +80,7 @@ saved later when it is ready."
 
 (defn normalize-dataset-query
   "Normalize the query `dataset-query` received via an HTTP call.
-  Handles both (legacy) MBQL and pMBQL queries."
+  Handles both (legacy) MBQL and MBQL 5 queries."
   {:deprecated "0.57.0"}
   [dataset-query]
   (lib-be/normalize-query dataset-query))

@@ -28,3 +28,5 @@ THEN use the `document_construct_sql_chart` tool to generate the chart.
 
 ** Suggestions if using H2 dialect:**
 - For date columns, extract year with `YEAR(column_name)` and month with `MONTH(column_name)` rather than EXTRACT().
+
+{% include "metabot/prompts/shared/field-references.selmer" %}

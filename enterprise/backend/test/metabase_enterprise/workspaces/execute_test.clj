@@ -57,7 +57,7 @@
             (is (=? [{:workspace_id      (:id workspace)
                       :global_table      output-table
                       :global_schema     nil
-                      :global_table_id   nil
+                      :global_table_id   pos-int?
                       :isolated_schema   string?
                       :isolated_table    string?
                       :isolated_table_id number?}]

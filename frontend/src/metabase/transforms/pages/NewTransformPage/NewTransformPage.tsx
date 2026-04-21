@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
+import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
@@ -14,13 +15,13 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -54,12 +55,32 @@ function NewTransformPage({ initialSource, route }: NewTransformPageProps) {
     isLoadingDatabases: isLoading,
     databasesError: error,
   } = useTransformPermissions();
+  const isRemoteSyncReadOnly = useSelector(
+    PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
+  );
 
   if (isLoading || error != null || transformsDatabases == null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
       </Center>
+    );
+  }
+
+  if (isRemoteSyncReadOnly) {
+    return (
+      <PageContainer pos="relative" data-testid="transform-query-editor">
+        <PaneHeader
+          breadcrumbs={
+            <DataStudioBreadcrumbs>
+              <Link key="transform-list" to={Urls.transformList()}>
+                {t`Transforms`}
+              </Link>
+            </DataStudioBreadcrumbs>
+          }
+        />
+        <NotFound />
+      </PageContainer>
     );
   }
 

@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.runner
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
@@ -9,7 +10,12 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.model-persistence.core :as model-persistence]
+   [metabase.source-swap.util :as source-swap.util]
+   [metabase.transforms.core :as transforms]
+   [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -141,26 +147,74 @@
         (throw (ex-info (failure-message fs (count all-transitive-dependents))
                         {:failures fs}))))))
 
-(defn run-swap
+(defn run-swap-source!
   "Replace all usages of `old-source` with `new-source` across all dependent entities.
 
    Both arguments are [type id] pairs like [:card 123] or [:table 45].
    `progress` implements `IRunnerProgress` for tracking and cancellation.
 
    Example:
-     (swap-source [:card 123] [:card 789])
+     (run-swap-source! [:card 123] [:card 789])
 
    This finds all entities that depend on the old source and updates their queries
    to reference the new source instead. This includes ALL transitive dependents,
    which is necessary for implicit joins to work correctly (e.g., when card D filters
-   on Products.Category but is based on card C → card B → card A → Orders).
-
-   Returns {:swapped [...]} with the list of entities that were updated."
+   on Products.Category but is based on card C → card B → card A → Orders)."
   ([old-source new-source]
-   (run-swap old-source new-source noop-progress))
+   (run-swap-source! old-source new-source noop-progress))
   ([old-source
     new-source
     progress]
    (let [all-transitive (replacement.usages/transitive-usages old-source)]
      (run-swap* {:all-transitive-dependents all-transitive}
                 old-source new-source progress))))
+
+(def ^:private metadata-override-keys
+  "Field columns that correspond to user-editable model metadata overrides.
+   These are in snake_case matching both result_metadata storage and Field columns."
+  [:description :display_name :semantic_type :fk_target_field_id :settings :visibility_type])
+
+(defn- copy-model-metadata-overrides!
+  "Copy user-edited metadata from a model's result_metadata onto the Fields of the
+   output table. Writes to both Field and FieldUserSettings so overrides survive sync."
+  [card-id table-id]
+  (let [card            (t2/select-one :model/Card :id card-id)
+        result-metadata (:result_metadata card)
+        fields          (t2/select :model/Field :table_id table-id :active true)
+        field-by-name   (m/index-by :name fields)]
+    (doseq [col-meta result-metadata
+            :let [field     (field-by-name (source-swap.util/column-match-key col-meta))
+                  overrides (u/select-keys-when col-meta :non-nil metadata-override-keys)]
+            :when (and field (seq overrides))]
+      (t2/update! :model/Field (:id field) overrides)
+      (field-user-settings/upsert-user-settings field overrides))))
+
+(defn run-swap-model-with-transform!
+  "Execute a transform, find the output table, then swap all dependents of the card
+   to point at the new table. Finally un-persist and convert the card to a saved question.
+
+   `card-id`      — the model card to replace
+   `transform-id` — the transform to execute
+   `progress`     — IRunnerProgress for tracking"
+  ([card-id transform-id]
+   (run-swap-model-with-transform! card-id transform-id noop-progress))
+  ([card-id transform-id progress & {:keys [user-id]}]
+   (let [transform (or (t2/select-one :model/Transform :id transform-id)
+                       (throw (ex-info "Transform not found" {:transform-id transform-id})))]
+     ;; phase 1: execute the transform
+     (transforms/execute! transform (cond-> {:run-method :manual}
+                                      user-id (assoc :user-id user-id)))
+
+     ;; phase 2: find the output table, copy metadata overrides, and swap sources
+     (let [table (or (transforms/output-table transform)
+                     (throw (ex-info "Output table not found after transform execution"
+                                     {:transform-id (:id transform)})))]
+       (copy-model-metadata-overrides! card-id (:id table))
+       (run-swap-source! [:card card-id] [:table (:id table)] progress))
+
+     ;; phase 3: unpersist the model if it was persisted
+     (when-let [persisted-info (t2/select-one :model/PersistedInfo :card_id card-id)]
+       (model-persistence/mark-for-pruning! {:id (:id persisted-info)} "off"))
+
+     ;; phase 4: convert the model to a saved question
+     (t2/update! :model/Card card-id {:type :question}))))

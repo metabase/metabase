@@ -4,7 +4,7 @@ title: Model persistence
 
 # Model persistence
 
-> Prefer [Transforms](../data-studio/transforms/transforms-overview.md) instead of model persistence. Model persistence remains supported for now, but it will be deprecated in future versions of Metabase.
+> Prefer [Transforms](../data-studio/transforms/transforms-overview.md) instead of model persistence. Model persistence remains supported for now, but it will be deprecated in future versions of Metabase. You can [convert models to transforms in bulk](../data-studio/transforms/transforms-overview.md#convert-models-to-transforms).
 
 Metabase can persist the results of your models so that your models (and the questions based on those models) load faster.
 
@@ -54,7 +54,7 @@ Once you've turned on model persistence for your Metabase, you'll need to set it
 
 4. Ensure that the credentials Metabase uses to connect to your data warehouse can manage and write to that schema.
 
-By default, new models on the database will _not_ b persisted. You need to [Turn on model persistence for individual models](#turn-on-model-persistence-for-individual-models).
+By default, new models on the database will _not_ be persisted. You need to [Turn on model persistence for individual models](#turn-on-model-persistence-for-individual-models).
 
 ## Turn on model persistence for individual models
 

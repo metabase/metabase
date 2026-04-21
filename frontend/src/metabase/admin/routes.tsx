@@ -46,7 +46,7 @@ import {
   SetupSsoPage,
 } from "metabase/embedding/embedding-hub";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
-import { getAdminRoutes as getMetabotAdminRoutes } from "metabase/metabot/components/MetabotAdmin/MetabotAdminPage";
+import { getMetabotAdminRoutes } from "metabase/metabot/components/MetabotAdmin/routes";
 import { DataModelV1 } from "metabase/metadata/pages/DataModelV1";
 import {
   PLUGIN_ADMIN_TOOLS,
@@ -54,12 +54,13 @@ import {
   PLUGIN_CACHING,
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
+  PLUGIN_SECURITY_CENTER,
   PLUGIN_SUPPORT,
   PLUGIN_TENANTS,
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup";
-import type { State } from "metabase-types/store";
 
 import { ModelPersistenceConfiguration } from "./performance/components/ModelPersistenceConfiguration";
 import { StrategyEditorForDatabases } from "./performance/components/StrategyEditorForDatabases";
@@ -200,22 +201,16 @@ export const getRoutes = (
 
             {/* EE with non-starter plan has embedding settings on different pages */}
             {hasSimpleEmbedding && (
-              <>
-                <Route path="guest" component={GuestEmbedsSettings} />
-
-                <Route path="security" component={EmbeddingSecuritySettings} />
-              </>
+              <Route path="guest" component={GuestEmbedsSettings} />
             )}
+
+            <Route path="security" component={EmbeddingSecuritySettings} />
           </Route>
         </Route>
 
         {/* OSS/Starter has all embedding settings on the same page */}
         {!hasSimpleEmbedding && (
-          <>
-            <Redirect from="/admin/embedding/guest" to="/admin/embedding" />
-
-            <Redirect from="/admin/embedding/security" to="/admin/embedding" />
-          </>
+          <Redirect from="/admin/embedding/guest" to="/admin/embedding" />
         )}
 
         {/* Backwards compatibility for embedding settings */}
@@ -267,6 +262,13 @@ export const getRoutes = (
         <Route path="metabot" component={createAdminRouteGuard("metabot")}>
           {getMetabotAdminRoutes()}
         </Route>
+
+        {PLUGIN_SECURITY_CENTER.isEnabled && (
+          <Route
+            path="security-center"
+            component={PLUGIN_SECURITY_CENTER.SecurityCenterPage}
+          />
+        )}
 
         <Route path="tools" component={createAdminRouteGuard("tools")}>
           <Route component={ToolsApp}>

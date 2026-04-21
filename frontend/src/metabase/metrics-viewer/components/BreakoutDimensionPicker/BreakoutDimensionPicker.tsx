@@ -43,6 +43,7 @@ export function BreakoutDimensionPicker({
   const sections: Section<DimensionOption>[] = useMemo(() => {
     const items: DimensionOption[] = [...dimensions.values()].map((dim) => ({
       ...dim,
+      dimension: dim.dimensionMetadata,
       selected: currentBreakoutDimensionName === dim.name,
     }));
 

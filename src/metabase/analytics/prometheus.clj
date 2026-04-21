@@ -593,7 +593,25 @@
                          {:description "Full agent loop duration (ms)"
                           :labels [:profile-id]
                           ;; 100ms -> 10 minutes
-                          :buckets [100 500 1000 5000 10000 30000 60000 120000 300000 600000]})])
+                          :buckets [100 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/histogram :metabase-metabot/message-persist-bytes
+                         {:description "Size in bytes of persisted metabot message data (JSON)"
+                          :labels [:profile-id]
+                          ;; 1KB -> 5MB
+                          :buckets [1000 5000 10000 50000 100000 500000 1000000 5000000]})
+
+   ;; release dashboard metrics
+   (prometheus/counter :metabase-sync/failures
+                       {:description "Number of sync operation failures."
+                        :labels [:driver]})
+   (prometheus/counter :metabase-api/unhandled-errors
+                       {:description "Number of unhandled API errors (500s without explicit status code)."})
+   (prometheus/counter :metabase-frontend/errors
+                       {:description "Number of frontend errors reported by the browser."
+                        :labels [:type]})
+   (prometheus/counter :metabase-export/errors
+                       {:description "Number of errors during data export."
+                        :labels [:format]})])
 
 (defn- quartz-collectors
   []

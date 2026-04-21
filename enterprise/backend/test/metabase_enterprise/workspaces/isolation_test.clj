@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.common :as ws.common]
    [metabase-enterprise.workspaces.test-util :as ws.tu]
-   [metabase-enterprise.workspaces.util :as ws.u]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
@@ -34,8 +33,8 @@
 
 (defmethod workspace-isolation-resources-exist? :postgres
   [database workspace]
-  (let [schema-name (ws.u/isolation-namespace-name workspace)
-        username    (ws.u/isolation-user-name workspace)
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        username    (driver.u/workspace-isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:schema (has-results? conn-spec
                            ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" schema-name])
@@ -54,10 +53,10 @@
 
 (defmethod workspace-isolation-resources-exist? :snowflake
   [database workspace]
-  (let [schema-name (ws.u/isolation-namespace-name workspace)
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
         db-name     (-> database :details :db)
         role-name   (format "MB_ISOLATION_ROLE_%s" (:id workspace))
-        username    (ws.u/isolation-user-name workspace)
+        username    (driver.u/workspace-isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:schema (has-results? conn-spec
                            [(format "SHOW SCHEMAS LIKE '%s' IN DATABASE \"%s\"" schema-name db-name)])
@@ -68,8 +67,8 @@
 
 (defmethod workspace-isolation-resources-exist? :sqlserver
   [database workspace]
-  (let [schema-name (ws.u/isolation-namespace-name workspace)
-        username    (ws.u/isolation-user-name workspace)
+  (let [schema-name (driver.u/workspace-isolation-namespace-name workspace)
+        username    (driver.u/workspace-isolation-user-name workspace)
         conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:schema (has-results? conn-spec
                            ["SELECT 1 FROM sys.schemas WHERE name = ?" schema-name])
@@ -80,8 +79,8 @@
 
 (defmethod workspace-isolation-resources-exist? :clickhouse
   [database workspace]
-  (let [db-name   (ws.u/isolation-namespace-name workspace)
-        username  (ws.u/isolation-user-name workspace)
+  (let [db-name   (driver.u/workspace-isolation-namespace-name workspace)
+        username  (driver.u/workspace-isolation-user-name workspace)
         conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:database (has-results? conn-spec
                              ["SELECT 1 FROM system.databases WHERE name = ?" db-name])
@@ -90,8 +89,8 @@
 
 (defmethod workspace-isolation-resources-exist? :mysql
   [database workspace]
-  (let [db-name   (ws.u/isolation-namespace-name workspace)
-        username  (ws.u/isolation-user-name workspace)
+  (let [db-name   (driver.u/workspace-isolation-namespace-name workspace)
+        username  (driver.u/workspace-isolation-user-name workspace)
         conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
     {:database (has-results? conn-spec
                              ["SELECT 1 FROM information_schema.schemata WHERE schema_name = ?" db-name])

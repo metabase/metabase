@@ -6,6 +6,7 @@ import type {
 } from "metabase-types/api";
 
 import { codeMirrorHelpers } from "./e2e-codemirror-helpers";
+import { MetricPage } from "./e2e-metric-page-helpers";
 import { popover } from "./e2e-ui-elements-helpers";
 
 const { H } = cy;
@@ -14,8 +15,6 @@ const libraryPage = () => cy.findByTestId("library-page");
 const newSnippetPage = () => cy.findByTestId("new-snippet-page");
 const archivedSnippetsPage = () => cy.findByTestId("archived-snippets-page");
 const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
-const metricOverviewPage = () => cy.findByTestId("metric-overview-page");
-const metricQueryEditor = () => cy.findByTestId("metric-query-editor");
 
 export const DataStudio = {
   nav: () => cy.findByTestId("data-studio-nav"),
@@ -77,6 +76,7 @@ export const DataStudio = {
   Runs: {
     list: () => cy.findByTestId("transforms-run-list"),
     content: () => cy.findByTestId("transforms-run-content"),
+    sidebar: () => cy.findByTestId("run-list-sidebar"),
   },
   Dependencies: {
     content: () => cy.findByTestId("transforms-dependencies-content"),
@@ -96,24 +96,7 @@ export const DataStudio = {
     cancelButton: () => cy.findByRole("button", { name: "Cancel" }),
     editor: codeMirrorHelpers("snippet-editor", {}),
   },
-  Metrics: {
-    overviewPage: metricOverviewPage,
-    queryEditor: metricQueryEditor,
-    nameInput: () => metricQueryEditor().findByPlaceholderText("New metric"),
-    saveButton: () =>
-      metricQueryEditor().findByRole("button", { name: "Save" }),
-    cancelButton: () =>
-      metricQueryEditor().findByRole("button", { name: "Cancel" }),
-    header: () => cy.findByTestId("metric-header"),
-    moreMenu: () => DataStudio.Metrics.header().icon("ellipsis"),
-    overviewTab: () => DataStudio.Metrics.header().findByText("Overview"),
-    definitionTab: () => DataStudio.Metrics.header().findByText("Definition"),
-    dependenciesTab: () =>
-      DataStudio.Metrics.header().findByText("Dependencies"),
-    cachingTab: () => DataStudio.Metrics.header().findByText("Caching"),
-    overviewPageDescriptionSidebar: () =>
-      metricOverviewPage().findByTestId("metric-description-sidebar"),
-  },
+  Metrics: MetricPage,
   Tables: {
     overviewPage: () => cy.findByTestId("table-overview-page"),
     fieldsPage: () => cy.findByTestId("table-fields-page"),

@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 
 // Setup CSP nonce for CodeMirror dynamic styles
-import "metabase/lib/csp";
+import "metabase/utils/csp";
 
 // Import the embedding SDK vendors side-effects
 import "metabase/embedding-sdk/vendors-side-effects";
@@ -30,6 +30,8 @@ import { SdkIframeEmbedRoute } from "metabase/embedding/embedding-iframe-sdk/com
 function _init() {
   document.body.style.margin = "0";
   document.body.style.backgroundColor = "transparent";
+  document.documentElement.style.overflow = "hidden";
+  document.documentElement.style.height = "100vh";
 
   const rootElement = document.getElementById("root");
 

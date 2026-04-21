@@ -25,7 +25,7 @@ on:
 jobs:
   # Generate matrix for scheduled/PR runs
   generate-matrix:
-    if: github.event_name != 'workflow_dispatch'
+    if: github.event_name != 'workflow_dispatch' && github.repository == 'metabase/metabase'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -47,7 +47,7 @@ jobs:
 
   # Matrix-based tests for scheduled/PR runs
   test-matrix:
-    if: github.event_name != 'workflow_dispatch'
+    if: github.event_name != 'workflow_dispatch' && github.repository == 'metabase/metabase'
     needs: generate-matrix
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
@@ -61,12 +61,37 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
 
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare Cypress environment
+        uses: ./.github/actions/prepare-cypress
+
       - name: Run cross-version test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
+          RESULT_FILE: ${{ runner.temp }}/cross-version-result-${{ matrix.source }}-${{ matrix.target }}.json
         run: |
           cd cross-version
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
+
+      - name: Upload failure result
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failure-result-${{ matrix.source }}-${{ matrix.target }}
+          path: ${{ runner.temp }}/cross-version-result-${{ matrix.source }}-${{ matrix.target }}.json
+          if-no-files-found: ignore
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-recording-${{ matrix.source }}-${{ matrix.target }}
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore
 
       - name: Show logs on failure
         if: failure()
@@ -74,6 +99,88 @@ jobs:
           cd cross-version
           docker compose logs metabase || true
           docker compose logs postgres || true
+
+  # Notify Slack on nightly failures
+  notify-on-failure:
+    if: >-
+      always()
+      && github.event_name == 'schedule'
+      && github.repository == 'metabase/metabase'
+      && needs.test-matrix.result == 'failure'
+    needs: [test-matrix]
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            release
+            .github
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
+      - name: Download failure results
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          pattern: failure-result-*
+          path: failure-results
+          merge-multiple: true
+
+      - name: Notify Slack
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const { buildFailureResults, sendCrossVersionSlackNotification } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            // Get all failed jobs from the GitHub API
+            const { owner, repo } = context.repo;
+            const jobInfo = await github.rest.actions.listJobsForWorkflowRun({
+              owner,
+              repo,
+              run_id: context.runId,
+              per_page: 100,
+            });
+
+            const failedJobs = jobInfo.data.jobs
+              .filter(job => job.status === 'completed' && job.conclusion === 'failure' && job.name.startsWith('test-matrix'))
+              .map(job => ({ name: job.name, url: job.html_url }));
+
+            if (failedJobs.length === 0) {
+              console.log('No failed test-matrix jobs found');
+              return;
+            }
+
+            // Load artifact data for enrichment (phase)
+            const resultsDir = 'failure-results';
+            const artifactData = new Map();
+            if (fs.existsSync(resultsDir)) {
+              for (const file of fs.readdirSync(resultsDir)) {
+                if (!file.endsWith('.json')) continue;
+                try {
+                  const result = JSON.parse(fs.readFileSync(path.join(resultsDir, file), 'utf8'));
+                  artifactData.set(`${result.source}-${result.target}`, result);
+                } catch (e) {
+                  console.log(`Skipping malformed result: ${file}`);
+                }
+              }
+            }
+
+            const failures = buildFailureResults(failedJobs, artifactData);
+            const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${context.runId}`;
+            const slackBotToken = process.env.SLACK_BOT_TOKEN;
+            if (!slackBotToken) {
+              console.log('SLACK_BOT_TOKEN is not set; skipping Slack notification.');
+              return;
+            }
+            await sendCrossVersionSlackNotification(failures, runUrl, slackBotToken);
+            console.log('Slack notification sent');
 
   # Manual test for workflow_dispatch
   test-manual:
@@ -87,12 +194,28 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
 
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+
+      - name: Prepare Cypress environment
+        uses: ./.github/actions/prepare-cypress
+
       - name: Run cross-version test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
         run: |
           cd cross-version
           ./test.sh --source "${{ inputs.source_version }}" --target "${{ inputs.target_version }}"
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: cypress-recording-${{ inputs.source_version }}-${{ inputs.target_version }}
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore
 
       - name: Show logs on failure
         if: failure()

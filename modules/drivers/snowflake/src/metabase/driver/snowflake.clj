@@ -23,6 +23,7 @@
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
@@ -404,10 +405,11 @@
 
 (defn- date-trunc
   [unit expr]
-  (let [acceptable-types (case unit
-                           (:millisecond :second :minute :hour) #{"time" "timestampltz" "timestampntz" "timestamptz"}
-                           (:day :week :month :quarter :year)   #{"date" "timestampltz" "timestampntz" "timestamptz"})
-        expr             (h2x/cast-unless-type-in "timestampntz" acceptable-types expr)]
+  (let [[acceptable-types effective-supertype]
+        (case unit
+          (:millisecond :second :minute :hour) [#{"time" "timestampltz" "timestampntz" "timestamptz"} :type/Temporal]
+          (:day :week :month :quarter :year)   [#{"date" "timestampltz" "timestampntz" "timestamptz"} :type/HasDate])
+        expr (h2x/cast-unless-type-in "timestampntz" acceptable-types effective-supertype expr)]
     (-> [:date_trunc (h2x/literal unit) (in-report-timezone expr)]
         (h2x/with-database-type-info (h2x/database-type expr)))))
 
@@ -715,6 +717,22 @@
                           ;; for more info.
                           (vec (sql-jdbc.describe-database/db-tables driver (.getMetaData conn) "%" db-name)))}))))))
 
+(defn- fallback-fields-metadata
+  "When JDBC DatabaseMetaData.getColumns() fails (e.g. due to unsupported column types like UUID),
+  fall back to using SELECT * to get field metadata from ResultSetMetaData."
+  [driver ^java.sql.Connection conn table ^String db-name-or-nil]
+  (let [{:keys [schema name]} table
+        [sql & params] (sql-jdbc.sync.interface/fallback-metadata-query driver db-name-or-nil schema name)]
+    (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn sql params)
+                rs   (.executeQuery stmt)]
+      (let [rsmeta (.getMetaData rs)]
+        (into #{}
+              (sql-jdbc.describe-table/describe-table-fields-xf driver table)
+              (for [i (range 1 (inc (.getColumnCount rsmeta)))]
+                {:name                       (.getColumnName rsmeta (int i))
+                 :database-type              (.getColumnTypeName rsmeta (int i))
+                 :database-is-auto-increment (.isAutoIncrement rsmeta (int i))}))))))
+
 (defmethod sql-jdbc.sync/describe-table-fields :snowflake
   [driver conn table database]
   ;; The default implementation of [[sql-jdbc.sync/describe-table-fields]] doesn't use both Database Type (`NUMBER`)
@@ -722,8 +740,16 @@
   ;; our own logic.
   (letfn [(fix-base-type [col]
             (assoc col :base-type (database-type->base-type (:database-type col) (:jdbc-type col))))]
-    (mapv fix-base-type
-          ((get-method sql-jdbc.sync/describe-table-fields :sql-jdbc) driver conn table database))))
+    (try
+      (mapv fix-base-type
+            ((get-method sql-jdbc.sync/describe-table-fields :sql-jdbc) driver conn table database))
+      (catch Exception e
+        ;; The Snowflake JDBC driver may throw for unsupported column types (e.g. UUID) during
+        ;; DatabaseMetaData.getColumns() iteration. Fall back to SELECT * metadata which doesn't
+        ;; hit the same code path. See #71595.
+        (log/warnf e "Error reading JDBC metadata for table %s, falling back to SELECT * metadata" (:name table))
+        (mapv fix-base-type
+              (fallback-fields-metadata driver conn table database))))))
 
 (defmethod driver/describe-table :snowflake
   [driver database table]
@@ -1098,4 +1124,4 @@
                                           qr)])))))
 
 (defmethod driver/llm-sql-dialect-resource :snowflake [_]
-  "llm/prompts/dialects/snowflake.md")
+  "metabot/prompts/dialects/snowflake.md")

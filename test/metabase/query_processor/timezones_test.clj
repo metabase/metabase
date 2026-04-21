@@ -8,8 +8,8 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor :as qp]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.util.date-2 :as u.date]))

@@ -1,0 +1,72 @@
+name: Native Query - Field Filter and Temporal Unit
+entity_id: sk02d7sPWAk2TYH2Y7JhZ
+created_at: '2026-04-02T02:59:02.778668Z'
+creator_id: admin@example.com
+display: line
+collection_id: cOlQuErIeS0ExAmPlE2x1
+query_type: native
+database_id: Sample Database
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Sample Database
+  stages:
+  - native: |-
+      SELECT {{created_at}} AS period, PRODUCTS.CATEGORY, COUNT(*) AS cnt
+      FROM ORDERS
+      JOIN PRODUCTS ON ORDERS.PRODUCT_ID = PRODUCTS.ID
+      WHERE {{category_filter}}
+        AND {{date_filter}}
+      GROUP BY {{created_at}}, PRODUCTS.CATEGORY
+    template-tags:
+      category_filter:
+        dimension:
+        - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - CATEGORY
+        display-name: Category
+        id: bb000001-0000-0000-0000-000000000001
+        name: category_filter
+        type: dimension
+        widget-type: string/=
+      created_at:
+        default: month
+        dimension:
+        - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+        display-name: Group By
+        id: bb000003-0000-0000-0000-000000000003
+        name: created_at
+        sectionid: date
+        type: temporal-unit
+      date_filter:
+        dimension:
+        - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - ORDERS
+          - CREATED_AT
+        display-name: Order Date
+        id: bb000002-0000-0000-0000-000000000002
+        name: date_filter
+        type: dimension
+        widget-type: date/range
+    lib/type: mbql.stage/native
+  lib/type: mbql/query
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: sk02d7sPWAk2TYH2Y7JhZ
+  label: native_query___field_filter_and_temporal_unit
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (14ff27d)
+type: question

@@ -11,7 +11,8 @@ describe("scenarios > dependencies > dependency checks", () => {
     H.restore("postgres-writable");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
     H.resetSnowplow();
 
@@ -41,11 +42,12 @@ describe("scenarios > dependencies > dependency checks", () => {
   describe("metrics", () => {
     it("should not show a warning when a change to a metric is backward-compatible with existing content", () => {
       createMetricWithDependentMbqlQuestionsAndTransforms();
-      cy.get<number>("@metricId").then(H.visitMetric);
-      H.openQuestionActions("Edit metric definition");
+      cy.get<number>("@metricId").then((metricId) => {
+        cy.visit(`/metric/${metricId}/query`);
+      });
       H.getNotebookStep("summarize").findByText("Min of Score").click();
       H.popover().findByText("Name").click();
-      cy.findByTestId("edit-bar").button("Save changes").click();
+      cy.button("Save").click();
       cy.wait("@updateCard");
     });
   });

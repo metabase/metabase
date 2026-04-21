@@ -1097,3 +1097,27 @@ export const SymlogDecimals = {
     renderingContext,
   },
 };
+
+export const LineChartSplitPanelsTimeseriesDifferentRanges = {
+  render: Template,
+  args: {
+    rawSeries: data.lineChartSplitPanelsTimeseriesDifferentRanges,
+    renderingContext,
+  },
+};
+
+export const ComboSplitPanelsMixedSeriesDisplaySettings = {
+  render: Template,
+  args: {
+    rawSeries: data.comboSplitPanelsMixedSeriesDisplaySettings,
+    renderingContext,
+  },
+};
+
+export const BarSplitPanelsOrdinalMixedTicksWidthsPerPanel = {
+  render: Template,
+  args: {
+    rawSeries: data.barSplitPanelsOrdinalMixedTicksWidthsPerPanel,
+    renderingContext,
+  },
+};

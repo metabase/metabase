@@ -11,7 +11,7 @@
 
 (defenterprise user->tenant-collection-and-descendant-ids
   "Returns descendant IDs for the user's tenant collection. Returns an empty vector in OSS since tenants are an EE feature."
-  metabase-enterprise.tenants.model
+  metabase-enterprise.tenants.models
   [_user-or-id]
   [])
 

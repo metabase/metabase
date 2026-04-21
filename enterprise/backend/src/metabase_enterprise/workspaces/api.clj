@@ -49,7 +49,8 @@
    [:database {:optional true} ::ws.t/appdb-id]
    [:type [:enum "table"]]
    [:schema {:optional true} [:maybe [:string {:min 1}]]]
-   [:name [:string {:min 1}]]])
+   [:name [:string {:min 1}]]
+   [:table_id {:optional true} [:maybe ::ws.t/appdb-id]]])
 
 (def ^:private InputTable
   [:map

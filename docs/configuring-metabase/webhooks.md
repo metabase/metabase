@@ -13,15 +13,15 @@ For now, webhooks are only available for [alerts](../questions/alerts.md); you c
 
 ## Create a webhook
 
-_Admin > Settings > Notification channels_
+_Admin > Settings > Webhooks_
 
 Before people can send alerts to a webhook, an admin or someone with [settings access](../permissions/application.md#settings-access) will need to create a webhook to target.
 
 To create a webhook:
 
 1. Click the **grid** icon in top right corner and select **Admin**.
-2. In the Admin console, go **Settings > Notification channels**.
-3. In **Webhooks for alerts**, click **Add a webhoor**.
+2. In the Admin console, go **Settings > Webhooks**.
+3. In **Webhooks for alerts**, click **Add a webhook**.
 4. Metabase will show you a short form to fill out:
 
    - **Webhook URL**. Where you want Metabase to send the results of an alert. Must be a valid URL.

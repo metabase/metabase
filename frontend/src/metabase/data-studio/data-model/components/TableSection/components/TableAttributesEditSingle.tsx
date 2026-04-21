@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useUpdateTableMutation } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
 import {
   DataSourceInput,
   EntityTypeInput,
@@ -12,6 +11,7 @@ import {
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Icon, Text } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type {
   Table,
   TableDataLayer,
@@ -24,9 +24,10 @@ import { TableSectionGroup } from "./TableSectionGroup";
 
 interface Props {
   table: Table;
+  onUpdate: () => void;
 }
 
-export function TableAttributesEditSingle({ table }: Props) {
+export function TableAttributesEditSingle({ table, onUpdate }: Props) {
   const [updateTable] = useUpdateTableMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
@@ -40,6 +41,7 @@ export function TableAttributesEditSingle({ table }: Props) {
     if (error) {
       sendErrorToast(t`Failed to update table owner`);
     } else {
+      onUpdate();
       sendSuccessToast(t`Table owner updated`, async () => {
         const { error } = await updateTable({
           id: table.id,
@@ -65,6 +67,7 @@ export function TableAttributesEditSingle({ table }: Props) {
     if (error) {
       sendErrorToast(t`Failed to update table owner`);
     } else {
+      onUpdate();
       sendSuccessToast(t`Table owner updated`, async () => {
         const { error } = await updateTable({
           id: table.id,

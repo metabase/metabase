@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { EditBar } from "metabase/common/components/EditBar";
 import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";
+import { SIDEBAR_WIDTH } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import {
   applyDraftParameterValues,
@@ -20,18 +21,17 @@ import {
   getIsShowDashboardSettingsSidebar,
   getIsSidebarOpen,
 } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTION_COMPONENTS,
   PLUGIN_MODERATION,
 } from "metabase/plugins";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { Collection, Dashboard as IDashboard } from "metabase-types/api";
 
 import { Dashboard } from "../Dashboard";
 import { FixedWidthContainer } from "../Dashboard/DashboardComponents";
-import { SIDEBAR_WIDTH } from "../Sidebar";
 
 import S from "./DashboardHeaderView.module.css";
 

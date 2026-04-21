@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import type { SetStateAction } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
@@ -26,15 +27,17 @@ export interface RlsSelectionResult {
 }
 
 interface RlsDataSelectorProps {
+  selections: TableColumnSelection[];
+  onSelectionsChange: (value: SetStateAction<TableColumnSelection[]>) => void;
   onSuccess: (result: RlsSelectionResult) => void;
 }
 
-export const RlsDataSelector = ({ onSuccess }: RlsDataSelectorProps) => {
+export const RlsDataSelector = ({
+  selections,
+  onSelectionsChange,
+  onSuccess,
+}: RlsDataSelectorProps) => {
   const [sendToast] = useToast();
-
-  const [selections, setSelections] = useState<TableColumnSelection[]>([
-    { tableId: null, columnId: null },
-  ]);
 
   const { handleUpsertPolicies, isCreatingPolicy, isLoadingPolicies } =
     useUpsertGroupTableAccessPolicies({ tableColumnSelections: selections });
@@ -69,25 +72,27 @@ export const RlsDataSelector = ({ onSuccess }: RlsDataSelectorProps) => {
   }, [handleUpsertPolicies, selections, onSuccess, sendToast]);
 
   const addTable = useCallback(() => {
-    setSelections((prev) => [...prev, { tableId: null, columnId: null }]);
-  }, []);
+    onSelectionsChange((prev) => [...prev, createEmptyTableColumnSelection()]);
+  }, [onSelectionsChange]);
 
-  const removeTable = useCallback((nextIndex: number) => {
-    setSelections((prev) =>
-      prev.filter((_, prevIndex) => prevIndex !== nextIndex),
-    );
-  }, []);
+  const removeTable = useCallback(
+    (nextIndex: number) => {
+      onSelectionsChange((prev) =>
+        prev.filter((_, prevIndex) => prevIndex !== nextIndex),
+      );
+    },
+    [onSelectionsChange],
+  );
 
   const updateTable = useCallback(
     (index: number, selection: TableColumnSelection) => {
-      setSelections((prev) => {
-        const newSelections = [...prev];
-        newSelections[index] = selection;
-
-        return newSelections;
-      });
+      onSelectionsChange((prev) =>
+        prev.map((prevSelection, prevIndex) =>
+          prevIndex === index ? selection : prevSelection,
+        ),
+      );
     },
-    [],
+    [onSelectionsChange],
   );
 
   const canRemove = selections.length > 1;
@@ -144,3 +149,8 @@ export const RlsDataSelector = ({ onSuccess }: RlsDataSelectorProps) => {
     </Stack>
   );
 };
+
+export const createEmptyTableColumnSelection = (): TableColumnSelection => ({
+  tableId: null,
+  columnId: null,
+});

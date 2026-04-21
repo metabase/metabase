@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
-import { Combobox, Group, Icon, Loader, Text, Tooltip } from "metabase/ui";
+import { Box, Combobox, Group, Icon, Loader, Text, Tooltip } from "metabase/ui";
 
 export interface GitSyncOptionsDropdownProps {
   isPullDisabled: boolean;
+  isPullError: boolean;
   isLoadingPull: boolean;
   isPushDisabled: boolean;
   onPullClick: VoidFunction;
@@ -13,12 +14,25 @@ export interface GitSyncOptionsDropdownProps {
 
 export const GitSyncOptionsDropdown = ({
   isPullDisabled,
+  isPullError,
   isLoadingPull,
   isPushDisabled,
   onPullClick,
   onPushClick,
   onSwitchBranchClick,
 }: GitSyncOptionsDropdownProps) => {
+  if (isPullError) {
+    return (
+      <Combobox.Dropdown p={0}>
+        <Box p="md">
+          <Text size="sm" c="error" ta="center">
+            {t`Failed to check for changes — check your authentication token`}
+          </Text>
+        </Box>
+      </Combobox.Dropdown>
+    );
+  }
+
   return (
     <Combobox.Dropdown p={0}>
       <Combobox.Options>

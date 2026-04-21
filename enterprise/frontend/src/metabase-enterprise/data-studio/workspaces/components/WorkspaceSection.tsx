@@ -8,8 +8,6 @@ import { t } from "ttag";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import S from "metabase/data-studio/app/pages/DataStudioLayout/DataStudioLayout.module.css";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { WorkspacesSectionProps } from "metabase/plugins/oss/database";
 import { getLocation } from "metabase/selectors/routing";
@@ -29,6 +27,8 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import type { MetabaseColorKey } from "metabase/ui/colors/types";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import {
   useArchiveWorkspaceMutation,
   useCreateWorkspaceMutation,
@@ -114,11 +114,15 @@ export function WorkspacesSection({ showLabel }: WorkspacesSectionProps) {
           className={cx(S.tab, { [S.selected]: isWorkspaceListPage })}
           component={ForwardRefLink}
           to={Urls.dataStudioWorkspaceList()}
-          p="0.75rem"
+          p="sm"
           bdrs="md"
         >
-          <Flex align="center" justify="center">
-            <FixedSizeIcon name="git_branch" display="block" />
+          <Flex align="center" justify="center" w="100%">
+            <FixedSizeIcon
+              name="git_branch"
+              display="block"
+              c="text-secondary"
+            />
           </Flex>
         </UnstyledButton>
       </Tooltip>

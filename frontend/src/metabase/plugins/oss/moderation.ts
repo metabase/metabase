@@ -1,8 +1,15 @@
+import type React from "react";
+
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { IconName, IconProps } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
-import type { BaseUser, Card, Dashboard } from "metabase-types/api";
+import type {
+  BaseUser,
+  Card,
+  Dashboard,
+  MetabotInfo,
+} from "metabase-types/api";
 
 export type RevisionOrModerationEvent = {
   title: string;
@@ -28,6 +35,8 @@ const getDefaultPluginModeration = () => ({
   useDashboardMenuItems: (_model?: Dashboard, _reload?: () => void) => [],
   useQuestionMenuItems: (_model?: Question, _reload?: () => void) => [],
   useCardMenuItems: (_model?: Card, _reload?: () => void) => [],
+  MetabotVerifiedContentConfigurationPane:
+    PluginPlaceholder as React.ComponentType<{ metabot: MetabotInfo }>,
 });
 
 export const PLUGIN_MODERATION = getDefaultPluginModeration();

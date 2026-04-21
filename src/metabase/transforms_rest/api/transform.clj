@@ -4,16 +4,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
-   [metabase.events.core :as events]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.streaming :as qp.streaming]
    [metabase.request.core :as request]
-   [metabase.server.core :as server]
    [metabase.transforms-base.util :as transforms-base.u]
-   [metabase.transforms-inspector.core :as inspector]
-   [metabase.transforms-inspector.schema :as inspector.schema]
    [metabase.transforms-rest.api.transform-job]
    [metabase.transforms-rest.api.transform-tag]
    [metabase.transforms.core :as transforms.core]
@@ -75,7 +67,8 @@
    [:transform_entity_id {:optional true} [:maybe :string]]
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
-   [:checkpoint_hi_value {:optional true} [:maybe :string]]])
+   [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:metered_as {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
   [:map {:closed true}
@@ -94,11 +87,11 @@
    [:collection_id [:maybe pos-int?]]
    [:target_db_id {:optional true} [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
-   [:dependency_analysis_version :int]
    [:creator CreatorResponse]
    [:last_run {:optional true} [:maybe TransformLastRunResponse]]
    [:tag_ids {:optional true} [:sequential pos-int?]]
    [:table {:optional true} [:maybe :map]]
+   [:target_table_id {:optional true} [:maybe pos-int?]]
    [:owner_user_id {:optional true} [:maybe pos-int?]]
    [:owner_email {:optional true} [:maybe :string]]
    [:owner {:optional true} [:maybe OwnerResponse]]
@@ -120,6 +113,7 @@
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
+   [:metered_as {:optional true} [:maybe :string]]
    ;; Transform can have id/name when exists, or be nil when deleted
    [:transform {:optional true} [:maybe [:map {:closed true}
                                          [:id {:optional true} pos-int?]
@@ -193,8 +187,8 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Transform id)
   (let [id->transform (t2/select-pk->fn identity :model/Transform)
-        global-ordering (transforms.core/transform-ordering (vals id->transform))
-        dep-ids         (get global-ordering id)
+        {graph :dependencies} (transforms.core/transform-ordering #{id} (vals id->transform))
+        dep-ids         (get graph id)
         dependencies    (map id->transform dep-ids)]
     (->> (t2/hydrate dependencies :creator :owner)
          transforms.u/add-source-readable)))
@@ -243,7 +237,8 @@
     [:transform-tag-ids {:optional true} [:maybe (ms/QueryVectorOf ms/IntGreaterThanOrEqualToZero)]]
     [:start-time {:optional true} [:maybe ms/NonBlankString]]
     [:end-time {:optional true} [:maybe ms/NonBlankString]]
-    [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]]]
+    [:run-methods {:optional true} [:maybe (ms/QueryVectorOf [:enum "manual" "cron"])]]
+    [:user-id {:optional true} [:maybe ms/PositiveInt]]]]
   (api/check-data-analyst)
   (-> (transforms.core/paged-runs (assoc query-params
                                          :offset (request/offset)
@@ -337,69 +332,6 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (run-transform! (api/write-check :model/Transform id)))
-
-;;; -------------------------------------------------- Inspector API --------------------------------------------------
-
-(api.macros/defendpoint :get "/:id/inspect"
-  :- ::inspector.schema/discovery-response
-  "Phase 1: Discover available lenses for a transform.
-   Returns structural metadata and available lens types."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
-  (let [transform (api/read-check :model/Transform id)
-        result    (do (transforms.core/check-feature-enabled! transform)
-                      (inspector/discover-lenses transform))]
-    (events/publish-event! :event/transform-inspect-discover
-                           {:object  transform
-                            :user-id api/*current-user-id*})
-    result))
-
-(api.macros/defendpoint :get "/:id/inspect/:lens-id"
-  :- ::inspector.schema/lens
-  "Phase 2: Get full lens contents for a transform.
-   Returns sections, cards with dataset_query, and trigger definitions.
-   Accepts optional params for drill lenses as query params."
-  [{:keys [id lens-id]} :- [:map
-                            [:id ms/PositiveInt]
-                            [:lens-id ms/NonBlankString]]
-   params :- [:map-of :keyword :any]]
-  (let [transform (api/read-check :model/Transform id)
-        result    (do (transforms.core/check-feature-enabled! transform)
-                      (inspector/get-lens transform lens-id params))]
-    (events/publish-event! :event/transform-inspect-lens
-                           {:object  transform
-                            :user-id api/*current-user-id*
-                            :details {:lens-id            lens-id
-                                      :num-cards          (count (:cards result))
-                                      :num-drill-lenses   (count (:drill_lenses result))
-                                      :num-alert-triggers (count (:alert_triggers result))}})
-    result))
-
-(api.macros/defendpoint :post "/:id/inspect/:lens-id/query"
-  :- (server/streaming-response-schema ::qp.schema/query-result)
-  "Execute a query in the context of a transform inspector lens."
-  [{:keys [id lens-id]} :- [:map
-                            [:id ms/PositiveInt]
-                            [:lens-id ms/NonBlankString]]
-   _query-params
-   {query :query, lens-params :lens_params}
-   :- [:map
-       [:query [:map [:database {:optional true} [:maybe :int]]]]
-       [:lens_params {:optional true} [:maybe [:map-of :keyword :any]]]]]
-  (let [transform (api/read-check :model/Transform id)]
-    (transforms.core/check-feature-enabled! transform)
-    (let [info {:executed-by  api/*current-user-id*
-                :context      :transform-inspector
-                :transform-id id
-                :lens-id      lens-id
-                :lens-params  lens-params}]
-      (qp.streaming/streaming-response [rff :api]
-        (qp/process-query
-         (-> query
-             (update-in [:middleware :js-int-to-string?] (fnil identity true))
-             (assoc :constraints (qp.constraints/default-query-constraints))
-             (update :info merge info)
-             qp/userland-query)
-         rff)))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/transform` routes."

@@ -9,11 +9,11 @@ import {
   useRevertRevisionMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
+import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import { Sidesheet, SidesheetCard } from "metabase/common/components/Sidesheet";
-import { Timeline } from "metabase/common/components/Timeline";
-import { getTimelineEvents } from "metabase/common/components/Timeline/utils";
-import { useSelector } from "metabase/lib/redux";
 import { getUser } from "metabase/selectors/user";
+import { useSelector } from "metabase/utils/redux";
 import type { Transform } from "metabase-types/api";
 
 interface TransformRevisionHistorySidebarProps {
@@ -63,7 +63,7 @@ export function TransformRevisionHistorySidebar({
         {isLoading || error ? (
           <LoadingAndErrorWrapper loading={isLoading} error={error} />
         ) : (
-          <Timeline
+          <RevisionHistoryTimeline
             events={events}
             data-testid="transform-history-list"
             revert={(revision) =>

@@ -1,13 +1,10 @@
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import { useNotebookScreenSize } from "metabase/query_builder/hooks/use-notebook-screen-size";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { NativeQueryEditor } from "./NativeQueryEditor";
 
@@ -26,29 +23,11 @@ const mockQuestion = {
 } as any;
 
 describe("NativeQueryEditor", () => {
-  beforeAll(() => {
-    mockSettings({
-      "token-features": createMockTokenFeatures({
-        metabot_v3: true,
-      }),
-    });
-
-    setupEnterpriseOnlyPlugin("metabot");
-  });
-
   const createEditor = (
     screenSize: Exclude<UseNotebookScreenSize, undefined>,
     isMetabotSidebarOpen: boolean,
   ) => {
     const setIsNativeEditorOpen = jest.fn();
-
-    const metabotState = {
-      conversations: {
-        omnibot: {
-          visible: isMetabotSidebarOpen,
-        },
-      },
-    };
 
     setupCollectionsEndpoints({
       collections: [],
@@ -70,8 +49,12 @@ describe("NativeQueryEditor", () => {
       />,
       {
         storeInitialState: createMockState({
-          plugins: {
-            metabotPlugin: metabotState,
+          metabot: {
+            conversations: {
+              omnibot: {
+                visible: isMetabotSidebarOpen,
+              },
+            },
           },
         } as any),
       },

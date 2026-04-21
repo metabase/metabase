@@ -1,11 +1,20 @@
+import { t } from "ttag";
+
 import type { DimensionOption } from "metabase/common/components/DimensionPill";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatValue } from "metabase/lib/formatting";
-import { isEmpty } from "metabase/lib/validate";
-import type { DimensionItem } from "metabase/metrics-viewer/components/DimensionPillBar";
+import type {
+  DimensionPillBarItem,
+  ExpressionDimensionItem,
+  ExpressionMetricSource,
+  MetricDimensionItem,
+} from "metabase/metrics-viewer/components/DimensionPillBar";
+import type { IconName } from "metabase/ui";
 import { getColorsForValues } from "metabase/ui/colors/charts";
+import { isNotNull } from "metabase/utils/types";
 import { getColorplethColorScale } from "metabase/visualizations/components/ChoroplethMap";
-import { getSeriesVizSettingsKey } from "metabase/visualizations/echarts/cartesian/model/series";
+import {
+  formatBreakoutValue,
+  getBreakoutSeriesName,
+} from "metabase/visualizations/echarts/cartesian/model/series";
 import { MAX_SERIES } from "metabase/visualizations/lib/utils";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
@@ -13,83 +22,329 @@ import type {
   Card,
   CardId,
   Dataset,
+  DatasetColumn,
+  DatasetData,
   DimensionId,
   MetricBreakoutValuesResponse,
   RowValue,
   RowValues,
+  SeriesSettings,
   SingleSeries,
+  TemporalUnit,
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerDisplayType,
-  SelectedMetric,
-  SourceColorMap,
+import {
+  type BreakoutColorMap,
+  type ExpressionDefinitionEntry,
+  type MetricDefinitionEntry,
+  type MetricSourceId,
+  type MetricsViewerDefinitionEntry,
+  type MetricsViewerDisplayType,
+  type MetricsViewerFormulaEntity,
+  type SelectedMetric,
+  type SourceBreakoutColorMap,
+  type SourceColorMap,
+  isExpressionEntry,
+  isMetricEntry,
 } from "../types/viewer-state";
 
+import { getDefinitionName } from "./definition-builder";
+import { getModifiedDefinition } from "./definition-cache";
 import {
-  getDefinitionColumnName,
-  getDefinitionName,
-} from "./definition-builder";
-import { entryHasBreakout, getEntryBreakout } from "./definition-entries";
+  entryHasBreakout,
+  getEffectiveDefinitionEntry,
+  getEntryBreakout,
+} from "./definition-entries";
 import { findDimensionById } from "./dimension-lookup";
+import { type MetricSlot, slotsForEntity } from "./metric-slots";
 import { nextSyntheticCardId, parseSourceId } from "./source-ids";
 import { DISPLAY_TYPE_REGISTRY } from "./tab-config";
 import { getDimensionIcon } from "./tabs";
 
-function getDefinitionCardId(def: MetricDefinition): number | null {
-  const metricId = LibMetric.sourceMetricId(def);
-  if (metricId != null) {
-    return metricId;
+interface BuildSeriesParams {
+  formulaEntities: MetricsViewerFormulaEntity[];
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>;
+  resultsByEntityIndex: Map<number, Dataset>;
+  metricSlots: MetricSlot[];
+  dimensionMapping: Record<number, DimensionId | null>;
+  display: MetricsViewerDisplayType;
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
+  sourceBreakoutColors: SourceBreakoutColorMap;
+  extraVizSettings?: Partial<VisualizationSettings>;
+}
+
+export function buildSeries({
+  formulaEntities,
+  definitions,
+  resultsByEntityIndex,
+  metricSlots,
+  dimensionMapping,
+  display,
+  modifiedDefinitionsBySlotIndex,
+  sourceBreakoutColors,
+  extraVizSettings,
+}: BuildSeriesParams): {
+  series: SingleSeries[];
+  cardIdToEntityIndex: Record<CardId, number>;
+  activeBreakoutColors: SourceBreakoutColorMap;
+} {
+  const uniqueNamesByEntityIndex = computeUniqueEntityNames(
+    formulaEntities,
+    definitions,
+  );
+  const displayType = DISPLAY_TYPE_REGISTRY[display];
+
+  let isFirstSeries = true;
+  const cardIdToEntityIndex: Record<CardId, number> = {};
+  const activeBreakoutColors: SourceBreakoutColorMap = {};
+
+  const series = Array.from(resultsByEntityIndex.entries()).flatMap(
+    ([entityIndex, result]) => {
+      let vizSettings: VisualizationSettings | null = null;
+      const entity = formulaEntities[entityIndex];
+
+      const name = uniqueNamesByEntityIndex.get(entityIndex);
+      if (!name) {
+        return [];
+      }
+
+      const colors = sourceBreakoutColors[entityIndex];
+      const color = getSingleColor(colors);
+      const hasBreakout =
+        isMetricEntry(entity) &&
+        entryHasBreakout(getEffectiveDefinitionEntry(entity, definitions)) &&
+        result.data.rows.length > 0;
+      const breakoutIsSameAsDimension =
+        hasBreakout && result.data.cols.length === 2;
+      const nativeBreakout =
+        hasBreakout &&
+        !breakoutIsSameAsDimension &&
+        displayType.supportsMultipleSeries;
+      const needsManualBreakoutSplit = hasBreakout && !nativeBreakout;
+
+      if (nativeBreakout) {
+        vizSettings = buildCartesianVizSettings(
+          result.data,
+          true,
+          formulaEntities.length > 1,
+          name,
+          colors instanceof Map ? colors : undefined,
+        );
+      } else {
+        vizSettings = getVizSettings(
+          dimensionMapping,
+          display,
+          modifiedDefinitionsBySlotIndex,
+          metricSlots
+            .filter((slot) => slot.entityIndex === entityIndex)
+            .map((slot) => slot.slotIndex),
+        );
+      }
+      if (!vizSettings) {
+        return [];
+      }
+      const cardId = nextSyntheticCardId();
+
+      const seriesKey = isFirstSeries ? result.data.cols[1]?.name : name;
+
+      const singleSeries: SingleSeries = {
+        card: createSeriesCard(cardId, name, display, {
+          ...vizSettings,
+          ...(nativeBreakout
+            ? {}
+            : computeColorVizSettings({
+                displayType: display,
+                seriesKey,
+                color,
+              })),
+          ...extraVizSettings,
+        }),
+        data: result.data,
+      };
+
+      let entrySeries: SingleSeries[];
+      if (needsManualBreakoutSplit && colors instanceof Map) {
+        const { series, activeBreakoutColorMap } = splitByBreakout(
+          singleSeries,
+          formulaEntities.length,
+          isFirstSeries,
+          colors,
+          vizSettings,
+        );
+        entrySeries = series;
+        activeBreakoutColors[entityIndex] = activeBreakoutColorMap;
+      } else {
+        entrySeries = [singleSeries];
+        if (hasBreakout && !needsManualBreakoutSplit && colors instanceof Map) {
+          activeBreakoutColors[entityIndex] = filterBreakoutColorsByData(
+            colors,
+            result.data,
+          );
+        } else {
+          activeBreakoutColors[entityIndex] = color;
+        }
+      }
+
+      isFirstSeries = false;
+
+      for (const series of entrySeries) {
+        cardIdToEntityIndex[series.card.id] = entityIndex;
+      }
+      return entrySeries;
+    },
+  );
+
+  if (series.length > 1 && displayType.combineSettings) {
+    series[0].card.visualization_settings = displayType.combineSettings(
+      series.map((s) => s.card.visualization_settings),
+    );
   }
-  const measureId = LibMetric.sourceMeasureId(def);
-  if (measureId != null) {
-    return nextSyntheticCardId();
+
+  return { series, cardIdToEntityIndex, activeBreakoutColors };
+}
+
+function getVizSettings(
+  dimensionMapping: Record<number, DimensionId | null>,
+  display: MetricsViewerDisplayType,
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>,
+  slotIndices: number[],
+): VisualizationSettings | null {
+  const displayConfig = DISPLAY_TYPE_REGISTRY[display];
+  for (const slotIndex of slotIndices) {
+    const modifiedDefinition = modifiedDefinitionsBySlotIndex.get(slotIndex);
+    if (!modifiedDefinition) {
+      continue;
+    }
+    const dimensionId = dimensionMapping[slotIndex];
+    if (displayConfig.dimensionRequired) {
+      if (!dimensionId) {
+        continue;
+      }
+      const dimension = findDimensionById(modifiedDefinition, dimensionId);
+      if (!dimension) {
+        continue;
+      }
+      return displayConfig.getSettings(modifiedDefinition, dimension);
+    }
+    return displayConfig.getSettings(modifiedDefinition);
   }
   return null;
 }
 
 /**
- * Computes colors for each definition by building the same series key array
- * that the chart pipeline would produce, then passing it to getColorsForValues.
- *
- * Chart key rules (from transformSeries → keyForSingleSeries):
- *   - First series key = col.name (slugified metric/measure card name)
- *   - Subsequent series keys = card.name (displayName or "displayName: breakoutValue")
+ * Compute unique display names for each formula entity, disambiguating
+ * duplicate names by appending " (N)" starting from the second occurrence.
+ * This ensures that `card.name` (used by `keyForSingleSeries` for color
+ * resolution) is unique for each entity.
  */
-export function computeSourceColors(
-  definitions: MetricsViewerDefinitionEntry[],
-  breakoutValuesBySourceId?: Map<MetricSourceId, MetricBreakoutValuesResponse>,
-): SourceColorMap {
-  const entries: { sourceId: MetricSourceId; keys: string[] }[] = [];
+export function computeUniqueEntityNames(
+  formulaEntities: MetricsViewerFormulaEntity[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+): Map<number, string> {
+  const rawNames: { entityIndex: number; name: string }[] = [];
+  const totalCounts = new Map<string, number>();
 
-  for (const entry of definitions) {
-    if (!entry.definition) {
-      continue;
-    }
-    const displayName = getDefinitionName(entry.definition);
-    if (!displayName) {
-      continue;
+  formulaEntities.forEach((entity, index) => {
+    let name;
+    if (isMetricEntry(entity)) {
+      const effectiveDef = getEffectiveDefinitionEntry(entity, definitions);
+      if (effectiveDef?.definition) {
+        name = getDefinitionName(effectiveDef.definition);
+        if (name) {
+          rawNames.push({ entityIndex: index, name });
+        }
+      }
+    } else if (isExpressionEntry(entity)) {
+      name = entity.name;
+      rawNames.push({ entityIndex: index, name: entity.name });
     }
 
-    const response = breakoutValuesBySourceId?.get(entry.id);
-    if (entryHasBreakout(entry) && response && response.values.length > 0) {
-      const keys = response.values.map((val) => {
-        const formatted = String(
-          formatValue(isEmpty(val) ? NULL_DISPLAY_VALUE : val, {
-            column: response.col,
-          }),
-        );
-        return definitions.length > 1
-          ? `${displayName}: ${formatted}`
-          : formatted;
-      });
-      entries.push({ sourceId: entry.id, keys });
+    if (name) {
+      totalCounts.set(name, (totalCounts.get(name) ?? 0) + 1);
+    }
+  });
+
+  // Assign unique names: first occurrence keeps original, subsequent get " (N)"
+  const result = new Map<number, string>();
+  const seenCounts = new Map<string, number>();
+  for (const { entityIndex, name } of rawNames) {
+    const occurrence = (seenCounts.get(name) ?? 0) + 1;
+    seenCounts.set(name, occurrence);
+    if ((totalCounts.get(name) ?? 0) > 1 && occurrence > 1) {
+      result.set(entityIndex, `${name} (${occurrence})`);
     } else {
-      entries.push({ sourceId: entry.id, keys: [displayName] });
+      result.set(entityIndex, name);
+    }
+  }
+
+  return result;
+}
+
+interface SourceColorEntry {
+  entityIndex: number;
+  keys: string[];
+  keyToBreakoutValue: Record<string, string>;
+}
+
+export function computeSourceBreakoutColors(
+  formulaEntities: MetricsViewerFormulaEntity[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  breakoutValuesByEntityIndex?: Map<number, MetricBreakoutValuesResponse>,
+): SourceBreakoutColorMap {
+  const uniqueNames = computeUniqueEntityNames(formulaEntities, definitions);
+
+  const entries: SourceColorEntry[] = [];
+
+  for (
+    let entityIndex = 0;
+    entityIndex < formulaEntities.length;
+    entityIndex++
+  ) {
+    const entity = formulaEntities[entityIndex];
+    const uniqueName = uniqueNames.get(entityIndex);
+    if (!uniqueName) {
+      continue;
+    }
+
+    if (isMetricEntry(entity)) {
+      const effectiveDef = getEffectiveDefinitionEntry(entity, definitions);
+      if (!effectiveDef?.definition) {
+        continue;
+      }
+
+      const response = breakoutValuesByEntityIndex?.get(entityIndex);
+      if (
+        entryHasBreakout(effectiveDef) &&
+        response &&
+        response.values.length > 0
+      ) {
+        const keys: string[] = [];
+        const keyToBreakoutValue: Record<string, string> = {};
+        response.values.forEach((val) => {
+          const breakoutValue = formatBreakoutValue(val, response.col);
+          const key = getBreakoutSeriesName(
+            val,
+            response.col,
+            uniqueNames.size > 1,
+            uniqueName,
+          );
+          keys.push(key);
+          keyToBreakoutValue[key] = breakoutValue;
+        });
+        entries.push({ entityIndex, keys, keyToBreakoutValue });
+      } else {
+        entries.push({
+          entityIndex,
+          keys: [uniqueName],
+          keyToBreakoutValue: {},
+        });
+      }
+    }
+
+    if (isExpressionEntry(entity)) {
+      entries.push({ entityIndex, keys: [uniqueName], keyToBreakoutValue: {} });
     }
   }
 
@@ -97,104 +352,196 @@ export function computeSourceColors(
     return {};
   }
 
-  const allKeys = entries.flatMap((entry) => entry.keys);
+  const colorMapping = getColorsForValues(
+    entries.flatMap((entry) => entry.keys),
+  );
 
-  const firstDefinition = definitions.find(
-    (definition) => definition.id === entries[0].sourceId,
-  )?.definition;
-  if (firstDefinition) {
-    const columnName = getDefinitionColumnName(firstDefinition);
-    if (columnName) {
-      allKeys[0] = columnName;
-    }
-  }
-
-  const colorMapping = getColorsForValues(allKeys);
-
-  const result: SourceColorMap = {};
-  let idx = 0;
+  const result: SourceBreakoutColorMap = {};
   for (const entry of entries) {
-    result[entry.sourceId] = entry.keys.map(
-      (_, i) => colorMapping[allKeys[idx + i]],
-    );
-    idx += entry.keys.length;
+    if (entry.keys.length === 1) {
+      result[entry.entityIndex] = colorMapping[entry.keys[0]];
+    } else {
+      result[entry.entityIndex] = new Map(
+        Object.entries(entry.keyToBreakoutValue).map(([key, breakoutValue]) => [
+          breakoutValue,
+          colorMapping[key],
+        ]),
+      );
+    }
   }
   return result;
 }
 
-// Column layout with breakout:
-// - 3 cols when dimension != breakout: [dimension, breakout, metric] → output: [dimension, metric]
-// - 2 cols when dimension == breakout: [breakout, metric] → output: [breakout, metric]
+export function getSingleColor(
+  colors: BreakoutColorMap | string | undefined,
+): string | undefined {
+  return typeof colors === "string"
+    ? colors
+    : colors instanceof Map
+      ? colors.values().next().value
+      : undefined;
+}
+
+// Result data columns layout: [dimension, breakout, metric].
+const DIMENSION_COLUMN_INDEX = 0;
+const BREAKOUT_COLUMN_INDEX = 1;
+const METRIC_COLUMN_INDEX = 2;
+
+// When the breakout dimension is the same as the tab's dimension,
+// the query avoids adding it twice, so we get [breakout, metric] instead of [dimension, breakout, metric].
+function getBreakoutColumnDescriptor(cols: DatasetColumn[]): {
+  index: number;
+  column: DatasetColumn;
+} {
+  const breakoutIsSameAsDimension = cols.length === 2;
+  const index = breakoutIsSameAsDimension
+    ? DIMENSION_COLUMN_INDEX
+    : BREAKOUT_COLUMN_INDEX;
+  return { index, column: cols[index] };
+}
+
+function getMetricColumnIndex(cols: DatasetColumn[]): number {
+  const breakoutIsSameAsDimension = cols.length === 2;
+  return breakoutIsSameAsDimension
+    ? BREAKOUT_COLUMN_INDEX
+    : METRIC_COLUMN_INDEX;
+}
+
+function filterBreakoutColorsByData(
+  breakoutColors: BreakoutColorMap,
+  data: DatasetData,
+): BreakoutColorMap {
+  const breakoutCol = data.cols[BREAKOUT_COLUMN_INDEX];
+  const presentValues = new Set(
+    data.rows.map((row) =>
+      formatBreakoutValue(row[BREAKOUT_COLUMN_INDEX], breakoutCol),
+    ),
+  );
+  const filtered: BreakoutColorMap = new Map();
+  for (const [value, color] of breakoutColors) {
+    if (presentValues.has(value)) {
+      filtered.set(value, color);
+    }
+  }
+  return filtered;
+}
+
 export function splitByBreakout(
   series: SingleSeries,
   seriesCount: number,
-  sourceColors?: string[],
-): SingleSeries[] {
+  isFirstSeries: boolean,
+  breakoutColorMap: BreakoutColorMap,
+  vizSettings: VisualizationSettings,
+): {
+  series: SingleSeries[];
+  activeBreakoutColorMap: BreakoutColorMap | string | undefined;
+} {
   const { card, data } = series;
   const { cols } = data;
 
-  const hasSeparateDimension = cols.length === 3;
-  const breakoutColumnIndex = hasSeparateDimension ? 1 : 0;
-  const metricColumnIndex = hasSeparateDimension ? 2 : 1;
-  const breakoutCol = cols[breakoutColumnIndex];
+  const breakout = getBreakoutColumnDescriptor(cols);
+  const metricColumnIndex = getMetricColumnIndex(cols);
   const metricCol = cols[metricColumnIndex];
-  const outputCols = [cols[0], metricCol];
+  const outputCols = [cols[DIMENSION_COLUMN_INDEX], metricCol];
 
   const rowsByBreakoutValue = new Map<RowValue, RowValues[]>();
 
   for (const row of data.rows) {
-    const breakoutValue = row[breakoutColumnIndex];
+    const breakoutValue = formatBreakoutValue(
+      row[breakout.index],
+      breakout.column,
+    );
     let groupedRows = rowsByBreakoutValue.get(breakoutValue);
     if (!groupedRows) {
       groupedRows = [];
       rowsByBreakoutValue.set(breakoutValue, groupedRows);
       if (rowsByBreakoutValue.size > MAX_SERIES) {
-        return [series];
+        return {
+          series: [series],
+          activeBreakoutColorMap: breakoutColorMap.values().next().value,
+        };
       }
     }
-    groupedRows.push([row[0], row[metricColumnIndex]] as RowValues);
+    groupedRows.push([
+      row[DIMENSION_COLUMN_INDEX],
+      row[metricColumnIndex],
+    ] as RowValues);
   }
 
-  return Array.from(rowsByBreakoutValue.keys()).map((breakoutValue, i) => {
-    const name = [
-      seriesCount > 1 && card.name,
-      formatValue(isEmpty(breakoutValue) ? NULL_DISPLAY_VALUE : breakoutValue, {
-        column: breakoutCol,
-      }),
-    ]
-      .filter(Boolean)
-      .join(": ");
+  const activeBreakoutColorMap: BreakoutColorMap = new Map();
 
-    const seriesKey = getSeriesVizSettingsKey(
-      metricCol,
-      false,
-      true,
-      1,
-      null,
-      name,
-    );
+  const breakoutSeries = Array.from(breakoutColorMap)
+    .map(([breakoutValue, color]) => {
+      const rows = rowsByBreakoutValue.get(breakoutValue);
+      if (!rows) {
+        return null;
+      }
 
-    return {
-      ...series,
-      card: {
-        ...card,
-        id: nextSyntheticCardId(),
-        name,
-        visualization_settings: {
-          ...computeColorVizSettings({
-            displayType: card.display,
-            seriesKey,
-            color: sourceColors?.[i],
-          }),
+      activeBreakoutColorMap.set(breakoutValue, color);
+
+      const name = getBreakoutSeriesName(
+        breakoutValue,
+        breakout.column,
+        seriesCount > 1,
+        card.name,
+      );
+
+      const seriesKey = isFirstSeries ? metricCol?.name : name;
+      isFirstSeries = false;
+
+      return {
+        ...series,
+        card: {
+          ...card,
+          id: nextSyntheticCardId(),
+          name,
+          visualization_settings: {
+            ...vizSettings,
+            ...computeColorVizSettings({
+              displayType: card.display,
+              seriesKey,
+              color,
+            }),
+          },
         },
-      },
-      data: {
-        ...data,
-        rows: rowsByBreakoutValue.get(breakoutValue)!,
-        cols: outputCols,
-      },
-    };
-  });
+        data: {
+          ...data,
+          rows,
+          cols: outputCols,
+        },
+      };
+    })
+    .filter((s) => s != null);
+  return { series: breakoutSeries, activeBreakoutColorMap };
+}
+
+export function buildCartesianVizSettings(
+  data: DatasetData,
+  hasBreakout: boolean,
+  hasMultipleCards: boolean,
+  cardName: string | null,
+  breakoutColors?: BreakoutColorMap,
+): VisualizationSettings {
+  const { cols } = data;
+  const dimensions = [cols[DIMENSION_COLUMN_INDEX].name];
+  if (hasBreakout) {
+    dimensions.push(cols[BREAKOUT_COLUMN_INDEX].name);
+  }
+
+  return {
+    "graph.x_axis.labels_enabled": false,
+    "graph.y_axis.labels_enabled": false,
+    "graph.dimensions": dimensions,
+    "graph.metrics": [cols[cols.length - 1].name],
+    ...(hasBreakout && breakoutColors
+      ? computeBreakoutColorSettings(
+          breakoutColors,
+          cols[BREAKOUT_COLUMN_INDEX],
+          hasMultipleCards,
+          cardName,
+        )
+      : {}),
+  };
 }
 
 function createSeriesCard(
@@ -211,124 +558,38 @@ function createSeriesCard(
   } as Card;
 }
 
-export function buildRawSeriesFromDefinitions(
-  definitions: MetricsViewerDefinitionEntry[],
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
-  display: MetricsViewerDisplayType,
-  resultsByDefinitionId: Map<MetricSourceId, Dataset>,
-  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
-  sourceColors: SourceColorMap,
-): {
-  series: SingleSeries[];
-  cardIdToDimensionId: Record<CardId, MetricSourceId>;
-} {
-  const firstSettingsEntry = definitions.reduce<{
-    def: MetricDefinition;
-    dimension: DimensionMetadata;
-  } | null>((found, entry) => {
-    if (found) {
-      return found;
-    }
-    const dimensionId = dimensionMapping[entry.id];
-    if (!dimensionId || !entry.definition) {
-      return null;
-    }
-    const dimension = findDimensionById(entry.definition, dimensionId);
-    if (!dimension) {
-      return null;
-    }
-    const def = modifiedDefinitions.get(entry.id);
-    if (!def) {
-      return null;
-    }
-    return { def, dimension };
-  }, null);
-
-  if (!firstSettingsEntry) {
-    return { series: [], cardIdToDimensionId: {} };
-  }
-
-  const vizSettings = DISPLAY_TYPE_REGISTRY[display].getSettings(
-    firstSettingsEntry.def,
-    firstSettingsEntry.dimension,
-  );
-
-  const cardIdToDimensionId: Record<CardId, MetricSourceId> = {};
-
-  const series = definitions.flatMap((entry) => {
-    const dimensionId = dimensionMapping[entry.id];
-    if (!dimensionId || !entry.definition) {
-      return [];
-    }
-
-    const modDef = modifiedDefinitions.get(entry.id);
-    const result = resultsByDefinitionId.get(entry.id);
-    if (!modDef || !result?.data?.cols?.length) {
-      return [];
-    }
-
-    if (LibMetric.projections(modDef).length === 0) {
-      return [];
-    }
-
-    const cardId = getDefinitionCardId(entry.definition);
-    if (cardId == null) {
-      return [];
-    }
-
-    const name = getDefinitionName(entry.definition);
-
-    const seriesKey = getSeriesVizSettingsKey(
-      result.data.cols[1], // metric API returns [projection_cols..., aggregation_col]
-      false,
-      true,
-      1,
-      null,
-      name ?? undefined,
+export function computeBreakoutColorSettings(
+  breakoutColors: BreakoutColorMap,
+  breakoutCol: DatasetColumn,
+  hasMultipleCards: boolean,
+  cardName: string | null,
+): Pick<VisualizationSettings, "series_settings"> {
+  const seriesSettings: Record<string, SeriesSettings> = {};
+  for (const [formattedValue, color] of breakoutColors) {
+    const seriesName = getBreakoutSeriesName(
+      formattedValue,
+      breakoutCol,
+      hasMultipleCards,
+      cardName,
     );
-
-    const singleSeries: SingleSeries = {
-      card: createSeriesCard(cardId, name, display, {
-        ...vizSettings,
-        ...computeColorVizSettings({
-          displayType: display,
-          seriesKey,
-          color: sourceColors[entry.id]?.[0],
-        }),
-      }),
-      data: result.data,
-    };
-
-    let entrySeries: SingleSeries[];
-    if (!entryHasBreakout(entry)) {
-      entrySeries = [singleSeries];
-    } else {
-      entrySeries = splitByBreakout(
-        singleSeries,
-        definitions.length,
-        sourceColors[entry.id],
-      );
-    }
-
-    for (const s of entrySeries) {
-      cardIdToDimensionId[s.card.id] = entry.id;
-    }
-
-    return entrySeries;
-  });
-
-  return { series, cardIdToDimensionId };
+    seriesSettings[seriesName] = { color };
+  }
+  return { series_settings: seriesSettings };
 }
 
-function computeColorVizSettings({
-  displayType,
-  seriesKey,
-  color,
-}: {
+interface ColorVizSettingsParams {
   displayType: VisualizationDisplay;
   seriesKey: string;
   color: string | undefined;
-}): Partial<Pick<VisualizationSettings, "series_settings" | "map.colors">> {
+}
+
+export function computeColorVizSettings({
+  displayType,
+  seriesKey,
+  color,
+}: ColorVizSettingsParams): Partial<
+  Pick<VisualizationSettings, "series_settings" | "map.colors">
+> {
   if (color == null) {
     return {};
   }
@@ -336,15 +597,14 @@ function computeColorVizSettings({
     return {
       "map.colors": getColorplethColorScale(color),
     };
-  } else {
-    return {
-      series_settings: {
-        [seriesKey]: {
-          color,
-        },
-      },
-    };
   }
+  return {
+    series_settings: {
+      [seriesKey]: {
+        color,
+      },
+    },
+  };
 }
 
 function computeAvailableOptions(
@@ -387,69 +647,252 @@ function computeAvailableOptions(
   });
 }
 
+/**
+ * Builds dimension items for the pill bar. Standalone metrics produce one
+ * `DimensionItem` each. Expression entities produce one
+ * `ExpressionDimensionItem` that groups all constituent metric-token slots
+ * into a single pill with per-metric accordion sections.
+ */
 export function buildDimensionItemsFromDefinitions(
-  definitions: MetricsViewerDefinitionEntry[],
-  dimensionMapping: Record<MetricSourceId, DimensionId | null>,
-  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>,
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  dimensionMapping: Record<number, DimensionId | null>,
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>,
+  sourceColors: SourceColorMap,
+  metricSlots: MetricSlot[],
+  formulaEntities: MetricsViewerFormulaEntity[],
+  projectionConfig: { temporalUnit?: TemporalUnit; binningStrategy?: string },
+  dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
+): DimensionPillBarItem[] {
+  const items: DimensionPillBarItem[] = [];
+
+  // Track which entity indices we've already emitted items for.
+  const processedEntityIndices = new Set<number>();
+
+  for (const slot of metricSlots) {
+    // Skip if we already processed this entity index.
+    if (processedEntityIndices.has(slot.entityIndex)) {
+      continue;
+    }
+
+    const entity = formulaEntities[slot.entityIndex];
+
+    if (isExpressionEntry(entity)) {
+      // Expression entity — gather all token slots for this entity and
+      // produce a single ExpressionDimensionItem.
+      processedEntityIndices.add(slot.entityIndex);
+
+      const entitySlots = slotsForEntity(metricSlots, slot.entityIndex);
+      const metricSources = buildExpressionMetricSources(
+        entitySlots,
+        definitions,
+        dimensionMapping,
+        sourceColors,
+        projectionConfig,
+        entity,
+        dimensionFilter,
+      );
+
+      // Derive aggregate label and icon from selected dimensions.
+      const selectedDimensions = metricSources
+        .map((s) => s.currentDimension)
+        .filter(isNotNull);
+      const allSameDimension =
+        selectedDimensions.length > 0 &&
+        selectedDimensions.every((d) =>
+          LibMetric.isSameSource(d, selectedDimensions[0]),
+        );
+      let label: string | undefined;
+      if (allSameDimension) {
+        label = metricSources.find(
+          (s) => s.currentDimensionLabel,
+        )?.currentDimensionLabel;
+      } else if (selectedDimensions.length > 1) {
+        label = t`Multiple dimensions`;
+      }
+      const selectedIcons = metricSources
+        .map((s) => s.currentDimensionIcon)
+        .filter(Boolean);
+      const uniqueIcons = [...new Set(selectedIcons)];
+      const icon = uniqueIcons.length === 1 ? uniqueIcons[0] : undefined;
+
+      const expressionColors = sourceColors[slot.entityIndex];
+
+      items.push({
+        type: "expression",
+        id: slot.entityIndex,
+        colors: expressionColors,
+        label,
+        icon,
+        metricSources,
+      } satisfies ExpressionDimensionItem);
+    }
+
+    if (isMetricEntry(entity)) {
+      processedEntityIndices.add(slot.entityIndex);
+
+      const item = buildStandaloneDimensionItem(
+        entity,
+        slot,
+        definitions,
+        dimensionMapping,
+        modifiedDefinitionsBySlotIndex,
+        sourceColors,
+        dimensionFilter,
+      );
+      if (item) {
+        items.push(item);
+      }
+    }
+  }
+
+  return items;
+}
+
+function buildStandaloneDimensionItem(
+  entity: MetricDefinitionEntry,
+  slot: MetricSlot,
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  dimensionMapping: Record<number, DimensionId | null>,
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>,
   sourceColors: SourceColorMap,
   dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
-): DimensionItem[] {
-  return definitions.flatMap((entry): DimensionItem[] => {
-    if (!entry.definition) {
+): MetricDimensionItem | null {
+  const defEntry = getEffectiveDefinitionEntry(entity, definitions);
+  if (!defEntry?.definition) {
+    return null;
+  }
+
+  const effectiveEntry: MetricsViewerDefinitionEntry = {
+    id: slot.sourceId,
+    definition: defEntry.definition,
+  };
+
+  const dimensionId = dimensionMapping[slot.slotIndex];
+  const entryColors = sourceColors[slot.entityIndex];
+  const modifiedDefinition = modifiedDefinitionsBySlotIndex.get(slot.slotIndex);
+
+  if (dimensionId != null && modifiedDefinition) {
+    const projections = LibMetric.projections(modifiedDefinition);
+    if (projections.length === 0) {
+      return null;
+    }
+
+    const projectionDimension = LibMetric.projectionDimension(
+      modifiedDefinition,
+      projections[0],
+    );
+    if (!projectionDimension) {
+      return null;
+    }
+
+    const dimensionInfo = LibMetric.displayInfo(
+      modifiedDefinition,
+      projectionDimension,
+    );
+
+    return {
+      id: slot.slotIndex,
+      type: "metric",
+      label: dimensionInfo.longDisplayName,
+      icon: getDimensionIcon(projectionDimension),
+      colors: entryColors,
+      availableOptions: computeAvailableOptions(
+        effectiveEntry,
+        modifiedDefinition,
+        dimensionFilter,
+      ),
+    };
+  }
+
+  return {
+    id: slot.slotIndex,
+    type: "metric",
+    label: undefined,
+    icon: undefined,
+    colors: entryColors,
+    availableOptions: computeAvailableOptions(
+      effectiveEntry,
+      undefined,
+      dimensionFilter,
+    ),
+  };
+}
+
+function buildExpressionMetricSources(
+  entitySlots: MetricSlot[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  dimensionMapping: Record<number, DimensionId | null>,
+  sourceColors: SourceColorMap,
+  projectionConfig: { temporalUnit?: TemporalUnit; binningStrategy?: string },
+  entity: ExpressionDefinitionEntry,
+  dimensionFilter?: (dimension: LibMetric.DimensionMetadata) => boolean,
+): ExpressionMetricSource[] {
+  return entitySlots.flatMap((slot): ExpressionMetricSource[] => {
+    const defEntry = definitions[slot.sourceId];
+    if (!defEntry?.definition) {
       return [];
     }
 
-    const dimensionId = dimensionMapping[entry.id];
-    const entryColors = sourceColors[entry.id];
-    const modifiedDefinition = modifiedDefinitions.get(entry.id);
+    const effectiveEntry: MetricsViewerDefinitionEntry = {
+      id: slot.sourceId,
+      definition: defEntry.definition,
+    };
 
-    if (dimensionId != null && modifiedDefinition) {
-      const projections = LibMetric.projections(modifiedDefinition);
-      if (projections.length === 0) {
-        return [];
-      }
+    const dimensionId = dimensionMapping[slot.slotIndex];
+    const entryColors = sourceColors[slot.entityIndex];
+    const metricName = getDefinitionName(defEntry.definition) ?? slot.sourceId;
 
-      const projectionDimension = LibMetric.projectionDimension(
-        modifiedDefinition,
-        projections[0],
-      );
-      if (!projectionDimension) {
-        return [];
-      }
-
-      const dimensionInfo = LibMetric.displayInfo(
-        modifiedDefinition,
-        projectionDimension,
-      );
-
-      return [
-        {
-          id: entry.id,
-          label: dimensionInfo.longDisplayName,
-          icon: getDimensionIcon(projectionDimension),
-          colors: entryColors,
-          availableOptions: computeAvailableOptions(
-            entry,
-            modifiedDefinition,
-            dimensionFilter,
-          ),
-        },
-      ];
+    // Compute modified definition on the fly for expression token slots.
+    let modifiedDefinition: MetricDefinition | undefined;
+    if (dimensionId) {
+      modifiedDefinition =
+        getModifiedDefinition(
+          defEntry.definition,
+          dimensionId,
+          projectionConfig,
+        ) ?? undefined;
     }
 
-    const availableOptions = computeAvailableOptions(
-      entry,
-      undefined,
-      dimensionFilter,
-    );
+    let currentDimension: DimensionMetadata | undefined;
+    let currentDimensionLabel: string | undefined;
+    let currentDimensionIcon: IconName | undefined;
+    if (dimensionId != null && modifiedDefinition) {
+      const projections = LibMetric.projections(modifiedDefinition);
+      if (projections.length > 0) {
+        currentDimension =
+          LibMetric.projectionDimension(modifiedDefinition, projections[0]) ??
+          undefined;
+        if (currentDimension) {
+          currentDimensionLabel = LibMetric.displayInfo(
+            modifiedDefinition,
+            currentDimension,
+          ).longDisplayName;
+          currentDimensionIcon = getDimensionIcon(currentDimension);
+        }
+      }
+    }
 
     return [
       {
-        id: entry.id,
-        label: undefined,
-        icon: undefined,
+        slotIndex: slot.slotIndex,
+        sourceId: slot.sourceId,
+        metricName,
+        metricCount: (() => {
+          if (slot.tokenPosition == null) {
+            return undefined;
+          }
+          const token = entity.tokens[slot.tokenPosition];
+          return token?.type === "metric" ? token.count : undefined;
+        })(),
         colors: entryColors,
-        availableOptions,
+        currentDimension,
+        currentDimensionLabel,
+        currentDimensionIcon,
+        availableOptions: computeAvailableOptions(
+          effectiveEntry,
+          modifiedDefinition,
+          dimensionFilter,
+        ),
       },
     ];
   });
