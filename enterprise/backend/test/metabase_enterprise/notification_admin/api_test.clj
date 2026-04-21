@@ -6,28 +6,28 @@
    [toucan2.core :as t2]))
 
 (deftest list-stub-returns-shape-test
-  (testing "GET /api/ee/admin/notifications returns :data + :total shape for superuser with :audit-app"
+  (testing "GET /api/ee/notifications returns :data + :total shape for superuser with :audit-app"
     (mt/with-premium-features #{:audit-app}
-      (let [resp (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")]
+      (let [resp (mt/user-http-request :crowberto :get 200 "ee/notifications")]
         (is (contains? resp :data))
         (is (contains? resp :total))
         (is (sequential? (:data resp)))
         (is (integer? (:total resp)))))))
 
 (deftest requires-premium-feature-test
-  (testing "GET /api/ee/admin/notifications returns 402 without :audit-app premium feature"
+  (testing "GET /api/ee/notifications returns 402 without :audit-app premium feature"
     (mt/with-premium-features #{}
       (mt/assert-has-premium-feature-error
        "Audit app"
-       (mt/user-http-request :crowberto :get 402 "ee/admin/notifications")))))
+       (mt/user-http-request :crowberto :get 402 "ee/notifications")))))
 
 (deftest requires-superuser-test
-  (testing "GET /api/ee/admin/notifications returns 403 for non-superuser"
+  (testing "GET /api/ee/notifications returns 403 for non-superuser"
     (mt/with-premium-features #{:audit-app}
-      (mt/user-http-request :rasta :get 403 "ee/admin/notifications"))))
+      (mt/user-http-request :rasta :get 403 "ee/notifications"))))
 
 (deftest list-returns-only-card-notifications-test
-  (testing "GET /api/ee/admin/notifications only returns :notification/card rows"
+  (testing "GET /api/ee/notifications only returns :notification/card rows"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id}  {}
                      :model/NotificationCard {ncard-id :id} {:card_id card-id}
@@ -36,7 +36,7 @@
                                                             :creator_id   (mt/user->id :crowberto)}
                      :model/Notification     sys-notif     {:payload_type :notification/system-event
                                                             :creator_id   (mt/user->id :crowberto)}]
-        (let [{:keys [data total]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")
+        (let [{:keys [data total]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               ids                  (set (map :id data))]
           (is (contains? ids (:id card-notif)))
           (is (not (contains? ids (:id sys-notif))))
@@ -54,11 +54,11 @@
                      :model/Notification     _n2           {:payload_type :notification/card
                                                             :payload_id   nc2
                                                             :creator_id   (mt/user->id :crowberto)}]
-        (let [resp (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+        (let [resp (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                          :limit 1 :offset 0)]
           (is (= 1 (count (:data resp))))
           (is (>= (:total resp) 2)))
-        (let [resp (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+        (let [resp (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                          :limit 100 :offset 0)]
           (is (>= (count (:data resp)) 2)))))))
 
@@ -77,18 +77,18 @@
                                                              :active       false
                                                              :creator_id   (mt/user->id :crowberto)}]
         (testing "default is active-only"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
                 ids            (set (map :id data))]
             (is (contains? ids (:id active-notif)))
             (is (not (contains? ids (:id archived-notif))))))
         (testing "status=archived returns only archived"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                      :status "archived")
                 ids            (set (map :id data))]
             (is (not (contains? ids (:id active-notif))))
             (is (contains? ids (:id archived-notif)))))
         (testing "status=all returns both"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                      :status "all")
                 ids            (set (map :id data))]
             (is (contains? ids (:id active-notif)))
@@ -108,7 +108,7 @@
                      :model/Notification     notif-b       {:payload_type :notification/card
                                                             :payload_id   nc2
                                                             :creator_id   user-b}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                    :creator_id user-a)
               ids            (set (map :id data))]
           (is (contains? ids (:id notif-a)))
@@ -127,7 +127,7 @@
                      :model/Notification     notif-other       {:payload_type :notification/card
                                                                 :payload_id   nc-other
                                                                 :creator_id   (mt/user->id :crowberto)}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                    :card_id target-card)
               ids            (set (map :id data))]
           (is (contains? ids (:id notif-target)))
@@ -149,7 +149,7 @@
                                                                   :channel_type    :channel/email}
                      :model/NotificationHandler _slack-handler   {:notification_id (:id slack-notif)
                                                                   :channel_type    :channel/slack}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                    :channel "channel/email")
               ids            (set (map :id data))]
           (is (contains? ids (:id email-notif)))
@@ -180,7 +180,7 @@
                      :model/NotificationRecipient _other-r              {:notification_handler_id other-handler
                                                                          :type                    :notification-recipient/user
                                                                          :user_id                 other-user}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                    :recipient_email target-email)
               ids            (set (map :id data))]
           (is (contains? ids (:id target-notif)))
@@ -208,7 +208,7 @@
                      :model/NotificationRecipient _other-r             {:notification_handler_id other-handler
                                                                         :type                    :notification-recipient/raw-value
                                                                         :details                 {:value "someone-else@example.com"}}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                    :recipient_email "external@example.com")
               ids            (set (map :id data))]
           (is (contains? ids (:id target-notif)))
@@ -225,7 +225,7 @@
                      :model/Notification     {nid :id :as _n} {:payload_type :notification/card
                                                                :payload_id   nc
                                                                :creator_id   (mt/user->id :crowberto)}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               row            (find-row-by-id data nid)]
           (is (some? row))
           (is (= "healthy" (:health row))))))))
@@ -238,7 +238,7 @@
                      :model/Notification     {nid :id :as _n} {:payload_type :notification/card
                                                                :payload_id   nc
                                                                :creator_id   (mt/user->id :crowberto)}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               row            (find-row-by-id data nid)]
           (is (some? row))
           (is (= "orphaned_card" (:health row))))))))
@@ -252,7 +252,7 @@
                      :model/Notification     {nid :id :as _n} {:payload_type :notification/card
                                                                :payload_id   nc
                                                                :creator_id   creator}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               row            (find-row-by-id data nid)]
           (is (some? row))
           (is (= "orphaned_creator" (:health row))))))))
@@ -277,7 +277,7 @@
                                                                :status       :success
                                                                :started_at   (t/instant)
                                                                :ended_at     (t/instant)}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               row            (find-row-by-id data nid)]
           (is (some? row))
           (is (= "failing" (:health row))))))))
@@ -302,7 +302,7 @@
                                                                :status       :success
                                                                :started_at   (t/instant)
                                                                :ended_at     (t/instant)}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               row            (find-row-by-id data nid)]
           (is (some? row))
           (is (= "abandoned" (:health row))))))))
@@ -329,7 +329,7 @@
                                                                :status       :success
                                                                :started_at   (t/instant)
                                                                :ended_at     (t/instant)}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               row            (find-row-by-id data nid)]
           (is (= "failing" (:health row))
               "the run-level status should win, not the task-history-level parent status"))))))
@@ -374,7 +374,7 @@
                                                               :status       :success
                                                               :started_at   (t/instant "2024-01-01T00:00:00Z")
                                                               :ended_at     (t/instant "2024-01-01T00:00:01Z")}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications")
               by-id          (into {} (map (juxt :id identity) data))]
           (is (some? (:last_sent_at (by-id n-early))))
           (is (some? (:last_sent_at (by-id n-recent))))
@@ -420,7 +420,7 @@
                                                              :started_at   (t/instant)
                                                              :ended_at     (t/instant)}]
         (testing "health=healthy"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                      :health "healthy")
                 ids            (set (map :id data))]
             (is (contains? ids (:id healthy-n)))
@@ -428,7 +428,7 @@
             (is (not (contains? ids (:id orph-user-n))))
             (is (not (contains? ids (:id failing-n))))))
         (testing "health=orphaned_card"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                      :health "orphaned_card")
                 ids            (set (map :id data))]
             (is (contains? ids (:id orph-card-n)))
@@ -436,7 +436,7 @@
             (is (not (contains? ids (:id orph-user-n))))
             (is (not (contains? ids (:id failing-n))))))
         (testing "health=orphaned_creator"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                      :health "orphaned_creator")
                 ids            (set (map :id data))]
             (is (contains? ids (:id orph-user-n)))
@@ -444,7 +444,7 @@
             (is (not (contains? ids (:id orph-card-n))))
             (is (not (contains? ids (:id failing-n))))))
         (testing "health=failing"
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                      :health "failing")
                 ids            (set (map :id data))]
             (is (contains? ids (:id failing-n)))
@@ -473,7 +473,7 @@
                                                                 :payload_id   nc3
                                                                 :active       true
                                                                 :creator_id   other-user}]
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications"
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                    :status "active"
                                                    :creator_id target-user)
               ids            (set (map :id data))]
@@ -499,7 +499,7 @@
                                                             :payload_id   nc2
                                                             :active       true
                                                             :creator_id   (mt/user->id :crowberto)}]
-        (let [resp (mt/user-http-request :crowberto :post 200 "ee/admin/notifications/bulk"
+        (let [resp (mt/user-http-request :crowberto :post 200 "ee/notifications/bulk"
                                          {:notification_ids [(:id n1) (:id n2)]
                                           :action           "archive"})]
           (is (= 2 (:updated resp)))
@@ -520,7 +520,7 @@
                                                             :payload_id   nc2
                                                             :active       false
                                                             :creator_id   (mt/user->id :crowberto)}]
-        (mt/user-http-request :crowberto :post 200 "ee/admin/notifications/bulk"
+        (mt/user-http-request :crowberto :post 200 "ee/notifications/bulk"
                               {:notification_ids [(:id n1) (:id n2)]
                                :action           "unarchive"})
         (is (true? (t2/select-one-fn :active :model/Notification (:id n1))))
@@ -535,7 +535,7 @@
                      :model/Notification     n1              {:payload_type :notification/card
                                                               :payload_id   nc1
                                                               :creator_id   (mt/user->id :rasta)}]
-        (mt/user-http-request :crowberto :post 200 "ee/admin/notifications/bulk"
+        (mt/user-http-request :crowberto :post 200 "ee/notifications/bulk"
                               {:notification_ids [(:id n1)]
                                :action           "change-owner"
                                :owner_id         new-owner})
@@ -549,7 +549,7 @@
                      :model/Notification     n1            {:payload_type :notification/card
                                                             :payload_id   nc1
                                                             :creator_id   (mt/user->id :crowberto)}]
-        (mt/user-http-request :crowberto :post 400 "ee/admin/notifications/bulk"
+        (mt/user-http-request :crowberto :post 400 "ee/notifications/bulk"
                               {:notification_ids [(:id n1)]
                                :action           "change-owner"})))))
 
@@ -558,23 +558,23 @@
 ;; ---------------------------------------------------------------------------------------------
 
 (deftest bulk-requires-premium-feature-test
-  (testing "POST /api/ee/admin/notifications/bulk returns 402 without :audit-app premium feature"
+  (testing "POST /api/ee/notifications/bulk returns 402 without :audit-app premium feature"
     (mt/with-premium-features #{}
       (mt/assert-has-premium-feature-error
        "Audit app"
-       (mt/user-http-request :crowberto :post 402 "ee/admin/notifications/bulk"
+       (mt/user-http-request :crowberto :post 402 "ee/notifications/bulk"
                              {:notification_ids [1]
                               :action           "archive"})))))
 
 (deftest bulk-requires-superuser-test
-  (testing "POST /api/ee/admin/notifications/bulk returns 403 for non-superuser"
+  (testing "POST /api/ee/notifications/bulk returns 403 for non-superuser"
     (mt/with-premium-features #{:audit-app}
-      (mt/user-http-request :rasta :post 403 "ee/admin/notifications/bulk"
+      (mt/user-http-request :rasta :post 403 "ee/notifications/bulk"
                             {:notification_ids [1]
                              :action           "archive"}))))
 
 (deftest bulk-happy-path-test
-  (testing "POST /api/ee/admin/notifications/bulk returns 200 + :updated for superuser with premium"
+  (testing "POST /api/ee/notifications/bulk returns 200 + :updated for superuser with premium"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id} {}
                      :model/NotificationCard {nc :id}      {:card_id card-id}
@@ -582,7 +582,7 @@
                                                             :payload_id   nc
                                                             :active       true
                                                             :creator_id   (mt/user->id :crowberto)}]
-        (let [resp (mt/user-http-request :crowberto :post 200 "ee/admin/notifications/bulk"
+        (let [resp (mt/user-http-request :crowberto :post 200 "ee/notifications/bulk"
                                          {:notification_ids [(:id n)]
                                           :action           "archive"})]
           (is (= 1 (:updated resp))))))))
@@ -599,7 +599,7 @@
                      :model/Notification     {nid :id}     {:payload_type :notification/card
                                                             :payload_id   nc
                                                             :creator_id   (mt/user->id :crowberto)}]
-        (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/admin/notifications/" nid))]
+        (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/notifications/" nid))]
           (is (= nid (:id resp)))
           (is (contains? resp :health))
           (is (contains? resp :last_sent_at)))))))
@@ -609,21 +609,21 @@
     (mt/with-premium-features #{:audit-app}
       (let [max-id (or (t2/select-one-fn :id :model/Notification {:order-by [[:id :desc]]}) 0)]
         (mt/user-http-request :crowberto :get 404
-                              (str "ee/admin/notifications/" (+ max-id 100000)))))))
+                              (str "ee/notifications/" (+ max-id 100000)))))))
 
 (deftest detail-404-for-non-card-notification-test
   (testing "GET /:id returns 404 when the notification exists but isn't a :notification/card"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Notification {nid :id} {:payload_type :notification/system-event
                                                     :creator_id   (mt/user->id :crowberto)}]
-        (mt/user-http-request :crowberto :get 404 (str "ee/admin/notifications/" nid))))))
+        (mt/user-http-request :crowberto :get 404 (str "ee/notifications/" nid))))))
 
 (deftest detail-requires-premium-feature-test
   (testing "GET /:id returns 402 without :audit-app premium feature"
     (mt/with-premium-features #{}
       (mt/assert-has-premium-feature-error
        "Audit app"
-       (mt/user-http-request :crowberto :get 402 "ee/admin/notifications/1")))))
+       (mt/user-http-request :crowberto :get 402 "ee/notifications/1")))))
 
 (deftest detail-requires-superuser-test
   (testing "GET /:id returns 403 for a non-superuser"
@@ -633,5 +633,5 @@
                      :model/Notification     {nid :id}     {:payload_type :notification/card
                                                             :payload_id   nc
                                                             :creator_id   (mt/user->id :crowberto)}]
-        (mt/user-http-request :rasta :get 403 (str "ee/admin/notifications/" nid))))))
+        (mt/user-http-request :rasta :get 403 (str "ee/notifications/" nid))))))
 

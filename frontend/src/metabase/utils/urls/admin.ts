@@ -5,6 +5,8 @@ import type {
   SchemaName,
   SegmentId,
   TableId,
+  TaskRunEntityType,
+  TaskRunType,
 } from "metabase-types/api";
 
 export const isInternalUser = (user: BaseUser) => user.tenant_id === null;
@@ -159,6 +161,19 @@ export function adminToolsTasksRuns() {
 
 export function adminToolsTaskRunDetails(runId: number) {
   return `${adminToolsTasksRuns()}/${runId}`;
+}
+
+export function adminToolsTasksRunsFor(opts: {
+  runType: TaskRunType;
+  entityType: TaskRunEntityType;
+  entityId: number;
+}) {
+  const params = new URLSearchParams({
+    "run-type": opts.runType,
+    "entity-type": opts.entityType,
+    "entity-id": String(opts.entityId),
+  });
+  return `${adminToolsTasksRuns()}?${params.toString()}`;
 }
 
 export function adminToolsJobs() {

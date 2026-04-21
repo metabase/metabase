@@ -73,17 +73,17 @@
 (defn- latest-task-run-by-notification
   "Return `{notification-id {:latest {:status :ended_at} :last-sent <instant>}}` for each
   notification, where `:latest` is the most recent TaskRun and `:last-sent` is the ended_at of the
-  most recent `:success` TaskRun. Bounded by time + row cap — see ns docs."
+  most recent `:success` TaskRun. Bounded by time + row cap — see ns docs. Filters + orders by
+  `started_at` because it's the indexed column on `task_history` (ended_at is not)."
   [nids]
   (when (seq nids)
     (let [nid-set  (set nids)
           cutoff   (t/minus (t/offset-date-time) (t/days task-history-lookback-days))
-          ;; Pull the `notification-send` task_history rows that link to a run, newest first, so
-          ;; the per-notification run_id list comes out ordered.
+          ;; Newest first, so the per-notification run_id list comes out ordered.
           th-rows  (t2/select [:model/TaskHistory :run_id :task_details]
                               :task "notification-send"
-                              {:where    [:and [:> :ended_at cutoff] [:not= :run_id nil]]
-                               :order-by [[:ended_at :desc]]
+                              {:where    [:and [:> :started_at cutoff] [:not= :run_id nil]]
+                               :order-by [[:started_at :desc]]
                                :limit    task-history-row-limit})
           nid->run-ids (reduce
                         (fn [acc {:keys [run_id task_details]}]
@@ -115,8 +115,9 @@
 
 (defn compute-for-rows
   "Given a seq of notification rows (at minimum `:id` and `:creator_id`), return them assoc'd with
-  `:health` (one of `:healthy | :orphaned_card | :orphaned_creator | :failing` — precedence in
-  that order) and `:last_sent_at` (ended_at of the most recent successful send, or nil)."
+  `:health` (one of `:healthy | :orphaned_card | :orphaned_creator | :failing | :abandoned` —
+  precedence in that order) and `:last_sent_at` (ended_at of the most recent successful send,
+  or nil)."
   [rows]
   (let [rows              (vec rows)
         nids              (map :id rows)

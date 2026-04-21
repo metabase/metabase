@@ -555,7 +555,11 @@ const SendHistorySection = ({
   if (cardId == null) {
     return null;
   }
-  const runsUrl = `${Urls.adminToolsTasksRuns()}?run-type=alert&entity-type=card&entity-id=${cardId}`;
+  const runsUrl = Urls.adminToolsTasksRunsFor({
+    runType: "alert",
+    entityType: "card",
+    entityId: cardId,
+  });
   return (
     <Stack gap="xs" align="flex-start">
       <Title order={4}>{t`Send history`}</Title>
