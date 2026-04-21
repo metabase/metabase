@@ -335,7 +335,7 @@
               "the run-level status should win, not the task-history-level parent status"))))))
 
 (deftest last-sent-at-test
-  (testing "last_sent_at is populated from the latest successful TaskRun, and sort is desc"
+  (testing "last_sent_at is populated from the latest successful TaskRun for the page's rows"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id}   {:archived false}
                      :model/NotificationCard {nc1 :id}       {:card_id card-id}
@@ -378,12 +378,16 @@
               by-id          (into {} (map (juxt :id identity) data))]
           (is (some? (:last_sent_at (by-id n-early))))
           (is (some? (:last_sent_at (by-id n-recent))))
-          (is (nil? (:last_sent_at (by-id n-unsent))))
-          (testing "rows are sorted by last_sent_at desc, nulls last"
-            (let [our-ids  [n-early n-recent n-unsent]
-                  filtered (filter (fn [r] (some #{(:id r)} our-ids)) data)
-                  ordered  (map :id filtered)]
-              (is (= [n-recent n-early n-unsent] ordered)))))))))
+          (is (nil? (:last_sent_at (by-id n-unsent)))))))))
+
+(deftest response-shape-includes-pagination-metadata-test
+  (testing "GET / response shape echoes the {:data :total :limit :offset} pagination convention"
+    (mt/with-premium-features #{:audit-app}
+      (let [resp (mt/user-http-request :crowberto :get 200 "ee/notifications")]
+        (is (contains? resp :data))
+        (is (contains? resp :total))
+        (is (contains? resp :limit))
+        (is (contains? resp :offset))))))
 
 (deftest filter-by-health-test
   (testing "?health=<state> returns only rows matching that computed health state"

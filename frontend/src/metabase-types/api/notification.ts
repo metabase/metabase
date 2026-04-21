@@ -195,6 +195,8 @@ export type AdminNotificationListParams = {
 export type AdminNotificationListResponse = {
   data: AdminNotificationListItem[];
   total: number;
+  limit: number | null;
+  offset: number | null;
 };
 
 export type BulkNotificationAction = "archive" | "unarchive" | "change-owner";
