@@ -156,6 +156,7 @@ Metabase's reference documentation.
 - [AI system prompts](./ai/system-prompts.md)
 - [Agent API](./ai/agent-api.md)
 - [MCP server](./ai/mcp.md)
+- [Metabot in Slack](./ai/metabot-slack.md)
 
 ### Exploration and organization
 

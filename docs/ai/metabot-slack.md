@@ -13,7 +13,7 @@ Chat with [Metabot](./metabot.md) in Slack. Direct message Metabot for private a
 
 From Slack you can ask Metabot to:
 
-- **Find existing content**: Search your Metabase for questions, and dashboards. Metabot links you directly to the content in your Metabase.
+- **Find existing content**: Search your Metabase for questions and dashboards. Metabot links you directly to the content in your Metabase.
 - **Answer questions**: Create ad-hoc queries from natural language to answer your questions on the spot. You can click the link to save the question in Metabase.
 - **Show charts and tables**: Render static visualizations or tabular results in Slack. You can copy table results or download them as TSV.
 - **Work with CSVs**: [Upload a CSV](../databases/uploads.md) to Metabase, then ask follow-up questions about the data.
@@ -61,7 +61,7 @@ Some caveats:
 - For goal-based alerts, the goal line must already be configured and saved on the question. Metabot can't add goal lines.
 - Metabot can't modify or delete existing alerts or subscriptions.
 - Alerts and subscriptions are delivered to the Slack channel where the conversation takes place. You can't redirect them to a different channel or to email.
-- Alerts can only be set on questions not metrics or ad-hoc queries.
+- Alerts can only be set on questions, not metrics or ad-hoc queries.
 
 ## Notes on privacy
 
