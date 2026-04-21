@@ -45,7 +45,7 @@ export function useCollectionsWithTenants(
   const { data: sharedTenantCollections } = useListCollectionsTreeQuery(
     isTenantsActive
       ? {
-          namespace: PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE ?? undefined,
+          namespace: PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
           "exclude-archived": true,
         }
       : skipToken,
@@ -95,22 +95,32 @@ export function mergeSharedCollections(
   ] as ExpandedCollectionNode;
 
   // Create the top-level "Collections" node that parents both namespaces
-  const topLevel = {
-    ...rootCollection,
+  const syntheticTopLevel: ExpandedCollectionNode = {
     id: COLLECTIONS_TOP_LEVEL_ID,
     name: t`Collections`,
+    description: null,
+    can_write: false,
+    can_restore: false,
+    can_delete: false,
+    namespace: null,
+    location: null,
     path: [],
     parent: null,
     children: [],
-  } as ExpandedCollectionNode;
+  };
 
   // Create the shared collections synthetic root as a sibling of Our analytics
   const sharedSyntheticRoot: ExpandedCollectionNode = {
-    ...sharedRoot,
     id: SHARED_TENANT_COLLECTIONS_ROOT_ID,
     name: displayName,
+    description: null,
+    can_write: false,
+    can_restore: false,
+    can_delete: false,
+    namespace: PLUGIN_TENANTS.SHARED_TENANT_NAMESPACE,
+    location: null,
     path: [COLLECTIONS_TOP_LEVEL_ID],
-    parent: topLevel,
+    parent: syntheticTopLevel,
     children: (sharedRoot?.children ?? []).map((child) => ({
       ...child,
       parent: null,
@@ -124,7 +134,7 @@ export function mergeSharedCollections(
   })) as ExpandedCollectionNode[];
 
   // Wire up the top-level children
-  topLevel.children = [rootCollection, sharedSyntheticRoot];
+  syntheticTopLevel.children = [rootCollection, sharedSyntheticRoot];
 
   const mergedCollectionsById = { ...baseCollectionsById };
 
@@ -132,7 +142,7 @@ export function mergeSharedCollections(
   mergedCollectionsById[ROOT_COLLECTION.id] = {
     ...rootCollection,
     path: [COLLECTIONS_TOP_LEVEL_ID],
-    parent: topLevel,
+    parent: syntheticTopLevel,
   } as ExpandedCollectionNode;
 
   // Merge shared collections with rewritten paths
@@ -184,7 +194,7 @@ export function mergeSharedCollections(
   mergedCollectionsById[SHARED_TENANT_COLLECTIONS_ROOT_ID] =
     sharedSyntheticRoot;
 
-  mergedCollectionsById[COLLECTIONS_TOP_LEVEL_ID] = topLevel;
+  mergedCollectionsById[COLLECTIONS_TOP_LEVEL_ID] = syntheticTopLevel;
 
   return mergedCollectionsById;
 }
