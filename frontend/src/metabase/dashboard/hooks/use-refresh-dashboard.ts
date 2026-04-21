@@ -1,16 +1,15 @@
-import type { Query } from "history";
 import { useCallback } from "react";
 
 import {
   fetchDashboard,
   fetchDashboardCardData,
 } from "metabase/dashboard/actions";
-import { useDispatch } from "metabase/lib/redux";
-import type { DashboardId } from "metabase-types/api";
+import { useDispatch } from "metabase/utils/redux";
+import type { DashboardId, ParameterValuesMap } from "metabase-types/api";
 
 interface UseRefreshDashboardProps {
   dashboardId: DashboardId | null;
-  parameterQueryParams: Query;
+  parameterQueryParams: ParameterValuesMap;
 }
 
 export const useRefreshDashboard = ({

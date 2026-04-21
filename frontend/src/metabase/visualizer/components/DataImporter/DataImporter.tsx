@@ -3,9 +3,6 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   Box,
   Button,
@@ -16,6 +13,8 @@ import {
   TextInput,
   Title,
 } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { useBooleanMap } from "metabase/visualizer/hooks/use-boolean-map";
 import { getDataSources } from "metabase/visualizer/selectors";
 import {
@@ -23,6 +22,11 @@ import {
   removeDataSource,
 } from "metabase/visualizer/visualizer.slice";
 import type { VisualizerDataSource } from "metabase-types/api";
+
+import {
+  trackVisualizerAddMoreDataClicked,
+  trackVisualizerShowColumnsClicked,
+} from "../analytics";
 
 import { ColumnsList } from "./ColumnsList/ColumnsList";
 import S from "./DataImporter.module.css";
@@ -81,12 +85,11 @@ export const DataImporter = ({ className }: { className?: string }) => {
           variant="transparent"
           ml="auto"
           onClick={() => {
-            trackSimpleEvent({
-              event: showDatasets
-                ? "visualizer_show_columns_clicked"
-                : "visualizer_add_more_data_clicked",
-              triggered_from: "visualizer-modal",
-            });
+            if (showDatasets) {
+              trackVisualizerShowColumnsClicked();
+            } else {
+              trackVisualizerAddMoreDataClicked();
+            }
 
             handlers.toggle();
           }}
@@ -123,7 +126,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
       <Flex
         direction="column"
         className={S.Content}
-        bg="var(--mb-color-bg-white)"
+        bg="background-primary"
         h="100%"
         display={showDatasets ? "none" : "flex"}
         bd="1px solid var(--mb-color-border)"
@@ -142,7 +145,7 @@ export const DataImporter = ({ className }: { className?: string }) => {
           <Flex
             direction="column"
             className={S.Content}
-            bg="var(--mb-color-bg-white)"
+            bg="background-primary"
             style={{
               borderRadius: "var(--default-border-radius)",
               height: "100%",

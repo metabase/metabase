@@ -1,6 +1,6 @@
 const { H } = cy;
 
-import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   NativeQuestionDetails,
@@ -40,7 +40,7 @@ describe("issue 11727", { tags: "@external" }, () => {
     cy.findByTestId("query-builder-main")
       .findByText("Doing science...")
       .should("be.visible");
-    cy.get("body").type("{cmd}{enter}");
+    cy.realPress([H.metaKey, "Enter"]);
     cy.findByTestId("query-builder-main")
       .findByText("Here's where your results will appear")
       .should("be.visible");
@@ -76,23 +76,20 @@ describe("issue 16584", () => {
 });
 
 describe("issue 38083", () => {
-  const QUESTION = {
-    name: "SQL query with a date parameter",
-    native: {
-      query: "select * from people where state = {{ state }} limit 1",
-      "template-tags": {
-        state: {
-          id: "6b8b10ef-0104-1047-1e1b-2492d5954555",
-          type: "text" as const,
-          name: "state",
-          "display-name": "State",
-          "widget-type": "string/=",
-          default: "CA",
-          required: true,
-        },
+  const QUERY = {
+    database: SAMPLE_DB_ID,
+    query: "select * from people where state = {{ state }} limit 1",
+    templateTags: {
+      state: {
+        type: "text",
+        name: "state",
+        "display-name": "State",
+        "widget-type": "string/=",
+        default: "CA",
+        required: true,
       },
     },
-  };
+  } as const;
 
   beforeEach(() => {
     H.restore();
@@ -100,14 +97,17 @@ describe("issue 38083", () => {
   });
 
   it("should not show the revert to default icon when the default value is selected (metabase#38083)", () => {
-    H.createNativeQuestion(QUESTION, {
-      visitQuestion: true,
-    });
+    H.createTestNativeQuery(QUERY)
+      .then((dataset_query) =>
+        H.createCard({
+          name: "SQL query with a date parameter",
+          dataset_query,
+        }),
+      )
+      .then((card) => H.visitQuestion(card.id));
 
     H.filterWidget()
-      .filter(
-        `:contains("${QUESTION.native["template-tags"].state["display-name"]}")`,
-      )
+      .filter(`:contains("${QUERY.templateTags.state["display-name"]}")`)
       .icon("revert")
       .should("not.exist");
   });
@@ -335,13 +335,23 @@ describe("issue 54124", () => {
   it("should be possible to close the data reference sidebar (metabase#54124)", () => {
     H.startNewNativeQuestion();
 
-    cy.get("@questionId").then((questionId) => {
-      H.NativeEditor.type(
-        `{{#${questionId}-reference-question }}{leftarrow}{leftarrow}{leftarrow}`,
-      );
-    });
+    cy.findByTestId("sidebar-content")
+      .should("be.visible")
+      .icon("close")
+      .click();
 
-    cy.findByTestId("sidebar-content").icon("close").click();
+    cy.get("@questionId").then((questionId) => {
+      H.NativeEditor.type(`{{#${questionId}-reference-question }}`, {
+        allowFastSet: true,
+      });
+    });
+    H.NativeEditor.type("{leftarrow}{leftarrow}{leftarrow}");
+
+    cy.findByTestId("sidebar-content")
+      .should("be.visible")
+      .icon("close")
+      .click();
+
     cy.findByTestId("sidebar-content").should("not.exist");
 
     cy.log("moving cursor should open the reference sidebar again");
@@ -400,6 +410,7 @@ describe("issue 52806", () => {
     cy.visit("/");
     H.newButton("SQL query").click();
     H.NativeEditor.focus().type("select {{x}}");
+    cy.location().should((location) => expect(location.search).to.eq("?x="));
     cy.findByTestId("main-logo-link").click();
     H.modal().button("Discard changes").click();
     cy.findByTestId("home-page");
@@ -477,11 +488,7 @@ describe("issue 54799", () => {
   });
 
   function select(el: Cypress.Chainable, pos: Cypress.PositionType = "center") {
-    const macOSX = Cypress.platform === "darwin";
-    el.dblclick(pos, {
-      metaKey: macOSX,
-      ctrlKey: !macOSX,
-    });
+    el.dblclick(pos, H.holdMetaKey);
   }
 
   it("it should be possible to select multiple ranges and run those (metabase#54799)", () => {
@@ -575,9 +582,7 @@ describe("issue 56905", () => {
     H.NativeEditor.type("select {{ foo }}");
     cy.findByPlaceholderText("Foo").type("foobar", { delay: 0 });
 
-    const isMac = Cypress.platform === "darwin";
-    const metaKey = isMac ? "Meta" : "Control";
-    cy.realPress([metaKey, "Enter"]);
+    cy.realPress([H.metaKey, "Enter"]);
 
     cy.findByTestId("query-visualization-root")
       .findByText("foobar")
@@ -681,8 +686,7 @@ describe("issue 59110", () => {
 
     H.NativeEditor.get().then((editor) => {
       const { height } = editor[0].getBoundingClientRect();
-      const SLOPPY_CLICK_THRESHOLD = 30;
-      const diff = height - SLOPPY_CLICK_THRESHOLD;
+      const diff = height + 20;
 
       cy.log("drag the border to hide the editor");
 
@@ -697,12 +701,11 @@ describe("issue 59110", () => {
           .trigger("mousemove", {
             clientX: coordsDrag.x,
             clientY: coordsDrag.y - diff,
-          })
-          .trigger("mouseup");
+          });
       });
     });
 
-    H.NativeEditor.get().should("not.be.visible");
+    H.NativeEditor.get().should("not.exist");
     cy.findByTestId("visibility-toggler")
       .findByText(/open editor/i)
       .should("be.visible")
@@ -761,7 +764,7 @@ describe("issue 60719", () => {
 
 describe("issue 59356", () => {
   function typeRunShortcut() {
-    cy.get("body").type("{ctrl+enter}{cmd+enter}");
+    cy.realPress([H.metaKey, "Enter"]);
   }
 
   function getLoader() {
@@ -815,5 +818,241 @@ describe("issue 59356", () => {
     getLoader().should("not.exist");
     getEmptyStateMessage().should("be.visible");
     cy.get("@dataset.all").should("have.length", 2);
+  });
+});
+
+describe("issue 63711", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("Completions should be visible when there are a lot of options (metabase#63711)", () => {
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("s");
+
+    cy.log("completions should be scrollable");
+    H.NativeEditor.completions()
+      .findByLabelText("Completions")
+      .then(($el) => {
+        const element = $el[0];
+        cy.wrap(element.scrollHeight).should("be.gt", element.clientHeight);
+      });
+
+    cy.log("completions should not cut off the height of the inner element");
+    H.NativeEditor.completion("SAVEPOINT")
+      .should("be.visible")
+      .then(($outerElement) => {
+        cy.wrap($outerElement)
+          .findByText("AVEPOINT")
+          .should("be.visible")
+          .then(($innerElement) => {
+            cy.wrap($innerElement[0].offsetHeight).should(
+              "be.eq",
+              $outerElement[0].clientHeight,
+            );
+          });
+      });
+  });
+});
+
+describe("issue 66745", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/card/*").as("getCard");
+    cy.intercept("PUT", "/api/card/*").as("saveCard");
+  });
+
+  ["row", "bar"].forEach((vizType) => {
+    it(`should not break visualization on native query column rename (metabase#63711) - ${vizType}`, () => {
+      H.createNativeQuestion(
+        {
+          name: `66745 - ${vizType}`,
+          native: {
+            query:
+              'SELECT \'Category 1\' AS CATEGORY_NAME, \'Category 2\' AS CATEGORY_NAME2, 100 AS "Total", 60 AS "Hello", 40 AS "World"',
+          },
+          display: vizType,
+          visualization_settings: {
+            "graph.dimensions": ["CATEGORY_NAME"],
+            "graph.metrics": ["Total", "World"],
+          },
+        },
+        {
+          wrapId: true,
+          visitQuestion: true,
+        },
+      );
+
+      cy.findByTestId("query-builder-main")
+        .findByText("Open Editor")
+        .should("be.visible")
+        .click();
+
+      H.NativeEditor.focus().type('{backspace}2"');
+
+      getRunQueryButton().click();
+      cy.wait("@dataset");
+
+      cy.findByTestId("query-visualization-root").within(() => {
+        cy.findByText("Total").should("be.visible");
+        cy.findByText("World").should("not.exist");
+      });
+
+      cy.findByTestId("qb-header-action-panel").findByText("Save").click();
+
+      H.modal().findByText("Save").click();
+
+      cy.wait("@saveCard");
+
+      cy.findByTestId("qb-header-action-panel")
+        .findByText("Save")
+        .should("not.exist");
+
+      H.visitQuestion("@questionId");
+
+      cy.wait("@getCard");
+      cy.wait("@cardQuery");
+
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors
+      cy.findByText("Something’s gone wrong").should("not.exist");
+
+      cy.findByTestId("query-visualization-root").within(() => {
+        cy.findByText("Total").should("be.visible");
+        cy.findByText("World").should("not.exist");
+      });
+
+      H.openVizSettingsSidebar();
+      H.leftSidebar().within(() => {
+        cy.findAllByPlaceholderText("Select a field").should("have.length", 2);
+        cy.findAllByPlaceholderText("Select a field")
+          .eq(1)
+          .should("have.value", "Total");
+      });
+    });
+  });
+});
+
+describe("issue 51717", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should open question info sidebar when variables sidebar is already open (metabase#51717)", () => {
+    H.createNativeQuestion(
+      {
+        name: "42",
+        native: { query: "select 42" },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("visibility-toggler")
+      .findByText(/open editor/i)
+      .click();
+
+    cy.log("Open variables sidebar");
+    cy.findByTestId("native-query-editor-action-buttons")
+      .should("be.visible")
+      .findByLabelText("Variables")
+      .click();
+    cy.findByTestId("sidebar-right")
+      .should("be.visible")
+      .and("contain", "Variables and parameters");
+
+    cy.log("Info sidebar is opened");
+    H.openQuestionInfoSidesheet();
+    cy.findByTestId("sidesheet")
+      .as("infoSidebar")
+      .should("be.visible")
+      .and("contain", "Info");
+
+    cy.log("Make sure info sidebar is interactive (on top of the stack)");
+    cy.get("@infoSidebar").findByRole("tab", { name: "History" }).click();
+    cy.get("@infoSidebar").should("contain", "You created this");
+  });
+});
+
+describe("issue 59075", () => {
+  const WINDOW_HEIGHT = 1000;
+  const BUTTON_INDEX = 0;
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.startNewNativeQuestion();
+    cy.viewport(1024, WINDOW_HEIGHT);
+  });
+
+  it("should not be possible to resize the native query editor too far (metabase#59075)", () => {
+    cy.findByTestId("drag-handle").then((handle) => {
+      const coordsDrag = handle[0].getBoundingClientRect();
+
+      cy.wrap(handle)
+        .trigger("mousedown", {
+          button: BUTTON_INDEX,
+          clientX: coordsDrag.x,
+          clientY: coordsDrag.y,
+          force: true,
+        })
+        // Drag to the bottom of the screen
+        .trigger("mousemove", {
+          button: BUTTON_INDEX,
+          clientX: coordsDrag.x,
+          clientY: WINDOW_HEIGHT + 10,
+          force: true,
+        })
+        .trigger("mouseup");
+    });
+
+    H.NativeEditor.get().then((editor) => {
+      const { bottom } = editor.get()[0].getBoundingClientRect();
+      cy.wrap(bottom).should("be.lessThan", WINDOW_HEIGHT - 50);
+    });
+  });
+});
+
+describe("issue 69160", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createSnippet({
+      name: "A and B",
+      content: "{{ a }} and {{ b }}",
+    });
+    H.startNewNativeQuestion();
+    H.NativeEditor.type("{{ snippet: A and B }}", {
+      allowFastSet: true,
+    }).blur();
+  });
+
+  const options = {
+    force: true,
+    isPrimary: true,
+    button: 0,
+  };
+
+  it("should be possible to reorder parameters when there are snippets in the query (metabase#69160)", () => {
+    cy.log("reorder parameters");
+    cy.findByTestId("native-query-top-bar")
+      .findAllByRole("listitem")
+      .first()
+      .as("param");
+
+    cy.get("@param").trigger("mousedown", 5, 5, options).wait(200);
+    cy.get("@param").trigger("mousemove", 20, 20, options).wait(200);
+    cy.get("@param").trigger("mousemove", 200, 0, options).wait(200);
+    cy.get("@param").trigger("mouseup", options).wait(200);
+
+    cy.findByTestId("native-query-top-bar")
+      .findAllByRole("textbox")
+      .first()
+      .should("have.attr", "placeholder", "B");
   });
 });

@@ -2,10 +2,9 @@ import type { AnchorHTMLAttributes, ReactNode, Ref } from "react";
 import { forwardRef } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { getUrlTarget } from "metabase/lib/dom";
+import { getUrlTarget } from "metabase/utils/dom";
 
 import S from "./ExternalLink.module.css";
-import { LinkRoot } from "./ExternalLink.styled";
 
 interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {
   href?: string;
@@ -14,15 +13,16 @@ interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {
   children?: ReactNode;
 }
 
-const ExternalLink = forwardRef(function ExternalLink(
+export const ExternalLink = forwardRef(function ExternalLink(
   { href, target = getUrlTarget(href), className, children, ...props }: Props,
   ref: Ref<HTMLAnchorElement>,
 ) {
   return (
-    <LinkRoot
+    <a
       ref={ref}
+      role="link"
       href={href}
-      className={className || CS.link}
+      className={`${S.LinkRoot} ${className || CS.link}`}
       target={target}
       // prevent malicious pages from navigating us away
       rel="noopener noreferrer"
@@ -31,7 +31,7 @@ const ExternalLink = forwardRef(function ExternalLink(
       {...props}
     >
       {children}
-    </LinkRoot>
+    </a>
   );
 });
 
@@ -41,6 +41,3 @@ export const ButtonLink = forwardRef(function ButtonLink(
 ) {
   return <ExternalLink {...props} className={S.ButtonLink} ref={ref} />;
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ExternalLink;

@@ -1,0 +1,104 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 17rem;
+  width: 17rem;
+  border-radius: var(--mantine-radius-sm);
+
+  /*
+  Make emoji background depend on base emoji color
+  https://frimousse.liveblocks.io/#colorful-buttons
+  */
+  [frimousse-emoji] {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: transparent;
+    font-size: 18px;
+    overflow: hidden;
+
+    &::before {
+      display: flex;
+      content: var(--emoji);
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      visibility: hidden;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5em;
+      filter: blur(16px) saturate(200%);
+    }
+  }
+  /*
+    For some reason &:not(:focus-within) always matches, so to highlight first emoji
+    when popup is not focused, we use a workaround.
+   */
+  &:not(:has(.pickerSearch:focus)) {
+    [aria-rowindex="0"] [aria-colindex="0"] {
+      background: rgb(245 245 245 / 80%);
+
+      &::before {
+        visibility: visible;
+      }
+    }
+  }
+
+  &:focus-within {
+    [data-active] {
+      background: rgb(245 245 245 / 80%);
+
+      &::before {
+        visibility: visible;
+      }
+    }
+  }
+}
+
+[data-mantine-color-scheme="dark"]
+  .root:not(:has(.pickerSearch:focus))
+  [aria-rowindex="0"]
+  [aria-colindex="0"] {
+  background: rgb(38 38 38 / 80%);
+}
+
+[data-mantine-color-scheme="dark"] .root:focus-within [data-active] {
+  background: rgb(38 38 38 / 80%);
+}
+
+.pickerSearch {
+  visibility: visible;
+  height: 0;
+  border: none;
+  padding: 0;
+}
+
+.pickerViewport {
+  overflow: auto;
+  flex-grow: 1;
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.pickerMessage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mb-color-text-secondary);
+}
+
+.pickerList {
+  padding-block: var(--mantine-spacing-sm);
+
+  [frimousse-row] {
+    padding-inline: var(--mantine-spacing-xs);
+  }
+}

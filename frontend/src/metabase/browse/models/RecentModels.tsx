@@ -4,7 +4,7 @@ import PinnedItemCard from "metabase/collections/components/PinnedItemCard";
 import { Box, Repeat, Text } from "metabase/ui";
 import type { RecentCollectionItem } from "metabase-types/api";
 
-import { RecentModelsGrid } from "./RecentModels.styled";
+import S from "./RecentModels.module.css";
 import { trackModelClick } from "./analytics";
 
 export function RecentModels({
@@ -31,11 +31,11 @@ export function RecentModels({
         id={skeleton ? undefined : headingId}
         fw="bold"
         fz={16}
-        color="text-dark"
+        color="text-primary"
         mb="lg"
         style={{ visibility: skeleton ? "hidden" : undefined }}
       >{t`Recents`}</Text>
-      <RecentModelsGrid>
+      <div className={S.recentModelsGrid}>
         {skeleton ? (
           <Repeat times={2}>
             <PinnedItemCard skeleton iconForSkeleton="model" />
@@ -49,7 +49,7 @@ export function RecentModels({
             />
           ))
         )}
-      </RecentModelsGrid>
+      </div>
     </Box>
   );
 }

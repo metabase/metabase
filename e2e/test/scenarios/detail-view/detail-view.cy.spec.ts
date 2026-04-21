@@ -44,12 +44,14 @@ describe("detail view", () => {
       });
 
       DetailView.verifyDetails([
+        ["ID", "1"],
         ["Ean", "1018947080336"],
+        ["Title", "Rustic Paper Wallet"],
         ["Category", "Gizmo"],
         ["Vendor", "Swaniawski, Casper and Hilll"],
         ["Price", "29.46"],
         ["Rating", "4.6"],
-        ["Created At", "July 19, 2023, 7:44 PM"],
+        ["Created At", "July 19, 2026, 7:44 PM"],
       ]);
 
       DetailView.getRelationships().within(() => {
@@ -73,9 +75,7 @@ describe("detail view", () => {
     it("shows loading state and 404 error state", () => {
       DetailView.visitTable(PRODUCTS_ID, 9999);
 
-      cy.findByTestId("loading-indicator").should("be.visible");
       cy.findByTestId("loading-indicator").should("not.exist");
-
       cy.findByRole("heading", { name: "Row not found" }).should("be.visible");
 
       H.appBar().within(() => {
@@ -124,21 +124,23 @@ describe("detail view", () => {
       });
 
       DetailView.verifyDetails([
+        ["ID", "1"],
         ["User ID", "1"],
         ["Product ID", "14"],
         ["Subtotal", "37.65"],
         ["Tax", "2.07"],
         ["Total", "39.72"],
         ["Discount ($)", "empty"],
-        ["Created At", "February 11, 2025, 9:40 PM"],
+        ["Created At", "February 11, 2028, 9:40 PM"],
         ["Quantity", "2"],
         ["Order image", "https://example.com/order/1.jpg"],
         ["Product image", "https://example.com/product/14.jpg"],
         ["Products → Category", "Widget"],
-        ["Products → Created At", "December 31, 2023, 2:41 PM"],
+        ["Products → Created At", "December 31, 2026, 2:41 PM"],
         ["Products → Ean", "8833419218504"],
         ["Products → Price", "25.1"],
         ["Products → Rating", "4"],
+        ["Products → Title", "Awesome Concrete Shoes"],
         ["Products → Vendor", "McClure-Lockman"],
       ]);
 
@@ -275,25 +277,28 @@ describe("detail view", () => {
       });
 
       DetailView.verifyDetails([
+        ["ID", "1"],
         ["User", "Hudson Borer"],
         ["Product", "Product: Awesome Concrete Shoes"],
         ["Subtotal ($)", "37.65"],
         ["Tax", "$2.07"],
         ["Total", `${VERY_LONG_STRING}39.72`],
         ["Discount ($)", "empty"],
-        ["Created At", "February 11, 2025, 9:40 PM"],
+        ["Created At", "February 11, 2028, 9:40 PM"],
         ["Quantity", "two"],
+        ["Order image", "https://example.com/order/1.jpg"],
         ["Product image", "https://example.com/product/14.jpg"],
         ["Products → Category", "Widget"],
-        ["Products → Created At", "December 31, 2023, 2:41 PM"],
+        ["Products → Created At", "December 31, 2026, 2:41 PM"],
         ["Products → Ean", "8833419218504"],
         ["Products → Price", "25.1"],
         ["Products → Rating", "4"],
+        ["Products → Title", "Awesome Concrete Shoes"],
         ["Products → Vendor", "McClure-Lockman"],
       ]);
 
       cy.log("user id remapped to user name");
-      DetailView.getDetailsRowValue({ index: 0, rowsCount: 15 }).within(() => {
+      DetailView.getDetailsRowValue({ index: 1, rowsCount: 18 }).within(() => {
         cy.findByRole("link", { name: "Hudson Borer" })
           .should("be.visible")
           .and("have.attr", "href", `/table/${PEOPLE_ID}/detail/1`);
@@ -302,7 +307,7 @@ describe("detail view", () => {
       cy.log(
         "product id remapped to product title, and custom view_as setting",
       );
-      DetailView.getDetailsRowValue({ index: 1, rowsCount: 15 }).within(() => {
+      DetailView.getDetailsRowValue({ index: 2, rowsCount: 18 }).within(() => {
         cy.findByRole("link", { name: "Product: Awesome Concrete Shoes" })
           .should("be.visible")
           .and("have.attr", "href", "https://example.com/14")
@@ -316,13 +321,13 @@ describe("detail view", () => {
       });
 
       cy.log("image should be rendered in a frame with a link");
-      DetailView.getDetailsRowValue({ index: 8, rowsCount: 15 }).within(() => {
+      DetailView.getDetailsRowValue({ index: 10, rowsCount: 18 }).within(() => {
         cy.findByRole("img")
-          .should("be.visible")
+          .should("exist") // do not wait for image to load
           .and("have.attr", "src", "https://example.com/product/14.jpg");
 
         cy.findByRole("link")
-          .should("be.visible")
+          .should("exist")
           .and("have.text", "https://example.com/product/14.jpg")
           .and("have.attr", "href", "https://example.com/product/14.jpg")
           .and("have.attr", "target", "_blank")
@@ -334,7 +339,7 @@ describe("detail view", () => {
   it("displays emails as links", () => {
     DetailView.visitTable(PEOPLE_ID, 1);
 
-    DetailView.getDetailsRowValue({ index: 1, rowsCount: 11 }).within(() => {
+    DetailView.getDetailsRowValue({ index: 2, rowsCount: 13 }).within(() => {
       cy.findByRole("link", { name: "borer-hudson@yahoo.com" }).should(
         "have.attr",
         "href",

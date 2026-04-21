@@ -2,7 +2,7 @@ import { useDebouncedCallback } from "@mantine/hooks";
 
 import { SetByEnvVar } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { useAdminSetting } from "metabase/api/utils";
-import { originalColors } from "metabase/lib/colors/palette";
+import { useMantineTheme } from "metabase/ui";
 import type { ColorSettings as ColorSettingsType } from "metabase-types/api";
 
 import { ColorSettings } from "../ColorSettings";
@@ -13,12 +13,21 @@ export const ColorSettingsWidget = () => {
     updateSetting,
     settingDetails,
   } = useAdminSetting("application-colors");
+  const theme = useMantineTheme();
 
-  const handleChange = (newValue: ColorSettingsType) => {
-    updateSetting({
+  const themeColors = Object.fromEntries(
+    Object.entries(theme.colors).map(([colorName, color]) => [
+      colorName,
+      color[theme.primaryShade as number],
+    ]),
+  );
+
+  const handleChange = async (newValue: ColorSettingsType) => {
+    await updateSetting({
       key: "application-colors",
       value: newValue,
     });
+    theme.other?.updateColorSettings?.(newValue);
   };
 
   const onChangeDebounced = useDebouncedCallback(handleChange, 400);
@@ -34,7 +43,7 @@ export const ColorSettingsWidget = () => {
   return (
     <ColorSettings
       initialColors={colorSettings}
-      originalColors={originalColors}
+      themeColors={themeColors}
       onChange={onChangeDebounced}
     />
   );

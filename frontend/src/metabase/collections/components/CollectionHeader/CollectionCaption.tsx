@@ -6,12 +6,13 @@ import {
   isInstanceAnalyticsCollection,
   isRootTrashCollection,
 } from "metabase/collections/utils";
-import { color } from "metabase/lib/colors";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_COLLECTION_COMPONENTS,
 } from "metabase/plugins";
+import { getIsTenantUser, getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type { Collection } from "metabase-types/api";
 
 import {
@@ -30,7 +31,8 @@ export const CollectionCaption = ({
   collection,
   onUpdateCollection,
 }: CollectionCaptionProps): JSX.Element => {
-  const isEditable = isEditableCollection(collection);
+  const currentUser = useSelector(getUser);
+  const isEditable = isEditableCollection(collection, { currentUser });
   const hasDescription = Boolean(collection.description);
 
   const handleChangeName = useCallback(
@@ -58,6 +60,7 @@ export const CollectionCaption = ({
           isDisabled={!isEditable}
           data-testid="collection-name-heading"
           onChange={handleChangeName}
+          maxLength={100}
         />
       </CaptionTitleContainer>
       {(isEditable || hasDescription) && (
@@ -75,6 +78,7 @@ export const CollectionCaption = ({
           onChange={handleChangeDescription}
           data-testid="collection-description-in-caption"
           left={0}
+          maxLength={255}
         />
       )}
     </CaptionRoot>
@@ -82,26 +86,33 @@ export const CollectionCaption = ({
 };
 
 const CollectionCaptionIcon = ({ collection }: { collection: Collection }) => {
+  const isTenantUser = useSelector(getIsTenantUser);
+
   if (isInstanceAnalyticsCollection(collection)) {
     return (
       <PLUGIN_COLLECTION_COMPONENTS.CollectionInstanceAnalyticsIcon
         size={24}
-        color={color("brand")}
+        c="brand"
         collection={collection}
         entity="collection"
       />
     );
   }
 
+  if (PLUGIN_COLLECTIONS.isSyncedCollection(collection) && !isTenantUser) {
+    // external users should see the normal icon, they should not know about what synced collections are
+    return <Icon name="synced_collection" size={24} c="brand" />;
+  }
+
   if (isRootTrashCollection(collection)) {
-    return <Icon name="trash" size={24} />;
+    return <Icon name="trash" size={24} c="text-tertiary" />;
   }
 
   if (
     collection.archived &&
     PLUGIN_COLLECTIONS.isRegularCollection(collection)
   ) {
-    return <Icon name="folder" size={24} color="text-light" />;
+    return <Icon name="folder" size={24} c="text-tertiary" />;
   }
 
   return (

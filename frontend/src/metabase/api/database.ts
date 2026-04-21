@@ -1,15 +1,21 @@
+import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
+import { updateMetadata } from "metabase/utils/redux/metadata";
 import type {
   AutocompleteRequest,
   AutocompleteSuggestion,
   CardAutocompleteRequest,
   CardAutocompleteSuggestion,
+  CheckWorkspacePermissionsRequest,
+  CheckWorkspacePermissionsResponse,
   CreateDatabaseRequest,
   Database,
   DatabaseId,
   Field,
+  GetDatabaseHealthRequest,
   GetDatabaseHealthResponse,
   GetDatabaseMetadataRequest,
   GetDatabaseRequest,
+  GetDatabaseSettingsAvailableResponse,
   ListDatabaseIdFieldsRequest,
   ListDatabaseSchemaTablesRequest,
   ListDatabaseSchemasRequest,
@@ -32,6 +38,7 @@ import {
   provideDatabaseTags,
   tag,
 } from "./tags";
+import { handleQueryFulfilled } from "./utils/lifecycle";
 
 export const databaseApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -45,6 +52,10 @@ export const databaseApi = Api.injectEndpoints({
         params,
       }),
       providesTags: (response) => provideDatabaseListTags(response?.data ?? []),
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data.data, [DatabaseSchema])),
+        ),
     }),
     getDatabase: builder.query<Database, GetDatabaseRequest>({
       query: ({ id, ...params }) => ({
@@ -54,14 +65,22 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (database) =>
         database ? provideDatabaseTags(database) : [],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, DatabaseSchema)),
+        ),
     }),
-    getDatabaseHealth: builder.query<GetDatabaseHealthResponse, DatabaseId>({
-      query: (id) => ({
+    getDatabaseHealth: builder.query<
+      GetDatabaseHealthResponse,
+      GetDatabaseHealthRequest
+    >({
+      query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/database/${id}/healthcheck`,
+        params,
       }),
       // invalidate health check in the case db connection info changes
-      providesTags: (_, __, id) => [idTag("database", id)],
+      providesTags: (_, __, { id }) => [idTag("database", id)],
     }),
     getDatabaseMetadata: builder.query<Database, GetDatabaseMetadataRequest>({
       query: ({ id, ...params }) => ({
@@ -71,6 +90,20 @@ export const databaseApi = Api.injectEndpoints({
       }),
       providesTags: (database) =>
         database ? provideDatabaseTags(database) : [],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, DatabaseSchema)),
+        ),
+    }),
+    getDatabaseSettingsAvailable: builder.query<
+      GetDatabaseSettingsAvailableResponse,
+      DatabaseId
+    >({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/database/${id}/settings-available`,
+      }),
+      providesTags: (_response, _error, id) => [idTag("database", id)],
     }),
     listDatabaseSchemas: builder.query<
       SchemaName[],
@@ -102,13 +135,17 @@ export const databaseApi = Api.injectEndpoints({
     >({
       query: ({ id, schema, ...params }) => ({
         method: "GET",
-        url: `/api/database/${id}/schema/${schema}`,
+        url: `/api/database/${id}/schema/${encodeURIComponent(schema)}`,
         params,
       }),
       providesTags: (tables = []) => [
         listTag("table"),
         ...tables.map((table) => idTag("table", table.id)),
       ],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, [TableSchema])),
+        ),
     }),
     listVirtualDatabaseTables: builder.query<
       Table[],
@@ -116,13 +153,17 @@ export const databaseApi = Api.injectEndpoints({
     >({
       query: ({ id, schema, ...params }) => ({
         method: "GET",
-        url: `/api/database/${id}/datasets/${schema}`,
+        url: `/api/database/${id}/datasets/${encodeURIComponent(schema)}`,
         params,
       }),
       providesTags: (tables = []) => [
         listTag("table"),
         ...tables.map((table) => idTag("table", table.id)),
       ],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, [TableSchema])),
+        ),
     }),
     listDatabaseIdFields: builder.query<Field[], ListDatabaseIdFieldsRequest>({
       query: ({ id, ...params }) => ({
@@ -131,6 +172,10 @@ export const databaseApi = Api.injectEndpoints({
         params,
       }),
       providesTags: [listTag("field")],
+      onQueryStarted: (_, { queryFulfilled, dispatch }) =>
+        handleQueryFulfilled(queryFulfilled, (data) =>
+          dispatch(updateMetadata(data, [FieldSchema])),
+        ),
     }),
     createDatabase: builder.mutation<Database, CreateDatabaseRequest>({
       query: (body) => ({
@@ -139,7 +184,10 @@ export const databaseApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("database")]),
+        invalidateTags(error, [
+          listTag("database"),
+          listTag("embedding-hub-checklist"),
+        ]),
     }),
     updateDatabase: builder.mutation<Database, UpdateDatabaseRequest>({
       query: ({ id, ...body }) => ({
@@ -229,6 +277,18 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
+    checkWorkspacePermissions: builder.mutation<
+      CheckWorkspacePermissionsResponse,
+      CheckWorkspacePermissionsRequest
+    >({
+      query: ({ id, cached = true }) => ({
+        method: "POST",
+        url: `/api/database/${id}/permission/workspace/check`,
+        body: { cached },
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [idTag("database", id)]),
+    }),
     addSampleDatabase: builder.mutation<Database, void>({
       query: () => ({
         method: "POST",
@@ -268,6 +328,7 @@ export const {
   useGetDatabaseQuery,
   useGetDatabaseHealthQuery,
   useGetDatabaseMetadataQuery,
+  useGetDatabaseSettingsAvailableQuery,
   useListDatabaseSchemasQuery,
   useLazyListDatabaseSchemasQuery,
   usePrefetch: useDatabasePrefetch,
@@ -285,6 +346,7 @@ export const {
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
+  useCheckWorkspacePermissionsMutation,
   useListAutocompleteSuggestionsQuery,
   useLazyListAutocompleteSuggestionsQuery,
   useAddSampleDatabaseMutation,

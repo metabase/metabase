@@ -268,20 +268,20 @@ describe("issue 19451", () => {
   });
 
   it("question field filter shows all tables from a selected database (metabase#19451)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Open Editor").click();
     cy.icon("variable").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Products").click();
     cy.icon("chevronleft").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Products");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("People");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Reviews");
   });
 });
@@ -513,7 +513,7 @@ describe("issue 31926", { tags: "@external" }, () => {
     });
 
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("200");
 
     // Change DB
@@ -620,7 +620,7 @@ describe("issue 23510", () => {
       { visitQuestion: true },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Open Editor").click();
 
     cy.findByTestId("sidebar-content").within(() => {
@@ -639,13 +639,13 @@ describe("issue 30680", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not render native editor buttons when 'Metadata' tab is open (metabase#30680)", () => {
+  it("should not render native editor buttons when 'Columns' tab is open (metabase#30680)", () => {
     H.startNewNativeModel({ query: "select 1" });
-    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
+    cy.findByTestId("editor-tabs-columns").should("be.disabled");
 
     H.runNativeQuery();
-    cy.findByTestId("editor-tabs-metadata").should("not.be.disabled");
-    cy.findByTestId("editor-tabs-metadata-name").click();
+    cy.findByTestId("editor-tabs-columns").should("not.be.disabled");
+    cy.findByTestId("editor-tabs-columns-name").click();
 
     cy.findByTestId("sidebar-content").should("exist");
     cy.findByTestId("native-query-editor-action-buttons").should("not.exist");
@@ -762,7 +762,7 @@ describe("issue 35785", () => {
           name: "from",
           "display-name": "From",
           type: "date",
-          default: "2022-10-02",
+          default: "2025-10-02",
           required: true,
         },
       },

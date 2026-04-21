@@ -1,10 +1,12 @@
 (ns metabase.channel.impl.email-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.impl.email :as email.impl]
    [metabase.channel.render.util :as render.util]
+   [metabase.channel.urls :as urls]
    [metabase.test :as mt]))
 
 (deftest bcc-enabled-test
@@ -56,3 +58,74 @@
             "Should include CSV attachment setting using the fallback match")
         (is (true? (-> result first :card :format_rows))
             "Should include format_rows setting using the fallback match")))))
+
+(deftest dashboard-notification-dashcard-links-test
+  (testing "Dashboard notification renders dashcard links with parameters like Slack implementation"
+    (let [dashboard-id 42
+          card-id 123
+          dashcard-id 456
+          dashboard-params [{:name "State"
+                             :slug "state"
+                             :id "63e719d0"
+                             :default ["CA" "NY" "NJ"]
+                             :type "string/="
+                             :sectionId "location"}]
+          notification {:payload_type :notification/dashboard
+                        :payload {:dashboard {:id dashboard-id
+                                              :name "Test Dashboard"}
+                                  :parameters dashboard-params
+                                  :dashboard_parts [{:type :card
+                                                     :card {:id card-id
+                                                            :name "Test Card"}
+                                                     :dashcard {:id dashcard-id
+                                                                :dashboard_id dashboard-id}}]
+                                  :dashboard_subscription {:id 789
+                                                           :dashboard_subscription_dashcards []}}}
+          recipients [{:type :notification-recipient/user
+                       :user {:email "test@example.com"}}]]
+      (mt/with-temporary-setting-values [site-url "http://example.com"]
+        (binding [urls/*dashcard-parameters* dashboard-params]
+          (let [result (channel/render-notification :channel/email notification {:recipients recipients})
+                rendered-content (-> result first :message first :content)]
+
+            (testing "Dashboard parameters are bound during rendering"
+              (is (some? result))
+              (is (= 1 (count result)))
+              (is (string? rendered-content))
+              (is (str/includes? rendered-content "http://example.com/dashboard/42?state=CA&amp;state=NY&amp;state=NJ#scrollTo=456")))))))))
+
+(deftest render-body-prometheus-metric-test
+  (testing "rendering a user-provided template increments the template-render counter"
+    (mt/with-prometheus-system! [_ system]
+      (let [template {:details {:type :email/handlebars-text
+                                :subject "Test"
+                                :body "Hello {{name}}"}}]
+        (#'email.impl/render-body template {:name "World"})
+        (is (= 1.0 (mt/metric-value system :metabase-notification/template-render
+                                    {:template-type :email/handlebars-text
+                                     :channel-type  :channel/email}))))))
+
+  (testing "rendering a resource template also increments the counter with the correct label"
+    (mt/with-prometheus-system! [_ system]
+      (let [template {:details {:type :email/handlebars-resource
+                                :subject "Test"
+                                :path "metabase/channel/email/notification_card.hbs"}}]
+        ;; render-body will throw if the payload doesn't match the template, but the metric
+        ;; fires before the render, so we just need to not blow up
+        (try (#'email.impl/render-body template {})
+             (catch Exception _))
+        (is (= 1.0 (mt/metric-value system :metabase-notification/template-render
+                                    {:template-type :email/handlebars-resource
+                                     :channel-type  :channel/email})))))))
+
+(deftest render-body-logging-test
+  (testing "rendering a user-provided template logs the template body at debug level"
+    (mt/with-log-messages-for-level [messages :debug]
+      (let [template {:details {:type :email/handlebars-text
+                                :subject "Test"
+                                :body "Hello {{name}}"}}]
+        (#'email.impl/render-body template {:name "World"})
+        (is (some (fn [{:keys [message]}]
+                    (and (re-find #"Rendering user-provided template" message)
+                         (re-find #"Hello" message)))
+                  (messages)))))))

@@ -1,7 +1,7 @@
 (ns metabase.test.initialize.web-server
   (:require
    [metabase.config.core :as config]
-   [metabase.core.initialization-status :as init-status]
+   [metabase.initialization-status.core :as init-status]
    [metabase.server.core :as server]
    [metabase.server.test-handler :as server.test-handler]
    [metabase.settings.core :as setting]
@@ -12,7 +12,7 @@
 (defn init! []
   (try
     (server/start-web-server! (server.test-handler/test-handler))
-    (log/infof "Started test server on port %d" (config/config-int :mb-jetty-port))
+    (log/infof "Started test server on port %d" (server/server-port))
     (catch Throwable e
       (log/fatal e "Web server failed to start")
       (when config/is-test?

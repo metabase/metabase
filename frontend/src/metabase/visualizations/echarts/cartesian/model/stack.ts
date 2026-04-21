@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { getObjectKeys } from "metabase/lib/objects";
+import { getObjectKeys } from "metabase/utils/objects";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 
 import type { SeriesModel, StackModel } from "./types";
@@ -13,10 +13,19 @@ export const getStackModels = (
     return [];
   }
 
+  const visibleSeriesModels = seriesModels.filter(
+    (seriesModel) => seriesModel.visible,
+  );
+
   const seriesModelsByDisplay = _.groupBy(
-    seriesModels,
-    (seriesModel) =>
-      settings.series(seriesModel.legacySeriesSettingsObjectKey).display,
+    visibleSeriesModels,
+    (seriesModel) => {
+      const series = settings.series?.(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
+
+      return series?.display ?? "no-display";
+    },
   );
 
   return getObjectKeys(seriesModelsByDisplay)
@@ -30,8 +39,8 @@ export const getStackModels = (
       } else {
         axis = stackSeriesModels.every(
           (seriesModel) =>
-            settings.series(seriesModel.legacySeriesSettingsObjectKey)?.axis ===
-            "right",
+            settings.series?.(seriesModel.legacySeriesSettingsObjectKey)
+              ?.axis === "right",
         )
           ? "right"
           : "left";

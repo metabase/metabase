@@ -6,13 +6,13 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import type { DragEndEvent } from "metabase/common/components/Sortable";
-import { color } from "metabase/lib/colors";
-import { getAccentColors } from "metabase/lib/colors/groups";
-import type { AccentColorOptions } from "metabase/lib/colors/types";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { getEventTarget } from "metabase/lib/dom";
-import { isEmpty } from "metabase/lib/validate";
 import { Box, Button, Flex, Group, Icon, Select, Text } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import { getAccentColors } from "metabase/ui/colors/groups";
+import type { AccentColorOptions } from "metabase/ui/colors/types";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { getEventTarget } from "metabase/utils/dom";
+import { isEmpty } from "metabase/utils/validate";
 import type { Series } from "metabase-types/api";
 
 import { ChartSettingMessage } from "./ChartSettingMessage";
@@ -32,7 +32,7 @@ export interface SortableItem {
   hideSettings?: boolean;
 }
 
-interface ChartSettingSeriesOrderProps {
+export type ChartSettingSeriesOrderProps = {
   onChange: (rows: SortableItem[]) => void;
   value: SortableItem[];
   onShowWidget: (
@@ -52,7 +52,7 @@ interface ChartSettingSeriesOrderProps {
   otherSettingWidgetId?: string;
   onOtherColorChange?: (newColor: string) => void;
   truncateAfter?: number;
-}
+};
 
 export const ChartSettingSeriesOrder = ({
   onChange,
@@ -184,7 +184,7 @@ export const ChartSettingSeriesOrder = ({
           <Flex justify="space-between" px={4}>
             <Group p={4} gap="sm">
               <ColorSelector
-                value={otherColor ?? color("text-light")}
+                value={otherColor ?? color("text-tertiary")}
                 colors={getAccentColors()}
                 onChange={onOtherColorChange}
                 pillSize="small"
@@ -193,7 +193,7 @@ export const ChartSettingSeriesOrder = ({
             </Group>
             <Button
               size="compact-md"
-              color="text-medium"
+              color="text-secondary"
               variant="subtle"
               leftSection={<Icon name="gear" />}
               aria-label={t`Other series settings`}
@@ -263,7 +263,7 @@ export const ChartSettingSeriesOrder = ({
                   borderRadius: "8px",
                   fontWeight: "bold",
                   "::placeholder": {
-                    color: "var(--mb-color-text-medium)",
+                    color: "var(--mb-color-text-secondary)",
                   },
                 },
               }}

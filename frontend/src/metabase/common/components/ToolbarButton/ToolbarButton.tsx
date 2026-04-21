@@ -6,13 +6,22 @@ import { ActionIcon, Box, Icon, Tooltip } from "metabase/ui";
 
 export type ToolbarButtonProps = {
   icon?: IconName;
-  "aria-label": string;
-  tooltipLabel?: TooltipProps["label"];
   tooltipPosition?: TooltipProps["position"];
   visibleOnSmallScreen?: boolean;
   isActive?: boolean;
   hasBackground?: boolean;
 } & ActionIconProps &
+  (
+    | {
+        "aria-label": string;
+        tooltipLabel?: TooltipProps["label"];
+      }
+    | {
+        // Allow `aria-label` to be optional if `tooltipLabel` is provided as a string, so we don't need to provide the same string twice.
+        "aria-label"?: string;
+        tooltipLabel: string;
+      }
+  ) &
   ButtonHTMLAttributes<HTMLButtonElement>;
 
 export const ToolbarButton = forwardRef(function ToolbarButton(
@@ -49,18 +58,16 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
       }}
       size="2rem"
       variant="viewHeader"
-      aria-label={ariaLabel}
+      aria-label={
+        ariaLabel ??
+        (typeof tooltipLabel === "string" ? tooltipLabel : undefined)
+      }
       onClick={handleButtonClick}
       bg={hasBackground ? undefined : "transparent"}
       disabled={disabled}
       {...actionIconProps}
     >
-      {children ?? (
-        <Icon
-          name={icon}
-          color={isActive ? "var(--mb-color-brand)" : undefined}
-        />
-      )}
+      {children ?? <Icon name={icon} c={isActive ? "brand" : undefined} />}
     </ActionIcon>
   );
 

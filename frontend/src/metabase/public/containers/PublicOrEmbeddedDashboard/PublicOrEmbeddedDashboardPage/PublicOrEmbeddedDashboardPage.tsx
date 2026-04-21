@@ -5,17 +5,18 @@ import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/Dashboa
 import { useDashboardLocationSync } from "metabase/dashboard/containers/DashboardApp/use-dashboard-location-sync";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
-import { isActionDashCard, isQuestionCard } from "metabase/dashboard/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { isActionDashCard, isQuestionCard } from "metabase/utils/dashboard";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { Mode } from "metabase/visualizations/click-actions/Mode";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 
+import { usePublicEndpoints } from "../../../hooks/use-public-endpoints";
 import { PublicOrEmbeddedDashboardView } from "../PublicOrEmbeddedDashboardView";
-import { usePublicDashboardEndpoints } from "../use-public-dashboard-endpoints";
 
 const PublicOrEmbeddedDashboardPageInner = ({
   location,
@@ -30,10 +31,14 @@ const PublicOrEmbeddedDashboardPageInner = ({
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
   const dispatch = useDispatch();
 
-  const { location } = props;
+  const { location, params } = props;
+  const { uuid, token } = params;
+
   const parameterQueryParams = props.location.query;
 
-  const { dashboardId } = usePublicDashboardEndpoints(props);
+  const dashboardId = uuid || token;
+
+  usePublicEndpoints({ uuid, token });
 
   useSetEmbedFont({ location });
 
@@ -44,6 +49,7 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     downloadsEnabled,
     locale,
     hide_parameters,
+    theme,
   } = useEmbedFrameOptions({ location });
 
   const canWhitelabel = useSelector(getCanWhitelabel);
@@ -53,34 +59,40 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
       locale={canWhitelabel ? locale : undefined}
       shouldWaitForLocale
     >
-      <DashboardContextProvider
-        dashboardId={dashboardId}
-        hideParameters={hide_parameters}
-        background={background}
-        bordered={bordered}
-        downloadsEnabled={downloadsEnabled}
-        titled={titled}
-        parameterQueryParams={parameterQueryParams}
-        cardTitled={true}
-        withFooter={true}
-        getClickActionMode={({ question }) => new Mode(question, PublicMode)}
-        navigateToNewCardFromDashboard={null}
-        onError={(error) => {
-          dispatch(setErrorPage(error));
-        }}
-        isDashcardVisible={(dashcard) => !isActionDashCard(dashcard)}
-        dashcardMenu={({ dashcard, result }) =>
-          downloadsEnabled?.results &&
-          isQuestionCard(dashcard.card) &&
-          !!result?.data &&
-          !result?.error && (
-            <PublicOrEmbeddedDashCardMenu result={result} dashcard={dashcard} />
-          )
-        }
-        dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
-      >
-        <PublicOrEmbeddedDashboardPageInner {...props} />
-      </DashboardContextProvider>
+      <EmbeddingEntityContextProvider uuid={uuid} token={token}>
+        <DashboardContextProvider
+          dashboardId={dashboardId}
+          hideParameters={hide_parameters}
+          theme={theme}
+          background={background}
+          bordered={bordered}
+          downloadsEnabled={downloadsEnabled}
+          titled={titled}
+          parameterQueryParams={parameterQueryParams}
+          cardTitled={true}
+          withFooter={true}
+          getClickActionMode={({ question }) => new Mode(question, PublicMode)}
+          navigateToNewCardFromDashboard={null}
+          onError={(error) => {
+            dispatch(setErrorPage(error));
+          }}
+          isDashcardVisible={(dashcard) => !isActionDashCard(dashcard)}
+          dashcardMenu={({ dashcard, result }) =>
+            downloadsEnabled?.results &&
+            isQuestionCard(dashcard.card) &&
+            !!result?.data &&
+            !result?.error && (
+              <PublicOrEmbeddedDashCardMenu
+                result={result}
+                dashcard={dashcard}
+              />
+            )
+          }
+          dashboardActions={DASHBOARD_DISPLAY_ACTIONS}
+        >
+          <PublicOrEmbeddedDashboardPageInner {...props} />
+        </DashboardContextProvider>
+      </EmbeddingEntityContextProvider>
     </LocaleProvider>
   );
 };

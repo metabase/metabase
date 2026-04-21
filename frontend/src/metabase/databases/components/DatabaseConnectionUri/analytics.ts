@@ -1,17 +1,15 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 
-export function connectionStringParsedSuccess(
-  location: "admin" | "setup" | "embedding_setup",
-) {
+import type { FormLocation } from "../../types";
+
+export function connectionStringParsedSuccess(location: FormLocation) {
   trackSimpleEvent({
     event: "connection_string_parsed_success",
     triggered_from: location,
   });
 }
 
-export function connectionStringParsedFailed(
-  location: "admin" | "setup" | "embedding_setup",
-) {
+export function connectionStringParsedFailed(location: FormLocation) {
   trackSimpleEvent({
     event: "connection_string_parsed_failed",
     triggered_from: location,

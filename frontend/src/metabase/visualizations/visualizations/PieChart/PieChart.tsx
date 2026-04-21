@@ -2,9 +2,9 @@ import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
 import { useSet } from "react-use";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import { extractRemappings } from "metabase/visualizations";
-import ChartWithLegend from "metabase/visualizations/components/ChartWithLegend";
+import { ChartWithLegend } from "metabase/visualizations/components/ChartWithLegend";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { getPieChartFormatters } from "metabase/visualizations/echarts/pie/format";
 import { getPieChartModel } from "metabase/visualizations/echarts/pie/model";
@@ -19,6 +19,7 @@ import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-br
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
 
+import S from "./PieChart.module.css";
 import { PIE_CHART_DEFINITION } from "./chart-definition";
 import { useChartEvents } from "./use-chart-events";
 
@@ -31,6 +32,7 @@ export function PieChart(props: VisualizationProps) {
     settings,
     onRender,
     isDashboard,
+    isDocument,
     isFullscreen,
   } = props;
   const hoveredIndex = props.hovered?.index;
@@ -182,10 +184,12 @@ export function PieChart(props: VisualizationProps) {
       showLegend={showLegend}
       onHoverChange={onHoverChange}
       className={props.className}
+      chartClassName={S.PieChartContainer}
       gridSize={props.gridSize}
       hovered={props.hovered}
       isDashboard={isDashboard}
       onToggleSeriesVisibility={handleToggleSeriesVisibility}
+      isDocument={isDocument}
     >
       <ResponsiveEChartsRenderer
         ref={containerRef}

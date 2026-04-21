@@ -1,14 +1,15 @@
 (ns metabase.lib.limit
+  (:refer-clojure :exclude [empty?])
   (:require
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.page :as lib.page]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [empty?]]))
 
 (defmethod lib.metadata.calculation/describe-top-level-key-method :limit
   [query stage-number _k]
@@ -25,7 +26,7 @@
     n            :- [:maybe pos-int?]]
    (lib.util/update-query-stage query stage-number u/assoc-dissoc :limit n)))
 
-(mu/defn ^:export current-limit :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
+(mu/defn ^:export current-limit :- [:maybe nat-int?]
   "Get the maximum number of rows to be returned by a stage of a query. `nil` indicates there is no limit"
   ([query :- ::lib.schema/query]
    (current-limit query -1))
@@ -33,7 +34,13 @@
     stage-number :- :int]
    (:limit (lib.util/query-stage query stage-number))))
 
-(mu/defn max-rows-limit :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]
+(defn ^:export disable-default-limit
+  "Sets the `disable-max-results?` middleware option on `query`, which disables the default limit on
+  query results. Used by transforms to allow unlimited result rows."
+  [query]
+  (assoc-in query [:middleware :disable-max-results?] true))
+
+(mu/defn max-rows-limit :- [:maybe nat-int?]
   "Calculate the absolute maximum number of results that should be returned by this query (MBQL or native), useful for
   doing the equivalent of
 

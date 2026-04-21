@@ -129,7 +129,7 @@ describe("scenarios > question > snippets", () => {
     cy.findByTestId("query-visualization-root")
       .as("results")
       .findByText("37.65");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open Editor/i).click();
     // We need these mid-point checks to make sure Cypress typed the sequence/query correctly
     // Check 1
@@ -183,7 +183,9 @@ describe("scenarios > question > snippets", () => {
     cy.findByTestId("native-query-top-bar")
       .findByLabelText("Preview the query")
       .click();
-    H.modal().findByText("select 'foo'").should("be.visible");
+    H.modal().within(() => {
+      H.codeMirrorValue().should("eq", "select\n  'foo'");
+    });
   });
 });
 
@@ -256,7 +258,7 @@ describe("scenarios > question > snippets (EE)", () => {
     // create folder
     cy.icon("snippet").click();
     cy.findByTestId("sidebar-right").as("sidebar").find(".Icon-add").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("New folder").click());
     H.modal().within(() => {
       cy.findByText("Create your new folder");
@@ -280,8 +282,8 @@ describe("scenarios > question > snippets (EE)", () => {
       cy.findByText("Edit").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    H.modal().within(() => cy.findByText("Top folder").click());
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    H.modal().within(() => cy.findByText("SQL snippets").click());
     H.entityPickerModal().within(() => {
       cy.findByText("my favorite snippets").click();
       cy.findByText("Select").click();
@@ -289,16 +291,16 @@ describe("scenarios > question > snippets (EE)", () => {
     cy.intercept("/api/collection/root/items?namespace=snippets").as(
       "updateList",
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.modal().within(() => cy.findByText("Save").click());
 
     // check that everything is in the right spot
     cy.wait("@updateList");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("snippet 1").should("not.exist");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("my favorite snippets").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("snippet 1");
 
     cy.log("via collection picker (metabase#44930");
@@ -311,7 +313,7 @@ describe("scenarios > question > snippets (EE)", () => {
 
     H.modal().findByTestId("collection-picker-button").click();
     H.entityPickerModal()
-      .findByRole("button", { name: /New collection/ })
+      .findByRole("button", { name: /New folder/ })
       .click();
     H.collectionOnTheGoModal()
       .findByLabelText("Give it a name")
@@ -341,6 +343,31 @@ describe("scenarios > question > snippets (EE)", () => {
       H.rightSidebar().within(() => {
         cy.findByText("Snippet Folder").click();
         cy.findByText("snippet 1").click();
+      });
+    });
+  });
+
+  describe("navigation", () => {
+    beforeEach(() => {
+      cy.signInAsNormalUser();
+      createDoublyNestedSnippet();
+    });
+
+    it("should be possible to go back to parent folders (metabase#63405)", () => {
+      H.startNewNativeQuestion();
+      cy.findByTestId("native-query-top-bar").icon("snippet").click();
+      cy.findByTestId("sidebar-right").within(() => {
+        cy.findByText("Folder A").click();
+        cy.findByText("Folder B").click();
+
+        cy.log("We should reach the nested folder");
+        cy.findByText("snippet 1").should("be.visible");
+
+        cy.findByText("Folder B").click();
+        cy.findByText("Folder A").click();
+
+        cy.log("We should be back at the root folder");
+        cy.findByText("Snippets").should("be.visible");
       });
     });
   });
@@ -392,7 +419,7 @@ describe("scenarios > question > snippets (EE)", () => {
       cy.visit("/collection/root");
 
       cy.wait("@collections");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Snippet Folder").should("not.exist");
     });
 
@@ -407,8 +434,8 @@ describe("scenarios > question > snippets (EE)", () => {
       // Edit permissions for a snippet folder
       H.rightSidebar()
         .findByText("Snippet Folder")
-        .next()
-        .find(".Icon-ellipsis")
+        .parent()
+        .findByRole("button", { name: "Snippet folder options" })
         .click({ force: true });
 
       H.popover().findByText("Change permissions").click();
@@ -449,6 +476,60 @@ describe("scenarios > question > snippets (EE)", () => {
   });
 });
 
+describe("scenarios > question > read-only snippets", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
+    H.createSnippet({
+      name: "stuff-snippet",
+      content: "select 'snippet 1'",
+    });
+    H.createSnippetFolder({
+      name: "My favorite snippets",
+      description: "the more you know",
+    });
+    H.setupGitSync();
+  });
+
+  it("should not let you create or edit a snippet", () => {
+    H.configureGitAndPullChanges("read-only");
+    H.startNewNativeQuestion();
+    cy.findByTestId("native-query-editor-action-buttons")
+      .icon("snippet")
+      .click();
+    cy.findByTestId("sidebar-content")
+      .findByText("Create snippet")
+      .should("not.exist");
+
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("stuff-snippet").click();
+      cy.findByRole("button", { name: /pencil icon edit/i }).should(
+        "not.exist",
+      );
+    });
+  });
+
+  it("should not let you create or edit a snippet folder", () => {
+    H.configureGitAndPullChanges("read-only");
+    H.startNewNativeQuestion();
+    cy.icon("snippet").click();
+
+    cy.log("Menu that allows creating a snippet folder is not rendered");
+    cy.findByTestId("sidebar-right")
+      .as("sidebar")
+      .find(".Icon-add")
+      .should("not.exist");
+
+    cy.findByTestId("sidebar-right").within(() => {
+      cy.findByText("My favorite snippets").should("be.visible");
+      cy.findByRole("button", { name: "Snippet folder options" }).should(
+        "not.exist",
+      );
+    });
+  });
+});
+
 function createNestedSnippet() {
   cy.signInAsAdmin();
   // Create snippet folder via API
@@ -472,4 +553,28 @@ function getPermissionsForUserGroup(userGroup) {
     .findByText(userGroup)
     .closest("tr")
     .find("[data-testid=permissions-select]");
+}
+
+function createDoublyNestedSnippet() {
+  // Create snippet folder via API
+  cy.request("POST", "/api/collection", {
+    name: "Folder A",
+    description: null,
+    parent_id: null,
+    namespace: "snippets",
+  }).then(({ body: { id } }) => {
+    cy.request("POST", "/api/collection", {
+      name: "Folder B",
+      description: null,
+      parent_id: id,
+      namespace: "snippets",
+    }).then(({ body: { id } }) => {
+      // Create snippet in folder via API
+      cy.request("POST", "/api/native-query-snippet", {
+        content: "snippet 1",
+        name: "snippet 1",
+        collection_id: id,
+      });
+    });
+  });
 }

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.pulse.models.pulse :as models.pulse]
@@ -51,7 +52,8 @@
    :dashboard_id        nil
    :skip_if_empty       false
    :archived            false
-   :parameters          []})
+   :parameters          []
+   :disable_links       false})
 
 (deftest retrieve-pulse-test
   (testing "this should cover all the basic Pulse attributes"
@@ -85,7 +87,7 @@
                                     :channel_type  :email
                                     :details       {:other "stuff"}
                                     :recipients    [{:email "foo@bar.com"}
-                                                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb)]})]})
+                                                    (dissoc (user-details :rasta) :is_superuser :is_qbnewb :is_data_analyst)]})]})
              (-> (dissoc (models.pulse/retrieve-pulse pulse-id) :id :pulse_id :created_at :updated_at)
                  (update :creator  dissoc :date_joined :last_login :tenant_id)
                  (update :entity_id boolean)
@@ -254,7 +256,7 @@
                                           :schedule_hour 18
                                           :channel_type  :email
                                           :recipients    [{:email "foo@bar.com"}
-                                                          (dissoc (user-details :crowberto) :is_superuser :is_qbnewb :tenant_id)]})]})
+                                                          (dissoc (user-details :crowberto) :is_superuser :is_qbnewb :tenant_id :is_data_analyst)]})]})
              (mt/derecordize
               (update-pulse-then-select! {:id            (u/the-id pulse)
                                           :name          "We like to party"
@@ -437,7 +439,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Pulse can only go in Collections in the \"default\" or :analytics namespace."
+               #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
                (t2/insert! :model/Pulse (assoc (mt/with-temp-defaults :model/Pulse) :collection_id collection-id, :name pulse-name))))
           (finally
             (t2/delete! :model/Pulse :name pulse-name)))))
@@ -446,7 +448,7 @@
       (mt/with-temp [:model/Pulse {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Pulse can only go in Collections in the \"default\" or :analytics namespace."
+             #"A Pulse can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
              (t2/update! :model/Pulse card-id {:collection_id collection-id})))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -501,3 +503,74 @@
                                                     :creator_id    (mt/user->id :crowberto)}]
             (is (not (mi/can-read? subscription)))
             (is (not (mi/can-write? subscription)))))))))
+
+(deftest create-permissions-test
+  (when config/ee-available?
+    (testing "A user without download permission should not be able to create a pulse with attachments"
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/Database {db-id :id} {:engine :h2}
+                     :model/Table {table-id :id} {:db_id db-id}
+                     :model/Collection {collection-id :id} {:name "Test Collection"}
+                     :model/Card card {:dataset_query {:database      db-id
+                                                       :type          :query
+                                                       :collection_id collection-id
+                                                       :query         {:source-table table-id}}}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
+        ;; Grant read access on the card but no download permission
+        (mt/with-premium-features #{:advanced-permissions}
+          (perms/grant-permissions! group-id (perms/collection-read-path collection-id))
+          (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+          (perms/set-table-permission! group-id table-id :perms/create-queries :query-builder)
+          (perms/set-table-permission! group-id table-id :perms/download-results :no)
+          (perms/set-table-permission! (perms/all-users-group) table-id :perms/download-results :no)
+
+          (mt/with-current-user user-id
+            (testing "should not be able to create a pulse with CSV attachment"
+              (is (false? (mi/can-create? :model/Pulse
+                                          {:cards         [(assoc card :include_csv true)]
+                                           :dashboard_id  nil
+                                           :collection_id nil}))))
+
+            (testing "should not be able to create a pulse with XLS attachment"
+              (is (false? (mi/can-create? :model/Pulse
+                                          {:cards         [(assoc card :include_xls true)]
+                                           :dashboard_id  nil
+                                           :collection_id nil}))))
+
+            (testing "should be able to create a pulse without attachments"
+              (is (true? (mi/can-create? :model/Pulse
+                                         {:cards         [card]
+                                          :dashboard_id  nil
+                                          :collection_id nil}))))))))
+
+    (testing "A user with download permission should be able to create a pulse with attachments"
+      (mt/with-temp [:model/User {user-id :id} {}
+                     :model/Database {db-id :id} {:engine :h2}
+                     :model/Table {table-id :id} {:db_id db-id}
+                     :model/Collection {collection-id :id} {:name "Test Collection"}
+                     :model/Card card {:dataset_query {:database      db-id
+                                                       :collection_id collection-id
+                                                       :type          :query
+                                                       :query         {:source-table table-id}}}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id user-id :group_id group-id}]
+        ;; Grant read and download permissions
+        (mt/with-premium-features #{:advanced-permissions}
+          (perms/grant-permissions! group-id (perms/collection-read-path collection-id))
+          (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+          (perms/set-table-permission! group-id table-id :perms/create-queries :query-builder)
+          (perms/set-table-permission! group-id table-id :perms/download-results :one-million-rows)
+
+          (mt/with-current-user user-id
+            (testing "should be able to create a pulse with CSV attachment"
+              (is (true? (mi/can-create? :model/Pulse
+                                         {:cards         [(assoc card :include_csv true)]
+                                          :dashboard_id  nil
+                                          :collection_id nil}))))
+
+            (testing "should be able to create a pulse with XLS attachment"
+              (is (true? (mi/can-create? :model/Pulse
+                                         {:cards         [(assoc card :include_xls true)]
+                                          :dashboard_id  nil
+                                          :collection_id nil}))))))))))

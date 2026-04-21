@@ -1,0 +1,117 @@
+.container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+
+  &[data-layout="sidebar"] {
+    flex-direction: row;
+
+    .question {
+      flex: 1;
+      height: 100%;
+    }
+
+    .chat {
+      width: 100%;
+      height: 100%;
+      max-width: 18.75rem;
+      border-left: 1px solid var(--mb-color-border);
+    }
+
+    /**
+      We already have disclaimer in the sidebar, so we don't
+      need to repeat it in the empty state.
+    */
+    .stackedOverflowButton,
+    .emptyStateDisclaimerText {
+      display: none;
+    }
+  }
+
+  &[data-layout="stacked"] {
+    flex-direction: column;
+
+    .question {
+      flex: 0 0 60%;
+      height: 60%;
+      overflow: hidden;
+    }
+
+    .chat {
+      flex: 0 0 40%;
+      height: 40%;
+      width: 100%;
+      max-width: none;
+      border-left: none;
+    }
+
+    .sidebarHeader {
+      display: none;
+    }
+
+    /* Overflow menu is only visible in stacked layout. */
+    .stackedOverflowButton,
+    .chatButton {
+      display: flex;
+      padding: 0.25rem;
+      border-radius: 4px;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: var(--mb-color-background-hover);
+      }
+    }
+
+    .stopGenerationButton {
+      width: 1.3rem;
+      height: 1.3rem;
+    }
+
+    /** Only show the top border when there are messages. */
+    .chatHistory:not(:empty) {
+      border-top: 1px solid var(--mb-color-border);
+    }
+  }
+}
+
+/* Prompt suggestions */
+.promptSuggestionsContainer {
+  flex-shrink: 0;
+  max-width: 30rem;
+}
+
+.promptSuggestionButton {
+  display: block;
+  height: auto;
+  text-align: left;
+  line-height: 1.4;
+  padding: 0.5rem 0.75rem;
+  width: fit-content;
+  border-radius: 8px;
+  border: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-background-primary);
+  color: var(--mb-color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.promptSuggestionButton span {
+  text-wrap-mode: wrap;
+  justify-content: flex-start;
+}
+
+/* Chat input */
+.chatInput {
+  border: none;
+  border-radius: 0;
+  background-color: transparent !important;
+
+  &:focus {
+    outline: none;
+    border-color: transparent;
+  }
+}
+
+/* Remove the default padding to align the scrollbars */
+.question :global(.sdk-question-main) {
+  padding: 0 !important;
+}

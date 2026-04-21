@@ -1,10 +1,9 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isTransientId } from "metabase/dashboard/utils";
-import { stripId } from "metabase/lib/formatting";
 import type { ComboboxItem } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
+import { isTransientId } from "metabase/utils/dashboard";
+import { stripId } from "metabase/utils/formatting";
 import type Field from "metabase-lib/v1/metadata/Field";
 import {
   canListFieldValues,
@@ -19,7 +18,8 @@ import {
   isStringParameter,
 } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
-  Dashboard,
+  CardId,
+  DashboardId,
   FieldValue,
   Parameter,
   RowValue,
@@ -31,12 +31,12 @@ export function canUseParameterEndpoints(parameter?: Parameter) {
   return parameter != null;
 }
 
-export function canUseCardEndpoints(question?: Question) {
-  return question?.isSaved();
+export function canUseCardEndpoints(cardId?: CardId) {
+  return cardId != null;
 }
 
-export function canUseDashboardEndpoints(dashboard?: Dashboard | null) {
-  return !isTransientId(dashboard?.id) && dashboard?.id;
+export function canUseDashboardEndpoints(dashboardId?: DashboardId) {
+  return dashboardId != null && !isTransientId(dashboardId);
 }
 
 export function shouldList({
@@ -46,7 +46,7 @@ export function shouldList({
 }: {
   parameter?: Parameter;
   fields: Field[];
-  disableSearch: boolean;
+  disableSearch?: boolean;
 }) {
   if (disableSearch) {
     return false;
@@ -90,10 +90,10 @@ function getNonSearchableTokenFieldPlaceholder(
 }
 
 export function searchField(
-  field: Field,
-  disablePKRemappingForSearch: boolean,
+  field: Field | null,
+  disablePKRemappingForSearch?: boolean,
 ) {
-  return field.searchField(disablePKRemappingForSearch);
+  return field?.searchField(disablePKRemappingForSearch) ?? null;
 }
 
 function getSearchableTokenFieldPlaceholder(
@@ -172,8 +172,8 @@ export function isSearchable({
   valuesMode,
 }: {
   parameter?: Parameter;
-  fields: Field[];
-  disableSearch: boolean;
+  fields?: Field[];
+  disableSearch?: boolean;
   disablePKRemappingForSearch?: boolean;
   valuesMode?: ValuesMode;
 }) {
@@ -183,8 +183,10 @@ export function isSearchable({
     return true;
   } else if (parameter) {
     return canSearchParameterValues(parameter, disablePKRemappingForSearch);
-  } else {
+  } else if (fields) {
     return canSearchFieldValues(fields, disablePKRemappingForSearch);
+  } else {
+    return false;
   }
 }
 
@@ -248,7 +250,7 @@ export function getValuesMode({
 }: {
   parameter?: Parameter;
   fields: Field[];
-  disableSearch: boolean;
+  disableSearch?: boolean;
   disablePKRemappingForSearch?: boolean;
 }): ValuesMode {
   if (

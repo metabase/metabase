@@ -1,0 +1,5 @@
+.EmbeddingFooter {
+  color: var(--mb-color-text-primary);
+  background-color: transparent;
+  transition: var(--transition-theme-change);
+}

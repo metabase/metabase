@@ -3,7 +3,10 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.server.middleware.security :as mw.security]
+   [metabase.server.settings :as server.settings]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (java.sql SQLException)
@@ -36,6 +39,11 @@
                                           (and status-code (:errors other-info))
                                           other-info
 
+                                          ;; allow administrators to configure their instances to suppress stacktraces
+                                          ;; returns 500 with a generic message
+                                          (server.settings/hide-stacktraces)
+                                          {:message (tru "Something went wrong")}
+
                                           ;; Otherwise return the full `Throwable->map` representation with Stacktrace
                                           ;; and ex-data
                                           :else
@@ -43,6 +51,8 @@
                                            (Throwable->map e)
                                            {:message (.getMessage e)}
                                            other-info))]
+    (when (nil? status-code)
+      (prometheus/inc! :metabase-api/unhandled-errors))
     {:status  (or status-code 500)
      :headers (mw.security/security-headers)
      :body    body}))

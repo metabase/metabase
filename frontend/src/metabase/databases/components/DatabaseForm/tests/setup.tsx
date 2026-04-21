@@ -1,8 +1,13 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
-import type { DatabaseData, Engine, Settings } from "metabase-types/api";
-import { createMockState } from "metabase-types/store/mocks";
+import { createMockState } from "metabase/redux/store/mocks";
+import type {
+  DatabaseData,
+  Engine,
+  EngineKey,
+  Settings,
+} from "metabase-types/api";
 
 import { DatabaseForm } from "../DatabaseForm";
 
@@ -94,33 +99,38 @@ export const TEST_ENGINES: Record<string, Engine> = {
 
 export interface SetupOpts {
   settings?: Settings;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   engines?: Record<string, Engine>;
-  initialValues?: Partial<DatabaseData>;
+  initialValues?: Partial<DatabaseData> & { engine?: EngineKey };
+  isAdvanced?: boolean;
 }
 
 export const setup = ({
   settings,
-  hasEnterprisePlugins,
+  enterprisePlugins,
   engines = TEST_ENGINES,
   initialValues = {},
+  isAdvanced = true,
 }: SetupOpts = {}) => {
   const state = createMockState({
     settings: mockSettings({ ...settings, engines }),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
 
   const onSubmit = jest.fn();
+
   renderWithProviders(
     <DatabaseForm
       initialValues={{
         engine: "h2",
         ...initialValues,
       }}
-      config={{ isAdvanced: true }}
+      config={{ isAdvanced }}
       onSubmit={onSubmit}
       location="admin"
     />,

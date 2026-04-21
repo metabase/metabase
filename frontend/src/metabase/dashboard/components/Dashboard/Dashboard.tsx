@@ -2,25 +2,25 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { DashboardArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/DashboardArchivedEntityBanner";
-import ColorS from "metabase/css/core/colors.module.css";
+import { PLUGIN_NOTIFICATIONS_SDK } from "embedding-sdk-bundle/components/public/notifications";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
-import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
-import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
+import { Box, Flex, Loader } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type { DashboardCard } from "metabase-types/api";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "../../constants";
+import { DashboardArchivedEntityBanner } from "../DashboardArchivedEntityBanner";
 import {
   DashboardInfoButton,
   ExportAsPdfButton,
   FullscreenToggle,
-  NightModeToggleButton,
 } from "../DashboardHeader/buttons";
 import { DashboardParameterPanel } from "../DashboardParameterPanel";
 import { DashboardSidebars } from "../DashboardSidebars";
@@ -32,14 +32,10 @@ import S from "./Dashboard.module.css";
 import { Grid, ParametersList } from "./components";
 
 const DashboardDefaultView = ({ className }: { className?: string }) => {
-  const {
-    dashboard,
-    isEditing,
-    isFullscreen,
-    isSharing,
-    selectedTabId,
-    shouldRenderAsNightMode,
-  } = useDashboardContext();
+  const { dashboard, isEditing, isFullscreen, isSharing, selectedTabId } =
+    useDashboardContext();
+
+  const isHeaderVisible = useSelector(getIsHeaderVisible);
 
   const currentTabDashcards = useMemo(() => {
     if (!dashboard || !Array.isArray(dashboard.dashcards)) {
@@ -57,16 +53,14 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
   const dashboardHasCards = dashboard && dashboard.dashcards.length > 0;
 
   if (!dashboard) {
-    return (
-      <Stack justify="center" align="center" gap="sm" mt="xl">
-        <Loader size="lg" />
-        <Text c="text-light" size="xl">{t`Loading…`}</Text>
-      </Stack>
-    );
+    return <Loader size="lg" label={t`Loading…`} />;
   }
 
   const isEmpty = !dashboardHasCards || (dashboardHasCards && !tabHasCards);
-  const isFullHeight = isEditing || isSharing;
+  const hasTabs = dashboard.tabs && dashboard.tabs.length > 1;
+
+  // Embedding SDK has parent containers that requires dashboard to be full height to avoid double scrollbars.
+  const isFullHeight = isEditing || isSharing || isEmbeddingSdk();
 
   return (
     <Flex
@@ -76,9 +70,6 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
         S.DashboardLoadingAndErrorWrapper,
         {
           [DashboardS.DashboardFullscreen]: isFullscreen,
-          [DashboardS.DashboardNight]: shouldRenderAsNightMode,
-          [ParametersS.DashboardNight]: shouldRenderAsNightMode,
-          [ColorS.DashboardNight]: shouldRenderAsNightMode,
           [S.isFullHeight]: isFullHeight,
         },
       )}
@@ -98,7 +89,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
           {
             [S.isEmbeddingSdk]: isEmbeddingSdk(),
             [S.isFullscreen]: isFullscreen,
-            [S.isNightMode]: shouldRenderAsNightMode,
+            [S.noBorder]: !hasTabs && !isHeaderVisible,
           },
         )}
         data-element-id="dashboard-header-container"
@@ -113,6 +104,7 @@ const DashboardDefaultView = ({ className }: { className?: string }) => {
         mih={0}
         className={cx(S.DashboardBody, {
           [S.isEditingOrSharing]: isEditing || isSharing,
+          [S.isEmbeddingSdk]: isEmbeddingSdk(),
         })}
       >
         <Box
@@ -150,8 +142,8 @@ type DashboardComponentType = typeof DashboardDefaultView & {
   ParametersList: typeof ParametersList;
   FullscreenButton: typeof FullscreenToggle;
   ExportAsPdfButton: typeof ExportAsPdfButton;
+  SubscriptionsButton: typeof PLUGIN_NOTIFICATIONS_SDK.DashboardSubscriptionsButton;
   InfoButton: typeof DashboardInfoButton;
-  NightModeButton: typeof NightModeToggleButton;
   RefreshPeriod: typeof RefreshWidget;
 };
 
@@ -163,8 +155,9 @@ DashboardComponent.Tabs = DashboardTabs;
 DashboardComponent.ParametersList = ParametersList;
 DashboardComponent.FullscreenButton = FullscreenToggle;
 DashboardComponent.ExportAsPdfButton = ExportAsPdfButton;
+DashboardComponent.SubscriptionsButton =
+  PLUGIN_NOTIFICATIONS_SDK.DashboardSubscriptionsButton;
 DashboardComponent.InfoButton = DashboardInfoButton;
-DashboardComponent.NightModeButton = NightModeToggleButton;
 DashboardComponent.RefreshPeriod = RefreshWidget;
 
 export const Dashboard = DashboardComponent;

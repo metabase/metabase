@@ -1,12 +1,14 @@
 import { LOGIN, LOGIN_GOOGLE } from "metabase/auth/actions";
-import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_IS_PASSWORD_USER,
   PLUGIN_LDAP_FORM_FIELDS,
   PLUGIN_REDUX_MIDDLEWARES,
 } from "metabase/plugins";
+import type { AuthProvider } from "metabase/plugins/types";
+import MetabaseSettings from "metabase/utils/settings";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import type { OidcAuthProvider, User } from "metabase-types/api";
 
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 
@@ -15,7 +17,9 @@ import {
   LdapGroupMembershipFilter,
   LdapUserProvisioning,
 } from "./components/Ldap";
+import { createOidcAuthProvider } from "./components/OidcButton/OidcButton";
 import { SettingsJWTForm } from "./components/SettingsJWTForm";
+import { SettingsOIDCForm } from "./components/SettingsOIDCForm";
 import { SettingsSAMLForm } from "./components/SettingsSAMLForm";
 import { SsoButton } from "./components/SsoButton";
 
@@ -24,50 +28,77 @@ const SSO_PROVIDER = {
   Button: SsoButton,
 };
 
-if (hasPremiumFeature("sso_saml")) {
-  PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm = SettingsSAMLForm;
-}
-
-if (hasPremiumFeature("sso_jwt")) {
-  PLUGIN_AUTH_PROVIDERS.SettingsJWTForm = SettingsJWTForm;
-}
-
+// Always set AuthSettingsPage - this doesn't depend on premium features
 PLUGIN_AUTH_PROVIDERS.AuthSettingsPage = AuthSettingsPage;
 
-PLUGIN_AUTH_PROVIDERS.providers.push((providers) => {
-  if (
-    (hasPremiumFeature("sso_jwt") || hasPremiumFeature("sso_saml")) &&
-    MetabaseSettings.get("other-sso-enabled?")
-  ) {
-    providers = [SSO_PROVIDER, ...providers];
+/**
+ * Initialize auth plugin features that depend on hasPremiumFeature.
+ */
+export function initializePlugin() {
+  if (hasPremiumFeature("sso_saml")) {
+    PLUGIN_AUTH_PROVIDERS.SettingsSAMLForm = SettingsSAMLForm;
   }
-  if (
-    hasPremiumFeature("disable_password_login") &&
-    !MetabaseSettings.isPasswordLoginEnabled() &&
-    !MetabaseSettings.isLdapEnabled()
-  ) {
-    providers = providers.filter((p) => p.name !== "password");
-  }
-  return providers;
-});
 
-if (hasPremiumFeature("disable_password_login")) {
-  PLUGIN_IS_PASSWORD_USER.push((user) =>
-    Boolean(
-      user.sso_source !== "google" &&
+  if (hasPremiumFeature("sso_jwt")) {
+    PLUGIN_AUTH_PROVIDERS.SettingsJWTForm = SettingsJWTForm;
+  }
+
+  if (hasPremiumFeature("sso_oidc")) {
+    PLUGIN_AUTH_PROVIDERS.SettingsOIDCForm = SettingsOIDCForm;
+  }
+
+  // Add provider function that handles SSO and password login
+  const enhancedProviderFunction = (providers: AuthProvider[]) => {
+    if (
+      (hasPremiumFeature("sso_jwt") || hasPremiumFeature("sso_saml")) &&
+      MetabaseSettings.get("other-sso-enabled?")
+    ) {
+      providers = [SSO_PROVIDER, ...providers];
+    }
+
+    // Add OIDC provider buttons
+    if (hasPremiumFeature("sso_oidc")) {
+      const oidcProviders: OidcAuthProvider[] =
+        MetabaseSettings.get("oidc-login-providers") ?? [];
+      for (const oidcProvider of oidcProviders) {
+        providers = [createOidcAuthProvider(oidcProvider), ...providers];
+      }
+    }
+
+    if (
+      hasPremiumFeature("disable_password_login") &&
+      !MetabaseSettings.isPasswordLoginEnabled() &&
+      !MetabaseSettings.isLdapEnabled()
+    ) {
+      providers = providers.filter((p) => p.name !== "password");
+    }
+    return providers;
+  };
+
+  PLUGIN_AUTH_PROVIDERS.providers.push(enhancedProviderFunction);
+
+  if (hasPremiumFeature("disable_password_login")) {
+    const passwordUserFunction = (user: User) =>
+      Boolean(
+        user.sso_source !== "google" &&
         user.sso_source !== "ldap" &&
+        user.sso_source !== "oidc" &&
         MetabaseSettings.isPasswordLoginEnabled(),
-    ),
-  );
-}
+      );
 
-if (hasPremiumFeature("sso_ldap")) {
-  Object.assign(PLUGIN_LDAP_FORM_FIELDS, {
-    LdapGroupMembershipFilter,
-    LdapUserProvisioning,
-  });
-}
+    PLUGIN_IS_PASSWORD_USER.push(passwordUserFunction);
+  }
 
-if (hasPremiumFeature("session_timeout_config")) {
-  PLUGIN_REDUX_MIDDLEWARES.push(createSessionMiddleware([LOGIN, LOGIN_GOOGLE]));
+  if (hasPremiumFeature("sso_ldap")) {
+    Object.assign(PLUGIN_LDAP_FORM_FIELDS, {
+      LdapGroupMembershipFilter,
+      LdapUserProvisioning,
+    });
+  }
+
+  if (hasPremiumFeature("session_timeout_config")) {
+    PLUGIN_REDUX_MIDDLEWARES.push(
+      createSessionMiddleware([LOGIN, LOGIN_GOOGLE]),
+    );
+  }
 }

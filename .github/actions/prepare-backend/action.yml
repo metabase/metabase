@@ -1,15 +1,13 @@
 name: Prepare back-end environment
+description: |
+  Prepare the backend. Installs jdk, Clojure, and fetches the cache for m2.
 inputs:
   java-version:
     required: true
-    default: '21'
+    default: "21"
   clojure-version:
     required: true
-    default: '1.12.0.1488'
-  m2-cache-key:
-    description: 'Key to cache M2 packages from Maven Central'
-    required: true
-    default: 'm2'
+    default: "1.12.0.1488"
 
 runs:
   using: "composite"
@@ -18,23 +16,39 @@ runs:
       uses: actions/setup-java@v4
       with:
         java-version: ${{ inputs.java-version }}
-        distribution: 'temurin'
+        distribution: "temurin"
     - name: Install Clojure CLI
       shell: bash
       run: |
-        curl -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh &&
-        sudo bash ./linux-install-${{ inputs.clojure-version }}.sh
-    - name: Check to see if dependencies should be cached
-      if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
-      run: echo "Commit message includes [ci nocache]; dependencies will NOT be cached"
-      shell: bash
-    - name: Get M2 cache
-      uses: actions/cache@v4
-      if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
+        for attempt in 1 2 3; do
+          curl --retry 3 --retry-delay 5 --fail -O https://download.clojure.org/install/linux-install-${{ inputs.clojure-version }}.sh \
+            && sudo bash ./linux-install-${{ inputs.clojure-version }}.sh \
+            && break
+          echo "::warning::Clojure install attempt $attempt failed, retrying in 10s..."
+          sleep 10
+        done
+        if ! clojure --version; then
+          echo "::error::Clojure CLI installation failed after 3 attempts"
+          exit 1
+        fi
+
+    - name: Get M2 cache key
+      uses: ./.github/actions/get-cache-keys
+      id: get-cache-keys
+
+    - name: Install uv (for Python package installation)
+      uses: astral-sh/setup-uv@v7
+      with:
+        enable-cache: false
+        version: "0.10.2" # keep in sync with mise.toml
+        github-token: ${{ github.token }}
+
+    - name: Restore M2 cache
+      uses: actions/cache/restore@v4
       with:
         path: |
           ~/.m2
           ~/.gitlibs
-        key: ${{ runner.os }}-${{ inputs.m2-cache-key }}-${{ hashFiles('**/deps.edn') }}
+        key: ${{ steps.get-cache-keys.outputs.m2-cache-key }}
         restore-keys: |
-          ${{ runner.os }}-${{ inputs.m2-cache-key }}-
+          ${{ steps.get-cache-keys.outputs.m2-restore-key }}

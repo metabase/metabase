@@ -1,8 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { Icon } from "metabase/ui";
+import { Ellipsified, Icon } from "metabase/ui";
 
 export const CardIcon = styled(Icon)`
   display: block;
@@ -11,7 +10,7 @@ export const CardIcon = styled(Icon)`
 `;
 
 export const CardTitle = styled(Ellipsified)`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-size: 1rem;
   font-weight: bold;
   margin-left: 1rem;

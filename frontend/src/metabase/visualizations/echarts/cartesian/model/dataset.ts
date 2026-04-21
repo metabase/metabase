@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { getObjectKeys } from "metabase/lib/objects";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
-import { checkNumber, isNotNull } from "metabase/lib/types";
-import { isEmpty } from "metabase/lib/validate";
+import { getObjectKeys } from "metabase/utils/objects";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import { checkNumber, isNotNull } from "metabase/utils/types";
+import { isEmpty } from "metabase/utils/validate";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   INDEX_KEY,
@@ -19,7 +19,6 @@ import type {
   ChartDataset,
   DataKey,
   Datum,
-  Extent,
   NumericAxisScaleTransforms,
   SeriesExtents,
   SeriesModel,
@@ -35,14 +34,18 @@ import {
   nullDimensionWarning,
   unaggregatedDataWarning,
 } from "metabase/visualizations/lib/warnings";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
-  DatasetColumn,
-  RawSeries,
-  RowValue,
-  SingleSeries,
-  XAxisScale,
+  ComputedVisualizationSettings,
+  Extent,
+} from "metabase/visualizations/types";
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
+import {
+  type DatasetColumn,
+  type RawSeries,
+  type RowValue,
+  type SingleSeries,
+  type XAxisScale,
+  getRowsForStableKeys,
 } from "metabase-types/api";
 
 import type { ShowWarning } from "../../types";
@@ -102,6 +105,7 @@ const aggregateColumnValuesForDatum = (
   cardId: number,
   dimensionIndex: number,
   breakoutIndex: number | undefined,
+  untranslatedBreakoutValue: RowValue | undefined,
   showWarning?: ShowWarning,
 ): void => {
   columns.forEach(({ column, isMetric }, columnIndex) => {
@@ -111,7 +115,7 @@ const aggregateColumnValuesForDatum = (
     const seriesKey =
       breakoutIndex == null
         ? getDatasetKey(column, cardId)
-        : getDatasetKey(column, cardId, row[breakoutIndex]);
+        : getDatasetKey(column, cardId, untranslatedBreakoutValue);
 
     // The dimension values should not be aggregated, only metrics
     if (isMetric && !isDimensionColumn) {
@@ -161,8 +165,9 @@ export const getJoinedCardsDataset = (
     const dimensionIndex = chartColumns.dimension.index;
     const breakoutIndex =
       "breakout" in chartColumns ? chartColumns.breakout.index : undefined;
+    const rowsForKeys = getRowsForStableKeys(cardSeries.data);
 
-    for (const row of rows) {
+    rows.forEach((row, rowIndex) => {
       const dimensionValue = row[dimensionIndex];
 
       // Get the existing datum by the dimension value if exists
@@ -174,6 +179,11 @@ export const getJoinedCardsDataset = (
         groupedData.set(dimensionValue, datum);
       }
 
+      const untranslatedBreakoutValue =
+        breakoutIndex != null
+          ? rowsForKeys[rowIndex][breakoutIndex]
+          : undefined;
+
       aggregateColumnValuesForDatum(
         datum,
         datasetColumns,
@@ -181,9 +191,10 @@ export const getJoinedCardsDataset = (
         card.id,
         dimensionIndex,
         breakoutIndex,
+        untranslatedBreakoutValue,
         showWarning,
       );
-    }
+    });
   });
 
   return Array.from(groupedData.values());
@@ -297,12 +308,12 @@ export const getNullReplacerTransform = (
   seriesModels: SeriesModel[],
 ): TransformFn => {
   const replaceNullsWithZeroDataKeys = seriesModels
-    .filter(
-      (seriesModel) =>
-        settings.series(seriesModel.legacySeriesSettingsObjectKey)[
-          "line.missing"
-        ] === "zero",
-    )
+    .filter((seriesModel) => {
+      const seriesSettings = settings.series?.(
+        seriesModel.legacySeriesSettingsObjectKey,
+      );
+      return seriesSettings?.["line.missing"] === "zero";
+    })
     .map((seriesModel) => seriesModel.dataKey);
 
   return (datum) => {
@@ -319,12 +330,13 @@ const hasInterpolatedAreaSeries = (
   settings: ComputedVisualizationSettings,
 ) => {
   return seriesModels.some((seriesModel) => {
-    const seriesSettings = settings.series(
+    const seriesSettings = settings.series?.(
       seriesModel.legacySeriesSettingsObjectKey,
     );
-    return (
+    return Boolean(
+      seriesSettings &&
       seriesSettings["line.missing"] !== "none" &&
-      seriesSettings.display === "area"
+      seriesSettings.display === "area",
     );
   });
 };
@@ -730,10 +742,10 @@ export const applyVisualizationSettingsDataTransformations = (
 ) => {
   dataset = appendDataIndex(dataset);
   const barSeriesModels = seriesModels.filter((seriesModel) => {
-    const seriesSettings = settings.series(
+    const seriesSettings = settings.series?.(
       seriesModel.legacySeriesSettingsObjectKey,
     );
-    return seriesSettings.display === "bar";
+    return seriesSettings?.display === "bar";
   });
   const seriesDataKeys = seriesModels.map((seriesModel) => seriesModel.dataKey);
 

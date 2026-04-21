@@ -3,8 +3,9 @@ import { type HTMLAttributes, useMemo } from "react";
 import { t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
-import FormField from "metabase/common/components/FormField";
+import { FormField } from "metabase/common/components/FormField";
 import { Accordion, Box, Loader, Text } from "metabase/ui";
+import { useGetTenantQuery } from "metabase-enterprise/api";
 import { getExtraAttributes } from "metabase-enterprise/sandboxes/utils";
 import type {
   StructuredUserAttributes,
@@ -34,7 +35,9 @@ const isInheritedValue = (
 
   const inheritedValue =
     attribute?.original?.value ??
-    (attribute.source === "jwt" ? attribute.value : undefined);
+    (attribute.source === "jwt" || attribute.source === "tenant"
+      ? attribute.value
+      : undefined);
   return inheritedValue === inputValue;
 };
 
@@ -48,11 +51,16 @@ export const LoginAttributesWidget = ({
 }: Props) => {
   const [{ value }, , { setValue, setError }] = useField(name);
 
+  const [{ value: tenantId }] = useField("tenant_id");
   const { data: userData, isLoading } = useGetUserQuery(userId ?? skipToken);
 
+  const { data: tenant, isLoading: isLoadingTenant } = useGetTenantQuery(
+    tenantId ?? skipToken,
+  );
+
   const structuredAttributes = useMemo(() => {
-    return getExtraAttributes(userData?.structured_attributes);
-  }, [userData?.structured_attributes]);
+    return getExtraAttributes(userData?.structured_attributes, tenant);
+  }, [tenant, userData?.structured_attributes]);
 
   const handleChange = (newValue: UserAttributeMap) => {
     const validEntries = Object.entries(newValue).filter(
@@ -70,15 +78,18 @@ export const LoginAttributesWidget = ({
   };
 
   return (
-    <FormField className={className} style={style} description={description}>
+    <FormField className={className} style={style}>
       <Accordion mt="xl">
         <Accordion.Item value="login-attributes">
           <Accordion.Control>
-            <Text fz="lg">{title}</Text>
+            <Text fz="md">{title}</Text>
+            <Text c="text-secondary" fw="normal" fz="sm">
+              {description}
+            </Text>
           </Accordion.Control>
           <Accordion.Panel>
             <Box pt="md">
-              {isLoading ? (
+              {isLoading || isLoadingTenant ? (
                 <Loader />
               ) : (
                 <LoginAttributeMappingEditor

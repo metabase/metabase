@@ -1,14 +1,14 @@
 import { useCallback, useMemo } from "react";
 import { withRouter } from "react-router";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import * as Yup from "yup";
 
 import { useGetDashboardQuery } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import Button from "metabase/common/components/Button";
-import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
+import { Button } from "metabase/common/components/Button";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import Dashboards from "metabase/entities/dashboards";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/Pickers";
+import { Dashboards } from "metabase/entities/dashboards";
 import {
   Form,
   FormCheckbox,
@@ -19,15 +19,15 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
+import { Group, Icon, Tooltip } from "metabase/ui";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
+import * as Errors from "metabase/utils/errors";
 import type { CollectionId, Dashboard, DashboardId } from "metabase-types/api";
 
-import { DashboardCopyModalShallowCheckboxLabel } from "../components/DashboardCopyModal/DashboardCopyModalShallowCheckboxLabel/DashboardCopyModalShallowCheckboxLabel";
 import {
   DASHBOARD_DESCRIPTION_MAX_LENGTH,
   DASHBOARD_NAME_MAX_LENGTH,
 } from "../constants";
-import { isVirtualDashCard } from "../utils";
 
 const DASHBOARD_SCHEMA = Yup.object({
   name: Yup.string()
@@ -103,9 +103,7 @@ function CopyDashboardForm({
     );
   }, [originalDashboard]);
 
-  const isShallowCopyDisabled = Boolean(
-    isLoading || error || hasDashboardQuestions,
-  );
+  const hideShallowCopy = Boolean(isLoading || error || hasDashboardQuestions);
 
   return (
     <FormProvider
@@ -135,22 +133,33 @@ function CopyDashboardForm({
           name="collection_id"
           title={t`Which collection should this go in?`}
           filterPersonalCollections={filterPersonalCollections}
+          entityType="dashboard"
         />
-        <FormCheckbox
-          name="is_shallow_copy"
-          label={
-            <DashboardCopyModalShallowCheckboxLabel
-              hasDashboardQuestions={hasDashboardQuestions}
-            />
-          }
-          disabled={isShallowCopyDisabled}
-        />
-        <FormFooter>
+
+        {!hideShallowCopy && (
+          <FormCheckbox
+            mt="1rem"
+            name="is_shallow_copy"
+            label={
+              <Group align="center" gap="xs">
+                {t`Only duplicate the dashboard`}
+
+                <Tooltip
+                  label={t`If you check this, the cards in the duplicated dashboard will reference the original questions.`}
+                >
+                  <Icon name="info" size={18} />
+                </Tooltip>
+              </Group>
+            }
+          />
+        )}
+
+        <FormFooter mt="1.5rem">
           <FormErrorMessage inline />
           {!!onClose && (
             <Button type="button" onClick={onClose}>{t`Cancel`}</Button>
           )}
-          <FormSubmitButton label={t`Duplicate`} />
+          <FormSubmitButton label={c(`A verb, not a noun`).t`Duplicate`} />
         </FormFooter>
       </Form>
     </FormProvider>

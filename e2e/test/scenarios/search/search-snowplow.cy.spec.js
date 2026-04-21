@@ -4,7 +4,7 @@ const { H } = cy;
 
 import { commandPaletteInput } from "../../../support/helpers/e2e-command-palette-helpers";
 
-H.describeWithSnowplow("scenarios > search > snowplow", () => {
+describe("scenarios > search > snowplow", () => {
   const NEW_SEARCH_QUERY_EVENT_NAME = "search_query";
   const SEARCH_CLICK = "search_click";
 
@@ -54,6 +54,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
               search_engine: P.string,
               request_id: P.string,
               entity_model: P.string,
+              entity_id: P.number,
               search_term_hash: P.string,
               search_term: null,
             },
@@ -113,7 +114,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
       });
 
       H.entityPickerModal()
-        .findByRole("button", { name: /Second/ })
+        .findByRole("link", { name: /Second collection/ })
         .click();
 
       H.expectUnstructuredSnowplowEvent({
@@ -500,7 +501,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("verified-search-filter")
-          .findByText("Verified items only")
+          .findByLabelText("Verified items only")
           .click();
 
         H.expectUnstructuredSnowplowEvent({
@@ -522,7 +523,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("verified-search-filter")
-          .findByText("Verified items only")
+          .findByLabelText("Verified items only")
           .click();
 
         H.expectUnstructuredSnowplowEvent({
@@ -557,7 +558,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("search_native_query-search-filter")
-          .findByText("Search the contents of native queries")
+          .findByLabelText("Search the contents of native queries")
           .click();
 
         H.expectUnstructuredSnowplowEvent({
@@ -579,7 +580,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("search_native_query-search-filter")
-          .findByText("Search the contents of native queries")
+          .findByLabelText("Search the contents of native queries")
           .click();
 
         H.expectUnstructuredSnowplowEvent({
@@ -614,7 +615,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("archived-search-filter")
-          .findByText("Search items in trash")
+          .findByLabelText("Search items in trash")
           .click();
 
         H.expectUnstructuredSnowplowEvent({
@@ -636,7 +637,7 @@ H.describeWithSnowplow("scenarios > search > snowplow", () => {
         });
 
         cy.findByTestId("archived-search-filter")
-          .findByText("Search items in trash")
+          .findByLabelText("Search items in trash")
           .click();
 
         H.expectUnstructuredSnowplowEvent({

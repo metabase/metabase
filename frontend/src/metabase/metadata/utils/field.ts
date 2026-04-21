@@ -1,5 +1,5 @@
 import { is_coerceable } from "cljs/metabase.types.core";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import { isTypeFK, isa } from "metabase-lib/v1/types/utils/isa";
@@ -41,15 +41,16 @@ export function getRawTableFieldId(field: Field): FieldId {
   return field.id;
 }
 
-export function getFieldCurrency(field: Field): string {
-  if (field.settings?.currency) {
-    return field.settings.currency;
+export function getFieldCurrency(
+  fieldSettings?: FieldFormattingSettings,
+): string {
+  if (fieldSettings?.currency) {
+    return fieldSettings.currency;
   }
 
-  const settings: FieldFormattingSettings = getGlobalSettingsForColumn();
-
-  if (settings.currency) {
-    return settings.currency;
+  const globalSettings: FieldFormattingSettings = getGlobalSettingsForColumn();
+  if (globalSettings.currency) {
+    return globalSettings.currency;
   }
 
   return "USD";

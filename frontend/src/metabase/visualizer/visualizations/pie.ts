@@ -1,7 +1,8 @@
 import type { DragEndEvent } from "@dnd-kit/core";
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import type { VisualizerVizDefinitionWithColumns } from "metabase/redux/store/visualizer";
+import { isNotNull } from "metabase/utils/types";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import {
@@ -21,7 +22,6 @@ import type {
   VisualizerColumnReference,
   VisualizerDataSource,
 } from "metabase-types/api";
-import type { VisualizerVizDefinitionWithColumns } from "metabase-types/store/visualizer";
 
 import { removeColumnFromStateUnlessUsedElseWhere } from "./utils";
 
@@ -105,7 +105,6 @@ export function findColumnSlotForPieChart(parameters: {
 export function addColumnToPieChart(
   state: VisualizerVizDefinitionWithColumns,
   settings: ComputedVisualizationSettings,
-  datasets: Record<string, Dataset>,
   dataSourceColumns: DatasetColumn[],
   column: DatasetColumn,
   columnRef: VisualizerColumnReference,
@@ -154,7 +153,6 @@ export function removeColumnFromPieChart(
 export function combineWithPieChart(
   state: VisualizerVizDefinitionWithColumns,
   settings: ComputedVisualizationSettings,
-  datasets: Record<string, Dataset>,
   { data }: Dataset,
   dataSource: VisualizerDataSource,
 ) {
@@ -176,14 +174,7 @@ export function combineWithPieChart(
       dataSource.name,
       state.columns,
     );
-    addColumnToPieChart(
-      state,
-      settings,
-      datasets,
-      data.cols,
-      column,
-      columnRef,
-    );
+    addColumnToPieChart(state, settings, data.cols, column, columnRef);
   }
 
   if (_.isEmpty(settings["pie.dimension"]) && dimensions.length === 1) {
@@ -199,13 +190,6 @@ export function combineWithPieChart(
       dataSource.name,
       state.columns,
     );
-    addColumnToPieChart(
-      state,
-      settings,
-      datasets,
-      data.cols,
-      column,
-      columnRef,
-    );
+    addColumnToPieChart(state, settings, data.cols, column, columnRef);
   }
 }

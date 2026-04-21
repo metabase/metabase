@@ -14,7 +14,7 @@
       </Filters>
     </Console>
     <File name="File" fileName="logs/test-log.json" append="false">
-      <JsonLayout locationInfo="false" properties="true" compact="true" />
+      <JsonLayout locationInfo="false" properties="true" compact="true" eventEol="true"/>
       <Filters>
         <ThresholdFilter level="INFO" onMatch="ACCEPT" onMismatch="DENY"/>
       </Filters>

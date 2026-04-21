@@ -1,4 +1,4 @@
-import api from "metabase/lib/api";
+import api from "metabase/utils/api";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -26,7 +26,7 @@ describe("getDatasetResponse", () => {
   describe("subpath deployment", () => {
     /**
      * We will assert that the result is a relative path without subpath.
-     * Because this URL will be pass to `frontend/src/metabase/lib/api.js`
+     * Because this URL will be pass to `frontend/src/metabase/utils/api.js`
      * which already takes care of the subpath (api.basename)
      */
     const origin = "http://localhost";
@@ -56,6 +56,11 @@ describe("getDatasetResponse", () => {
 });
 
 describe("getChartFileName", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2024-12-15"));
+  });
+
   const createMockQuestion = (name?: string) => {
     return new Question(createMockCard({ name }), undefined);
   };

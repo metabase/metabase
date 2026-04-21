@@ -1,5 +1,4 @@
-import { trackSchemaEvent, trackSimpleEvent } from "metabase/lib/analytics";
-import * as Lib from "metabase-lib";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/utils/analytics";
 
 export const trackNewQuestionSaved = (
   draftQuestion,
@@ -33,63 +32,17 @@ export const trackNotebookNativePreviewShown = (question, isShown) => {
   });
 };
 
-export const trackColumnCombineViaShortcut = (query, question) => {
-  trackSchemaEvent("question", {
-    event: "column_combine_via_shortcut",
-    custom_expressions_used: ["concat"],
-    database_id: Lib.databaseID(query),
-    question_id: question?.id() ?? 0,
-  });
-};
-
-export const trackColumnCombineViaPlusModal = (query, question) => {
-  trackSchemaEvent("question", {
-    event: "column_combine_via_plus_modal",
-    custom_expressions_used: ["concat"],
-    database_id: Lib.databaseID(query),
-    question_id: question?.id() ?? 0,
-  });
-};
-
-export const trackColumnExtractViaShortcut = (
-  query,
-  stageIndex,
-  extraction,
-  question,
-) => {
-  trackSchemaEvent("question", {
-    event: "column_extract_via_shortcut",
-    custom_expressions_used: Lib.functionsUsedByExtraction(
-      query,
-      stageIndex,
-      extraction,
-    ),
-    database_id: Lib.databaseID(query),
-    question_id: question?.id() ?? 0,
-  });
-};
-
-export const trackColumnExtractViaPlusModal = (
-  query,
-  stageIndex,
-  extraction,
-  question,
-) => {
-  trackSchemaEvent("question", {
-    event: "column_extract_via_plus_modal",
-    custom_expressions_used: Lib.functionsUsedByExtraction(
-      query,
-      stageIndex,
-      extraction,
-    ),
-    database_id: Lib.databaseID(query),
-    question_id: question?.id() ?? 0,
-  });
-};
-
 export const trackFirstNonTableChartGenerated = (card) => {
   trackSimpleEvent({
     event: "chart_generated",
     event_detail: card.display,
+  });
+};
+
+export const trackCardBookmarkAdded = (card) => {
+  trackSimpleEvent({
+    event: "bookmark_added",
+    event_detail: card.type,
+    triggered_from: "qb_action_panel",
   });
 };

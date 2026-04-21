@@ -4,12 +4,16 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
-import { parseDataUri, removeAllChildren } from "metabase/lib/dom";
-import { connect } from "metabase/lib/redux";
-import { getLogoUrl } from "metabase-enterprise/settings/selectors";
+import { parseDataUri } from "metabase/utils/data-url";
+import { connect } from "metabase/utils/redux";
+import {
+  getIsDefaultMetabaseLogo,
+  getLogoUrl,
+} from "metabase-enterprise/settings/selectors";
 
 const mapStateToProps = (state) => ({
   url: getLogoUrl(state),
+  isDefaultMetabaseLogo: getIsDefaultMetabaseLogo(state),
 });
 
 class LogoIcon extends Component {
@@ -42,13 +46,19 @@ class LogoIcon extends Component {
     }
   }
 
-  loadImage(url) {
-    if (this.xhr) {
-      this.xhr.abort();
-      this.xhr = null;
+  componentWillUnmount() {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+  }
+
+  async loadImage(url) {
+    if (this.abortController) {
+      this.abortController.abort();
     }
 
-    removeAllChildren(this._container);
+    this._container.replaceChildren();
 
     const parsed = parseDataUri(url);
     if (parsed) {
@@ -65,33 +75,41 @@ class LogoIcon extends Component {
         this.loadImageFallback(url);
       }
     } else {
-      const xhr = (this.xhr = new XMLHttpRequest());
-      xhr.open("GET", url);
-      xhr.onload = () => {
-        if (xhr.status < 200 || xhr.status >= 300) {
+      this.abortController = new AbortController();
+      try {
+        const response = await fetch(url, {
+          signal: this.abortController.signal,
+        });
+
+        if (!response.ok) {
+          this.loadImageFallback(url);
           return;
         }
-        const svg =
-          xhr.responseXML && xhr.responseXML.getElementsByTagName("svg")[0];
+
+        const text = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, "image/svg+xml");
+        const svg = doc.getElementsByTagName("svg")[0];
+
         if (svg) {
           svg.setAttribute("fill", "currentcolor");
           this.updateSize(svg);
 
-          removeAllChildren(this._container);
+          this._container.replaceChildren();
           this._container.appendChild(svg);
         } else {
           this.loadImageFallback(url);
         }
-      };
-      xhr.onerror = () => {
-        this.loadImageFallback(url);
-      };
-      xhr.send();
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          this.loadImageFallback(url);
+        }
+      }
     }
   }
 
   loadImageFallback(url) {
-    removeAllChildren(this._container);
+    this._container.replaceChildren();
 
     const img = document.createElement("img");
     img.src = url;
@@ -120,7 +138,13 @@ class LogoIcon extends Component {
   }
 
   render() {
-    const { dark, style = {}, height, className } = this.props;
+    const {
+      dark,
+      style = {},
+      height,
+      className,
+      isDefaultMetabaseLogo,
+    } = this.props;
 
     return (
       <span
@@ -128,7 +152,11 @@ class LogoIcon extends Component {
         className={cx(
           "Icon",
           CS.textCentered,
-          { [CS.textBrand]: !dark },
+          // If using the Metabase logo, use the non-whitelabeled Metabase brand color.
+          {
+            [isDefaultMetabaseLogo ? CS.textMetabaseBrand : CS.textBrand]:
+              !dark,
+          },
           { [CS.textWhite]: dark },
           className,
         )}
@@ -142,4 +170,5 @@ class LogoIcon extends Component {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps)(LogoIcon);

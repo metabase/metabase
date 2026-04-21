@@ -6,9 +6,9 @@ import { DatabaseConnectionHealthInfo } from "metabase/admin/databases/component
 import { useListDatabasesQuery } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Icon, Menu, Text, UnstyledButton } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database, DatabaseId } from "metabase-types/api";
 
@@ -92,7 +92,6 @@ const DestinationDatabasesListItem = ({
         <DatabaseConnectionHealthInfo
           databaseId={database.id}
           displayText="tooltip"
-          data-testid="destination-db-health-info"
         />
         <Text>{database.name}</Text>
       </Flex>

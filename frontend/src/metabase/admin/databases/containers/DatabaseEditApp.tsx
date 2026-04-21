@@ -4,25 +4,29 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useGetDatabaseQuery } from "metabase/api";
-import Breadcrumbs from "metabase/common/components/Breadcrumbs";
+import {
+  useGetDatabaseQuery,
+  useGetDatabaseSettingsAvailableQuery,
+} from "metabase/api";
+import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import title from "metabase/hoc/Title";
-import { connect, useSelector } from "metabase/lib/redux";
+import { ReturnToSetupGuideModal } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideModal";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/embedding-hub/constants";
+import { usePageTitle } from "metabase/hooks/use-page-title";
 import {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
+  PLUGIN_TABLE_EDITING,
+  PLUGIN_WORKSPACES,
+  PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Divider, Flex } from "metabase/ui";
-import type {
-  DatabaseData,
-  DatabaseId,
-  Database as DatabaseType,
-} from "metabase-types/api";
+import { connect, useSelector } from "metabase/utils/redux";
+import type { DatabaseId, Database as DatabaseType } from "metabase-types/api";
 
 import { DatabaseConnectionInfoSection } from "../components/DatabaseConnectionInfoSection";
 import { DatabaseDangerZoneSection } from "../components/DatabaseDangerZoneSection";
@@ -54,7 +58,11 @@ function DatabaseEditAppInner({
   const isModelPersistenceEnabled = useSetting("persisted-models-enabled");
 
   const databaseId = parseInt(params.databaseId, 10);
+  const fromEmbeddingSetupGuide = new URLSearchParams(
+    window.location.search,
+  ).has(RETURN_TO_SETUP_GUIDE_PARAM);
 
+  const [showReturnModal, setShowReturnModal] = useState(false);
   const [pollingInterval, setPollingInterval] = useState<number>();
   const {
     currentData: database,
@@ -62,18 +70,30 @@ function DatabaseEditAppInner({
     error,
   } = useGetDatabaseQuery({ id: databaseId }, { pollingInterval });
 
+  const { data: settingsAvailable } =
+    useGetDatabaseSettingsAvailableQuery(databaseId);
+
   useEffect(
     function pollDatabaseWhileSyncing() {
       const isSyncing = database?.initial_sync_status === "incomplete";
       setPollingInterval(isSyncing ? 2000 : undefined);
+
+      if (
+        fromEmbeddingSetupGuide &&
+        database?.initial_sync_status === "complete"
+      ) {
+        setShowReturnModal(true);
+      }
     },
-    [database?.initial_sync_status],
+    [database?.initial_sync_status, fromEmbeddingSetupGuide],
   );
 
   const crumbs = _.compact([
     [t`Databases`, "/admin/databases"],
     database?.name && [database?.name],
   ]);
+
+  usePageTitle(database?.name || "");
 
   PLUGIN_DB_ROUTING.useRedirectDestinationDatabase(database);
 
@@ -97,6 +117,10 @@ function DatabaseEditAppInner({
                 >
                   <DatabaseConnectionInfoSection database={database} />
 
+                  <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
+                    database={database}
+                  />
+
                   <DatabaseModelFeaturesSection
                     database={database}
                     isModelPersistenceEnabled={isModelPersistenceEnabled}
@@ -105,6 +129,18 @@ function DatabaseEditAppInner({
 
                   <PLUGIN_DATABASE_REPLICATION.DatabaseReplicationSection
                     database={database}
+                  />
+
+                  <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
+                    database={database}
+                    settingsAvailable={settingsAvailable?.settings}
+                    updateDatabase={updateDatabase}
+                  />
+
+                  <PLUGIN_WORKSPACES.AdminDatabaseWorkspacesSection
+                    database={database}
+                    settingsAvailable={settingsAvailable?.settings}
+                    updateDatabase={updateDatabase}
                   />
 
                   <PLUGIN_DB_ROUTING.DatabaseRoutingSection
@@ -123,6 +159,14 @@ function DatabaseEditAppInner({
         </Box>
       </ErrorBoundary>
       {children}
+      {fromEmbeddingSetupGuide && (
+        <ReturnToSetupGuideModal
+          opened={showReturnModal}
+          onClose={() => setShowReturnModal(false)}
+          title={t`Database connected!`}
+          message={t`Your database has been added and synced. Return to the setup guide to continue.`}
+        />
+      )}
     </>
   );
 }
@@ -130,7 +174,4 @@ function DatabaseEditAppInner({
 export const DatabaseEditApp = _.compose(
   withRouter,
   connect(undefined, mapDispatchToProps),
-  title(
-    ({ database }: { database: DatabaseData }) => database && database.name,
-  ),
 )(DatabaseEditAppInner);

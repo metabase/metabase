@@ -1,6 +1,6 @@
 (ns metabase.lib.equality
-  "Logic for determining whether two pMBQL queries are equal."
-  (:refer-clojure :exclude [=])
+  "Logic for determining whether two MBQL 5 queries are equal."
+  (:refer-clojure :exclude [= every? some mapv empty? not-empty get-in #?(:clj for)])
   (:require
    [medley.core :as m]
    [metabase.lib.binning :as lib.binning]
@@ -20,10 +20,11 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every? some mapv empty? not-empty get-in #?(:clj for)]]))
 
 (defmulti =
-  "Determine whether two already-normalized pMBQL maps, clauses, or other sorts of expressions are equal. The basic rule
+  "Determine whether two already-normalized MBQL 5 maps, clauses, or other sorts of expressions are equal. The basic rule
   is that two things are considered equal if they are [[clojure.core/=]], or, if they are both maps, if they
   are [[clojure.core/=]] if you ignore all qualified keyword keys besides `:lib/type`."
   {:arglists '([x y])}
@@ -103,46 +104,84 @@
     (sequential? x) ((get-method = :dispatch-type/sequential) x y)
     :else           (clojure.core/= x y)))
 
-(defn- columns-equal-by-fn-when-non-nil-in-both [f col-1 col-2]
+;; for debugging purposes the implementation of [[=]] for two columns return the "reason" things are not equal so we
+;; can log this; [[=]] is basically just (not <reason>)
+
+#?(:clj
+   (defn- faster-not=
+     "Like `clojure.core/not=`, but optimized for Long objects on JVM. When both arguments are Longs, uses `.equals`
+directly instead of going through `Numbers.equal`, which avoids extra type checking that is unnecessary when types
+are known to be the same."
+     [a b]
+     (not (if (and (instance? Long a) (instance? Long b))
+            (.equals ^Long a b)
+            (clojure.core/= a b)))))
+
+(defn- columns-not-equal-by-fn-when-non-nil-in-both
+  [f col-1 col-2]
   (let [v1 (f col-1)
         v2 (f col-2)]
-    (if (and v1 v2)
-      (clojure.core/= v1 v2)
-      true)))
+    (when (and v1 v2 (#?(:clj faster-not= :cljs not=) v1 v2))
+      f)))
 
-(defn- columns-equal-by-fn [f col-1 col-2]
-  (clojure.core/= (f col-1) (f col-2)))
+(defn- columns-not-equal-by-fn
+  [f col-1 col-2]
+  (when (#?(:clj faster-not= :cljs not=) (f col-1) (f col-2))
+    f))
 
 (defn- ignore-default-temporal-bucket [bucket]
   (when-not (clojure.core/= bucket :default)
     bucket))
 
-(defmethod = :metadata/column
+(defn- columns-not-equal-reason
+  "Returns a keyword representing the reason why two columns fail an [[=]] check (for debugging purposes)."
   [col-1 col-2]
-  (and
-   ;; two column metadatas with different IDs are NEVER equal.
-   (columns-equal-by-fn-when-non-nil-in-both :id col-1 col-2)
-   ;; from the same source.
-   (columns-equal-by-fn-when-non-nil-in-both :lib/source col-1 col-2)
-   ;; same join alias
-   (columns-equal-by-fn lib.join.util/current-join-alias col-1 col-2)
-   ;;
-   ;; columns that don't have the same binning or temporal bucketing are never the same.
-   ;;
-   ;; same binning
-   (columns-equal-by-fn :metabase.lib.field/binning col-1 col-2)
-   ;; same bucketing
-   (columns-equal-by-fn (comp ignore-default-temporal-bucket lib.temporal-bucket/raw-temporal-bucket) col-1 col-2)
-   ;; check `:inherited-temporal-unit` as well if both columns have it.
-   (columns-equal-by-fn-when-non-nil-in-both (comp ignore-default-temporal-bucket :inherited-temporal-unit) col-1 col-2)
-   ;; finally make sure they have the same `:lib/source-column-alias` (if both columns have it) or `:name` (if for
-   ;; some reason they do not)
+  (or
+    ;; two column metadatas with different IDs are NEVER equal.
+   (columns-not-equal-by-fn-when-non-nil-in-both :id col-1 col-2)
+    ;; from the same source.
+   (columns-not-equal-by-fn-when-non-nil-in-both :lib/source col-1 col-2)
+    ;; same join alias
+   (columns-not-equal-by-fn :lib/join-alias col-1 col-2)
+    ;; same FK Field (for implicitly joined columns)
+   (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-id col-1 col-2)
+   (columns-not-equal-by-fn :fk-join-alias col-1 col-2)
+    ;; TODO (Cam 9/4/25) -- not super clear that this ought to be a reason for columns to be considered different since
+    ;; `:fk-field-name` doesn't really seem to be super important... but this check seems to be needed, otherwise when
+    ;; a there are multiple remappings from Col A => Col B (e.g. in a self-join) we'll potentially accidentally match
+    ;; the wrong one. Maybe we can figure out a better way to make sure that doesn't happen.
+   (columns-not-equal-by-fn-when-non-nil-in-both :fk-field-name col-1 col-2)
+    ;;
+    ;; columns that don't have the same binning or temporal bucketing are never the same.
+    ;;
+    ;; same binning
+   (columns-not-equal-by-fn :lib/binning col-1 col-2)
+    ;; same bucketing
+   (when (columns-not-equal-by-fn (comp ignore-default-temporal-bucket lib.temporal-bucket/raw-temporal-bucket) col-1 col-2)
+     'temporal-bucket)
+    ;; check `:inherited-temporal-unit` as well if both columns have it, but only when neither column has an explicit
+    ;; temporal bucket. When both columns have the same explicit bucket (checked above), the inherited temporal unit is
+    ;; just historical metadata and shouldn't affect identity. See #70231.
+   (when (and (nil? (ignore-default-temporal-bucket (lib.temporal-bucket/raw-temporal-bucket col-1)))
+              (nil? (ignore-default-temporal-bucket (lib.temporal-bucket/raw-temporal-bucket col-2)))
+              (columns-not-equal-by-fn-when-non-nil-in-both (comp ignore-default-temporal-bucket :inherited-temporal-unit) col-1 col-2))
+     :inherited-temporal-unit)
+    ;; finally make sure they have the same `:lib/source-column-alias` (if both columns have it) or `:name` (if for
+    ;; some reason they do not)
    (let [k (m/find-first (fn [k]
                            (and (k col-1)
                                 (k col-2)))
                          [:lib/source-column-alias :name])]
      (assert k "No key common to both columns")
-     (columns-equal-by-fn k col-1 col-2))))
+     (columns-not-equal-by-fn k col-1 col-2))))
+
+(defmethod = :metadata/column
+  [col-1 col-2]
+  (let [not-equal-reason (columns-not-equal-reason col-1 col-2)]
+    (if not-equal-reason
+      (log/debugf "Columns are not equal. Reason: %s" (pr-str not-equal-reason))
+      (log/debug "Columns are equal."))
+    (not not-equal-reason)))
 
 (mu/defn- resolve-field-id-in-source-card :- ::lib.schema.metadata/column
   "Integer Field ID: get metadata from the metadata provider. If this is the first stage of the query, merge in
@@ -169,7 +208,7 @@
   ;; TODO (Cam 6/19/25) -- seems busted to be using joins that happened at ANY LEVEL previously for equality purposes
   ;; so lightly but removing this breaks stuff. We should just remove this and do smarter matching like we do
   ;; in [[plausible-matches-for-name-with-join-alias]] below.
-  ((some-fn :metabase.lib.join/join-alias :lib/original-join-alias :source-alias) column))
+  ((some-fn :lib/join-alias :lib/original-join-alias) column))
 
 (mu/defn- matching-join? :- :boolean
   [[_ref-kind {:keys [join-alias source-field source-field-name
@@ -197,7 +236,7 @@
          :name]))
 
 (defn- plausible-matches-for-name-with-join-alias [join-alias ref-name columns]
-  ;; first, look for matches for a join that came from the current stage -- `:metabase.lib.join/join-alias`; if we
+  ;; first, look for matches for a join that came from the current stage -- `:lib/join-alias`; if we
   ;; don't see any columns a match for that key, assume the join was from a previous stage and look at
   ;; `:lib/original-join-alias` instead.
   (letfn [(plausible-matches [columns]
@@ -241,11 +280,8 @@
                       columns))))]
     (when-let [columns-from-join (some (fn [k]
                                          (not-empty (filter #(= (k %) join-alias) columns)))
-                                       [:metabase.lib.join/join-alias
-                                        :lib/original-join-alias
-                                        ;; use the `:source-alias` key which was traditionally set by QP result
-                                        ;; metadata sometimes if neither one of the other keys had match(es)
-                                        :source-alias])]
+                                       [:lib/join-alias
+                                        :lib/original-join-alias])]
       (plausible-matches columns-from-join))))
 
 (mu/defn- plausible-matches-for-name :- [:maybe [:sequential ::lib.schema.metadata/column]]
@@ -361,7 +397,7 @@
     (or
      ;; try to find matches with the same join alias (which might be `nil` for both).
      ;;
-     ;; TODO (Cam 6/26/25) -- we should first try this using just the `:metabase.lib.join/join-alias` (join alias from
+     ;; TODO (Cam 6/26/25) -- we should first try this using just the `:lib/join-alias` (join alias from
      ;; this stage) and only then fall back to using `:lib/original-alias` and what not
      (when-let [matches (not-empty (filter #(clojure.core/= (column-join-alias %) join-alias) columns))]
        (if-not (next matches)
@@ -518,7 +554,7 @@
   to `needles` with the corresponding index into the `haystack`, or -1 if not found.
 
   DISCOURAGED: This is intended for use only by [[metabase.lib.js/find-column-indexes-from-legacy-refs]].
-  Other MLv2 code should use [[find-matching-column]] if the `haystack` is columns, or
+  Other Lib code should use [[find-matching-column]] if the `haystack` is columns, or
   [[find-matching-ref]] if it's refs."
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -543,7 +579,7 @@
     stage-number :- :int
     legacy-ref   :- :some
     metadatas    :- [:maybe [:sequential ::lib.schema.metadata/column]]]
-   (find-matching-column query stage-number (lib.convert/legacy-ref->pMBQL query stage-number legacy-ref) metadatas)))
+   (find-matching-column query stage-number (lib.convert/legacy-ref->mbql5 query stage-number legacy-ref) metadatas)))
 
 (defn mark-selected-columns
   "Mark `columns` as `:selected?` if they appear in `selected-columns-or-refs`. Uses fuzzy matching with

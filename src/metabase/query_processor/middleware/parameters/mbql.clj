@@ -1,7 +1,9 @@
 (ns metabase.query-processor.middleware.parameters.mbql
   "Code for handling parameter substitution in MBQL queries."
+  (:refer-clojure :exclude [every?])
   (:require
    [metabase.lib.core :as lib]
+   [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -18,7 +20,8 @@
    [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [every?]]))
 
 (set! *warn-on-reflection* true)
 
@@ -53,8 +56,9 @@
    param-value
    a-ref       :- [:or :mbql.clause/field :mbql.clause/expression]]
   (cond
-    ;; for `id` or `category` type params look up the base-type of the Field and see if it's a number or not.
-    ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
+    ;; LEGACY: :id and :category are widget-types misused as parameter types.
+    ;; New code uses explicit types, but stored parameters may still have these.
+    ;; Infer numeric vs string from the target field. See QUE2-326.
     (and (#{:id :category} param-type)
          (let [base-type (or (field-type query stage-path a-ref)
                              (expression-type query a-ref))]
@@ -73,9 +77,9 @@
   [query                                                             :- ::lib.schema/query
    stage-path                                                        :- ::lib.walk/path
    {param-type :type, param-value :value, target :target, :as param} :- ::lib.schema.parameter/parameter]
-  (let [a-ref (lib.util.match/match-one target
-                #{:field :expression}
-                (lib/->pMBQL &match))]
+  (let [a-ref (lib.util.match/match-lite target
+                [#{:field :expression} & _]
+                (lib/->mbql5 &match))]
     (cond
       (params.ops/operator? param-type)
       (params.ops/to-clause param)
@@ -112,10 +116,10 @@
    target-column :- [:or ::lib.schema.id/field :string]
    temporal-unit :- ::lib.schema.temporal-bucketing/unit
    new-unit      :- ::lib.schema.temporal-bucketing/unit]
-  (lib.util.match/replace stage
-    [(tag :guard #{:field :expression})
-     (opts :guard #(= temporal-unit (:temporal-unit %)))
-     (_id-or-name :guard #(= target-column %))]
+  (lib.util.match/replace-lite stage
+    [#{:field :expression}
+     (opts :guard (= (:temporal-unit opts) temporal-unit))
+     (id-or-name :guard (= id-or-name target-column))]
     (lib/with-temporal-bucket &match new-unit)))
 
 (mu/defn- update-breakout-unit :- ::lib.schema/stage
@@ -150,7 +154,7 @@
 
         ;; ignore `:template-tag` parameters... these may be lying around if we had a source card that was native and
         ;; then replaced it with an MBQL source card.
-        (lib.util.match/match-one target :template-tag &match)
+        (lib.util.match/match-lite target [:template-tag & _] &match)
         (do
           (log/warnf "Ignoring :template-tag parameter %s because this is an MBQL stage (path = %s)"
                      (pr-str target)
@@ -159,14 +163,14 @@
 
         (not target)
         (do
-          (log/infof "Ignoring parameter %s because it has no target" (pr-str param))
+          (log/debugf "Ignoring parameter %s because it has no target" (pr-str param))
           (recur stage more-params))
 
         (or (nil? param-value)
             (and (sequential? param-value)
                  (every? nil? param-value)))
         (do
-          (log/infof "Ignoring parameter %s because it has no value" (pr-str param-value))
+          (log/debugf "Ignoring parameter %s because it has no value" (pr-str param))
           (recur stage more-params))
 
         (= (:type param) :temporal-unit)
@@ -176,5 +180,5 @@
         :else
         (let [filter-clause (or (build-filter-clause query stage-path (assoc param :value param-value))
                                 (log/warnf "build-filter-clause did not return a valid clause for param %s" (pr-str param)))
-              stage'        (lib/add-filter-to-stage stage filter-clause)]
+              stage'        (lib.filter/add-filter-to-stage stage filter-clause)]
           (recur stage' more-params))))))

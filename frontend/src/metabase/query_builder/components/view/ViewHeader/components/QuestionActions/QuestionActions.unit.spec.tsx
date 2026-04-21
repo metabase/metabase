@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
 import { createMockEntitiesState } from "__support__/store";
 import {
@@ -11,7 +12,11 @@ import {
   within,
 } from "__support__/ui";
 import * as modelActions from "metabase/query_builder/actions/models";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { MODAL_TYPES } from "metabase/querying/constants";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
@@ -21,10 +26,6 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { QuestionActions } from "./QuestionActions";
 
@@ -68,6 +69,8 @@ function setup({
     key: "turn_into_model_modal",
     value: hasAcknowledgedModelModal,
   });
+
+  setupListNotificationEndpoints({ card_id: card.id }, []);
 
   const state = createMockState({
     entities: createMockEntitiesState({
@@ -119,7 +122,7 @@ describe("QuestionActions", () => {
     },
   );
 
-  describe("model query & metadata", () => {
+  describe("model query & columns", () => {
     it("should allow to edit the model with write data & collection permissions", async () => {
       const { onSetQueryBuilderMode } = setup({
         card: createMockCard({
@@ -142,7 +145,7 @@ describe("QuestionActions", () => {
       await userEvent.click(screen.getByText("Edit metadata"));
       await waitFor(() => {
         expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
-          datasetEditorTab: "metadata",
+          datasetEditorTab: "columns",
         });
       });
     });

@@ -2,6 +2,9 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { displayNameForColumn } from "metabase/utils/formatting";
+import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
+import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
   COLLAPSED_ROWS_SETTING,
   COLUMN_FORMATTING_SETTING,
@@ -11,18 +14,20 @@ import {
   COLUMN_SORT_ORDER_DESC,
   COLUMN_SPLIT_SETTING,
   isPivotGroupColumn,
-} from "metabase/lib/data_grid";
-import { displayNameForColumn } from "metabase/lib/formatting";
-import { ChartSettingIconRadio } from "metabase/visualizations/components/settings/ChartSettingIconRadio";
-import { ChartSettingsTableFormatting } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
+} from "metabase/visualizations/lib/data_grid";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
+import {
+  getDimensionReferenceWithoutBaseType,
+  isDimensionReferenceWithOptions,
+} from "metabase-lib/v1/references";
 import { isDimension } from "metabase-lib/v1/types/utils/isa";
 import type {
   Card,
   DatasetColumn,
   DatasetData,
+  DimensionReference,
   PivotTableColumnSplitSetting,
   RawSeries,
   Series,
@@ -151,7 +156,7 @@ export const settings = {
       return t`Show row totals`;
     },
     widget: "toggle",
-    default: true,
+    getDefault: () => true,
     inline: true,
   },
   "pivot.show_column_totals": {
@@ -162,7 +167,7 @@ export const settings = {
       return t`Show column totals`;
     },
     widget: "toggle",
-    default: true,
+    getDefault: () => true,
     inline: true,
   },
   "pivot.condense_duplicate_totals": {
@@ -176,7 +181,7 @@ export const settings = {
       return t`Hide additional total elements if the totals are the same`;
     },
     widget: "toggle",
-    default: true,
+    getDefault: () => true,
     inline: true,
     getHidden: (
       _series: RawSeries,
@@ -195,7 +200,6 @@ export const settings = {
       return t`Conditional Formatting`;
     },
     widget: ChartSettingsTableFormatting,
-    default: [],
     getDefault: (
       [{ data }]: [{ data: DatasetData }],
       settings: VisualizationSettings,
@@ -265,8 +269,11 @@ export const _columnSettings = {
     },
     widget: ChartSettingIconRadio,
     inline: true,
-    borderBottom: true,
-    props: {
+    getWrapperStyle: () => ({
+      paddingBottom: "1rem",
+      borderBottom: `1px solid var(--mb-color-border)`,
+    }),
+    getProps: () => ({
       options: [
         {
           iconName: "arrow_up",
@@ -277,7 +284,7 @@ export const _columnSettings = {
           value: COLUMN_SORT_ORDER_DESC,
         },
       ],
-    },
+    }),
     getHidden: ({ source }: { source: DatasetColumn["source"] }) =>
       source === "aggregation",
   },
@@ -303,7 +310,13 @@ export const _columnSettings = {
         .slice(0, -1)
         .some(
           (row) =>
-            _.isEqual(row, column.name) || _.isEqual(row, column.field_ref),
+            _.isEqual(row, column.name) ||
+            (Array.isArray(row) &&
+              column.field_ref != null &&
+              _.isEqual(
+                getFieldRefForComparison(row),
+                getFieldRefForComparison(column.field_ref),
+              )),
         );
     },
     getHidden: (
@@ -326,3 +339,14 @@ export const _columnSettings = {
     getDefault: displayNameForColumn,
   },
 };
+
+/*
+  When comparing field refs for pivot viz settings, ignore `base-type`.
+  Sometimes it's present, sometimes it's not. New pivot settings use column
+  names only and do not depend on field refs.
+ */
+function getFieldRefForComparison(fieldRef: DimensionReference) {
+  return isDimensionReferenceWithOptions(fieldRef)
+    ? getDimensionReferenceWithoutBaseType(fieldRef)
+    : fieldRef;
+}

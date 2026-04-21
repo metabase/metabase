@@ -15,24 +15,26 @@ import {
   StringColumn,
 } from "__support__/visualizations";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
+import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
-import PivotTable from "metabase/visualizations/visualizations/PivotTable";
+import { PivotTable } from "metabase/visualizations/visualizations/PivotTable";
 import { PIVOT_TABLE_MOCK_DATA } from "metabase/visualizations/visualizations/PivotTable/pivot-table-test-mocks";
 import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import * as TABLE_MOCK_DATA from "metabase/visualizations/visualizations/Table/stories-data";
 import {
   createMockCard,
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import {
   PublicOrEmbeddedQuestionView,
@@ -45,6 +47,8 @@ registerVisualization(PivotTable);
 registerVisualization(SmartScalar);
 // @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(Table);
 
 export default {
   title: "App/Embed/PublicOrEmbeddedQuestionView",
@@ -191,7 +195,7 @@ export const TransparentThemeDefault = {
 
 function LightBackgroundDecorator(Story: StoryFn) {
   return (
-    <Box bg="#ddd" h="100%">
+    <Box bg="background-primary" h="100%">
       <Story />
     </Box>
   );
@@ -282,6 +286,10 @@ export const SmartScalarDarkTheme = {
 };
 
 export const SmartScalarLightThemeTooltip = {
+  parameters: {
+    loki: { skip: true },
+  },
+
   render: Template,
 
   args: {
@@ -334,6 +342,10 @@ export const SmartScalarLightThemeTooltip = {
 };
 
 export const SmartScalarDarkThemeTooltip = {
+  parameters: {
+    loki: { skip: true },
+  },
+
   render: Template,
 
   args: {
@@ -343,6 +355,25 @@ export const SmartScalarDarkThemeTooltip = {
 
   decorators: [NarrowContainer],
   play: SmartScalarLightThemeTooltip.play,
+};
+
+export const TableLightTheme = {
+  render: Template,
+
+  args: {
+    ...defaultArgs,
+    titled: false,
+    card: createMockCard({
+      id: getNextId(),
+      display: "table",
+      ...(TABLE_MOCK_DATA.variousColumnSettings[0].card as any),
+    }),
+    result: createMockDataset({
+      data: createMockDatasetData(
+        TABLE_MOCK_DATA.variousColumnSettings[0].data as any,
+      ),
+    }),
+  },
 };
 
 function NarrowContainer(Story: StoryFn) {

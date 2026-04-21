@@ -42,7 +42,7 @@ describe("issue 13504", () => {
 
     cy.findByTestId("qb-filters-panel").within(() => {
       cy.findByText("Total is greater than 50").should("be.visible");
-      cy.findByText("Created At: Month is Mar 1–31, 2023").should("be.visible");
+      cy.findByText("Created At: Month is Mar 1–31, 2026").should("be.visible");
     });
   });
 });
@@ -166,11 +166,11 @@ describe("issue 17524", () => {
 
       cy.get("polygon");
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.icon("play").last().click();
 
       cy.get("polygon");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").should("not.exist");
     });
   });
@@ -324,7 +324,7 @@ describe("issue 18061", () => {
       addFilter("Twitter");
 
       cy.wait("@dashCardQuery");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Something went wrong").should("not.exist");
 
       cy.location("search").should("eq", "?category=Twitter");
@@ -335,9 +335,9 @@ describe("issue 18061", () => {
     it("should handle data sets that contain only null values for longitude/latitude (metabase#18061-3)", () => {
       H.visitAlias("@publicLink");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18061D");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18061");
       cy.get("[data-element-id=pin-map]");
 
@@ -435,7 +435,7 @@ describe("issue 18776", () => {
 
   it("should not freeze when opening a timeseries chart with sparse data and without the X-axis", () => {
     H.visitQuestionAdhoc(questionDetails);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
   });
 });
@@ -552,7 +552,7 @@ describe("issue 21452", () => {
     H.cartesianChartCircle().first().trigger("mousemove");
 
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         {
           color: "#88BF4D",
@@ -591,7 +591,7 @@ describe("issue 21504", () => {
     H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
-      cy.findByText("January 2025").should("be.visible");
+      cy.findByText("January 2028").should("be.visible");
     });
   });
 });
@@ -645,10 +645,10 @@ describe("issue 21665", () => {
       H.editDashboard();
     });
 
-    H.findDashCardAction(
-      H.getDashboardCard(0),
-      "Visualize another way",
-    ).click();
+    H.getDashboardCard(0)
+      .realHover({ scrollBehavior: "bottom" })
+      .findByLabelText("Visualize another way")
+      .click();
     H.modal().within(() => {
       H.switchToAddMoreData();
       H.selectDataset(Q2.name);
@@ -713,7 +713,7 @@ describe("issue 22527", { tags: "@skip" }, () => {
       cy.findByTextEnsureVisible("Data").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Bubble size").parent().contains("Select a field").click();
 
     H.popover().contains(/size/i).click();
@@ -739,7 +739,7 @@ describe("issue 25007", () => {
   };
 
   const clickLineDot = ({ index } = {}) => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.cartesianChartCircle().eq(index).click({ force: true });
   };
 
@@ -751,7 +751,7 @@ describe("issue 25007", () => {
   it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
     clickLineDot({ index: 1 });
-    H.echartsTooltip().findByText("May 1–7, 2022");
+    H.echartsTooltip().should("contain", "May 4–10, 2025");
   });
 });
 
@@ -783,11 +783,11 @@ describe("issue 25156", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.echartsContainer()
-      .should("contain", "2022")
-      .and("contain", "2023")
-      .and("contain", "2023")
-      .and("contain", "2024")
-      .and("contain", "2025");
+      .should("contain", "2025")
+      .and("contain", "2026")
+      .and("contain", "2026")
+      .and("contain", "2027")
+      .and("contain", "2028");
   });
 });
 
@@ -916,53 +916,12 @@ describe("issue 27279", () => {
   });
 });
 
-describe("issue 27427", () => {
-  const questionDetails = {
-    name: "27427",
-    native: {
-      query:
-        "select 1 as sortorder, year(current_timestamp), 1 v1, 2 v2\nunion all select 1, year(current_timestamp)-1, 1, 2",
-      "template-tags": {},
-    },
-    display: "bar",
-    visualization_settings: {
-      "graph.dimensions": ["EXTRACT(YEAR FROM CURRENT_TIMESTAMP)"],
-      "graph.metrics": ["V1", "V2"],
-      "graph.series_order_dimension": null,
-      "graph.series_order": null,
-    },
-  };
-
-  function assertStaticVizRender(questionDetails, callback) {
-    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.request({
-        method: "GET",
-        url: `/api/pulse/preview_card/${id}`,
-        failOnStatusCode: false,
-      }).then((response) => {
-        callback(response);
-      });
-    });
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("static-viz should not fail if there is unused returned column: 'divide by zero' (metabase#27427)", () => {
-    assertStaticVizRender(questionDetails, ({ status, body }) => {
-      expect(status).to.eq(200);
-      expect(body).to.not.include(
-        "An error occurred while displaying this card.",
-      );
-    });
-  });
-});
+// Test for issue 27427 (static-viz with unused returned column)
+// has been moved to backend test in metabase.channel.render.card-test
 
 const addCountGreaterThan2Filter = () => {
   H.openNotebook();
-  // eslint-disable-next-line no-unsafe-element-filtering
+  // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("action-buttons").last().button("Filter").click();
   H.popover().findByText("Count").click();
   H.selectFilterOperator("Greater than");
@@ -1223,7 +1182,7 @@ describe("issue 49160", () => {
 
     cy.findByLabelText("Rating").click();
     H.echartsContainer().findByText("200").should("be.visible");
-    H.echartsContainer().findByText("TOTAL").should("be.visible");
+    H.echartsContainer().findByText("Total").should("be.visible");
   });
 
   it("pie chart should work when instance colors have overrides", () => {
@@ -1280,5 +1239,44 @@ describe("issue 54271", () => {
 
     cy.log("no clear expectations but the app should not crash");
     H.assertQueryBuilderRowCount(1076);
+  });
+});
+
+describe("issue 63671", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    H.createQuestion(
+      {
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              PRODUCTS.CREATED_AT,
+              {
+                "temporal-unit": "year",
+              },
+            ],
+          ],
+          filter: [
+            "between",
+            ["field", PRODUCTS.CREATED_AT, null],
+            "2028-01-01",
+            "2028-12-31",
+          ],
+        },
+        display: "bar",
+      },
+      { visitQuestion: true },
+    );
+  });
+
+  it("should not show an extra value on bar charts when there is only value on the x axis (metabase#63671)", () => {
+    cy.findByTestId("query-visualization-root")
+      .findByText("2028")
+      .should("have.length", 1);
   });
 });

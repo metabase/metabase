@@ -1,10 +1,11 @@
 import fetchMock from "fetch-mock";
 
 import type { Card, Dashboard, DashboardCard } from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 import { createMockDataset } from "metabase-types/api/mocks";
 
 export function setupEmbedDashboardEndpoints(
-  uuidOrToken: string,
+  uuidOrToken: EntityToken,
   dashboard: Dashboard,
   dashcards?: DashboardCard[],
 ) {

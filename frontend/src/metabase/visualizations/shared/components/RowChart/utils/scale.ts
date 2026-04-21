@@ -2,8 +2,8 @@ import type { ContinuousDomain } from "@visx/scale";
 import { scaleBand, scaleLinear, scaleLog, scalePower } from "@visx/scale";
 import type { ScaleContinuousNumeric } from "d3-scale";
 
+import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import type { ValueFormatter } from "metabase/visualizations/shared/types/format";
-import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
 import type {
   ContinuousScaleType,
   Range,
@@ -88,7 +88,7 @@ export const addScalePadding = (
 ) => {
   const [start, end] = scale.range();
 
-  return scale.range([start + paddingStart, end - paddingEnd]);
+  return scale.copy().range([start + paddingStart, end - paddingEnd]);
 };
 
 const getTickInfo = (

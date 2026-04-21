@@ -13,6 +13,7 @@
   "org.apache.hadoop"                {:resource "apache2_0.txt"}
   "org.clojure"                      {:resource "EPL.txt"}
   "org.eclipse.jetty"                {:resource "apache2_0.txt"}
+  "org.eclipse.jetty.ee"             {:resource "apache2_0.txt"}
   "org.opensaml"                     {:resource "apache2_0.txt"}
   "org.ow2.asm"                      {:resource "BSD.txt"}
   "xalan"                            {:resource "apache2_0.txt"}}
@@ -23,6 +24,9 @@
  "dev.failsafe"                {"failsafe" {:resource "LICENSE"}}
  "colorize"                    {"colorize" {:resource "EPL.txt"}}
  "com.github.jnr"              {"jffi$native" {:resource "apache2_0.txt"}}
+ "com.google.api"              {"gax" {:resource "BSD.txt"}
+                                "gax-grpc" {:resource "BSD.txt"}
+                                "gax-httpjson" {:resource "BSD.txt"}}
  "com.google.api-client"       {"google-api-client" {:resource "apache2_0.txt"}}
  "com.google.auto.value"       {"auto-value-annotations" {:resource "apache2_0.txt"}}
  "com.google.http-client"      {"google-http-client"          {:resource "apache2_0.txt"}
@@ -54,11 +58,14 @@
                                 "shib-security" {:resource "apache2_0.txt"}
                                 "shib-velocity" {:resource "apache2_0.txt"}}
  "net.jcip"                    {"jcip-annotations" {:resource "CC_2_5.txt"}}
+ "net.openhft"                 {"zero-allocation-hashing" {:resource "apache2_0.txt"}}
  "net.redhogs.cronparser"      {"cron-parser-core" {:resource "MIT.txt"}}
  "net.shibboleth.utilities"    {"java-support" {:resource "apache2_0.txt"}}
  "net.thisptr"                 {"jackson-jq" {:resource "apache2_0.txt"}}
  "org.antlr"                   {"antlr-runtime"  {:resource "BSD.txt"}
                                 "antlr4-runtime" {:resource "BSD.txt"}}
+ "org.codehaus.mojo"           {"animal-sniffer-annotations" {:resource "MIT.txt"}}
+ "org.eclipse.jgit"            {"org.eclipse.jgit" {:resource "BSD.txt"}}
  "org.eclipse.jetty"           {"jetty-webapp" {:resource "EPL.txt"}}
  "org.eclipse.jetty.toolchain" {"jetty-jakarta-servlet-api" {:resource "EPL.txt"}}
  "org.eclipse.jetty.ee9.websocket" {"jetty-ee9-websocket-jetty-api" {:resource "EPL.txt"}
@@ -81,4 +88,5 @@
  "org.openid4java"             {"openid4java-nodeps" {:resource "apache2_0.txt"}}
  "org.quartz-scheduler"        {"quartz" {:resource "apache2_0.txt"}}
  "org.slf4j"                   {"slf4j-api" {:resource "MIT.txt"}}
- "stencil"                     {"stencil" {:resource "EPL.txt"}}}
+ "stencil"                     {"stencil" {:resource "EPL.txt"}}
+ "techascent"                  {"tech.config" {:resource "MIT.txt"}}}

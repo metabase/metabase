@@ -8,7 +8,6 @@ export const selectOverrides = {
   Select: Select.extend({
     defaultProps: {
       size: "md",
-      maxDropdownHeight: 512,
       withScrollArea: false,
       allowDeselect: false,
       inputWrapperOrder: ["label", "description", "input", "error"],
@@ -18,7 +17,7 @@ export const selectOverrides = {
       clearButtonProps: {
         // eslint-disable-next-line ttag/no-module-declaration
         "aria-label": t`Clear`,
-        color: "text-dark",
+        color: "text-primary",
         className: S.SelectClearButton,
       },
       comboboxProps: {

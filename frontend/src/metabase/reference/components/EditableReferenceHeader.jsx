@@ -4,12 +4,10 @@ import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import InputBlurChange from "metabase/common/components/InputBlurChange";
+import { Button } from "metabase/common/components/Button";
 import L from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
+import { Ellipsified, Icon, TextInputBlurChange } from "metabase/ui";
 
 import S from "./ReferenceHeader.module.css";
 
@@ -45,7 +43,7 @@ const EditableReferenceHeader = ({
         }
       >
         {isEditing && name === "Details" ? (
-          <InputBlurChange
+          <TextInputBlurChange
             className={S.headerTextInput}
             type="text"
             name={
@@ -64,7 +62,7 @@ const EditableReferenceHeader = ({
             <Ellipsified
               key="1"
               className={!headerLink && CS.flexFull}
-              tooltipMaxWidth="auto"
+              tooltipProps={{ w: "auto" }}
             >
               {name === "Details"
                 ? hasDisplayName
@@ -84,7 +82,12 @@ const EditableReferenceHeader = ({
           ]
         )}
         {user && user.is_superuser && !isEditing && (
-          <Button icon="pencil" style={{ fontSize: 14 }} onClick={startEditing}>
+          <Button
+            icon="pencil"
+            style={{ fontSize: 14 }}
+            type="button"
+            onClick={startEditing}
+          >
             {t`Edit`}
           </Button>
         )}
@@ -108,4 +111,5 @@ EditableReferenceHeader.propTypes = {
   nameFormField: PropTypes.object,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(EditableReferenceHeader);

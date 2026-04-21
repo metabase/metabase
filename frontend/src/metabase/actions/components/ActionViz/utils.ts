@@ -1,14 +1,15 @@
 import _ from "underscore";
 
 import { isImplicitDeleteAction } from "metabase/actions/utils";
-import { isNotNull } from "metabase/lib/types";
-import { isEmpty } from "metabase/lib/validate";
+import { isNotNull } from "metabase/utils/types";
+import { isEmpty } from "metabase/utils/validate";
 import type {
   ActionDashboardCard,
   ActionParameterValue,
   ActionParametersMapping,
   ParameterId,
   ParameterValueOrArray,
+  ParameterValuesMap,
   ParametersForActionExecution,
   WritebackAction,
   WritebackParameter,
@@ -17,13 +18,13 @@ import type {
 type ActionParameterTuple = [ParameterId, ActionParameterValue];
 
 function formatParameterValue(value: ParameterValueOrArray) {
-  return Array.isArray(value) ? value[0] : value;
+  return Array.isArray(value) ? value.filter(isNotNull)[0] : value;
 }
 
 function prepareParameter(
   mapping: ActionParametersMapping,
   action: WritebackAction,
-  parameterValues: { [id: string]: ParameterValueOrArray },
+  parameterValues: ParameterValuesMap,
 ): ActionParameterTuple | undefined {
   if (!action?.parameters?.length) {
     return;
@@ -46,7 +47,7 @@ function prepareParameter(
 
 export function getDashcardParamValues(
   dashcard: ActionDashboardCard,
-  parameterValues: { [id: string]: ParameterValueOrArray },
+  parameterValues: ParameterValuesMap,
 ): ParametersForActionExecution {
   if (
     !dashcard.action ||

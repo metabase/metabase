@@ -12,7 +12,7 @@
    [metabase.formatter.core :as formatter]
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.pulse.render.test-util :as render.tu]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]))
@@ -20,7 +20,7 @@
 (use-fixtures :each
   (fn warn-possible-rebuild
     [thunk]
-    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n"
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `bun run build-static-viz`\n"
       (thunk))))
 
 (def ^:private pacific-tz "America/Los_Angeles")
@@ -541,6 +541,106 @@
             (is (= (map :key (get-in funnel-card [:visualization_settings :funnel.rows]))
                    section-labels))))))))
 
+;; Test data with numeric first column and text second column
+;; This matches the bug scenario: SELECT 100 as val, 'step 1' as step
+(def ^:private funnel-numeric-first-rows
+  [[100 "homepage"]
+   [50 "cart"]
+   [25 "checkout"]
+   [10 "purchase"]])
+
+(tx/defdataset funnel-numeric-first-data
+  [["stages"
+    [{:field-name "val", :base-type :type/Integer}
+     {:field-name "step", :base-type :type/Text}]
+    funnel-numeric-first-rows]])
+
+(deftest render-funnel-with-numeric-first-column-test
+  (testing "Static-viz Funnel Chart auto-detects dimension/metric when metric column is first (#28568)"
+    (mt/dataset funnel-numeric-first-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           :fields       [[:field (mt/id :stages :val)]
+                                          [:field (mt/id :stages :step)]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings {}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [row-names  (into #{} (map second funnel-numeric-first-rows))
+                doc        (render.tu/render-card-as-hickory! card-id)
+                pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+                labels     (->> doc
+                                (hik.s/select (hik.s/tag :tspan))
+                                (mapv (comp first :content))
+                                (filter row-names))]
+            (is (not (render-error? pulse-body)))
+            (is (seq labels) "Dimension labels (step names) should appear in the rendered funnel"))))))
+  (testing "Explicit funnel.dimension setting is honored even when metric is first"
+    (mt/dataset funnel-numeric-first-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           :fields       [[:field (mt/id :stages :val)]
+                                          [:field (mt/id :stages :step)]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings {:funnel.dimension "STEP"}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [row-names  (into #{} (map second funnel-numeric-first-rows))
+                doc        (render.tu/render-card-as-hickory! card-id)
+                pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+                labels     (->> doc
+                                (hik.s/select (hik.s/tag :tspan))
+                                (mapv (comp first :content))
+                                (filter row-names))]
+            (is (not (render-error? pulse-body)))
+            (is (seq labels) "Dimension labels should appear when funnel.dimension is set")))))))
+
+;; Test data with 3 columns where dimension is at index 2
+;; This matches the bug scenario: SELECT 'foo' as col, 100 as val, 'step 1' as step
+(def ^:private funnel-three-col-rows
+  [["foo" 100 "homepage"]
+   ["bar" 50  "cart"]
+   ["baz" 25  "checkout"]
+   ["qux" 10  "purchase"]])
+
+(tx/defdataset funnel-three-col-data
+  [["stages"
+    [{:field-name "col", :base-type :type/Text}
+     {:field-name "val", :base-type :type/Integer}
+     {:field-name "step", :base-type :type/Text}]
+    funnel-three-col-rows]])
+
+(deftest render-funnel-with-three-columns-explicit-settings-test
+  (testing "Static-viz Funnel Chart works when dimension is at index 2 with explicit funnel.dimension and funnel.metric"
+    (mt/dataset funnel-three-col-data
+      (let [funnel-query {:database (mt/id)
+                          :type     :query
+                          :query
+                          {:source-table (mt/id :stages)
+                           :fields       [[:field (mt/id :stages :col)]
+                                          [:field (mt/id :stages :val)]
+                                          [:field (mt/id :stages :step)]]}}
+            funnel-card  {:display       :funnel
+                          :dataset_query funnel-query
+                          :visualization_settings {:funnel.dimension "STEP"
+                                                   :funnel.metric    "VAL"}}]
+        (mt/with-temp [:model/Card {card-id :id} funnel-card]
+          (let [row-names  (into #{} (map #(nth % 2) funnel-three-col-rows))
+                doc        (render.tu/render-card-as-hickory! card-id)
+                pulse-body (hik.s/select (hik.s/class "pulse-body") doc)
+                labels     (->> doc
+                                (hik.s/select (hik.s/tag :tspan))
+                                (mapv (comp first :content))
+                                (filter row-names))]
+            (is (not (render-error? pulse-body))
+                "3-column funnel with explicit dimension/metric should not error")
+            (is (seq labels)
+                "Dimension labels (step names) should appear in the rendered funnel")))))))
+
 (deftest render-pie-chart-test
   (testing "The static-viz pie chart renders correctly."
     (mt/dataset test-data
@@ -570,7 +670,7 @@
             (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
-                                                   :total-els-text     #{"TOTAL"}}]
+                                                   :total-els-text     #{"Total"}}]
                                                  [card-b-doc "Renders legend even if disabled in viz-settings, so that static pie charts are legible, but does not render total if it is disabled."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
@@ -581,7 +681,7 @@
                     slice-elements  (->> (hik.s/select (hik.s/tag :path) doc)
                                          (map #(get-in % [:attrs :fill]))
                                          set)
-                    total-elements  (->> (hik.s/select (hik.s/find-in-text #"TOTAL") doc)
+                    total-elements  (->> (hik.s/select (hik.s/find-in-text #"Total") doc)
                                          (map (fn [el] (-> el :content first)))
                                          set)]
                 (testing test-str
@@ -589,23 +689,6 @@
                          {:legend-els-colours legend-elements
                           :slice-els-colours  slice-elements
                           :total-els-text     total-elements})))))))))))
-
-(deftest render-progress
-  (let [col [{:name          "NumPurchased",
-              :display_name  "NumPurchased",
-              :base_type     :type/Integer
-              :semantic_type nil}]
-        render  (fn [rows]
-                  (body/render :progress :inline pacific-tz
-                               render.tu/test-card
-                               nil
-                               {:cols col :rows rows}))]
-    (testing "Renders without error"
-      (let [rendered-info (render [[25]])]
-        (is (has-inline-image? rendered-info))))
-    (testing "Renders negative value without error"
-      (let [rendered-info (render [[-25]])]
-        (is (has-inline-image? rendered-info))))))
 
 (deftest ^:parallel format-percentage-test
   (are [value expected] (= expected
@@ -825,7 +908,7 @@
                   ;; the series bars each have distinct colours, so we can group by those attrs to get a count.
                   ;; and remove any paths that are 'transparent'
                   series-counts          (-> (group-by #(get-in % [:attrs :fill]) dashcard-path-elements)
-                                             (dissoc "transparent")
+                                             (dissoc "none")
                                              (update-vals count))]
               ;; The series count should be 1 for each series, since we're filtering by a single month of the year
               ;; and each question is set up with a breakout on :created_at by :month, so filtering on a single month produces just 1 bar.
@@ -1023,7 +1106,7 @@
             (let [doc            (render.tu/render-card-as-hickory! card-id)
                   first-day-text (->> (hik.s/select (hik.s/tag :text) doc)
                                       (map (fn [el] (-> el :content first)))
-                                      (take-last 7)
+                                      (take-last 6)
                                       (map str/trim)
                                       first)]
               (testing "Renders with correct day of week first"
@@ -1074,7 +1157,7 @@
                     (is (str/includes? svg "#0005FF"))))))))))))
 
 (deftest order-data-handles-duplicated-table-columns-test
-  (testing "order-data function handles duplicated table columns correctly"
+  (testing "order-data function handles duplicated table columns correctly (#62053)"
     (let [test-cols [{:name "ID" :display_name "ID" :base_type :type/BigInteger}
                      {:name "NAME" :display_name "Name" :base_type :type/Text}]
           test-rows [[1 "Alice"] [2 "Bob"]]
@@ -1096,3 +1179,45 @@
         (is (= 2 (count ordered-rows)))
         (is (= [1 "Alice"] (first ordered-rows)))
         (is (= [2 "Bob"] (second ordered-rows)))))))
+
+(deftest order-data-respect-table-columns-order-test
+  (testing "order-data respect table-columns order from viz-settings (#62053)"
+    (let [col-names ["ID" "NAME" "EMAIL" "PHONE" "ADDRESS" "CITY" "STATE" "ZIP" "COUNTRY" "CREATED_AT"]
+          test-cols (vec (for [col-name col-names]
+                           {:name         col-name
+                            :display_name col-name
+                            :base_type    :type/Text}))
+          test-rows [[1 "Alice" "alice@example.com" "555-1234" "123 Main St" "Boston" "MA" "02101" "USA" "2024-01-01"]]
+          test-data {:cols test-cols :rows test-rows}
+          reordered-names ["EMAIL" "NAME" "CITY" "STATE" "ZIP" "ID" "PHONE" "ADDRESS" "COUNTRY" "CREATED_AT"]
+          viz-settings {:metabase.models.visualization-settings/table-columns
+                        (vec (for [col-name reordered-names]
+                               {:metabase.models.visualization-settings/table-column-name col-name
+                                :metabase.models.visualization-settings/table-column-enabled true}))}
+          [ordered-cols ordered-rows] (#'body/order-data test-data viz-settings)]
+      (testing "cols should follow table-columns order"
+        (is (= reordered-names (map :name ordered-cols))))
+      (testing "rows should be reordered to match columns"
+        (is (= ["alice@example.com" "Alice" "Boston" "MA" "02101" 1 "555-1234" "123 Main St" "USA" "2024-01-01"]
+               (first ordered-rows)))))))
+
+(deftest render-table-with-remapped-with-custom-columns-order-test
+  (mt/with-column-remappings [orders.product_id products.title]
+    (testing "order-data respect table-columns order from viz-settings and keep remapped columns (#62053)"
+      (mt/with-temp [:model/Card card {:dataset_query          (mt/mbql-query orders {:limit 1})
+                                       :visualization_settings {:metabase.models.visualization-settings/table-columns
+                                                                (vec (for [col-name ["QUANTITY" "CREATED_AT" "DISCOUNT" "TOTAL" "TAX" "SUBTOTAL" "USER_ID" "ID" "PRODUCT_ID"]]
+                                                                       {:metabase.models.visualization-settings/table-column-name col-name
+                                                                        :metabase.models.visualization-settings/table-column-enabled true}))}}]
+        ;; trigger render to gather prep-data for rendering
+        (let [table (body/render :table nil "UTC" card nil  (:data (:result (notification.execute/execute-card (mt/user->id :crowberto) (:id card)))))]
+          (is (=  ["Quantity"
+                   "Created At"
+                   "Discount ($)"
+                   "Total"
+                   "Tax"
+                   "Subtotal"
+                   "User ID"
+                   "ID"
+                   "Product ID [external remap]"]
+                  (map (comp :title second) (-> table :content second (nth 2) second last)))))))))

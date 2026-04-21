@@ -58,7 +58,7 @@ If you want to install the [Pro or Enterprise editions](https://www.metabase.com
 
 ### 3. Create a new directory and move the Metabase JAR into it
 
-When you run Metabase, Metabase will create some new files, so it's important to put the Metabase Jar file in a new directory before running it (so move it out of your downloads folder and put it a new directory).
+When you run Metabase, Metabase will create some new files, so it's important to put the Metabase JAR file in a new directory before running it (so move it out of your downloads folder and put it a new directory).
 
 On posix systems, the commands would look something like this:
 
@@ -149,7 +149,7 @@ If you need to run the JAR in production, you should run Metabase as a service. 
 - Make sure Metabase runs automatically (and stay running).
 - Allow you to run Metabase with an unprivileged user (which is good for security).
 
-The exact instructions for how to run Metabase as a service will differ depending on your operating system. For an example of how to set up Metabase as a service, check out [Running Metabase on Debian](./running-metabase-on-debian.md).
+The exact instructions for how to run Metabase as a service will differ depending on your operating system. For an example of how to set up Metabase as a service, check out [Running Metabase as a systemd service](./running-metabase-as-service.md).
 
 ### Migrating to a production installation
 

@@ -1,6 +1,6 @@
+import type { Dispatch, GetState } from "metabase/redux/store";
 import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import { getQuestion } from "../selectors";
 
@@ -15,7 +15,6 @@ export const setLimit =
     }
     const query = question.query();
     const nextQuery = Lib.limit(query, -1, limit);
-    const nextLegacyQuery = Lib.toLegacyQuery(nextQuery);
-    const nextQuestion = question.setDatasetQuery(nextLegacyQuery);
+    const nextQuestion = question.setQuery(nextQuery);
     dispatch(updateQuestion(nextQuestion, { run: true }));
   };

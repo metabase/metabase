@@ -15,8 +15,11 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.query-processor :as qp]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
@@ -37,11 +40,9 @@
   (testing "Check that we add safe connection options to connection strings"
     (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE"
            (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY"))))
-
   (testing "Check that we override shady connection string options set by shady admins with safe ones"
     (is (= "file:my-file;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=TRUE"
            (#'h2/connection-string-set-safe-options "file:my-file;;LOOK_I_INCLUDED_AN_EXTRA_SEMICOLON=NICE_TRY;IFEXISTS=FALSE;"))))
-
   (testing "Check that we override the INIT connection string option"
     (is (= "file:my-file;IFEXISTS=TRUE"
            (#'h2/connection-string-set-safe-options "file:my-file;INIT=ANYTHING_HERE_WILL_BE_IGNORED")))))
@@ -50,11 +51,9 @@
   (testing "make sure we return the USER from db details if it is a keyword key in details..."
     (is (= "cam"
            (#'h2/db-details->user {:db "file:my_db.db", :USER "cam"}))))
-
   (testing "or a string key..."
     (is (= "cam"
            (#'h2/db-details->user {:db "file:my_db.db", "USER" "cam"}))))
-
   (testing "or part of the `db` connection string itself"
     (is (= "cam"
            (#'h2/db-details->user {:db "file:my_db.db;USER=cam"})))))
@@ -80,7 +79,9 @@
       (is (instance? clojure.lang.ExceptionInfo result))
       (is (partial= {:cause "Malicious keys detected"
                      :data {:keys ["TRACE_LEVEL_SYSTEM_OUT"]}}
-                    (Throwable->map result)))))
+                    (Throwable->map result))))))
+
+(deftest ^:parallel only-connect-when-non-malicious-properties-2
   (testing "Reject connection details which lie about their driver"
     (let [conn "mem:fake-h2-db"
           f (fn f [details]
@@ -89,17 +90,17 @@
                    (catch Exception e e)))]
       (testing "connection-uri"
         (let [result (f {:connection-uri conn})]
-          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+          (is (= "Cannot specify connection-uri in details map"
                  (ex-message result)))
           (is (= {:invalid-keys #{"connection-uri"}} (ex-data result)))))
       (testing "subprotocol"
         (let [result (f {:db conn, :subprotocol "h2"})]
-          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+          (is (= "Cannot specify subprotocol in details map"
                  (ex-message result)))
           (is (= {:invalid-keys #{"subprotocol"}} (ex-data result)))))
-      (testing "subprotocol"
+      (testing "classname"
         (let [result (f {:db conn, :classname "org.h2.Driver"})]
-          (is (= "Cannot specify subname, protocol, or connection-uri in details map"
+          (is (= "Cannot specify classname in details map"
                  (ex-message result)))
           (is (= {:invalid-keys #{"classname"}} (ex-data result))))))))
 
@@ -113,12 +114,19 @@
 (deftest disallow-admin-accounts-test
   (testing "Check that we're not allowed to run SQL against an H2 database with a non-admin account"
     (mt/with-temp [:model/Database db {:name "Fake-H2-DB", :engine "h2", :details {:db "mem:fake-h2-db"}}]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
-           (qp/process-query {:database (:id db)
-                              :type     :native
-                              :native   {:query "SELECT 1"}}))))))
+      (with-redefs [config/is-prod? true]
+        (doseq [[query-type query] {"legacy MBQL query"
+                                    {:database (:id db)
+                                     :type     :native
+                                     :native   {:query "SELECT 1"}}
+
+                                    "MBQL 5 query"
+                                    (lib/native-query (lib-be/application-database-metadata-provider (:id db)) "SELECT 1")}]
+          (testing query-type
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Running SQL queries against H2 databases using the default \(admin\) database user is forbidden\.$"
+                 (qp/process-query query)))))))))
 
 (deftest ^:parallel add-interval-honeysql-form-test
   (testing "Should convert fractional seconds to milliseconds"
@@ -269,13 +277,21 @@
                      :engine :h2
                      :native {:query trigger-creation-attempt}}))))))
 
+(defn- check-read-only-statements [query]
+  (mt/with-metadata-provider (mt/id)
+    (-> query
+        qp.preprocess/preprocess
+        qp.compile/attach-compiled-query
+        (#'h2/check-read-only-statements))))
+
 (deftest ^:parallel check-read-only-test
   (testing "read only statements should pass"
     (are [query] (nil?
                   (mt/with-metadata-provider (mt/id)
                     (#'h2/check-read-only-statements
-                     {:engine :h2
-                      :native {:query query}})))
+                     {:database 1
+                      :type     :native
+                      :native   {:query query}})))
       "select * from orders"
       "select 1; select 2;"
       "explain select * from orders"
@@ -293,8 +309,9 @@
                   #"Only SELECT statements are allowed in a native query."
                   (mt/with-metadata-provider (mt/id)
                     (#'h2/check-read-only-statements
-                     {:engine :h2
-                      :native {:query query}}))
+                     {:database 1
+                      :type     :native
+                      :native   {:query query}}))
                   "update venues set name = 'bill'")
       "insert into venues (name) values ('bill')"
       "delete venues"
@@ -344,7 +361,7 @@
   (mt/test-driver :h2
     (when config/ee-available?
       (let [audit-db-expected-id 13371337
-            original-audit-db    (t2/select-one 'Database :is_audit true)]
+            original-audit-db    (t2/select-one :model/Database :is_audit true)]
         (is (not= ::mbc/noop (mbc/ensure-audit-db-installed!))
             "Make sure we call the right ensure-audit-db-installed! impl")
         (try
@@ -360,7 +377,7 @@
             (t2/delete! :model/Database :is_audit true)
             (when original-audit-db (mbc/ensure-audit-db-installed!))))))))
 
-;; API tests are in [[metabase.actions.api-test]]
+;; API tests are in [[metabase.actions-rest.api-test]]
 (deftest ^:parallel actions-maybe-parse-sql-error-test
   (testing "violate not null constraint"
     (is (= {:type    :metabase.actions.error/violate-not-null-constraint

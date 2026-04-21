@@ -1,10 +1,11 @@
 import { createMockMetadata } from "__support__/metadata";
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
   columnFinder,
-  createQuery,
-  createQueryWithClauses,
+  createMetadataProvider,
 } from "metabase-lib/test-helpers";
 import type {
   ParameterTarget,
@@ -58,9 +59,11 @@ const METADATA = createMockMetadata({
   ],
 });
 
+const PROVIDER = createMetadataProvider({ metadata: METADATA });
+
 describe("applyParameter", () => {
   describe("filter parameters", () => {
-    const query = createQuery({ metadata: METADATA });
+    const query = Lib.createTestQuery(PROVIDER, DEFAULT_TEST_QUERY);
     const stageIndex = 0;
     const columns = Lib.filterableColumns(query, stageIndex);
     const findColumn = columnFinder(query, columns);
@@ -240,6 +243,24 @@ describe("applyParameter", () => {
           "ID is between -9223372036854775808 and 9223372036854775807",
       },
       {
+        type: "number/between",
+        target: getFilterColumnTarget("ORDERS", "ID"),
+        value: [1],
+        expectedDisplayName: "ID is greater than or equal to 1",
+      },
+      {
+        type: "number/between",
+        target: getFilterColumnTarget("ORDERS", "ID"),
+        value: [1, null],
+        expectedDisplayName: "ID is greater than or equal to 1",
+      },
+      {
+        type: "number/between",
+        target: getFilterColumnTarget("ORDERS", "ID"),
+        value: [null, 2],
+        expectedDisplayName: "ID is less than or equal to 2",
+      },
+      {
         type: "id",
         target: getFilterColumnTarget("ORDERS", "IS_TRIAL"),
         value: [true],
@@ -329,7 +350,9 @@ describe("applyParameter", () => {
     );
 
     it("should ignore parameters with stage index out of range (metabase#55678)", () => {
-      const query = Lib.appendStage(createQuery());
+      const query = Lib.appendStage(
+        Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+      );
       const stageIndex = 1;
       const column = Lib.filterableColumns(query, stageIndex)[0];
       const columnRef = Lib.legacyRef(query, stageIndex, column);
@@ -350,12 +373,18 @@ describe("applyParameter", () => {
   });
 
   describe("temporal unit parameters", () => {
-    const query = createQueryWithClauses({
-      breakouts: [
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
         {
-          tableName: "ORDERS",
-          columnName: "CREATED_AT",
-          temporalBucketName: "Month",
+          source: { type: "table", id: ORDERS_ID },
+          breakouts: [
+            {
+              type: "column",
+              name: "CREATED_AT",
+              sourceName: "ORDERS",
+              unit: "month",
+            },
+          ],
         },
       ],
     });

@@ -3,7 +3,7 @@ import _ from "underscore";
 const { H } = cy;
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
+import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 
 const VISUALIZATION_SIZES = {
   line: {
@@ -242,6 +242,70 @@ describe(
       });
     });
 
+    it("should keep the resize handle connected to the cursor while resizing (metabase#70451)", () => {
+      H.createDashboardWithQuestions({
+        dashboardDetails: {},
+        questions: [
+          {
+            display: "table",
+            query: {
+              "source-table": ORDERS_ID,
+              limit: 10,
+            },
+          },
+        ],
+      }).then(({ dashboard }) => {
+        H.visitDashboard(dashboard.id);
+      });
+
+      H.editDashboard();
+
+      let targetX, targetY;
+
+      H.getDashboardCard(0)
+        .find(".react-resizable-handle")
+        .then(($handle) => {
+          const rect = $handle[0].getBoundingClientRect();
+          const startX = Math.round(rect.left + rect.width / 2);
+          const startY = Math.round(rect.top + rect.height / 2);
+          targetX = startX + 200;
+          targetY = startY + 150;
+
+          // Not using the wrapper here because we want to avoid waits and we need the starting position for later
+          cy.wrap($handle)
+            .trigger("mousedown", {
+              button: 0,
+              clientX: startX,
+              clientY: startY,
+              force: true,
+            })
+            .trigger("mousemove", {
+              clientX: targetX,
+              clientY: targetY,
+              force: true,
+            });
+        });
+
+      // After dragging, the resize handle should still be near the cursor position.
+      H.getDashboardCard(0)
+        .find(".react-resizable-handle")
+        .then(($handle) => {
+          const rect = $handle[0].getBoundingClientRect();
+          const handleCenterX = Math.round(rect.left + rect.width / 2);
+          const handleCenterY = Math.round(rect.top + rect.height / 2);
+
+          const maxDrift = 50;
+          expect(
+            Math.abs(handleCenterX - targetX),
+            `Horizontal drift: handle at ${handleCenterX}, cursor at ${targetX}`,
+          ).to.be.lessThan(maxDrift);
+          expect(
+            Math.abs(handleCenterY - targetY),
+            `Vertical drift: handle at ${handleCenterY}, cursor at ${targetY}`,
+          ).to.be.lessThan(maxDrift);
+        });
+    });
+
     it("should not allow cards to be resized smaller than min height", () => {
       const cardIds = [];
       TEST_QUESTIONS.forEach((question) => {
@@ -286,6 +350,81 @@ describe(
     });
   },
 );
+
+describe("trend charts", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("comparisons that do not fit should only be shown in a tooltip", () => {
+    H.createDashboardWithQuestions({
+      dashboardDetails: {},
+      questions: [
+        {
+          display: "smartscalar",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["count"],
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              [
+                "aggregation-options",
+                ["*", ["count"], 10000],
+                { name: "Mega Count", "display-name": "Mega Count" },
+              ],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          visualization_settings: {
+            "scalar.comparisons": [
+              {
+                id: "fecd2c69-4d43-57d0-6d60-6781a54beceb",
+                type: "previousPeriod",
+              },
+              {
+                id: "e8b8d831-d2a9-9fd7-17a7-db8b4834ac5a",
+                type: "periodsAgo",
+                value: 2,
+              },
+              {
+                id: "9712f309-6849-20ba-7cef-54ae899a0e41",
+                type: "anotherColumn",
+                label: "Sum of Total",
+                column: "sum",
+              },
+            ],
+          },
+        },
+      ],
+    }).then(({ dashboard, questions: cards }) => {
+      const [card] = cards;
+
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [{ card_id: card.id, size_x: 4, size_y: 3 }],
+      });
+
+      H.visitDashboard(dashboard.id);
+    });
+
+    H.getDashboardCard().within(() => {
+      cy.findByText("34.72%").should("be.visible");
+      cy.findByText("36.65%").should("not.exist");
+      cy.findByText("98.88%").should("not.exist");
+
+      cy.findByText("34.72%").realHover();
+    });
+
+    H.tooltip().within(() => {
+      cy.findByText("34.72%").should("be.visible");
+      cy.findByText("36.65%").should("be.visible");
+      cy.findByText("98.88%").should("be.visible");
+    });
+  });
+});
 
 describe("issue 31701", () => {
   const entityCard = () => H.getDashboardCard(0);

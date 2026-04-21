@@ -1,25 +1,16 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 
-import Dashboards from "metabase/entities/dashboards";
-import { resourceListToMap } from "metabase/lib/redux";
+import { Dashboards } from "metabase/entities/dashboards";
 import {
   getShallowDatabases as getDatabases,
   getShallowFields as getFields,
   getShallowSegments as getSegments,
   getShallowTables as getTables,
 } from "metabase/selectors/metadata";
+import { resourceListToMap } from "metabase/utils/redux";
 
-import { databaseToForeignKeys, idsToObjectMap } from "./utils";
-
-// import { getDatabases, getTables, getFields, getSegments } from "metabase/selectors/metadata";
-
-export {
-  getShallowDatabases as getDatabases,
-  getShallowTables as getTables,
-  getShallowFields as getFields,
-  getShallowSegments as getSegments,
-} from "metabase/selectors/metadata";
+import { idsToObjectMap } from "./utils";
 
 export const getUser = (state, props) => state.currentUser;
 
@@ -102,32 +93,6 @@ export const getTableQuestions = createSelector(
     ),
 );
 
-const getDatabaseBySegment = createSelector(
-  [getSegment, getTables, getDatabases],
-  (segment, tables, databases) =>
-    (segment &&
-      segment.table_id &&
-      tables[segment.table_id] &&
-      databases[tables[segment.table_id].db_id]) ||
-    {},
-);
-
-const getForeignKeysBySegment = createSelector(
-  [getDatabaseBySegment],
-  databaseToForeignKeys,
-);
-
-const getForeignKeysByDatabase = createSelector(
-  [getDatabase],
-  databaseToForeignKeys,
-);
-
-export const getForeignKeys = createSelector(
-  [getSegmentId, getForeignKeysBySegment, getForeignKeysByDatabase],
-  (segmentId, foreignKeysBySegment, foreignKeysByDatabase) =>
-    segmentId ? foreignKeysBySegment : foreignKeysByDatabase,
-);
-
 export const getLoading = (state, props) => state.reference.isLoading;
 
 export const getError = (state, props) => state.reference.error;
@@ -151,6 +116,3 @@ export const getDashboards = (state, props) => {
   const list = Dashboards.selectors.getList(state);
   return list && resourceListToMap(list);
 };
-
-export const getIsDashboardModalOpen = (state, props) =>
-  state.reference.isDashboardModalOpen;

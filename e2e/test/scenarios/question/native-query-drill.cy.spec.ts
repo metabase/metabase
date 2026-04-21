@@ -94,7 +94,7 @@ describe("scenarios > question > native query drill", () => {
       });
       cy.wait("@dataset");
 
-      H.tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
+      H.tableInteractive().findByText("October 7, 2026, 1:34 AM").click();
       H.popover().within(() => {
         cy.findByText("Filter by this date and time").should("not.exist");
         cy.button("Save").click();
@@ -104,9 +104,8 @@ describe("scenarios > question > native query drill", () => {
         cy.button("Save").click();
         cy.wait("@saveCard");
       });
-      H.modal().findByText("Not now").click();
 
-      H.tableInteractive().findByText("October 7, 2023, 1:34 AM").click();
+      H.tableInteractive().findByText("October 7, 2026, 1:34 AM").click();
       H.popover().within(() => {
         cy.findByText("Filter by this date and time").should("be.visible");
         cy.findByText("On").click();
@@ -132,8 +131,8 @@ describe("scenarios > question > native query drill", () => {
       H.assertTableData({
         columns: ["ID", "CREATED_AT", "QUANTITY", "Quarter of year"],
         firstRows: [
-          ["1", "February 11, 2025, 9:40 PM", "2", "Q1"],
-          ["2", "May 15, 2024, 8:04 AM", "3", "Q2"],
+          ["1", "February 11, 2028, 9:40 PM", "2", "Q1"],
+          ["2", "May 15, 2027, 8:04 AM", "3", "Q2"],
         ],
       });
 
@@ -149,8 +148,8 @@ describe("scenarios > question > native query drill", () => {
       H.assertTableData({
         columns: ["ID", "CREATED_AT", "QUANTITY", "Quarter of year"],
         firstRows: [
-          ["1", "February 11, 2025, 9:40 PM", "2", "Q1"],
-          ["2", "May 15, 2024, 8:04 AM", "3", "Q2"],
+          ["1", "February 11, 2028, 9:40 PM", "2", "Q1"],
+          ["2", "May 15, 2027, 8:04 AM", "3", "Q2"],
         ],
       });
     });
@@ -171,7 +170,7 @@ describe("scenarios > question > native query drill", () => {
           [
             "1",
             "borer-hudson@yahoo.com",
-            "October 7, 2023, 1:34 AM",
+            "October 7, 2026, 1:34 AM",
             "borer-hudson@yahoo.com 1",
           ],
         ],
@@ -189,7 +188,7 @@ describe("scenarios > question > native query drill", () => {
           [
             "1",
             "borer-hudson@yahoo.com",
-            "October 7, 2023, 1:34 AM",
+            "October 7, 2026, 1:34 AM",
             "1 borer-hudson@yahoo.com",
           ],
         ],
@@ -251,7 +250,7 @@ describe("scenarios > question > native query drill", () => {
       cy.wait("@dataset");
       H.assertTableData({
         columns: ["ID", "CREATED_AT", "QUANTITY"],
-        firstRows: [["1", "February 11, 2025, 9:40 PM", "2"]],
+        firstRows: [["1", "February 11, 2028, 9:40 PM", "2"]],
       });
 
       cy.log("descending");
@@ -261,7 +260,7 @@ describe("scenarios > question > native query drill", () => {
       cy.wait("@dataset");
       H.assertTableData({
         columns: ["ID", "CREATED_AT", "QUANTITY"],
-        firstRows: [["8", "June 17, 2025, 2:37 AM", "7"]],
+        firstRows: [["8", "June 17, 2028, 2:37 AM", "7"]],
       });
     });
 
@@ -310,9 +309,9 @@ describe("scenarios > question > native query drill", () => {
       H.assertTableData({
         columns: ["CREATED_AT: Month", "Sum of QUANTITY"],
         firstRows: [
-          ["May 2023", "3"],
-          ["May 2024", "3"],
-          ["September 2024", "5"],
+          ["May 2026", "3"],
+          ["May 2027", "3"],
+          ["September 2027", "5"],
         ],
       });
     });
@@ -393,7 +392,7 @@ describe("scenarios > question > native query drill", () => {
       H.createNativeQuestionAndDashboard({
         questionDetails: ordersTableQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
-      H.getDashboardCard().findByText("May 15, 2024, 8:04 AM").click();
+      H.getDashboardCard().findByText("May 15, 2027, 8:04 AM").click();
       H.popover().within(() => {
         cy.findByText("Filter by this date and time").should("be.visible");
         cy.findByText("On").click();
@@ -421,7 +420,7 @@ describe("scenarios > question > native query drill", () => {
         questionDetails: timeseriesLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() =>
-        applyBrushFilter({ left: 100, right: 300 }),
+        applyBrushFilter({ left: 150, right: 300 }),
       );
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(4);
@@ -432,7 +431,7 @@ describe("scenarios > question > native query drill", () => {
         questionDetails: numericLineQuestionDetails,
       }).then(({ body }) => H.visitDashboard(body.dashboard_id));
       H.getDashboardCard().within(() =>
-        applyBrushFilter({ left: 100, right: 300 }),
+        applyBrushFilter({ left: 100, right: 320 }),
       );
       cy.wait("@dataset");
       H.assertQueryBuilderRowCount(6);
@@ -444,10 +443,7 @@ function applyBrushFilter({ left, right }: { left: number; right: number }) {
   H.ensureEchartsContainerHasSvg();
   cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
 
-  H.echartsContainer()
-    .trigger("mousedown", left, 100)
-    .trigger("mousemove", left, 100)
-    .trigger("mouseup", right, 100);
+  H.applyBrush(left, right);
 }
 
 function applyBoxFilter({

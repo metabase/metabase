@@ -475,6 +475,45 @@
               (lists-to-vecs-recursively (:row-tree result)))
              "Row tree should not have any collapsed nodes for paths that don't exist in the data")))))
 
+#?(:cljs
+   (deftest build-pivot-trees-non-existent-parent-in-multilevel-path-test
+     (testing "build-pivot-trees does not crash when collapsed path references a non-existent parent node (#70019)"
+       ;; This tests the scenario where a dashboard filter removes rows from the data,
+       ;; but the viz settings still reference collapsed paths for those removed rows.
+       ;; E.g., rows were collapsed for categories "Doohickey" and "Gadget", then a
+       ;; dashboard filter restricts to "Widget" only. The collapsed_rows setting still
+       ;; contains paths like ["Doohickey","Facebook"] where "Doohickey" is no longer
+       ;; in the tree at all. This causes add-is-collapsed to traverse into a nil node
+       ;; and crash with "Cannot read properties of null (reading 'get')".
+       (let [rows [[1 "A" "Y" 0 10]
+                   [1 "B" "Z" 0 20]
+                   [2 "A" "Y" 0 30]
+                   [2 "B" "Z" 0 40]]
+             cols [{:name "col0" :source "breakout"}
+                   {:name "col1" :source "breakout"}
+                   {:name "col2" :source "breakout"}
+                   {:name "pivot-grouping" :source "breakout"}
+                   {:name "count" :source "aggregation"}]
+             row-indexes [0 1]
+             col-indexes [2]
+             val-indexes [4]
+             col-settings [{} {} {} {} {}]
+             ;; Multi-level paths where the FIRST element doesn't exist in the data
+             ;; This is the case that causes the TypeError in add-is-collapsed
+             settings {:pivot_table.collapsed_rows {:value ["[3,\"A\"]" "[99,\"B\"]"]}}
+             result (pivot/build-pivot-trees rows cols row-indexes col-indexes val-indexes settings col-settings)]
+         (is (=?
+              [{:children [{:children [] :isCollapsed false :value "A"}
+                           {:children [] :isCollapsed false :value "B"}]
+                :isCollapsed false
+                :value 1}
+               {:children [{:children [] :isCollapsed false :value "A"}
+                           {:children [] :isCollapsed false :value "B"}]
+                :isCollapsed false
+                :value 2}]
+              (lists-to-vecs-recursively (:row-tree result)))
+             "Row tree should not crash and should have no collapsed nodes for non-existent parent paths")))))
+
 (deftest build-pivot-trees-sort-trees-test
   (let [rows [[1 "A" "Y" 0 10]
               [1 "B" "Z" 0 20]
@@ -587,6 +626,83 @@
                 :span 1
                 :maxDepthBelow 0}]
               result)))))
+
+#?(:cljs
+   (deftest format-values-in-tree-converts-collections-to-js-test
+     (testing "format-values-in-tree converts Clojure collections to JavaScript before formatting"
+       (testing "Converts vectors to JavaScript arrays"
+         (let [received-values (atom [])
+               mock-formatter (fn [v]
+                                (swap! received-values conj v)
+                                (str "formatted: " v))
+               tree [{:value [1 2 3] :children []}]
+               formatters [mock-formatter]
+               cols [{:name "col0"}]
+               col-indexes [0]
+               result (#'pivot/format-values-in-tree tree formatters cols col-indexes)]
+           (is (= 1 (count @received-values))
+               "Formatter should be called once")
+           (is (array? (first @received-values))
+               "Formatter should receive a JavaScript array, not a Clojure vector")
+           (is (= [1 2 3] (vec (first @received-values)))
+               "JavaScript array should contain the correct values")
+           (is (= "formatted: 1,2,3" (:value (first result)))
+               "Result should contain the formatted value")))
+       (testing "Converts maps to JavaScript objects"
+         (let [received-values (atom [])
+               mock-formatter (fn [v]
+                                (swap! received-values conj v)
+                                (str "formatted: " (pr-str v)))
+               tree [{:value {:a 1 :b 2} :children []}]
+               formatters [mock-formatter]
+               cols [{:name "col0"}]
+               col-indexes [0]]
+           (#'pivot/format-values-in-tree tree formatters cols col-indexes)
+           (is (= 1 (count @received-values))
+               "Formatter should be called once")
+           (is (object? (first @received-values))
+               "Formatter should receive a JavaScript object, not a Clojure map")
+           (is (= 1 (.-a (first @received-values)))
+               "JavaScript object should have correct property 'a'")
+           (is (= 2 (.-b (first @received-values)))
+               "JavaScript object should have correct property 'b'")))
+       (testing "Does not convert non-collection values"
+         (let [received-values (atom [])
+               mock-formatter (fn [v]
+                                (swap! received-values conj v)
+                                (str "formatted: " v))
+               tree [{:value "string-value" :children []}
+                     {:value 42 :children []}
+                     {:value nil :children []}]
+               formatters [mock-formatter mock-formatter mock-formatter]
+               cols [{:name "col0"} {:name "col1"} {:name "col2"}]
+               col-indexes [0 1 2]]
+           (#'pivot/format-values-in-tree tree formatters cols col-indexes)
+           (is (= 3 (count @received-values))
+               "Formatter should be called three times")
+           (is (= "string-value" (first @received-values))
+               "String values should be passed through without conversion")
+           (is (= 42 (second @received-values))
+               "Number values should be passed through without conversion")
+           (is (nil? (nth @received-values 2))
+               "Nil values should be passed through without conversion")))
+       (testing "Handles nested collections recursively"
+         (let [received-values (atom [])
+               mock-formatter (fn [v]
+                                (swap! received-values conj v)
+                                "formatted")
+               tree [{:value [1 2]
+                      :children [{:value {:x 10} :children []}]}]
+               formatters [mock-formatter mock-formatter]
+               cols [{:name "col0"} {:name "col1"}]
+               col-indexes [0 1]]
+           (#'pivot/format-values-in-tree tree formatters cols col-indexes)
+           (is (= 2 (count @received-values))
+               "Formatter should be called for both parent and child")
+           (is (array? (first @received-values))
+               "Parent formatter should receive a JavaScript array")
+           (is (object? (second @received-values))
+               "Child formatter should receive a JavaScript object"))))))
 
 #?(:clj
    (deftest ^:parallel ensure-is-int-test

@@ -97,6 +97,10 @@ function init() {
   if (!payload.length) {
     validateAllFiles();
   } else {
-    scope === "--staged" ? validateStagedFiles() : validateStagedFiles(payload);
+    if (scope === "--staged") {
+      validateStagedFiles();
+    } else {
+      validateStagedFiles(payload);
+    }
   }
 }

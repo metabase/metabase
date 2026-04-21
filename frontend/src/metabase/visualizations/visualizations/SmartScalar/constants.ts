@@ -1,3 +1,7 @@
+export const TEXT_SPACING = 4;
+
+export const ELLIPSIS_BADGE_WIDTH = 22;
+
 export const SPACING = 8;
 
 export const ICON_SIZE = 13;
@@ -6,13 +10,15 @@ export const TOOLTIP_ICON_SIZE = 11;
 
 export const ICON_MARGIN_RIGHT = SPACING;
 
-export const SCALAR_TITLE_LINE_HEIGHT = 23;
+export const VALUE_MIN_HEIGHT = 20;
 
-export const PREVIOUS_VALUE_SIZE = 27;
+export const PERIOD_LINE_HEIGHT = 16;
+
+export const PREVIOUS_VALUE_SIZE = 19;
 
 export const PERIOD_HIDE_HEIGHT_THRESHOLD = 70; // determined empirically
 
-export const DASHCARD_HEADER_HEIGHT = 33;
+export const DASHCARD_HEADER_HEIGHT = 40;
 
 export const MAX_COMPARISONS = 3;
 

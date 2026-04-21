@@ -7,17 +7,17 @@ import {
   getDashboardId,
   getIsEditing as getIsEditingDashboard,
 } from "metabase/dashboard/selectors";
-import { PLUGIN_DOCUMENTS } from "metabase/plugins";
+import { getCurrentDocument } from "metabase/documents/selectors";
 import {
   getIsSavedQuestionChanged,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import type { State } from "metabase/redux/store";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
 } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
-import type { State } from "metabase-types/store";
 
 import { getSetting } from "./settings";
 
@@ -28,14 +28,13 @@ export interface RouterProps {
 const PATHS_WITHOUT_NAVBAR = [
   /^\/setup/,
   /^\/auth/,
+  /^\/data-studio/,
   /\/model\/.*\/query/,
+  /\/model\/.*\/columns/,
   /\/model\/.*\/metadata/,
   /\/model\/query/,
+  /\/model\/columns/,
   /\/model\/metadata/,
-  /\/metric\/.*\/query/,
-  /\/metric\/.*\/metadata/,
-  /\/metric\/query/,
-  /\/metric\/metadata/,
   /\/transform\/new\/.*\/query/,
 ];
 
@@ -60,15 +59,19 @@ export const getIsAdminApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/admin/");
 });
 
-export const getIsEmbeddingSetup = createSelector([getRouterPath], (path) => {
-  return path.startsWith("/setup/embedding");
+export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/data-studio");
+});
+
+export const getIsMetricsViewer = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/explore");
 });
 
 export const getIsCollectionPathVisible = createSelector(
   [
     getQuestion,
     getDashboard,
-    (state) => PLUGIN_DOCUMENTS.getCurrentDocument(state),
+    getCurrentDocument,
     getRouterPath,
     getIsEmbeddingIframe,
     getEmbedOptions,
@@ -149,6 +152,7 @@ export const getIsAppBarVisible = createSelector(
     getRouterPath,
     getRouterHash,
     getIsAdminApp,
+    getIsDataStudioApp,
     getIsEditingDashboard,
     getIsEmbeddingIframe,
     getIsEmbeddedAppBarVisible,
@@ -158,6 +162,7 @@ export const getIsAppBarVisible = createSelector(
     path,
     hash,
     isAdminApp,
+    isDataStudioApp,
     isEditingDashboard,
     isEmbedded,
     isEmbeddedAppBarVisible,
@@ -168,6 +173,7 @@ export const getIsAppBarVisible = createSelector(
       !currentUser ||
       (isEmbedded && !isEmbeddedAppBarVisible) ||
       isAdminApp ||
+      isDataStudioApp ||
       isEditingDashboard ||
       isFullscreen
     ) {
@@ -198,7 +204,7 @@ export const getIsNewButtonVisible = createSelector(
   },
 );
 
-export const getIsProfileLinkVisible = createSelector(
+export const getIsAppSwitcherVisible = createSelector(
   [getIsEmbeddingIframe],
   (isEmbeddingIframe) => !isEmbeddingIframe,
 );
@@ -221,7 +227,7 @@ export const getCollectionId = createSelector(
     getQuestion,
     getDashboard,
     getDashboardId,
-    (state) => PLUGIN_DOCUMENTS.getCurrentDocument(state),
+    getCurrentDocument,
     getDetailViewState,
   ],
   (question, dashboard, dashboardId, document, detailView) => {

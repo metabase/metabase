@@ -2,19 +2,19 @@ import cx from "classnames";
 import { type ChangeEvent, memo, useCallback, useState } from "react";
 import { t } from "ttag";
 
+import noResultsSource from "assets/img/no_results.svg";
 import { useLazyLoadGeoJSONQuery } from "metabase/api/geojson";
 import { useAdminSetting } from "metabase/api/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import Modal from "metabase/common/components/Modal";
-import Select, { Option } from "metabase/common/components/Select";
+import { Modal } from "metabase/common/components/Modal";
+import { Option, Select } from "metabase/common/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { uuid } from "metabase/lib/uuid";
-import { Button } from "metabase/ui";
-import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
+import { Button, Ellipsified, Image, Stack, Text } from "metabase/ui";
+import { uuid } from "metabase/utils/uuid";
+import { LeafletChoropleth } from "metabase/visualizations/components/LeafletChoropleth";
 import type {
   CustomGeoJSONMap,
   CustomGeoJSONSetting,
@@ -109,6 +109,10 @@ export const CustomGeoJSONWidget = () => {
     return null;
   }
 
+  const hasCustomMaps = Object.values(customGeoJsonSetting).some(
+    (map) => !map.builtin,
+  );
+
   return (
     <div className={CS.flexFull}>
       <div className={cx(CS.flex, CS.justifyBetween)}>
@@ -127,11 +131,22 @@ export const CustomGeoJSONWidget = () => {
           </Button>
         )}
       </div>
-      <ListMaps
-        maps={customGeoJsonSetting}
-        onEditMap={handleEditMap}
-        onDeleteMap={handleDelete}
-      />
+
+      {!hasCustomMaps && (
+        <Stack p="xl" align="center" gap="md">
+          <Image w={120} h={120} src={noResultsSource} />
+          <Text fw="700" c="text-tertiary">{t`No custom maps yet`}</Text>
+        </Stack>
+      )}
+
+      {hasCustomMaps && (
+        <ListMaps
+          maps={customGeoJsonSetting}
+          onEditMap={handleEditMap}
+          onDeleteMap={handleDelete}
+        />
+      )}
+
       {map ? (
         <Modal wide>
           <div className={CS.p4}>
@@ -163,6 +178,7 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }: ListMapsProps) => {
   const [mapIdToDelete, setMapIdToDelete] = useState<string | undefined>(
     undefined,
   );
+
   return (
     <section>
       <table className={AdminS.ContentTable}>

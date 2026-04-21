@@ -3,7 +3,6 @@
   various Toucan CRUD methods for `:model/ApiKey`... see below."
   (:require
    [clojure.core.memoize :as memoize]
-   [crypto.random :as crypto-random]
    [java-time.api :as t]
    [malli.error :as me]
    [metabase.api-keys.core :as-alias api-keys]
@@ -19,6 +18,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.password :as u.password]
+   [metabase.util.random :as u.random]
    [metabase.util.secret :as u.secret]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -82,7 +82,7 @@
   "Generates a new API key - a random base64 string prefixed with `mb_`"
   []
   (u.secret/secret
-   (str "mb_" (crypto-random/base64 api-keys.schema/generated-bytes-key-length))))
+   (str "mb_" (u.random/secure-base64 api-keys.schema/generated-bytes-key-length))))
 
 (mu/defn mask :- ::api-keys.schema/key.masked
   "Given an API key, returns a string of the same length with all but the prefix masked with `*`s"
@@ -203,10 +203,10 @@
 
 (mu/defn create-api-key-with-new-user!
   "Create a new API key and a new user for that key at the same time."
-  [{:keys [key-name group-id]} :- [:map
-                                   {:closed true}
-                                   [:key-name ::api-keys.schema/name]
-                                   [:group-id {:optional true} pos-int?]]]
+  [{:keys [key-name group-id]}
+   :- [:map {:closed true}
+       [:key-name ::api-keys.schema/name]
+       [:group-id {:optional true} pos-int?]]]
   (api/checkp (not (t2/exists? :model/ApiKey :name key-name))
               "name" "An API key with this name already exists.")
   (let [unhashed-key (key-with-unique-prefix)
@@ -218,7 +218,8 @@
                                               :last_name  ""
                                               :type       :api-key
                                               :password   (str (random-uuid))})]
-        (user/set-permissions-groups! user-id [(perms/all-users-group) group-id])
+        (when group-id
+          (user/set-permissions-groups! user-id [(perms/all-users-group) group-id]))
         (-> (t2/insert-returning-instance! :model/ApiKey
                                            {:user_id                user-id
                                             :name                   key-name

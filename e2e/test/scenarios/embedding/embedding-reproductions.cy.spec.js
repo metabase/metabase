@@ -1,8 +1,8 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
-import { defer } from "metabase/lib/promise";
-
+import { questionAsPinMapWithTiles } from "e2e/test/scenarios/embedding/shared/embedding-questions";
+import { defer } from "metabase/utils/promise";
 const { PRODUCTS, PRODUCTS_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 15860", { tags: "@skip" }, () => {
@@ -141,20 +141,23 @@ describe("issue 15860", { tags: "@skip" }, () => {
       });
 
       H.visitDashboard(dashboard_id);
+
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboard_id,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
     });
   });
 
   it("should work for locked linked filters connected to different cards with the same source table (metabase#15860)", () => {
-    cy.icon("share").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Embed in your application").click();
-
     setDefaultValueForLockedFilter("Q1 ID", 1);
     setDefaultValueForLockedFilter("Q2 ID", 3);
 
     H.visitIframe();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Q1 Category").click();
 
     H.popover().within(() => {
@@ -163,7 +166,7 @@ describe("issue 15860", { tags: "@skip" }, () => {
         .and("contain", "Gizmo");
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Q2 Category").click();
 
     H.popover().within(() => {
@@ -243,12 +246,22 @@ describe("issue 20438", () => {
         embedding_params: { [filter.slug]: "enabled" },
       });
 
+      cy.wrap(card_id).as("questionId");
+      cy.wrap(dashboard_id).as("dashboardId");
+
       H.visitDashboard(dashboard_id);
     });
   });
 
   it("dashboard filter connected to the field filter should work with a single value in embedded dashboards (metabase#20438)", () => {
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    cy.get("@dashboardId").then((dashboardId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboardId,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
+    });
 
     H.visitIframe();
 
@@ -294,12 +307,22 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
           },
         },
       },
-      { visitQuestion: true },
+      {
+        visitQuestion: true,
+        wrapId: true,
+      },
     );
   });
 
   it("should let the user lock parameters to specific values", () => {
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    cy.get("@questionId").then((questionId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: questionId,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
+    });
 
     H.modal().within(() => {
       // select the dropdown next to the Text parameter so that we can set the value to "Locked"
@@ -310,7 +333,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
         });
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Locked").click();
 
     H.modal().within(() => {
@@ -318,7 +341,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
       cy.findByPlaceholderText("Text").type("foo{enter}");
 
       // publish the embedded question so that we can directly navigate to its url
-      cy.findByText("Publish").click();
+      cy.findByText("Publish changes").click();
       cy.wait("@publishChanges");
     });
 
@@ -326,7 +349,7 @@ describe("locked parameters in embedded question (metabase#20634)", () => {
     H.visitIframe();
 
     // verify that the Text parameter doesn't show up but that its value is reflected in the dashcard
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Text").should("not.exist");
     cy.get(".CardVisualization").within(() => {
       cy.contains("foo");
@@ -671,16 +694,18 @@ describe("issue 30535", () => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
+
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: id,
+        activeTab: "parameters",
+        previewMode: "preview",
+        unpublishBeforeOpen: false,
+      });
     });
   });
 
   it("user session should not apply sandboxing to a signed embedded question (metabase#30535)", () => {
-    H.openStaticEmbeddingModal({
-      activeTab: "parameters",
-      previewMode: "preview",
-      acceptTerms: false,
-    });
-
     cy.document().then((doc) => {
       const iframe = doc.querySelector("iframe");
 
@@ -790,11 +815,13 @@ describe("dashboard preview", () => {
       });
 
       H.visitDashboard(dashboard_id);
-    });
 
-    H.openStaticEmbeddingModal({
-      activeTab: "parameters",
-      previewMode: "preview",
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboard_id,
+        activeTab: "parameters",
+        previewMode: "preview",
+      });
     });
 
     H.modal().within(() => {
@@ -875,11 +902,13 @@ describe("dashboard preview", () => {
       });
 
       H.visitDashboard(dashboard_id);
-    });
 
-    H.openStaticEmbeddingModal({
-      activeTab: "parameters",
-      previewMode: "preview",
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboard_id,
+        activeTab: "parameters",
+        previewMode: "preview",
+      });
     });
 
     // Makes it less likely to flake.
@@ -943,7 +972,9 @@ describe("issue 40660", () => {
 
     H.restore();
     cy.signInAsAdmin();
+  });
 
+  it("static dashboard content shouldn't overflow its container (metabase#40660)", () => {
     H.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
@@ -954,21 +985,24 @@ describe("issue 40660", () => {
       });
 
       H.visitDashboard(dashboard_id);
-    });
-  });
 
-  it("static dashboard content shouldn't overflow its container (metabase#40660)", () => {
-    H.openStaticEmbeddingModal({
-      activeTab: "parameters",
-      previewMode: "preview",
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboard_id,
+        activeTab: "parameters",
+        previewMode: "preview",
+      });
     });
 
     H.getIframeBody().within(() => {
+      cy.findByText(dashboardDetails.name).should("be.visible");
+      cy.findByTestId("loading-indicator").should("not.exist");
+      cy.findAllByText("1018947080336").should("have.length", 3);
       cy.findByTestId("embed-frame").scrollTo("bottom");
 
-      cy.findByRole("link", { name: "Powered by Metabase" }).should(
-        "be.visible",
-      );
+      cy.findByRole("link", { name: "Powered by Metabase" })
+        .scrollIntoView()
+        .should("be.visible");
     });
   });
 });
@@ -988,20 +1022,23 @@ describe("issue 49142", { tags: "@skip" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
+  });
 
+  it("embedding preview should be always working", () => {
     H.createQuestionAndDashboard({
       questionDetails,
       dashboardDetails,
     }).then(({ body: { dashboard_id } }) => {
       H.visitDashboard(dashboard_id);
-    });
-  });
 
-  it("embedding preview should be always working", () => {
-    H.openStaticEmbeddingModal({
-      activeTab: "lookAndFeel",
-      previewMode: "preview",
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: dashboard_id,
+        activeTab: "lookAndFeel",
+        previewMode: "preview",
+      });
     });
+
     cy.findByTestId("embed-preview-iframe")
       .its("0.contentDocument.body")
       .should("be.visible")
@@ -1037,8 +1074,8 @@ describe("issue 8490", () => {
             filter: [
               "between",
               ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
-              "2024-01-01",
-              "2025-01-01",
+              "2027-01-01",
+              "2028-01-01",
             ],
           },
           limit: 100,
@@ -1071,8 +1108,8 @@ describe("issue 8490", () => {
               [
                 "between",
                 ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
-                "2024-10-01",
-                "2024-12-01",
+                "2027-10-01",
+                "2027-12-01",
               ],
               [
                 "=",
@@ -1301,7 +1338,7 @@ describe("issue 50373", () => {
         url: /^\/app\/dist\/(.*)\.js$/,
       },
       (req) => {
-        // When running in development (e.g. with `yarn dev`),
+        // When running in development (e.g. with `bun run dev`),
         // the *.hot.bundle.js hot-reloaded file is served by the dev server.
         if (req.url.includes("hot.bundle.js")) {
           return;
@@ -1413,7 +1450,7 @@ describe("issue 51934 (EMB-189)", () => {
         "have.css",
         "background-color",
         // brand color
-        "rgb(80, 158, 227)",
+        "rgb(80, 158, 226)",
       );
       cy.findByRole("menuitem", { name: QUESTION_IN_COLLECTION_NAME })
         .should("be.visible")
@@ -1442,7 +1479,7 @@ describe("issue 51934 (EMB-189)", () => {
         "have.css",
         "background-color",
         // brand color
-        "rgb(80, 158, 227)",
+        "rgb(80, 158, 226)",
       );
       cy.findByRole("menuitem", { name: MODEL_IN_COLLECTION_NAME })
         .should("be.visible")
@@ -1464,7 +1501,7 @@ describe("issue 51934 (EMB-189)", () => {
         "have.css",
         "background-color",
         // brand color
-        "rgb(80, 158, 227)",
+        "rgb(80, 158, 226)",
       );
       cy.findByRole("menuitem", { name: MODEL_IN_ROOT_NAME }).should(
         "be.visible",
@@ -1491,4 +1528,35 @@ describe("issue 51934 (EMB-189)", () => {
       });
     });
   }
+});
+
+describe("issue 63687", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should properly display pin map tiles without auth errors for a valid JWT token", () => {
+    H.createNativeQuestion(questionAsPinMapWithTiles, {
+      visitQuestion: true,
+      wrapId: true,
+    });
+
+    cy.get("@questionId").then((questionId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: questionId,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
+    });
+
+    cy.intercept("/api/embed/tiles/**").as("getTiles");
+
+    H.visitIframe();
+
+    cy.wait("@getTiles").then(({ response: tileResponse }) => {
+      expect(tileResponse?.statusCode).to.equal(200);
+    });
+  });
 });

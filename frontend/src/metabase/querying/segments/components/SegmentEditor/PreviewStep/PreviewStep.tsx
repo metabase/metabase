@@ -4,8 +4,8 @@ import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
-import * as Urls from "metabase/lib/urls";
 import { Button, Flex, Loader, Text } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 
 import { ClauseStep } from "../ClauseStep";
@@ -33,13 +33,11 @@ function PreviewQuery({ query, stageIndex }: PreviewQueryProps) {
     () => Lib.aggregateByCount(query, stageIndex),
     [query, stageIndex],
   );
-  const { data, isFetching } = useGetAdhocQueryQuery(
-    Lib.toLegacyQuery(countQuery),
-  );
+  const { data, isFetching } = useGetAdhocQueryQuery(Lib.toJsQuery(countQuery));
   const count = data?.data?.rows?.[0]?.[0];
 
   const previewUrl = Urls.newQuestion({
-    dataset_query: Lib.toLegacyQuery(query),
+    dataset_query: Lib.toJsQuery(query),
   });
 
   return (

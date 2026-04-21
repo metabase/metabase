@@ -8,8 +8,8 @@ import {
   BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
+import { useDispatch } from "metabase/utils/redux";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 type ArchivedBulkActionsProps = {
@@ -43,6 +43,11 @@ export const ArchivedBulkActions = ({
   const handleCloseModal = () => {
     setSelectedItems(null);
     setSelectedAction(null);
+  };
+
+  const unselect = () => {
+    setSelectedItems(null);
+    setSelectedAction(null);
     clearSelected();
   };
 
@@ -55,7 +60,7 @@ export const ArchivedBulkActions = ({
 
   const handleBulkRestore = () => {
     const actions = selected.map((item) => item.setArchived(false));
-    Promise.all(actions).finally(() => clearSelected());
+    Promise.all(actions).finally(unselect);
   };
 
   // delete
@@ -70,7 +75,7 @@ export const ArchivedBulkActions = ({
 
   const handleBulkDeletePermanently = async () => {
     const actions = selected.map((item) => item.delete());
-    Promise.all(actions).finally(() => clearSelected());
+    Promise.all(actions).finally(unselect);
     dispatch(
       addUndo({
         message: ngettext(

@@ -4,7 +4,7 @@ title: Amazon Athena
 
 # Amazon Athena
 
-To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
+To add a database connection, click the **grid** icon in the top right, and navigate to **Admin** > **Databases** > **Add a database**.
 
 ## Connection and sync
 
@@ -15,6 +15,10 @@ Here you can [sync the database schema and rescan field values](../sync-scan.md)
 ### Edit connection details
 
 You can edit these settings at any time (and remember to save your changes).
+
+### Connection string
+
+Paste a connection string here to pre-fill the remaining fields below.
 
 ### Display name
 
@@ -46,7 +50,7 @@ Part of IAM credentials for AWS. Metabase will encrypt these credentials.
 
 ### Additional Athena connection string options
 
-You can specify additional options via a string, e.g., `UseResultsetStreaming=0;LogLevel=6`.
+You can specify [additional options](https://docs.aws.amazon.com/athena/latest/ug/jdbc-v3-driver-advanced-connection-parameters.html) via a string, e.g., `LogPath=/tmp;ResultFetcher=S3;`.
 
 ### Include User ID and query hash in queries
 
@@ -204,6 +208,10 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
   ]
 }
 ```
+
+## Writable connection
+
+Set up an additional connection used for write operations. See [Writable connections](../writable-connection.md).
 
 ## Model features
 

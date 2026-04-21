@@ -14,7 +14,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
   beforeEach(() => {
     cy.signInAsAdmin();
     H.prepareSdkIframeEmbedTest({
-      withTokenFeatures: true,
+      withToken: "bleeding-edge",
     });
   });
 
@@ -157,37 +157,53 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
 
     it("should enable drill-through when drills is true", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" drills />
-      `);
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Limited Orders",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-dashboard dashboard-id="${dashboard_id}" drills />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("be.visible");
+        H.getSimpleEmbedIframeContent()
+          .findAllByText("37.65")
+          .first()
+          .should("be.visible")
+          .click();
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("be.visible");
+      });
     });
 
     it("should disable drill-through when drills is false", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-dashboard dashboard-id="${ORDERS_DASHBOARD_ID}" drills="false" />
-      `);
+      H.createQuestionAndDashboard({
+        questionDetails: {
+          name: "Limited Orders",
+          query: { "source-table": ORDERS_ID, limit: 5 },
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-dashboard dashboard-id="${dashboard_id}" drills="false" />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("not.exist");
+        cy.wait("@getDashCardQuery");
+
+        H.getSimpleEmbedIframeContent()
+          .findAllByText("37.65")
+          .first()
+          .should("be.visible")
+          .click({ force: true });
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("not.exist");
+      });
     });
   });
 
@@ -276,37 +292,63 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
 
     it("should enable drill-through when drills is true", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" drills />
-      `);
+      H.createQuestion({
+        name: "Limited Orders",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: { id: questionId } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-question question-id="${questionId}" drills />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("be.visible");
+        cy.wait("@getCardQuery");
+
+        // Wait for the table to finish rendering before interacting,
+        // as column auto-sizing can cause re-renders that detach elements.
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("table-root")
+          .should("have.attr", "data-rows-count", "5");
+
+        H.getSimpleEmbedIframeContent()
+          .findAllByText("37.65")
+          .first()
+          .should("be.visible")
+          .click({ force: true });
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("be.visible");
+      });
     });
 
     it("should disable drill-through when drills is false", () => {
-      H.visitCustomHtmlPage(`
-      ${H.getNewEmbedScriptTag()}
-      ${H.getNewEmbedConfigurationScript()}
-      <metabase-question question-id="${ORDERS_QUESTION_ID}" drills="false" />
-      `);
+      H.createQuestion({
+        name: "Limited Orders",
+        query: { "source-table": ORDERS_ID, limit: 5 },
+      }).then(({ body: { id: questionId } }) => {
+        H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-question question-id="${questionId}" drills="false" />
+        `);
 
-      H.getSimpleEmbedIframeContent()
-        .findAllByText("37.65")
-        .first()
-        .should("be.visible")
-        .click();
-      H.getSimpleEmbedIframeContent()
-        .findByText(/Filter by this value/)
-        .should("not.exist");
+        cy.wait("@getCardQuery");
+
+        // Wait for the table to finish rendering before interacting,
+        // as column auto-sizing can cause re-renders that detach elements.
+        H.getSimpleEmbedIframeContent()
+          .findByTestId("table-root")
+          .should("have.attr", "data-rows-count", "5");
+
+        H.getSimpleEmbedIframeContent()
+          .findByText("37.65")
+          .should("be.visible")
+          .click({ force: true });
+
+        H.getSimpleEmbedIframeContent()
+          .findByText(/Filter by this value/)
+          .should("not.exist");
+      });
     });
 
     it("should allow saving a question when `is-save-enabled` is true", () => {
@@ -389,6 +431,188 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
     });
   });
 
+  describe("<metabase-metabot>", () => {
+    beforeEach(() => {
+      H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    });
+
+    it("should handle scrolling gracefully (metabase#67399)", () => {
+      const question = `
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+      `;
+
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-metabot />
+      `);
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.log("metabot chat should be interactive");
+        cy.findByText("Ask questions to AI.").should("be.visible");
+
+        cy.findByPlaceholderText("Ask AI a question...")
+          .paste(question)
+          .type("{enter}");
+
+        // Making sure the ChatInput is still within the viewport
+        cy.findByPlaceholderText("Ask AI a question...").should("be.visible");
+      });
+    });
+
+    it("should load the embedded Metabot component", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-metabot />
+      `);
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        cy.log("metabot chat should be interactive");
+        cy.findByText("Ask questions to AI.").should("be.visible");
+        cy.findByPlaceholderText("Ask AI a question...").type("Foo{enter}");
+        cy.findByText(/Sorry, an error occurred:.*If this persists/).should(
+          "be.visible",
+        );
+
+        cy.log(
+          "uses sidebar layout by default when no layout attribute is provided",
+        );
+        cy.findByTestId("metabot-question-container").should(
+          "have.attr",
+          "data-layout",
+          "sidebar",
+        );
+
+        cy.log("should show disclaimer text in sidebar layout");
+        cy.findAllByText("AI isn't perfect. Double-check results.").should(
+          "be.visible",
+        );
+      });
+    });
+
+    it("should apply the data-layout attribute when layout is set to stacked", () => {
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-metabot layout="stacked" />
+      `);
+
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("metabot-question-container")
+        .should("have.attr", "data-layout", "stacked");
+
+      cy.log("should show disclaimer text in stacked layout");
+      H.getSimpleEmbedIframeContent()
+        .findAllByText("AI isn't perfect. Double-check results.")
+        .should("be.visible");
+    });
+
+    describe("saving a metabot question", () => {
+      const query = {
+        "source-table": ORDERS_ID,
+        aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
+        breakout: [["field", ORDERS.PRODUCT_ID, null]],
+        limit: 2,
+      };
+      const adHocQuestionPath = `/question#${btoa(
+        JSON.stringify({
+          dataset_query: { database: 1, type: "query", query },
+          display: "table",
+          displayIsLocked: true,
+          visualization_settings: {},
+        }),
+      )}`;
+
+      const metabotResponse = `0:"Here is the [question link](${adHocQuestionPath})"`;
+      const metabotResponseWithNavigateTo = `${metabotResponse}
+    2:{"type":"navigate_to","version":1,"value":"${adHocQuestionPath}"}`;
+
+      it("should allow to save a new question", () => {
+        H.mockMetabotResponse({
+          statusCode: 200,
+          body: metabotResponseWithNavigateTo,
+        });
+
+        cy.intercept("POST", "http://localhost:4000/api/card").as("postCard");
+
+        cy.log("Create a collection");
+        cy.request("POST", "/api/collection", {
+          name: "first_collection",
+          description: "First collection",
+          parent_id: undefined,
+        }).then(({ body }) => {
+          cy.log("Visit an embed metabase-metabot");
+          H.visitCustomHtmlPage(`
+            ${H.getNewEmbedScriptTag()}
+            ${H.getNewEmbedConfigurationScript()}
+            <metabase-metabot is-save-enabled="true" target-collection="${body.id}" />
+          `);
+
+          H.getSimpleEmbedIframeContent().within(() => {
+            cy.log("Ask a Metabot to create a question");
+            // the question doesn't matter, we're stubbing the response
+            cy.findByPlaceholderText("Ask AI a question...").type(
+              "Show me something{enter}",
+            );
+
+            cy.findByText("question link").click();
+
+            cy.findByText("Max of Quantity by Product ID").should("be.visible");
+
+            cy.log("Save the question");
+            cy.findByRole("button", { name: "Save" })
+              .should("be.visible")
+              .click();
+
+            H.modal().within(() => {
+              cy.findByText("Save new question").should("be.visible");
+              cy.findByRole("button", { name: "Save" }).click();
+            });
+          });
+
+          cy.wait("@postCard").then((interception) => {
+            const response = interception.response?.body;
+            const questionId = response.id;
+
+            cy.log("Open the question");
+            H.visitQuestion(questionId)?.then(() => {
+              // Name of the collection should be visible at the top of the page
+              // findAllBy because there are two "first_collection", one in the sidebar and one at the top
+              cy.findAllByText("first_collection").first().should("be.visible");
+              // Name of the new question should be visible too
+              cy.findByText(
+                "Orders, Max of Quantity, Grouped by Product ID, 2 rows",
+              ).should("be.visible");
+            });
+          });
+        });
+      });
+    });
+
+    it("should not render metabot when embedded-metabot-enabled? is false", () => {
+      H.updateSetting("embedded-metabot-enabled?", false);
+
+      H.visitCustomHtmlPage(`
+      ${H.getNewEmbedScriptTag()}
+      ${H.getNewEmbedConfigurationScript()}
+      <metabase-metabot />
+      `);
+
+      H.getSimpleEmbedIframeContent().within(() => {
+        // When embedded metabot is disabled, the component should not render the chat interface
+        cy.findByText("Ask questions to AI.").should("not.exist");
+        cy.findByPlaceholderText("Ask AI a question...").should("not.exist");
+      });
+    });
+  });
+
   describe("common checks", () => {
     describe("should be permissive with json attributes", () => {
       // NOTE: pay attention if you use initialFilters for these tests, as when the filters are not parsed correctly
@@ -414,6 +638,26 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         H.getSimpleEmbedIframeContent().should("contain", "Orders");
         H.getSimpleEmbedIframeContent().should("not.contain", "Orders model");
       });
+    });
+
+    it("should not define color-scheme meta tag on embeds (metabase#65533)", () => {
+      H.visitCustomHtmlPage(`
+        ${H.getNewEmbedScriptTag()}
+        ${H.getNewEmbedConfigurationScript()}
+        <metabase-question question-id="new" />
+      `);
+
+      H.waitForSimpleEmbedIframesToLoad();
+
+      cy.get("iframe[data-metabase-embed]")
+        .its("0.contentDocument")
+        .within(() => {
+          cy.log("a generic meta tag should exist");
+          cy.get("meta[name='viewport']").should("exist");
+
+          cy.log("the color-scheme tag should not exist on EAJS embeds");
+          cy.get("meta[name='color-scheme']").should("not.exist");
+        });
     });
   });
 
@@ -457,7 +701,7 @@ describe("scenarios > embedding > sdk iframe embedding > custom elements api", (
         cy.log(
           "Check that calling defineMetabaseConfig after the initial load works",
         );
-        // eslint-disable-next-line no-unscoped-text-selectors -- this is not the real app
+        // eslint-disable-next-line metabase/no-unscoped-text-selectors -- this is not the real app
         cy.findByText("Change theme").click();
 
         H.getSimpleEmbedIframeContent()

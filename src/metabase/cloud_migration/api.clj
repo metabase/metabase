@@ -11,6 +11,10 @@
    [metabase.premium-features.core :as premium-features]
    [toucan2.core :as t2]))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Initiate a new cloud migration."
   []
@@ -34,12 +38,20 @@
           400 {:status 400 :body "Cannot migrate this Metabase version."}
           {:status 500 :body ""})))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get the latest cloud migration, if any."
   []
   (api/check-superuser)
   (t2/select-one :model/CloudMigration {:order-by [[:created_at :desc]]}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/cancel"
   "Cancel any ongoing cloud migrations, if any."
   []

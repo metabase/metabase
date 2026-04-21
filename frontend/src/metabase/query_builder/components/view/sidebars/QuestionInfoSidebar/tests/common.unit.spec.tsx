@@ -2,13 +2,17 @@ import userEvent from "@testing-library/user-event";
 
 import { testDataset } from "__support__/testDataset";
 import { screen, within } from "__support__/ui";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
+import * as Lib from "metabase-lib";
+import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import type { BaseEntityId } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
   createMockModerationReview,
+  createMockUserInfo,
 } from "metabase-types/api/mocks";
+import { ORDERS_ID, PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { setup } from "./setup";
 
@@ -83,7 +87,7 @@ describe("QuestionInfoSidebar", () => {
         const insightsTab = await screen.findByRole("tab", {
           name: "Insights",
         });
-        userEvent.click(insightsTab);
+        await userEvent.click(insightsTab);
         expect(
           await screen.findByText(/See who.s doing what, when/),
         ).toBeInTheDocument();
@@ -111,13 +115,13 @@ describe("QuestionInfoSidebar", () => {
     it("should show creation information", () => {
       const card = createMockCard({
         name: "Question",
-        creator: {
+        creator: createMockUserInfo({
           first_name: "Ash",
           last_name: "Ketchum",
           email: "Ashboy@example.com",
           common_name: "Ash Ketchum",
           id: 19,
-        },
+        }),
         created_at: "2024-04-13T00:00:00Z",
       });
       setup({ card });
@@ -258,4 +262,44 @@ describe("QuestionInfoSidebar", () => {
       expect(screen.queryByText(/verified this/)).not.toBeInTheDocument();
     });
   });
+
+  describe("relationships", () => {
+    it("should show joined tables for a model (metabase#57469)", async () => {
+      const query = getJoinedQuery();
+      const card = createMockCard({
+        type: "model",
+        dataset_query: Lib.toJsQuery(query),
+      });
+      await setup({ card });
+      await userEvent.click(screen.getByRole("tab", { name: "Relationships" }));
+      expect(screen.getByText("Products")).toBeInTheDocument();
+    });
+  });
 });
+
+function getJoinedQuery() {
+  return Lib.createTestQuery(SAMPLE_PROVIDER, {
+    stages: [
+      {
+        source: { type: "table", id: ORDERS_ID },
+        joins: [
+          {
+            source: { type: "table", id: PRODUCTS_ID },
+            strategy: "left-join",
+            conditions: [
+              {
+                operator: "=",
+                left: {
+                  type: "column",
+                  sourceName: "ORDERS",
+                  name: "PRODUCT_ID",
+                },
+                right: { type: "column", sourceName: "PRODUCTS", name: "ID" },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+}

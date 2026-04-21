@@ -4,11 +4,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
-import Modal from "metabase/common/components/Modal";
+import { Modal } from "metabase/common/components/Modal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import Actions from "metabase/entities/actions";
-import Search from "metabase/entities/search";
+import { Actions } from "metabase/entities/actions";
+import { Search } from "metabase/entities/search";
 import type { Card, WritebackAction } from "metabase-types/api";
 
 import {

@@ -1,0 +1,5 @@
+.suggestionPaper {
+  min-height: fit-content;
+  max-height: 50vh;
+  overflow-y: auto;
+}

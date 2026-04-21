@@ -1,6 +1,9 @@
 (ns metabase.lib.schema.metadata
+  (:refer-clojure :exclude [get-in])
   (:require
-   [clojure.string :as str]
+   #?@(:clj
+       ([metabase.util.regex :as u.regex]))
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -8,24 +11,8 @@
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
-
-(defn- kebab-cased-key? [k]
-  (and (keyword? k)
-       (not (str/includes? (str k) "_"))))
-
-(defn- kebab-cased-map? [m]
-  (and (map? m)
-       (every? kebab-cased-key? (keys m))))
-
-(mr/def ::kebab-cased-map
-  [:fn
-   {:error/message "map with all kebab-cased keys"
-    :error/fn      (fn [{:keys [value]} _]
-                     (if-not (map? value)
-                       "map with all kebab-cased keys"
-                       (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
-   kebab-cased-map?])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [get-in]]))
 
 ;;; Column vs Field?
 ;;;
@@ -45,7 +32,7 @@
 ;;; to implement column remapping, e.g. the GUI might display values of `categories.name` when it presents filter
 ;;; options for `venues.category_id` -- you can remap a meaningless integer FK column to something more helpful.
 ;;; 'Human readable values' like these can also be entered manually from the GUI, for example for enum columns. How
-;;; will this affect what MLv2 needs to know or does? Not clear at this point, but we'll probably want to abstract
+;;; will this affect what Lib needs to know or does? Not clear at this point, but we'll probably want to abstract
 ;;; away dealing with Dimensions in the future so the FE QB GUI doesn't need to special case them.
 
 (mr/def ::column.source
@@ -93,9 +80,9 @@
 (def column-has-field-values-options
   "Possible options for column metadata `:has-field-values`. This is used to determine whether we keep FieldValues for a
   Field (during sync), and which type of widget should be used to pick values of this Field when filtering by it in
-  the Query Builder. Not otherwise used by MLv2 (except for [[metabase.lib.field/field-values-search-info]], which is
+  the Query Builder. Not otherwise used by Lib (except for [[metabase.lib.field/field-values-search-info]], which is
   a frontend convenience) or QP at the time of this writing. For column remapping purposes in the Query Processor and
-  MLv2 we just ignore `has_field_values` and only look for FieldValues/Dimension."
+  Lib we just ignore `has_field_values` and only look for FieldValues/Dimension."
   ;; AUTOMATICALLY-SET VALUES, SET DURING SYNC
   ;;
   ;; `nil` -- means infer which widget to use based on logic in [[metabase.lib.field/infer-has-field-values]]; this
@@ -160,11 +147,22 @@
    ;; `:values`
    [:human-readable-values [:sequential :any]]])
 
+;; these can both be empty strings like `""` because SQL Server (and possibly some other DBs) allow empty strings as
+;; column identifiers
+
 (mr/def ::source-column-alias
-  ::lib.schema.common/non-blank-string)
+  "Name for a column as returned/projected by the previous stage of the query or source Table/source Card. The
+  left-hand side (LHS) of
+
+    SELECT lhs AS rhs"
+  :string)
 
 (mr/def ::desired-column-alias
-  [:string {:min 1}])
+  "Name we should use as a column alias for a column in this stage of a query. The desired column alias in stage N
+  becomes the source column alias in stage N+1. The right-hand side (RHS) in
+
+    SELECT lhs AS rhs"
+  :string)
 
 (mr/def ::original-name
   "The original name of the column as it appeared in the very first place it came from (i.e., the physical name of the
@@ -189,8 +187,16 @@
         (as-> m (cond-> m
                   (and (:id m) (not (pos-int? (:id m))))
                   (dissoc :id)))
-        ;; remove deprecated `:ident` and `:model/inner_ident` keys (normalized to `:model/inner-ident`)
-        (dissoc :ident :model/inner-ident))))
+        ;; If the column has a legacy `:source-alias` key but doesn't have `:lib/original-join-alias` then rename it
+        ;; to that. `:source-alias` had a kind of ambiguous meaning before we removed it, but
+        ;; `:lib/original-join-alias` was a subset of its purpose
+        (as-> m (cond-> m
+                  (and (:source-alias m)
+                       (not (:lib/original-join-alias m)))
+                  (set/rename-keys {:source-alias :lib/original-join-alias})))
+        ;; Rename old long-namespaced keys (e.g. `:metabase.lib.field/temporal-unit`) to short `:lib/*` equivalents
+        ;; for backwards compatibility with stored result_metadata
+        lib.schema.common/rename-deprecated-lib-keys)))
 
 (def ^:private column-validate-for-source-specs
   "Schemas to use to validate columns with a given `:lib/source`. Since a lot of these schemas are applicable to
@@ -206,19 +212,19 @@
     :schema  [:fn
               {:error/message ":lib/expression-name is required for columns with :source/expressions"}
               :lib/expression-name]}
-   ;; Current stage join alias (`:metabase.lib.join/join-alias`) should only be set for columns whose `:lib/source` is
+   ;; Current stage join alias (`:lib/join-alias`) should only be set for columns whose `:lib/source` is
    ;; `:source/joins`
    {:exclude :source/joins
     :schema  (lib.schema.common/disallowed-keys
-              {:metabase.lib.join/join-alias
-               (str "Current stage join alias (:metabase.lib.join/join-alias) should only be set for"
+              {:lib/join-alias
+               (str "Current stage join alias (:lib/join-alias) should only be set for"
                     " columns joined in the current stage (i.e., columns with :source/joins).")})}
    ;; If source is `:source/joins` column must specify a current stage join alias.
    {:include :source/joins
     :schema  [:fn
               {:error/message (str "Columns joined in the current stage (i.e., columns with :source/joins) must specify"
-                                   " current stage join alias (:metabase.lib.join/join-alias).")}
-              (some-fn :metabase.lib.join/join-alias
+                                   " current stage join alias (:lib/join-alias).")}
+              (some-fn :lib/join-alias
                        ;; see [[metabase.lib.join/HACK-column-from-incomplete-join]]
                        :metabase.lib.join/HACK-from-incomplete-join?)]}
    ;; `:lib/source` `:source/implicitly-joinable` must have `:fk-field-id`; `:fk-field-id` is only allowed for
@@ -331,7 +337,7 @@
     ;; came from. Prefer one of the other name keys instead, only falling back to `:name` if they are not present.
     [:name      :string]
     ;; TODO -- ignore `base_type` and make `effective_type` required; see #29707
-    [:base-type ::lib.schema.common/base-type]
+    [:base-type {:default :type/*} ::lib.schema.common/base-type]
     ;; This is nillable because internal remap columns have `:id nil`.
     [:id             {:optional true} [:maybe ::lib.schema.id/field]]
     [:display-name   {:optional true} [:maybe :string]]
@@ -356,25 +362,10 @@
     ;; an foreign key, and points to this Field ID. This is mostly used to determine how to add implicit joins by
     ;; the [[metabase.query-processor.middleware.add-implicit-joins]] middleware.
     [:fk-target-field-id {:optional true} [:maybe ::lib.schema.id/field]]
-    ;;
-    ;; Join alias of the table we're joining against, if any. Not really 100% clear why we would need this on top
-    ;; of [[metabase.lib.join/current-join-alias]], which stores the same info under a namespaced key. I think we can
-    ;; remove it.
-    ;;
-    ;; TODO (Cam 6/19/25) -- yes, we should remove this key, I've tried to do so but a few places are still
-    ;; setting (AND USING!) it. It actually appears that this gets propagated beyond the current stage where the join
-    ;; has happened and has thus taken on a purposes as a 'previous stage join alias' column. We should use
-    ;; `:lib/original-join-alias` instead to serve this purpose since `:source-alias` is not set or used correctly.
-    ;; Check out experimental https://github.com/metabase/metabase/pull/59772 where I updated this schema to 'ban'
-    ;; this key so we can root out anywhere trying to use it. (QUE-1403)
-    [:source-alias {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
     ;; Join alias of the table we're joining against, if any. SHOULD ONLY BE SET IF THE JOIN HAPPENED AT THIS STAGE OF
     ;; THE QUERY! (Also ok within a join's conditions for previous joins within the parent stage, because a join is
     ;; allowed to join on the results of something else)
-    ;;
-    ;; TODO (Cam 6/19/25) -- rename this key to `:lib/join-alias` since we're not really good about only using the
-    ;; special getter and setter functions to get at this key
-    [:metabase.lib.join/join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
+    [:lib/join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
     ;; the initial join alias used when this column was first introduced; should be propagated even if the join was
     ;; from a previous stage.
     ;;
@@ -385,17 +376,25 @@
     ;;    column => [join X => join Y]
     ;;
     ;; It is not currently well-defined whether this appears when the join was the current stage or not, i.e. if it's
-    ;; equal to `:metabase.lib.join/join-alias` when it is set or if it is only set if the join happened in a previous
-    ;; stage, i.e. if it's `nil` when `:metabase.lib.join/join-alias` is set. It seems like current behavior is the
+    ;; equal to `:lib/join-alias` when it is set or if it is only set if the join happened in a previous
+    ;; stage, i.e. if it's `nil` when `:lib/join-alias` is set. It seems like current behavior is the
     ;; former but you should NOT rely on this behavior.
     [:lib/original-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]
     ;; these should only be present if temporal bucketing or binning is done in the current stage of the query; if
     ;; this happened in a previous stage they should get propagated as the keys below instead.
-    [:metabase.lib.field/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
-    [:metabase.lib.field/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
-    ;;
-    ;; if temporal bucketing or binning happened in the previous stage, respectively, they should get propagated as
-    ;; these keys.
+    [:lib/temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
+    [:lib/binning       {:optional true} [:maybe ::lib.schema.binning/binning]]
+    ;; For nested fields (fields with a `:parent-id`, e.g. JSON columns), the pre-computed display name including the
+    ;; full parent chain prefix, e.g. `"Grandparent: Parent: Child"`. Used as the highest-priority initial display
+    ;; name in the display name pipeline, before join alias, binning, and temporal bucketing decorations are added.
+    ;; This is distinct from `:lib/original-display-name`, which for a nested field stores just the leaf name
+    ;; (e.g. `"Child"`) — both may coexist on the same column.
+    [:lib/simple-display-name {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+    [:lib/original-effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+    [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]
+    ;; If temporal bucketing or binning happened in a previous stage, they are propagated as the keys below.
+    ;; `:inherited-temporal-unit` signals that this column was already bucketed upstream, so the default temporal
+    ;; unit becomes `:inherited` rather than a type-based default like `:month`, preventing double-bucketing.
     [:inherited-temporal-unit {:optional true} [:maybe ::lib.schema.temporal-bucketing/unit]]
     [:lib/original-binning    {:optional true} [:maybe ::lib.schema.binning/binning]]
     ;; name of the expression where this column metadata came from. Should only be included for expressions introduced
@@ -417,9 +416,17 @@
     ;;
     ;; this SHOULD NOT get propagated to subsequent stages!
     [:lib/breakout? {:optional true} [:maybe :boolean]]
-
-    ;; ID of the Card this came from, if this came from Card results metadata. Mostly used for creating column groups.
+    ;;
+    ;; ID of the Card this came from, if this column originally came from a Card (Saved Question or Model). Mostly
+    ;; used for creating column groups. AFAIK this should get propagated indefinitely -- Cam
     [:lib/card-id {:optional true} [:maybe ::lib.schema.id/card]]
+    ;;
+    ;; Whether this column originally was introduced by a Model. Model metadata has special rules, for example because
+    ;; `:display-name` can be user-edited we should be careful not to recalculate it unnecessarily. See for
+    ;; example [[metabase.query-processor.model-test/preserve-model-display-names-test]].
+    ;;
+    ;; This key should get propagated indefinitely.
+    [:lib/from-model? {:optional true} [:maybe :boolean]]
     ;;
     ;; this stuff is adapted from [[metabase.query-processor.util.add-alias-info]]. It is included in
     ;; the [[metabase.lib.metadata.calculation/metadata]]
@@ -441,15 +448,9 @@
     ;; `:display-name` we see when the column comes out of a metadata provider. Usually this is auto-generated with
     ;; humanized names from `:name`, but may differ.
     ;;
-    ;; TODO (Cam 6/23/25) -- not super clear if `:lib/original-display-name` and `:lib/model-display-name` should be
-    ;; equal or not if a column comes from a model. I think the answer should be YES, but I broke a bunch of stuff
-    ;; when I tried to make that change.
+    ;; For model columns, this is set to the clean column name from the model's result_metadata with any
+    ;; join arrow prefix stripped (e.g. "Products → Category" becomes "Category").
     [:lib/original-display-name {:optional true} [:maybe :string]]
-    ;;
-    ;; If this column came from a Model, the (possibly user-edited) display name for this column in the model.
-    ;; Generally model display names should override everything else (including the original display name) except for
-    ;; `:lib/ref-display-name`.
-    [:lib/model-display-name {:optional true} [:maybe :string]]
     ;;
     ;; If this metadata was resolved from a ref (e.g. a `:field` ref) that contained a `:display-name` in the options,
     ;; this is that display name. `:lib/ref-display-name` should override any display names specified in the metadata.
@@ -491,9 +492,15 @@
     ;;
     ;; Added by [[metabase.lib.metadata.result-metadata]] primarily for legacy/backward-compatibility purposes with
     ;; legacy viz settings. This should not be used for anything other than that.
-    [:field-ref {:optional true} [:maybe [:ref :metabase.legacy-mbql.schema/Reference]]]
+    [:metabase.lib.metadata.result-metadata/field-ref
+     {:optional true}
+     [:maybe #?(:cljs [:or
+                       [:ref :metabase.legacy-mbql.schema/Reference]
+                       [:fn {:error/message "JS array"}
+                        array?]]
+                :clj  [:ref :metabase.legacy-mbql.schema/Reference])]]
     ;;
-    [:source {:optional true} [:maybe [:ref ::column.legacy-source]]]
+    [:metabase.lib.metadata.result-metadata/source {:optional true} [:maybe [:ref ::column.legacy-source]]]
     ;;
     ;; these next two keys are derived by looking at `FieldValues` and `Dimension` instances associated with a `Field`;
     ;; they are used by the Query Processor to add column remappings to query results. To see how this maps to stuff in
@@ -501,10 +508,47 @@
     ;; in [[metabase.lib-be.metadata.jvm]]. I don't think this is really needed on the FE, at any rate the JS metadata
     ;; provider doesn't add these keys.
     [:lib/external-remap {:optional true} [:maybe [:ref ::column.remapping.external]]]
-    [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]]
-   ;; TODO (Cam 6/13/25) -- go add this to some of the other metadata schemas as well.
-   ::kebab-cased-map
-   [:ref ::column.validate-for-source]])
+    [:lib/internal-remap {:optional true} [:maybe [:ref ::column.remapping.internal]]]
+    ;;
+    ;; The [[metabase.query-processor.middleware.add-implicit-clauses/add-implicit-fields]] middleware adds
+    ;; `:qp/added-implicit-fields?` to stages where it adds implicit fields,
+    ;; then [[metabase.lib.stage/fields-columns]] adds this key to any col from such a
+    ;; stage. [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]] uses this to know to force Field
+    ;; ID refs for QP `:field_ref` in results metadata to preserve historic behavior to avoid breaking legacy viz
+    ;; settings that use it as a key.
+    [:qp/implicit-field? {:optional true} [:maybe :boolean]]
+    ;;
+    ;; Coercion strategies (eg. UNIX seconds -> :type/DateTime) are configured on :model/Fields in the Admin UI, and
+    ;; reflected on refs to that field on the *first* stage of an MBQL query or a join, where the column first appears
+    ;; in the query. After the column passes through a stage boundary, it's no longer marked with the coercion strategy
+    ;; to avoid double-coercion.
+    ;;
+    ;; *However*, when a table is sandboxed by a native query, and it has fields which need coercion, the SQL subquery
+    ;; does not do the coercion (it's supposed to be a drop-in replacement for the table) but then the MBQL refs to its
+    ;; columns are not in the first stage anymore! So the sandboxing middleware sets this flag to the
+    ;; `:coercion-strategy`, along with `:qp/native-sandbox-column.propagate-coercion? true` (see below). Lib will
+    ;; propagate the coercion strategy through *exactly one* stage boundary, so it can get from the SQL first stage to
+    ;; the earliest MBQL stage, where the coercion will get applied correctly. See QUE2-376 or #69867 for more details.
+    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} :keyword]
+    ;;
+    ;; See above about `:qp/native-sandbox-column.force-coercion-strategy`.
+    [:qp/native-sandbox-column.propagate-coercion? {:optional true} :boolean]]
+   ;;
+   ;; Additional constraints
+   ;;
+   [:ref ::lib.schema.common/kebab-cased-map]
+   [:ref ::column.validate-for-source]
+   (lib.schema.common/disallowed-keys
+    (into {:binning           ":binning is deprecated; use :lib/binning instead"
+           :field-ref         ":field-ref is deprecated. For QP result metadata, use :metabase.lib.metadata.result-metadata/field-ref"
+           :ident             ":ident is deprecated and should not be included in column metadata"
+           :model/inner-ident ":model/inner_ident (normalized to :model/inner-ident) is deprecated and should not be included in column metadata"
+           :source            ":source is deprecated; use :lib/source instead. For QP result metadata, use :metabase.lib.metadata.result-metadata/source"
+           :source-alias      ":source-alias is deprecated; use :lib/join-alias or :lib/original-join-alias instead"
+           :unit              ":unit is deprecated; use :lib/temporal-unit instead"}
+          (map (fn [[old-key new-key]]
+                 [old-key (str old-key " is deprecated; use " new-key " instead")]))
+          lib.schema.common/deprecated-lib-key-renames))])
 
 (mr/def ::persisted-info.definition
   "Definition spec for a cached table."
@@ -525,18 +569,33 @@
    [:definition {:optional true} [:maybe [:ref ::persisted-info.definition]]]
    [:query-hash {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
+(def card-types
+  "Valid Card `:type`s."
+  #{:question :model :metric})
+
 (mr/def ::card.type
-  [:enum
-   :question
-   :model
-   :metric])
+  "All acceptable card types.
+
+  Previously (< 49), we only had 2 card types: question and model, which were differentiated using the boolean
+  `dataset` column. Soon we'll have more card types (e.g: metric) and we will longer be able to use a boolean column
+  to differentiate between all types. So we've added a new `type` column for this purpose.
+
+  Migrating all the code to use `report_card.type` will be quite an effort, we decided that we'll migrate it
+  gradually."
+  (into [:enum
+         (merge
+          {:decode/json      lib.schema.common/normalize-keyword
+           :decode/normalize lib.schema.common/normalize-keyword}
+          #?(:clj
+             {:api/regex (u.regex/re-or (map name card-types))}))]
+        card-types))
 
 (mr/def ::type
   "TODO -- not convinced we need a separate `:metadata/metric` anymore, it made sense back when Legacy/V1 Metrics were a
   separate table in the app DB, but now that they're a subtype of Card it's probably not important anymore, we can
   probably just use `:metadata/card` here."
-  [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric
-   :metadata/segment])
+  [:enum :metadata/database :metadata/table :metadata/column :metadata/card :metadata/metric :metadata/measure
+   :metadata/segment :metadata/native-query-snippet])
 
 (mr/def ::lib-or-legacy-column
   "Schema for the maps in card `:result-metadata` and similar. These can be either
@@ -547,10 +606,9 @@
                 ;; if this has `:lib/type` we know FOR SURE that it's lib-style metadata; but we should also be able
                 ;; to infer this fact automatically if it's using `kebab-case` keys. `:base-type` is required for both
                 ;; styles so look at that.
-                (let [col (lib.schema.common/normalize-map-no-kebab-case col)]
-                  (if ((some-fn :lib/type :base-type) col)
-                    :lib
-                    :legacy)))}
+                (if ((some-fn :lib/type #(get % "lib/type") :base-type #(get % "base-type")) col)
+                  :lib
+                  :legacy))}
    [:lib
     [:merge
      [:ref ::column]
@@ -569,7 +627,7 @@
 
 (mr/def ::card.query
   "Saved query. This is possibly still a legacy query, but should already be normalized.
-  Call [[metabase.lib.convert/->pMBQL]] on it as needed."
+  Call [[metabase.lib.convert/->mbql5]] on it as needed."
   [:map
    {:decode/normalize normalize-card-query}])
 
@@ -593,10 +651,16 @@
     (not (:collection-id card))
     (assoc :collection-id nil)))
 
+(mr/def ::card.result-metadata
+  "Schema for the `:result-metadata` for a Card (Saved Question, Model, or v2 Metric)."
+  ;; TODO (Cam 2026-02-11) consider whether we should add additional constraints here like distinct `:name`s... we can
+  ;; fix these with normalization if needed
+  [:sequential [:ref ::lib-or-legacy-column]])
+
 (mr/def ::card
   "Schema for metadata about a specific Saved Question (which may or may not be a Model). More or less the same as
   a [[metabase.queries.models.card]], but with kebab-case keys. Note that the `:dataset-query` is not necessarily
-  converted to pMBQL yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably
+  converted to MBQL 5 yet. Probably safe to assume it is normalized however. Likewise, `:result-metadata` is probably
   not quite massaged into a sequence of [[::column]] metadata just yet.
 
   See [[metabase.lib.card/card-metadata-columns]] that converts these as needed."
@@ -611,7 +675,7 @@
    [:dataset-query   {:optional true} ::card.query]
    ;; vector of column metadata maps; these are ALMOST the correct shape to be [[ColumnMetadata]], but they're
    ;; probably missing `:lib/type` and probably using `:snake_case` keys.
-   [:result-metadata {:optional true} [:maybe [:sequential ::lib-or-legacy-column]]]
+   [:result-metadata {:optional true} [:maybe [:ref ::card.result-metadata]]]
    ;; what sort of saved query this is, e.g. a normal Saved Question or a Model or a V2 Metric.
    [:type            {:optional true} [:maybe [:ref ::card.type]]]
    ;; Table ID is nullable in the application database, because native queries are not necessarily associated with a
@@ -641,8 +705,38 @@
    [:name       ::lib.schema.common/non-blank-string]
    [:table-id   ::lib.schema.id/table]
    ;; the MBQL snippet defining this Segment; this may still be in legacy
-   ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to pMBQL if needed.
+   ;; format. [[metabase.lib.segment/segment-definition]] handles conversion to MBQL 5 if needed.
    [:definition [:maybe :map]]
+   [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
+
+(defn- normalize-measure-definition [definition]
+  (when definition
+    (lib.schema.common/normalize-map definition)))
+
+(mr/def ::measure.definition
+  "Measure definition query. This should be an MBQL5 query with a single stage and one aggregation.
+   Strict validation via :metabase.lib.schema.measure/definition happens in metabase.measures.models.measure."
+  [:map
+   {:decode/normalize normalize-measure-definition}])
+
+(defn- mock-measure [measure]
+  (cond-> measure
+    (and (not (:name measure))
+         (:id measure))
+    (assoc :name (str "Measure " (:id measure)))))
+
+(mr/def ::measure
+  "More or less the same as a [[metabase.measures.models.measure]], but with kebab-case keys."
+  [:map
+   {:error/message "Valid Measure metadata"
+    :decode/mock   mock-measure}
+   [:lib/type   [:= :metadata/measure]]
+   [:id         ::lib.schema.id/measure]
+   [:name       ::lib.schema.common/non-blank-string]
+   [:table-id   ::lib.schema.id/table]
+   ;; the MBQL snippet defining this Measure, contains an aggregation expression.
+   ;; Strict validation via ::lib.schema.measure/definition happens in metabase.measures.models.measure
+   [:definition [:maybe [:ref ::measure.definition]]]
    [:description {:optional true} [:maybe ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::metric
@@ -653,7 +747,7 @@
    [:map
     [:lib/type [:= :metadata/metric]]
     [:type     [:= :metric]]
-    [:metabase.lib.join/join-alias {:optional true} ::lib.schema.common/non-blank-string]]])
+    [:lib/join-alias {:optional true} ::lib.schema.common/non-blank-string]]])
 
 (mr/def ::native-query-snippet
   [:map
@@ -701,7 +795,7 @@
   [:ref :metabase.lib.metadata.protocols/metadata-providerable])
 
 (mr/def ::stage
-  "Metadata about the columns returned by a particular stage of a pMBQL query. For example a single-stage native query
+  "Metadata about the columns returned by a particular stage of a MBQL 5 query. For example a single-stage native query
   like
 
     {:database 1
@@ -732,3 +826,10 @@
    {:decode/normalize lib.schema.common/normalize-map}
    [:lib/type [:= {:default :metadata/results} :metadata/results]]
    [:columns [:sequential ::column]]])
+
+(mr/def ::transform
+  "TODO (Cam 10/1/25) -- I'm putting this here as a placeholder until you guys go fill it out a little more."
+  [:map
+   [:id     ::lib.schema.id/transform]
+   [:source {:optional true} [:map
+                              [:query {:optional true} [:ref :metabase.lib.schema/query]]]]])

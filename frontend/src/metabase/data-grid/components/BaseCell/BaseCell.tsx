@@ -3,7 +3,7 @@ import type React from "react";
 import { memo, useMemo } from "react";
 
 import type { CellAlign } from "metabase/data-grid/types";
-import { isDark } from "metabase/lib/colors/palette";
+import { isDark } from "metabase/ui/colors/palette";
 
 import styles from "./BaseCell.module.css";
 
@@ -28,9 +28,9 @@ export const BaseCell = memo(function BaseCell({
   const cellStyle = useMemo(() => {
     if (isSelected) {
       return {
-        "--cell-bg-color": `color-mix(in srgb, var(--mb-color-brand), white 90%)`,
+        "--cell-bg-color": `color-mix(in srgb, var(--mb-color-brand), transparent 80%)`,
         "--cell-hover-bg-color": hasHover
-          ? `color-mix(in srgb, var(--mb-color-brand), white 80%)`
+          ? `color-mix(in srgb, var(--mb-color-brand), transparent 80%)`
           : undefined,
       } as React.CSSProperties;
     }

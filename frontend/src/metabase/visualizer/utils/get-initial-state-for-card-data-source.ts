@@ -1,6 +1,7 @@
-import { isPivotGroupColumn } from "metabase/lib/data_grid";
-import { isNotNull } from "metabase/lib/types";
+import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase/redux/store/visualizer";
+import { isNotNull } from "metabase/utils/types";
 import { isCartesianChart } from "metabase/visualizations";
+import { isPivotGroupColumn } from "metabase/visualizations/lib/data_grid";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import {
   getDefaultDimensionFilter,
@@ -8,13 +9,13 @@ import {
 } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
+import { getColumnNameFromKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   Card,
   Dataset,
   DatasetColumn,
   VisualizationDisplay,
 } from "metabase-types/api";
-import type { VisualizerVizDefinitionWithColumnsAndFallbacks } from "metabase-types/store/visualizer";
 
 import {
   createDimensionColumn,
@@ -82,10 +83,15 @@ function pickColumns(
   }
 
   if (isCartesianChart(display)) {
+    const tooltipColumns = (settings["graph.tooltip_columns"] || []).map(
+      getColumnNameFromKey,
+    );
+
     return originalColumns.filter((col) => {
       return (
         settings["graph.metrics"]?.includes(col.name) ||
-        settings["graph.dimensions"]?.includes(col.name)
+        settings["graph.dimensions"]?.includes(col.name) ||
+        tooltipColumns.includes(col.name)
       );
     });
   }
@@ -107,9 +113,7 @@ export function getInitialStateForCardDataSource(
       : DEFAULT_VISUALIZER_DISPLAY,
     columns: [],
     columnValuesMapping: {},
-    settings: {
-      "card.title": card.name,
-    },
+    settings: {},
     datasetFallbacks: { [card.id]: dataset },
   };
 
@@ -156,7 +160,7 @@ export function getInitialStateForCardDataSource(
         // Using state.display to get viz settings
         // relevant to a new visualization vs. original card
         // (e.g. if a card is a smartscalar, it won't have any relevant viz settings)
-        card: { ...card, display: state.display },
+        card: { ...card, display: state.display ?? card.display },
       },
     ]);
 
@@ -185,7 +189,7 @@ export function getInitialStateForCardDataSource(
       }
 
       if (Array.isArray(originalValue)) {
-        // When there're no sensible metrics/dimensions,
+        // When there are no sensible metrics/dimensions,
         // "graph.dimensions" and "graph.metrics" are `[null]`
         if (originalValue.filter(Boolean).length === 0) {
           return;
@@ -222,7 +226,6 @@ export function getInitialStateForCardDataSource(
   state.settings = {
     ...updateVizSettingsWithRefs(card.visualization_settings, columnsToRefs),
     ...Object.fromEntries(entries),
-    "card.title": card.name,
   };
 
   return state;

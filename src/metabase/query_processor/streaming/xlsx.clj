@@ -1,7 +1,8 @@
 (ns metabase.query-processor.streaming.xlsx
+  (:refer-clojure :exclude [mapv some])
   (:require
    [clojure.string :as str]
-   [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [dk.ative.docjure.spreadsheet :as spreadsheet] ; codespell:ignore ative
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.formatter.core :as formatter]
@@ -12,12 +13,12 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.common :as streaming.common]
    [metabase.query-processor.streaming.interface :as qp.si]
-
    [metabase.util :as u]
    [metabase.util.currency :as currency]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.json :as json])
+   [metabase.util.json :as json]
+   [metabase.util.performance :refer [mapv some]])
   (:import
    (java.io OutputStream)
    (java.time
@@ -76,6 +77,11 @@
         (str "[$" currency-identifier "]" base-string)
         (str "[$" currency-identifier "] " base-string))
 
+      "narrowSymbol"
+      (if (currency/supports-symbol? currency-code)
+        (str "[$" currency-identifier "]" base-string)
+        (str "[$" currency-identifier "] " base-string))
+
       "code"
       (str "[$" currency-identifier "] " base-string)
 
@@ -106,7 +112,7 @@
   [{::mb.viz/keys [prefix suffix number-style number-separators currency-in-header decimals] :as format-settings}]
   (let [format-strings
         (let [base-string     (if (= number-separators ".")
-                                ;; Omit thousands separator if ommitted in the format settings. Otherwise ignore
+                                ;; Omit thousands separator if omitted in the format settings. Otherwise ignore
                                 ;; number separator settings, since custom separators are not supported in XLSX.
                                 "###0"
                                 "#,##0")
@@ -415,7 +421,7 @@
   "The format-rows qp middleware formats rows into strings, which circumvents the formatting done in this namespace.
   To gain the formatting back, we parse the temporal strings back into their java.time objects.
 
-  TODO: find a way to avoid this java.time -> string -> java.time conversion by making sure the format-rows middlware
+  TODO: find a way to avoid this java.time -> string -> java.time conversion by making sure the format-rows middleware
         works effectively with the streaming-results-writer implementations for CSV, JSON, and XLSX.
         A hint towards a better solution is to add into the format-rows middleware the use of
         viz-settings/column-formatting that is used inside `metabase.formatter/create-formatter`."
@@ -673,10 +679,9 @@
         (let [pivot-spec       (when (and pivot? pivot-export-options (qp.settings/enable-pivoted-exports))
                                  (pivot-opts->pivot-spec (merge {:pivot-cols []
                                                                  :pivot-rows []}
-                                                                pivot-export-options) ordered-cols))
+                                                                (m/filter-vals some? pivot-export-options)) ordered-cols))
               non-pivot-cols (pivot/columns-without-pivot-group ordered-cols)]
           (vreset! pivot-grouping-index (qp.pivot.postprocess/pivot-grouping-index (mapv :display_name ordered-cols)))
-          (def pivot-spec pivot-spec)
           (if pivot-spec
             ;; If we're generating a pivot table, just initialize the `pivot-data` volatile but not the workbook, yet
             (vreset! pivot-data
@@ -710,7 +715,7 @@
           (if @pivot-data
             (vswap! pivot-data update-in [:data :rows] conj! ordered-row)
             (when (or (not group)
-                      (= qp.pivot.postprocess/NON_PIVOT_ROW_GROUP (int group)))
+                      (= qp.pivot.postprocess/non-pivot-row-group (int group)))
               (let [{:keys [cell-styles typed-cell-styles]} @styles]
                 (add-row! @workbook-sheet (inc row-num) row' ordered-cols' viz-settings cell-styles typed-cell-styles)
                 (when (= (inc row-num) *auto-sizing-threshold*)

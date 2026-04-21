@@ -8,14 +8,14 @@
    [metabase.api.common :refer [*current-user* *current-user-id* *is-group-manager?* *is-superuser?*]]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
-   [metabase.core.initialization-status :as init-status]
-   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.server.middleware.session :as mw.session]
    [metabase.session.core :as session]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n]
    [metabase.util.secret :as u.secret]
    [ring.mock.request :as ring.mock]
@@ -37,10 +37,10 @@
   (testing "Session expiration time = 1 minute"
     (with-redefs [env/env (assoc env/env :max-session-age "1")]
       (doseq [[created-at expected msg]
-              [[:%now                                                               false "brand-new session"]
-               [#t "1970-01-01T00:00:01Z"                                           true  "really old session"]
-               [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
-               [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
+              [[:%now                                                            false "brand-new session"]
+               [#t "1970-01-01T00:00:01Z"                                        true  "really old session"]
+               [(h2x/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
+               [(h2x/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
         (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
           (mt/with-temp [:model/User {user-id :id}]
             (let [session-id (session/generate-session-id)
@@ -119,6 +119,7 @@
           (mt/with-premium-features #{}
             (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
                                :is-superuser?     false
+                               :is-data-analyst?  false
                                :user-locale       nil})
                    (#'mw.session/merge-current-user-info req)))))
         (testing "Include :is-group-manager? if we have EE + :advanced-permissions "
@@ -126,6 +127,7 @@
             (mt/with-premium-features #{:advanced-permissions}
               (is (= (merge req {:metabase-user-id  (mt/user->id :lucky)
                                  :is-superuser?     false
+                                 :is-data-analyst?  false
                                  :is-group-manager? false
                                  :user-locale       nil})
                      (#'mw.session/merge-current-user-info req))))))))))
@@ -232,7 +234,11 @@
       (t2/insert! :model/Session {:id         test-session-id
                                   :key_hashed test-session-key-hashed
                                   :user_id    (mt/user->id :lucky)})
-      (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
+      (is (= {:metabase-user-id (mt/user->id :lucky),
+              :is-superuser? false,
+              :is-group-manager? false,
+              :user-locale nil
+              :is-data-analyst? false}
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
         (t2/delete! :model/Session :id test-session-id)))))
@@ -243,7 +249,11 @@
       (t2/insert! :model/Session {:id         test-session-id
                                   :key_hashed test-session-key-hashed
                                   :user_id    (mt/user->id :crowberto)})
-      (is (= {:metabase-user-id (mt/user->id :crowberto), :is-superuser? true, :is-group-manager? false, :user-locale nil}
+      (is (= {:metabase-user-id (mt/user->id :crowberto),
+              :is-superuser? true,
+              :is-group-manager? false,
+              :user-locale nil
+              :is-data-analyst? false}
              (#'mw.session/current-user-info-for-session test-session-key nil)))
       (finally
         (t2/delete! :model/Session :id test-session-id)))))
@@ -291,7 +301,11 @@
                                     :key_hashed      test-session-key-hashed
                                     :user_id         (mt/user->id :lucky)
                                     :anti_csrf_token test-anti-csrf-token})
-        (is (= {:metabase-user-id (mt/user->id :lucky), :is-superuser? false, :is-group-manager? false, :user-locale nil}
+        (is (= {:metabase-user-id (mt/user->id :lucky),
+                :is-superuser? false,
+                :is-group-manager? false,
+                :user-locale nil
+                :is-data-analyst? false}
                (#'mw.session/current-user-info-for-session test-session-key test-anti-csrf-token)))
         (finally
           (t2/delete! :model/Session :id test-session-id)))
@@ -456,3 +470,20 @@
         (let [request {:cookies {}}]
           (is (= response
                  (mw.session/reset-session-timeout* request response request-time))))))))
+
+;;; ---------------------------------------- server-side session timeout tests -----------------------------------------
+;; Tests for session-timeout-enforces-last-active-at, session-timeout-falls-back-to-created-at, and
+;; session-activity-update-throttle are in metabase-enterprise.api.session-test because they require EE features.
+
+(deftest session-timeout-requires-premium-feature-test
+  (init-status/set-complete!)
+  (mt/with-premium-features #{}
+    (mt/with-temporary-setting-values [session-timeout {:amount 5 :unit "minutes"}]
+      (mt/with-temp [:model/User {user-id :id}]
+        (let [session-id  (session/generate-session-id)
+              session-key (str (random-uuid))
+              key-hashed  (session/hash-session-key session-key)]
+          (t2/insert! (t2/table-name :model/Session)
+                      {:id session-id :key_hashed key-hashed :user_id user-id :created_at :%now
+                       :last_active_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now -600 :second)})
+          (is (some? (#'mw.session/current-user-info-for-session session-key nil))))))))

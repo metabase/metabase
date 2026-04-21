@@ -1,24 +1,31 @@
 (ns metabase.query-processor.card-test
-  "There are more e2e tests in [[metabase.queries.api.card-test]]."
+  "There are more e2e tests in [[metabase.queries-rest.api.card-test]]."
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp           {:level :off}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}}}}
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
+   [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]))
+
+(set! *warn-on-reflection* true)
 
 (defn run-query-for-card
   "Run query for Card synchronously."
@@ -44,6 +51,19 @@
                                       :dimension    [:field (mt/id :checkins :date) nil]
                                       :widget-type  :date/all-options}}
               :query         "SELECT count(*)\nFROM CHECKINS\nWHERE {{date}}"}})
+
+(defn field-filter-query-between
+  "A query with a Field Filter 'between' parameter"
+  []
+  {:database (mt/id)
+   :type     :native
+   :native   {:template-tags {"quantities" {:id           "_QUANTITIES_"
+                                            :name         "quantities"
+                                            :display-name "Quantity Range"
+                                            :type         :dimension
+                                            :dimension    [:field (mt/id :orders :quantity) nil]
+                                            :widget-type  :number/between}}
+              :query         "SELECT count(*)\nFROM ORDERS\n[[WHERE {{quantities}}]]"}})
 
 (defn non-field-filter-query
   "A query with a parameter that is not a Field Filter"
@@ -146,7 +166,7 @@
             (testing disallowed-type
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
-                   #"Invalid parameter type :[^\s]+ for parameter \"date\".*/"
+                   #"Invalid parameter value type :[^\s]+ for parameter \"date\".*/"
                    (validate disallowed-type)))
               (testing "should be ignored if `*allow-arbitrary-mbql-parameters*` is enabled"
                 (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
@@ -162,6 +182,45 @@
                                                                 :name  "date"
                                                                 :type  :date/single
                                                                 :value "2014-05-07"}]})))))))
+
+(deftest ^:parallel validate-card-parameters-test-5
+  (mt/with-temp [:model/Card {card-id :id} {:dataset_query (field-filter-query-between)}]
+    (testing ":number/between filters should work (#65714)"
+      (testing "if optional and the parameter is nil"
+        (is (= [18760]
+               (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                   {:parameters [{:id    "_QUANTITIES_"
+                                                                  :name  "quantities"
+                                                                  :type  :number/between
+                                                                  :value nil}]})))))
+      (testing "if only the maximum is set"
+        (is (= [15416]
+               (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                   {:parameters [{:id    "_QUANTITIES_"
+                                                                  :name  "quantities"
+                                                                  :type  :number/between
+                                                                  :value [nil 5]}]})))))
+      (testing "if only the minimum is set"
+        (is (= [3344]
+               (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                   {:parameters [{:id    "_QUANTITIES_"
+                                                                  :name  "quantities"
+                                                                  :type  :number/between
+                                                                  :value [6 nil]}]})))))
+      (testing "if both ends are set"
+        (is (= [7543]
+               (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                   {:parameters [{:id    "_QUANTITIES_"
+                                                                  :name  "quantities"
+                                                                  :type  :number/between
+                                                                  :value [4 8]}]}))))
+        (testing "to the same value"
+          (is (= [2207]
+                 (mt/first-row (mt/user-http-request :rasta :post (format "card/%d/query" card-id)
+                                                     {:parameters [{:id    "_QUANTITIES_"
+                                                                    :name  "quantities"
+                                                                    :type  :number/between
+                                                                    :value [5 5]}]})))))))))
 
 (deftest ^:parallel bad-viz-settings-should-still-work-test
   (testing "We should still be able to run a query that has Card bad viz settings referencing a column not in the query (#34950)"
@@ -241,9 +300,11 @@
           (is (= [{:name         "NAME"
                    :display_name "Name"
                    :base_type    :type/Text}]
+                 ;; existing usage -- don't use going forward
+                 #_{:clj-kondo/ignore [:deprecated-var]}
                  (qp.store/miscellaneous-value [::qp.results-metadata/card-stored-metadata]))))))))
 
-;;; adapted from [[metabase.queries.api.card-test/model-card-test-2]]
+;;; adapted from [[metabase.queries-rest.api.card-test/model-card-test-2]]
 (deftest ^:parallel preserve-model-metadata-test
   (testing "Cards preserve their edited metadata"
     (letfn [(base-type->semantic-type [base-type]
@@ -261,7 +322,7 @@
                        :semantic_type (base-type->semantic-type (:base_type col)))))]
       ;; use a MetadataProvider to build cards and populate metadata, but we have to use `with-temp` before
       ;; calling [[run-query-for-card]] since the Card QP code does not currently fully support metadata providers.
-      (let [mp (as-> (mt/application-database-metadata-provider (mt/id)) mp
+      (let [mp (as-> (mt/metadata-provider) mp
                  (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries
                   mp
                   [{:database (mt/id)
@@ -274,9 +335,9 @@
                                             {:dataset_query   (:dataset-query card-1)
                                              :type            :model
                                              :result_metadata (add-user-edits (:result-metadata card-1))})
-                       :model/Card card-2 (let [card-2 (lib.metadata/card mp 2)]
-                                            {:dataset_query   (-> (:dataset-query card-2)
-                                                                  (assoc-in [:query :source-table] (format "card__%d" (:id card-1))))
+                       :model/Card card-2 (let [card-2 (lib.metadata/card mp 2)
+                                                mp     (mt/metadata-provider)]
+                                            {:dataset_query (lib/query mp (lib.metadata/card mp (:id card-1)))
                                              :result_metadata (:result-metadata card-2)})]
           (doseq [[card-type card-id] {"model"                     (:id card-1)
                                        "card with model as source" (:id card-2)}]
@@ -288,3 +349,76 @@
                        {:name "LONGITUDE",   :description "user description", :display_name "user display name", :semantic_type :type/Cost}
                        {:name "PRICE",       :description "user description", :display_name "user display name", :semantic_type :type/Quantity}]
                       (mt/cols (run-query-for-card card-id)))))))))))
+
+(def card-download-filename-cases
+  [["My Public Report" "my_public_report"]
+   ["Sales Report!@#$%" "sales_report_____"]
+   ["Vendas São Paulo" "vendas_sao_paulo"]
+   ["Q1/Q2 Comparison" "q1_q2_comparison"]
+   ["   Trimmed   " "trimmed"]
+   ;; Long
+   [(apply str (repeat 150 "a")) (apply str (repeat 150 "a"))]
+   [(apply str (repeat 254 "a")) (apply str (repeat 200 "a"))]
+   ;; Greek
+   ["ναφρά Πωλήσεων" "%CE%BD%CE%B1%CF%86%CF%81%CE%B1_%CF%80%CF%89%CE%BB%CE%B7%CF%83%CE%B5%CF%89%CE%BD"]
+   ;; Chinese
+   ["销售报告" "%E9%94%80%E5%94%AE%E6%8A%A5%E5%91%8A"]
+   ;; Japanese
+   ["レポート分析" "%E3%83%AC%E3%83%9B%E3%82%9A%E3%83%BC%E3%83%88%E5%88%86%E6%9E%90"]
+   ;; Emojis
+   ["📊 Dashboard Metrics 📈" "%3F%3F_dashboard_metrics_%3F%3F"]
+   ;; Cyrillic
+   ["тчёт п пджм" "%D1%82%D1%87%D0%B5%D1%82_%D0%BF_%D0%BF%D0%B4%D0%B6%D0%BC"]
+   ;; Arabic
+   ["تقرير المبيعات" "%D8%AA%D9%82%D8%B1%D9%8A%D8%B1_%D8%A7%D9%84%D9%85%D8%A8%D9%8A%D8%B9%D8%A7%D8%AA"]
+   ;; Mixed
+   ["混合 Report αβγ" "%E6%B7%B7%E5%90%88_report_%CE%B1%CE%B2%CE%B3"]])
+
+(deftest ^:parallel downloaded-card-filenames-test
+  (testing "Card downloads generate correct filenames"
+    (doseq [[card-name expected-slug] card-download-filename-cases]
+      (testing (str "card name: " card-name)
+        (mt/with-temp [:model/Card card {:name card-name
+                                         :dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}]
+          (doseq [export-format [:csv :json :xlsx]]
+            (testing (str "format: " export-format)
+              (let [response (client/client-full-response
+                              (test.users/username->token :crowberto)
+                              :post 200
+                              (format "card/%d/query/%s" (:id card) (name export-format))
+                              {})]
+                (is (str/includes?
+                     (get-in response [:headers "Content-Disposition"])
+                     (str expected-slug "_"))
+                    (str "Expected filename to contain: " expected-slug))))))))))
+
+(deftest combined-parameters-and-template-tags-preserves-parameter-order-test
+  (testing "combined-parameters-and-template-tags should preserve the order of card.parameters (#62079)"
+    ;; Use enough parameters (9) so that Clojure switches to PersistentHashMap.
+    ;; PersistentArrayMap (used for <= 8 entries) preserves insertion order, but PersistentHashMap (>= 9) does not.
+    (let [tag-names  ["zeta" "alpha" "mu" "beta" "omega" "gamma" "theta" "delta" "epsilon"]
+          name->id   #(str "_" (u/upper-case-en %) "_")
+          tags       (into {} (map (fn [n]
+                                     [n {:id           (name->id n)
+                                         :name         n
+                                         :display-name (str n " param")
+                                         :type         :text}]))
+                           tag-names)
+          params     (mapv (fn [n]
+                             {:id     (name->id n)
+                              :type   :string/=
+                              :slug   n
+                              :name   (str n " param")
+                              :target [:variable [:template-tag n]]})
+                           tag-names)
+          placeholders (str/join " AND " (map #(str % " = {{" % "}}") tag-names))
+          query      (str "SELECT * FROM t WHERE " placeholders)]
+      (mt/with-temp [:model/Card card {:dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:template-tags tags
+                                                                  :query         query}}
+                                       :parameters    params}]
+        (let [result (qp.card/combined-parameters-and-template-tags card)]
+          (is (= (mapv name->id tag-names)
+                 (mapv :id result))
+              "Parameters should be returned in the same order as card.parameters"))))))

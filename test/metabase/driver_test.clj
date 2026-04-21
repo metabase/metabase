@@ -8,8 +8,9 @@
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.impl :as driver.impl]
    [metabase.driver.settings :as driver.settings]
-   [metabase.query-processor :as qp]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
@@ -55,16 +56,30 @@
 
   ;; so instead, just iterate through all drivers currently set to test by the environment, and check their
   ;; connection-properties; between all the different CI driver runs, this should cover everything
-  (doseq [d (tx.env/test-drivers)]
-    (testing (str d " has entirely unique connection property names")
-      (let [props         (driver/connection-properties d)
-            props-by-name (group-by :name props)]
-        (is (= (count props) (count props-by-name))
-            (format "Property(s) with duplicate name: %s" (-> (filter (fn [[_ props]]
-                                                                        (> (count props) 1))
-                                                                      props-by-name)
-                                                              vec
-                                                              pr-str)))))))
+  (letfn [(count-named-props [props]
+            ;; Recursively count all properties with :name, including within groups
+            (reduce (fn [acc prop]
+                      (cond
+                        (= :group (:type prop))
+                        (+ acc (count-named-props (:fields prop)))
+
+                        (:name prop)
+                        (inc acc)
+
+                        :else
+                        acc))
+                    0
+                    props))]
+    (doseq [d (tx.env/test-drivers)]
+      (testing (str d " has entirely unique connection property names")
+        (let [props           (driver/connection-properties d)
+              props-by-name   (driver.u/collect-all-props-by-name props)
+              total-props     (count-named-props props)]
+          ;; If there are duplicate names, some will be overwritten in the map,
+          ;; so the map size will be less than the total count of named properties
+          (is (= total-props (count props-by-name))
+              (format "Property(s) with duplicate name: %d total properties but only %d unique names in %s"
+                      total-props (count props-by-name) d)))))))
 
 (deftest supports-schemas-matches-describe-database-test
   (mt/test-drivers (mt/normal-drivers)
@@ -297,6 +312,52 @@
                     :base-type         #(isa? % :type/Number)}]
                   (describe-fields-for-table (mt/db) table))))))))
 
+(deftest ^:parallel describe-fields-returns-nullability-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
+    (mt/dataset nullable-db
+      (let [table   (t2/select-one :model/Table :id (mt/id :nullable))
+            fields  (describe-fields-for-table (mt/db) table)
+            [a b c] (->> ["a" "b" "c"]
+                         (map #(ddl.i/format-name driver/*driver* %))
+                         (map (u/index-by :name fields)))]
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
+        (if (driver/database-supports? driver/*driver* :describe-is-nullable (mt/db))
+          (testing ":database-is-nullable should be provided"
+            (is (= [false true false] (mapv :database-is-nullable [a b c]))))
+          (testing ":database-is-nullable should remain unspecified"
+            (is (= [nil nil nil] (mapv :database-is-nullable [a b c])))))))))
+
+(deftest ^:parallel describe-fields-returns-default-expr-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
+    (mt/dataset default-expr-db
+      (let [table (t2/select-one :model/Table :id (mt/id :default_expr))
+            fields (describe-fields-for-table (mt/db) table)
+            [a b c] (->> ["a" "b" "c"]
+                         (map #(ddl.i/format-name driver/*driver* %))
+                         (map (u/index-by :name fields)))]
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
+        (if (driver/database-supports? driver/*driver* :describe-default-expr (mt/db))
+          (testing ":database-default should be provided"
+            ;; SQL Server likes to add some parens
+            (is (=? [nil #"\(*42\)*" nil] (mapv :database-default [a b c]))))
+          (testing ":database-default should remain unspecified"
+            (is (= [nil nil nil] (mapv :database-default [a b c])))))))))
+
+(deftest ^:parallel describe-fields-returns-is-generated-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :test/dynamic-dataset-loading :test/create-table-without-data)
+    (mt/dataset generated-column-db
+      (let [table (t2/select-one :model/Table :id (mt/id :generated_column))
+            fields (describe-fields-for-table (mt/db) table)
+            [a b c] (->> ["a" "b" "c"]
+                         (map #(ddl.i/format-name driver/*driver* %))
+                         (map (u/index-by :name fields)))]
+        ;; this test only properties of the field-meta returned by the driver, not whether it syncs, for that see sync_metadata/fields_test.clj
+        (if (driver/database-supports? driver/*driver* :describe-is-generated (mt/db))
+          (testing ":database-is-generated should be provided"
+            (is (= [false true false] (mapv :database-is-generated [a b c]))))
+          (testing ":database-is-generated should remain unspecified"
+            (is (= [nil nil nil] (mapv :database-is-generated [a b c])))))))))
+
 (deftest ^:parallel describe-table-fks-test
   (testing "`describe-table-fks` should work for drivers that do not support `describe-fks`"
     (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :metadata/key-constraints)
@@ -393,3 +454,30 @@
           (qp/process-query success-query)
           (is (= 3.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "success"})))
           (is (= 2.0 (mt/metric-value system :metabase-query-processor/query {:driver driver/*driver* :status "failure"}))))))))
+
+(deftest python-transform-drivers-multimethods-support
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
+    (let [driver driver/*driver*]
+      (is (get-method driver/create-table! driver))
+      (is (get-method driver/table-name-length-limit driver))
+      (is (get-method driver/drop-table! driver))
+      (is (let [should-be-supported-by-all #{:type/Number :type/Text :type/Date :type/DateTime :type/DateTimeWithTZ :type/Boolean}]
+            (and (get-method driver/type->database-type driver)
+                 (every? #(driver/type->database-type driver %) should-be-supported-by-all))))
+      (is (get-method driver/insert-from-source! [driver :jsonl-file])))))
+
+(driver/register! ::mock-no-deps-driver, :abstract? true)
+
+(deftest deps-ignores-invalid-drivers-test
+  (is (= #{}
+         (driver/native-query-deps ::mock-no-deps-driver nil nil))))
+
+(driver/register! ::mock-deps-driver, :abstract? true)
+
+(defmethod driver/database-supports? [::mock-deps-driver :dependencies/native]
+  [_driver _feature _database]
+  true)
+
+(deftest deps-flags-when-supported-driver-is-not-covered-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Database that supports :dependencies/native does not provide an implementation of driver/native-query-deps"
+                        (driver/native-query-deps ::mock-deps-driver nil nil))))

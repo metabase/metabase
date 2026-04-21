@@ -1,8 +1,9 @@
-import { assoc, assocIn, dissoc } from "icepick";
 import { parse } from "url";
 
+import { assoc, dissoc } from "icepick";
+
 import { createMockMetadata } from "__support__/metadata";
-import { deserializeCardFromUrl } from "metabase/lib/card";
+import { deserializeCardFromUrl } from "metabase/utils/card";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -36,6 +37,8 @@ import {
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
+
+const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
 
 const metadata_without_order_pk = createMockMetadata({
   databases: [
@@ -289,8 +292,8 @@ describe("Question", () => {
     describe("Question.create(...)", () => {
       const question = Question.create({
         metadata,
-        databaseId: SAMPLE_DB_ID,
-        tableId: ORDERS_ID,
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
       });
 
       it("defaults to table display", () => {
@@ -561,24 +564,24 @@ describe("Question", () => {
 
       it("questions that differ only by randomized idents are considered equal", () => {
         const question1 = Question.create({
-          databaseId: SAMPLE_DB_ID,
-          tableId: ORDERS_ID,
+          DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+          DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
         });
         const question2 = Question.create({
-          databaseId: SAMPLE_DB_ID,
-          tableId: ORDERS_ID,
+          DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+          DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
         });
         expect(question1.isDirtyComparedTo(question2)).toBe(false);
       });
 
       it("questions that differ by query only are not considered equal", () => {
         const question1 = Question.create({
-          databaseId: SAMPLE_DB_ID,
-          tableId: PRODUCTS_ID,
+          DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+          DEPRECATED_RAW_MBQL_tableId: PRODUCTS_ID,
         });
         const question2 = Question.create({
-          databaseId: SAMPLE_DB_ID,
-          tableId: ORDERS_ID,
+          DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
+          DEPRECATED_RAW_MBQL_tableId: ORDERS_ID,
         });
         expect(question1.isDirtyComparedTo(question2)).toBe(true);
       });
@@ -587,7 +590,7 @@ describe("Question", () => {
 
   describe("URLs", () => {
     const adhocUrl =
-      "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJxdWVyeSI6eyJzb3VyY2UtdGFibGUiOjJ9LCJ0eXBlIjoicXVlcnkifSwiZGlzcGxheSI6InRhYmxlIiwibmFtZSI6IlJhdyBvcmRlcnMgZGF0YSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ==";
+      "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJsaWIvdHlwZSI6Im1icWwvcXVlcnkiLCJzdGFnZXMiOlt7ImxpYi90eXBlIjoibWJxbC5zdGFnZS9tYnFsIiwic291cmNlLXRhYmxlIjoyfV19LCJkaXNwbGF5IjoidGFibGUiLCJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwicGFyYW1ldGVyVmFsdWVzIjp7fSwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319";
 
     // Covered a lot in query_builder/actions.spec.js, just very basic cases here
     // (currently getUrl has logic that is strongly tied to the logic query builder Redux actions)
@@ -815,19 +818,7 @@ describe("Question", () => {
       });
 
       expect(Lib.stageCount(questionWithFilters.query())).toBe(1);
-      expect(questionWithFilters.datasetQuery().query.filter).toEqual([
-        "starts-with",
-        [
-          "field",
-          PRODUCTS.CATEGORY,
-          {
-            "base-type": "type/Text",
-            "source-field": ORDERS.PRODUCT_ID,
-          },
-        ],
-        "abc",
-        { "case-sensitive": false },
-      ]);
+      expect(Lib.filters(questionWithFilters.query())).toHaveLength(1);
     });
   });
 
@@ -867,13 +858,15 @@ describe("Question", () => {
 
     const card = {
       id: 1,
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": PRODUCTS_ID,
-        },
-        database: SAMPLE_DB_ID,
-      },
+      dataset_query: Lib.toJsQuery(
+        Lib.fromJsQuery(metadataProvider, {
+          type: "query",
+          query: {
+            "source-table": PRODUCTS_ID,
+          },
+          database: SAMPLE_DB_ID,
+        }),
+      ),
     };
 
     describe("with structured card", () => {
@@ -908,20 +901,14 @@ describe("Question", () => {
           },
         );
 
-        const deserializedCard = {
-          ...assocIn(
-            dissoc(card, "id"),
-            ["dataset_query", "query", "filter"],
-            ["=", ["field", 1, { "base-type": "type/Text" }], "bar"],
-          ),
-          original_card_id: card.id,
-        };
-
-        expect(parseUrl(url)).toEqual({
-          pathname: "/question",
-          query: {},
-          card: deserializedCard,
-        });
+        const parsedUrl = parseUrl(url);
+        const parsedQuestion = new Question(
+          parsedUrl.card,
+          question.metadata(),
+        );
+        expect(parsedUrl.pathname).toEqual("/question");
+        expect(parsedUrl.query).toEqual({});
+        expect(Lib.filters(parsedQuestion.query(), -1)).toHaveLength(1);
       });
 
       it("should return question URL with number MBQL filter added", () => {
@@ -934,18 +921,12 @@ describe("Question", () => {
           },
         );
 
-        expect(parseUrl(url)).toEqual({
-          pathname: "/question",
-          query: {},
-          card: {
-            ...assocIn(
-              dissoc(card, "id"),
-              ["dataset_query", "query", "filter"],
-              ["=", ["field", 2, { "base-type": "type/Float" }], 123],
-            ),
-            original_card_id: card.id,
-          },
-        });
+        const parsedUrl = parseUrl(url);
+        const parsedQuestion = new Question(
+          parsedUrl.card,
+          question.metadata(),
+        );
+        expect(Lib.filters(parsedQuestion.query(), -1)).toHaveLength(1);
       });
 
       it("should return question URL with date MBQL filter added", () => {
@@ -958,27 +939,12 @@ describe("Question", () => {
           },
         );
 
-        expect(parseUrl(url)).toEqual({
-          pathname: "/question",
-          query: {},
-          card: {
-            ...assocIn(
-              dissoc(card, "id"),
-              ["dataset_query", "query", "filter"],
-              [
-                "between",
-                [
-                  "field",
-                  PRODUCTS.CREATED_AT,
-                  { "base-type": "type/DateTime" },
-                ],
-                "2017-05-01",
-                "2017-05-31",
-              ],
-            ),
-            original_card_id: card.id,
-          },
-        });
+        const parsedUrl = parseUrl(url);
+        const parsedQuestion = new Question(
+          parsedUrl.card,
+          question.metadata(),
+        );
+        expect(Lib.filters(parsedQuestion.query(), -1)).toHaveLength(1);
       });
 
       it("should include objectId in a URL", () => {
@@ -1016,9 +982,11 @@ describe("Question", () => {
         const deserializedCard = {
           ...card,
           parameters,
-          id: undefined,
           original_card_id: card.id,
+          parameterValues: {},
         };
+
+        delete deserializedCard.id;
 
         expect(parseUrl(url)).toEqual({
           pathname: "/question",
@@ -1050,6 +1018,7 @@ describe("Question", () => {
       const cardWithTextFilter = {
         id: 1,
         dataset_query: {
+          database: SAMPLE_DB_ID,
           type: "native",
           native: {
             "template-tags": {
@@ -1073,6 +1042,7 @@ describe("Question", () => {
       const cardWithFieldFilter = {
         id: 2,
         dataset_query: {
+          database: SAMPLE_DB_ID,
           type: "native",
           native: {
             "template-tags": {
@@ -1254,6 +1224,8 @@ describe("Question", () => {
   describe("Question.generateQueryDescription", () => {
     it("should work with multiple aggregations", () => {
       const question = base_question.setDatasetQuery({
+        type: "query",
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [["count"], ["sum", ["field", ORDERS.TOTAL, null]]],
@@ -1266,6 +1238,8 @@ describe("Question", () => {
 
     it("should work with named aggregations", () => {
       const question = base_question.setDatasetQuery({
+        type: "query",
+        database: SAMPLE_DB_ID,
         query: {
           "source-table": ORDERS_ID,
           aggregation: [

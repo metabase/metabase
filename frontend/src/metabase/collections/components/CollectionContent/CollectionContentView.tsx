@@ -1,11 +1,14 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useDropzone } from "react-dropzone";
+import { type FileRejection, useDropzone } from "react-dropzone";
 import { usePrevious } from "react-use";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
+import { trackCollectionBookmarked } from "metabase/collections/analytics";
 import { CollectionBulkActions } from "metabase/collections/components/CollectionBulkActions";
 import {
   type CollectionContentTableColumn,
@@ -25,14 +28,15 @@ import {
   isTrashedCollection,
 } from "metabase/collections/utils";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
-import ItemsDragLayer from "metabase/common/components/dnd/ItemsDragLayer";
+import { ItemsDragLayer } from "metabase/common/components/dnd/ItemsDragLayer";
+import { useToast } from "metabase/common/hooks";
 import { useListSelect } from "metabase/common/hooks/use-list-select";
-import { useToggle } from "metabase/common/hooks/use-toggle";
-import Bookmarks from "metabase/entities/bookmarks";
-import Collections from "metabase/entities/collections";
-import Search from "metabase/entities/search";
-import { useDispatch } from "metabase/lib/redux";
-import { addUndo } from "metabase/redux/undo";
+import { Bookmarks } from "metabase/entities/bookmarks";
+import { Collections } from "metabase/entities/collections";
+import { Search } from "metabase/entities/search";
+import type { State } from "metabase/redux/store";
+import { MAX_UPLOAD_SIZE, MAX_UPLOAD_STRING } from "metabase/redux/uploads";
+import { useDispatch } from "metabase/utils/redux";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,
@@ -40,8 +44,6 @@ import type {
   CollectionId,
   CollectionItem,
 } from "metabase-types/api";
-import { SortDirection } from "metabase-types/api/sorting";
-import type { State } from "metabase-types/store";
 
 import { ModelUploadModal } from "../ModelUploadModal";
 import UploadOverlay from "../UploadOverlay";
@@ -89,14 +91,17 @@ const CollectionContentViewInner = ({
 
   const [
     isModelUploadModalOpen,
-    { turnOn: openModelUploadModal, turnOff: closeModelUploadModal },
-  ] = useToggle(false);
+    { open: openModelUploadModal, close: closeModelUploadModal },
+  ] = useDisclosure(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
-  const saveFile = (file: File) => {
-    setUploadedFile(file);
-    openModelUploadModal();
-  };
+  const saveFile = useCallback(
+    (file: File) => {
+      setUploadedFile(file);
+      openModelUploadModal();
+    },
+    [openModelUploadModal],
+  );
 
   const handleUploadFile = useCallback<OnFileUpload>(
     (uploadFileArgs: CollectionOrTableIdProps) => {
@@ -131,29 +136,65 @@ const CollectionContentViewInner = ({
   }, [bookmarks, collectionId]);
 
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
 
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
     [visibleColumns],
   );
 
-  const onDrop = (acceptedFiles: File[]) => {
-    if (!acceptedFiles.length) {
-      dispatch(
-        addUndo({
-          message: t`Invalid file type`,
+  const handleFileRejections = useCallback(
+    (rejected: FileRejection[]) => {
+      if (!rejected.length) {
+        return;
+      }
+
+      if (rejected.length > 1) {
+        sendToast({
+          message: t`Please upload files individually`,
           toastColor: "error",
           icon: "warning",
-        }),
-      );
-      return;
-    }
-    saveFile(acceptedFiles[0]);
-  };
+        });
+        return;
+      }
+
+      const errorCode = rejected[0].errors[0].code;
+
+      const errorMessage = match(errorCode)
+        .with(
+          "file-invalid-type",
+          () => t`Sorry, this file type is not supported`,
+        )
+        .with(
+          "file-too-large",
+          () => t`Sorry, this file is too large (max ${MAX_UPLOAD_STRING} MB)`,
+        )
+        .otherwise(() => t`An error has occurred`);
+
+      sendToast({
+        message: errorMessage,
+        toastColor: "error",
+        icon: "warning",
+      });
+    },
+    [sendToast],
+  );
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[], fileRejections: FileRejection[]) => {
+      if (fileRejections.length) {
+        handleFileRejections(fileRejections);
+      } else if (acceptedFiles.length === 1) {
+        saveFile(acceptedFiles[0]);
+      }
+    },
+    [handleFileRejections, saveFile],
+  );
 
   const { getRootProps, isDragActive } = useDropzone({
     onDrop,
     maxFiles: 1,
+    maxSize: MAX_UPLOAD_SIZE,
     noClick: true,
     noDragEventsBubbling: true,
     accept: { "text/csv": [".csv"], "text/tab-separated-values": [".tsv"] },
@@ -171,6 +212,7 @@ const CollectionContentViewInner = ({
 
   const handleCreateBookmark = () => {
     createBookmark(collectionId.toString(), "collection");
+    trackCollectionBookmarked();
   };
 
   const handleDeleteBookmark = () => {
@@ -295,7 +337,7 @@ export const CollectionContentView = Search.loadList({
     collection: collectionId,
     pinned_state: "is_pinned",
     sort_column: "name",
-    sort_direction: SortDirection.Asc,
+    sort_direction: "asc",
   }),
   loadingAndErrorWrapper: false,
   wrapped: true,

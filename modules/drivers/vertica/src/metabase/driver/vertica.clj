@@ -15,6 +15,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.empty-string-is-null
     :as sql.qp.empty-string-is-null]
+   [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -29,14 +30,18 @@
                                       ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set
                                       ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(doseq [[feature supported?] {:convert-timezone          true
-                              :datetime-diff             true
-                              :expression-literals       true
-                              :now                       true
-                              :identifiers-with-spaces   true
-                              :percentile-aggregations   false
-                              :test/jvm-timezone-setting false
-                              :database-routing          false}]
+(doseq [[feature supported?] {:convert-timezone                 true
+                              :database-routing                 false
+                              :datetime-diff                    true
+                              :describe-default-expr            true
+                              :describe-is-nullable             true
+                              :expression-literals              true
+                              :identifiers-with-spaces          true
+                              :now                              true
+                              :percentile-aggregations          false
+                              :regex/lookaheads-and-lookbehinds false
+                              :test/jvm-timezone-setting        false
+                              :uuid-type                        true}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica
@@ -56,6 +61,7 @@
     :Numeric                   :type/Decimal
     :Double                    :type/Decimal
     :Float                     :type/Float
+    :Uuid                      :type/UUID
     :Date                      :type/Date
     :Time                      :type/Time
     :TimeTz                    :type/TimeWithLocalTZ
@@ -137,7 +143,8 @@
 (defmethod sql.qp/->honeysql [:vertica :convert-timezone]
   [driver [_ arg target-timezone source-timezone]]
   (let [expr         (cast-timestamp (sql.qp/->honeysql driver arg))
-        timestamptz? (h2x/is-of-type? expr "timestamptz")]
+        timestamptz? (or (sql.qp.u/field-with-tz? arg)
+                         (h2x/is-of-type? expr "timestamptz"))]
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           expr
@@ -272,7 +279,7 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]
-  ;; using `timestampadd` instead of `+ (INTERVAL)` because vertica add inteval for month, or year
+  ;; using `timestampadd` instead of `+ (INTERVAL)` because vertica add interval for month, or year
   ;; by adding the equivalent number of days, not adding the unit compoinent.
   ;; For example `select date '2004-02-02' + interval '1 year' will return `2005-02-01` because it's adding
   ;; 365 days under the hood and 2004 is a leap year. Whereas other dbs will return `2006-02-02`.
@@ -341,3 +348,6 @@
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :vertica
   [_ e]
   (= (sql-jdbc/get-sql-state e) "42V01"))
+
+(defmethod driver/llm-sql-dialect-resource :vertica [_]
+  "metabot/prompts/dialects/vertica.md")

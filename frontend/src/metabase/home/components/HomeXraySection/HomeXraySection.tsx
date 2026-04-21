@@ -9,11 +9,12 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import Select from "metabase/common/components/Select";
-import { useSelector } from "metabase/lib/redux";
-import { isSyncCompleted } from "metabase/lib/syncing";
-import * as Urls from "metabase/lib/urls";
+import { Select } from "metabase/common/components/Select";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { useSelector } from "metabase/utils/redux";
+import { isSyncCompleted } from "metabase/utils/syncing";
+import { isNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import type { Database, DatabaseXray } from "metabase-types/api";
 
 import { HomeCaption } from "../HomeCaption";
@@ -65,12 +66,13 @@ interface HomeXrayViewProps {
 const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   const isSample = database.is_sample;
   const schemas = candidates.map((d) => d.schema);
-  const [schema, setSchema] = useState(schemas[0]);
+  const [schema, setSchema] = useState(getDefaultSchema(schemas));
   const candidate = candidates.find((d) => d.schema === schema);
   const tableCount = candidate ? candidate.tables.length : 0;
   const tableMessages = useMemo(() => getMessages(tableCount), [tableCount]);
-  const canSelectSchema = schemas.length > 1;
+  const canSelectSchema = schemas.length > 1 && schema !== null;
   const applicationName = useSelector(getApplicationName);
+  const hasTables = (candidate?.tables.length ?? 0) > 0;
 
   return (
     <div>
@@ -89,12 +91,12 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
           {t`schema in`}
           <DatabaseInfo database={database} />
         </HomeCaption>
-      ) : (
+      ) : hasTables ? (
         <HomeCaption primary>
           {t`Here are some explorations of`}
           <DatabaseInfo database={database} />
         </HomeCaption>
-      )}
+      ) : null}
       <SectionBody>
         {candidate?.tables.map((table, index) => (
           <HomeXrayCard
@@ -110,6 +112,14 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
   );
 };
 
+const getDefaultSchema = (schemas: Array<string | null>) => {
+  return (
+    schemas
+      .filter(isNotNull)
+      .find((schema) => schema.toLowerCase() === "public") || schemas[0]
+  );
+};
+
 interface SchemaSelectProps {
   schema: string;
   schemas: string[];
@@ -119,7 +129,9 @@ interface SchemaSelectProps {
 const SchemaSelect = ({ schema, schemas, onChange }: SchemaSelectProps) => {
   const trigger = (
     <SchemaTrigger>
-      <SchemaTriggerText>{schema}</SchemaTriggerText>
+      <SchemaTriggerText data-testid="xray-schema-name">
+        {schema}
+      </SchemaTriggerText>
       <SchemaTriggerIcon name="chevrondown" />
     </SchemaTrigger>
   );

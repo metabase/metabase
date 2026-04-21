@@ -11,22 +11,25 @@
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.upload.db :as upload.db]
    [metabase.upload.impl :as upload]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
@@ -489,12 +492,12 @@
                     (testing "both tables have the same display name"
                       (is (= "Some File Prefix"
                              (:display_name table-1)
-                             (:display_name table-2))
-                          (testing "tables are different between the two uploads"
-                            (is (some? (:id table-1)))
-                            (is (some? (:id table-2)))
-                            (is (not= (:id table-1)
-                                      (:id table-2)))))))))))))))))
+                             (:display_name table-2))))
+                    (testing "tables are different between the two uploads"
+                      (is (some? (:id table-1)))
+                      (is (some? (:id table-2)))
+                      (is (not= (:id table-1)
+                                (:id table-2)))))))))))))))
 
 (defn- query [db-id source-table]
   (qp/process-query {:database db-id
@@ -586,6 +589,8 @@
                       (->> (t2/select :model/Field :table_id (:id table))
                            (sort-by :database_position)
                            (map (juxt (comp u/lower-case-en :name) identity))))))
+            (testing "Check that table can be written via data-editing"
+              (true? (t2/select-one-fn :is_writable [:model/Table :is_writable] (:id table))))
             (testing "Check the data was uploaded into the table"
               (is (= 2
                      (count (rows-for-table table)))))))))))
@@ -717,7 +722,7 @@
       (when (driver/upload-type->database-type driver/*driver* :metabase.upload/offset-datetime)
         (with-mysql-local-infile-on-and-off
           (with-redefs [driver/db-default-timezone (constantly "Z")
-                        upload/current-database    (constantly (mt/db))]
+                        upload.db/current-database (constantly (mt/db))]
             (let [transpose  (fn [m] (apply mapv vector m))
                   [csv-strs expected] (transpose [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
                                                   ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
@@ -1146,14 +1151,14 @@
            {:schema-name schema-name, :auxiliary-sync-steps :synchronous}
            (fn [model]
              (with-upload-table! [new-table (card->table model)]
-               (is (=? {:display          :table
-                        :database_id      db-id
-                        :dataset_query    {:database db-id
-                                           :query    {:source-table (:id new-table)}
-                                           :type     :query}
-                        :creator_id       (mt/user->id :rasta)
-                        :name             #"(?i)example csv file(.*)"
-                        :collection_id    nil}
+               (is (=? {:display       :table
+                        :database_id   db-id
+                        :dataset_query {:database db-id
+                                        :stages   [{:source-table (:id new-table)}]
+                                        :lib/type :mbql/query}
+                        :creator_id    (mt/user->id :rasta)
+                        :name          #"(?i)example csv file(.*)"
+                        :collection_id nil}
                        (t2/select-one :model/Card :table_id (:id new-table)))
                    "A new model is created")
                (is (=? {:name      #"(?i)example(.*)"
@@ -1311,7 +1316,7 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (is (thrown-with-msg?
                java.lang.Exception
-               #"^You do not have curate permissions for this Collection\.$"
+               #"^You don't have permissions to do that\.$"
                (do-with-uploaded-example-csv!
                 {:user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"}
                 identity)))))
@@ -1616,7 +1621,7 @@
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for all possible CSV column types"
               (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
-                                          upload/current-database    (constantly (mt/db))]
+                                          upload.db/current-database (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -1648,7 +1653,7 @@
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for offset datetime columns"
               (with-redefs [driver/db-default-timezone (constantly "Z")
-                            upload/current-database    (constantly (mt/db))]
+                            upload.db/current-database (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -1913,7 +1918,7 @@
                 file        (csv-file-with csv-rows)
                 other-id    (mt/id :venues)
                 other-table (t2/select-one :model/Table other-id)
-                mp          (lib.metadata.jvm/application-database-metadata-provider (:db_id table))]
+                mp          (lib-be/application-database-metadata-provider (:db_id table))]
 
             (mt/with-temp [:model/Card {question-id        :id} {:table_id table-id, :dataset_query (mbql mp table)}
                            :model/Card {model-id           :id} {:table_id table-id, :type :model, :dataset_query (mbql mp table)}
@@ -2554,7 +2559,7 @@
               (io/delete-file file))))))))
 
 (deftest append-with-really-long-names-that-duplicate-test
-  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string\n"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (with-mysql-local-infile-on-and-off
         (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
@@ -2568,22 +2573,22 @@
                     :file (csv-file-with [header original-row]))]
             (let [csv-rows [header appended-row]
                   file     (csv-file-with csv-rows (mt/random-name))]
-             ;; TODO: we should be able to make this work with smarter truncation
-              (is (= {:message "The CSV file contains duplicate column names."
-                      :data    {:status-code 422}}
-                     (catch-ex-info (update-csv! :metabase.upload/append {:file file, :table-id (:id table)}))))
-              (testing "Check the data was not uploaded into the table"
-                (is (= (rows-with-auto-pk (csv/read-csv original-row))
-                       (rows-for-table table))))
-              (io/delete-file file))))))))
+              (try
+                (testing "Column names get deduplicated"
+                  (update-csv! :metabase.upload/append {:file file, :table-id (:id table)})
+                  (is (= (rows-with-auto-pk (concat (csv/read-csv original-row)
+                                                    (csv/read-csv appended-row)))
+                         (rows-for-table table))))
+                (finally
+                  (io/delete-file file))))))))))
 
 (driver/register! ::short-column-test-driver)
 (defmethod driver/column-name-length-limit ::short-column-test-driver [_] 10)
 
 (deftest unique-long-column-names-test
-  (let [original ["αbcdεf_αbcdεf"     "αbcdεfg_αbcdεf"   "αbc_2_etc_αbcdεf" "αbc_3_xyz_αbcdεf"]
-        expected [:%ce%b1bcd%  :%_b59bccce :%ce%b1bc_2 :%ce%b1bc_3]
-        displays ["αbcdεf" "αbcdεfg" "αbc 2 etc" "αbc 3 xyz"]]
+  (let [original ["αbcdεf_αbcdεf" "αbcdεfg_αbcdεf" "αbc_2_etc_αbcdεf" "αbc_3_xyz_αbcdεf"]
+        expected [:%ce%b1bcd      :%_a2ba0330      :%ce%b1bc_2        :%ce%b1bc_3]
+        displays ["αbcdεf"        "αbcdεfg"        "αbc 2 etc"        "αbc 3 xyz"]]
     (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))
     (mt/with-dynamic-fn-redefs [upload/max-bytes (constantly 10)]
       (is (= displays
@@ -2600,3 +2605,69 @@
       ;; This test ensure drivers always meet any transitive expectations users might have.
       (let [allow-list (driver/allowed-promotions driver/*driver*)]
         (is (= allow-list (or (mt/transitive allow-list) {})))))))
+
+(deftest can-create-upload-with-blocked-table-in-different-schema-test
+  (testing "A user with unrestricted access to the upload schema can upload even if blocked on a table in a different schema"
+    (mt/with-no-data-perms-for-all-users!
+      (mt/with-temp [:model/Database         {db-id :id}             {:engine "h2"  :uploads_enabled true}
+                     :model/Table            {upload-table :id}      {:db_id db-id :schema "upload_schema" :name "UploadTable"}
+                     :model/Table            {blocked-table :id}     {:db_id db-id :schema "other_schema"  :name "BlockedTable"}
+                     :model/PermissionsGroup pg                      {}]
+        (perms/add-user-to-group! (mt/user->id :rasta) pg)
+        (t2/delete! :model/DataPermissions :db_id db-id)
+        ;; Set database-level defaults to blocked
+        (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
+        (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
+        ;; Grant unrestricted access to the upload schema table
+        (data-perms/set-table-permission! pg upload-table :perms/view-data :unrestricted)
+        (data-perms/set-table-permission! pg upload-table :perms/create-queries :query-builder)
+        ;; Block access to the table in the other schema
+        (data-perms/set-table-permission! pg blocked-table :perms/view-data :blocked)
+        (data-perms/set-table-permission! pg blocked-table :perms/create-queries :no)
+        (let [db (t2/select-one :model/Database db-id)]
+          (mt/with-current-user (mt/user->id :rasta)
+            (testing "can upload to the upload schema"
+              (is (true? (upload/can-create-upload? db "upload_schema"))))
+            (testing "cannot upload to the blocked schema"
+              (is (false? (upload/can-create-upload? db "other_schema"))))))))))
+
+(deftest upload-create-creates-write-pool-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:uploads]})
+    (with-uploads-enabled!
+      (let [db-id           (mt/id)
+            write-cache-key [db-id :write-data]]
+        (with-redefs [driver.conn/effective-connection-type
+                      (fn [_database]
+                        (if (= driver.conn/*connection-type* :write-data)
+                          :write-data
+                          :default))]
+          (try
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (testing "write pool does not exist before upload create"
+              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (with-upload-table! [_table (create-from-csv-and-sync-with-defaults!)]
+              (testing "write pool is created during upload create"
+                (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (finally
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))
+
+(deftest upload-delete-creates-write-pool-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:uploads]})
+    (with-uploads-enabled!
+      (let [db-id           (mt/id)
+            write-cache-key [db-id :write-data]]
+        (with-redefs [driver.conn/effective-connection-type
+                      (fn [_database]
+                        (if (= driver.conn/*connection-type* :write-data)
+                          :write-data
+                          :default))]
+          (try
+            (let [table (create-upload-table!)]
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+              (testing "write pool does not exist before upload delete"
+                (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+              (upload/delete-upload! table)
+              (testing "write pool is created during upload delete"
+                (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+            (finally
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))

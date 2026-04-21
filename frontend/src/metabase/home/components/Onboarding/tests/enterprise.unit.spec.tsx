@@ -4,7 +4,6 @@ import { type SetupProps, setup as baseSetup } from "./setup";
 
 function setup(opts?: SetupProps) {
   baseSetup({
-    hasEnterprisePlugins: true,
     ...opts,
   });
 }

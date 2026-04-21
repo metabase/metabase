@@ -3,12 +3,18 @@ import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_
 
 describe("scenarios > models > revision history", () => {
   beforeEach(() => {
+    H.resetSnowplow();
     H.restore();
     cy.signInAsAdmin();
+    H.enableTracking();
     cy.request("PUT", `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}`, {
       name: "Orders Model",
       type: "model",
     });
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   it("should allow reverting to a saved question state and back into a model again", () => {
@@ -16,6 +22,11 @@ describe("scenarios > models > revision history", () => {
 
     openRevisionHistory();
     revertTo("You created this");
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "revert_version_clicked",
+      event_detail: "card",
+    });
 
     cy.location("pathname").should("match", /^\/question\/\d+/);
     H.echartsContainer();
@@ -36,5 +47,8 @@ function openRevisionHistory() {
 
 function revertTo(history) {
   const r = new RegExp(history);
-  cy.findByText(r).closest("li").findByTestId("question-revert-button").click();
+  cy.findByText(r)
+    .closest('[data-testid="revision-history-event"]')
+    .findByTestId("question-revert-button")
+    .click();
 }

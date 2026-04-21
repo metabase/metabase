@@ -3,12 +3,13 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import type { EmbedResourceType } from "metabase/public/lib/types";
-import { Button, Flex, Group, Paper, Text } from "metabase/ui";
+import { Button, Flex, Group, Text } from "metabase/ui";
 
 interface EmbedModalContentStatusBarProps {
   isPublished: boolean;
   resourceType: EmbedResourceType;
   hasSettingsChanges: boolean;
+  isFetching?: boolean;
   onDiscard: () => void;
   onUnpublish: () => Promise<void>;
   onSave: () => Promise<void>;
@@ -18,6 +19,7 @@ export const EmbedModalContentStatusBar = ({
   isPublished,
   resourceType,
   hasSettingsChanges,
+  isFetching,
   onDiscard,
   onUnpublish,
   onSave,
@@ -26,54 +28,57 @@ export const EmbedModalContentStatusBar = ({
   const [isUnpublishing, setIsUnpublishing] = useState(false);
 
   return (
-    <Paper
-      withBorder
-      shadow="sm"
-      m="1.5rem 2rem"
-      p="0.75rem 1rem"
+    <Flex
+      w="100%"
+      justify="space-between"
+      direction="row"
+      align="center"
+      gap="0.5rem"
       data-testid="embed-modal-content-status-bar"
     >
-      <Flex w="100%" justify="space-between" align="center" gap="0.5rem">
-        <Text fw="bold">
-          {!isPublished
-            ? t`You will need to publish this ${resourceType} before you can embed it in another application.`
-            : hasSettingsChanges
-              ? t`You’ve made changes that need to be published before they will be reflected in your application embed.`
-              : t`This ${resourceType} is published and ready to be embedded.`}
-        </Text>
+      <Text>
+        {!isPublished
+          ? t`You will need to publish this ${resourceType} before you can embed it in another application.`
+          : hasSettingsChanges
+            ? t`You’ve made changes that need to be published before they will be reflected in your application embed.`
+            : t`This ${resourceType} is published and ready to be embedded.`}
+      </Text>
 
-        <Group gap="1rem" className={CS.flexNoShrink}>
-          {isPublished &&
-            (hasSettingsChanges ? (
-              <Button onClick={onDiscard}>{t`Discard changes`}</Button>
-            ) : (
-              <Button
-                variant="subtle"
-                color="error"
-                loading={isUnpublishing}
-                onClick={() => {
-                  setIsUnpublishing(true);
-                  onUnpublish().finally(() => setIsUnpublishing(false));
-                }}
-              >{t`Unpublish`}</Button>
-            ))}
-
-          {(!isPublished || hasSettingsChanges) && (
+      <Group
+        gap="1rem"
+        className={CS.flexNoShrink}
+        style={{ alignSelf: "flex-end", justifyContent: "flex-end" }}
+      >
+        {isPublished &&
+          (hasSettingsChanges ? (
+            <Button onClick={onDiscard}>{t`Discard changes`}</Button>
+          ) : (
             <Button
-              variant="filled"
-              loading={isPublishing}
+              variant="subtle"
+              color="error"
+              loading={isUnpublishing || isFetching}
               onClick={() => {
-                setIsPublishing(true);
-                onSave().finally(() => setIsPublishing(false));
+                setIsUnpublishing(true);
+                onUnpublish().finally(() => setIsUnpublishing(false));
               }}
-            >
-              {hasSettingsChanges && isPublished
-                ? t`Publish changes`
-                : t`Publish`}
-            </Button>
-          )}
-        </Group>
-      </Flex>
-    </Paper>
+            >{t`Unpublish`}</Button>
+          ))}
+
+        {(!isPublished || hasSettingsChanges) && (
+          <Button
+            variant="filled"
+            loading={isPublishing || isFetching}
+            onClick={() => {
+              setIsPublishing(true);
+              onSave().finally(() => setIsPublishing(false));
+            }}
+          >
+            {hasSettingsChanges && isPublished
+              ? t`Publish changes`
+              : t`Publish`}
+          </Button>
+        )}
+      </Group>
+    </Flex>
   );
 };

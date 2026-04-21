@@ -1,9 +1,10 @@
 import _ from "underscore";
 
-import { isQuestionCard, isQuestionDashCard } from "metabase/dashboard/utils";
-import { slugify } from "metabase/lib/formatting";
-import { isNotNull } from "metabase/lib/types";
+import { tag_names } from "cljs/metabase.parameters.shared";
 import { generateParameterId } from "metabase/parameters/utils/parameter-id";
+import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { slugify } from "metabase/utils/formatting";
+import { isNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
@@ -13,6 +14,7 @@ import type {
 import { isFieldFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   getParameterTargetField,
+  getTextTagFromTarget,
   isParameterVariableTarget,
 } from "metabase-lib/v1/parameters/utils/targets";
 import type {
@@ -324,3 +326,27 @@ export function getFilteringParameterValuesMap(
 
   return filteringParameterValues;
 }
+
+export const getFilteredParameterMappingsForDashcardText = (
+  parameterMappings: DashboardCard["parameter_mappings"],
+  dashcardText: string,
+) => {
+  if (!parameterMappings) {
+    return parameterMappings;
+  }
+
+  const tagNames = tag_names(dashcardText);
+
+  return parameterMappings.filter((mapping) => {
+    const target = mapping.target;
+
+    const textTag = getTextTagFromTarget(target);
+
+    // A different tag type (not a text-tag) or no tag at all means we keep the mapping
+    if (!textTag) {
+      return true;
+    }
+
+    return tagNames.includes(textTag);
+  });
+};

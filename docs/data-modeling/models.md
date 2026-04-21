@@ -6,7 +6,9 @@ redirect_from:
 
 # Models
 
-Models are a fundamental building block in Metabase. Models curate data from another table or tables from the same database to anticipate the kinds of questions people will ask of the data. You can think of them as derived tables, or a special kind of saved question meant to be used as the starting point for new questions. You can base a model on a SQL or query builder question, which means you can include custom, calculated columns in your model.
+> Consider using [Transforms](../data-studio/transforms/transforms-overview.md) instead of models. You can [convert models to transforms in bulk](../data-studio/transforms/transforms-overview.md#convert-models-to-transforms).
+
+Models curate data from another table or tables from the same database to anticipate the kinds of questions people will ask of the data. You can think of them as derived tables, or a special kind of saved question meant to be used as the starting point for new questions. You can base a model on a SQL or query builder question, which means you can include custom, calculated columns in your model.
 
 Models:
 
@@ -16,7 +18,7 @@ Models:
 - Can [surface individual records in search results](#surface-individual-records-in-search-by-matching-against-this-column).
 - Can be [persisted for faster loading](./model-persistence.md).
 
-For a deep dive on why and how to use models, check out our [Learn article on models][learn-models].
+For more on why and how to use models, check out our [Learn article on models][learn-models].
 
 ## How to use models
 
@@ -40,10 +42,14 @@ Models you create are automatically [pinned to the current collection](../explor
 
 ### Create a model from scratch
 
-1. In the upper right, click **New +** > **Model**.
-2. Choose either the query builder or a native query (if you want to use SQL). The advantage of using the query builder is that Metabase will be able to fill out some of the metadata for you; if you use SQL, you'll have to fill out that metadata manually.
-3. Select your data.
-4. Create and save your query.
+- Navigate to the Models tab in the sidebar. You might have to open it using the button in the top left, then scroll down to the section labeled **Data**, and pick **Models**. Then click on the **+** button in the top right.
+- Or open the [command palette](https://www.metabase.com/docs/latest/exploration-and-organization/exploration#command-palette) and type "model." Then click on the **New model** action.
+
+Now choose either the query builder or a native query (if you want to use SQL). The advantage of using the query builder is that Metabase will be able to fill out some of the metadata for you; if you use SQL, you'll have to fill out that metadata manually.
+
+Next, select your data, create your query, and save it.
+
+Models you create are automatically [pinned to the current collection](../exploration-and-organization/collections.md#pinned-items).
 
 ### Create a model from a saved question
 
@@ -57,7 +63,7 @@ Models you create are automatically [pinned to the current collection](../explor
 
 To view a model's details, visit the model and click on the **info** button in the upper right. Here you'll see several tabs:
 
-- **Overview**: Includes the description, Creator and Last Editor, and the list of fields included in the model. As well as the model's [Entity ID](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-and-reference-metabase-items).
+- **Overview**: Includes the description, Creator and Last Editor, and the list of fields included in the model. As well as the model's [Entity ID](../installation-and-operation/serialization.md#metabase-uses-entity-ids-to-identify-metabase-items).
 - **History**: Lists changes to the model, and by whom.
 - **Relationships**: Lists which questions use the model, and which tables the model is linked to.
 - **Actions**: Lists actions created based on the model.
@@ -109,11 +115,60 @@ There are some limitations to this indexing:
 
 - The indexed field must be a text/string type.
 - The record containing the field must have an integer entity key.
-- To keep your search speedy, Metabase will only index 5000 unique values from that field, so this option isn't the best choice to turn on for tables with a ton of records.
+- To keep your search speedy, Metabase will only index 25,000 unique values from that field, so this option isn't the best choice to turn on for tables with a ton of records.
 
 ## Edit a model's query
 
 You can edit a model's query by clicking on the down arrow next to the model's name and clicking on **Edit query definition**. When you're doing editing, be sure to save your changes. Unlike questions, which prompt you to save as a new question, any changes here will overwrite the existing model. If you want to create a new model from an existing model, select **Duplicate this model** from the model sidebar (the icon of two overlapping squares).
+
+### Checking for breaking changes
+
+{% include plans-blockquote.html feature="Checking for breaking changes" %}
+
+When you save changes to a model, Metabase will try to detect whether your changes would break any other entities that depend on that model. For example, if you remove a column from the model, but other questions based on that model rely on that column, Metabase will warn you that those downstream questions will break.
+
+![Check dependencies](./images/check-dependencies.png)
+
+Currently, Metabase will look for broken column references. If you rename or remove a column, Metabase will likely flag the change as breaking downstream entities. But Metabase can't detect other types of changes like changing the column type or computation logic as breaking changes.
+
+## Model list view
+
+![Viewing a model as a list](./images/model-list.png)
+
+List view helps you explore records one by one instead of sorting through big tables. You can customize the layout to highlight the most important fields.
+
+To view a model as a list:
+
+1. Visit the model.
+2. Click the three-dot menu.
+3. Select **Edit metadata**.
+4. Navigate to the **Settings** tab.
+5. Under "What should the default view of this data be?", toggle to **List**.
+
+![Model list edit](./images/model-list-edit.png)
+
+### Customize model list view
+
+![Customize list layout](./images/customize-list.png)
+
+You can customize how the data appears by clicking **Customize the List layout**.
+
+Each item in the list has:
+
+- **An entity icon.** If the record has an image link, it shows the image, which you can hide anytime.
+- **A left column** showing the title or primary identifier.
+- **A right column** for up to 5 additional columns.
+
+You can:
+
+- **Search for columns** using the "Find a column..." search box.
+- **Drag columns** from the available list into either the left column or right columns areas.
+- **Reorder columns** by dragging them within their respective areas.
+- **Remove columns** by clicking on the X on the column.
+
+You can see a preview on the bottom with sample data from your model.
+
+Click **Done** to save your changes.
 
 ## Start a question from a model
 
@@ -162,6 +217,14 @@ See [content verification](../exploration-and-organization/content-verification.
 ## Model persistence
 
 See [Model persistence](./model-persistence.md)
+
+## Convert a model to a transform
+
+[Transforms](../data-studio/transforms/transforms-overview.md) are the successor to models. Transforms create a persistent table in your database that refreshes on a schedule, instead of running the query live each time. Metabase will be gradually phasing out models in favor of transforms.
+
+If you're an admin, you can convert existing models to transforms one at a time. Conversion creates a transform from the model's query, runs it to produce the output table, and then updates all questions and dashboards that used the model to use the transform's table instead. The model itself becomes a saved question.
+
+See [Convert existing models to transforms](../data-studio/transforms/transforms-overview.md#convert-models-to-transforms).
 
 ## Further reading
 

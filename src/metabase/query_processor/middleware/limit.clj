@@ -1,13 +1,15 @@
 (ns metabase.query-processor.middleware.limit
   "Middleware that handles limiting the maximum number of rows returned by a query."
+  (:refer-clojure :exclude [empty? get-in])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema :as lib.schema]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.settings :as qp.settings]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [empty? get-in]]
    [potemkin :as p]))
 
 ;;; provided as a convenience since this var used to live here. Prefer using directly from `qp.settings` going forward.
@@ -56,14 +58,16 @@
                                                      :native query)))
     (when-not (disable-max-results? query)
       (let [context             (-> query :info :context)
-            download-context?   #{:csv-download :json-download :xlsx-download}
+            download-context?   #{:csv-download :json-download :xlsx-download
+                                  :embedded-csv-download :embedded-json-download :embedded-xlsx-download
+                                  :public-csv-download :public-json-download :public-xlsx-download}
             attachment-context? #{:dashboard-subscription :pulse :notification}
             download-limit      (when (download-context? context) (qp.settings/download-row-limit))
             attachment-limit    (when (attachment-context? context) (qp.settings/attachment-row-limit))
             res                 (u/safe-min (lib/max-rows-limit query)
                                             download-limit
                                             attachment-limit)]
-        (if (= context :xlsx-download)
+        (if (#{:xlsx-download :embedded-xlsx-download :public-xlsx-download} context)
           (u/safe-min res qp.settings/absolute-max-results)
           (or res qp.settings/absolute-max-results))))))
 
@@ -87,7 +91,7 @@
   ;; Background: SQL Server treats a limit of `0` as meaning "unbounded". SQL Server can override
   ;; [[qp.constraints/max-results-bare-rows]] with a Database-local Setting to fix #9940, where queries with aggregations
   ;; and expressions could return the wrong results because of limits being applied to subselects. Realistically the
-  ;; overriden limit of `0` should probably only apply to the MBQL query and not to the number of rows we take. But we'd
+  ;; overridden limit of `0` should probably only apply to the MBQL query and not to the number of rows we take. But we'd
   ;; have to break [[determine-query-max-rows]] into two separate things in order to do that. :shrug:
   ((take (if-not (pos? max-rows) 1 max-rows)) rf))
 
@@ -95,6 +99,7 @@
   "Post-processing middleware. Limit the maximum number of rows that are returned in post-processing."
   [query :- ::lib.schema/query
    rff   :- ::qp.schema/rff]
-  (let [max-rows (determine-query-max-rows query)]
+  (if-let [max-rows (determine-query-max-rows query)]
     (fn limit-result-rows-rff* [metadata]
-      (limit-xform max-rows (rff metadata)))))
+      (limit-xform max-rows (rff metadata)))
+    rff))

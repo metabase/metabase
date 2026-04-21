@@ -9,10 +9,12 @@
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
-   [metabase.query-processor :as qp]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
@@ -117,7 +119,7 @@
             ;; TODO Temporarily disabling due to flakiness (#33140)
             #_(is (= 4 @pages-retrieved))))))))
 
-;; These look like the macros from metabase.query-processor-test.expressions-test
+;; These look like the macros from metabase.query-processor.expressions-test
 ;; but conform to bigquery naming rules
 (defn- calculate-bird-scarcity* [formula filter-clause]
   (mt/formatted-rows
@@ -1288,7 +1290,8 @@
             (let [query  {:database (mt/id)
                           :type "native"
                           :native {:query (format "select * from `%s.orders` limit 100" (get-test-data-name))}}
-                  result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+                  expected-status (if (and (= :exception stop-tag) (= :initial-query tag)) 400 500)
+                  result (mt/user-http-request :crowberto :post expected-status "dataset" query)]
               (is (= "failed" (:status result)))
               (is (= (if (= :cancelled stop-tag) "Query cancelled" "My Exception")
                      (:error result)))))))
@@ -1316,6 +1319,26 @@
         (is (= user-agent
                (-> client .getOptions .getUserAgent)))))))
 
+(deftest ^:parallel read-timeout-is-configured-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "Read timeout is configured as the query-timeout-ms setting"
+      (let [^BigQuery client (#'bigquery/database-details->client (:details (mt/db)))
+            options (.getOptions client)
+            transport-options (.getTransportOptions options)]
+        (is (= driver.settings/*query-timeout-ms*
+               (.getReadTimeout transport-options)))))))
+
+(deftest query-fails-after-read-timeout-ms-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "bigquery queries fail when they take longer than the read timeout"
+      (binding [driver.settings/*query-timeout-ms* 1]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Invalid output: \[\"should be some, got: nil\"\]"
+             (-> (mt/metadata-provider)
+                 (lib/native-query "select 1")
+                 (qp/process-query))))))))
+
 (deftest ^:parallel timestamp-precision-test
   (mt/test-driver :bigquery-cloud-sdk
     (let [sql (str "select"
@@ -1327,3 +1350,34 @@
       (is (=? [["2024-12-11T16:23:55.123456Z" #"2024-12-11T16:23:55.123456.*"]]
               (-> (qp/process-query query)
                   mt/rows))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct BigQuery types"
+    (are [base-type expected] (= expected (driver/type->database-type :bigquery-cloud-sdk base-type))
+      :type/Array              [[:raw "JSON"]]
+      :type/Dictionary         [[:raw "JSON"]]
+      :type/Boolean            [[:raw "BOOL"]]
+      :type/Float              [[:raw "FLOAT64"]]
+      :type/Integer            [[:raw "INT"]]
+      :type/Number             [[:raw "INT"]]
+      :type/Text               [[:raw "STRING"]]
+      :type/TextLike           [[:raw "STRING"]]
+      :type/Date               [[:raw "DATE"]]
+      :type/DateTime           [[:raw "DATETIME"]]
+      :type/DateTimeWithTZ     [[:raw "TIMESTAMP"]]
+      :type/Time               [[:raw "TIME"]]
+      :type/JSON               [[:raw "JSON"]]
+      :type/SerializedJSON     [[:raw "JSON"]]
+      :type/Decimal            [[:raw "BIGDECIMAL"]])))
+
+(deftest ^:parallel compile-transform-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "compile-transform creates CREATE OR REPLACE TABLE"
+      (is (= ["CREATE OR REPLACE TABLE `PRODUCTS_COPY` AS SELECT * FROM products" nil]
+             (driver/compile-transform :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
+                                                            :output-table :PRODUCTS_COPY}))))
+    (testing "compile-insert generates INSERT INTO"
+      (is (= ["INSERT INTO `PRODUCTS_COPY` SELECT * FROM products" nil]
+             (driver/compile-insert :bigquery-cloud-sdk {:query {:query "SELECT * FROM products"}
+                                                         :output-table :PRODUCTS_COPY}))))))
+

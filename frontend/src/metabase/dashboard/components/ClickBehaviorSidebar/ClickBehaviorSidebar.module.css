@@ -17,7 +17,7 @@
 }
 
 .Heading {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   padding-top: 22px;
   padding-bottom: 16px;
   margin-bottom: 8px;

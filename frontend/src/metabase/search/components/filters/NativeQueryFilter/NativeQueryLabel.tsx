@@ -1,14 +1,10 @@
 import { t } from "ttag";
 
-import { useDatabaseListQuery } from "metabase/common/hooks";
-import { getHasNativeWrite } from "metabase/selectors/data";
+import { canUserCreateNativeQueries } from "metabase/selectors/user";
+import { useSelector } from "metabase/utils/redux";
 
 export const NativeQueryLabel = () => {
-  const { data: databases = [] } = useDatabaseListQuery();
-
-  const hasNativeWrite = getHasNativeWrite(databases);
-
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const filterLabel = hasNativeWrite ? t`native` : `SQL`;
-
   return `Search the contents of ${filterLabel} queries`;
 };

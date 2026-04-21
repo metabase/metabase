@@ -10,29 +10,23 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.common :as pivot.common]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
-   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.settings :as qp.settings]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
-
-(deftest ^:parallel group-bitmask-test
-  (doseq [[indices expected] {[0]     6
-                              [0 1]   4
-                              [0 1 2] 0
-                              []      7}]
-    (is (= expected
-           (#'qp.pivot/group-bitmask 3 indices))))
-
-  (testing "Should work for more than 31 breakouts"
-    (is (= 4294967295 (#'qp.pivot/group-bitmask 32 [])))))
 
 (deftest ^:parallel powerset-test
   (is (= [[]]
@@ -55,7 +49,7 @@
 (deftest ^:parallel breakout-combinations-test-2
   (testing "Should return the combos that Paul specified in (#14329)"
     (is (= (sort-by
-            (partial #'qp.pivot/group-bitmask 4)
+            (partial pivot.common/group-bitmask 4)
             [;; primary data
              [0 1 2 3]
              ;; subtotal rows
@@ -159,25 +153,14 @@
         (let [expected (mt/$ids
                          [{:query {:breakout    [$orders.user_id->people.state
                                                  $orders.user_id->people.source
-                                                 $orders.product_id->products.category
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 0]}}}
+                                                 $orders.product_id->products.category]}}
                           {:query {:breakout    [$orders.user_id->people.source
-                                                 $orders.product_id->products.category
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 1]}}}
-                          {:query {:breakout    [$orders.product_id->products.category
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 3]}}}
+                                                 $orders.product_id->products.category]}}
+                          {:query {:breakout    [$orders.product_id->products.category]}}
                           {:query {:breakout    [$orders.user_id->people.state
-                                                 $orders.user_id->people.source
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 4]}}}
-                          {:query {:breakout    [$orders.user_id->people.source
-                                                 [:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 5]}}}
-                          {:query {:breakout    [[:expression "pivot-grouping"]]
-                                   :expressions {:pivot-grouping [:abs 7]}}}])
+                                                 $orders.user_id->people.source]}}
+                          {:query {:breakout    [$orders.user_id->people.source]}}
+                          {:query {}}])
               expected (for [query expected]
                          (-> query
                              (assoc :database (mt/id)
@@ -346,7 +329,7 @@
 (deftest ^:parallel nested-models-with-expressions-pivot-breakout-names-test
   (testing "#43993 again - breakouts on an expression from the inner model should pass"
     (qp.store/with-metadata-provider (lib.tu/mock-metadata-provider
-                                      (mt/application-database-metadata-provider (mt/id))
+                                      (mt/metadata-provider)
                                       {:cards [{:id            1
                                                 :type          :model
                                                 :name          "Model A"
@@ -649,9 +632,9 @@
             (is (= order-by-aggregation-expected-results
                    (mt/rows results)))))))))
 
-(deftest ^:parallel mlv2-query-test
-  (testing "Should be able to run a pivot query for an MLv2 query (#39024)"
-    ;; this is literally the same query as [[pivot-with-order-by-aggregation-test]], just in MLv2, so it should return
+(deftest ^:parallel mbql-5-query-test
+  (testing "Should be able to run a pivot query for an MBQL 5 query (#39024)"
+    ;; this is literally the same query as [[pivot-with-order-by-aggregation-test]], just in Lib, so it should return
     ;; the same exact results.
     (let [metadata-provider  (mt/metadata-provider)
           reviews            (lib.metadata/table metadata-provider (mt/id :reviews))
@@ -670,6 +653,8 @@
 
 (deftest ^:parallel fe-friendly-legacy-field-refs-test
   (testing "field_refs in the result metadata should match the 'traditional' legacy shape the FE expects, or it will break"
+    ;; (This is calculated by [[metabase.lib.metadata.result-metadata/super-broken-legacy-field-ref]])
+    ;;
     ;; `e2e/test/scenarios/visualizations-tabular/pivot_tables.cy.spec.js` will break if the `field_ref`s don't come
     ;; back in this EXACT shape =(, see [[metabase.query-processor.middleware.annotate/fe-friendly-legacy-ref]]
     (let [query (merge
@@ -685,7 +670,7 @@
                [[:field %created_at {:temporal-unit :year}]
                 [:field %products.category {:source-field %product_id}]
                 [:field %people.source {:source-field %user_id}]
-                [:expression "pivot-grouping"]
+                nil ; pivot-grouping does not have a field ref
                 [:aggregation 0]])
              (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query))))))))
 
@@ -706,37 +691,11 @@
                        {:pivot_rows [0 1]
                         :pivot_cols []})]
       (is (= (mt/$ids orders
-               [[:field %products.category {:source-field %product_id, :base-type :type/Text}]
-                [:field %people.source {:source-field %user_id, :base-type :type/Text}]
-                [:expression "pivot-grouping"]
+               [[:field %products.category {:source-field %product_id}]
+                [:field %people.source {:source-field %user_id}]
+                nil ; pivot-grouping doesn't have a field ref.
                 [:aggregation 0]])
              (mapv :field_ref (mt/cols (qp.pivot/run-pivot-query query))))))))
-
-(deftest ^:parallel splice-in-remap-test
-  (let [splice #'qp.pivot/splice-in-remap]
-    (is (= []
-           (splice [] {1 0, 4 3})))
-    (is (= [0 1]
-           (splice [0] {1 0, 4 3})))
-    (is (= [2]
-           (splice [1] {1 0, 4 3})))
-    (is (= [0 1 2]
-           (splice [0 1] {1 0, 4 3})))
-    (is (= [0 1 3 4]
-           (splice [0 2] {1 0, 4 3})))
-    (testing "chained remapping"
-      (is (= [1 2 3 5]
-             (splice [1 2] {1 2, 2 5})))
-      (is (= [1 2 3 4 5]
-             (splice [1 2 3] {1 2, 2 5})))
-      (is (= [1 2 3 5 6]
-             (splice [1 2 4] {1 2, 2 5})))
-      (is (= [1 2 3 5 7]
-             (splice [1 2 5] {1 2, 2 5})))
-      (is (= [1 2 3 5 8]
-             (splice [1 2 6] {1 2, 2 5})))
-      (is (= [1 2 3 5 8]
-             (splice [1 2 6] {1 2, 2 5, 3 2}))))))
 
 (deftest ^:parallel pivoting-same-name-breakouts-test
   (testing "Column names are deduplicated, therefore same `:name` cols are not missing from the results (#52769)"
@@ -762,3 +721,172 @@
       (is (= {:pivot-rows [0 1], :pivot-cols nil, :pivot-measures [2],
               :show-row-totals true, :show-column-totals true}
              (#'qp.pivot/column-name-pivot-options query viz-settings))))))
+
+(deftest ^:parallel horrible-pivot-test
+  (testing "#63261"
+    ;; this pivot is so horrible, it takes like 12 seconds to preprocess with all the Malli schema checks. We don't have
+    ;; all day, just disable the checks for this one test.
+    (mu/disable-enforcement
+      (let [mp    (-> (mt/metadata-provider)
+                      (as-> $mp (lib.tu/mock-metadata-provider
+                                 $mp
+                                 {:cards [{:id            1
+                                           :name          "Q1: Orders + People"
+                                           :dataset-query (-> (lib/query $mp (lib.metadata/table $mp (mt/id :orders)))
+                                                              (lib/join (lib.metadata/table $mp (mt/id :people)))
+                                                              (lib/order-by (lib.metadata/field $mp (mt/id :orders :id)))
+                                                              (lib/limit 3))}]}))
+                      (as-> $mp (lib.tu/mock-metadata-provider
+                                 $mp
+                                 (let [query (-> (lib/query $mp (lib.metadata/table $mp (mt/id :products)))
+                                                 (lib/join (lib.metadata/card $mp 1))
+                                                 (lib/limit 3))]
+                                   {:cards [{:id            2
+                                             :name          "Nested: Products + Q1: Orders + People"
+                                             :dataset-query query}]}))))
+            query (-> (lib/query mp (lib.metadata/card mp 2))
+                      (lib/aggregate (lib/count))
+                      (as-> $query (lib/breakout $query (lib.tu.notebook/find-col-with-spec
+                                                         $query
+                                                         (lib/breakoutable-columns $query)
+                                                         {:display-name "Nested: Products + Q1: Orders + People"}
+                                                         ;; not sure this is the right column?
+                                                         {:display-name "Q1: Orders + People → Name"})))
+                      (lib/limit 3))]
+        (is (= [[nil 0 3]
+                [nil 1 3]]
+               (mt/rows
+                (qp.pivot/run-pivot-query query))))))))
+
+(deftest ^:parallel offset-pivot-test
+  (testing "Window functions like OFFSET (... OVER ...) should work correctly with the pivot QP (#70088)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative :window-functions/offset)
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/aggregate (lib/count))
+                      (lib/aggregate (-> (lib/offset (lib/count) -1)
+                                         (lib/update-options assoc :display-name "Previous Count")))
+                      (lib/breakout (-> (lib.metadata/field mp (mt/id :orders :created_at))
+                                        (lib/with-temporal-bucket :year))))]
+        ;;       Created At                  | Pivot Group | Count | Previous Count
+        (is (=? [[#"2016-01-01(?:T00:00:00Z)?" 0               744    nil]
+                 [#"2017-01-01(?:T00:00:00Z)?" 0              3610    744]
+                 [#"2018-01-01(?:T00:00:00Z)?" 0              5834   3610]
+                 [#"2019-01-01(?:T00:00:00Z)?" 0              6578   5834]
+                 [#"2020-01-01(?:T00:00:00Z)?" 0              1994   6578]
+                 [nil                          1             18760    nil]]
+                (mt/formatted-rows
+                 [str int int int]
+                 (qp.pivot/run-pivot-query query))))))))
+
+(deftest ^:parallel offset-pivot-test-2
+  (testing "Window functions like OFFSET (... OVER ...) should work correctly with the pivot QP ... with two breakouts (#70888)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :window-functions/cumulative :window-functions/offset)
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                      (lib/join (lib.metadata/table mp (mt/id :products)))
+                      (lib/aggregate (lib/count))
+                      (lib/aggregate (-> (lib/offset (lib/count) -1)
+                                         (lib/update-options assoc :display-name "Previous Count")))
+                      (lib/breakout (-> (lib.metadata/field mp (mt/id :orders :created_at))
+                                        (lib/with-temporal-bucket :year)))
+                      (as-> $query (lib/breakout $query (lib.tu.notebook/find-col-with-spec
+                                                         $query
+                                                         (lib/breakoutable-columns $query)
+                                                         {:display-name #".*Products$"}
+                                                         {:display-name "Category"}))))]
+        ;;       Created At                  | Category  | Pivot Group | Count | Previous Count
+        (is (=? [[#"2016-01-01(?:T00:00:00Z)?" "Doohickey" 0             177     nil]
+                 [#"2017-01-01(?:T00:00:00Z)?" "Doohickey" 0             805     177]
+                 [#"2018-01-01(?:T00:00:00Z)?" "Doohickey" 0             1206    805]
+                 [#"2019-01-01(?:T00:00:00Z)?" "Doohickey" 0             1352    1206]
+                 [#"2020-01-01(?:T00:00:00Z)?" "Doohickey" 0             436     1352]
+                 [#"2016-01-01(?:T00:00:00Z)?" "Gadget"    0             199     nil]
+                 [#"2017-01-01(?:T00:00:00Z)?" "Gadget"    0             938     199]
+                 [#"2018-01-01(?:T00:00:00Z)?" "Gadget"    0             1505    938]
+                 [#"2019-01-01(?:T00:00:00Z)?" "Gadget"    0             1783    1505]
+                 [#"2020-01-01(?:T00:00:00Z)?" "Gadget"    0             514     1783]
+                 [#"2016-01-01(?:T00:00:00Z)?" "Gizmo"     0             158     nil]
+                 [#"2017-01-01(?:T00:00:00Z)?" "Gizmo"     0             864     158]
+                 [#"2018-01-01(?:T00:00:00Z)?" "Gizmo"     0             1592    864]
+                 [#"2019-01-01(?:T00:00:00Z)?" "Gizmo"     0             1664    1592]
+                 [#"2020-01-01(?:T00:00:00Z)?" "Gizmo"     0             506     1664]
+                 [#"2016-01-01(?:T00:00:00Z)?" "Widget"    0             210     nil]
+                 [#"2017-01-01(?:T00:00:00Z)?" "Widget"    0             1003    210]
+                 [#"2018-01-01(?:T00:00:00Z)?" "Widget"    0             1531    1003]
+                 [#"2019-01-01(?:T00:00:00Z)?" "Widget"    0             1779    1531]
+                 [#"2020-01-01(?:T00:00:00Z)?" "Widget"    0             538     1779]
+                 [nil                          "Doohickey" 1             3976    nil]
+                 [nil                          "Gadget"    1             4939    3976]
+                 [nil                          "Gizmo"     1             4784    4939]
+                 [nil                          "Widget"    1             5061    4784]
+                 [#"2016-01-01(?:T00:00:00Z)?" nil         2             744     nil]
+                 [#"2017-01-01(?:T00:00:00Z)?" nil         2             3610    744]
+                 [#"2018-01-01(?:T00:00:00Z)?" nil         2             5834    3610]
+                 [#"2019-01-01(?:T00:00:00Z)?" nil         2             6578    5834]
+                 [#"2020-01-01(?:T00:00:00Z)?" nil         2             1994    6578]
+                 [nil                          nil         3             18760   nil]]
+                (mt/formatted-rows
+                 [str str int int int]
+                 (qp.pivot/run-pivot-query query))))))))
+
+(deftest ^:parallel pivot-query-uses-custom-limit-test
+  (testing "Pivot queries use a custom higher limit instead of the caller's constraints, so data stays consistent"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      ;; The pivot-query has 2 aggregations (count, sum-of-quantity), so the pivot limit is 200k/2 = 100k.
+      ;; Even though we pass max-results=50, the pivot limit overrides it, so all rows come through.
+      (let [query   (qp.pivot.test-util/pivot-query)
+            query   (assoc query :constraints {:max-results 50})
+            results (qp.pivot/run-pivot-query query)
+            rows    (mt/formatted-rows [str str str int int int] results)
+            ;; pivot-grouping is column index 3 (state, source, category, pivot-grouping, count, sum)
+            ;; Group 0 = all breakouts (detail rows)
+            ;; Group 7 = grand total (no breakouts)
+            detail-rows       (filter #(zero? (nth % 3)) rows)
+            grand-total-row   (first (filter #(= 7 (nth % 3)) rows))
+            detail-count-sum  (reduce + (map #(nth % 4) detail-rows))
+            grand-total-count (nth grand-total-row 4)]
+        (testing "All detail rows are returned (not truncated to caller's max-results)"
+          (is (> (count detail-rows) 50)
+              "Detail rows should exceed the caller's max-results=50 because the pivot limit overrides it"))
+        (testing "The grand total row exists"
+          (is (some? grand-total-row)))
+        (testing "Detail rows sum to the grand total — data is consistent"
+          (is (= detail-count-sum grand-total-count)
+              (str "Detail count sum (" detail-count-sum ") should equal grand total ("
+                   grand-total-count ") because pivot uses its own higher limit")))))))
+
+(deftest ^:parallel pivot-query-short-circuits-when-master-hits-limit-test
+  (testing "When the master pivot query hits the row limit, remaining sub-queries are skipped and truncation is signaled"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      ;; Use the standard pivot-query but override the pivot limit to be very small.
+      ;; The master query (state × source × category) produces ~200+ rows.
+      ;; With *pivot-max-result-rows* 20, the limit is 20/2=10 per sub-query.
+      (binding [qp.pivot/*pivot-max-result-rows* 20]
+        (let [query   (qp.pivot.test-util/pivot-query)
+              results (qp.pivot/run-pivot-query query)
+              rows    (mt/rows results)]
+          (testing "Only master query rows are returned (no subtotals/totals since sub-queries were skipped)"
+            ;; All rows should be pivot-grouping=0 (the master query's group)
+            (is (every? #(zero? (nth % 3)) rows)
+                "All rows should be from the master query (pivot-grouping=0)"))
+          (testing "The result includes pivot_rows_truncated flag"
+            (is (= 10 (get-in results [:data :pivot_rows_truncated]))
+                "Should signal truncation with the row count")))))))
+
+(deftest pivot-query-with-high-unaggregated-row-limit-test
+  (testing "Pivot queries don't fail when MB_UNAGGREGATED_QUERY_ROW_LIMIT exceeds the pivot row limit (#72157)"
+    (mt/test-drivers (qp.pivot.test-util/applicable-drivers)
+      ;; pivot-query has 2 aggregations, so pivot-limit = 20/2 = 10.
+      ;; Setting unaggregated-query-row-limit to 15 means max-results-bare-rows (15) > max-results (10),
+      ;; which violates the constraint schema without the fix.
+      ;; Pre-set :constraints like the API layer does (see qp.api/run-query-async+pivot).
+      (binding [qp.pivot/*pivot-max-result-rows* 20]
+        (mt/with-temporary-setting-values [qp.settings/unaggregated-query-row-limit 15]
+          (let [query   (-> (qp.pivot.test-util/pivot-query)
+                            (assoc :constraints (qp.constraints/default-query-constraints)))
+                results (qp.pivot/run-pivot-query query)]
+            (is (<= 2 (count (get-in query [:query :aggregation])))
+                "Sanity check: pivot-query should have at least 2 aggregations")
+            (is (not= :failed (:status results))
+                "Pivot query should not fail with a constraint violation")))))))

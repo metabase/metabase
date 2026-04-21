@@ -1,7 +1,7 @@
 import { setupTranslateContentStringSpy } from "__support__/content-translation";
 import { screen, waitFor } from "__support__/ui";
 
-import { setup } from "./setup";
+import { setup } from "./setup.spec";
 
 describe("ParameterWidget (EE with token, in static embedding)", () => {
   describe("content translation", () => {
@@ -9,7 +9,7 @@ describe("ParameterWidget (EE with token, in static embedding)", () => {
 
     it("should translate legend", async () => {
       setup({
-        hasEnterprisePlugins: true,
+        enterprisePlugins: ["content_translation"],
         tokenFeatures: { content_translation: true },
         staticallyEmbedded: true,
         localeCode: "de",

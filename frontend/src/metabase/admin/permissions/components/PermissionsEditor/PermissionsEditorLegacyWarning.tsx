@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
-import { colors } from "metabase/lib/colors";
 import { Alert, Anchor, Box, Icon, Text } from "metabase/ui";
 
 export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
@@ -9,15 +8,19 @@ export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
 
   return (
     <Box mt="md" mb="sm" style={{ marginInlineEnd: "2.5rem" }}>
-      <Alert icon={<Icon name="warning" size={16} />} color={colors.accent5}>
+      <Alert icon={<Icon name="warning" size={16} />} color="info">
         <Text fw="bold">
           {t`The “No self-service” access level for View data is going away.`}
           {!isExpanded && (
             <>
               {" "}
-              <button onClick={toggle}>
-                <Text fw="bold" color={colors.accent7}>{t`Read more`}</Text>
-              </button>
+              <Text
+                fw="bold"
+                c="brand"
+                onClick={toggle}
+                component="span"
+                style={{ cursor: "pointer" }}
+              >{t`Read more`}</Text>
             </>
           )}
         </Text>
@@ -29,7 +32,6 @@ export const PermissionsEditorLegacyNoSelfServiceWarning = () => {
               fw="bold"
               target="_blank"
               href="https://www.metabase.com/docs/v0.50/permissions/no-self-service-deprecation"
-              style={{ color: colors.accent7 }}
             >{t`Need help? See our docs.`}</Anchor>
           </Text>
         )}

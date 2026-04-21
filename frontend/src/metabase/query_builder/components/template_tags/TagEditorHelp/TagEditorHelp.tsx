@@ -1,12 +1,12 @@
 import cx from "classnames";
 import { jt, t } from "ttag";
 
-import Button from "metabase/common/components/Button";
-import Code from "metabase/common/components/Code";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { Button } from "metabase/common/components/Button";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { uuid } from "metabase/lib/uuid";
+import { Code } from "metabase/ui";
+import { uuid } from "metabase/utils/uuid";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
 
@@ -205,7 +205,7 @@ const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
   <div>
     <h5>{t`Example:`}</h5>
     <p>
-      <Code>{datasetQuery.native.query}</Code>
+      <Code block>{datasetQuery.native.query}</Code>
       {setDatasetQuery && (
         <Button
           medium
@@ -221,7 +221,7 @@ const TagExample = ({ datasetQuery, setDatasetQuery }: TagExampleProps) => (
 
 interface TagEditorHelpProps {
   database?: Database | null;
-  sampleDatabaseId: DatabaseId;
+  sampleDatabaseId?: DatabaseId;
   setDatasetQuery: (datasetQuery: NativeDatasetQuery, run?: boolean) => void;
   switchToSettings: () => void;
 }
@@ -259,7 +259,7 @@ export const TagEditorHelp = ({
   );
 
   return (
-    <div className={cx(CS.px3, CS.textSpaced)}>
+    <div className={CS.textSpaced}>
       <h4>{t`What's this for?`}</h4>
       <p>
         {t`Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL.`}

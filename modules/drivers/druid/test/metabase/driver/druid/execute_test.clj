@@ -3,8 +3,8 @@
    [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase.driver.druid.execute :as druid.execute]
+   [metabase.query-processor.timeseries-test.util :as tqpt]
    [metabase.test :as mt]
-   [metabase.timeseries-query-processor-test.util :as tqpt]
    [metabase.util :as u]
    [metabase.util.json :as json]))
 

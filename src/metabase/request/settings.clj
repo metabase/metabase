@@ -62,8 +62,8 @@
   :default :lax
   :getter #'-session-cookie-samesite
   :setter #'-session-cookie-samesite!
-  :doc "See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
-        Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+  :doc "See [Embedding Metabase in a different domain](../embedding/full-app-embedding.md#embedding-metabase-in-a-different-domain).
+        Read more about [Full app embedding](../embedding/full-app-embedding.md).
         Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).")
 
 (defn- check-session-timeout

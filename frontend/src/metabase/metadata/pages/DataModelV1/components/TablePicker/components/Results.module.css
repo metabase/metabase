@@ -1,0 +1,85 @@
+.results {
+  position: relative;
+  overflow: auto;
+  height: 100%;
+}
+
+.item {
+  position: absolute;
+  border-radius: 8px;
+  cursor: pointer;
+  padding-left: var(--mantine-spacing-sm);
+  padding-right: var(--mantine-spacing-sm);
+  left: var(--mantine-spacing-xl);
+  right: var(--mantine-spacing-xl);
+
+  &:focus-visible,
+  &.selected {
+    outline: 2px solid var(--mb-color-focus);
+  }
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+
+  &.active {
+    color: var(--mb-color-text-brand);
+    background-color: var(--mb-color-background-selected);
+
+    .icon {
+      opacity: 1;
+    }
+  }
+
+  &.table {
+    padding-left: var(--mantine-spacing-md);
+  }
+}
+
+.icon {
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.chevron {
+  transition: transform 100ms ease-in-out;
+  opacity: 0.35;
+  flex-shrink: 0;
+
+  &.expanded {
+    transform: rotate(90deg);
+  }
+}
+
+.label {
+  user-select: none;
+  overflow-wrap: anywhere;
+}
+
+.hidden {
+  opacity: 0;
+}
+
+.visibilityToggle {
+  flex-shrink: 0;
+
+  &:focus,
+  .item:hover &,
+  .item:focus &,
+  .item.selected &,
+  .item.active & {
+    opacity: 0.75;
+  }
+}
+
+.massVisibilityToggle {
+  flex-shrink: 0;
+  opacity: 0;
+
+  &:focus,
+  .item:hover &,
+  .item:focus &,
+  .item.selected {
+    opacity: 0.75;
+  }
+}

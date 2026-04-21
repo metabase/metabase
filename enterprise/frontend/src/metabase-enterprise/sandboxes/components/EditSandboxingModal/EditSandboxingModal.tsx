@@ -1,18 +1,17 @@
 import cx from "classnames";
-import type * as React from "react";
 import { useState } from "react";
 import { useAsyncFn } from "react-use";
 import { c, jt, t } from "ttag";
 import _ from "underscore";
 
 import { skipToken, useGetCardQuery, useGetTableQuery } from "metabase/api";
-import ActionButton from "metabase/common/components/ActionButton";
+import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
   getQuestionPickerValue,
 } from "metabase/common/components/Pickers/QuestionPicker";
-import QuestionLoader from "metabase/common/components/QuestionLoader";
-import Radio from "metabase/common/components/Radio";
+import { QuestionLoader } from "metabase/common/components/QuestionLoader";
+import { Radio } from "metabase/common/components/Radio";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
 import { EntityName } from "metabase/entities/containers/EntityName";
@@ -25,7 +24,6 @@ import type {
 } from "metabase-enterprise/sandboxes/types";
 import { getRawDataQuestionForTable } from "metabase-enterprise/sandboxes/utils";
 import * as Lib from "metabase-lib";
-import type Question from "metabase-lib/v1/Question";
 import type {
   GroupTableAccessPolicy,
   Table,
@@ -219,6 +217,14 @@ const EditSandboxingModal = ({
                   hideModal();
                 }}
                 onClose={hideModal}
+                models={["card", "dataset"]}
+                namespaces={[null]}
+                options={{
+                  hasLibrary: false,
+                  hasRootCollection: true,
+                  hasPersonalCollections: true,
+                  hasConfirmButtons: true,
+                }}
               />
             )}
           </div>
@@ -268,7 +274,6 @@ const EditSandboxingModal = ({
         <div className={cx(CS.flex, CS.alignCenter, CS.justifyEnd)}>
           <Button onClick={onCancel}>{t`Cancel`}</Button>
           <ActionButton
-            error={error}
             className={CS.ml1}
             actionFn={savePolicy}
             primary
@@ -402,7 +407,7 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
         <span>
           {c(
             "{0} is a name of a variable being used by row and column security",
-          ).jt`${(<strong>{target[1][1]}</strong>)} variable`}
+          ).jt`${<strong key="strong">{target[1][1]}</strong>} variable`}
         </span>
       );
     } else if (target[0] === "dimension") {
@@ -417,8 +422,9 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
               ? getRawDataQuestionForTable(policyTable)
               : null
           }
+          includeSensitiveFields
         >
-          {({ question }: { question: Question }) => {
+          {({ question }) => {
             if (!question) {
               return null;
             }
@@ -442,7 +448,8 @@ const TargetName = ({ policy, policyTable, target }: TargetNameProps) => {
               <span>
                 {c(
                   "{0} is a name of a field being used by row and column security",
-                ).jt`${(<strong>{columnInfo.displayName}</strong>)} field`}
+                )
+                  .jt`${<strong key="strong">{columnInfo.displayName}</strong>} field`}
               </span>
             );
           }}

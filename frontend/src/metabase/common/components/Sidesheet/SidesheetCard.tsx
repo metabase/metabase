@@ -41,5 +41,5 @@ export const SidesheetCard = ({
 };
 
 export const SidesheetCardTitle = (props: TitleProps) => (
-  <Title lh={1} mb=".75rem" c="text-medium" order={4} {...props} />
+  <Title mb="sm" c="text-secondary" order={4} {...props} />
 );

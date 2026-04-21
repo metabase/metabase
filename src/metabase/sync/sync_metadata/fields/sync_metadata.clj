@@ -15,9 +15,12 @@
    [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [toucan2.core :as t2]))
 
+(defn- crufty-field? [db field-metadata]
+  (crufty/name? (:name field-metadata)
+                (some-> db :settings :auto-cruft-columns)))
+
 (defn- compute-new-visibility-type [db field-metadata]
-  (if (crufty/name? (:name field-metadata)
-                    (some-> db :settings :auto-cruft-columns))
+  (if (crufty-field? db field-metadata)
     :details-only
     ;; n.b. if it was auto-crufted in the past, removing it from auto-cruft will NOT make it visible because old
     ;; visibility-type will be :details-only. This only changes things to be hidden. If you want to make it visible
@@ -37,17 +40,26 @@
          old-semantic-type              :semantic-type
          old-database-position          :database-position
          old-position                   :position
+         old-pk                         :pk?
          old-database-name              :name
+         old-database-default           :database-default
          old-database-is-auto-increment :database-is-auto-increment
+         old-database-is-generated      :database-is-generated
+         old-database-is-nullable       :database-is-nullable
          old-db-partitioned             :database-partitioned
          old-db-required                :database-required
-         old-visibility-type            :visibility-type} metabase-field
+         old-visibility-type            :visibility-type
+         old-preview-display            :preview-display} metabase-field
         {new-database-type              :database-type
          new-base-type                  :base-type
          new-field-comment              :field-comment
          new-database-position          :database-position
          new-database-name              :name
+         new-pk                         :pk?
+         new-database-default           :database-default
          new-database-is-auto-increment :database-is-auto-increment
+         new-database-is-generated      :database-is-generated
+         new-database-is-nullable       :database-is-nullable
          new-db-partitioned             :database-partitioned
          new-db-required                :database-required} field-metadata
         new-visibility-type             (compute-new-visibility-type database field-metadata)
@@ -78,10 +90,17 @@
         ;; different they have the same canonical representation (lower-casing at the moment).
         new-name? (not= old-database-name new-database-name)
 
+        new-pk?                  (not= old-pk new-pk)
+        new-db-default?          (not= old-database-default new-database-default)
         new-db-auto-incremented? (not= old-database-is-auto-increment new-database-is-auto-increment)
+        new-db-generated?        (not= old-database-is-generated new-database-is-generated)
+        new-db-nullable?         (not= old-database-is-nullable new-database-is-nullable)
         new-db-partitioned?      (not= new-db-partitioned old-db-partitioned)
-        new-db-required?         (not= old-db-required new-db-required)
-        new-visibility-type?     (not= old-visibility-type new-visibility-type)
+        new-db-required?           (not= old-db-required new-db-required)
+        new-visibility-type?       (not= old-visibility-type new-visibility-type)
+        ;; set preview_display=false for crufty fields (prevents FieldValues from being created)
+        is-crufty?                 (crufty-field? database field-metadata)
+        set-preview-display-false? (and is-crufty? old-preview-display)
 
         ;; calculate combined updates
         updates
@@ -137,12 +156,41 @@
                       old-database-name
                       new-database-name)
            {:name new-database-name})
+         (when new-pk?
+           ;; this guard avoids spamming logs with pk changes when people first upgrade to support database_is_pk
+           (when (or ;; if we have any value for the old database_is_pk we have upgraded already, and can log regardless
+                  (some? old-pk)
+                     ;; otherwise, log only if logical pk status has changed
+                  (not= new-pk (= old-semantic-type :type/PK)))
+             (log/infof "Database pk of %s has changed from '%s' to '%s'"
+                        (common/field-metadata-name-for-logging table metabase-field)
+                        old-pk
+                        new-pk))
+           {:database_is_pk new-pk})
          (when new-db-auto-incremented?
            (log/infof "Database auto incremented of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-database-is-auto-increment
                       new-database-is-auto-increment)
            {:database_is_auto_increment new-database-is-auto-increment})
+         (when new-db-generated?
+           (log/infof "Database generated of %s has changed from '%s' to '%s'."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-is-generated
+                      new-database-is-generated)
+           {:database_is_generated new-database-is-generated})
+         (when new-db-nullable?
+           (log/infof "Database nullable of %s has changed from '%s' to '%s'."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-is-nullable
+                      new-database-is-nullable)
+           {:database_is_nullable new-database-is-nullable})
+         (when new-db-default?
+           (log/infof "Database default of %s has changed from '%s' to '%s'."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-database-default
+                      new-database-default)
+           {:database_default new-database-default})
          (when new-db-partitioned?
            (log/infof "Database partitioned of %s has changed from '%s' to '%s'."
                       (common/field-metadata-name-for-logging table metabase-field)
@@ -156,7 +204,9 @@
                       new-db-required)
            {:database_required new-db-required})
          (when new-visibility-type?
-           {:visibility_type new-visibility-type}))]
+           {:visibility_type new-visibility-type})
+         (when set-preview-display-false?
+           {:preview_display false}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
              (pos? (t2/update! :model/Field (u/the-id metabase-field) updates)))

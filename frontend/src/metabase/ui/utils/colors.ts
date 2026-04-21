@@ -1,7 +1,9 @@
-import type { MantineTheme } from "@mantine/core";
+import type { MantineColorsTuple } from "@mantine/core";
 
-import { color as legacyColor } from "metabase/lib/colors";
-type ColorShades = MantineTheme["colors"]["dark"];
+import { ALL_COLOR_NAMES, deriveFullMetabaseTheme } from "metabase/ui/colors";
+import type { ColorName, MetabaseColorKey } from "metabase/ui/colors/types";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import type { ColorSettings } from "metabase-types/api";
 
 const ORIGINAL_COLORS = [
   "dark",
@@ -20,45 +22,7 @@ const ORIGINAL_COLORS = [
   "teal",
 ] as const;
 
-// these should only include semantic colors
-// for use in the UI
-const CUSTOM_COLORS = [
-  "bg-black",
-  "bg-dark",
-  "bg-light",
-  "bg-medium",
-  "bg-white",
-  "border",
-  "brand",
-  "brand-light",
-  "brand-lighter",
-  "danger",
-  "error",
-  "filter",
-  "focus",
-  "shadow",
-  "success",
-  "summarize",
-  "text-dark",
-  "text-light",
-  "text-medium",
-  "text-white",
-  "warning",
-  "white",
-  // TODO: Check with an adult and make sure this is okay
-  "text-primary",
-  "text-secondary",
-  "text-secondary-inverse",
-  "text-tertiary",
-  "background",
-  "background-hover",
-  "background-disabled",
-  "background-light",
-  "accent-gray",
-  "accent-gray-light",
-] as const;
-
-export function getColorShades(colorName: string): ColorShades {
+export function getColorShades(colorName: string): MantineColorsTuple {
   // yes this is silly, but it makes typescript so happy
   return [
     colorName,
@@ -74,13 +38,21 @@ export function getColorShades(colorName: string): ColorShades {
   ];
 }
 
-export function getThemeColors(): Record<string, ColorShades> {
+export function getMantineThemeColors(
+  colorScheme: ResolvedColorScheme,
+  whitelabelColors?: ColorSettings | null,
+): Record<string, MantineColorsTuple> {
+  const { colors } = deriveFullMetabaseTheme({ colorScheme, whitelabelColors });
+
   return {
     ...Object.fromEntries(
       ORIGINAL_COLORS.map((name) => [name, getColorShades("transparent")]),
     ),
     ...Object.fromEntries(
-      CUSTOM_COLORS.map((name) => [name, getColorShades(legacyColor(name))]),
+      Object.entries(colors).map(([name, value]) => [
+        name,
+        getColorShades(value),
+      ]),
     ),
   };
 }
@@ -90,6 +62,39 @@ export function getThemeColors(): Record<string, ColorShades> {
  * @param colorName
  * @returns string referencing a css variable
  */
-export function color(colorName: (typeof CUSTOM_COLORS)[number]): string {
+export function color(colorName: ColorName): string {
   return `var(--mb-color-${colorName})`;
+}
+
+export const isColorName = (name?: string | null): name is ColorName => {
+  return !!name && ALL_COLOR_NAMES.includes(name as MetabaseColorKey);
+};
+
+/**
+ * Prefer to use `color()` instead.
+ * Only use `maybeColor()` if you can't be sure you're going to have a `ColorName` as input,
+ * e.g. the value comes from an endpoint, upstream type-checking is too loose, etc.
+ */
+export const maybeColor = (maybeColorName: ColorName | string): string => {
+  return isColorName(maybeColorName) ? color(maybeColorName) : maybeColorName;
+};
+
+const CSS_VAR_REGEX = /^var\(--mb-color-(.+)\)$/;
+
+/**
+ * Resolves CSS variable color values (created by `color()`) to their actual values.
+ * This is the inverse of `color()` - use it when you need actual color values
+ * instead of CSS variable references (e.g., in static viz contexts like email/Slack
+ * exports where CSS variables cannot be resolved by the browser).
+ */
+export function resolveColorFromCssVariable(
+  colorValue: string,
+  getColor: (colorName: string) => string,
+): string {
+  const match = colorValue.match(CSS_VAR_REGEX);
+  if (match) {
+    const colorName = match[1];
+    return getColor(colorName);
+  }
+  return colorValue;
 }

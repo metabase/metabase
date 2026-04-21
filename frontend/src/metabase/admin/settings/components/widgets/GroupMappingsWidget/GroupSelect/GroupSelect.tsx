@@ -2,33 +2,39 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
-import type {
-  GroupIds,
-  UserGroupType,
-  UserGroupsType,
-} from "metabase/admin/types";
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
-import Select from "metabase/common/components/Select";
+import type { GroupIds, UserGroupType } from "metabase/admin/types";
+import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
+import { Box, Icon, Popover } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import {
   canEditMembership,
-  getGroupColor,
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
-import { Icon } from "metabase/ui";
+} from "metabase/utils/groups";
+import { isNotNull } from "metabase/utils/types";
+import type { GroupInfo } from "metabase-types/api";
+
+function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {
+  if (isAdminGroup(group)) {
+    return color("filter");
+  } else if (isDefaultGroup(group)) {
+    return color("text-secondary");
+  } else {
+    return color("brand");
+  }
+}
 
 type GroupSelectProps = {
-  groups: UserGroupsType;
+  groups: GroupInfo[];
   selectedGroupIds: GroupIds;
   onGroupChange: (group: UserGroupType, selected: boolean) => void;
   isCurrentUser?: boolean;
   emptyListMessage?: string;
 };
 
-function getSections(groups: UserGroupsType) {
+function getSections(groups: GroupInfo[]) {
   const adminGroup = groups.find(isAdminGroup);
   const defaultGroup = groups.find(isDefaultGroup);
   const topGroups = [defaultGroup, adminGroup].filter((g) => g != null);
@@ -71,9 +77,12 @@ export const GroupSelect = ({
 
   if (groups.length === 0) {
     return (
-      <PopoverWithTrigger triggerElement={triggerElement}>
-        <span className={CS.p1}>{emptyListMessage}</span>
-      </PopoverWithTrigger>
+      <Popover withinPortal={false} position="bottom-start">
+        <Popover.Target>{triggerElement}</Popover.Target>
+        <Popover.Dropdown style={{ boxSizing: "border-box" }}>
+          <Box p="sm">{emptyListMessage}</Box>
+        </Popover.Dropdown>
+      </Popover>
     );
   }
 
@@ -92,12 +101,12 @@ export const GroupSelect = ({
           )
           .forEach((group) => onGroupChange(group, value.includes(group.id)));
       }}
-      optionDisabledFn={(group: UserGroupType) =>
+      optionDisabledFn={(group: GroupInfo) =>
         (isAdminGroup(group) && isCurrentUser) || !canEditMembership(group)
       }
-      optionValueFn={(group: UserGroupType) => group.id}
+      optionValueFn={(group: GroupInfo) => group.id}
       optionNameFn={getGroupNameLocalized}
-      optionStylesFn={(group: UserGroupType) => ({
+      optionStylesFn={(group: GroupInfo) => ({
         color: getGroupColor(group),
       })}
       value={selectedGroupIds}

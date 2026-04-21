@@ -1,4 +1,7 @@
-import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type {
+  EmbeddingParameters,
+  EmbeddingType,
+} from "metabase/public/lib/types";
 import type {
   BaseEntityId,
   CardDisplayType,
@@ -15,16 +18,23 @@ import type {
   ParameterValueOrArray,
   Table,
   UserId,
+  UserInfo,
   VirtualCardDisplay,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
 import type {
   ActionDisplayType,
   WritebackAction,
   WritebackActionId,
 } from "./actions";
-import type { Card, CardId, VisualizationSettings } from "./card";
+import type {
+  Card,
+  CardId,
+  ColumnSettings,
+  VisualizationSettings,
+} from "./card";
 import type { Dataset } from "./dataset";
 import type { ModerationReview } from "./moderation";
 import type { SearchModel } from "./search";
@@ -44,6 +54,7 @@ export interface Dashboard {
   entity_id: BaseEntityId;
   created_at: string;
   creator_id: UserId;
+  creator?: UserInfo;
   updated_at: string;
   collection?: Collection | null;
   collection_id: CollectionId | null;
@@ -59,6 +70,7 @@ export interface Dashboard {
   can_write: boolean;
   can_restore: boolean;
   can_delete: boolean;
+  can_set_cache_policy?: boolean;
   cache_ttl: number | null;
   "last-edit-info": {
     id: number;
@@ -73,6 +85,7 @@ export interface Dashboard {
   >;
   auto_apply_filters: boolean;
   archived: boolean;
+  is_remote_synced?: boolean;
   public_uuid: string | null;
   initially_published_at: string | null;
   embedding_params?: EmbeddingParameters | null;
@@ -80,9 +93,11 @@ export interface Dashboard {
   param_fields?: Record<ParameterId, Field[]>;
 
   moderation_reviews: ModerationReview[];
+  view_count?: number;
 
   /* Indicates whether static embedding for this dashboard has been published */
   enable_embedding: boolean;
+  embedding_type?: EmbeddingType | null;
 
   /* For x-ray dashboards */
   transient_name?: string;
@@ -127,6 +142,7 @@ export type DashCardVisualizationSettings = {
   [key: string]: unknown;
   virtual_card?: VirtualCard;
   iframe?: string;
+  column_settings?: Record<string, ColumnSettings>;
 };
 
 export type BaseDashboardCard = DashboardCardLayoutAttrs & {
@@ -304,6 +320,7 @@ export type UpdateDashboardRequest = {
     | "tabs"
     | "show_in_getting_started"
     | "enable_embedding"
+    | "embedding_type"
     | "collection_id"
     | "name"
     | "width"
@@ -337,7 +354,8 @@ export type GetPublicDashboard = Pick<Dashboard, "id" | "name" | "public_uuid">;
 export type GetEmbeddableDashboard = Pick<Dashboard, "id" | "name">;
 
 export type GetRemappedDashboardParameterValueRequest = {
-  dashboard_id: DashboardId;
+  dashboard_id?: DashboardId;
+  entityIdentifier?: EntityUuid | EntityToken;
   parameter_id: ParameterId;
   value: ParameterValueOrArray;
 };

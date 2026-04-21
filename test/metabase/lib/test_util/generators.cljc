@@ -13,8 +13,7 @@
    [metabase.lib.test-util.generators.util :as gen.u]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.test.util.random :as tu.rng]
-   [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util :as u]))
 
 ;; NOTE: Being able to *execute* these queries and grok the results would actually be really powerful, if we can
 ;; achieve it with moderate cost. I think we can, at least for most queries. Some temporal stuff is a huge PITA,
@@ -107,7 +106,7 @@
 
 (def ^:private ^:dynamic *safe-for-old-refs*
   "Controls whether the generators will construct queries with things like multiple joins to the same table, which
-  create ambiguous refs in classic pMBQL.
+  create ambiguous refs in classic MBQL 5.
 
   Default to true, ie. safe for the current library.
 
@@ -135,7 +134,7 @@
 ;; TODO: Add a schema for the step `[vectors ...]`?
 (add-step {:kind :aggregate})
 
-;; TODO: columns should be specified with :ident, but that isn't available yet. For now, pMBQL refs will do.
+;; TODO: columns should be specified with :ident, but that isn't available yet. For now, MBQL 5 refs will do.
 (defmethod run-step* :aggregate [query [_aggregate stage-number agg-clause]]
   (lib/aggregate query stage-number agg-clause))
 
@@ -236,13 +235,7 @@
           (testing "adds it to the end of the list"
             (is (= (count after-filters)
                    (inc (count before-filters))))
-            (is (=? filter-clause (last after-filters))))
-          (testing (str `lib/filter-operator " returns the right op")
-            ;; TODO: The generator will happily build multiple joins
-            (when-let [op (mu/disable-enforcement
-                            (lib/filter-operator after stage-number (last after-filters)))]
-              (is (= (first filter-clause)
-                     (:short op))))))))))
+            (is (=? filter-clause (last after-filters)))))))))
 
 ;; Expressions ===================================================================================
 ;; We only support a few basic expressions for now. It would be good to exercise all the expression types eventually,

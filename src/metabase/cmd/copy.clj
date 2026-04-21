@@ -50,8 +50,9 @@
   `(do-step ~msg (fn [] ~@body)))
 
 (def entities
-  "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load
-  instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
+  "Entities in the order they should be serialized/deserialized in `load-from-h2`. This is done so we make sure that
+   we load instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before
+   `Fields`."
   (concat
    [:model/Channel
     :model/ChannelTemplate
@@ -106,22 +107,42 @@
     :model/AuditLog
     :model/RecentViews
     :model/UserParameterValue
+    ;; v49+
+    :model/ApiKey
     ;; 51+
     :model/Notification
     :model/NotificationSubscription
     :model/NotificationHandler
     :model/NotificationRecipient
-    :model/NotificationCard]
+    :model/NotificationCard
+    ;; 57+
+    :model/Glossary
+    ;; 58+
+    :model/AuthIdentity
+    :model/Document
+    :model/DocumentBookmark
+    :model/Comment
+    :model/CommentReaction
+    ;; 59+
+    :model/Measure
+    ;; 60+
+    :model/OAuthClient
+    :model/OAuthAuthorizationCode
+    :model/OAuthAccessToken
+    :model/OAuthRefreshToken
+    :model/Metabot
+    :model/MetabotConversation
+    :model/MetabotMessage
+    :model/MetabotPrompt]
    (when config/ee-available?
-     [:model/GroupTableAccessPolicy
-      :model/ConnectionImpersonation
-      :model/Metabot
-      :model/MetabotEntity
-      :model/MetabotPrompt
-      :model/Document
-      :model/DocumentBookmark])))
+     [:model/MetabotPermissions
+      :model/MetabotGroupLimit
+      :model/MetabotInstanceLimit
+      :model/Sandbox
+      :model/Tenant
+      :model/ConnectionImpersonation])))
 
-(defn- objects->colums+values
+(defn- objects->columns+values
   "Given a sequence of objects/rows fetched from the H2 DB, return a the `columns` that should be used in the `INSERT`
   statement, and a sequence of rows (as sequences)."
   [target-db-type objs]
@@ -143,7 +164,7 @@
   [target-db-type target-db-conn-spec table-name chunkk]
   (log/debugf "Inserting chunk of %d rows" (count chunkk))
   (try
-    (let [{:keys [cols vals]} (objects->colums+values target-db-type chunkk)]
+    (let [{:keys [cols vals]} (objects->columns+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn-spec table-name cols vals {:transaction? false}))
     (catch SQLException e
       (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
@@ -351,6 +372,7 @@
     :model/HTTPAction
     :model/FieldUserSettings
     :model/QueryAction
+    :model/MetabotConversation
     :model/ModelIndexValue})
 
 (defmulti ^:private postgres-id-sequence-name
@@ -362,7 +384,7 @@
   (str (name (t2/table-name model)) "_id_seq"))
 
 ;;; we changed the table name to `sandboxes` but never updated the underlying ID sequences or constraint names.
-(defmethod postgres-id-sequence-name :model/GroupTableAccessPolicy
+(defmethod postgres-id-sequence-name :model/Sandbox
   [_model]
   "group_table_access_policy_id_seq")
 

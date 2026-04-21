@@ -1,47 +1,47 @@
 .BulkActionButton:not([data-css-specificity-hack="🤣"]) {
-  color: var(--mb-color-text-white);
-  border-color: color-mix(in srgb, var(--mb-color-bg-light), transparent 100%);
+  color: var(--mb-color-text-primary-inverse);
+  border-color: color-mix(
+    in srgb,
+    var(--mb-color-background-secondary),
+    transparent 100%
+  );
   background-color: color-mix(
     in srgb,
-    var(--mb-color-bg-light),
+    var(--mb-color-background-secondary),
     transparent 90%
   );
 
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     border-color: color-mix(
       in srgb,
-      var(--mb-color-background),
+      var(--mb-color-background-primary),
       transparent 100%
     );
     background-color: color-mix(
       in srgb,
-      var(--mb-color-bg-light),
+      var(--mb-color-background-secondary),
       transparent 70%
     );
   }
 
   &:disabled {
-    color: var(--mb-color-text-tertiary);
+    color: var(--mb-color-text-tertiary-inverse);
     border-color: color-mix(
       in srgb,
-      var(--mb-color-background),
+      var(--mb-color-background-disabled-inverse),
       transparent 100%
     );
-    background-color: color-mix(
-      in srgb,
-      var(--mb-color-background),
-      transparent 90%
-    );
+    background-color: var(--mb-color-background-disabled-inverse);
   }
 }
 
 .BulkActionDangerButton:not([data-css-specificity-hack="🤣"]) {
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     border-color: color-mix(
       in srgb,
-      var(--mb-color-background),
+      var(--mb-color-background-primary),
       transparent 100%
     );
     background-color: var(--mb-color-error);
@@ -51,12 +51,12 @@
     color: var(--mb-color-text-tertiary);
     border-color: color-mix(
       in srgb,
-      var(--mb-color-background),
+      var(--mb-color-background-primary),
       transparent 100%
     );
     background-color: color-mix(
       in srgb,
-      var(--mb-color-background),
+      var(--mb-color-background-primary),
       transparent 90%
     );
   }

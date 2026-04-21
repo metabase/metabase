@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 import { screen, within } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import {
   createMockCard,
   createMockDashboard,
@@ -357,6 +357,24 @@ describe("nav > containers > MainNavbar", () => {
       expect(
         screen.getByRole("treeitem", { name: /Our analytics/i }),
       ).toHaveAttribute("aria-selected", "false");
+
+      expect(
+        screen.getByRole("button", { name: "Create a new collection" }),
+      ).toBeInTheDocument();
+    });
+
+    it("should not display the new collection button if a user has no write permissions", async () => {
+      await setup({
+        user: createMockUser({ can_write_any_collection: false }),
+      });
+
+      expect(
+        await screen.findByRole("treeitem", { name: /Our analytics/i }),
+      ).toBeInTheDocument();
+
+      expect(
+        screen.queryByRole("button", { name: "Create a new collection" }),
+      ).not.toBeInTheDocument();
     });
   });
 

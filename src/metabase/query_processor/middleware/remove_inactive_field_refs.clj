@@ -6,13 +6,15 @@
 
   We only try to fix queries if we know a column has been removed. We recognize this during the next sync: deleted
   columns are marked active = false."
+  (:refer-clojure :exclude [empty? not-empty])
   (:require
    [metabase.lib.field.resolution :as lib.field.resolution]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [empty? not-empty]]))
 
 (mu/defn remove-inactive-field-refs :- ::lib.schema/query
   "Remove any references to fields that are not active.

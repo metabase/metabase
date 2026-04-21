@@ -1,0 +1,78 @@
+.commentRoot {
+  position: relative;
+  padding: 0;
+  margin: 16px;
+}
+
+.target {
+  --padding-v: 16px;
+  --padding-h: 24px;
+
+  &:before {
+    content: "";
+    display: block;
+    position: absolute;
+    margin-left: -12px;
+    margin-top: -4px;
+    left: calc(-1 * var(--padding-h) / 2);
+    top: calc(-1 * var(--padding-v) / 2);
+    width: calc(100% + var(--padding-h) + 12.5px);
+    height: calc(100% + var(--padding-v) + 4px);
+    background-color: var(--mb-color-background-highlight);
+    border: 1px solid var(--mb-color-brand) !important;
+    border-radius: 8px;
+    pointer-events: none;
+  }
+}
+
+.discussionRoot {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
+  position: relative;
+}
+
+.actionPanel {
+  position: absolute;
+  top: -8px;
+  right: 0;
+  z-index: 1;
+  border: 1px solid var(--mb-color-border);
+  visibility: hidden;
+
+  .commentRoot:hover & {
+    visibility: visible;
+  }
+}
+
+.visible {
+  visibility: visible;
+}
+
+.commentBulletDeleted {
+  background-color: var(--mb-color-background-primary);
+  color: var(--mb-color-text-tertiary);
+}
+
+.reaction {
+  appearance: none;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  background-color: var(--mb-color-background-tertiary);
+  padding: 0 0.5rem;
+  border-radius: 1rem;
+  color: var(--mb-color-text-primary);
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}
+
+.currentUserReaction {
+  background-color: var(--mb-color-background-selected);
+  border: 1px solid var(--mb-color-brand);
+
+  &:hover {
+    background-color: var(--mb-color-background-hover);
+  }
+}

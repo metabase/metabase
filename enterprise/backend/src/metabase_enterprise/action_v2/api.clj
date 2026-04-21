@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.events.core :as events]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -126,6 +127,10 @@
       :else
       (throw (ex-info "Not able to execute given action yet" {:status-code 400 :scope scope :action action-def})))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/execute"
   "Execute an action with a single input.
 
@@ -150,8 +155,17 @@
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
+  (events/publish-event! :event/action-v2-execute
+                         {:details {:action action
+                                    :scope scope
+                                    :input_count 1}
+                          :user-id api/*current-user-id*})
   {:outputs (execute!* action scope params [input])})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/execute-bulk"
   "Execute an action with multiple inputs.
 
@@ -179,8 +193,17 @@
   ;; This check should be redundant in practice with the permission checks within perform-action!
   ;; Since test coverage is light and the logic is so simple, we've decided to be extra cautious for now.
   (api/check-superuser)
+  (events/publish-event! :event/action-v2-execute
+                         {:details {:action action
+                                    :scope scope
+                                    :input_count (count inputs)}
+                          :user-id api/*current-user-id*})
   {:outputs (execute!* action scope params inputs)})
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/execute-form"
   "Temporary endpoint for describing an actions parameters
   such that they can be presented correctly in a modal ahead of execution."

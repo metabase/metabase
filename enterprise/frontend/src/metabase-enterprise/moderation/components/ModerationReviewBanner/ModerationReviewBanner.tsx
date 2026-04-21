@@ -1,9 +1,9 @@
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
 import { skipToken, useGetUserQuery } from "metabase/api";
-import { alpha, color } from "metabase/lib/colors";
-import { useSelector } from "metabase/lib/redux";
-import { getRelativeTime } from "metabase/lib/time-dayjs";
+import { getUser } from "metabase/selectors/user";
 import { FixedSizeIcon, Flex, Icon, Text as UIText } from "metabase/ui";
+import { alpha } from "metabase/ui/colors";
+import { useSelector } from "metabase/utils/redux";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
 import {
   getIconForReview,
   getLatestModerationReview,
@@ -31,7 +31,7 @@ export const ModerationReviewBanner = ({
   className,
 }: ModerationReviewBannerProps) => {
   const { data: moderator } = useGetUserQuery(moderationReview.moderator_id);
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
 
   if (!moderator) {
     return null;
@@ -51,7 +51,7 @@ export const ModerationReviewBanner = ({
       style={{ backgroundColor: alpha(iconColor, 0.2) }}
       className={className}
     >
-      <Icon name={iconName} color={color(iconColor)} size={ICON_BUTTON_SIZE} />
+      <Icon name={iconName} c={iconColor} size={ICON_BUTTON_SIZE} />
       <TextContainer>
         <Text>{bannerText}</Text>
         <Time dateTime={moderationReview.created_at}>
@@ -98,7 +98,7 @@ const ModerationReviewText = ({
   const { data: moderator } = useGetUserQuery(
     latestModerationReview?.moderator_id ?? skipToken,
   );
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
 
   if (!latestModerationReview) {
     return null;
@@ -122,7 +122,7 @@ const ModerationReviewText = ({
     <Flex gap="sm" align="top">
       <FixedSizeIcon
         name={iconName}
-        color={color(iconColor)}
+        c={iconColor}
         size={ICON_BUTTON_SIZE}
         className={Styles.IconMargin}
       />

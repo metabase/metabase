@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useSelector } from "metabase/lib/redux";
 import { getEmbedServerCodeExampleOptions } from "metabase/public/lib/code";
 import type {
   EmbedResource,
@@ -11,6 +10,7 @@ import type {
   ServerCodeSampleConfig,
 } from "metabase/public/lib/types";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
+import { useSelector } from "metabase/utils/redux";
 
 import { CodeSample } from "./CodeSample";
 import { getDefaultDisplayOptions } from "./config";
@@ -131,6 +131,7 @@ function getHighlightedText({
         resourceId: resource.id,
         params: initialPreviewParameters,
         displayOptions,
+        withIframeSnippet: true,
       }).find(({ id }) => id === selectedServerCodeOptionId)?.parametersSource;
 
   const hasAppearanceCodeDiff = !_.isEqual(

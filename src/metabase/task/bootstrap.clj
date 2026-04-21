@@ -9,6 +9,16 @@
 (defn- app-db ^javax.sql.DataSource []
   ((requiring-resolve 'metabase.app-db.core/app-db)))
 
+;; Optional interceptor for wrapping JDBC connections before Quartz uses them.
+;; Set by task.tracing to add SQL-level tracing. nil means no interception.
+(defonce ^:private connection-interceptor (atom nil))
+
+(defn set-connection-interceptor!
+  "Set an optional function to wrap JDBC connections before Quartz uses them.
+   Called by task.tracing to add SQL-level tracing. Pass nil to remove."
+  [f]
+  (reset! connection-interceptor f))
+
 (defrecord ^:private ConnectionProvider []
   org.quartz.utils.ConnectionProvider
   (initialize [_])
@@ -19,11 +29,10 @@
     ;; very important! Fetch a new connection from the connection pool rather than using currently bound Connection if
     ;; one already exists -- because Quartz will close this connection when done, we don't want to screw up the
     ;; calling block
-    ;;
-    ;; in a perfect world we could just check whether we're creating a new Connection or not, and if using an existing
-    ;; Connection, wrap it in a delegating proxy wrapper that makes `.close()` a no-op but forwards all other methods.
-    ;; Now that would be a useful macro!
-    (.getConnection (app-db)))
+    (let [conn (.getConnection (app-db))]
+      (if-let [interceptor @connection-interceptor]
+        (interceptor conn)
+        conn)))
   (shutdown [_]))
 
 (when-not *compile-files*

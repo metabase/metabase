@@ -2,11 +2,12 @@ import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 import _ from "underscore";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { setupEmbedDashboardEndpoints } from "__support__/server-mocks/embed";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import type {
   DashboardCard,
@@ -21,7 +22,6 @@ import {
   createMockDatabase,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { PublicOrEmbeddedDashboardPage } from "../PublicOrEmbeddedDashboardPage";
 
@@ -35,8 +35,8 @@ export type SetupOpts = {
   queryString?: string;
   numberOfTabs?: number;
   tokenFeatures?: TokenFeatures;
-  hasEnterprisePlugins?: boolean;
   dashboardTitle: string;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 };
 
 export async function setup(
@@ -45,8 +45,8 @@ export async function setup(
     queryString = "",
     numberOfTabs = 1,
     tokenFeatures = createMockTokenFeatures(),
-    hasEnterprisePlugins = false,
     dashboardTitle,
+    enterprisePlugins,
   }: SetupOpts = { dashboardTitle: "" },
 ) {
   mockSettings({
@@ -54,8 +54,8 @@ export async function setup(
   });
   setupDatabasesEndpoints([createMockDatabase()]);
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   const tabs: DashboardTab[] = [];

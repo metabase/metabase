@@ -1,24 +1,27 @@
 {
   "teams": [
     {
-      "name": "Querying",
-      "label": ".Team/Querying",
+      "name": "Querying Platform",
+      "label": ".Team/QueryingPlatform",
       "members": [
-        "ranquild",
-        "romeovs",
         "bshepherdson",
         "metamben",
-        "wzimrin",
-        "ericnormand",
-        "galdre"
+        "rileythomp",
+        "camsaul",
+        "technomancy"
       ]
     },
     {
-      "name": "Drivers",
-      "label": ".Team/Drivers",
+      "name": "Graphy",
+      "label": ".Team/Graphy",
       "members": [
-        "snoe",
-        "rileythomp"
+        "ranquild",
+        "romeovs",
+        "ericnormand",
+        "galdre",
+        "dpsutton",
+        "escherize",
+        "bgrabow"
       ]
     },
     {
@@ -33,20 +36,6 @@
       ]
     },
     {
-      "name": "Workflows",
-      "label": ".Team/Workflows",
-      "members": [
-        "qnkhuat",
-        "piranha",
-        "crisptrutski",
-        "spalt08",
-        "stasgavrylov",
-        "uladzimirdev",
-        "kulyk",
-        "kamilmielnik"
-      ]
-    },
-    {
       "name": "Admin Webapp",
       "label": ".Team/AdminWebapp",
       "members": [
@@ -57,11 +46,11 @@
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
-        "camsaul",
-        "escherize"
+        "fraserdrops",
+        "nemanjaglumac"
       ]
     },
-     {
+    {
       "name": "Metabot",
       "label": ".Team/Metabot",
       "members": [
@@ -70,19 +59,11 @@
         "retro",
         "sloansparger",
         "somtom",
-        "wotbrew",
         "tsplude",
         "lbrdnk",
-        "bronsa"
-      ]
-    },
-    {
-      "name": "Product Growth",
-      "label": ".Team/ProductGrowth",
-      "members": [
-        "nemanjaglumac",
-        "chodorowicz",
-        "andsalves"
+        "piranha",
+        "crisptrutski",
+        "undrfined"
       ]
     },
     {
@@ -106,12 +87,39 @@
         "eliotmetabase",
         "npfitz",
         "johnswanson",
-        "iethree",
         "nvoxland",
         "edpaget",
         "deniskaber",
         "alxnddr",
-        "bpander"
+        "andsalves",
+        "kevinkelleher12",
+        "AndreyChernykh"
+      ]
+    },
+    {
+      "name": "Gadget",
+      "label": ".Team/Gadget",
+      "members": [
+        "nmezzopera",
+        "bronsa",
+        "wotbrew",
+        "qnkhuat",
+        "chodorowicz",
+        "kamilmielnik",
+        "stasgavrylov",
+        "uladzimirdev",
+        "egorgrushin",
+        "metatyb"
+      ]
+    },
+    {
+      "name": "Growth Eng",
+      "label": ".Team/GrowthEng",
+      "members": [
+        "iethree",
+        "bpander",
+        "gantoreno",
+        "losrebellos"
       ]
     }
   ]

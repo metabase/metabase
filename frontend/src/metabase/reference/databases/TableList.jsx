@@ -5,15 +5,15 @@ import { Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import EmptyState from "metabase/common/components/EmptyState";
-import List from "metabase/common/components/List";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { List } from "metabase/common/components/List";
 import S from "metabase/common/components/List/List.module.css";
-import ListItem from "metabase/common/components/ListItem";
+import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import R from "metabase/reference/Reference.module.css";
+import { connect } from "metabase/utils/redux";
 
 import ReferenceHeader from "../components/ReferenceHeader";
 import {
@@ -139,4 +139,5 @@ class TableList extends Component {
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(TableList);

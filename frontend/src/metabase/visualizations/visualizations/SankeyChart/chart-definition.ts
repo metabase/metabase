@@ -14,16 +14,17 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ComputedVisualizationSettings,
+  VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetData, RawSeries, Series } from "metabase-types/api";
+import type { DatasetData, RawSeries } from "metabase-types/api";
 
 import { hasCyclicFlow } from "./utils/cycle-detection";
 
 const MAX_SANKEY_NODES = 150;
 
-export const SETTINGS_DEFINITIONS = {
+export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   ...columnSettings({ hidden: true }),
   ...dimensionSetting("sankey.source", {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -34,8 +35,7 @@ export const SETTINGS_DEFINITIONS = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
-    getDefault: ([series]: RawSeries) =>
-      findSensibleSankeyColumns(series.data)?.source,
+    getDefault: ([series]) => findSensibleSankeyColumns(series.data)?.source,
   }),
   ...dimensionSetting("sankey.target", {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -46,8 +46,7 @@ export const SETTINGS_DEFINITIONS = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
-    getDefault: ([series]: RawSeries) =>
-      findSensibleSankeyColumns(series.data)?.target,
+    getDefault: ([series]) => findSensibleSankeyColumns(series.data)?.target,
   }),
   ...metricSetting("sankey.value", {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -58,8 +57,7 @@ export const SETTINGS_DEFINITIONS = {
     persistDefault: true,
     dashboard: false,
     autoOpenWhenUnset: false,
-    getDefault: ([series]: RawSeries) =>
-      findSensibleSankeyColumns(series.data)?.metric,
+    getDefault: ([series]) => findSensibleSankeyColumns(series.data)?.metric,
   }),
   "sankey.node_align": {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -67,26 +65,23 @@ export const SETTINGS_DEFINITIONS = {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Align`,
     widget: "select",
-    default: "left",
-    props: {
+    getDefault: () => "left",
+    getProps: () => ({
       options: [
         {
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           name: t`Left`,
           value: "left",
         },
         {
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           name: t`Right`,
           value: "right",
         },
         {
-          // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
           name: t`Justify`,
           value: "justify",
         },
       ],
-    },
+    }),
   },
   "sankey.show_edge_labels": {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -94,7 +89,7 @@ export const SETTINGS_DEFINITIONS = {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Show edge labels`,
     widget: "toggle",
-    default: false,
+    getDefault: () => false,
     inline: true,
   },
   "sankey.label_value_formatting": {
@@ -103,23 +98,17 @@ export const SETTINGS_DEFINITIONS = {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Auto formatting`,
     widget: "segmentedControl",
-    props: {
+    getProps: () => ({
       options: [
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Auto`, value: "auto" },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Compact`, value: "compact" },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Full`, value: "full" },
       ],
-    },
-    getHidden: (
-      _series: Series,
-      vizSettings: ComputedVisualizationSettings,
-    ) => {
+    }),
+    getHidden: (_series, vizSettings) => {
       return !vizSettings["sankey.show_edge_labels"];
     },
-    default: "auto",
+    getDefault: () => "auto",
   },
   "sankey.edge_color": {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
@@ -127,27 +116,25 @@ export const SETTINGS_DEFINITIONS = {
     // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     title: t`Edge color`,
     widget: "segmentedControl",
-    default: "source",
-    props: {
+    getDefault: () => "source",
+    getProps: () => ({
       options: [
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Gray`, value: "gray" },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Source`, value: "source" },
-        // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
         { name: t`Target`, value: "target" },
       ],
-    },
+    }),
   },
 };
 
-export const SANKEY_CHART_DEFINITION = {
+export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Sankey`,
   identifier: "sankey",
   iconName: "sankey",
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   noun: t`sankey chart`,
   minSize: getMinSize("sankey"),
+  disableVisualizer: true,
   defaultSize: getDefaultSize("sankey"),
   isSensible: (data: DatasetData) => {
     const { cols, rows } = data;
@@ -236,5 +223,5 @@ export const SANKEY_CHART_DEFINITION = {
   hasEmptyState: true,
   settings: {
     ...SETTINGS_DEFINITIONS,
-  } as any as VisualizationSettingsDefinitions,
+  },
 };

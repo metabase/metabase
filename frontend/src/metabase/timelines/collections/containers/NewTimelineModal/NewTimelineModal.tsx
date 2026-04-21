@@ -1,13 +1,13 @@
-import { goBack, push } from "react-router-redux";
+import { push } from "react-router-redux";
 import _ from "underscore";
 
-import Collections from "metabase/entities/collections";
-import Timelines from "metabase/entities/timelines";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { Collections } from "metabase/entities/collections";
+import { Timelines } from "metabase/entities/timelines";
+import type { State } from "metabase/redux/store";
 import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
+import { connect } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Timeline } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
@@ -28,9 +28,6 @@ const mapDispatchToProps = (dispatch: any) => ({
     const response = await dispatch(action);
     const timeline = Timelines.HACK_getObjectFromAction(response);
     dispatch(push(Urls.timelineInCollection(timeline)));
-  },
-  onCancel: () => {
-    dispatch(goBack());
   },
 });
 

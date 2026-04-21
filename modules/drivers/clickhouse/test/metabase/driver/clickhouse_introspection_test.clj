@@ -1,11 +1,14 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-introspection-test
-  #_{:clj-kondo/ignore [:unsorted-required-namespaces]}
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.test.data.clickhouse]
+   [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (defn- desc-table!
@@ -432,35 +435,37 @@
 
 (def ^:private base-field
   {:database-is-auto-increment false
-   :json-unfolding false
-   :database-required true})
+   :database-is-nullable       false
+   :json-unfolding             false
+   :database-required          true})
 
 (deftest clickhouse-filtered-aggregate-functions-test-table-metadata
   (mt/test-driver :clickhouse
     (mt/dataset introspection_db
-      (is (= {:name "aggregate_functions_filter_test"
-              :fields #{(merge base-field
-                               {:name "id",
-                                :database-type "Int32",
-                                :base-type :type/Integer,
+      (is (=? {:name   "aggregate_functions_filter_test"
+               :fields [(merge base-field
+                               {:name              "id"
+                                :database-type     "Int32"
+                                :base-type         :type/Integer
                                 :database-required true
                                 :database-position 0})
                         (merge base-field
-                               {:name "idx"
-                                :database-type "UInt8"
-                                :base-type :type/Integer
+                               {:name              "idx"
+                                :database-type     "UInt8"
+                                :base-type         :type/Integer
                                 :database-position 1})
                         (merge base-field
-                               {:name "lowest_value"
-                                :database-type "SimpleAggregateFunction(min, UInt8)"
-                                :base-type :type/Integer
+                               {:name              "lowest_value"
+                                :database-type     "SimpleAggregateFunction(min, UInt8)"
+                                :base-type         :type/Integer
                                 :database-position 3})
                         (merge base-field
-                               {:name "count"
-                                :database-type "SimpleAggregateFunction(sum, Int64)"
-                                :base-type :type/BigInteger
-                                :database-position 4})}}
-             (driver/describe-table :clickhouse (mt/db) {:name "aggregate_functions_filter_test"}))))))
+                               {:name              "count"
+                                :database-type     "SimpleAggregateFunction(sum, Int64)"
+                                :base-type         :type/BigInteger
+                                :database-position 4})]}
+              (-> (driver/describe-table :clickhouse (mt/db) {:name "aggregate_functions_filter_test"})
+                  (update :fields (partial sort-by :database-position))))))))
 
 (deftest clickhouse-filtered-aggregate-functions-test-result-set
   (mt/test-driver :clickhouse
@@ -502,10 +507,10 @@
       (mt/db)
       (t2.with-temp/with-temp
         [:model/Database db {:engine :clickhouse
-                             :details (merge {:scan-all-databases true}
-                                             (mt/dbdef->connection-details
+                             :details (merge (mt/dbdef->connection-details
                                               :clickhouse :db
-                                              {:database-name "default"}))}]
+                                              {:database-name "default"})
+                                             {:db-filters-type "all"})}]
         (let [describe-result (driver/describe-database :clickhouse db)]
           ;; check the existence of at least some test tables here
           (doseq [table test-tables]
@@ -524,9 +529,9 @@
       (mt/db)
       (t2.with-temp/with-temp
         [:model/Database db {:engine :clickhouse
-                             :details (mt/dbdef->connection-details
-                                       :clickhouse :db
-                                       {:database-name "metabase_db_scan_test information_schema"})}]
+                             :details (merge (mt/dbdef->connection-details :clickhouse :db nil)
+                                             {:db-filters-type "inclusion"
+                                              :db-filters-patterns "metabase_db_scan_test, information_schema"})}]
         (let [{:keys [tables] :as _describe-result}
               (driver/describe-database :clickhouse db)
               tables-table  {:name        "tables"
@@ -541,3 +546,41 @@
           ;; tables from `information_schema`
           (is (contains? tables tables-table))
           (is (contains? tables columns-table)))))))
+
+(deftest ^:synchronized clickhouse-parameterized-view-sync-resilience-test
+  (testing "Sync should continue past parameterized views that cannot be introspected (#66395)"
+    (mt/test-driver :clickhouse
+      (mt/dataset metabase_db_scan_test
+        (let [db (mt/db)
+              details (mt/dbdef->connection-details :clickhouse :db {:database-name "metabase_db_scan_test"})
+              db-name "metabase_db_scan_test"]
+          ;; Create a parameterized view that will fail during sync
+          (metabase.test.data.clickhouse/exec-statements
+           [(format "CREATE OR REPLACE VIEW %s.parameterized_view AS SELECT {returnString:String} as result" db-name)
+            (format "CREATE TABLE %s.table_after_view (id Int32, name String) ENGINE = Memory" db-name)
+            (format "INSERT INTO %s.table_after_view VALUES (1, 'test')" db-name)]
+           details)
+          (try
+            ;; Sync the database - this should not crash despite the parameterized view
+            (is (not= ::thrown
+                      (try
+                        (sync/sync-database! db)
+                        (catch Throwable _e
+                          ::thrown)))
+                "Sync should not throw an exception when encountering a parameterized view")
+
+            ;; Verify that the table AFTER the problematic view was still synced
+            (let [table-after (t2/select-one :model/Table :db_id (u/the-id db) :name "table_after_view")]
+              (is (some? table-after)
+                  "Table created after parameterized view should be synced")
+              (when table-after
+                (let [fields (t2/select :model/Field :table_id (:id table-after))]
+                  (is (= #{"id" "name"}
+                         (set (map :name fields)))
+                      "Fields in table after parameterized view should be synced"))))
+            (finally
+              ;; Clean up
+              (metabase.test.data.clickhouse/exec-statements
+               [(format "DROP VIEW IF EXISTS %s.parameterized_view" db-name)
+                (format "DROP TABLE IF EXISTS %s.table_after_view" db-name)]
+               details))))))))

@@ -1,6 +1,7 @@
 (ns metabase.lib.schema.filter
   "Schemas for the various types of filter clauses that you'd pass to `:filters` or use inside something else that takes
   a boolean expression."
+  (:refer-clojure :exclude [every?])
   (:require
    [metabase.lib.schema.common :as common]
    [metabase.lib.schema.expression :as expression]
@@ -8,7 +9,8 @@
    [metabase.lib.schema.literal :as literal]
    [metabase.lib.schema.mbql-clause :as mbql-clause]
    [metabase.lib.schema.temporal-bucketing :as temporal-bucketing]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [every?]]))
 
 (defn- tuple-clause-of-comparables-schema
   "Helper intended for use with [[define-mbql-clause]]. Create a clause schema with `:tuple` and ensure that
@@ -26,6 +28,10 @@
               (every? true? (map (fn [[i j]]
                                    (expression/comparable-expressions? (get argv i) (get argv j)))
                                  compared-position-pairs)))))]]))
+
+(def predicate-operators
+  "Set of predicate operators that can be user in filter clauses."
+  #{:and :or :not := :!= :> :>= :< :<= :is-null :not-null :is-empty :not-empty :starts-with :ends-with :contains :does-not-contain :between :inside})
 
 (mr/def ::default-filter-operator
   "Filter operators that should be supported by any column type. Note that the FE allows only `:is-empty` and

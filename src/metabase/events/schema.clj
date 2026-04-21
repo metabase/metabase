@@ -44,6 +44,16 @@
    [:user-id  pos-int?]
    [:object   [:fn #(t2/instance-of? :model/Collection %)]]])
 
+ ;; collection write events
+
+(mr/def ::collection
+  [:map {:closed true}
+   [:user-id [:maybe pos-int?]]
+   [:object [:fn #(t2/instance-of? :model/Collection %)]]])
+
+(mr/def :event/collection-create ::collection)
+(mr/def :event/collection-update ::collection)
+
 ;; dashboard events
 
 (mr/def ::dashboard
@@ -66,6 +76,16 @@
   [:map {:closed true}
    [:user-id   [:maybe pos-int?]]
    [:object-id [:maybe pos-int?]]])
+
+(mr/def ::publicize
+  [:map {:closed true}
+   [:user-id pos-int?]
+   [:object-id pos-int?]])
+
+(mr/def :event/dashboard-public-link-created ::publicize)
+(mr/def :event/dashboard-public-link-deleted ::publicize)
+(mr/def :event/card-public-link-created ::publicize)
+(mr/def :event/card-public-link-deleted ::publicize)
 
 ;; user events
 
@@ -108,6 +128,24 @@
 (mr/def :event/segment-update ::segment-with-message)
 (mr/def :event/segment-delete ::segment-with-message)
 
+;; measure events
+
+(mr/def ::measure
+  [:map {:closed true}
+   [:user-id  pos-int?]
+   [:object   [:fn #(t2/instance-of? :model/Measure %)]]])
+
+(mr/def :event/measure-create ::measure)
+
+(mr/def ::measure-with-message
+  [:merge
+   ::measure
+   [:map {:closed true}
+    [:revision-message {:optional true} :string]]])
+
+(mr/def :event/measure-update ::measure-with-message)
+(mr/def :event/measure-delete ::measure-with-message)
+
 ;; database events
 
 (mr/def ::database
@@ -147,6 +185,19 @@
    [:user-id  pos-int?]
    [:object [:fn #(t2/instance-of? :model/Table %)]]])
 
+;; table write events
+
+(mr/def ::table
+  [:map {:closed true}
+   [:user-id [:maybe pos-int?]]
+   [:object [:fn #(t2/instance-of? :model/Table %)]]])
+
+(mr/def :event/table-create ::table)
+(mr/def :event/table-update ::table)
+(mr/def :event/table-delete ::table)
+(mr/def :event/table-publish ::table)
+(mr/def :event/table-unpublish ::table)
+
 (mr/def ::permission-failure
   [:map {:closed true}
    [:user-id [:maybe pos-int?]]
@@ -161,3 +212,52 @@
   [:map {:closed true}
    [:user-id [:maybe pos-int?]]
    [:model [:or :keyword :string]]])
+
+;; Enterprise remote sync events
+
+(mr/def :event/remote-sync
+  [:map
+   [:sync-type [:enum :initial :incremental :full "import" "export"]]
+   [:collection-id [:maybe ms/NonBlankString]]
+   [:user-id [:maybe pos-int?]]
+   [:timestamp [:maybe :any]]
+   [:branch {:optional true} [:maybe :string]]
+   [:status {:optional true} [:maybe [:enum "success" "error"]]]
+   [:version {:optional true} :string]
+   [:message {:optional true} [:maybe :string]]])
+
+;; snippet events
+
+(mr/def ::snippet
+  [:map {:closed true}
+   [:user-id [:maybe pos-int?]]
+   [:object [:fn #(t2/instance-of? :model/NativeQuerySnippet %)]]])
+
+(mr/def :event/snippet-create ::snippet)
+(mr/def :event/snippet-update ::snippet)
+(mr/def :event/snippet-delete ::snippet)
+
+;; field events
+
+(mr/def ::field
+  [:map {:closed true}
+   [:user-id [:maybe pos-int?]]
+   [:object [:fn #(t2/instance-of? :model/Field %)]]])
+
+(mr/def :event/field-create ::field)
+(mr/def :event/field-update ::field)
+(mr/def :event/field-delete ::field)
+
+;; security advisory events
+
+(mr/def :event/security-advisory-match
+  [:map {:closed true}
+   [:object [:map
+             [:advisory_id       :string]
+             [:severity          [:enum :critical :high :medium :low]]
+             [:title             :string]
+             [:description       :string]
+             [:match_status      [:enum :active :error]]
+             [:advisory_url      {:optional true} [:maybe :string]]
+             [:remediation       :string]
+             [:affected_versions [:sequential :map]]]]])

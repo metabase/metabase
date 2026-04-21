@@ -9,6 +9,27 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest notification-recipient->channel-prefers-channel-id-test
+  (testing "prefers channel_id over value when both are present"
+    (is (= "C0ABC123"
+           (#'channel.slack/notification-recipient->channel
+            {:type    :notification-recipient/raw-value
+             :details {:value "#my-channel" :channel_id "C0ABC123"}}))))
+  (testing "falls back to value when channel_id is absent"
+    (is (= "#my-channel"
+           (#'channel.slack/notification-recipient->channel
+            {:type    :notification-recipient/raw-value
+             :details {:value "#my-channel"}}))))
+  (testing "returns channel_id even when value is nil"
+    (is (= "C0ABC123"
+           (#'channel.slack/notification-recipient->channel
+            {:type    :notification-recipient/raw-value
+             :details {:channel_id "C0ABC123"}}))))
+  (testing "returns nil for non-raw-value recipient types"
+    (is (nil? (#'channel.slack/notification-recipient->channel
+               {:type    :notification-recipient/user
+                :details {:value "#my-channel" :channel_id "C0ABC123"}})))))
+
 (deftest slack-post-receives-at-most-50-blocks-test
   (let [block-inputs (atom [])]
     (with-redefs [slack/post-chat-message! (fn [message-content] (swap! block-inputs conj (:blocks message-content)))]
@@ -114,3 +135,29 @@
     (testing "When whitelabeling is disabled, branding content should be included"
       (let [links (render-dashboard-links false)]
         (is (= 2 (count links)))))))
+
+(deftest dashboard-card-links-include-parameters-test
+  (let [dashboard-id 42
+        card-id 123
+        dashboard-params [{:name "State",
+                           :slug "state",
+                           :id "63e719d0",
+                           :default ["CA", "NY", "NJ"],
+                           :type "string/=",
+                           :sectionId "location"}]
+        notification {:payload_type :notification/dashboard
+                      :payload      {:dashboard       {:id dashboard-id :name "Test Dashboard"}
+                                     :parameters      dashboard-params
+                                     :dashboard_parts [{:type :card
+                                                        :card {:id card-id :name "Test Card"}
+                                                        :dashcard {:id 456 :dashboard_id dashboard-id}}]}
+                      :creator      {:common_name "Test User"}}
+        recipient {:type    :notification-recipient/raw-value
+                   :details {:value "#test-channel"}}]
+    (with-redefs [slack/upload-file! (fn [_ _] {:id "uploaded-file-id"})]
+      (mt/with-temporary-setting-values [site-url "http://example.com"]
+        (let [processed (channel/render-notification :channel/slack notification {:recipients [recipient]})
+              card-section (-> processed first :blocks (nth 3))]
+          (is (= "section" (:type card-section)))
+          (is (= "<http://example.com/dashboard/42?state=CA&state=NY&state=NJ#scrollTo=456|Test Card>"
+                 (-> card-section :text :text))))))))

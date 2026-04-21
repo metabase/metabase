@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.util.i18n.common :as i18n.common]
    [metabase.util.i18n.impl :as i18n.impl]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -16,6 +17,8 @@
 (set! *warn-on-reflection* true)
 
 (p/import-vars
+ [i18n.common
+  join-strings-with-conjunction]
  [i18n.impl
   available-locale?
   fallback-locale
@@ -59,13 +62,36 @@
   ^Locale []
   (locale (user-locale-string)))
 
+(def ^:private test-only-locales
+  "Locales that are hidden from language pickers unless `MB_ENABLE_TEST_LOCALES=true`.
+  Currently just the `en_ZZ` pseudo-locale. See UXW-3460."
+  #{"en_ZZ"})
+
+(def ^:private locale-display-name-overrides
+  "Custom display names for locales whose JVM default is confusing. The JVM renders `en_ZZ` as
+  \"English (Unknown Region)\" because it has no CLDR data for the user-assigned region code `ZZ`. We override it to
+  \"English (ZZ)\" which is clearer for developers choosing it in the language picker."
+  {"en_ZZ" "English (ZZ)"})
+
+(defn- show-test-locales?
+  "Whether test-only pseudo-locales like `en_ZZ` should appear in language pickers.
+  True when the `MB_ENABLE_TEST_LOCALES` env var is explicitly set to `\"true\"`
+  (e.g. by the Cypress runner or local dev environment)."
+  []
+  (= "true" (System/getenv "MB_ENABLE_TEST_LOCALES")))
+
 (defn available-locales-with-names
   "Returns all locale abbreviations and their full names"
   []
-  (for [locale-name (i18n.impl/available-locale-names)]
-    ;; Abbreviation must be normalized or the language picker will show incorrect saved value
-    ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
-    [(normalized-locale-string locale-name) (.getDisplayName (locale locale-name))]))
+  ;; Test-only pseudo-locales (e.g. `en_ZZ`) are hidden unless `MB_ENABLE_TEST_LOCALES=true`.
+  (let [show-test? (show-test-locales?)]
+    (for [locale-name (i18n.impl/available-locale-names)
+          ;; Abbreviation must be normalized or the language picker will show incorrect saved value
+          ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
+          :let [normalized (normalized-locale-string locale-name)]
+          :when (or show-test?
+                    (not (contains? test-only-locales normalized)))]
+      [normalized (get locale-display-name-overrides normalized (.getDisplayName (locale locale-name)))])))
 
 (def ^:private included-locales
   (delay (set (map normalized-locale-string (i18n.impl/available-locale-names)))))
@@ -181,7 +207,8 @@
   "Ensures that `trs`/`tru` isn't called prematurely, during compilation."
   (if *compile-files*
     (fn [& _]
-      (throw (Exception. "Premature i18n string lookup. Is there a top-level call to `trs` or `tru`?")))
+      (throw (Exception. (format "Premature i18n string lookup. Is there a top-level call to `trs` or `tru`? (In: %s)"
+                                 (pr-str *file*)))))
     str))
 
 (defmacro tru-clj

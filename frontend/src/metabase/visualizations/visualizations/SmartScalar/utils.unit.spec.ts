@@ -1,6 +1,6 @@
 import { DateTimeColumn, NumberColumn } from "__support__/visualizations";
-import * as measureText from "metabase/lib/measure-text";
-import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
+import type { FontStyle } from "metabase/utils/measure-text";
+import * as measureText from "metabase/utils/measure-text";
 import type {
   DatasetColumn,
   DateTimeAbsoluteUnit,
@@ -28,7 +28,7 @@ import {
   isComparisonValid,
 } from "./utils";
 
-jest.doMock("metabase/lib/measure-text", () => ({
+jest.doMock("metabase/utils/measure-text", () => ({
   measureText: jest.fn(),
 }));
 

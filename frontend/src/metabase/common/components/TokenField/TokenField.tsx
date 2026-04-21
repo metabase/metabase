@@ -1,12 +1,12 @@
 import cx from "classnames";
-import type * as React from "react";
 import { Component, createRef } from "react";
 import _ from "underscore";
 
-import TippyPopover from "metabase/common/components/Popover/TippyPopover";
+import { TippyPopover } from "metabase/common/components/Popover/TippyPopover";
 import FormS from "metabase/css/components/form.module.css";
 import CS from "metabase/css/core/index.css";
-import { isObscured } from "metabase/lib/dom";
+import { Icon } from "metabase/ui";
+import { isObscured } from "metabase/utils/dom";
 import {
   KEYCODE_BACKSPACE,
   KEYCODE_DOWN,
@@ -17,8 +17,7 @@ import {
   KEY_BACKSPACE,
   KEY_COMMA,
   KEY_ENTER,
-} from "metabase/lib/keyboard";
-import { Icon } from "metabase/ui";
+} from "metabase/utils/keyboard";
 
 import { TokenFieldAddon, TokenFieldItem } from "../TokenFieldItem";
 
@@ -203,10 +202,8 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
         // remove selected is disabled
         (!removeSelected ||
           // or it's not in the selectedValues
-          !isSelected ||
-          // or it's the current "freeform" value, which updates as we type
-          isLastFreeform) &&
-        // and it's matching
+          !isSelected || // or it's the current "freeform" value, which updates as we type
+          isLastFreeform) && // and it's matching
         isMatching
       );
     });
@@ -696,10 +693,7 @@ const DefaultTokenFieldLayout = ({
 /**
  * @deprecated use MultiSelect or Autocomplete from metabase/ui
  */
-const TokenField = Object.assign(_TokenField, {
+export const TokenField = Object.assign(_TokenField, {
   FieldItem: TokenFieldItem,
   NewItemInputContainer: TokenInputItem,
 });
-
-// eslint-disable-next-line import/no-default-export
-export default TokenField;

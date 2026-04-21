@@ -1,5 +1,6 @@
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { Table, TableId } from "metabase-types/api";
 import {
@@ -7,9 +8,8 @@ import {
   createMockForeignKey,
   createMockTable,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
-import { TableInfo } from "./TableInfo";
+import { TableInfoInner } from "./TableInfo";
 
 const TABLE_ID = 1;
 
@@ -69,7 +69,7 @@ function setup({ id, table }: SetupOpts) {
   const fetchForeignKeys = jest.fn();
 
   renderWithProviders(
-    <TableInfo
+    <TableInfoInner
       tableId={id}
       table={metadata.table(table?.id) ?? undefined}
       fetchMetadata={fetchMetadata}

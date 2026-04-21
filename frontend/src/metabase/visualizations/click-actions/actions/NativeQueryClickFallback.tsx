@@ -1,14 +1,15 @@
-import { jt, t } from "ttag";
+import { c } from "ttag";
 
-import { isWithinIframe } from "metabase/lib/dom";
-import { setUIControls } from "metabase/query_builder/actions";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { MODAL_TYPES } from "metabase/querying/constants";
+import { setUIControls } from "metabase/redux/query-builder";
 import { Button, Flex } from "metabase/ui";
+import { isWithinIframe } from "metabase/utils/iframe";
 import type {
   CustomClickActionWithCustomView,
   LegacyDrill,
 } from "metabase/visualizations/types";
-import { nativeDrillFallback } from "metabase-lib/v1/queries/drills/native-drill-fallback";
+
+import { nativeDrillFallback } from "./utils";
 
 export const NativeQueryClickFallback: LegacyDrill = ({ question }) => {
   if (!nativeDrillFallback({ question })) {
@@ -24,22 +25,25 @@ export const NativeQueryClickFallback: LegacyDrill = ({ question }) => {
       name: "fallback-native",
       section: "info",
       type: "custom",
-      view: ({ dispatch }) => (
-        <Flex display="flex" align="baseline" gap="0.25rem">
-          {jt`${(
-            <Button
-              key=""
-              variant="subtle"
-              p={0}
-              onClick={() =>
-                dispatch(setUIControls({ modal: MODAL_TYPES.SAVE }))
-              }
-            >
-              {t`Save`}
-            </Button>
-          )} this question to drill-through.`}
-        </Flex>
-      ),
+      view: ({ dispatch }) => {
+        const button = (
+          <Button
+            key="save-button"
+            variant="subtle"
+            p={0}
+            onClick={() => dispatch(setUIControls({ modal: MODAL_TYPES.SAVE }))}
+          >
+            {c('in the sentence "Save this question to drill-through"').t`Save`}
+          </Button>
+        );
+        return (
+          <Flex display="flex" align="baseline" gap="0.25rem">
+            {c('in the sentence "Save this question to drill-through"').jt`${
+              button
+            } this question to drill-through.`}
+          </Flex>
+        );
+      },
     } as CustomClickActionWithCustomView,
   ];
 };

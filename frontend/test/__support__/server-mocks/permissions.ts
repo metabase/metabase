@@ -4,6 +4,7 @@ import type {
   CollectionPermissionsGraph,
   Database,
   Group,
+  ListUserMembershipsResponse,
 } from "metabase-types/api";
 import { createMockPermissionsGraph } from "metabase-types/api/mocks";
 
@@ -40,4 +41,10 @@ export const setupCollectionPermissionsGraphEndpoint = (
     body.revision += 1;
     return body;
   });
+};
+
+export const setupPermissionMembershipEndpoint = (
+  memberships: ListUserMembershipsResponse,
+) => {
+  fetchMock.get("path:/api/permissions/membership", memberships);
 };

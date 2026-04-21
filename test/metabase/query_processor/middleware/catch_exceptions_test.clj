@@ -1,11 +1,10 @@
 (ns metabase.query-processor.middleware.catch-exceptions-test
-  "There are additional tests in [[metabase.query-processor-test.failure-test]]."
+  "There are additional tests in [[metabase.query-processor.failure-test]]."
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.catch-exceptions
@@ -13,6 +12,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users])
   (:import
@@ -57,7 +57,7 @@
                                     (update cause :stacktrace sequential?))))))))))
   (testing "SQLExceptions that include stack traces should have them removed"
     (let [e1 (ex-info "mock databricks jdbc driver exception" {:level 1})
-          e2 (SQLException. "mock sql exception\n\tat line1\n\tat line2\n\tat line3" e1)
+          e2 (SQLException. "mock sql exception\n\tat line1\n\tat line2\n\tat line3" ^Throwable e1)
           e3 (ex-info "mock exception" {:level 3} e2)]
       (is (= {:status     :failed
               :class      clojure.lang.ExceptionInfo

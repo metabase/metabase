@@ -1,0 +1,20 @@
+.SegmentedControlRoot {
+  align-self: flex-start;
+}
+
+.Label {
+  padding-inline: 0.75rem;
+}
+
+.InstanceTokenLimitInput {
+  max-width: 15rem;
+}
+
+.InputDescription {
+  color: var(--mb-color-text-secondary);
+  line-height: 1rem;
+}
+
+.QuotaMessageInputWrapper {
+  width: 100%;
+}

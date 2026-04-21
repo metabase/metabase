@@ -34,3 +34,19 @@
 .CompactLabels .TextInFirstColumn {
   justify-content: flex-end;
 }
+
+.Horizontal {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+
+.Horizontal .ControlGroup {
+  grid-column: unset;
+}
+
+.Horizontal .TextInFirstColumn,
+.Horizontal .TextInSecondColumn {
+  grid-column: unset;
+}

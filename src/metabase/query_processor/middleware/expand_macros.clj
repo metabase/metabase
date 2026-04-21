@@ -2,6 +2,7 @@
   "Middleware for expanding LEGACY `:segment` 'macros' in *unexpanded* MBQL queries.
 
   (`:segment` forms are expanded into filter clauses.)"
+  (:refer-clojure :exclude [mapv not-empty get-in])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.filter :as lib.filter]
@@ -9,7 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -17,7 +17,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [mapv not-empty get-in]]))
 
 ;;; "legacy macro" as used below means legacy Segment.
 (mr/def ::legacy-macro
@@ -42,31 +43,27 @@
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]
-       (lib.util.match/match stage
-         [macro-type _opts (id :guard pos-int?)]
+       (lib.util.match/match-many stage
+         [#{macro-type} _opts (id :guard pos-int?)]
          (conj! ids id))
        nil))
     (not-empty (persistent! ids))))
 
 ;;; a legacy Segment has one or more filter clauses.
 
-(mu/defn- legacy-macro-definition->pMBQL :- ::lib.schema/stage.mbql
-  "Get the definition of a macro as a pMBQL stage."
-  [metadata-providerable                            :- ::lib.schema.metadata/metadata-providerable
-   {:keys [definition table-id], :as _legacy-macro} :- ::legacy-macro]
-  (log/tracef "Converting legacy MBQL for macro definition from\n%s" (u/pprint-to-str definition))
-  (u/prog1 (-> {:type     :query
-                :query    (merge {:source-table table-id}
-                                 definition)
-                :database (u/the-id (lib.metadata/database metadata-providerable))}
-               (lib/->query metadata-providerable)
-               (lib/query-stage -1))
-    (log/tracef "to pMBQL\n%s" (u/pprint-to-str <>))))
+(mu/defn- segment-definition->stage :- ::lib.schema/stage.mbql
+  "Extract the MBQL 5 stage from a segment definition. Segment definitions are always MBQL 5 queries at this point
+  (converted by the segment model's after-select hook), so we just extract the first stage."
+  [_metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   {:keys [definition], :as _legacy-macro} :- ::legacy-macro]
+  (log/tracef "Extracting MBQL 5 stage from segment definition:\n%s" (u/pprint-to-str definition))
+  (u/prog1 (first (:stages definition))
+    (log/tracef "Extracted stage:\n%s" (u/pprint-to-str <>))))
 
 (mu/defn- legacy-macro-filters :- [:maybe [:sequential ::lib.schema.expression/boolean]]
   "Get the filter(s) associated with a Segment."
   [legacy-macro :- ::legacy-macro]
-  (mapv lib.util/fresh-uuids
+  (mapv lib/fresh-uuids
         (get-in legacy-macro [:definition :filters])))
 
 (mr/def ::id->legacy-macro
@@ -80,7 +77,7 @@
                             :segment :metadata/segment)]
     (u/prog1 (into {}
                    (map (juxt :id (fn [legacy-macro]
-                                    (assoc legacy-macro :definition (legacy-macro-definition->pMBQL metadata-providerable legacy-macro)))))
+                                    (assoc legacy-macro :definition (segment-definition->stage metadata-providerable legacy-macro)))))
                    (lib.metadata/bulk-metadata-or-throw metadata-providerable metadata-type legacy-macro-ids))
       ;; make sure all the IDs exist.
       (doseq [id legacy-macro-ids]
@@ -98,7 +95,7 @@
   [_macro-type        :- [:= :segment]
    stage              :- ::lib.schema/stage
    id->legacy-segment :- ::id->legacy-macro]
-  (-> (lib.util.match/replace stage
+  (-> (lib.util.match/replace-lite stage
         [:segment _opts (id :guard pos-int?)]
         (let [legacy-segment (get id->legacy-segment id)
               filter-clauses (legacy-macro-filters legacy-segment)]

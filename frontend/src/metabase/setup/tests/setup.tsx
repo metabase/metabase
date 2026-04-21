@@ -2,13 +2,20 @@ import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupEnterpriseOnlyPlugin,
+  setupEnterprisePlugins,
+} from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import {
+  createMockSetupState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import type {
   SettingDefinition,
   TokenFeatures,
@@ -18,10 +25,6 @@ import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import {
-  createMockSetupState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { Setup } from "../components/Setup";
 import type { SetupStep } from "../types";
@@ -29,13 +32,13 @@ import type { SetupStep } from "../types";
 export interface SetupOpts {
   step?: SetupStep;
   tokenFeatures?: TokenFeatures;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][] | "*";
   settingOverrides?: SettingDefinition[];
 }
 
 export async function setup({
   tokenFeatures = createMockTokenFeatures(),
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   settingOverrides = [],
 }: SetupOpts = {}) {
   localStorage.clear();
@@ -53,8 +56,12 @@ export async function setup({
     ),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    if (enterprisePlugins === "*") {
+      setupEnterprisePlugins();
+    } else {
+      enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
+    }
   }
 
   fetchMock.post("path:/api/session/password-check", { valid: true });
@@ -82,8 +89,6 @@ export const clickNextStep = async () =>
 
 export const skipWelcomeScreen = async () =>
   await userEvent.click(screen.getByText("Let's get started"));
-
-export const skipLanguageStep = clickNextStep;
 
 export const submitUserInfoStep = async ({
   firstName = "John",

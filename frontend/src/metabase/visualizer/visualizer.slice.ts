@@ -9,8 +9,16 @@ import undoable, { combineFilters, includeAction } from "redux-undo";
 import _ from "underscore";
 
 import { cardApi } from "metabase/api";
-import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
-import { copy } from "metabase/lib/utils";
+import type { Dispatch, GetState } from "metabase/redux/store";
+import type {
+  DraggedColumn,
+  DraggedItem,
+  VisualizerState,
+  VisualizerVizDefinitionWithColumns,
+  VisualizerVizDefinitionWithColumnsAndFallbacks,
+} from "metabase/redux/store/visualizer";
+import { clone } from "metabase/utils/clone";
+import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
 import { isCartesianChart } from "metabase/visualizations";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type {
@@ -23,14 +31,6 @@ import type {
   VisualizerDataSource,
   VisualizerDataSourceId,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
-import type {
-  DraggedColumn,
-  DraggedItem,
-  VisualizerState,
-  VisualizerVizDefinitionWithColumns,
-  VisualizerVizDefinitionWithColumnsAndFallbacks,
-} from "metabase-types/store/visualizer";
 
 import {
   getCurrentVisualizerState,
@@ -146,7 +146,7 @@ const initializeFromState = async (
       })
       .flat(),
   );
-  return copy(initialState);
+  return clone(initialState);
 };
 
 export const initializeFromCard = async (
@@ -176,6 +176,7 @@ export const addDataSource = createAsyncThunk(
 
     let dataSource: VisualizerDataSource | null = null;
     let dataset: Dataset | null = null;
+    let vizSettings: VisualizationSettings | null = null;
 
     if (type === "card") {
       // TODO handle rejected requests
@@ -186,6 +187,7 @@ export const addDataSource = createAsyncThunk(
 
       const card = cardAction.payload as Card;
       dataset = cardQueryAction.payload as Dataset;
+      vizSettings = card.visualization_settings || null;
 
       if (
         !state.display ||
@@ -220,13 +222,13 @@ export const addDataSource = createAsyncThunk(
 
     return maybeCombineDataset(
       {
-        ...copy(state),
+        ...clone(state),
         settings,
       },
       settings,
-      state.datasets,
       dataSource,
       dataset,
+      vizSettings,
     );
   },
 );
@@ -427,7 +429,6 @@ const visualizerSlice = createSlice({
         addColumnToPieChart(
           state,
           settings,
-          state.datasets as Record<string, Dataset>,
           dataset.data.cols,
           column,
           columnRef,
@@ -580,9 +581,9 @@ const visualizerSlice = createSlice({
         const nextState = action.payload;
         if (nextState) {
           state.display = nextState.display;
-          state.columns = copy(nextState.columns);
-          state.columnValuesMapping = copy(nextState.columnValuesMapping);
-          state.settings = copy(nextState.settings);
+          state.columns = clone(nextState.columns);
+          state.columnValuesMapping = clone(nextState.columnValuesMapping);
+          state.settings = clone(nextState.settings);
         }
       })
       .addCase(fetchCard.pending, (state, action) => {
@@ -643,20 +644,26 @@ const visualizerSlice = createSlice({
 function maybeCombineDataset(
   state: VisualizerVizDefinitionWithColumns,
   settings: ComputedVisualizationSettings,
-  datasets: Record<string, Dataset>,
   dataSource: VisualizerDataSource,
   dataset: Dataset,
+  vizSettings: VisualizationSettings | null,
 ) {
   if (!state.display) {
     return;
   }
 
   if (isCartesianChart(state.display)) {
-    combineWithCartesianChart(state, settings, datasets, dataset, dataSource);
+    combineWithCartesianChart(
+      state,
+      settings,
+      dataset,
+      dataSource,
+      vizSettings,
+    );
   }
 
   if (state.display === "pie") {
-    combineWithPieChart(state, settings, datasets, dataset, dataSource);
+    combineWithPieChart(state, settings, dataset, dataSource);
   }
 
   if (state.display === "funnel") {

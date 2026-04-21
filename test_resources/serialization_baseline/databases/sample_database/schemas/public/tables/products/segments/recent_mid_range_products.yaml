@@ -1,0 +1,61 @@
+created_at: '2026-04-02T01:50:06.081195Z'
+creator_id: admin@example.com
+definition:
+  database: Sample Database
+  stages:
+  - filters:
+    - - between
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - PRICE
+      - 20
+      - 100
+    - - not-null
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - RATING
+    - - time-interval
+      - {}
+      - - field
+        - {}
+        - - Sample Database
+          - PUBLIC
+          - PRODUCTS
+          - CREATED_AT
+      - -1
+      - year
+    - - not
+      - {}
+      - - is-null
+        - {}
+        - - field
+          - {}
+          - - Sample Database
+            - PUBLIC
+            - PRODUCTS
+            - VENDOR
+    source-table:
+    - Sample Database
+    - PUBLIC
+    - PRODUCTS
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+description: Products created in last year, priced 20-100, not null rating
+entity_id: wdYkSSArR5ymVGa0pvb47
+name: Recent Mid-Range Products
+table_id:
+- Sample Database
+- PUBLIC
+- PRODUCTS
+serdes/meta:
+- id: wdYkSSArR5ymVGa0pvb47
+  label: recent_mid_range_products
+  model: Segment

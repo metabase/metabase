@@ -1,5 +1,9 @@
 {:paths ["src" "resources"]
  :deps
- {com.clickhouse/clickhouse-jdbc {:mvn/version "0.8.4"
-                                  :exclusions [org.apache.commons/commons-lang3]}
-  org.lz4/lz4-java {:mvn/version "1.8.0"}}}
+ {com.clickhouse/clickhouse-jdbc {:mvn/version "0.9.7"
+                                  :exclusions [org.apache.commons/commons-lang3
+                                               org.lz4/lz4-java]}
+  ;; pinned: clickhouse-jdbc pulls httpcore5-h2 5.3.4
+  org.apache.httpcomponents.core5/httpcore5-h2 {:mvn/version "5.3.5"}
+  ;; original org.lz4:lz4-java project is discontinued, this is the maintained fork
+  at.yawk.lz4/lz4-java {:mvn/version "1.10.2"}}}

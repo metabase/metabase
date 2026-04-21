@@ -1,11 +1,11 @@
 import _ from "underscore";
 
-import Tables from "metabase/entities/tables";
-import { connect } from "metabase/lib/redux";
-import { isSyncInProgress } from "metabase/lib/syncing";
-import * as Urls from "metabase/lib/urls";
+import { Tables } from "metabase/entities/tables";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
+import { connect } from "metabase/utils/redux";
+import { isSyncInProgress } from "metabase/utils/syncing";
+import * as Urls from "metabase/utils/urls";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import * as ML_Urls from "metabase-lib/v1/urls";
 
@@ -40,6 +40,7 @@ export const getTableUrl = (table, metadata) => {
   return ML_Urls.getUrl(metadataTable?.newQuestion(), { clean: false });
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Tables.loadList({
     query: (state, props) => ({

@@ -1,19 +1,24 @@
 (ns metabase.driver.sql
   "Shared code for all drivers that use SQL under the hood."
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.set :as set]
-   [clojure.string :as str]
-   [macaw.core :as macaw]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
-   [metabase.driver.common.parameters.parse :as params.parse]
-   [metabase.driver.common.parameters.values :as params.values]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.values :as params.values]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.parameters.substitute :as sql.params.substitute]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.util :as u]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.util :as lib.util]
+   [metabase.sql-tools.core :as sql-tools]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]]
    [potemkin :as p]))
 
 (comment sql.params.substitution/keep-me) ; this is so `cljr-clean-ns` and the linter don't remove the `:require`
@@ -44,7 +49,9 @@
                  :expressions/text
                  :expressions/today
                  :distinct-where
-                 :database-routing]]
+                 :database-routing
+                 :dependencies/native
+                 :parameters/table-reference]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
@@ -115,16 +122,82 @@
 ;;; |                                              Transforms                                                        |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO Although these methods are implemented here, in fact they only work for sql-jdbc drivers, because
-;; execute-raw-queries! is not in implemented for plain sql drivers.
+(defn- create-table-and-insert-data!
+  [driver transform-details conn-spec]
+  (let [create-query  (driver/compile-transform driver transform-details)
+        rows-affected (last (driver/execute-raw-queries! driver conn-spec [create-query]))]
+    rows-affected))
+
+(defn- run-with-rename-tables-strategy!
+  [driver database output-table transform-details conn-spec]
+  (let [new-temp (driver.u/temp-table-name driver output-table)
+        old-temp (driver.u/temp-table-name driver output-table)]
+    (try
+      (let [new-temp-details (assoc transform-details :output-table new-temp)
+            rows-affected    (create-table-and-insert-data! driver new-temp-details conn-spec)]
+        (driver/rename-tables! driver (:id database) {output-table old-temp
+                                                      new-temp     output-table})
+        (driver/drop-table! driver (:id database) old-temp)
+        {:rows-affected rows-affected})
+      (catch Exception e
+        (log/error e "Failed to run transform using rename-tables strategy")
+        (try (driver/drop-table! driver (:id database) new-temp) (catch Exception _))
+        (throw e)))))
+
+(defn- run-with-create-drop-rename-strategy!
+  [driver database output-table transform-details conn-spec]
+  (let [tmp-table (driver.u/temp-table-name driver output-table)]
+    (try
+      (let [tmp-table-details (assoc transform-details :output-table tmp-table)
+            rows-affected     (create-table-and-insert-data! driver tmp-table-details conn-spec)]
+        (driver/drop-table! driver (:id database) output-table)
+        (driver/rename-table! driver (:id database) tmp-table output-table)
+        {:rows-affected rows-affected})
+      (catch Exception e
+        (log/error e "Failed to run transform using create-drop-rename strategy")
+        (try (driver/drop-table! driver (:id database) tmp-table) (catch Exception _))
+        (throw e)))))
+
+(defn- run-with-drop-create-fallback-strategy!
+  [driver database output-table transform-details conn-spec]
+  (try
+    (driver/drop-table! driver (:id database) output-table)
+    {:rows-affected (create-table-and-insert-data! driver transform-details conn-spec)}
+    (catch Exception e
+      (log/error e "Failed to run transform using drop-create strategy")
+      (throw e))))
+
+;; Follows similar logic to `transfer-file-to-db :table`
 (defmethod driver/run-transform! [:sql :table]
-  [driver {:keys [connection-details query output-table]} {:keys [overwrite?]}]
-  (let [driver (keyword driver)
-        queries (cond->> [(driver/compile-transform driver
-                                                    {:query query
-                                                     :output-table output-table})]
-                  overwrite? (cons (driver/compile-drop-table driver output-table)))]
-    {:rows-affected (last (driver/execute-raw-queries! driver connection-details queries))}))
+  [driver {:keys [conn-spec output-table database] :as transform-details} _opts]
+  (let [table-exists? (driver/table-exists? driver database
+                                            {:schema (namespace output-table)
+                                             :name   (name output-table)})]
+    (cond
+      (or (not table-exists?)
+          (driver/database-supports? driver :create-or-replace-table database))
+      (create-table-and-insert-data! driver transform-details conn-spec)
+
+      ;; Atomic renames fully supported
+      (driver/database-supports? driver :atomic-renames database)
+      (run-with-rename-tables-strategy! driver database output-table transform-details conn-spec)
+
+      ;; Single rename supported, partial atomicity
+      (driver/database-supports? driver :rename database)
+      (run-with-create-drop-rename-strategy! driver database output-table transform-details conn-spec)
+
+      ;; Drop then create, no atomicity
+      :else
+      (run-with-drop-create-fallback-strategy! driver database output-table transform-details conn-spec))))
+
+(defmethod driver/run-transform! [:sql :table-incremental]
+  [driver {:keys [conn-spec database output-table] :as transform-details} _opts]
+  (let [queries (if (driver/table-exists? driver database {:schema (namespace output-table)
+                                                           :name (name output-table)})
+                  (driver/compile-insert driver transform-details)
+                  (driver/compile-transform driver transform-details))]
+    (log/tracef "Executing incremental transform queries: %s" (pr-str queries))
+    {:rows-affected (last (driver/execute-raw-queries! driver conn-spec [queries]))}))
 
 (defn qualified-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -139,68 +212,53 @@
   ;; honeysql, and accepts a keyword too. This way we delegate proper escaping and qualification to honeysql.
   (driver/drop-table! driver (:id database) (qualified-name target)))
 
-(defmulti normalize-name
-  "Normalizes the (primarily table/column) name passed in.
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Dependencies                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-  Should return a value that matches the name listed in the appdb. Drivers that support any of the `:transforms/...`
-  features must implement this method."
-  {:added "0.57.0" :arglists '([driver name-str])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
+(mu/defmethod driver/native-query-table-refs :sql :- ::driver/native-query-table-refs
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (into #{} (sql-tools/referenced-tables-raw driver (driver-api/raw-native-query query))))
 
-(defmethod normalize-name :sql
-  [_driver name-str]
-  (if (and (= (first name-str) \")
-           (= (last name-str) \"))
-    (-> name-str
-        (subs 1 (dec (count name-str)))
-        (str/replace #"\"\"" "\""))
-    (u/lower-case-en name-str)))
+(mu/defmethod driver/native-query-deps :sql :- ::driver/native-query-deps
+  [driver :- :keyword
+   query  :- :metabase.lib.schema/native-only-query]
+  (into (driver-api/native-query-table-references query)
+        (sql-tools/referenced-tables driver query)))
 
-(defmulti default-schema
-  "Returns the default schema for a given database driver.
+(mu/defmethod driver/native-result-metadata :sql
+  [driver       :- :keyword
+   native-query :- :metabase.lib.schema/native-only-query]
+  (sql-tools/returned-columns driver native-query))
 
-  Drivers that support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod default-schema :sql
-  [_]
-  "public")
-
-(defmulti find-table
-  "Finds the table matching a given name and schema.
-
-  Names and schemas are potentially taken from a raw sql query and will be normalized accordingly. Drivers that
-  support any of the `:transforms/...` features must implement this method."
-  {:added "0.57.0" :arglists '([driver {:keys [table schema]}])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod find-table :sql
-  [driver {:keys [table schema]}]
-  (let [normalized-table (normalize-name driver table)
-        normalized-schema (if (seq schema)
-                            (normalize-name driver schema)
-                            (default-schema driver))]
-    (->> (driver-api/metadata-provider)
-         driver-api/tables
-         (some (fn [{db-table :name db-schema :schema id :id}]
-                 (and (= normalized-table db-table)
-                      (= normalized-schema db-schema)
-                      id))))))
-
-(defmethod driver/native-query-deps :sql
-  [driver query]
-  (->> query
-       macaw/parsed-query
-       macaw/query->components
-       :tables
-       (into #{} (keep #(->> % :component (find-table driver))))))
+(mu/defmethod driver/validate-native-query-fields :sql :- [:set [:ref driver-api/schema.validate.error]]
+  [driver       :- :keyword
+   native-query :- :metabase.lib.schema/native-only-query]
+  (sql-tools/validate-query driver native-query))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Convenience Imports                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(p/import-vars [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution])
+(defn validate-impersonated-query*
+  "Validates a native query by parsing it and ensuring that it is a single select statement."
+  [driver query]
+  (update query :stages
+          (fn [stages]
+            (mapv (fn [stage]
+                    (if (lib.util/native-stage? stage)
+                      (let [{:keys [is-single-select? sql error]}
+                            (sql-tools/is-single-select-stmt? driver (:native stage))]
+                        (when error
+                          (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage)))
+                        (if is-single-select?
+                          (assoc stage :native sql)
+                          (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
+                                          {:sql (:native stage)}))))
+                      stage))
+                  stages))))
+
+(p/import-vars
+ [sql.params.substitution ->prepared-substitution PreparedStatementSubstitution]
+ [sql.normalize default-schema normalize-error normalize-name reserved-literal])

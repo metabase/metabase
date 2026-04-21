@@ -1,6 +1,6 @@
 import { USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import type { CollectionItem, Dashboard } from "metabase-types/api";
 
 import {
@@ -78,9 +78,14 @@ describe(
       H.restore("sandboxing-snapshot" as any);
     });
 
-    it("shows all data before sandboxing policy is applied", () => {
+    it("shows all data before sandboxing policy is applied - gizmoViewer", () => {
       signInAs(gizmoViewer);
       assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
+    });
+
+    // this test looks like it could be merged with the previous one,
+    // but then it flakes at a very high rate
+    it("shows all data before sandboxing policy is applied - widgetViewer", () => {
       signInAs(widgetViewer);
       assertNoResultsOrValuesAreSandboxed(dashboard, sandboxableQuestions);
     });

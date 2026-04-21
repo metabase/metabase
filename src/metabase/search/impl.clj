@@ -11,7 +11,8 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.in-place.filter :as search.in-place.filter]
    [metabase.search.in-place.scoring :as scoring]
-   [metabase.search.settings :as search.settings]
+   [metabase.tracing.core :as tracing]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.json :as json]
@@ -19,7 +20,6 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
    [toucan2.realize :as t2.realize]))
@@ -37,15 +37,19 @@
   variables. This might require updating `can-read?` and `can-write?` to take explicit perms sets instead of relying
   on dynamic variables."
   {:style/indent 0}
-  [current-user-perms & body]
-  `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
+  [current-user-id current-user-perms & body]
+  `(with-bindings {(requiring-resolve 'metabase.api.common/*current-user-id*)              ~current-user-id
+                   (requiring-resolve 'metabase.api.common/*current-user-permissions-set*) (atom ~current-user-perms)}
      ~@body))
 
-(defn- can-write? [{:keys [current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-write? instance)))
+(defn- can-write? [{:keys [current-user-id current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-write? instance)))
 
-(defn- can-read? [{:keys [current-user-perms]} instance]
-  (ensure-current-user-perms-set-is-bound current-user-perms (mi/can-read? instance)))
+(defn- can-read? [{:keys [current-user-id current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-read? instance)))
+
+(defn- can-query? [{:keys [current-user-id current-user-perms]} instance]
+  (ensure-current-user-perms-set-is-bound current-user-id current-user-perms (mi/can-query? instance)))
 
 (defmethod check-permissions-for-model :default
   [search-ctx instance]
@@ -56,22 +60,15 @@
 
 (defmethod check-permissions-for-model :document
   [search-ctx instance]
-  (and (premium-features/enable-documents?)
-       (if (:archived? search-ctx)
-         (can-write? search-ctx instance)
-         true)))
+  (if (:archived? search-ctx)
+    (can-write? search-ctx instance)
+    true))
 
 ;; TODO: remove this implementation now that we check permissions in the SQL, leaving it in for now to guard against
 ;; issue with new pure sql implementation
 (defmethod check-permissions-for-model :table
   [search-ctx instance]
-  ;; we've already filtered out tables w/o collection permissions in the query itself.
-  (let [instance-id (:id instance)
-        user-id     (:current-user-id search-ctx)
-        db-id       (database/table-id->database-id instance-id)]
-    (and
-     (perms/user-has-permission-for-table? user-id :perms/view-data :unrestricted db-id instance-id)
-     (perms/user-has-permission-for-table? user-id :perms/create-queries :query-builder db-id instance-id))))
+  (can-query? search-ctx (assoc instance :db_id (:database_id instance))))
 
 (defmethod check-permissions-for-model :indexed-entity
   [search-ctx instance]
@@ -88,6 +85,12 @@
     (can-read? search-ctx instance)))
 
 (defmethod check-permissions-for-model :segment
+  [search-ctx instance]
+  (if (:archived? search-ctx)
+    (can-write? search-ctx instance)
+    (can-read? search-ctx instance)))
+
+(defmethod check-permissions-for-model :measure
   [search-ctx instance]
   (if (:archived? search-ctx)
     (can-write? search-ctx instance)
@@ -177,7 +180,9 @@
          :collection     (if (and archived_directly (not= "collection" model))
                            (select-keys (collection/trash-collection)
                                         [:id :name :authority_level :type])
-                           (merge {:id              collection_id
+                           (merge {:id              (if (and (nil? collection_id) (some? collection_name))
+                                                      "root"
+                                                      collection_id)
                                    :name            collection_name
                                    :authority_level collection_authority_level
                                    :type            collection_type}
@@ -197,7 +202,9 @@
          :collection_type
          :archived_directly
          :display_name
-         :effective_parent))))
+         :effective_parent)
+        (cond-> (= model "transform")
+          (dissoc :source :target)))))
 
 (defn- bit->boolean
   "Coerce a bit returned by some MySQL/MariaDB versions in some situations to Boolean."
@@ -205,18 +212,6 @@
   (if (number? v)
     (not (zero? v))
     v))
-
-(defn default-engine
-  "In the absence of an explicit engine argument in a request, which engine should be used?"
-  []
-  (if-let [s (search.settings/search-engine)]
-    (let [engine (keyword "search.engine" (name s))]
-      (if (search.engine/supported-engine? engine)
-        engine
-        ;; It would be good to have a warning on start up for this.
-        :search.engine/in-place))
-    (first (filter search.engine/supported-engine?
-                   search.engine/fallback-engine-priority))))
 
 (defn- parse-engine [value]
   (or (when-not (str/blank? value)
@@ -230,12 +225,12 @@
 
             :else
             engine)))
-      (default-engine)))
+      (search.engine/default-engine)))
 
 ;; This forwarding is here for tests, we should clean those up.
 
 (defn- apply-default-engine [{:keys [search-engine] :as search-ctx}]
-  (let [default (default-engine)]
+  (let [default (search.engine/default-engine)]
     (when (= default search-engine)
       (throw (ex-info "Missing implementation for default search-engine" {:search-engine search-engine})))
     (log/debugf "Missing implementation for %s so instead using %s" search-engine default)
@@ -256,18 +251,20 @@
    [:is-impersonated-user?               {:optional true} :boolean]
    [:is-sandboxed-user?                  {:optional true} :boolean]
    [:is-superuser?                                        :boolean]
+   [:is-data-analyst?                    {:optional true} :boolean]
    [:current-user-perms                                   [:set perms/PathSchema]]
    [:archived                            {:optional true} [:maybe :boolean]]
    [:created-at                          {:optional true} [:maybe ms/NonBlankString]]
    [:created-by                          {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:filter-items-in-personal-collection {:optional true} [:maybe [:enum "all" "only" "only-mine" "exclude" "exclude-others"]]]
+   [:collection                          {:optional true} [:maybe ms/PositiveInt]]
    [:last-edited-at                      {:optional true} [:maybe ms/NonBlankString]]
    [:last-edited-by                      {:optional true} [:maybe [:set ms/PositiveInt]]]
    [:limit                               {:optional true} [:maybe ms/Int]]
    [:offset                              {:optional true} [:maybe ms/Int]]
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-engine                       {:optional true} [:maybe string?]]
-   [:search-native-query                 {:optional true} [:maybe true?]]
+   [:search-native-query                 {:optional true} [:maybe boolean?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]
@@ -276,11 +273,13 @@
    [:include-metadata?                   {:optional true} [:maybe boolean?]]
    [:non-temporal-dim-ids                {:optional true} [:maybe ms/NonBlankString]]
    [:has-temporal-dim                    {:optional true} [:maybe :boolean]]
-   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]])
+   [:display-type                        {:optional true} [:maybe [:set ms/NonBlankString]]]
+   [:weights                             {:optional true} [:maybe [:map-of :keyword number?]]]])
 
 (mu/defn search-context :- SearchContext
   "Create a new search context that you can pass to other functions like [[search]]."
   [{:keys [archived
+           collection
            context
            calculate-available-models?
            created-at
@@ -295,6 +294,7 @@
            include-dashboard-questions?
            include-metadata?
            is-superuser?
+           is-data-analyst?
            last-edited-at
            last-edited-by
            limit
@@ -307,7 +307,8 @@
            table-db-id
            verified
            non-temporal-dim-ids
-           has-temporal-dim]} :- ::search-context.input]
+           has-temporal-dim
+           weights]} :- ::search-context.input]
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -322,15 +323,19 @@
                         :calculate-available-models?         (boolean calculate-available-models?)
                         :current-user-id                     current-user-id
                         :current-user-perms                  current-user-perms
+                        :enabled-transform-source-types      (transforms.gating/enabled-source-types)
                         :filter-items-in-personal-collection (or filter-items-in-personal-collection
-                                                                 (fvalue :personal-collection-id))
+                                                                 (fvalue :filter-items-in-personal-collection))
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
                         :is-superuser?                       is-superuser?
+                        :is-data-analyst?                    (boolean is-data-analyst?)
                         :models                              models
                         :model-ancestors?                    (boolean model-ancestors?)
                         :search-engine                       engine
-                        :search-string                       search-string}
+                        :search-string                       search-string
+                        :weights                             weights}
+                 (some? collection)                          (assoc :collection collection)
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
@@ -363,12 +368,12 @@
 
 (defn- map-collection [collection]
   (cond-> collection
-    (:archived_directly collection)
-    (assoc :location (collection/trash-path))
     :always
     (assoc :type (:collection_type collection))
     :always
-    collection/maybe-localize-trash-name))
+    collection/maybe-localize-system-collection-name
+    :always
+    collection/maybe-localize-tenant-collection-name))
 
 (defn- normalize-result [result]
   (let [instance (to-toucan-instance (t2.realize/realize result))]
@@ -381,37 +386,14 @@
         (cond-> (t2/instance-of? :model/Collection instance) map-collection))))
 
 (defn- add-can-write [search-ctx row]
-  (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card])
+  (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card :model/Collection])
     (assoc row :can_write (can-write? search-ctx row))
     row))
 
 (defn- normalize-result-more
-  "Additional normalization that is done after we've filtered by permissions, as its more expensive."
-  [search-ctx result]
-  (->> (update result :pk_ref json/decode)
-       (add-can-write search-ctx)))
-
-(defn- search-results [search-ctx model-set-fn total-results]
-  (let [add-perms-for-col  (fn [item]
-                             (cond-> item
-                               (mi/instance-of? :model/Collection item)
-                               (assoc :can_write (can-write? search-ctx item))))]
-    ;; We get to do this slicing and dicing with the result data because
-    ;; the pagination of search is for UI improvement, not for performance.
-    ;; We intend for the cardinality of the search results to be below the default max before this slicing occurs
-    (cond-> {:data             (cond->> total-results
-                                 (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
-                                 (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
-                                 true (map add-perms-for-col))
-             :limit            (:limit-int search-ctx)
-             :models           (:models search-ctx)
-             :offset           (:offset-int search-ctx)
-             :table_db_id      (:table-db-id search-ctx)
-             :engine           (:search-engine search-ctx)
-             :total            (count total-results)}
-
-      (:calculate-available-models? search-ctx)
-      (assoc :available_models (model-set-fn search-ctx)))))
+  "Additional normalization that is done after we've filtered by permissions."
+  [_search-ctx result]
+  (update result :pk_ref json/decode))
 
 (defn- hydrate-dashboards [results]
   (->> (t2/hydrate results [:dashboard :moderation_status])
@@ -433,22 +415,47 @@
              item))
          search-results)))
 
-(mu/defn search
-  "Builds a search query that includes all the searchable entities, and runs it."
-  [search-ctx :- search.config/SearchContext]
-  (let [reducible-results (search.engine/results search-ctx)
-        scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
-        xf                (comp
-                           (take search.config/*db-max-results*)
-                           (map normalize-result)
-                           (filter (partial check-permissions-for-model search-ctx))
-                           (map (partial normalize-result-more search-ctx))
-                           (keep #(search.engine/score scoring-ctx %)))
-        total-results     (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
+(defn- search-results [search-ctx model-set-fn ranked-results]
+  ;; Slice the ranked window down to the requested page *before* hydration/serialization so
+  ;; display-only work (including the expensive per-row `:can_write` permission check) only runs
+  ;; on the rows we actually return. The pagination of search is for UI improvement, not for
+  ;; performance — the ranked set is already capped by `max-filtered-results` — but doing the
+  ;; slice here lets downstream steps amortize their batch hydrations over ~limit rows instead
+  ;; of the full cap.
+  (let [paginated-results (cond->> ranked-results
+                            (some? (:offset-int search-ctx)) (drop (:offset-int search-ctx))
+                            (some? (:limit-int search-ctx)) (take (:limit-int search-ctx))
                             true hydrate-dashboards
                             true hydrate-user-metadata
                             (:include-metadata? search-ctx) (add-metadata)
                             (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                             true (add-collection-effective-location)
+                            true (map (partial add-can-write search-ctx))
                             true (map serialize))]
-    (search-results search-ctx search.engine/model-set total-results)))
+    (cond-> {:data        paginated-results
+             :limit       (:limit-int search-ctx)
+             :models      (:models search-ctx)
+             :offset      (:offset-int search-ctx)
+             :table_db_id (:table-db-id search-ctx)
+             :engine      (:search-engine search-ctx)
+             :total       (count ranked-results)}
+
+      (:calculate-available-models? search-ctx)
+      (assoc :available_models (model-set-fn search-ctx)))))
+
+(mu/defn search
+  "Builds a search query that includes all the searchable entities, and runs it."
+  [search-ctx :- search.config/SearchContext]
+  (tracing/with-span :search "search.execute" {:search/engine       (name (:search-engine search-ctx))
+                                               :search/query-length (count (:search-string search-ctx))
+                                               :search/model-count  (count (:models search-ctx))}
+    (let [reducible-results (search.engine/results search-ctx)
+          scoring-ctx       (select-keys search-ctx [:search-engine :search-string :search-native-query])
+          xf                (comp
+                             (take search.config/*db-max-results*)
+                             (map normalize-result)
+                             (filter (partial check-permissions-for-model search-ctx))
+                             (map (partial normalize-result-more search-ctx))
+                             (keep #(search.engine/score scoring-ctx %)))
+          ranked-results    (scoring/top-results reducible-results search.config/max-filtered-results xf)]
+      (search-results search-ctx search.engine/model-set ranked-results))))

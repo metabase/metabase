@@ -3,18 +3,16 @@ import { useCallback, useMemo, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import { setParameterMapping } from "metabase/dashboard/actions/parameters";
 import {
   getVirtualCardType,
-  isVirtualDashCard,
   showVirtualDashCardInfoText,
 } from "metabase/dashboard/utils";
-import { useDispatch } from "metabase/lib/redux";
 import type { ParameterMappingOption } from "metabase/parameters/utils/mapping-options";
 import {
   Box,
+  Ellipsified,
   Flex,
   Icon,
   Stack,
@@ -22,6 +20,11 @@ import {
   Tooltip,
   Transition,
 } from "metabase/ui";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
+import { useDispatch } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
@@ -29,6 +32,7 @@ import type {
   DashboardCard,
   Parameter,
   ParameterTarget,
+  VirtualCard,
 } from "metabase-types/api";
 
 import { DashCardCardParameterMapperButton } from "./DashCardCardParameterMapperButton";
@@ -45,7 +49,7 @@ interface DashCardCardParameterMapperContentProps {
   question: Question | undefined;
   editingParameter: Parameter | null | undefined;
   mappingOptions: ParameterMappingOption[];
-  card: Card;
+  card: Card | VirtualCard;
   selectedMappingOption: ParameterMappingOption | undefined;
   target: ParameterTarget | null | undefined;
   layoutHeight: number;
@@ -87,6 +91,18 @@ export const DashCardCardParameterMapperContent = ({
     );
   }, [editingParameterInlineDashcard, dashcard.dashboard_tab_id]);
 
+  const isInlineParameterOfAnotherQuestionCard = useMemo(() => {
+    return (
+      editingParameterInlineDashcard != null &&
+      isQuestionDashCard(editingParameterInlineDashcard) &&
+      editingParameterInlineDashcard.id !== dashcard.id
+    );
+  }, [editingParameterInlineDashcard, dashcard.id]);
+
+  const hasExistingConnection = useMemo(() => {
+    return target != null;
+  }, [target]);
+
   const headerContent = useMemo(() => {
     if (layoutHeight <= 2) {
       return null;
@@ -106,13 +122,9 @@ export const DashCardCardParameterMapperContent = ({
   const handleChangeTarget = useCallback(
     (target: ParameterTarget | null) => {
       if (editingParameter) {
+        const cardId = typeof card.id === "number" ? card.id : null;
         dispatch(
-          setParameterMapping(
-            editingParameter.id,
-            dashcard.id,
-            card.id,
-            target,
-          ),
+          setParameterMapping(editingParameter.id, dashcard.id, cardId, target),
         );
       }
     },
@@ -175,9 +187,18 @@ export const DashCardCardParameterMapperContent = ({
 
   if (isInlineParameterFromAnotherTab) {
     return (
-      <Flex className={S.TextCardDefault} gap="sm" ta="center">
+      <Flex className={S.TextCardDefault} gap="sm" align="center" ta="center">
         <Icon name="info" size={12} className={S.InfoIcon} />
         {t`The selected filter is on another tab.`}
+      </Flex>
+    );
+  }
+
+  if (isInlineParameterOfAnotherQuestionCard && !hasExistingConnection) {
+    return (
+      <Flex className={S.TextCardDefault} gap="sm" align="center" ta="center">
+        <Icon name="info" size={12} className={S.InfoIcon} />
+        {t`This filter can only connect to its own card.`}
       </Flex>
     );
   }

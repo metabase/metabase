@@ -1,0 +1,1 @@
+export { TenantCollectionPermissionsPage } from "./TenantCollectionPermissionsPage";

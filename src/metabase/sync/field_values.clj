@@ -5,6 +5,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -26,11 +27,11 @@
   (let [field-values (field-values/get-latest-full-field-values (u/the-id field))]
     (cond
       (not field-values)
-      (log/infof "Field %s does not have FieldValues. Skipping..."
+      (log/infof "%s does not have FieldValues. Skipping..."
                  (sync-util/name-for-logging field))
 
       (field-values/inactive? field-values)
-      (log/infof "Field %s has not been used since %s. Skipping..."
+      (log/infof "%s has not been used since %s. Skipping..."
                  (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values))))
 
       :else
@@ -67,8 +68,9 @@
 
 (mu/defn- update-field-values-for-database!
   [database :- i/DatabaseInstance]
-  (let [tables (sync-util/reducible-sync-tables database)]
-    (transduce (map update-field-values-for-table!) (partial merge-with +) tables)))
+  (tracing/with-span :sync "field-values.update" {:db/id (:id database)}
+    (let [tables (sync-util/reducible-sync-tables database)]
+      (transduce (map update-field-values-for-table!) (partial merge-with +) tables))))
 
 (defn- update-field-values-summary [{:keys [created updated deleted errors]}]
   (format "Updated %d field value sets, created %d, deleted %d with %d errors"
@@ -82,7 +84,7 @@
   (sync-util/with-error-handling (format "Error deleting expired advanced field values for %s" (sync-util/name-for-logging field))
     (let [conditions [:field_id   (:id field)
                       :type       [:in field-values/advanced-field-values-types]
-                      :created_at [:< ((requiring-resolve 'metabase.driver.sql.query-processor/add-interval-honeysql-form)
+                      :created_at [:< ((requiring-resolve 'metabase.util.honey-sql-2/add-interval-honeysql-form)
                                        (mdb/db-type)
                                        :%now
                                        (- (t/as field-values/advanced-field-values-max-age :days))
@@ -102,15 +104,16 @@
 
 (mu/defn- delete-expired-advanced-field-values-for-database!
   [database :- i/DatabaseInstance]
-  (let [tables (sync-util/reducible-sync-tables database)]
-    {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)
-                               (map (fn [result]
-                                      (if (instance? Throwable result)
-                                        (throw result)
-                                        result))))
-                         +
-                         0
-                         tables)}))
+  (tracing/with-span :sync "field-values.delete-expired-advanced" {:db/id (:id database)}
+    (let [tables (sync-util/reducible-sync-tables database)]
+      {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)
+                                 (map (fn [result]
+                                        (if (instance? Throwable result)
+                                          (throw result)
+                                          result))))
+                           +
+                           0
+                           tables)})))
 
 (def ^:private sync-field-values-steps
   [(sync-util/create-sync-step "delete-expired-advanced-field-values"

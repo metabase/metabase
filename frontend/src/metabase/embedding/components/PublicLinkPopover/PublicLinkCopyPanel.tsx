@@ -1,6 +1,7 @@
 import type { MouseEventHandler } from "react";
 import { t } from "ttag";
 
+import type { ExportFormat } from "metabase/common/types/export";
 import {
   Anchor,
   Box,
@@ -15,7 +16,6 @@ import {
   PublicLinkCopyButton,
   RemoveLinkAnchor,
 } from "./PublicLinkCopyPanel.styled";
-import type { ExportFormatType } from "./types";
 
 export const PublicLinkCopyPanel = ({
   loading = false,
@@ -31,9 +31,9 @@ export const PublicLinkCopyPanel = ({
   loading?: boolean;
   url: string | null;
   onRemoveLink?: MouseEventHandler;
-  selectedExtension?: ExportFormatType;
-  onChangeExtension?: (extension: ExportFormatType) => void;
-  extensions?: ExportFormatType[];
+  selectedExtension?: ExportFormat | null;
+  onChangeExtension?: (extension: ExportFormat | null) => void;
+  extensions?: ExportFormat[];
   removeButtonLabel?: string;
   removeTooltipLabel?: string;
   onCopy?: () => void;
@@ -43,7 +43,7 @@ export const PublicLinkCopyPanel = ({
       readOnly
       data-testid="public-link-input"
       placeholder={loading ? t`Loading…` : undefined}
-      value={url ?? undefined}
+      value={url ?? ""}
       inputWrapperOrder={["label", "input", "error", "description"]}
       rightSection={url && <PublicLinkCopyButton value={url} onCopy={onCopy} />}
     />
@@ -85,7 +85,7 @@ export const PublicLinkCopyPanel = ({
                 data-testid="extension-option"
                 key={extension}
                 tt="uppercase"
-                c={extension === selectedExtension ? "brand" : "text-light"}
+                c={extension === selectedExtension ? "brand" : "text-tertiary"}
                 fw={700}
                 onClick={() =>
                   onChangeExtension?.(

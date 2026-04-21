@@ -7,15 +7,16 @@ import _ from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Schedule } from "metabase/common/components/Schedule/Schedule";
+import { cronToScheduleSettings } from "metabase/common/components/Schedule/cron";
 import type { FormTextInputProps } from "metabase/forms";
 import {
+  Form,
   FormProvider,
   FormRadioGroup,
   FormSubmitButton,
   FormTextInput,
   useFormContext,
 } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -30,6 +31,7 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type {
   CacheStrategy,
   CacheStrategyType,
@@ -43,17 +45,12 @@ import { strategyValidationSchema } from "../constants/complex";
 import { defaultCronSchedule, rootId } from "../constants/simple";
 import { useIsFormPending } from "../hooks/useIsFormPending";
 import { isModelWithClearableCache } from "../types";
-import {
-  cronToScheduleSettings,
-  getDefaultValueForField,
-  getLabelString,
-} from "../utils";
+import { getDefaultValueForField, getLabelString } from "../utils";
 
 import Styles from "./PerformanceApp.module.css";
 import {
   FormWrapper,
   LoaderInButton,
-  StyledForm,
   StyledFormButtonsGroup,
 } from "./StrategyForm.styled";
 
@@ -73,6 +70,7 @@ export const StrategyForm = ({
   shouldShowName = true,
   onReset,
   isInSidebar = false,
+  classNames,
   buttonLabels = isInSidebar
     ? {
         save: t`Save`,
@@ -94,6 +92,7 @@ export const StrategyForm = ({
   onReset?: () => void;
   buttonLabels?: ButtonLabels;
   isInSidebar?: boolean;
+  classNames?: { formBox?: string };
 }) => {
   const defaultStrategy: CacheStrategy = useMemo(
     () => ({
@@ -123,6 +122,7 @@ export const StrategyForm = ({
         buttonLabels={buttonLabels}
         isInSidebar={isInSidebar}
         strategyType={initialValues.type}
+        classNames={classNames}
       />
     </FormProvider>
   );
@@ -163,6 +163,7 @@ const StrategyFormBody = ({
   shouldShowName = true,
   buttonLabels,
   isInSidebar,
+  classNames,
 }: {
   targetId: number | null;
   targetModel: CacheableModel;
@@ -173,6 +174,7 @@ const StrategyFormBody = ({
   shouldShowName?: boolean;
   buttonLabels: ButtonLabels;
   isInSidebar?: boolean;
+  classNames?: { formBox?: string };
 }) => {
   const { values, initialValues, setFieldValue } =
     useFormikContext<CacheStrategy>();
@@ -218,21 +220,26 @@ const StrategyFormBody = ({
 
   return (
     <FormWrapper>
-      <StyledForm
-        style={{ overflow: isInSidebar ? undefined : "auto" }}
+      <Form
+        display="flex"
+        style={{
+          overflow: isInSidebar ? undefined : "auto",
+          flexDirection: "column",
+          flexGrow: 1,
+        }}
         aria-labelledby={headingId}
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
         <Box
-          className={cx(Styles.FormBox, {
+          className={cx(Styles.FormBox, classNames?.formBox, {
             [Styles.FormBoxSidebar]: isInSidebar,
           })}
         >
           {shouldShowName && (
-            <Box lh="1rem" pt="md" color="text-medium">
+            <Box lh="1rem" pt="md" color="text-secondary">
               <Group gap="sm">
                 {targetModel === "database" && (
-                  <FixedSizeIcon name="database" color="inherit" />
+                  <FixedSizeIcon name="database" c="inherit" />
                 )}
                 <Text fw="bold" py="1rem">
                   {targetName}
@@ -306,7 +313,7 @@ const StrategyFormBody = ({
           isInSidebar={isInSidebar}
           dirty={dirty}
         />
-      </StyledForm>
+      </Form>
     </FormWrapper>
   );
 };
@@ -476,10 +483,10 @@ const StrategySelector = ({
       <FormRadioGroup
         label={
           <Stack gap="xs">
-            <Text lh="1rem" color="text-medium" id={headingId}>
+            <Text lh="1rem" color="text-secondary" id={headingId}>
               {t`Select the cache invalidation policy`}
             </Text>
-            <Text lh="1rem" fw="normal" size="sm" color="text-medium">
+            <Text lh="1rem" fw="normal" size="sm" color="text-secondary">
               {t`This determines how long cached results will be stored.`}
             </Text>
           </Stack>

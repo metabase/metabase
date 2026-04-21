@@ -3,8 +3,9 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [environ.core :as env]
    [metabase.config.core :as config]
-   [metabase.embedding.settings :as embed.settings]
+   [metabase.server.instance :as server.instance]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.settings :as server.settings]
    [metabase.test :as mt]
@@ -55,9 +56,10 @@
 
 (deftest csp-header-iframe-hosts-tests
   (testing "Allowed iframe hosts setting is used in the CSP frame-src directive."
-    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org, https://www.metabase.com   https://clojure.org"]
-      (is (= (str "frame-src 'self' https://wikipedia.org https://*.wikipedia.org https://www.wikipedia.org "
-                  "https://metabase.com https://*.metabase.com https://www.metabase.com "
+    (mt/with-temporary-setting-values [allowed-iframe-hosts "https://www.wikipedia.org, https://www.typescriptlang.org/   https://clojure.org"]
+      (is (= (str "frame-src 'self' https://www.metabase.com/ https://metabase.com/ "
+                  "https://wikipedia.org https://*.wikipedia.org https://www.wikipedia.org "
+                  "https://typescriptlang.org https://*.typescriptlang.org https://www.typescriptlang.org "
                   "https://clojure.org https://*.clojure.org")
              (csp-directive "frame-src")))))
   (testing "Includes 'self' so embed previews work (#49142)"
@@ -88,7 +90,7 @@
                                           ;; should be the script tags for the webpack bundles
                                           (assert (= path "frontend_client/index.html"))
                                           (render-file "frontend_client/index_template.html" variables))]
-        (let [response  (http/get (str "http://localhost:" (config/config-str :mb-jetty-port)))
+        (let [response  (http/get (str "http://localhost:" (server.instance/server-port)))
               nonce     (json/decode @nonceJSON)
               csp       (get-in response [:headers "Content-Security-Policy"])
               style-src (->> (str/split csp #"; *")
@@ -109,7 +111,9 @@
       "https://example.com"     {:protocol "https" :domain "example.com" :port nil}
       "http://example.com:8080" {:protocol "http" :domain "example.com" :port "8080"}
       "example.com:80"          {:protocol nil :domain "example.com" :port "80"}
-      "example.com:*"           {:protocol nil :domain "example.com" :port "*"}))
+      "example.com:*"           {:protocol nil :domain "example.com" :port "*"}
+      "app://localhost"         {:protocol "app" :domain "localhost" :port nil}
+      "capacitor://localhost"   {:protocol "capacitor" :domain "localhost" :port nil}))
   (testing "Should return nil for invalid urls"
     (are [url] (nil? (mw.security/parse-url url))
       "ftp://example.com"
@@ -140,9 +144,11 @@
     (is (mw.security/approved-protocol? "http" "http"))
     (is (mw.security/approved-protocol? "https" "https"))
     (is (not (mw.security/approved-protocol? "http" "https"))))
-  (testing "Nil reference should allow any protocol"
+  (testing "Nil reference should allow only http/https"
     (is (mw.security/approved-protocol? "http" nil))
-    (is (mw.security/approved-protocol? "https" nil))))
+    (is (mw.security/approved-protocol? "https" nil))
+    (is (not (mw.security/approved-protocol? "app" nil)))
+    (is (not (mw.security/approved-protocol? "capacitor" nil)))))
 
 (deftest ^:parallel test-approved-port?
   (testing "Exact port match"
@@ -152,10 +158,30 @@
     (is (mw.security/approved-port? "80" "*"))
     (is (mw.security/approved-port? "8080" "*"))))
 
+(deftest ^:parallel test-localhost-origin?
+  (testing "Should identify loopback origins correctly"
+    (doseq [host @#'mw.security/loopback-hosts]
+      (is (#'mw.security/localhost-origin? (str "http://" host)))
+      (is (#'mw.security/localhost-origin? (str "https://" host)))
+      (is (#'mw.security/localhost-origin? (str "http://" host ":3000")))
+      (is (#'mw.security/localhost-origin? (str host ":8080")))
+      (is (#'mw.security/localhost-origin? host))))
+  (testing "Should not identify non-loopback origins as localhost"
+    (is (not (#'mw.security/localhost-origin? "http://example.com")))
+    (is (not (#'mw.security/localhost-origin? "http://sub.localhost.com")))
+    (is (not (#'mw.security/localhost-origin? nil)))
+    (is (not (#'mw.security/localhost-origin? "")))))
+
 (deftest ^:parallel test-approved-origin?
   (testing "Should return false if parameters are nil"
     (is (not (mw.security/approved-origin? nil "example.com")))
     (is (not (mw.security/approved-origin? "example.com" nil))))
+  (testing "Should always approve loopback origins regardless of approved list"
+    (doseq [host @#'mw.security/loopback-hosts]
+      (is (mw.security/approved-origin? (str "http://" host) ""))
+      (is (mw.security/approved-origin? (str "http://" host ":3000") ""))
+      (is (mw.security/approved-origin? (str "https://" host ":8080") nil))
+      (is (mw.security/approved-origin? (str host ":3000") "example.com"))))
   (testing "Approved origins with exact protocol and port match"
     (let [approved "http://example1.com http://example2.com:3000 https://example3.com"]
       (is (mw.security/approved-origin? "http://example1.com" approved))
@@ -163,10 +189,11 @@
       (is (mw.security/approved-origin? "https://example3.com" approved))))
   (testing "Different protocol should fail"
     (is (not (mw.security/approved-origin? "https://example1.com" "http://example1.com"))))
-  (testing "Origins without protocol should accept both http and https"
+  (testing "Origins without protocol should accept only http and https"
     (let [approved "example.com"]
       (is (mw.security/approved-origin? "http://example.com" approved))
-      (is (mw.security/approved-origin? "https://example.com" approved))))
+      (is (mw.security/approved-origin? "https://example.com" approved))
+      (is (not (mw.security/approved-origin? "app://example.com" approved)))))
   (testing "Different ports should fail"
     (is (not (mw.security/approved-origin? "http://example.com:3000" "http://example.com:3003"))))
   (testing "Should allow anything with *"
@@ -181,150 +208,155 @@
   (testing "Should handle invalid origins"
     (is (mw.security/approved-origin? "http://example.com" "  fpt://something ://123 4 http://example.com"))))
 
-(deftest test-access-control-headers
-  (mt/with-premium-features #{:embedding-sdk}
-    (testing "Should always allow localhost:*"
-      (mt/with-temporary-setting-values [enable-embedding-sdk true
-                                         embedding-app-origins-sdk "localhost:*"]
-        (is (= "http://localhost:8080" (-> "http://localhost:8080"
-                                           (mw.security/access-control-headers
-                                            (embed.settings/enable-embedding-sdk)
-                                            (embed.settings/embedding-app-origins-sdk))
-                                           (get "Access-Control-Allow-Origin"))))))
-    (testing "Should disable CORS when enable-embedding-sdk is disabled"
-      (mt/with-temporary-setting-values [enable-embedding-sdk false]
-        (is (= nil (get (mw.security/access-control-headers
-                         "http://localhost:8080"
-                         (embed.settings/enable-embedding-sdk)
-                         (embed.settings/embedding-app-origins-sdk))
-                        "Access-Control-Allow-Origin"))
-            "Localhost is only permitted when `enable-embedding-sdk` is `true`."))
+(deftest test-disable-cors-on-localhost-approved-origin
+  (testing "Should approve loopback origins when disable-cors-on-localhost is false"
+    (mt/with-temporary-setting-values [disable-cors-on-localhost false]
+      (doseq [host @#'mw.security/loopback-hosts]
+        (is (mw.security/approved-origin? (str "http://" host) ""))
+        (is (mw.security/approved-origin? (str "http://" host ":3000") "")))))
+  (testing "Should reject loopback origins when disable-cors-on-localhost is true"
+    (mt/with-temporary-setting-values [disable-cors-on-localhost true]
+      (doseq [host @#'mw.security/loopback-hosts]
+        (is (not (mw.security/approved-origin? (str "http://" host) "")))
+        (is (not (mw.security/approved-origin? (str "http://" host ":3000") ""))))))
+  (testing "Should allow loopback origins when explicitly added to approved origins even with disable-cors-on-localhost true"
+    (mt/with-temporary-setting-values [disable-cors-on-localhost true]
+      (doseq [host @#'mw.security/loopback-hosts]
+        (is (mw.security/approved-origin? (str "http://" host) host))
+        (is (mw.security/approved-origin? (str "http://" host ":3000") (str host ":*")))))))
+
+(deftest test-disable-cors-on-localhost-access-control-headers
+  (testing "Should allow CORS headers for localhost when disable-cors-on-localhost is false"
+    (mt/with-temporary-setting-values [disable-cors-on-localhost false]
+      (is (= "http://localhost:8080" (get (mw.security/access-control-headers
+                                           "http://localhost:8080"
+                                           "")
+                                          "Access-Control-Allow-Origin")))))
+  (testing "Should block CORS headers for localhost when disable-cors-on-localhost is true and no origins configured"
+    (mt/with-temporary-setting-values [disable-cors-on-localhost true]
       (is (= nil (get (mw.security/access-control-headers
-                       "http://1.2.3.4:5555"
-                       false
-                       "localhost:*")
-                      "Access-Control-Allow-Origin"))))
-    (testing "Should work with embedding-app-origin"
-      (mt/with-premium-features #{:embedding-sdk}
-        (mt/with-temporary-setting-values [enable-embedding-sdk      true
-                                           embedding-app-origins-sdk "https://example.com"]
-          (is (= "https://example.com"
-                 (get (mw.security/access-control-headers "https://example.com"
-                                                          (embed.settings/enable-embedding-sdk)
-                                                          (embed.settings/embedding-app-origins-sdk))
+                       "http://localhost:8080"
+                       "")
                       "Access-Control-Allow-Origin"))))))
-    (testing "Should set Access-Control-Max-Age to 60"
-      (mt/with-temporary-setting-values [enable-embedding-sdk true
-                                         embedding-app-origins-sdk "https://example.com"]
-        (let [headers (mw.security/access-control-headers
-                       "https://example.com"
-                       (embed.settings/enable-embedding-sdk)
-                       (embed.settings/embedding-app-origins-sdk))]
-          (is (= "60" (get headers "Access-Control-Max-Age"))
-              "Expected Access-Control-Max-Age header to be set to 60")))))
-  (testing "CORS should be enabled when enable-embedding-simple is true"
-    (mt/with-temporary-setting-values [enable-embedding-simple true
+
+(deftest test-access-control-headers
+  (testing "Should allow localhost even when no origins are configured"
+    (is (= "http://localhost:8080" (get (mw.security/access-control-headers
+                                         "http://localhost:8080"
+                                         "")
+                                        "Access-Control-Allow-Origin"))
+        "Localhost should always be permitted even with no configured origins."))
+  (testing "Non-localhost origins should be blocked when not in approved origins"
+    (is (= nil (get (mw.security/access-control-headers
+                     "http://1.2.3.4:5555"
+                     "localhost:*")
+                    "Access-Control-Allow-Origin"))))
+  (testing "Should work with configured origins"
+    (is (= "https://example.com"
+           (get (mw.security/access-control-headers "https://example.com"
+                                                    "https://example.com")
+                "Access-Control-Allow-Origin"))))
+  (testing "Should set Access-Control-Max-Age to 60"
+    (let [headers (mw.security/access-control-headers "https://example.com"
+                                                      "https://example.com")]
+      (is (= "60" (get headers "Access-Control-Max-Age"))
+          "Expected Access-Control-Max-Age header to be set to 60")))
+  (testing "CORS should be enabled when origins are configured regardless of embedding flags"
+    (mt/with-temporary-setting-values [enable-embedding-simple false
                                        enable-embedding-sdk false]
       (let [headers (mw.security/access-control-headers "https://example.com"
-                                                        (or (embed.settings/enable-embedding-sdk)
-                                                            (embed.settings/enable-embedding-simple))
                                                         "https://example.com")]
         (is (= "https://example.com"
                (get headers "Access-Control-Allow-Origin"))
-            "CORS should work when enable-embedding-simple is true even if enable-embedding-sdk is false"))))
-  (testing "CORS should be enabled when both enable-embedding-simple and enable-embedding-sdk are true"
-    (mt/with-premium-features #{:embedding-sdk}
-      (mt/with-temporary-setting-values [enable-embedding-simple true
-                                         enable-embedding-sdk true
-                                         embedding-app-origins-sdk "https://example.com"]
-        (let [headers (mw.security/access-control-headers "https://example.com"
-                                                          (or (embed.settings/enable-embedding-sdk)
-                                                              (embed.settings/enable-embedding-simple))
-                                                          (embed.settings/embedding-app-origins-sdk))]
-          (is (= "https://example.com"
-                 (get headers "Access-Control-Allow-Origin"))
-              "CORS should work when both embedding options are enabled")))))
-  (testing "CORS should be disabled when both enable-embedding-simple and enable-embedding-sdk are false"
-    (mt/with-temporary-setting-values [enable-embedding-simple false
-                                       enable-embedding-sdk false
+            "CORS is driven by configured origins, not embedding flags"))))
+  (testing "CORS should return nil when no origins configured and origin is not localhost"
+    (let [headers (mw.security/access-control-headers "https://example.com"
+                                                      "")]
+      (is (= nil (get headers "Access-Control-Allow-Origin"))))))
+
+(deftest test-cors-enabled-when-origins-configured-without-embedding-features
+  (testing "CORS headers should be sent when origins are configured even if embedding features are disabled"
+    (mt/with-temporary-setting-values [enable-embedding-sdk    false
+                                       enable-embedding-simple false
                                        embedding-app-origins-sdk "https://example.com"]
-      (let [headers (mw.security/access-control-headers "https://example.com"
-                                                        (or (embed.settings/enable-embedding-sdk)
-                                                            (embed.settings/enable-embedding-simple))
-                                                        (embed.settings/embedding-app-origins-sdk))]
-        (is (= nil
-               (get headers "Access-Control-Allow-Origin"))
-            "CORS should be disabled when both embedding options are disabled")))))
+      (let [wrapped-handler (mw.security/add-security-headers
+                             (fn [_request respond _raise]
+                               (respond {:status 200 :headers {} :body "ok"})))
+            response        (wrapped-handler {:headers {"origin" "https://example.com"}
+                                              :uri     "/api/dashboard/1"}
+                                             identity identity)]
+        (is (= "https://example.com"
+               (get-in response [:headers "Access-Control-Allow-Origin"]))
+            "CORS should be enabled when origins are configured, even without embedding features")))))
 
 (deftest ^:parallel allowed-iframe-hosts-test
   (testing "The allowed iframe hosts parse in the expected way."
     (let [default-hosts @#'server.settings/default-allowed-iframe-hosts]
       (testing "The defaults hosts parse correctly"
-        (is (= ["'self'"
-                "youtube.com"
-                "*.youtube.com"
-                "youtu.be"
-                "*.youtu.be"
-                "loom.com"
-                "*.loom.com"
-                "vimeo.com"
-                "*.vimeo.com"
-                "docs.google.com"
-                "calendar.google.com"
-                "airtable.com"
-                "*.airtable.com"
-                "typeform.com"
-                "*.typeform.com"
-                "canva.com"
-                "*.canva.com"
-                "codepen.io"
-                "*.codepen.io"
-                "figma.com"
-                "*.figma.com"
-                "grafana.com"
-                "*.grafana.com"
-                "miro.com"
-                "*.miro.com"
-                "excalidraw.com"
-                "*.excalidraw.com"
-                "notion.com"
-                "*.notion.com"
-                "atlassian.com"
-                "*.atlassian.com"
-                "trello.com"
-                "*.trello.com"
-                "asana.com"
-                "*.asana.com"
-                "gist.github.com"
-                "linkedin.com"
-                "*.linkedin.com"
-                "twitter.com"
-                "*.twitter.com"
-                "x.com"
-                "*.x.com"]
+        (is (= (concat @#'mw.security/always-allowed-iframe-hosts
+                       ["youtube.com"
+                        "*.youtube.com"
+                        "youtu.be"
+                        "*.youtu.be"
+                        "loom.com"
+                        "*.loom.com"
+                        "vimeo.com"
+                        "*.vimeo.com"
+                        "docs.google.com"
+                        "calendar.google.com"
+                        "airtable.com"
+                        "*.airtable.com"
+                        "typeform.com"
+                        "*.typeform.com"
+                        "canva.com"
+                        "*.canva.com"
+                        "codepen.io"
+                        "*.codepen.io"
+                        "figma.com"
+                        "*.figma.com"
+                        "grafana.com"
+                        "*.grafana.com"
+                        "miro.com"
+                        "*.miro.com"
+                        "excalidraw.com"
+                        "*.excalidraw.com"
+                        "notion.com"
+                        "*.notion.com"
+                        "atlassian.com"
+                        "*.atlassian.com"
+                        "trello.com"
+                        "*.trello.com"
+                        "asana.com"
+                        "*.asana.com"
+                        "gist.github.com"
+                        "linkedin.com"
+                        "*.linkedin.com"
+                        "twitter.com"
+                        "*.twitter.com"
+                        "x.com"
+                        "*.x.com"])
                (mw.security/parse-allowed-iframe-hosts default-hosts))))
       (testing "Additional hosts a user may configure will parse correctly as well"
-        (is (= ["'self'" "localhost"
-                "http://localhost:8000"
-                "my.domain.local:9876"
-                "*"
-                "mysite.com"
-                "*.mysite.com"
-                "www.mysite.com"
-                "mysite.cool.com"
-                "www.mysite.cool.com"]
+        (is (= (concat @#'mw.security/always-allowed-iframe-hosts
+                       ["localhost"
+                        "http://localhost:8000"
+                        "my.domain.local:9876"
+                        "*"
+                        "mysite.com"
+                        "*.mysite.com"
+                        "www.mysite.com"
+                        "mysite.cool.com"
+                        "www.mysite.cool.com"])
                (mw.security/parse-allowed-iframe-hosts "localhost, http://localhost:8000,    my.domain.local:9876, *, www.mysite.com/, www.mysite.cool.com"))))
       (testing "invalid hosts are not included"
-        (is (= ["'self'"]
+        (is (= @#'mw.security/always-allowed-iframe-hosts
                (mw.security/parse-allowed-iframe-hosts "asdf/wasd/:8000 */localhost:*")))))))
 
-(defn- run-add-security-headers-mw-test! [enable-embedding-sdk-value
-                                          embedding-app-origins-sdk-value
+(defn- run-add-security-headers-mw-test! [embedding-app-origins-sdk-value
                                           request-origin-header
                                           request-uri
                                           access-control-allow-origin-header-value]
-  (mt/with-temporary-setting-values [embedding-app-origins-sdk embedding-app-origins-sdk-value
-                                     enable-embedding-sdk enable-embedding-sdk-value]
+  (mt/with-temporary-setting-values [embedding-app-origins-sdk embedding-app-origins-sdk-value]
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
                              (respond {:status 200 :headers {"response" "ok"} :body "ok"})))
@@ -335,50 +367,32 @@
              (-> response :headers (get "Access-Control-Allow-Origin")))))))
 
 (deftest add-security-headers-mw-test
-  (doseq [[idx [enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri access-control-allow-origin-header-value]]
-          [[1 [true "" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [2 [true "" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [3 [true "" "http://my-site.com" "http://public.metabase.com" nil]]
-           [4 [true "" "http://my-site.com" "http://www.a-site.com" nil]]
-           [5 [true "localhost:1234" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [6 [true "localhost:1234" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [7 [true "localhost:1234" "http://my-site.com" "http://public.metabase.com" nil]]
-           [8 [true "localhost:1234" "http://my-site.com" "http://www.a-site.com" nil]]
-           [9 [true "http://my-site.com" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [10 [true "http://my-site.com" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [11 [true "http://my-site.com" "http://my-site.com" "http://public.metabase.com" nil]]
-           [12 [true "http://my-site.com" "http://my-site.com" "http://www.a-site.com" nil]]
-           [13 [true "http://my-site.com:80" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [14 [true "http://my-site.com:80" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [15 [true "http://my-site.com:80" "http://my-site.com" "http://public.metabase.com" nil]]
-           [16 [true "http://my-site.com:80" "http://my-site.com" "http://www.a-site.com" nil]]
-           [17 [true "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
-           [18 [true "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
-           [19 [true "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://public.metabase.com" nil]]
-           [20 [true "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://www.a-site.com" nil]]
-           [21 [false "" "http://localhost:1234" "http://public.metabase.com" nil]]
-           [22 [false "" "http://localhost:1234" "http://www.a-site.com" nil]]
-           [23 [false "" "http://my-site.com" "http://public.metabase.com" nil]]
-           [24 [false "" "http://my-site.com" "http://www.a-site.com" nil]]
-           [25 [false "localhost:1234" "http://localhost:1234" "http://public.metabase.com" nil]]
-           [26 [false "localhost:1234" "http://localhost:1234" "http://www.a-site.com" nil]]
-           [27 [false "localhost:1234" "http://my-site.com" "http://public.metabase.com" nil]]
-           [28 [false "localhost:1234" "http://my-site.com" "http://www.a-site.com" nil]]
-           [29 [false "http://my-site.com" "http://localhost:1234" "http://public.metabase.com" nil]]
-           [30 [false "http://my-site.com" "http://localhost:1234" "http://www.a-site.com" nil]]
-           [31 [false "http://my-site.com" "http://my-site.com" "http://public.metabase.com" nil]]
-           [32 [false "http://my-site.com" "http://my-site.com" "http://www.a-site.com" nil]]
-           [33 [false "http://my-site.com:80" "http://localhost:1234" "http://public.metabase.com" nil]]
-           [34 [false "http://my-site.com:80" "http://localhost:1234" "http://www.a-site.com" nil]]
-           [35 [false "http://my-site.com:80" "http://my-site.com" "http://public.metabase.com" nil]]
-           [36 [false "http://my-site.com:80" "http://my-site.com" "http://www.a-site.com" nil]]
-           [37 [false "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://public.metabase.com" nil]]
-           [38 [false "https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://www.a-site.com" nil]]
-           [39 [false "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://public.metabase.com" nil]]
-           [40 [false "https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://www.a-site.com" nil]]]]
+  (doseq [[idx [embedding-app-origins-sdk request-origin request-uri access-control-allow-origin-header-value]]
+          [;; No CORS origins configured = only localhost passthrough
+           [1 ["" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [2 ["" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [3 ["" "http://my-site.com" "http://public.metabase.com" nil]]
+           [4 ["" "http://my-site.com" "http://www.a-site.com" nil]]
+
+           ;; CORS origins configured = CORS enabled via origins
+           [5  ["localhost:1234" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [6  ["localhost:1234" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [7  ["localhost:1234" "http://my-site.com" "http://public.metabase.com" nil]]
+           [8  ["localhost:1234" "http://my-site.com" "http://www.a-site.com" nil]]
+           [9  ["http://my-site.com" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [10 ["http://my-site.com" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [11 ["http://my-site.com" "http://my-site.com" "http://public.metabase.com" "http://my-site.com"]]
+           [12 ["http://my-site.com" "http://my-site.com" "http://www.a-site.com" "http://my-site.com"]]
+           [13 ["http://my-site.com:80" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [14 ["http://my-site.com:80" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [15 ["http://my-site.com:80" "http://my-site.com" "http://public.metabase.com" nil]]
+           [16 ["http://my-site.com:80" "http://my-site.com" "http://www.a-site.com" nil]]
+           [17 ["https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://public.metabase.com" "http://localhost:1234"]]
+           [18 ["https://my-site-1:1234 http://my-other-site:8080" "http://localhost:1234" "http://www.a-site.com" "http://localhost:1234"]]
+           [19 ["https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://public.metabase.com" nil]]
+           [20 ["https://my-site-1:1234 http://my-other-site:8080" "http://my-site.com" "http://www.a-site.com" nil]]]]
     (testing (str "add security headers mw test, index: " idx)
       (run-add-security-headers-mw-test!
-       enable-embedding-sdk
        embedding-app-origins-sdk
        request-origin
        request-uri
@@ -408,7 +422,7 @@
                   response (wrapped-handler {:headers {"origin" request-origin} :uri request-uri} identity identity)]
               [enable-embedding-sdk embedding-app-origins-sdk request-origin request-uri (-> response :headers (get "Access-Control-Allow-Origin"))])))))
 
-(deftest ^:parallel add-cors-headers-for-auth-sso-test
+(deftest add-cors-headers-for-auth-sso-test
   (testing "Should add CORS headers for /auth/sso endpoint with 402 status (embedding disabled errors)"
     (let [wrapped-handler (mw.security/add-security-headers
                            (fn [_request respond _raise]
@@ -471,3 +485,65 @@
                                       identity)]
         (is (nil? (get-in response [:headers "Access-Control-Allow-Origin"]))
             (format "Should not set CORS headers for /auth/sso with %d status" status))))))
+
+(deftest cross-origin-headers-test
+  (testing "Cross-Origin-Resource-Policy header from environment variable"
+    (testing "Should add header when MB_CROSS_ORIGIN_RESOURCE_POLICY is set"
+      (with-redefs [env/env {:mb-cross-origin-resource-policy "cross-origin"}]
+        (let [headers (mw.security/security-headers)]
+          (is (= "cross-origin" (get headers "Cross-Origin-Resource-Policy"))
+              "Should include Cross-Origin-Resource-Policy header when env var is set"))))
+
+    (testing "Should not add header when MB_CROSS_ORIGIN_RESOURCE_POLICY is not set"
+      (with-redefs [env/env {}]
+        (let [headers (mw.security/security-headers)]
+          (is (nil? (get headers "Cross-Origin-Resource-Policy"))
+              "Should not include Cross-Origin-Resource-Policy header when env var is not set")))))
+
+  (testing "Cross-Origin-Embedder-Policy header from environment variable"
+    (testing "Should add header when MB_CROSS_ORIGIN_EMBEDDER_POLICY is set"
+      (with-redefs [env/env {:mb-cross-origin-embedder-policy "require-corp"}]
+        (let [headers (mw.security/security-headers)]
+          (is (= "require-corp" (get headers "Cross-Origin-Embedder-Policy"))
+              "Should include Cross-Origin-Embedder-Policy header when env var is set"))))
+
+    (testing "Should not add header when MB_CROSS_ORIGIN_EMBEDDER_POLICY is not set"
+      (with-redefs [env/env {}]
+        (let [headers (mw.security/security-headers)]
+          (is (nil? (get headers "Cross-Origin-Embedder-Policy"))
+              "Should not include Cross-Origin-Embedder-Policy header when env var is not set")))))
+
+  (testing "Both Cross-Origin headers can be set independently"
+    (testing "Only CORP set"
+      (with-redefs [env/env {:mb-cross-origin-resource-policy "same-origin"}]
+        (let [headers (mw.security/security-headers)]
+          (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))
+          (is (nil? (get headers "Cross-Origin-Embedder-Policy"))))))
+
+    (testing "Only COEP set"
+      (with-redefs [env/env {:mb-cross-origin-embedder-policy "credentialless"}]
+        (let [headers (mw.security/security-headers)]
+          (is (nil? (get headers "Cross-Origin-Resource-Policy")))
+          (is (= "credentialless" (get headers "Cross-Origin-Embedder-Policy"))))))
+
+    (testing "Both set"
+      (with-redefs [env/env {:mb-cross-origin-resource-policy "same-site"
+                             :mb-cross-origin-embedder-policy "require-corp"}]
+        (let [headers (mw.security/security-headers)]
+          (is (= "same-site" (get headers "Cross-Origin-Resource-Policy")))
+          (is (= "require-corp" (get headers "Cross-Origin-Embedder-Policy")))))))
+
+  (testing "Cross-Origin headers are included in middleware response"
+    (testing "Headers are present in actual HTTP response"
+      (with-redefs [env/env {:mb-cross-origin-resource-policy "cross-origin"
+                             :mb-cross-origin-embedder-policy "require-corp"}]
+        (let [wrapped-handler (mw.security/add-security-headers
+                               (fn [_request respond _raise]
+                                 (respond {:status 200 :headers {} :body "ok"})))
+              response (wrapped-handler {:headers {} :uri "/"}
+                                        identity
+                                        identity)]
+          (is (= "cross-origin" (get-in response [:headers "Cross-Origin-Resource-Policy"]))
+              "Cross-Origin-Resource-Policy should be in the response")
+          (is (= "require-corp" (get-in response [:headers "Cross-Origin-Embedder-Policy"]))
+              "Cross-Origin-Embedder-Policy should be in the response"))))))

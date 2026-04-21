@@ -1,9 +1,17 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
-import { getIcon, render, screen, within } from "__support__/ui";
+import { render, renderWithProviders, screen, within } from "__support__/ui";
+import { registerVisualization } from "metabase/visualizations";
+import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type { Series } from "metabase-types/api";
-import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockCard,
+  createMockColumn,
+  createMockDataset,
+  createMockDatasetData,
+  createMockSingleSeries,
+} from "metabase-types/api/mocks";
 
 import { Scalar } from "./Scalar";
 
@@ -24,21 +32,6 @@ const settings = {
 };
 
 describe("Scalar", () => {
-  it("should render title on dashboards", () => {
-    render(
-      <Scalar
-        {...mockedProps}
-        series={series()}
-        rawSeries={series()}
-        settings={settings}
-        isDashboard
-        showTitle
-        visualizationIsClickable={() => false}
-      />,
-    );
-    expect(screen.getByText("Scalar Title")).toBeInTheDocument();
-  });
-
   it("shouldn't render compact if normal formatting is <=6 characters", () => {
     render(
       <Scalar
@@ -51,48 +44,6 @@ describe("Scalar", () => {
       />,
     );
     expect(screen.getByText("12,345")).toBeInTheDocument(); // with compact formatting, we'd have 1
-  });
-
-  it("should render description", async () => {
-    const DESCRIPTION = "description";
-
-    render(
-      <Scalar
-        {...mockedProps}
-        series={series()}
-        rawSeries={series()}
-        settings={{ ...settings, "card.description": DESCRIPTION }}
-        isDashboard
-        showTitle
-        visualizationIsClickable={() => false}
-      />,
-    );
-
-    await userEvent.hover(getIcon("info_filled"));
-
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(DESCRIPTION);
-  });
-
-  it("should render markdown in description", async () => {
-    const DESCRIPTION = "[link](https://metabase.com)";
-
-    render(
-      <Scalar
-        {...mockedProps}
-        series={series()}
-        rawSeries={series()}
-        settings={{ ...settings, "card.description": DESCRIPTION }}
-        isDashboard
-        showTitle
-        visualizationIsClickable={() => false}
-      />,
-    );
-
-    await userEvent.hover(getIcon("info_filled"));
-
-    expect(
-      within(await screen.findByRole("tooltip")).getByRole("link"),
-    ).toHaveTextContent("link");
   });
 
   it("should render compact if normal formatting is >6 characters", () => {
@@ -121,6 +72,100 @@ describe("Scalar", () => {
         visualizationIsClickable={() => false}
       />,
     );
-    expect(screen.getByText("Scalar Title")).toBeInTheDocument(); // just confirms that it rendered
+    expect(screen.getByText("null")).toBeInTheDocument();
+  });
+
+  it("should not apply text-overflow ellipsis to the container", () => {
+    render(
+      <Scalar
+        {...mockedProps}
+        series={series(1234567)}
+        rawSeries={series(1234567)}
+        settings={settings}
+        visualizationIsClickable={() => false}
+        width={230}
+      />,
+    );
+    const container = screen.getByTestId("scalar-container");
+    const styles = window.getComputedStyle(container);
+    // The container should not have text-overflow: ellipsis
+    // as the ScalarValue component handles sizing to fit
+    expect(styles.textOverflow).not.toBe("ellipsis");
+  });
+});
+
+describe("scalar viz settings", () => {
+  beforeAll(() => {
+    // @ts-expect-error: incompatible prop types with registerVisualization
+    registerVisualization(Scalar);
+  });
+
+  it("should render the field to show input in the formatting section if there are 2 or more columns", async () => {
+    const series = [
+      createMockSingleSeries(
+        createMockCard({ display: "scalar" }),
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createMockColumn({
+                display_name: "FOO",
+                source: "native",
+                name: "FOO",
+              }),
+              createMockColumn({
+                display_name: "BAR",
+                source: "native",
+                name: "BAR",
+              }),
+            ],
+          }),
+        }),
+      ),
+    ];
+    renderWithProviders(<QuestionChartSettings series={series} />);
+
+    expect(
+      await screen.findByRole("radio", { name: "Formatting" }),
+    ).toBeChecked();
+    expect(await screen.findByText("Field to show")).toBeInTheDocument();
+
+    const getFieldSelect = async () =>
+      await within(
+        await screen.findByTestId("chart-settings-widget-scalar.field"),
+      ).findByRole("textbox");
+
+    expect(await getFieldSelect()).toHaveDisplayValue("FOO");
+    await userEvent.click(await getFieldSelect());
+
+    expect(await screen.findByRole("listbox")).toHaveTextContent("FOO");
+    expect(await screen.findByRole("listbox")).toHaveTextContent("BAR");
+  });
+
+  it("should not render the field to show input in the formatting section if there is only 1 columns", async () => {
+    const series = [
+      createMockSingleSeries(
+        createMockCard({ display: "scalar" }),
+        createMockDataset({
+          data: createMockDatasetData({
+            cols: [
+              createMockColumn({
+                display_name: "BAR",
+                source: "native",
+                name: "BAR",
+              }),
+            ],
+          }),
+        }),
+      ),
+    ];
+    renderWithProviders(<QuestionChartSettings series={series} />);
+
+    expect(
+      await screen.findByRole("radio", { name: "Formatting" }),
+    ).toBeChecked();
+
+    expect(
+      screen.queryByTestId("chart-settings-widget-scalar.field"),
+    ).not.toBeInTheDocument();
   });
 });

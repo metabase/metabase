@@ -45,8 +45,11 @@ export const getAdminSettingsSections = (
   email: {
     name: t`Email`,
   },
-  notifications: {
-    name: t`Notification channels`,
+  slack: {
+    name: t`Slack`,
+  },
+  webhooks: {
+    name: t`Webhooks`,
   },
   authentication: {
     name: t`Authentication`,
@@ -72,9 +75,6 @@ export const getAdminSettingsSections = (
   },
   "public-sharing": {
     name: t`Public Sharing`,
-  },
-  "embedding-in-other-applications": {
-    name: t`Embedding`,
   },
   license: {
     name: t`License`,

@@ -29,126 +29,14 @@ describe("issue 9339", () => {
     H.openOrdersTable();
 
     H.tableHeaderClick("Total");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
     H.selectFilterOperator("Greater than");
     cy.findByPlaceholderText("Enter a number").type("9339,1234").blur();
     cy.findByDisplayValue("9339").should("be.visible");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1,234").should("not.exist");
     cy.button("Add filter").should("be.enabled");
-  });
-});
-
-describe("issue 12496", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  const datePickerInput = (picker, input) =>
-    // eslint-disable-next-line no-unsafe-element-filtering
-    cy
-      .findAllByTestId("specific-date-picker")
-      .eq(picker)
-      .find("input")
-      .eq(input);
-  const setup = (unit) => {
-    H.createQuestion(
-      {
-        name: `Orders by Created At: ${unit}`,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": unit }]],
-          filter: [
-            "between",
-            ["field", ORDERS.CREATED_AT, null],
-            "2022-04-01",
-            "2022-05-31",
-          ],
-        },
-        display: "line",
-      },
-      { visitQuestion: true },
-    );
-    // When a filter is added above, we have to unhide the filter pills:
-    cy.findByTestId("filters-visibility-control").click();
-  };
-
-  it("should display correct day range in filter pill when drilling into a week", () => {
-    setup("week");
-    H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
-    cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 24–30, 2022")
-      .click();
-    H.popover().within(() => {
-      cy.findByTestId("between-date-picker").within(() => {
-        datePickerInput(0, 0).should("have.value", "04/24/2022");
-        datePickerInput(1, 0).should("have.value", "04/30/2022");
-      });
-    });
-  });
-
-  it("should display correct day range in filter pill when drilling into a month", () => {
-    setup("month");
-    H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
-    cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 2022")
-      .click();
-    H.popover().within(() => {
-      cy.findByTestId("between-date-picker").within(() => {
-        datePickerInput(0, 0).should("have.value", "04/01/2022");
-        datePickerInput(1, 0).should("have.value", "04/30/2022");
-      });
-    });
-  });
-
-  it("should display correct day range in filter pill when drilling into a hour", () => {
-    setup("hour");
-    H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
-    cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 30, 2022, 6:00–59 PM")
-      .click();
-    H.popover().within(() => {
-      cy.findByTestId("between-date-picker").within(() => {
-        datePickerInput(0, 0).should("have.value", "04/30/2022");
-        datePickerInput(0, 1).should("have.value", "6");
-        datePickerInput(0, 2).should("have.value", "00");
-        datePickerInput(1, 0).should("have.value", "04/30/2022");
-        datePickerInput(1, 1).should("have.value", "6");
-        datePickerInput(1, 2).should("have.value", "59");
-      });
-    });
-  });
-
-  it("should display correct minute in filter pill when drilling into a minute", () => {
-    setup("minute");
-    H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
-    cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 30, 2022, 6:56 PM")
-      .click();
-    H.popover().within(() => {
-      datePickerInput(0, 0).should("have.value", "04/30/2022");
-      datePickerInput(0, 1).should("have.value", "6");
-      datePickerInput(0, 2).should("have.value", "56");
-    });
-  });
-
-  it("should display correct minute in filter pill when drilling into a day", () => {
-    setup("day");
-    H.cartesianChartCircle().eq(0).click({ force: true });
-    H.popover().contains("See this Order").click();
-    cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 30, 2022")
-      .click();
-    H.popover().within(() => {
-      datePickerInput(0, 0).should("have.value", "04/30/2022");
-    });
   });
 });
 
@@ -180,7 +68,7 @@ describe("issue 16621", () => {
   });
 });
 
-describe("issue 18770", { tags: "@flaky" }, () => {
+describe("issue 18770", () => {
   const questionDetails = {
     name: "18770",
     query: {
@@ -265,8 +153,7 @@ describe("issue 20683", { tags: "@external" }, () => {
 
   it("should filter postgres with the 'current quarter' filter (metabase#20683)", () => {
     H.startNewQuestion();
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText("QA Postgres12").click();
       cy.findByText("Orders").click();
     });
@@ -362,7 +249,7 @@ describe("issue 22230", () => {
   });
 
   it("should be able to filter on an aggregation (metabase#22230)", () => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.clauseStepPopover().within(() => {
@@ -406,7 +293,7 @@ describe("issue 22730", () => {
   });
 
   it("allows filtering by time column (metabase#22730)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Explore results").click();
     cy.wait("@dataset");
 
@@ -418,9 +305,9 @@ describe("issue 22730", () => {
       cy.button("Add filter").click();
     });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("before-row");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("after-row").should("not.exist");
   });
 });
@@ -504,15 +391,15 @@ describe("issue 24994", () => {
     // Three filters
     cy.findByTestId("filters-visibility-control").contains("3").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Category is 2 selections").click();
     assertFilterValueIsSelected("Gadget");
     assertFilterValueIsSelected("Gizmo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Doohickey").click();
     assertFilterValueIsSelected("Doohickey");
     cy.button("Update filter").should("not.be.disabled").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Category is 3 selections");
   });
 });
@@ -538,7 +425,7 @@ describe("issue 45410", () => {
       cy.findByText("abc2@example.com")
         .next("button")
         .then(([removeButton]) => {
-          cy.icon("info_filled").then(([infoIcon]) => {
+          cy.icon("info").then(([infoIcon]) => {
             const removeButtonRect = removeButton.getBoundingClientRect();
             const infoIconRect = infoIcon.getBoundingClientRect();
             expect(removeButtonRect.right).to.be.lte(infoIconRect.left);
@@ -570,7 +457,7 @@ describe("issue 25378", () => {
   });
 
   it("should be able to use relative date filter on a breakout after the aggregation (metabase#25378)", () => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.clauseStepPopover().within(() => {
@@ -715,7 +602,7 @@ describe("issue 25994", () => {
   });
 
   it("should be possible to use 'between' dates filter after aggregation (metabase#25994)", () => {
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.popover().within(() => {
@@ -764,12 +651,12 @@ describe("issue 26861", { tags: "@skip" }, () => {
 
   it("exclude filter shouldn't break native questions with field filters (metabase#26861)", () => {
     H.filterWidget().click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exclude…").click();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Days of the week…").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tuesday").click();
 
     cy.button("Update filter").click();
@@ -777,9 +664,9 @@ describe("issue 26861", { tags: "@skip" }, () => {
     // A part of this bug is that we have to manually run the query so the next step will fail
     cy.wait("@dataset");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("CREATED_AT excludes Tuesday");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("117.03").should("not.exist");
   });
 });
@@ -801,11 +688,11 @@ describe("issue 27123", () => {
 
   it("exclude filter should not resolve to 'Days of the week' regardless of the chosen granularity  (metabase#27123)", () => {
     H.tableHeaderClick("Created At");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Filter by this column").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Exclude…").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Months of the year…").click();
 
     H.popover()
@@ -822,9 +709,8 @@ describe("issue 29094", () => {
 
   it("disallows adding a filter using non-boolean custom expression (metabase#29094)", () => {
     H.startNewQuestion();
-
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
+      cy.findByText("Sample Database").click();
       cy.findByText("Orders").click();
     });
 
@@ -1045,71 +931,6 @@ describe("metabase#32985", () => {
   });
 });
 
-describe("metabase#44550", { tags: "@skip" }, () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should display the filter with an offset appropriately in the time-series chrome and in the filter modal (metabase#44550)", () => {
-    const questionDetails = {
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [
-          [
-            "field",
-            ORDERS.CREATED_AT,
-            {
-              "base-type": "type/DateTime",
-              "temporal-unit": "month",
-            },
-          ],
-        ],
-        filter: [
-          "between",
-          [
-            "+",
-            [
-              "field",
-              ORDERS.CREATED_AT,
-              {
-                "base-type": "type/DateTime",
-              },
-            ],
-            ["interval", 7, "day"],
-          ],
-          ["relative-datetime", -30, "day"],
-          ["relative-datetime", 0, "day"],
-        ],
-      },
-      type: "query",
-    };
-
-    H.createQuestion(questionDetails, { visitQuestion: true });
-    cy.findByTestId("filters-visibility-control").click();
-    cy.findByTestId("filter-pill").should(
-      "have.text",
-      "Created At is in the previous 30 days, starting 7 days ago",
-    );
-
-    cy.log("Repro for the time-series chrome");
-    cy.findByTestId("timeseries-filter-button")
-      .should("not.have.text", "All time")
-      .and("contain", /previous 30 days/i)
-      .and("contain", /7 days ago/i);
-
-    cy.log("Repro for the filter modal");
-    H.filter();
-    // Not entirely sure how the DOM looks like in this scenario.
-    // TODO: Update the test if needed.
-    cy.findByTestId("filter-column-Created At")
-      .should("contain", /previous 30 days/i)
-      .and("contain", /7 days ago/i);
-  });
-});
-
 describe("issue 35043", () => {
   beforeEach(() => {
     H.restore();
@@ -1130,8 +951,8 @@ describe("issue 35043", () => {
               "base-type": "type/DateTime",
             },
           ],
-          "2024-04-15",
-          "2024-05-22",
+          "2027-04-15",
+          "2027-05-22",
         ],
         limit: 5,
       },
@@ -1142,12 +963,12 @@ describe("issue 35043", () => {
 
     cy.findByTestId("filters-visibility-control").click();
     cy.findByTestId("filter-pill")
-      .should("have.text", "Created At is Apr 15 – May 22, 2024")
+      .should("have.text", "Created At is Apr 15 – May 22, 2027")
       .click();
 
     cy.findByTestId("date-filter-picker").within(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.findByDisplayValue("May 22, 2024").type("{backspace}2").blur();
+      cy.findByDisplayValue("May 22, 2027").type("{backspace}2").blur();
       cy.findByDisplayValue("May 22, 2022").should("exist");
 
       cy.button("Update filter").click();
@@ -1156,7 +977,7 @@ describe("issue 35043", () => {
 
     cy.findByTestId("filter-pill").should(
       "have.text",
-      "Created At is May 22, 2022 – Apr 15, 2024",
+      "Created At is May 22, 2022 – Apr 15, 2027",
     );
   });
 });
@@ -1174,8 +995,7 @@ describe("issue 45252", { tags: "@external" }, () => {
     H.startNewQuestion();
 
     cy.log("filter picker - new filter");
-    H.entityPickerModal().within(() => {
-      H.entityPickerModalTab("Tables").click();
+    H.miniPicker().within(() => {
       cy.findByText("Writable Postgres12").click();
       cy.findByText("Many Data Types").click();
     });
@@ -1385,7 +1205,7 @@ describe("issue 47887", () => {
     });
 
     cy.findByTestId("notebook-button").click();
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
 
     H.popover().within(() => {
@@ -1439,7 +1259,7 @@ describe("issue 49321", () => {
       cy.findByText("Title").click();
       cy.findByText("Is").click();
     });
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.popover().last().findByText("Contains").click();
 
     H.popover().then(($popover) => {
@@ -1524,7 +1344,7 @@ describe("issue 44665", () => {
   it("should use the correct widget for the default value picker (metabase#44665)", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from {{param");
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.sidebar()
       .last()
       .within(() => {
@@ -1538,7 +1358,7 @@ describe("issue 44665", () => {
       cy.button("Done").click();
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.sidebar().last().findByText("Enter a default value…").click();
     H.popover().within(() => {
       cy.findByPlaceholderText("Enter a default value…")
@@ -1551,7 +1371,7 @@ describe("issue 44665", () => {
       cy.findByText("baz").should("not.exist");
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.sidebar()
       .last()
       .within(() => {
@@ -1652,5 +1472,97 @@ describe("issue QUE-1359", () => {
           "solid",
         );
       });
+  });
+});
+
+describe("issue QUE-2567", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsNormalUser();
+
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          expressions: {
+            Foo: [
+              "datetime-add",
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                  "effective-type": "type/DateTime",
+                },
+              ],
+              5,
+              "day",
+            ],
+            Bar: ["datetime", "2028-12-24"],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    H.filter();
+    H.popover().within(() => {
+      cy.findByText("Foo").click();
+      cy.findByText("Previous 12 months").click();
+    });
+
+    H.filter();
+    H.popover().within(() => {
+      cy.findByText("Bar").click();
+      cy.findByText("Previous 12 months").click();
+    });
+  });
+
+  it("should be possible to edit a datetime filter that is based on a custom expression (QUE-2567)", () => {
+    cy.log("Editing the filter should show the date picker");
+    cy.findAllByTestId("filter-pill").should("have.length", 2).eq(0).click();
+    H.popover().within(() => {
+      cy.findByText("Previous").should("be.visible");
+      cy.findByText("Current").should("be.visible");
+      cy.findByText("Next").should("be.visible");
+    });
+
+    cy.log(
+      "Editing the filter should show the date picker for coerced datetime",
+    );
+    cy.findAllByTestId("filter-pill").should("have.length", 2).eq(1).click();
+    H.popover().within(() => {
+      cy.findByText("Previous").should("be.visible");
+      cy.findByText("Current").should("be.visible");
+      cy.findByText("Next").should("be.visible");
+    });
+  });
+});
+
+describe("issue QUE-2567 (bis)", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+      coercion_strategy: "Coercion/UNIXSeconds->DateTime",
+      semantic_type: null,
+    });
+    H.openOrdersTable();
+
+    H.filter();
+    H.popover().within(() => {
+      cy.findByText("Quantity").click();
+      cy.findByText("Previous 12 months").click();
+    });
+  });
+
+  it("should open the datetime filter for coerced columns", () => {
+    cy.log("Editing the filter should show the date picker");
+    cy.findByTestId("filter-pill").click();
+    H.popover().within(() => {
+      cy.findByText("Previous").should("be.visible");
+      cy.findByText("Current").should("be.visible");
+      cy.findByText("Next").should("be.visible");
+    });
   });
 });

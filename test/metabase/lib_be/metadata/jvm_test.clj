@@ -10,6 +10,7 @@
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -44,17 +45,17 @@
             (lib.metadata.calculation/returned-columns query)))))
 
 (deftest ^:parallel join-with-aggregation-reference-in-fields-metadata-test
-  (let [query      (mt/mbql-query products
-                     {:joins  [{:source-query {:source-table $$orders
-                                               :breakout     [$orders.product_id]
-                                               :aggregation  [[:sum $orders.quantity]]}
-                                :alias        "Orders"
-                                :condition    [:= $id &Orders.orders.product_id]
-                                :fields       [&Orders.orders.product_id
-                                               &Orders.*sum/Integer]}]
-                      :fields [$id]})
-        mlv2-query (lib/query (mt/metadata-provider)
-                              (lib.convert/->pMBQL query))]
+  (let [query       (mt/mbql-query products
+                      {:joins  [{:source-query {:source-table $$orders
+                                                :breakout     [$orders.product_id]
+                                                :aggregation  [[:sum $orders.quantity]]}
+                                 :alias        "Orders"
+                                 :condition    [:= $id &Orders.orders.product_id]
+                                 :fields       [&Orders.orders.product_id
+                                                &Orders.*sum/Integer]}]
+                       :fields [$id]})
+        mbql5-query (lib/query (mt/metadata-provider)
+                               (lib.convert/->mbql5 query))]
     (is (=? [{:base-type                :type/BigInteger
               :semantic-type            :type/PK
               :table-id                 (mt/id :products)
@@ -65,30 +66,30 @@
               :id                       (mt/id :products :id)
               :lib/desired-column-alias "ID"
               :display-name             "ID"}
-             {:metabase.lib.join/join-alias "Orders"
-              :base-type                    :type/Integer
-              :semantic-type                :type/FK
-              :table-id                     (mt/id :orders)
-              :name                         "PRODUCT_ID"
-              :lib/source                   :source/joins
-              :lib/source-column-alias      "PRODUCT_ID"
-              :effective-type               :type/Integer
-              :id                           (mt/id :orders :product_id)
-              :lib/desired-column-alias     "Orders__PRODUCT_ID"
-              :display-name                 "Orders → Product ID"
-              :source-alias                 "Orders"}
-             {:metabase.lib.join/join-alias "Orders"
-              :lib/type                     :metadata/column
-              :base-type                    :type/Integer
-              :name                         "sum"
-              :lib/source                   :source/joins
-              :lib/source-column-alias      "sum"
-              :effective-type               :type/Integer
-              :lib/desired-column-alias     "Orders__sum"
-              :display-name                 "Orders → Sum of Quantity"
-              :source-alias                 "Orders"}]
+             {:lib/join-alias           "Orders"
+              :base-type                :type/Integer
+              :semantic-type            :type/FK
+              :table-id                 (mt/id :orders)
+              :name                     "PRODUCT_ID"
+              :lib/source               :source/joins
+              :lib/source-column-alias  "PRODUCT_ID"
+              :effective-type           :type/Integer
+              :id                       (mt/id :orders :product_id)
+              :lib/desired-column-alias "Orders__PRODUCT_ID"
+              :display-name             "Orders → Product ID"
+              :lib/original-join-alias  "Orders"}
+             {:lib/join-alias           "Orders"
+              :lib/type                 :metadata/column
+              :base-type                :type/Integer
+              :name                     "sum"
+              :lib/source               :source/joins
+              :lib/source-column-alias  "sum"
+              :effective-type           :type/Integer
+              :lib/desired-column-alias "Orders__sum"
+              :display-name             "Orders → Sum of Quantity"
+              :lib/original-join-alias  "Orders"}]
             (binding [lib.metadata.calculation/*display-name-style* :long]
-              (lib.metadata.calculation/returned-columns mlv2-query))))))
+              (lib.metadata.calculation/returned-columns mbql5-query))))))
 
 (deftest ^:synchronized with-temp-source-question-metadata-test
   #_{:clj-kondo/ignore [:discouraged-var]}
@@ -102,10 +103,10 @@
     (let [query      {:database (mt/id)
                       :type     :query
                       :query    {:source-card (u/the-id card)}}
-          mlv2-query (lib/query (mt/metadata-provider)
-                                (lib.convert/->pMBQL query))
-          breakouts  (lib/breakoutable-columns mlv2-query)
-          agg-query  (-> mlv2-query
+          mbql5-query (lib/query (mt/metadata-provider)
+                                 (lib.convert/->mbql5 query))
+          breakouts  (lib/breakoutable-columns mbql5-query)
+          agg-query  (-> mbql5-query
                          (lib/breakout (second breakouts))
                          (lib/breakout (peek breakouts)))]
       (is (=? [{:display-name      "ID"
@@ -140,8 +141,8 @@
                 :long-display-name "c → Name"
                 :effective-type    :type/Text
                 :semantic-type     :type/Name}]
-              (map #(lib/display-info mlv2-query %)
-                   (lib.metadata.calculation/returned-columns mlv2-query))))
+              (map #(lib/display-info mbql5-query %)
+                   (lib.metadata.calculation/returned-columns mbql5-query))))
       (is (= ["Name"
               "c → Name"]
              (map :display-name (lib.metadata.calculation/returned-columns agg-query))))
@@ -237,3 +238,71 @@
                             (when (= "Orders" display-name)
                               metadata))
                           (lib.metadata/tables mp)))))))))
+
+(deftest ^:parallel metadatas-sanity-check-test
+  (testing "Make sure various supported metadata specs compile to valid SQL and we are able to run a query against the app DB with them"
+    (let [mp (mt/metadata-provider)]
+      (are [metadata-spec] (sequential? (lib.metadata.protocols/metadatas mp metadata-spec))
+        {:lib/type :metadata/table}
+        {:lib/type :metadata/table, :id #{1}}
+        {:lib/type :metadata/table, :name #{"Table"}}
+        {:lib/type :metadata/column, :id #{1}}
+        {:lib/type :metadata/column, :name #{"Field"}}
+        {:lib/type :metadata/column, :table-id 1}
+        {:lib/type :metadata/card, :id #{1}}
+        {:lib/type :metadata/card, :name #{"Card"}}
+        {:lib/type :metadata/metric, :id #{1}}
+        {:lib/type :metadata/metric, :name #{"Metric"}}
+        {:lib/type :metadata/metric, :table-id 1}
+        {:lib/type :metadata/metric, :card-id 1}
+        {:lib/type :metadata/segment, :id #{1}}
+        {:lib/type :metadata/segment, :name #{"Segment"}}
+        {:lib/type :metadata/segment, :table-id 1}
+        {:lib/type :metadata/native-query-snippet, :id #{1}}
+        {:lib/type :metadata/native-query-snippet, :name #{"Snippet"}}))))
+
+(deftest ^:parallel return-database-require-filter-test
+  (mt/with-temp [:model/Database db       {:engine :h2}
+                 :model/Table    buyer    {:name "BUYER" :database_require_filter true :db_id (:id db)}
+                 :model/Field    buyer-id {:name "ID" :table_id (:id buyer) :base_type :type/Integer :database_partitioned true}]
+    (let [mp (lib.metadata.jvm/application-database-metadata-provider (:id db))]
+      (is (=? {:database-require-filter true}
+              (lib.metadata/table mp (:id buyer))))
+      (is (=? {:database-partitioned true}
+              (lib.metadata/field mp (:id buyer-id)))))))
+
+(deftest ^:parallel instance->metadata-normalize-column-test
+  (testing "instance->metadata should normalize column metadata"
+    (let [legacy-col {:active                                            true
+                      :base_type                                         :type/BigInteger
+                      :database_type                                     "BIGINT"
+                      :display_name                                      "ID"
+                      :effective_type                                    :type/BigInteger
+                      :field_ref                                         [:field 760 nil]
+                      :id                                                760
+                      :lib/deduplicated-name                             "ID"
+                      :lib/desired-column-alias                          "ID"
+                      :lib/original-display-name                         "ID"
+                      :lib/original-name                                 "ID"
+                      :lib/source                                        :source/table-defaults
+                      :lib/source-column-alias                           "ID"
+                      :lib/transformation-added-base-type true
+                      :name                                              "ID"
+                      :position                                          0
+                      :semantic_type                                     :type/PK
+                      :source                                            :fields
+                      :table_id                                          227
+                      :visibility_type                                   :normal}
+          metadata   (lib.metadata.jvm/instance->metadata legacy-col :metadata/column)]
+      (is (mr/validate ::lib.schema.metadata/column metadata))
+      (is (not (:field-ref metadata))
+          "Legacy keys like :field_ref/:field-ref should have been removed"))))
+
+(deftest ^:parallel database-local-settings-test
+  (testing "JVM metadata provider should return database-local Settings"
+    (let [global-value (setting/get :unaggregated-query-row-limit)
+          local-value  (inc (or global-value 0))]
+      (mt/with-temp [:model/Database {db-id :id} {:settings {:unaggregated-query-row-limit local-value}}]
+        (let [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
+          (is (= local-value
+                 (lib.metadata/setting mp :unaggregated-query-row-limit))))))))

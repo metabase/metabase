@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { getDefaultGoalLabel } from "metabase/visualizations/shared/settings/cartesian-chart";
 import type { ChartGoal } from "metabase/visualizations/shared/types/settings";
+import type { VisualizationSettingsDefinitions } from "metabase/visualizations/types";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { getStackOffset } from "./stacking";
@@ -23,7 +24,7 @@ export const getChartGoal = (
   };
 };
 
-export const GRAPH_GOAL_SETTINGS = {
+export const GRAPH_GOAL_SETTINGS: VisualizationSettingsDefinitions = {
   "graph.show_goal": {
     get section() {
       return t`Display`;
@@ -32,9 +33,11 @@ export const GRAPH_GOAL_SETTINGS = {
       return t`Goal line`;
     },
     widget: "toggle",
-    default: false,
+    getDefault: () => false,
     inline: true,
-    marginBottom: "1rem",
+    getWrapperStyle: () => ({
+      marginBottom: "1rem",
+    }),
   },
   "graph.goal_value": {
     get section() {
@@ -44,8 +47,8 @@ export const GRAPH_GOAL_SETTINGS = {
       return t`Goal value`;
     },
     widget: "number",
-    default: 0,
-    getHidden: (_series: unknown, vizSettings: VisualizationSettings) =>
+    getDefault: () => 0,
+    getHidden: (_series, vizSettings) =>
       vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
   },
@@ -58,7 +61,7 @@ export const GRAPH_GOAL_SETTINGS = {
     },
     widget: "input",
     getDefault: getDefaultGoalLabel,
-    getHidden: (_series: unknown, vizSettings: VisualizationSettings) =>
+    getHidden: (_series, vizSettings) =>
       vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],
   },

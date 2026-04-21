@@ -1,9 +1,10 @@
 import { createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
-import { match } from "ts-pattern";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { automagicDashboardsApi, dashboardApi } from "metabase/api";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
@@ -21,19 +22,10 @@ import {
   fetchDataOrError,
   getAllDashboardCards,
   getCurrentTabDashboardCards,
-  getDashboardType,
-  isQuestionDashCard,
-  isVirtualDashCard,
 } from "metabase/dashboard/utils";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
-import Dashboards from "metabase/entities/dashboards";
-import type { Deferred } from "metabase/lib/promise";
-import { defer } from "metabase/lib/promise";
-import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
-import { equals } from "metabase/lib/utils";
-import { uuid } from "metabase/lib/uuid";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
@@ -44,6 +36,16 @@ import {
   PublicApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
+import {
+  getDashboardType,
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
+import { entityCompatibleQuery } from "metabase/utils/entities";
+import type { Deferred } from "metabase/utils/promise";
+import { defer } from "metabase/utils/promise";
+import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
+import { uuid } from "metabase/utils/uuid";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
@@ -56,10 +58,10 @@ import type {
   DashboardCard,
   DashboardId,
   Dataset,
-  DatasetQuery,
+  JsonQuery,
+  ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -267,7 +269,7 @@ export const fetchCardDataAction = createAsyncThunk<
       // if reload not set, check to see if the last result has the same query dict and return that
       if (
         lastResult &&
-        equals(
+        _.isEqual(
           getDatasetQueryParams(lastResult.json_query),
           getDatasetQueryParams(datasetQuery),
         )
@@ -286,9 +288,9 @@ export const fetchCardDataAction = createAsyncThunk<
     // state so that the loader spinner shows as expected (#33767)
     const hasParametersChanged =
       !lastResult ||
-      !equals(
-        getDatasetQueryParams(lastResult.json_query).parameters,
-        getDatasetQueryParams(datasetQuery).parameters,
+      !_.isEqual(
+        getDatasetQueryParams(lastResult.json_query),
+        getDatasetQueryParams(datasetQuery),
       );
 
     if (clearCache || hasParametersChanged) {
@@ -330,7 +332,7 @@ export const fetchCardDataAction = createAsyncThunk<
         ),
       );
     } else if (dashboardType === "public") {
-      result = await fetchDataOrError(
+      result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           PublicApi.dashboardCardQuery,
           card,
@@ -347,9 +349,9 @@ export const fetchCardDataAction = createAsyncThunk<
           },
           queryOptions,
         ),
-      );
+      )) as Dataset | { error: unknown };
     } else if (dashboardType === "embed") {
-      result = await fetchDataOrError(
+      result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           EmbedApi.dashboardCardQuery,
           card,
@@ -366,15 +368,15 @@ export const fetchCardDataAction = createAsyncThunk<
           },
           queryOptions,
         ),
-      );
+      )) as Dataset | { error: unknown };
     } else if (dashboardType === "transient" || dashboardType === "inline") {
-      result = await fetchDataOrError(
+      result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           MetabaseApi.dataset,
           card,
           metadata,
         )({ ...datasetQuery, ignore_cache: ignoreCache }, queryOptions),
-      );
+      )) as Dataset | { error: unknown };
     } else {
       const dashcardBeforeEditing = getDashCardBeforeEditing(
         getState(),
@@ -407,16 +409,19 @@ export const fetchCardDataAction = createAsyncThunk<
             dashboard_id: dashcard.dashboard_id,
             dashboard_load_id: dashboardLoadId,
           };
-      result = await fetchDataOrError(
+      result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           endpoint,
           card,
           metadata,
         )(requestBody, queryOptions),
-      );
+      )) as Dataset | { error: unknown };
     }
 
-    setFetchCardDataCancel(card.id, dashcard.id, null);
+    // If the request was not previously cancelled, then clear the defer for the card
+    if (!cancelled) {
+      setFetchCardDataCancel(card.id, dashcard.id, null);
+    }
     clearTimeout(slowCardTimer);
 
     return {
@@ -443,6 +448,44 @@ export const fetchCardData =
       }),
     );
   };
+
+// Leave 1 connection free for interactive requests (browser HTTP/1.1 limit is 6)
+const HTTP1_CONCURRENT_CARD_FETCH_LIMIT = 5;
+
+function getCardsFetchingConcurrencyLimit(): number {
+  try {
+    const [navigationEntry] = performance.getEntriesByType(
+      "navigation",
+    ) as PerformanceNavigationTiming[];
+    const protocol = navigationEntry?.nextHopProtocol ?? "";
+    // HTTP/2 and HTTP/3 multiplex requests over a single connection,
+    // so the per-host connection limit does not apply
+    if (protocol === "h2" || protocol === "h2c" || protocol.startsWith("h3")) {
+      return Infinity;
+    }
+  } catch {
+    // Performance API unavailable; fall through to the conservative limit
+  }
+  return HTTP1_CONCURRENT_CARD_FETCH_LIMIT;
+}
+
+const CONCURRENT_CARD_FETCH_LIMIT = getCardsFetchingConcurrencyLimit();
+
+async function runWithConcurrencyLimit(
+  tasks: (() => Promise<void>)[],
+  limit: number,
+): Promise<void> {
+  let index = 0;
+  async function worker() {
+    while (index < tasks.length) {
+      const taskIndex = index++;
+      await tasks[taskIndex]();
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(limit, tasks.length) }, worker),
+  );
+}
 
 export const fetchDashboardCardData =
   ({ isRefreshing = false, reload = false, clearCache = false } = {}) =>
@@ -496,20 +539,21 @@ export const fetchDashboardCardData =
       );
     }
 
-    const promises = nonVirtualDashcardsToFetch.map(
-      async ({ card, dashcard }) => {
-        await dispatch(
-          // TODO: fix the return type of getAllDashboardCards to make sure
-          // that the relationship between a dashcard and its card
-          // is actually reflected in the type system
-          fetchCardData(card as Card, dashcard, {
-            reload,
-            clearCache,
-            dashboardLoadId,
-          }),
-        );
-        await dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
-      },
+    const tasks = nonVirtualDashcardsToFetch.map(
+      ({ card, dashcard }) =>
+        async () => {
+          await dispatch(
+            // TODO: fix the return type of getAllDashboardCards to make sure
+            // that the relationship between a dashcard and its card
+            // is actually reflected in the type system
+            fetchCardData(card as Card, dashcard, {
+              reload,
+              clearCache,
+              dashboardLoadId,
+            }),
+          );
+          await dispatch(updateLoadingTitle(nonVirtualDashcardsToFetch.length));
+        },
     );
 
     if (nonVirtualDashcardsToFetch.length > 0) {
@@ -519,9 +563,11 @@ export const fetchDashboardCardData =
 
       // TODO: There is a race condition here, when refreshing a dashboard before
       // the previous API calls finished.
-      return Promise.all(promises).then(() => {
-        dispatch(loadingComplete());
-      });
+      return runWithConcurrencyLimit(tasks, CONCURRENT_CARD_FETCH_LIMIT).then(
+        () => {
+          dispatch(loadingComplete());
+        },
+      );
     }
   };
 
@@ -533,10 +579,10 @@ export const reloadDashboardCards =
       return;
     }
 
-    const reloads = getAllDashboardCards(dashboard)
+    const reloadTasks = getAllDashboardCards(dashboard)
       .filter(({ dashcard }) => !isVirtualDashCard(dashcard))
-      .map(({ card, dashcard }) =>
-        dispatch(
+      .map(({ card, dashcard }) => async () => {
+        await dispatch(
           // TODO: fix the return type of getAllDashboardCards to make sure
           // that the relationship between a dashcard and its card
           // is actually reflected in the type system
@@ -544,10 +590,10 @@ export const reloadDashboardCards =
             reload: true,
             ignoreCache: true,
           }),
-        ),
-      );
+        );
+      });
 
-    await Promise.all(reloads);
+    await runWithConcurrencyLimit(reloadTasks, CONCURRENT_CARD_FETCH_LIMIT);
   };
 
 export const cancelFetchDashboardCardData = createThunkAction(
@@ -596,34 +642,14 @@ export const clearCardData = createAction(
   (cardId, dashcardId) => ({ payload: { cardId, dashcardId } }),
 );
 
-function getDatasetQueryParams(datasetQuery: Partial<DatasetQuery> = {}) {
-  const parameters =
-    datasetQuery?.parameters
-      ?.map((parameter) => ({
-        ...parameter,
-        value: parameter.value ?? null,
-      }))
-      .sort(sortById) ?? [];
-
-  return match(datasetQuery)
-    .with({ type: "native" }, ({ native }) => ({
-      type: "native",
-      query: undefined,
-      native,
-      parameters,
+function getDatasetQueryParams(datasetQuery?: JsonQuery) {
+  const parameters = datasetQuery?.parameters ?? [];
+  return parameters
+    .map((parameter) => ({
+      ...parameter,
+      value: parameter.value ?? null,
     }))
-    .with({ type: "query" }, ({ query }) => ({
-      type: "query",
-      query,
-      native: undefined,
-      parameters,
-    }))
-    .otherwise(() => ({
-      type: undefined,
-      native: undefined,
-      query: undefined,
-      parameters: [],
-    }));
+    .sort(sortById);
 }
 
 function sortById(a: UiParameter, b: UiParameter) {
@@ -647,7 +673,7 @@ export const fetchDashboard = createAsyncThunk(
       options: { preserveParameters = false, clearCache = true } = {},
     }: {
       dashId: DashboardId;
-      queryParams: ParameterValues;
+      queryParams: ParameterValuesMap;
       options?: { preserveParameters?: boolean; clearCache?: boolean };
     },
     { getState, dispatch, rejectWithValue },
@@ -710,12 +736,14 @@ export const fetchDashboard = createAsyncThunk(
             { subPath, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          dispatch(
-            Dashboards.actions.fetchXrayMetadata({
+          entityCompatibleQuery(
+            {
               entity,
               entityId,
               dashboard_load_id: dashboardLoadId,
-            }),
+            },
+            dispatch,
+            automagicDashboardsApi.endpoints.getXrayDashboardQueryMetadata,
           ),
         ]);
         result = {
@@ -741,11 +769,11 @@ export const fetchDashboard = createAsyncThunk(
             { dashId: dashId, dashboard_load_id: dashboardLoadId },
             { cancelled: fetchDashboardCancellation.promise },
           ),
-          dispatch(
-            Dashboards.actions.fetchMetadata({
-              id: dashId,
-              dashboard_load_id: dashboardLoadId,
-            }),
+          entityCompatibleQuery(
+            { id: dashId, dashboard_load_id: dashboardLoadId },
+            dispatch,
+            dashboardApi.endpoints.getDashboardQueryMetadata,
+            { forceRefetch: false },
           ),
         ]);
         result = response;

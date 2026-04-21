@@ -6,7 +6,7 @@
     {
       "label": "Run front-end and back-end",
       "type": "shell",
-      "command": "yarn dev",
+      "command": "bun run dev",
       "presentation": {
         "reveal": "always"
       },
@@ -19,7 +19,7 @@
     {
       "label": "Format front-end code",
       "type": "shell",
-      "command": "yarn prettier",
+      "command": "bun run prettier",
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
@@ -29,7 +29,7 @@
     {
       "label": "Run front-end linters",
       "type": "shell",
-      "command": "yarn lint",
+      "command": "bun run lint",
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",

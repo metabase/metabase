@@ -11,8 +11,7 @@ import { ScimTextWarning } from "./ScimTextWarning";
 
 type BaseUserProvisiongModalProps = Pick<ModalProps, "opened" | "onClose">;
 
-interface UserProvisioningFirstEnabledModalProps
-  extends BaseUserProvisiongModalProps {
+interface UserProvisioningFirstEnabledModalProps extends BaseUserProvisiongModalProps {
   scimBaseUrl: string;
   unmaskedScimToken: string;
   scimError: any;
@@ -34,7 +33,7 @@ export const UserProvisioningFirstEnabledModal = ({
       title={t`Here's what you'll need to set SCIM up`}
     >
       <Stack gap="lg">
-        <Text c="text-medium">
+        <Text c="text-secondary">
           {t`To set up SCIM-based provisioning, you'll need to share this endpoint URL and token with your identity provider.`}
         </Text>
         <CopyScimInput label={t`SCIM endpoint URL`} value={scimBaseUrl} />
@@ -60,8 +59,7 @@ export const UserProvisioningFirstEnabledModal = ({
   );
 };
 
-interface UserProvisioningRegenerateTokenModalsProps
-  extends BaseUserProvisiongModalProps {}
+type UserProvisioningRegenerateTokenModalsProps = BaseUserProvisiongModalProps;
 
 export const UserProvisioningRegenerateTokenModal = ({
   opened,
@@ -89,7 +87,7 @@ export const UserProvisioningRegenerateTokenModal = ({
         opened={opened}
         onClose={onClose}
         title={t`Regenerate token?`}
-        // eslint-disable-next-line no-literal-metabase-strings -- admin settings
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin settings
         message={t`This will delete the existing token. You'll need to update your identity provider with the new token, otherwise people won't be able to log in to your Metabase.`}
         confirmButtonText={t`Regenerate now`}
         confirmButtonProps={{ variant: "filled", color: "brand" }}

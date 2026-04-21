@@ -1,36 +1,79 @@
 .table {
   position: relative;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   width: 100%;
   height: 100%;
   font-size: 12.5px;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .tableGrid {
-  display: grid;
+  display: flex;
+  flex-flow: column nowrap;
+  outline: none;
+  overflow: auto;
   flex-grow: 1;
-  grid-template-rows: 36px;
   width: 100%;
   height: 100%;
-  overflow: auto;
+  min-height: 0;
   scrollbar-gutter: stable;
 }
 
-.headerContainer {
+.pinnedColumnsSection {
+  flex-shrink: 0;
   position: sticky;
-  display: grid;
-  top: 0;
+  left: 0;
   z-index: 2;
-  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.headerContainer {
+  display: flex;
+  flex-direction: row;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  border-bottom: 1px solid var(--mb-color-border-subtle);
+  min-width: max-content;
   height: 37px;
 }
 
-.bodyContainer {
-  display: grid;
+.pinnedRowsSection {
+  position: sticky;
+  z-index: 3;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+
+  /*
+   Since each cell already has border-bottom: 1px,
+   the total horizontal separator is now 2px + 1px = 3px,
+   matching the .pinnedColumnsSection.withSeparator at 3px.
+ */
+  border-bottom: 2px solid var(--mb-color-border-subtle);
+}
+
+.pinnedColumnsSection.withSeparator {
+  border-right: 3px solid var(--mb-color-border-subtle);
+}
+
+.centerRowsSection {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.centerColumnsSection {
   position: relative;
-  outline: none;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.bodyContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .selectableBody {
@@ -40,6 +83,7 @@
 .row {
   display: flex;
   width: 100%;
+  position: relative;
 
   &.active {
     background-color: color-mix(
@@ -128,7 +172,7 @@
 }
 
 .row:hover .headerCell {
-  box-shadow: inset -1px 0 0 var(--mb-color-border);
+  box-shadow: inset -1px 0 0 var(--mb-color-border-subtle);
 }
 
 .cellHoverVisible {

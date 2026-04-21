@@ -1,7 +1,14 @@
 (ns metabase.util.random
   (:require
    [clojure.string :as str]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  #?(:clj
+     (:import
+      (java.security SecureRandom)
+      (org.apache.commons.codec.binary Base64 Hex))))
+
+#?(:clj
+   (set! *warn-on-reflection* true))
 
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))
@@ -25,3 +32,24 @@
   "Generate a random email address."
   []
   (str (u/lower-case-en (random-name)) "@metabase.com"))
+
+;; The following functions provide cryptographically secure random generation, replacing the crypto-random library
+;; dependency with inline implementations.
+
+#?(:clj
+   (defn- secure-random-bytes ^bytes [size]
+     (let [arr (byte-array size)]
+       (.nextBytes (SecureRandom.) arr)
+       arr)))
+
+#?(:clj
+   (defn secure-hex
+     "Return a cryptographically secure random hex string of the specified size in bytes."
+     [size]
+     (Hex/encodeHexString (secure-random-bytes size))))
+
+#?(:clj
+   (defn secure-base64
+     "Return a cryptographically secure random Base64 string of the specified size in bytes."
+     [size]
+     (Base64/encodeBase64String (secure-random-bytes size))))

@@ -2,7 +2,7 @@ import type { StoryFn } from "@storybook/react";
 
 import { Form, FormProvider } from "metabase/forms";
 
-import FormToggle from "./FormToggle";
+import { FormToggle } from "./FormToggle";
 
 export default {
   title: "Components/Ask Before Using/FormToggle",

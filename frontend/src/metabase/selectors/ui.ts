@@ -1,3 +1,5 @@
-import type { State } from "metabase-types/store";
+import type { State } from "metabase/redux/store";
+import type { ModalState } from "metabase/redux/store/modal";
 
-export const currentOpenModal = (state: State) => state.modal;
+export const getCurrentOpenModalState = <TProps>(state: State) =>
+  state.modal as ModalState<TProps>;

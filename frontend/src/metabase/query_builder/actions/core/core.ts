@@ -1,19 +1,27 @@
-import { createAction } from "redux-actions";
 import _ from "underscore";
 
-import { invalidateNotificationsApiCache } from "metabase/api";
-import Databases from "metabase/entities/databases";
+import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
+import { Databases } from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
-import Questions from "metabase/entities/questions";
-import Revisions from "metabase/entities/revisions";
-import { shouldOpenInBlankWindow } from "metabase/lib/dom";
-import { createThunkAction } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
-import { copy } from "metabase/lib/utils";
+import { Questions } from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { openUrl } from "metabase/redux/app";
+import {
+  API_UPDATE_QUESTION,
+  SOFT_RELOAD_CARD,
+  clearQueryResult,
+  onCloseSidebars,
+  resetQB,
+  setParameterValue,
+} from "metabase/redux/query-builder";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
+import { clone } from "metabase/utils/clone";
+import { shouldOpenInBlankWindow } from "metabase/utils/dom";
+import { entityCompatibleQuery } from "metabase/utils/entities";
+import { createThunkAction } from "metabase/utils/redux";
+import { isNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
@@ -28,9 +36,7 @@ import type {
   DashboardTabId,
   Database,
   DatasetQuery,
-  ParameterId,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import {
@@ -43,26 +49,20 @@ import {
   getSubmittableQuestion,
   isBasedOnExistingQuestion,
 } from "../../selectors";
-import { clearQueryResult, runQuestionQuery } from "../querying";
-import { onCloseSidebars } from "../ui";
+import { runDirtyQuestionQuery, runQuestionQuery } from "../querying";
 import { updateUrl } from "../url";
 import { zoomInRow } from "../zoom";
 
 import { loadCard } from "./card";
-import { API_UPDATE_QUESTION, SOFT_RELOAD_CARD } from "./types";
 import { updateQuestion } from "./updateQuestion";
 
-export const RESET_QB = "metabase/qb/RESET_QB";
-export const resetQB = createAction(RESET_QB);
-
 // refreshes the card without triggering a run of the card's query
-export { SOFT_RELOAD_CARD };
 export const softReloadCard = createThunkAction(SOFT_RELOAD_CARD, () => {
   return async (dispatch, getState) => {
     const outdatedCard = getCard(getState());
 
     const action = await dispatch(
-      Questions.actions.fetch({ id: outdatedCard.id }, { reload: true }),
+      Questions.actions.fetch({ id: outdatedCard?.id }, { reload: true }),
     );
 
     return Questions.HACK_getObjectFromAction(action);
@@ -107,11 +107,14 @@ export const setCardAndRun = (
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     // clone
-    const card = copy(nextCard);
+    const card = clone(nextCard);
 
     const originalCard = card.original_card_id
       ? // If the original card id is present, dynamically load its information for showing lineage
-        await loadCard(card.original_card_id, { dispatch, getState })
+        await loadCard(
+          { cardId: card.original_card_id },
+          { dispatch, getState },
+        )
       : // Otherwise, use a current card as the original card if the card has been saved
         // This is needed for checking whether the card is in dirty state or not
         card.id
@@ -120,7 +123,7 @@ export const setCardAndRun = (
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
-    dispatch(runQuestionQuery({ shouldUpdateUrl }));
+    dispatch(runDirtyQuestionQuery({ shouldUpdateUrl }));
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));
@@ -148,7 +151,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
         // This is mainly a fallback for scenarios where a visualization legend is clicked inside QB
         dispatch(
           setCardAndRun(
-            await loadCard(nextCard.id, { dispatch, getState }),
+            await loadCard({ cardId: nextCard.id }, { dispatch, getState }),
             {},
           ),
         );
@@ -217,7 +220,15 @@ export const apiCreateQuestion = (
   options?: OnCreateOptions,
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
-    const submittableQuestion = getSubmittableQuestion(getState(), question);
+    let submittableQuestion = getSubmittableQuestion(getState(), question);
+    // Saving models with list view setting as a question in not allowed for now,
+    // so we change it back to table.
+    if (
+      question.type() === "question" &&
+      submittableQuestion.display() === "list"
+    ) {
+      submittableQuestion = submittableQuestion.setDisplay("table");
+    }
     const createdQuestion = await reduxCreateQuestion(
       submittableQuestion,
       dispatch,
@@ -249,8 +260,13 @@ export const apiCreateQuestion = (
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
     if (isModel || isMetric) {
+      // composeQuestionAdhoc() returns a question with a 'table' display by default
       const composedQuestion =
-        createdQuestionWithMetadata.composeQuestionAdhoc();
+        isModel && question.display() === "list"
+          ? createdQuestionWithMetadata.composeQuestionAdhoc({
+              display: "list",
+            })
+          : createdQuestionWithMetadata.composeQuestionAdhoc();
       dispatch(runQuestionQuery({ overrideWithQuestion: composedQuestion }));
     }
 
@@ -274,7 +290,7 @@ export const apiUpdateQuestion = (
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
     if (!isNative) {
-      rerunQuery = rerunQuery ?? isResultDirty;
+      rerunQuery = rerunQuery ?? isResultDirty ?? false;
     }
 
     const submittableQuestion = getSubmittableQuestion(getState(), question);
@@ -317,14 +333,6 @@ export const apiUpdateQuestion = (
   };
 };
 
-export const SET_PARAMETER_VALUE = "metabase/qb/SET_PARAMETER_VALUE";
-export const setParameterValue = createAction(
-  SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: string | string[]) => {
-    return { id: parameterId, value: normalizeValue(value) };
-  },
-);
-
 export const SET_PARAMETER_VALUE_TO_DEFAULT =
   "metabase/qb/SET_PARAMETER_VALUE_TO_DEFAULT";
 export const setParameterValueToDefault = createThunkAction(
@@ -341,26 +349,23 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
-function normalizeValue(value: string | string[]) {
-  if (value === "") {
-    return null;
-  }
-
-  if (Array.isArray(value) && value.length === 0) {
-    return null;
-  }
-
-  return value;
-}
-
 export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
   REVERT_TO_REVISION,
-  (revision) => {
+  (cardId, revision) => {
     return async (dispatch) => {
-      await dispatch(Revisions.objectActions.revert(revision));
+      await entityCompatibleQuery(
+        {
+          id: cardId,
+          entity: "card",
+          revision_id: revision.id,
+        },
+        dispatch,
+        revisionApi.endpoints.revertRevision,
+      );
       await dispatch(reloadCard());
       await dispatch(runQuestionQuery({ shouldUpdateUrl: false }));
+      return { id: cardId };
     };
   },
 );

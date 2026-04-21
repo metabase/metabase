@@ -8,10 +8,13 @@ driver:
   lazy-load: true
   parent: sql-jdbc
   connection-properties:
-    - host
-    - merge:
-        - port
-        - default: 8080
+    - group:
+        container-style: ["grid", "3fr 1fr"]
+        fields:
+          - host
+          - merge:
+              - port
+              - default: 8080
     - merge:
         - dbname
         - name: catalog
@@ -29,18 +32,15 @@ driver:
     - merge:
         - password
         - required: false
-    - ssl
+    - group:
+        container-style: ["component", "backdrop"]
+        fields:
+        - ssl
+        - ssh-tunnel
     - name: roles
       display-name: Role (optional)
       required: false
       helper-text: Specify a role to override the database user’s default role.
-    - name: impersonation
-      display-name: User impersonation
-      type: boolean
-      required: false
-      description: Impersonate end user when running queries
-      visible-if:
-        never-visible: true
     - name: prepared-optimized
       display-name: Optimized prepared statements
       type: boolean
@@ -52,7 +52,6 @@ driver:
         - additional-options
         - placeholder: "trustServerCertificate=false"
     - default-advanced-options
-
 init:
   - step: load-namespace
     namespace: metabase.driver.starburst

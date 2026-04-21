@@ -1,26 +1,23 @@
 import { Group } from "@visx/group";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
-import {
-  getColumnValueStaticFormatter,
-  getLabelsStaticFormatter,
-  getStaticFormatters,
-} from "metabase/static-viz/lib/format";
 import { measureTextWidth } from "metabase/static-viz/lib/text";
+import type { FontStyle, TextWidthMeasurer } from "metabase/utils/measure-text";
 import { extractRemappedColumns } from "metabase/visualizations";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import { RowChart } from "metabase/visualizations/shared/components/RowChart";
-import type {
-  FontStyle,
-  TextWidthMeasurer,
-} from "metabase/visualizations/shared/types/measure-text";
 import {
   getGroupedDataset,
   trimData,
 } from "metabase/visualizations/shared/utils/data";
 import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
 import type { RemappingHydratedChartData } from "metabase/visualizations/types";
+import {
+  getColumnValueFormatter,
+  getFormatters,
+  getLabelsFormatter,
+} from "metabase/visualizations/visualizations/RowChart/utils/format";
 import { getLegendItems } from "metabase/visualizations/visualizations/RowChart/utils/legend";
 import {
   getAxesVisibility,
@@ -67,7 +64,7 @@ export const StaticRowChart = ({
     rawSeries[0].data,
   ) as RemappingHydratedChartData;
   const { getColor } = renderingContext;
-  const columnValueFormatter = getColumnValueStaticFormatter();
+  const columnValueFormatter = getColumnValueFormatter();
 
   const { chartColumns, series, seriesColors } = getTwoDimensionalChartSeries(
     data,
@@ -75,17 +72,17 @@ export const StaticRowChart = ({
     columnValueFormatter,
   );
   const groupedData = getGroupedDataset(
-    data.rows,
+    data,
     chartColumns,
     settings,
     columnValueFormatter,
   );
-  const labelsFormatter = getLabelsStaticFormatter(chartColumns, settings);
+  const labelsFormatter = getLabelsFormatter(chartColumns, settings);
   const goal = getChartGoal(settings);
   const theme = getStaticChartTheme(getColor);
   const stackOffset = getStackOffset(settings);
 
-  const tickFormatters = getStaticFormatters(chartColumns, settings);
+  const tickFormatters = getFormatters(chartColumns, settings);
 
   const { xLabel, yLabel } = getLabels(settings);
 
@@ -93,7 +90,7 @@ export const StaticRowChart = ({
   const xValueRange = getXValueRange(settings);
   const labelledSeries = getLabelledSeries(settings, series);
 
-  const legendItems = getLegendItems(series, seriesColors, settings);
+  const legendItems = getLegendItems(series, seriesColors);
   const legend = calculateLegendRows({
     items: legendItems,
     width,
@@ -150,6 +147,8 @@ export const StaticRowChart = ({
           height={fullChartHeight}
           width={width}
           preserveAspectRatio="xMinYMin slice"
+          fill={renderingContext.getColor("text-secondary")}
+          opacity={0.2}
         />
       )}
     </svg>

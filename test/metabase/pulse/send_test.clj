@@ -21,8 +21,28 @@
 (use-fixtures :each
   (fn warn-possible-rebuild
     [thunk]
-    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `yarn build-static-viz`\n\n"
+    (testing "[PRO TIP] If this test fails, you may need to rebuild the bundle with `bun run build-static-viz`\n\n"
       (thunk))))
+
+(deftest channel-recipients-includes-channel-id-test
+  (testing "Slack channel-recipients includes channel_id when present in pulse_channel details"
+    (is (= [{:type    :notification-recipient/raw-value
+             :details {:value "#my-channel" :channel_id "C0ABC123"}}]
+           (#'pulse.send/channel-recipients
+            {:channel_type "slack"
+             :details      {:channel "#my-channel" :channel_id "C0ABC123"}}))))
+  (testing "Slack channel-recipients omits channel_id when absent from pulse_channel details"
+    (is (= [{:type    :notification-recipient/raw-value
+             :details {:value "#my-channel"}}]
+           (#'pulse.send/channel-recipients
+            {:channel_type "slack"
+             :details      {:channel "#my-channel"}}))))
+  (testing "Email recipients are unaffected"
+    (is (= [{:type    :notification-recipient/raw-value
+             :details {:value "test@example.com"}}]
+           (#'pulse.send/channel-recipients
+            {:channel_type "email"
+             :recipients   [{:email "test@example.com"}]})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Util Fns & Macros                                                |
@@ -573,10 +593,10 @@
       (with-pulse-for-card [{pulse-id :id} {:card card-id, :pulse {:alert_condition  "goal"
                                                                    :alert_first_only false
                                                                    :alert_above_goal true}}]
-        (let [channel-messsages (pulse.test-util/with-captured-channel-send-messages!
-                                  (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id)))]
+        (let [channel-messages (pulse.test-util/with-captured-channel-send-messages!
+                                 (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id)))]
           (is (= (rasta-alert-message {:subject "Alert: Test card has reached its goal"})
-                 (mt/summarize-multipart-single-email (-> channel-messsages :channel/email first) test-card-regex))))))))
+                 (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) test-card-regex))))))))
 
 (deftest nonuser-email-test
   (testing "Both users and Nonusers get an email, with unsubscribe text for nonusers"
@@ -678,3 +698,18 @@
     (is (empty? (-> (pulse.test-util/with-captured-channel-send-messages!
                       (pulse.send/send-pulse! (models.pulse/retrieve-notification pulse-id)))
                     :channel/email)))))
+
+(deftest send-skip-alert-test
+  (testing "alerts are skipped (#63189)"
+    (let [pulse-sent-called? (atom false)]
+      (with-redefs [pulse.send/send-pulse!* (fn [& _args])]
+        (mt/with-temp [:model/Pulse {pulse-id :id
+                                     :as pulse}   {:creator_id      (mt/user->id :rasta)
+                                                   :name            (mt/random-name)
+                                                   :alert_condition "rows"}
+                       :model/PulseChannel _      {:pulse_id       pulse-id
+                                                   :channel_type   :slack
+                                                   :enabled        true
+                                                   :details        {:channel "#random"}}]
+          (pulse.send/send-pulse! pulse)
+          (is (false? @pulse-sent-called?)))))))

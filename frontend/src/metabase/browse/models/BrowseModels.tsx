@@ -2,23 +2,21 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  skipToken,
-  useListDatabasesQuery,
-  useListRecentsQuery,
-} from "metabase/api";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { skipToken, useListRecentsQuery } from "metabase/api";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDocsUrl } from "metabase/common/hooks";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
-import { useSelector } from "metabase/lib/redux";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
 } from "metabase/plugins";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getIsEmbeddingIframe } from "metabase/selectors/embed";
+import {
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
 import {
   ActionIcon,
   Box,
@@ -31,13 +29,9 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
-import {
-  BrowseContainer,
-  BrowseHeader,
-  BrowseMain,
-  BrowseSection,
-} from "../components/BrowseContainer.styled";
+import S from "../components/BrowseContainer.module.css";
 
 import { ModelsVideo } from "./EmptyStates";
 import { ModelExplanationBanner } from "./ModelExplanationBanner";
@@ -54,7 +48,6 @@ const {
 } = PLUGIN_CONTENT_VERIFICATION;
 
 export const BrowseModels = () => {
-  const { data } = useListDatabasesQuery();
   const [modelFilters, setModelFilters] = useModelFilterSettings();
   const { isLoading, error, models, recentModels, hasVerifiedModels } =
     useFilteredModels(modelFilters);
@@ -64,18 +57,29 @@ export const BrowseModels = () => {
   const isEmpty = !isLoading && !error && models.length === 0;
   const titleId = useMemo(() => _.uniqueId("browse-models"), []);
 
-  const databases = data?.data ?? [];
-  const hasDataAccess = getHasDataAccess(databases);
-  const hasNativeWrite = getHasNativeWrite(databases);
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
   const isEmbeddingIframe = useSelector(getIsEmbeddingIframe);
 
   const canCreateNewModel =
     !isEmbeddingIframe && hasDataAccess && hasNativeWrite;
 
   return (
-    <BrowseContainer aria-labelledby={titleId}>
-      <BrowseHeader role="heading" data-testid="browse-models-header">
-        <BrowseSection>
+    <Flex
+      className={S.browseContainer}
+      flex={1}
+      direction="column"
+      wrap="nowrap"
+      pt="md"
+      aria-labelledby={titleId}
+    >
+      <Flex
+        className={S.browseHeader}
+        direction="column"
+        role="heading"
+        data-testid="browse-models-header"
+      >
+        <Flex maw="64rem" mx="auto" w="100%">
           <Flex
             w="100%"
             h="2.25rem"
@@ -83,13 +87,9 @@ export const BrowseModels = () => {
             justify="space-between"
             align="center"
           >
-            <Title order={2} c="text-dark" id={titleId}>
+            <Title order={2} c="text-primary" id={titleId}>
               <Group gap="sm">
-                <Icon
-                  size={24}
-                  color="var(--mb-color-icon-primary)"
-                  name="model"
-                />
+                <Icon size={24} c="icon-brand" name="model" />
                 {t`Models`}
               </Group>
             </Title>
@@ -116,10 +116,10 @@ export const BrowseModels = () => {
               )}
             </Group>
           </Flex>
-        </BrowseSection>
-      </BrowseHeader>
-      <BrowseMain>
-        <BrowseSection>
+        </Flex>
+      </Flex>
+      <Flex className={S.browseMain} direction="column" wrap="nowrap" flex={1}>
+        <Flex maw="64rem" mx="auto" w="100%">
           <Stack mb="lg" gap="md" w="100%">
             {isEmpty ? (
               <Stack gap="lg" align="center" data-testid="empty-state">
@@ -163,9 +163,9 @@ export const BrowseModels = () => {
               </>
             )}
           </Stack>
-        </BrowseSection>
-      </BrowseMain>
-    </BrowseContainer>
+        </Flex>
+      </Flex>
+    </Flex>
   );
 };
 

@@ -5,8 +5,8 @@ import { Route } from "react-router";
 import { mockSettings } from "__support__/settings";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
-import type { AppErrorDescriptor } from "metabase-types/store";
-import { createMockAppState } from "metabase-types/store/mocks";
+import type { AppErrorDescriptor } from "metabase/redux/store";
+import { createMockAppState } from "metabase/redux/store/mocks";
 
 import PublicApp from "./PublicApp";
 
@@ -80,9 +80,9 @@ describe("PublicApp", () => {
     expect(screen.getByText("Powered by")).toBeInTheDocument();
   });
 
-  it("renders not found page on error", () => {
+  it("renders not found page on error", async () => {
     setup({ error: { status: 404 } });
-    expect(screen.getByText("Not found")).toBeInTheDocument();
+    expect(await screen.findByText("Not found")).toBeInTheDocument();
     expect(screen.queryByTestId("test-content")).not.toBeInTheDocument();
   });
 

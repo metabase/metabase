@@ -1,34 +1,25 @@
-import { useState } from "react";
-
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
-import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
-import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { DashboardSubscriptionMenuItem } from "metabase/notifications/NotificationsActionsMenu/DashboardSubscriptionMenuItem";
+import { getIsDashCardsRunning } from "metabase/dashboard/selectors";
+import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { Flex, Menu } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import type { Dashboard } from "metabase-types/api";
+
+import { useSharingModal } from "../../hooks/use-sharing-modal";
 
 import { EmbedMenuItem } from "./MenuItems/EmbedMenuItem";
 import { ExportPdfMenuItem } from "./MenuItems/ExportPdfMenuItem";
 import { PublicLinkMenuItem } from "./MenuItems/PublicLinkMenuItem";
+import { PublicLinkModals } from "./PublicLinkModals";
 import { SharingMenu } from "./SharingMenu";
-import { SharingModals } from "./SharingModals";
 import type { DashboardSharingModalType } from "./types";
 
 export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
-  const dispatch = useDispatch();
-
-  const isDashboardSubscriptionSidebarOpen = useSelector(
-    getIsDashboardSubscriptionSidebarOpen,
-  );
-  const toggleSubscriptionSidebar = () =>
-    dispatch(
-      setDashboardSubscriptionSidebarOpen(!isDashboardSubscriptionSidebarOpen),
-    );
-
-  const [modalType, setModalType] = useState<DashboardSharingModalType | null>(
-    null,
-  );
+  const { modalType, setModalType } =
+    useSharingModal<DashboardSharingModalType>({
+      resource: dashboard,
+      resourceType: "dashboard",
+    });
 
   const hasPublicLink = !!dashboard?.public_uuid;
   const isArchived = dashboard.archived;
@@ -36,6 +27,7 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
     dashboard.collection && isInstanceAnalyticsCollection(dashboard.collection);
 
   const canShare = !isAnalytics;
+  const isDashCardsRunning = useSelector(getIsDashCardsRunning);
 
   if (isArchived) {
     return null;
@@ -44,11 +36,7 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   return (
     <Flex>
       <SharingMenu>
-        <DashboardSubscriptionMenuItem
-          onClick={toggleSubscriptionSidebar}
-          dashboard={dashboard}
-        />
-        <ExportPdfMenuItem dashboard={dashboard} />
+        <ExportPdfMenuItem dashboard={dashboard} loading={isDashCardsRunning} />
         {canShare && (
           <>
             <Menu.Divider />
@@ -56,11 +44,13 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
               hasPublicLink={hasPublicLink}
               onClick={() => setModalType("dashboard-public-link")}
             />
-            <EmbedMenuItem onClick={() => setModalType("dashboard-embed")} />
+            <EmbedMenuItem
+              onClick={() => setModalType(GUEST_EMBED_EMBEDDING_TYPE)}
+            />
           </>
         )}
       </SharingMenu>
-      <SharingModals
+      <PublicLinkModals
         modalType={modalType}
         dashboard={dashboard}
         onClose={() => setModalType(null)}

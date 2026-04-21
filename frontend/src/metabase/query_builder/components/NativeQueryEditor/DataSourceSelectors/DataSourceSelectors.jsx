@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { getNativeQueryLanguage } from "metabase/lib/engine";
+import { getNativeQueryLanguage } from "metabase/databases/utils/engine";
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
@@ -21,6 +21,7 @@ const DataSourceSelectorsPropTypes = {
   setTableId: PropTypes.func,
   editorContext: PropTypes.oneOf(["action", "question"]),
   databaseIsDisabled: PropTypes.func,
+  databaseDisabledTooltip: PropTypes.func,
 };
 
 const PopulatedDataSourceSelectorsPropTypes = {
@@ -32,6 +33,7 @@ const PopulatedDataSourceSelectorsPropTypes = {
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
   databaseIsDisabled: PropTypes.func,
+  databaseDisabledTooltip: PropTypes.func,
 };
 
 const DatabaseSelectorPropTypes = {
@@ -40,6 +42,7 @@ const DatabaseSelectorPropTypes = {
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
   databaseIsDisabled: PropTypes.func,
+  databaseDisabledTooltip: PropTypes.func,
 };
 
 const SingleDatabaseNamePropTypes = {
@@ -58,7 +61,7 @@ const PlaceholderPropTypes = {
   editorContext: PropTypes.oneOf(["action", "question"]),
 };
 
-const DataSourceSelectors = ({
+export const DataSourceSelectors = ({
   isNativeEditorOpen,
   query,
   question,
@@ -67,6 +70,7 @@ const DataSourceSelectors = ({
   setTableId,
   editorContext,
   databaseIsDisabled,
+  databaseDisabledTooltip,
 }) => {
   const database = question.database();
 
@@ -74,7 +78,7 @@ const DataSourceSelectors = ({
     const allDatabases = query
       .metadata()
       .databasesList({ savedQuestions: false })
-      .filter((db) => db.canWrite());
+      .filter((db) => db.canWrite() && !db.is_audit);
 
     if (editorContext === "action") {
       return allDatabases.filter((database) => database.hasActionsEnabled());
@@ -101,6 +105,7 @@ const DataSourceSelectors = ({
       setDatabaseId={setDatabaseId}
       setTableId={setTableId}
       databaseIsDisabled={databaseIsDisabled}
+      databaseDisabledTooltip={databaseDisabledTooltip}
     />
   );
 };
@@ -115,6 +120,7 @@ const PopulatedDataSourceSelectors = ({
   setDatabaseId,
   setTableId,
   databaseIsDisabled,
+  databaseDisabledTooltip,
 }) => {
   const dataSourceSelectors = [];
 
@@ -132,6 +138,7 @@ const PopulatedDataSourceSelectors = ({
         readOnly={readOnly}
         setDatabaseId={setDatabaseId}
         databaseIsDisabled={databaseIsDisabled}
+        databaseDisabledTooltip={databaseDisabledTooltip}
       />,
     );
   } else if (database) {
@@ -167,6 +174,7 @@ const DatabaseSelector = ({
   readOnly,
   setDatabaseId,
   databaseIsDisabled,
+  databaseDisabledTooltip,
 }) => (
   <div
     className={cx(
@@ -174,7 +182,8 @@ const DatabaseSelector = ({
       QueryBuilderS.GuiBuilderData,
       CS.flex,
       CS.alignCenter,
-      CS.ml2,
+      CS.ml1,
+      readOnly && CS.pointerEventsNone,
     )}
     data-testid="gui-builder-data"
   >
@@ -185,6 +194,7 @@ const DatabaseSelector = ({
       isInitiallyOpen={database == null && databases.length > 1}
       readOnly={readOnly}
       databaseIsDisabled={databaseIsDisabled}
+      databaseDisabledTooltip={databaseDisabledTooltip}
     />
   </div>
 );
@@ -193,7 +203,7 @@ DatabaseSelector.propTypes = DatabaseSelectorPropTypes;
 
 const SingleDatabaseName = ({ database }) => (
   <Flex
-    h="55px"
+    h="3rem"
     px="md"
     align="center"
     fw="bold"
@@ -212,7 +222,7 @@ const TableSelector = ({ database, readOnly, selectedTable, setTableId }) => (
       QueryBuilderS.GuiBuilderData,
       CS.flex,
       CS.alignCenter,
-      CS.ml2,
+      CS.ml1,
     )}
     data-testid="gui-builder-data"
   >
@@ -238,7 +248,7 @@ const Placeholder = ({ query, editorContext }) => {
   return (
     <Flex
       align="center"
-      h="55px"
+      h="3rem"
       className={cx(CS.textNoWrap, CS.ml2, CS.px2, CS.textMedium)}
     >
       {t`This question is written in ${language}.`}
@@ -247,5 +257,3 @@ const Placeholder = ({ query, editorContext }) => {
 };
 
 Placeholder.propTypes = PlaceholderPropTypes;
-
-export default DataSourceSelectors;

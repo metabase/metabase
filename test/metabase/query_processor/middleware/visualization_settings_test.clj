@@ -7,16 +7,16 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.middleware.visualization-settings :as viz-settings]
-   [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
 (defn- update-viz-settings
   ([query] (update-viz-settings query true))
   ([query remove-global?]
-   (qp.store/with-metadata-provider (or (:lib/metadata query)
-                                        (mt/id))
-     (cond-> (:viz-settings ((viz-settings/update-viz-settings (lib/->legacy-MBQL query) identity) {}))
+   (let [mp    (or (:lib/metadata query)
+                   meta/metadata-provider)
+         query (lib/query mp query)]
+     (cond-> (:viz-settings ((viz-settings/update-viz-settings query identity) {}))
        remove-global?
        (dissoc ::mb.viz/global-column-settings)))))
 
@@ -98,7 +98,11 @@
             expected (-> (processed-viz-settings 1 2)
                          (assoc-in [::mb.viz/column-settings {::mb.viz/field-id 2} ::mb.viz/scale] 10)
                          (assoc-in [::mb.viz/column-settings {::mb.viz/field-id 3} ::mb.viz/number-style] "percent"))]
-        (is (= expected result))))
+        (is (= expected result))))))
+
+(deftest ^:parallel card-viz-settings-test-2
+  (testing "Field settings in the DB are incorporated into visualization settings with a lower
+               precedence than card settings"
     (testing "for an unsaved card"
       (let [viz-settings (into {} (processed-viz-settings 1 2))
             query        (lib/query
@@ -110,7 +114,7 @@
                              (assoc-in [::mb.viz/column-settings {::mb.viz/field-id 3} ::mb.viz/number-style] "percent"))]
         (is (= expected result))))))
 
-(deftest ^:parallel card-viz-settings-test-2
+(deftest ^:parallel card-viz-settings-test-3
   (testing "Field settings in the DB are incorporated into visualization settings with a lower
                precedence than card settings"
     (testing "for a saved card"
@@ -125,7 +129,11 @@
             expected (-> (processed-viz-settings 1 2)
                          (assoc-in [::mb.viz/column-settings {::mb.viz/field-id 2} ::mb.viz/scale] 10)
                          (assoc-in [::mb.viz/column-settings {::mb.viz/field-id 3} ::mb.viz/number-style] "percent"))]
-        (is (= expected result))))
+        (is (= expected result))))))
+
+(deftest ^:parallel card-viz-settings-test-4
+  (testing "Field settings in the DB are incorporated into visualization settings with a lower
+               precedence than card settings"
     (testing "for an unsaved card"
       (let [viz-settings (into {} (processed-viz-settings 1 2))
             query        (lib/query

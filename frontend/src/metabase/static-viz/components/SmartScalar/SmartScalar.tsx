@@ -38,12 +38,12 @@ export function SmartScalar({
       fontSize: "14px",
     },
     value: {
-      color: getColor("text-dark"),
+      color: getColor("text-primary"),
       fontSize: "24px",
       fontWeight: 700,
     },
     date: {
-      color: getColor("text-dark"),
+      color: getColor("text-primary"),
       fontWeight: 700,
     },
     comparisonList: {
@@ -106,20 +106,16 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
       marginRight: "6px",
     },
     percentChange: {
-      color: comparison.changeColor || getColor("text-light"),
+      color: comparison.changeColor || getColor("text-tertiary"),
       fontWeight: 900,
-    },
-    separator: {
-      color: getColor("text-light"),
-      fontSize: "10px",
-      margin: "0 2px",
+      marginRight: 4,
     },
     comparisonDescription: {
-      color: getColor("text-medium"),
+      color: getColor("text-secondary"),
       fontWeight: 700,
     },
     comparisonValue: {
-      color: getColor("text-light"),
+      color: getColor("text-tertiary"),
       fontWeight: 700,
     },
   };
@@ -129,7 +125,6 @@ function Comparison({ comparison, renderingContext }: ComparisonProps) {
       {!!icon && <span style={styles.icon}>{icon}</span>}
       <span>
         <span style={styles.percentChange}>{changeDisplayValue}</span>
-        <span style={styles.separator}> • </span>
         <span style={styles.comparisonDescription}>
           {`${comparison.comparisonDescStr}: `}
         </span>

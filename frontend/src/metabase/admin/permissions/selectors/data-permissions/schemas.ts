@@ -12,7 +12,7 @@ import type Database from "metabase-lib/v1/metadata/Database";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
-import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "../../constants/messages";
+import { Messages } from "../../constants/messages";
 import {
   limitDatabasePermission,
   navigateToGranularPermissions,
@@ -21,6 +21,7 @@ import type {
   DataPermissionValue,
   DatabaseEntityId,
   PermissionSectionConfig,
+  SpecialGroupType,
 } from "../../types";
 import { DataPermission, DataPermissionType } from "../../types";
 import {
@@ -98,7 +99,9 @@ const buildAccessPermission = (
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
     isDisabled: isAdmin,
-    disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
+    disabledTooltip: isAdmin
+      ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+      : null,
     isHighlighted: isAdmin,
     value: accessPermissionValue,
     warning: accessPermissionWarning,
@@ -189,15 +192,29 @@ const buildNativePermission = (
   };
 };
 
-export const buildSchemasPermissions = (
-  entityId: DatabaseEntityId,
-  groupId: number,
-  isAdmin: boolean,
-  permissions: GroupsPermissions,
-  originalPermissions: GroupsPermissions,
-  defaultGroup: Group,
-  database: Database,
-): PermissionSectionConfig[] => {
+export const buildSchemasPermissions = ({
+  entityId,
+  groupId,
+  groupType,
+  permissions,
+  originalPermissions,
+  defaultGroup,
+  database,
+  permissionView,
+  showTransformPermissions,
+}: {
+  entityId: DatabaseEntityId;
+  groupId: number;
+  groupType: SpecialGroupType;
+  permissions: GroupsPermissions;
+  originalPermissions: GroupsPermissions;
+  defaultGroup: Group;
+  database: Database;
+  permissionView: "group" | "database";
+  showTransformPermissions: boolean;
+}): PermissionSectionConfig[] => {
+  const isAdmin = groupType === "admin";
+
   const accessPermission = buildAccessPermission(
     entityId,
     groupId,
@@ -225,14 +242,16 @@ export const buildSchemasPermissions = (
   return _.compact([
     shouldShowViewDataColumn && accessPermission,
     nativePermission,
-    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions(
+    ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.getFeatureLevelDataPermissions({
       entityId,
       groupId,
-      isAdmin,
+      groupType,
       permissions,
-      accessPermission.value,
+      dataAccessPermissionValue: accessPermission.value,
       defaultGroup,
-      "schemas",
-    ),
+      permissionSubject: "schemas",
+      permissionView,
+      showTransformPermissions,
+    }),
   ]);
 };

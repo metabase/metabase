@@ -24,6 +24,13 @@ export type GroupInfo = {
   id: GroupId;
   name: string;
   member_count: number;
+  magic_group_type:
+    | "all-internal-users"
+    | "admin"
+    | "all-external-users"
+    | "data-analyst"
+    | null;
+  is_tenant_group?: boolean;
 };
 
 export type Group = GroupInfo & {
@@ -35,6 +42,7 @@ export type GroupListQuery = GroupInfo;
 export type BaseGroupInfo = {
   id: GroupId;
   name: string;
+  is_tenant_group?: boolean;
 };
 
 export type ListUserMembershipsResponse = Record<User["id"], Membership[]>;

@@ -2,12 +2,13 @@ import type {
   CardDisplayType,
   CardId,
   CardType,
-  CollectionId,
   DashboardId,
   DatasetQuery,
+  DraftTransform,
   PaginationResponse,
   RowValue,
-  SearchModel,
+  SuggestedTransform,
+  Transform,
   UnsavedCard,
   Version,
 } from ".";
@@ -20,9 +21,36 @@ export type MetabotFeedbackType =
 
 /* Metabot v3 - Base Types */
 
+export type MetabotCodeEditorBufferContext = {
+  id: string;
+  source: Record<string, unknown> & {
+    language: "sql";
+    database_id: number | null;
+  };
+  cursor: { line: number; column: number };
+  selection?: {
+    text: string;
+    start: { line: number; column: number };
+    end: { line: number; column: number };
+  };
+};
+
+export type MetabotCodeEditorContext = {
+  type: "code_editor";
+  buffers: MetabotCodeEditorBufferContext[];
+};
+
+export type MetabotUserIsViewingContext = Array<
+  MetabotEntityInfo | MetabotCodeEditorContext
+>;
+
 export type MetabotChatContext = {
-  user_is_viewing: MetabotEntityInfo[];
+  user_is_viewing: MetabotUserIsViewingContext;
   current_time_with_timezone: string;
+  default_database_id?: number;
+  workspace_id?: number;
+  capabilities: string[];
+  code_editor?: MetabotCodeEditorContext;
 };
 
 export type MetabotTool = {
@@ -56,18 +84,6 @@ export type MetabotHistoryEntry =
 export type MetabotHistory = any[];
 
 export type MetabotStateContext = Record<string, any>;
-
-export type MetabotMessageReaction = {
-  type: "metabot.reaction/message";
-  message: string;
-};
-
-export type MetabotRedirectReaction = {
-  type: "metabot.reaction/redirect";
-  url: string;
-};
-
-export type MetabotReaction = MetabotMessageReaction | MetabotRedirectReaction;
 
 export type MetabotColumnType =
   | "number"
@@ -135,11 +151,24 @@ export type MetabotDocumentInfo = {
   id: number;
 };
 
+export type MetabotTransformInfo =
+  | ({ type: "transform"; error?: string } & Transform) // edit
+  | ({ type: "transform"; error?: string } & SuggestedTransform) // edit saved suggested
+  | ({ type: "transform"; error?: string } & DraftTransform); // edit unsaved suggested
+
 export type MetabotEntityInfo =
   | MetabotCardInfo
   | MetabotDashboardInfo
   | MetabotAdhocQueryInfo
-  | MetabotDocumentInfo;
+  | MetabotDocumentInfo
+  | MetabotTransformInfo;
+
+export type MetabotCodeEdit = {
+  buffer_id: string;
+  mode: "rewrite";
+  value: string;
+  active?: boolean;
+};
 
 /* Metabot v3 - API Request Types */
 
@@ -150,14 +179,36 @@ export type MetabotAgentRequest = {
   state: MetabotStateContext;
   conversation_id: string; // uuid
   metabot_id?: string;
+  profile_id?: string;
 };
 
 export type MetabotAgentResponse = {
-  reactions: MetabotReaction[];
   history: MetabotHistory[];
   conversation_id: string;
   state: any;
 };
+
+export type MetabotProvider =
+  | "metabase"
+  | "anthropic"
+  | "openai"
+  | "openrouter";
+
+export interface MetabotSettingsResponse {
+  value: string | null;
+  "api-key-error"?: string | null;
+  models: {
+    id: string;
+    display_name: string;
+    group?: string | null;
+  }[];
+}
+
+export interface UpdateMetabotSettingsRequest {
+  provider: MetabotProvider;
+  model?: string;
+  "api-key"?: string | null;
+}
 
 /* Metabot - Suggested Prompts */
 
@@ -218,19 +269,13 @@ export type MetabotName = string;
 
 export type MetabotInfo = {
   id: MetabotId;
+  entity_id: string;
   name: MetabotName;
-};
-
-export type MetabotEntity = {
-  name: string;
-  id: CollectionId;
-  model: Extract<SearchModel, "collection">;
-  collection_id: CollectionId;
-  collection_name: string;
-};
-
-export type MetabotApiEntity = Omit<MetabotEntity, "id"> & {
-  model_id: MetabotEntity["id"];
+  description: string;
+  use_verified_content: boolean;
+  collection_id: number | null;
+  created_at: string;
+  updated_at: string;
 };
 
 /* Metabot v3 - Document Types */
@@ -246,8 +291,71 @@ export interface MetabotGenerateContentResponse {
   error: string | null;
 }
 
-/* Metabot v3 - Add-on Purchase Types */
+/* Metabot v3 - Data Part Types */
 
-export interface PurchaseMetabotAddOnRequest {
-  terms_of_service: boolean;
+export type MetabotTodoItem = {
+  id: string;
+  content: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  priority: "high" | "medium" | "low";
+};
+
+/* Metabot v3 - Slack Settings */
+
+export type MetabotSlackSettings =
+  | {
+      "slack-connect-client-id": string;
+      "slack-connect-client-secret": string;
+      "metabot-slack-signing-secret": string;
+    }
+  | {
+      "slack-connect-client-id": null;
+      "slack-connect-client-secret": null;
+      "metabot-slack-signing-secret": null;
+    };
+
+/* Metabot v3 - Group Permissions */
+
+export enum AIToolKey {
+  Metabot = "permission/metabot",
+  ChatAndNLQ = "permission/metabot-nlq",
+  SQLGeneration = "permission/metabot-sql-generation",
+  OtherTools = "permission/metabot-other-tools",
 }
+
+export type MetabotGroupPermission = {
+  group_id: number;
+  perm_type: AIToolKey;
+  perm_value: "yes" | "no";
+};
+
+export type MetabotPermissionsResponse = {
+  permissions: MetabotGroupPermission[];
+};
+
+export type UpdateMetabotPermissionsRequest = {
+  permissions: MetabotGroupPermission[];
+};
+
+export type UserMetabotPermissions = {
+  metabot: "yes" | "no";
+  "metabot-sql-generation": "yes" | "no";
+  "metabot-nlq": "yes" | "no";
+  "metabot-other-tools": "yes" | "no";
+};
+
+export type UserMetabotPermissionsResponse = {
+  permissions: UserMetabotPermissions;
+};
+
+export type MetabotLimitPeriod = "daily" | "weekly" | "monthly";
+export type MetabotLimitType = "tokens" | "messages";
+
+/* Metabot v3 - Usage Limits */
+
+export type MetabotInstanceLimit = { max_usage: number | null };
+export type MetabotGroupLimit = { group_id: number; max_usage: number };
+export type MetabotTenantLimit = {
+  tenant_id: number;
+  max_usage: number | null;
+};

@@ -7,7 +7,7 @@ on:
 jobs:
   files-changed:
     name: Check which files changed
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 3
     outputs:
       frontend_ci: ${{ steps.changes.outputs.frontend_ci }}
@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
-        uses: dorny/paths-filter@v3.0.0
+        uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0.0
         id: changes
         with:
           token: ${{ github.token }}
@@ -25,7 +25,7 @@ jobs:
   visual-test:
     needs: files-changed
     if: needs.files-changed.outputs.frontend_ci == 'true' || needs.files-changed.outputs.frontend_sources == 'true' || needs.files-changed.outputs.frontend_loki_ci == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     services:
       docker:
         image: docker:19.03.12
@@ -47,24 +47,16 @@ jobs:
 
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "cljs"
 
       - name: Compile CLJS
-        run: NODE_ENV=development yarn build-pure:cljs
-
-      - name: Build Storybook
-        # We won't be able to use Storybook play's `userEvent` with production build
-        # see https://github.com/storybookjs/storybook/issues/19758
-        run: NODE_ENV=development yarn build-storybook
+        run: NODE_ENV=development bun run build-pure:cljs
 
       - name: Run Loki Visual Tests
-        run: |
-          yarn loki --requireReference --reactUri file:./storybook-static --chromeFlags='--headless --disable-gpu' --verboseRenderer
+        run: bun run test-visual:loki:ci
 
       - name: Generate Visual Report on Failure
         if: failure()
-        run: yarn test-visual:loki-report
+        run: bun run test-visual:loki-report
 
       - name: Upload Artifact
         id: artifact-upload-step

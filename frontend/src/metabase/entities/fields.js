@@ -9,11 +9,16 @@ import {
   useGetFieldQuery,
   useGetFieldValuesQuery,
 } from "metabase/api";
+import { FieldSchema } from "metabase/schema";
+import {
+  getMetadata,
+  getMetadataUnfiltered,
+} from "metabase/selectors/metadata";
 import {
   createEntity,
   entityCompatibleQuery,
   notify,
-} from "metabase/lib/entities";
+} from "metabase/utils/entities";
 import {
   compose,
   createAction,
@@ -23,12 +28,7 @@ import {
   withAction,
   withCachedDataAndRequestState,
   withNormalize,
-} from "metabase/lib/redux";
-import { FieldSchema } from "metabase/schema";
-import {
-  getMetadata,
-  getMetadataUnfiltered,
-} from "metabase/selectors/metadata";
+} from "metabase/utils/redux";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
 
@@ -50,7 +50,7 @@ export const ADD_FIELDS = "metabase/entities/fields/ADD_FIELDS";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Fields = createEntity({
+export const Fields = createEntity({
   name: "fields",
   path: "/api/field",
   schema: FieldSchema,
@@ -256,5 +256,3 @@ const transformFieldValuesData = (data, table_id) => {
   // table_id is required for uniqueFieldId as it's a way to know if field is virtual
   return { id: field_id, ...rest, ...(table_id && { table_id }) };
 };
-
-export default Fields;

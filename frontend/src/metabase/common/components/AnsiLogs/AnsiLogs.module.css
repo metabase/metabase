@@ -1,0 +1,64 @@
+.ansiLogs {
+  :global {
+    .react-ansi-style-bold {
+      font-weight: bold;
+    }
+
+    .react-ansi-style-dim {
+      font-weight: lighter;
+    }
+
+    .react-ansi-style-italic {
+      font-style: italic;
+    }
+
+    .react-ansi-style-inverse {
+      color: var(--mb-color-text-primary);
+      background-color: var(--mb-color-background-primary);
+    }
+
+    .react-ansi-style-hidden {
+      color: transparent;
+    }
+
+    .react-ansi-style-underline {
+      text-decoration: underline;
+    }
+
+    .react-ansi-style-strikethrough {
+      text-decoration: line-through;
+    }
+
+    .react-ansi-style-black {
+      color: var(--mb-color-text-primary);
+    }
+
+    .react-ansi-style-white {
+      color: var(--mb-color-text-primary-inverse);
+    }
+
+    .react-ansi-style-gray {
+      color: var(--mb-color-text-tertiary);
+    }
+
+    .react-ansi-style-red {
+      color: var(--mb-color-saturated-red);
+    }
+
+    .react-ansi-style-green {
+      color: var(--mb-color-saturated-green);
+    }
+
+    .react-ansi-style-yellow {
+      color: var(--mb-color-saturated-yellow);
+    }
+
+    .react-ansi-style-blue {
+      color: var(--mb-color-saturated-blue);
+    }
+
+    .react-ansi-style-purple {
+      color: var(--mb-color-saturated-purple);
+    }
+  }
+}

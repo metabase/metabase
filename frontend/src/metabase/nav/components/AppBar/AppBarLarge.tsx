@@ -2,23 +2,21 @@ import { t } from "ttag";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { DETAIL_VIEW_PADDING_LEFT } from "metabase/detail-view/constants";
-import { PLUGIN_METABOT } from "metabase/plugins";
+import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import type { DetailViewState } from "metabase/redux/store";
+import { Box, Flex } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
-import type { DetailViewState } from "metabase-types/store";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
+import { AppSwitcher } from "../AppSwitcher";
 import NewItemButton from "../NewItemButton";
-import { ProfileLink } from "../ProfileLink";
 import { SearchBar } from "../search/SearchBar";
+import { SearchButton } from "../search/SearchButton/SearchButton";
 
-import {
-  AppBarInfoContainer,
-  AppBarLeftContainer,
-  AppBarProfileLinkContainer,
-  AppBarRightContainer,
-  AppBarRoot,
-} from "./AppBarLarge.styled";
+import { AppBarInfoContainer, AppBarRoot } from "./AppBarLarge.styled";
 import { AppBarLogo } from "./AppBarLogo";
 import { AppBarToggle } from "./AppBarToggle";
 
@@ -29,15 +27,16 @@ export interface AppBarLargeProps {
   isNavBarEnabled?: boolean;
   isMetabotVisible?: boolean;
   isDocumentSidebarOpen?: boolean;
+  isCommentSidebarOpen?: boolean;
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;
   isNewButtonVisible?: boolean;
-  isProfileLinkVisible?: boolean;
+  isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
+  isMetricsViewer?: boolean;
   onToggleNavbar: () => void;
-  onLogout: () => void;
 }
 
 const AppBarLarge = ({
@@ -47,25 +46,34 @@ const AppBarLarge = ({
   isNavBarEnabled,
   isMetabotVisible,
   isDocumentSidebarOpen,
+  isCommentSidebarOpen,
   isLogoVisible,
   isSearchVisible,
   isEmbeddingIframe,
   isNewButtonVisible,
-  isProfileLinkVisible,
+  isAppSwitcherVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
+  isMetricsViewer,
   onToggleNavbar,
-  onLogout,
 }: AppBarLargeProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
+  const { isVisible: isGitSyncVisible } =
+    PLUGIN_REMOTE_SYNC.useGitSyncVisible();
+
+  const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
 
   return (
     <AppBarRoot
       hasSidebarOpen={
-        isNavBarVisible || isMetabotVisible || isDocumentSidebarOpen
+        isNavBarVisible ||
+        isMetabotVisible ||
+        isDocumentSidebarOpen ||
+        isCommentSidebarOpen ||
+        isMetricsViewer
       }
     >
-      <AppBarLeftContainer>
+      <Flex align="center" miw="5rem" flex="1 1 auto">
         <AppBarToggle
           isNavBarEnabled={isNavBarEnabled}
           isNavBarOpen={isNavBarOpen}
@@ -74,7 +82,9 @@ const AppBarLarge = ({
         <AppBarLogo
           isLogoVisible={isLogoVisible}
           isNavBarEnabled={isNavBarEnabled}
+          isGitSyncVisible={isGitSyncVisible}
         />
+        <PLUGIN_REMOTE_SYNC.GitSyncAppBarControls />
         <AppBarInfoContainer
           isVisible={!isNavBarVisible || isQuestionLineageVisible}
         >
@@ -90,22 +100,28 @@ const AppBarLarge = ({
             <CollectionBreadcrumbs />
           ) : null}
         </AppBarInfoContainer>
-      </AppBarLeftContainer>
-      {(isSearchVisible || isNewButtonVisible || isProfileLinkVisible) && (
-        <AppBarRightContainer>
+      </Flex>
+      {(isSearchVisible ||
+        isNewButtonVisible ||
+        isAppSwitcherVisible ||
+        isMetabotEnabled) && (
+        <Flex
+          align="center"
+          gap="sm"
+          justify="flex-end"
+          maw="32.5rem"
+          flex="1 1 auto"
+        >
           {isSearchVisible &&
-            (isEmbeddingIframe ? (
-              <SearchBar />
-            ) : (
-              <PLUGIN_METABOT.SearchButton />
-            ))}
+            (isEmbeddingIframe ? <SearchBar /> : <SearchButton mr="md" />)}
           {isNewButtonVisible && <NewItemButton collectionId={collectionId} />}
-          {isProfileLinkVisible && (
-            <AppBarProfileLinkContainer aria-label={t`Settings menu`}>
-              <ProfileLink onLogout={onLogout} />
-            </AppBarProfileLinkContainer>
+          {<MetabotAppBarButton />}
+          {isAppSwitcherVisible && (
+            <Box c="text-primary" aria-label={t`Settings menu`}>
+              <AppSwitcher />
+            </Box>
           )}
-        </AppBarRightContainer>
+        </Flex>
       )}
     </AppBarRoot>
   );

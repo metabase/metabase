@@ -1,15 +1,22 @@
 import type { CSSProperties } from "react";
 
-import type { ColorName } from "metabase/lib/colors/types";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import type { DeepPartial } from "../types/utils";
 
 import type { MetabaseFontFamily } from "./fonts";
 
+export type MetabaseThemePreset = "light" | "dark";
+
 /**
  * Theme configuration for embedded Metabase components.
  */
 export interface MetabaseTheme {
+  /**
+   * Predefined theme preset to use as a base.
+   */
+  preset?: MetabaseThemePreset;
+
   /**
    * Base font size.
    * Supported units are px, em and rem.
@@ -20,7 +27,6 @@ export interface MetabaseTheme {
   /**
    * Font family that will be used for all text, it defaults to the instance's default font.
    **/
-  // eslint-disable-next-line @typescript-eslint/ban-types -- this is needed to allow any string but keep autocomplete for the built-in ones
   fontFamily?: MetabaseFontFamily | (string & {});
 
   /** Base line height */
@@ -87,6 +93,21 @@ export interface MetabaseColors {
 
   /** Color used to indicate dangerous actions and negative values/trends */
   negative?: string;
+
+  /** Color used to outline elements in focus */
+  focus?: string;
+
+  /** Color used for white text */
+  "text-white"?: string;
+
+  /** Color used for error icons and borders. Defaults to red. */
+  error?: string;
+
+  /** Color used for error backgrounds. Defaults to light red. */
+  "background-error"?: string;
+
+  /** Color used for some button text on hover */
+  "text-hover"?: string;
 }
 
 export type MetabaseColor = keyof MetabaseColors;

@@ -5,15 +5,16 @@
    [metabase.lib.join.util :as lib.join.util]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.ref :as lib.ref]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util.malli :as mu]))
 
-;;; TODO (Cam 6/24/25) -- this is fundamentally broken -- see QUE-1375
 (mu/defn inherited-column? :- :boolean
   "Is the `column` coming directly from a card, a native query, or a previous query stage?"
   [column :- [:map
-              [:lib/source {:optional true} ::lib.schema.metadata/column.source]]]
+              [:lib/source {:optional true} [:maybe ::lib.schema.metadata/column.source]]]]
   (some? (#{:source/card :source/native :source/previous-stage} (:lib/source column))))
 
 (mu/defn inherited-column-name :- [:maybe :string]
@@ -52,7 +53,7 @@
 
   The zero arity is a transducer version."
   ([]
-   (let [deduplicated-name-fn (lib.util/non-truncating-unique-name-generator)]
+   (let [deduplicated-name-fn (lib.util.unique-name-generator/non-truncating-unique-name-generator)]
      (map (fn [col]
             (assoc col
                    :lib/original-name     ((some-fn :lib/original-name :name) col)
@@ -68,14 +69,33 @@
   `:lib/deduplicated-name` to a sequence of columns.
 
     (into [] (add-unique-names-xform) cols)"
-  ([metadata-providerable]
-   (add-source-and-desired-aliases-xform metadata-providerable (lib.util/unique-name-generator)))
+  ([query :- ::lib.schema/query]
+   ;; do not truncate really long aliases coming back from native queries, if the native query returned it then
+   ;; presumably it's ok with the database that ran the query and we need to use the original name to refer back
+   ;; to it in subsequent stages.
+   ;;
+   ;; source alias can be the original name altho I can't really think of a good case for using it in a native
+   ;; query. Thus for something like
+   ;;
+   ;;    SELECT x, x
+   ;;
+   ;; then:
+   ;;
+   ;;    | :lib/source-column-alias | :lib/desired-column-alias |
+   ;;    |--------------------------+---------------------------|
+   ;;    |                        x |                         x |
+   ;;    |                        x |                       x_2 |
+   ;;
+   (let [unique-name-generator (if (lib.util/native-stage? query -1)
+                                 (lib.util.unique-name-generator/non-truncating-unique-name-generator)
+                                 (lib.util.unique-name-generator/unique-name-generator))]
+     (add-source-and-desired-aliases-xform query unique-name-generator)))
 
   ([metadata-providerable :- ::lib.metadata.protocols/metadata-providerable
-    unique-name-fn        :- ::lib.util/unique-name-generator]
+    unique-name-fn        :- :metabase.lib.util.unique-name-generator/unique-name-generator]
    (comp (add-deduplicated-names)
          (map (fn [col]
-                (let [source-alias  ((some-fn :lib/source-column-alias :name) col)
+                (let [source-alias  ((some-fn :lib/source-column-alias :lib/original-name :name) col)
                       desired-alias (unique-name-fn
                                      (lib.join.util/desired-alias metadata-providerable col))]
                   (assoc col
@@ -86,7 +106,7 @@
                                                      [:lib/type [:= :metadata/column]]]
   "For a column that came from a previous stage, change the keys for things that mean 'this happened in the current
   stage' to the equivalent keys that mean 'this happened at some stage in the past' e.g.
-  `:metabase.lib.join/join-alias` and `:lib/expression-name` become `:lib/original-join-alias` and
+  `:lib/join-alias` and `:lib/expression-name` become `:lib/original-join-alias` and
   `:lib/original-expression-name` respectively."
   [col :- [:map
            [:lib/type [:= :metadata/column]]]]
@@ -95,15 +115,27 @@
                         :fk-field-name                    :lib/original-fk-field-name
                         :fk-join-alias                    :lib/original-fk-join-alias
                         :lib/expression-name              :lib/original-expression-name
-                        :metabase.lib.field/binning       :lib/original-binning
-                        :metabase.lib.field/temporal-unit :inherited-temporal-unit
-                        :metabase.lib.join/join-alias     :lib/original-join-alias})
+                        :lib/binning       :lib/original-binning
+                        :lib/temporal-unit :inherited-temporal-unit
+                        :lib/join-alias     :lib/original-join-alias})
       (assoc :lib/breakout? false
              ;; TODO (Cam 6/26/25) -- should we set `:lib/original-display-name` here too?
              :lib/original-name ((some-fn :lib/original-name :name) col)
              ;; desired-column-alias is previous stage => source column alias in next stage
              :lib/source-column-alias ((some-fn :lib/desired-column-alias :lib/source-column-alias :name) col)
              :lib/source :source/previous-stage)
+
+      ;; Native sandboxes need special handling for any type coercions set on the sandboxed table's fields.
+      ;; The columns first appear in the native stage, but we need to propagate the coercion metadata to the next stage
+      ;; so it gets applied in MBQL. After that first propagation, it should always be removed to prevent
+      ;; double-coercion. So sandboxing middleware sets two fields on the metadata: a flag, and the coercion strategy.
+      ;; If the input column has both set, we propagate the strategy into the next stage. The flag is never propagated,
+      ;; so the coercion strategy only reaches one stage after the native sandbox, as desired! See QUE2-376.
+      (dissoc :qp/native-sandbox-column.propagate-coercion?)
+      (cond-> #_col
+       (not (:qp/native-sandbox-column.propagate-coercion? col))
+        (dissoc :qp/native-sandbox-column.force-coercion-strategy))
+
       ;;
       ;; Remove `:lib/desired-column-alias`, which needs to be recalculated in the context
       ;; of what is returned by the current stage, to prevent any confusion; its value is likely wrong now and we

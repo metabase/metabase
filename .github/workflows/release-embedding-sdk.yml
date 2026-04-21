@@ -5,18 +5,12 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Branch we want to release the SDK from"
+        description: "Branch we want to release the SDK from (to release from other branches use the workflow from those branches)"
         type: choice
         required: true
         default: "master"
         options:
           - master
-          - release-x.51.x
-          - release-x.52.x
-          - release-x.53.x
-          - release-x.54.x
-          - release-x.55.x
-          - release-x.56.x
 
 concurrency:
   # We want to ensure only one job is running at a time per branch because
@@ -27,7 +21,7 @@ concurrency:
 jobs:
   workflow-summary:
     name: Log inputs
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
       - name: Generate workflow summary
@@ -43,17 +37,19 @@ jobs:
   send-slack-notification-start:
     name: "Send Slack notification: SDK release started"
     needs: determine-sdk-version
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     outputs:
       slackMessageId: ${{ steps.send-slack-message-start.outputs.result }}
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: release
+          sparse-checkout: |
+            release
+            .github
 
-      - name: Prepare build scripts
-        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
 
       - name: Cache build scripts
         uses: actions/upload-artifact@v4
@@ -100,7 +96,7 @@ jobs:
         "publish-npm",
         "git-tag",
       ]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
@@ -138,7 +134,7 @@ jobs:
     name: "Send Slack notification: SDK release successful"
     needs:
       ["determine-sdk-version", "send-slack-notification-start", "publish-npm"]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     env:
       slackMessageId: ${{ needs.send-slack-notification-start.outputs.slackMessageId }}
@@ -172,7 +168,7 @@ jobs:
             });
 
   determine-sdk-version:
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     outputs:
       sdk_version: ${{ fromJson(steps.new-sdk-version.outputs.result).version }}
@@ -184,8 +180,8 @@ jobs:
         with:
           ref: ${{ inputs.branch }}
 
-      - name: Prepare build scripts
-        run: yarn --cwd release --frozen-lockfile && yarn --cwd release build
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
 
       - name: Get current SDK version
         id: current-sdk-version
@@ -223,7 +219,7 @@ jobs:
 
   check-git-tag:
     needs: determine-sdk-version
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
       tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}
@@ -247,7 +243,7 @@ jobs:
 
   test:
     needs: check-git-tag
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
@@ -260,15 +256,13 @@ jobs:
 
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "release-sdk"
 
       - name: Run unit tests
-        run: yarn embedding-sdk:test-unit
+        run: bun run embedding-sdk:test-unit
 
   build-sdk:
     needs: [test, determine-sdk-version]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     steps:
       - name: Check out the code using the provided branch
@@ -283,23 +277,17 @@ jobs:
 
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: "release-sdk"
 
       - name: Bump published npm package version
         # NOTE: this should happen before "Build SDK bundle" as we inject SDK version into the code during build step
         run: |
           ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ needs.determine-sdk-version.outputs.sdk_version }}
 
-      - name: Update changelog
-        run: |
-          yarn embedding-sdk:generate-changelog -o changelog-diff
-
       - name: Build SDK package
-        run: yarn run build-embedding-sdk-package
+        run: bun run build-embedding-sdk-package
 
       - name: Generate SDK package.json in the build directory
-        run: yarn run embedding-sdk:generate-package
+        run: bun run embedding-sdk:generate-package
 
       - name: Upload built SDK package as artifact
         uses: actions/upload-artifact@v4
@@ -307,15 +295,9 @@ jobs:
           name: metabase-sdk
           path: ./resources/embedding-sdk
 
-      - name: Upload changelog diff
-        uses: actions/upload-artifact@v4
-        with:
-          name: sdk-changelog-diff
-          path: ./changelog-diff
-
   publish-npm:
     needs: [build-sdk, determine-sdk-version]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
       sdk_version: ${{ needs.determine-sdk-version.outputs.sdk_version }}
@@ -341,19 +323,7 @@ jobs:
         run: |
           bash ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ env.sdk_version }}
 
-      - name: Retrieve SDK changelog diff
-        if: inputs.branch != 'master'
-        uses: actions/download-artifact@v4
-        with:
-          name: sdk-changelog-diff
-
-      - name: Update changelog
-        if: inputs.branch != 'master'
-        run: |
-          cat changelog-diff enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md > new-changelog
-          mv new-changelog enterprise/frontend/src/embedding-sdk-bundle/CHANGELOG.md
-
-      - name: Create a PR updating readme + published version, and changelog (using GitHub Metabase Automation account)
+      - name: Create a PR updating readme + published version (using GitHub Metabase Automation account)
         run: |
           git checkout -b update-sdk-version-${{ env.sdk_version }}
 
@@ -377,8 +347,9 @@ jobs:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Edit PR adding useful information (using Metabase bot app)
+        # metabase/embedding team is added automatically as code owner of updated `package.template.json` file
         run: |
-          gh pr edit --add-reviewer @metabase/embedding,albertoperdomo --add-label no-backport
+          gh pr edit --add-reviewer albertoperdomo --add-label no-backport
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
@@ -412,34 +383,24 @@ jobs:
       - name: Publish to NPM
         working-directory: sdk
         run: |
-          echo //registry.npmjs.org/:_authToken=${{ secrets.NPM_RELEASE_TOKEN }} > .npmrc
+          echo //registry.npmjs.org/:_authToken="${NPM_RELEASE_TOKEN}" > .npmrc
 
-          TAG=$(jq -r --null-input \
-            --arg branch "${{ inputs.branch }}" \
-            --arg masterTag "${{ steps.compute-tag.outputs.masterTag }}" '
-            {
-              "master": $masterTag,
-              "release-x.51.x": "51-stable",
-              "release-x.52.x": "52-stable",
-              "release-x.53.x": "53-stable",
-              "release-x.54.x": "54-stable",
-              "release-x.55.x": "55-stable",
-              "release-x.56.x": "56-stable"
-            }[$branch]'
-          )
-
+          TAG="${{ steps.compute-tag.outputs.masterTag }}"
           echo "Resolved npm tag: $TAG"
           npm publish --tag "$TAG"
 
-      - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
-        if: ${{ inputs.branch == 'release-x.56.x' }}
-        working-directory: sdk
-        run: |
-          npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
+        env:
+          NPM_RELEASE_TOKEN: ${{ secrets.NPM_RELEASE_TOKEN }}
+      # ⚠️ This step should only be executed on the latest stable (gold) release branch.
+      # Only uncomment this when the new release branch becomes stable (gold).
+      # - name: Add `latest` tag to the latest release branch (`release-x.55.x`) deployment
+      #   working-directory: sdk
+      #   run: |
+      #     npm dist-tag add @metabase/embedding-sdk-react@${{ env.sdk_version }} latest
 
   git-tag:
     needs: [publish-npm, determine-sdk-version]
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 20
     env:
       tag: embedding-sdk-${{ needs.determine-sdk-version.outputs.sdk_version }}

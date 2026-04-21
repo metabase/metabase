@@ -2,8 +2,8 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { canonicalCollectionId } from "metabase/collections/utils";
-import ModalContent from "metabase/common/components/ModalContent";
-import { getDefaultTimelineIcon } from "metabase/lib/timelines";
+import { ModalContent } from "metabase/common/components/ModalContent";
+import { getDefaultTimelineIcon } from "metabase/common/utils/timelines";
 import type { Collection, TimelineData } from "metabase-types/api";
 
 import TimelineForm from "../TimelineForm";
@@ -12,7 +12,6 @@ export interface NewTimelineModalProps {
   collection: Collection;
   onSubmit: (values: TimelineData, collection: Collection) => void;
   onSubmitSuccess?: () => void;
-  onCancel: () => void;
   onClose?: () => void;
 }
 
@@ -20,7 +19,6 @@ const NewTimelineModal = ({
   collection,
   onSubmit,
   onSubmitSuccess,
-  onCancel,
   onClose,
 }: NewTimelineModalProps): JSX.Element => {
   const initialValues = useMemo(() => {
@@ -40,7 +38,7 @@ const NewTimelineModal = ({
       <TimelineForm
         initialValues={initialValues}
         onSubmit={handleSubmit}
-        onCancel={onCancel}
+        onCancel={onClose}
       />
     </ModalContent>
   );

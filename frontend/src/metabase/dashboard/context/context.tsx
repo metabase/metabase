@@ -13,9 +13,15 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { getTabHiddenParameterSlugs } from "metabase/public/lib/tab-parameters";
-import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
+import type {
+  Dashboard,
+  DashboardCard,
+  DashboardId,
+  ParameterValuesMap,
+} from "metabase-types/api";
+import type { EntityToken } from "metabase-types/api/entity";
 
 import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
@@ -23,19 +29,16 @@ import type { DashboardActionKey } from "../components/DashboardHeader/Dashboard
 import {
   useDashboardFullscreen,
   useDashboardRefreshPeriod,
-  useDashboardTheme,
   useRefreshDashboard,
 } from "../hooks";
 import type { UseAutoScrollToDashcardResult } from "../hooks/use-auto-scroll-to-dashcard";
 import type {
-  CancelledFetchDashboardResult,
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
   EmbedDisplayParams,
   EmbedThemeControls,
   FailedFetchDashboardResult,
   FetchDashboardResult,
-  SuccessfulFetchDashboardResult,
 } from "../types";
 
 import { type ReduxProps, connector } from "./context.redux";
@@ -48,7 +51,7 @@ type DashboardActionButtonList = DashboardActionKey[] | null;
 
 export type DashboardContextOwnProps = {
   dashboardId: DashboardId;
-  parameterQueryParams?: ParameterValues;
+  parameterQueryParams?: ParameterValuesMap;
   onLoad?: (dashboard: Dashboard) => void;
   onError?: (error: unknown) => void;
   onLoadWithoutCards?: (dashboard: Dashboard) => void;
@@ -59,25 +62,30 @@ export type DashboardContextOwnProps = {
   dashcardMenu?: DashboardCardMenu | null;
   dashboardActions?:
     | DashboardActionButtonList
-    | (({
-        isEditing,
-        downloadsEnabled,
-      }: Pick<
-        DashboardContextReturned,
-        "isEditing" | "downloadsEnabled"
-      >) => DashboardActionButtonList);
+    | ((
+        props: Pick<
+          DashboardContextReturned,
+          "isEditing" | "downloadsEnabled" | "withSubscriptions"
+        >,
+      ) => DashboardActionButtonList);
   isDashcardVisible?: (dc: DashboardCard) => boolean;
+  isGuestEmbed?: boolean;
   /**
    * I want this to be optional, and error out when it's not passed, so it's obvious we need to pass it.
    * Forcing passing it isn't ideal since we only need to do this in a couple of places
    */
   onNewQuestion?: () => void;
+  /**
+   * When true, internal click behaviors (dashboard/question links) are preserved
+   * instead of being filtered out. Used by the SDK for internal navigation.
+   */
+  enableEntityNavigation?: boolean;
 };
 
 export type DashboardContextOwnResult = {
-  shouldRenderAsNightMode: boolean;
   dashboardId: DashboardId | null;
   dashboardActions?: DashboardActionButtonList;
+  isEditableDashboard: boolean;
 };
 
 export type DashboardControls = UseAutoScrollToDashcardResult &
@@ -125,18 +133,25 @@ const DashboardContextProviderInner = forwardRef(
 
       children,
 
+      theme = "light",
       background = true,
       bordered = true,
       titled = true,
       font = null,
-      theme: initTheme = "light",
       hideParameters: hide_parameters = null,
       downloadsEnabled = { pdf: true, results: true },
+      /**
+       * TODO: (Kelvin 2025-11-17) See if we could communicate better how these default values are derived from. E.g. some are passed via the SDK props
+       * which already have default values and we're setting another default values here again. One thing we could do is to have a constant file that
+       * multiple places could refer to.
+       */
+      withSubscriptions = false,
       autoScrollToDashcardId = undefined,
       reportAutoScrolledToDashcard = noop,
       cardTitled = true,
       getClickActionMode = undefined,
       withFooter = true,
+      enableEntityNavigation = true, // true in core app, SDK passes it down as false
 
       // redux selectors
       dashboard,
@@ -148,6 +163,7 @@ const DashboardContextProviderInner = forwardRef(
       isLoadingWithoutCards,
       parameters,
       isEmbeddingIframe,
+      isGuestEmbed,
 
       // redux actions
       addCardToDashboard,
@@ -173,6 +189,8 @@ const DashboardContextProviderInner = forwardRef(
     const previousTabId = usePrevious(selectedTabId);
     const previousParameterValues = usePrevious(parameterValues);
 
+    const { token } = useEmbeddingEntityContext();
+
     const { refreshDashboardCardData } = useRefreshDashboard({
       dashboardId,
       parameterQueryParams,
@@ -187,18 +205,6 @@ const DashboardContextProviderInner = forwardRef(
       ref: fullscreenRef,
     } = useDashboardFullscreen();
 
-    const {
-      hasNightModeToggle,
-      isNightMode,
-      onNightModeChange,
-      theme,
-      setTheme,
-    } = useDashboardTheme(initTheme);
-
-    const shouldRenderAsNightMode = Boolean(
-      isNightMode && (isFullscreen || isEmbeddingIframe),
-    );
-
     const handleError = useCallback(
       (error: unknown) => {
         onError?.(error);
@@ -208,7 +214,16 @@ const DashboardContextProviderInner = forwardRef(
     );
 
     const fetchData = useCallback(
-      async (dashboardId: DashboardId, option: FetchOption = {}) => {
+      async (
+        {
+          dashboardId,
+          token,
+        }: {
+          dashboardId: DashboardId;
+          token: EntityToken | null | undefined;
+        },
+        option: FetchOption = {},
+      ) => {
         const hasDashboardChanged = dashboardId !== previousDashboardId;
         const { forceRefetch } = option;
         // When forcing a refetch, we want to clear the cache
@@ -219,7 +234,7 @@ const DashboardContextProviderInner = forwardRef(
 
           initialize({ clearCache: !effectiveIsNavigatingBackToDashboard });
           fetchDashboard({
-            dashId: dashboardId,
+            dashId: token ?? dashboardId,
             queryParams: parameterQueryParams,
             options: {
               clearCache: !effectiveIsNavigatingBackToDashboard,
@@ -275,20 +290,26 @@ const DashboardContextProviderInner = forwardRef(
       return {
         refetchDashboard() {
           if (dashboardId) {
-            fetchData(dashboardId, {
-              forceRefetch: true,
-            });
+            fetchData(
+              {
+                dashboardId,
+                token,
+              },
+              {
+                forceRefetch: true,
+              },
+            );
           }
         },
       };
-    }, [dashboardId, fetchData]);
+    }, [dashboardId, token, fetchData]);
 
     useEffect(() => {
       if (dashboardId && dashboardId !== previousDashboardId) {
         reset();
-        fetchData(dashboardId);
+        fetchData({ dashboardId, token });
       }
-    }, [dashboardId, fetchData, previousDashboardId, reset]);
+    }, [dashboardId, token, fetchData, previousDashboardId, reset]);
 
     useEffect(() => {
       if (dashboard) {
@@ -355,8 +376,29 @@ const DashboardContextProviderInner = forwardRef(
 
     const dashboardActions =
       typeof initDashboardActions === "function"
-        ? initDashboardActions({ isEditing, downloadsEnabled })
+        ? initDashboardActions({
+            isEditing,
+            downloadsEnabled,
+            withSubscriptions,
+          })
         : (initDashboardActions ?? null);
+
+    // Determine if the dashboard is editable.
+    // This lets us distinguish read-only dashboards (e.g. public embeds, InteractiveDashboard)
+    // from editable dashboards (e.g. main app, EditableDashboard).
+    const isEditableDashboard = useMemo(() => {
+      // When the dashboard is being edited, the "edit" action won't exist.
+      if (isEditing) {
+        return true;
+      }
+
+      // A dashboard is editable if it has the edit action and the user has write permissions.
+      const hasEditDashboardAction = (dashboardActions ?? []).includes(
+        "EDIT_DASHBOARD",
+      );
+
+      return hasEditDashboardAction && Boolean(dashboard?.can_write);
+    }, [isEditing, dashboardActions, dashboard?.can_write]);
 
     return (
       <DashboardContext.Provider
@@ -369,6 +411,7 @@ const DashboardContextProviderInner = forwardRef(
           dashcardMenu,
           dashboardActions,
           onNewQuestion,
+          isEditableDashboard,
 
           navigateToNewCardFromDashboard,
           isLoading,
@@ -378,26 +421,23 @@ const DashboardContextProviderInner = forwardRef(
           isFullscreen,
           onFullscreenChange,
           fullscreenRef,
-          hasNightModeToggle,
-          onNightModeChange,
-          isNightMode,
-          shouldRenderAsNightMode,
           refreshPeriod,
           setRefreshElapsedHook,
           onRefreshPeriodChange,
+          theme,
           background,
           bordered,
           titled,
           font,
-          theme,
-          setTheme,
           hideParameters,
           downloadsEnabled,
+          withSubscriptions,
           autoScrollToDashcardId,
           reportAutoScrolledToDashcard,
           cardTitled,
           getClickActionMode,
           withFooter,
+          enableEntityNavigation,
 
           // redux selectors
           selectedTabId,
@@ -406,6 +446,7 @@ const DashboardContextProviderInner = forwardRef(
           parameters,
           parameterValues,
           isEmbeddingIframe,
+          isGuestEmbed,
 
           // redux actions
           addCardToDashboard,
@@ -440,23 +481,10 @@ export function useDashboardContext() {
   return context;
 }
 
-export function isSuccessfulFetchDashboardResult(
-  result: FetchDashboardResult,
-): result is SuccessfulFetchDashboardResult {
-  const hasError = "error" in result;
-  return !hasError;
-}
-
 export function isFailedFetchDashboardResult(
   result: FetchDashboardResult,
 ): result is FailedFetchDashboardResult {
   return (
     isObject(result.payload) && !result.payload.isCancelled && "error" in result
   );
-}
-
-export function isCancelledFetchDashboardResult(
-  result: FetchDashboardResult,
-): result is CancelledFetchDashboardResult {
-  return isObject(result.payload) && Boolean(result.payload.isCancelled);
 }

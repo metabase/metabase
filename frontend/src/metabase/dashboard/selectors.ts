@@ -8,8 +8,6 @@ import {
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import {
   getDashboardQuestions,
   getSavedDashboardUiParameters,
@@ -18,6 +16,12 @@ import {
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import type {
+  ClickBehaviorSidebarState,
+  EditParameterSidebarState,
+  State,
+  StoreDashboard,
+} from "metabase/redux/store";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
@@ -25,6 +29,9 @@ import {
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getIsWebApp } from "metabase/selectors/web-app";
+import { isQuestionCard, isQuestionDashCard } from "metabase/utils/dashboard";
+import { isNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -41,12 +48,6 @@ import type {
   ParameterId,
   VirtualCard,
 } from "metabase-types/api";
-import type {
-  ClickBehaviorSidebarState,
-  EditParameterSidebarState,
-  State,
-  StoreDashboard,
-} from "metabase-types/store";
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
@@ -56,8 +57,6 @@ import {
   hasDatabaseActionsEnabled,
   hasInlineParameters,
   isDashcardInlineParameter,
-  isQuestionCard,
-  isQuestionDashCard,
 } from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
@@ -170,10 +169,6 @@ export const getDashboard = createSelector(
 
 export const getDashcards = (state: State) => state.dashboard.dashcards;
 
-export const getDashcardList = createSelector([getDashcards], (dashcards) =>
-  Object.values(dashcards),
-);
-
 export const getDashCardById = (state: State, dashcardId: DashCardId) => {
   const dashcards = getDashcards(state);
   return dashcards[dashcardId];
@@ -223,6 +218,11 @@ export const getDashboardComplete = createSelector(
   },
 );
 
+export const getCurrentDashcards = createSelector(
+  [getDashboardComplete],
+  (dashboard) => dashboard?.dashcards || [],
+);
+
 export const getDashcardHref = createSelector(
   [getMetadata, getDashboardComplete, getParameterValues, getDashCardById],
   (metadata, dashboard, parameterValues, dashcard) => {
@@ -230,7 +230,7 @@ export const getDashcardHref = createSelector(
       !dashboard ||
       !dashcard ||
       !isQuestionDashCard(dashcard) ||
-      !dashcard.card.dataset_query // cards without queries will cause MLv2 to throw in getNewCardUrl
+      !dashcard.card.dataset_query // cards without queries will cause Lib to throw in getNewCardUrl
     ) {
       return undefined;
     }
@@ -443,9 +443,8 @@ export const getParameters = createSelector(
 );
 
 export const getDashboardHeaderParameters = createSelector(
-  [getDashcards, getParameters],
-  (dashcards, parameters) => {
-    const dashcardList = Object.values(dashcards);
+  [getCurrentDashcards, getParameters],
+  (dashcardList, parameters) => {
     return parameters.filter(
       (parameter) => !isDashcardInlineParameter(parameter.id, dashcardList),
     );
@@ -700,13 +699,6 @@ export const getParameterMappingsBeforeEditing = createSelector(
 
     return map;
   },
-);
-
-export const getDisplayTheme = (state: State) => state.dashboard.theme;
-
-export const getIsNightMode = createSelector(
-  [getDisplayTheme],
-  (theme) => theme === "night",
 );
 
 export const getHasModelActionsEnabled = createSelector(

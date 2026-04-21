@@ -1,0 +1,22 @@
+.input {
+  padding: var(--mantine-spacing-lg);
+  padding-left: 3.75rem;
+  font-size: 17px;
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+  color: var(--mb-color-text-primary);
+  line-height: 1rem;
+  outline: none;
+  background-color: transparent;
+}
+
+.iconContainer {
+  pointer-events: none;
+}
+
+.viewAndFilterResults:hover {
+  text-decoration: underline;
+}

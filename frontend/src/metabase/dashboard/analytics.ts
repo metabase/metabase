@@ -1,4 +1,4 @@
-import { trackSchemaEvent, trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/utils/analytics";
 import type {
   DashboardId,
   DashboardWidth,
@@ -178,5 +178,13 @@ export const trackFilterMoved = (
     target_id: getDashboardId(dashboardId),
     triggered_from: origin,
     event_detail: destination,
+  });
+};
+
+export const trackDashboardBookmarked = () => {
+  trackSimpleEvent({
+    event: "bookmark_added",
+    event_detail: "dashboard",
+    triggered_from: "dashboard_header",
   });
 };

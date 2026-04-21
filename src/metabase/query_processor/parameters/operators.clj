@@ -10,6 +10,7 @@
 
   TODO (Cam 8/8/25) -- move this into `lib` since there's nothing particularly QP about it except
   for [[qp.error-type]], which maybe belongs in Lib too!"
+  (:refer-clojure :exclude [get-in])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.schema.expression :as lib.schema.expression]
@@ -17,7 +18,8 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [get-in]]))
 
 (mu/defn- operator-arity :- [:maybe [:enum :unary :binary :variadic]]
   [param-type]
@@ -78,9 +80,9 @@
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
   [param]
   (let [{param-type :type, [a b :as param-value] :value, target :target, options :options} (normalize-param param)
-        field-ref (or (lib.util.match/match-one target
-                        #{:field :expression}
-                        (lib/->pMBQL &match))
+        field-ref (or (lib.util.match/match-lite target
+                        [#{:field :expression} & _]
+                        (lib/->mbql5 &match))
                       (throw (ex-info (format "Invalid target: expected :field ref, got: %s" (pr-str target))
                                       {:target target, :type qp.error-type/invalid-parameter})))
         options   (or options {})]

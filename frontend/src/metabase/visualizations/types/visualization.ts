@@ -1,36 +1,51 @@
-import type { ReactNode } from "react";
-import type React from "react";
+import type { CSSProperties, ComponentType, ReactNode } from "react";
 
-import type { OptionsType } from "metabase/lib/formatting/types";
+import type { Dispatch, QueryBuilderMode } from "metabase/redux/store";
 import type { IconName, IconProps } from "metabase/ui";
-import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import type { ColorGetter } from "metabase/ui/colors/types";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import type {
   TextHeightMeasurer,
   TextWidthMeasurer,
-} from "metabase/visualizations/shared/types/measure-text";
+} from "metabase/utils/measure-text";
 import type {
   ClickActionModeGetter,
+  ClickActionsMode,
   ClickObject,
   QueryClickActionsMode,
 } from "metabase/visualizations/types";
+import type * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Card,
   Dashboard,
   DashboardCard,
+  DashboardId,
   DatasetColumn,
   DatasetData,
   RawSeries,
   RowValue,
+  RowValues,
   Series,
+  SeriesSettings,
+  SingleSeries,
   TimelineEvent,
   TimelineEventId,
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 import type { VisualizationDisplay } from "metabase-types/api/visualization";
-import type { Dispatch, QueryBuilderMode } from "metabase-types/store";
+
+import type { ChartSettingGoalInputProps } from "../components/settings/ChartSettingGoalInput";
+import type { ChartSettingMaxCategoriesProps } from "../components/settings/ChartSettingMaxCategories";
+import type { ChartSettingSegmentedControlProps } from "../components/settings/ChartSettingSegmentedControl";
+import type { ChartSettingSegmentsEditorProps } from "../components/settings/ChartSettingSegmentsEditor";
+import type { ChartSettingSeriesOrderProps } from "../components/settings/ChartSettingSeriesOrder";
+import type { ChartSettingTableColumnsProps } from "../components/settings/ChartSettingTableColumns";
+import type { LegacySeriesSettingsObjectKey } from "../echarts/cartesian/model/types";
+import type { DimensionsWidgetProps } from "../visualizations/PieChart/DimensionsWidget";
+import type { SmartScalarComparisonWidgetProps } from "../visualizations/SmartScalar/SettingsComponents/SmartScalarSettingsWidgets";
 
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
@@ -42,10 +57,15 @@ export interface Padding {
   right: number;
 }
 
-export type Formatter = (value: unknown, options?: OptionsType) => string;
-export type TableCellFormatter = (value: RowValue) => React.ReactNode;
+export type Formatter = (
+  value: RowValue,
+  options?: OptionsType,
+) => string | null;
+export type TableCellFormatter = (value: RowValue) => ReactNode;
 
-export type ColorGetter = (colorName: string) => string;
+export type Extent = [number, number];
+
+export type CardSlownessStatus = "usually-fast" | "usually-slow" | boolean;
 
 export interface RenderingContext {
   getColor: ColorGetter;
@@ -91,6 +111,7 @@ export type OnChangeCardAndRunOpts = {
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ColumnSettings = OptionsType & {
+  _column_title_full?: string;
   "pivot_table.column_show_totals"?: boolean;
   text_align?: "left" | "middle" | "right";
   [key: string]: unknown;
@@ -98,6 +119,8 @@ export type ColumnSettings = OptionsType & {
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
   column?: (col: RemappingHydratedDatasetColumn) => ColumnSettings;
+  series?: (key: LegacySeriesSettingsObjectKey) => SeriesSettings;
+  nested?: (value: unknown) => unknown;
 };
 
 export interface StaticVisualizationProps {
@@ -118,6 +141,7 @@ export interface VisualizationProps {
   rawSeries: RawSeries;
   visualizerRawSeries?: RawSeries;
   settings: ComputedVisualizationSettings;
+  autoAdjustSettings?: boolean;
   hiddenSeries?: Set<string>;
   headerIcon?: IconProps | null;
   errorIcon?: IconName | null;
@@ -129,12 +153,16 @@ export interface VisualizationProps {
   showTitle: boolean;
   isDashboard: boolean;
   isDocument: boolean;
-  isVisualizerViz: boolean;
+  // Is this the visualization *inside* the visualizer
+  isVisualizer: boolean;
+  // Is this visualization made by the visualizer
+  isVisualizerCard: boolean;
   isEditing: boolean;
+  isMetricsViewer: boolean;
   isMobile: boolean;
-  isNightMode: boolean;
   isSettings: boolean;
   showAllLegendItems?: boolean;
+  hideLegend?: boolean;
   isRawTable?: boolean;
   scrollToLastColumn?: boolean;
   hovered?: HoveredObject | null;
@@ -143,8 +171,6 @@ export interface VisualizationProps {
   timelineEvents?: TimelineEvent[];
   selectedTimelineEventIds?: TimelineEventId[];
   queryBuilderMode?: QueryBuilderMode;
-  uuid?: string;
-  token?: string;
 
   gridSize?: VisualizationGridSize;
   width: number;
@@ -165,6 +191,7 @@ export interface VisualizationProps {
   onRenderError: (error?: string) => void;
   onActionDismissal: () => void;
   onChangeCardAndRun?: OnChangeCardAndRun | null;
+  onBrush?: ((range: { start: number; end: number }) => void) | null;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject: ClickObject | null) => void;
   onUpdateVisualizationSettings: (
@@ -184,7 +211,7 @@ export interface VisualizationProps {
    * Items that will be shown in a menu when the title is clicked.
    * Used for visualizer cards to jump to underlying questions
    */
-  titleMenuItems?: React.ReactNode;
+  titleMenuItems?: ReactNode;
 }
 
 export type VisualizationPassThroughProps = {
@@ -210,14 +237,13 @@ export type VisualizationPassThroughProps = {
     index: number,
     theme: unknown,
   ) => ReactNode;
-  mode?: ClickActionModeGetter | Mode | QueryClickActionsMode;
+  mode?: ClickActionModeGetter | ClickActionsMode | QueryClickActionsMode;
   renderEmptyMessage?: boolean;
 
   // frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx
   isEditing?: boolean;
   isEditingParameter?: boolean;
   isFullscreen?: boolean;
-  isNightMode?: boolean;
   isPreviewing?: boolean;
   totalNumGridCols?: number;
   onTogglePreviewing?: () => void;
@@ -230,21 +256,29 @@ export type VisualizationPassThroughProps = {
    * Items that will be shown in a menu when the title is clicked.
    * Used for visualizer cards to jump to underlying questions
    */
-  titleMenuItems?: React.ReactNode[];
+  titleMenuItems?: ReactNode[];
 
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
 
-  // Public & Embedded questions, needed for pin maps to generate the correct tile URL
-  uuid?: string;
-  token?: string;
+  /**
+   * Extra buttons to be shown in the table footer (if the visualization is a table)
+   */
+  tableFooterExtraButtons?: ReactNode;
+
+  /**
+   * Props used for Audit Table visualization
+   */
+  isSelectable?: boolean;
+  rowChecked?: [];
+  onAllSelectClick?: () => void;
+  onRowSelectClick?: () => void;
 };
 
 export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   title?: string;
   hint?: string;
-  widget?: string | React.ComponentType<any>;
-  default?: TValue;
+  widget?: string | ComponentType<any>;
   props?: TProps;
   inline?: boolean;
   readDependencies?: string[];
@@ -259,30 +293,89 @@ export type ColumnSettingDefinition<TValue, TProps = unknown> = {
   ) => TProps;
 };
 
-export type VisualizationSettingDefinition<TValue, TProps = void> = {
+export type SettingsExtra = {
+  dashboardId?: DashboardId;
+  enableEntityNavigation?: boolean;
+  forAdminSettings?: boolean;
+  isDashboard?: boolean;
+  series?: Series;
+  settings?: VisualizationSettings;
+  transformedSeries?: RawSeries | TransformedSeries;
+};
+
+export type VisualizationSettingDefinition<
+  T = unknown,
+  TValue = unknown,
+  TProps extends Record<string, unknown> = Record<string, unknown>,
+> = {
+  id?: string;
   section?: string;
   title?: string;
+  placeholder?: string;
   group?: string;
-  widget?: string | React.ComponentType<TProps>;
-  isValid?: (series: Series, settings: VisualizationSettings) => boolean;
-  getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
-  getDefault?: (series: Series, settings: VisualizationSettings) => TValue;
-  getValue?: (series: Series, settings: VisualizationSettings) => TValue;
-  getDisabled?: (series: Series, settings: VisualizationSettings) => TValue;
-  disabled?: boolean;
-  default?: TValue;
-  marginBottom?: string;
-  getMarginBottom?: (series: Series, settings: VisualizationSettings) => string;
+  index?: number;
+  showColumnSetting?: boolean;
+  widget?: string | ComponentType<TProps & { id: string }>;
+  isValid?: (
+    object: T,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => boolean;
+  hidden?: boolean;
+  getHidden?: (
+    object: T,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => boolean;
+  getDefault?: (
+    object: T,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => TValue;
+  getValue?: (
+    object: T,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => TValue;
+  getSection?: (
+    object: T,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => string;
+  getWrapperStyle?: (
+    object: T,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => CSSProperties | undefined;
+  autoOpenWhenUnset?: boolean;
+  value?: TValue;
+  set?: boolean;
   persistDefault?: boolean;
   inline?: boolean;
-  props?: TProps;
   getProps?: (
-    series: Series,
-    vizSettings: VisualizationSettings,
+    object: T,
+    vizSettings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
     onChange: (value: TValue) => void,
-    extra: unknown,
-    onChangeSettings: (value: Record<string, any>) => void,
-  ) => TProps;
+    extra: SettingsExtra | undefined,
+    onChangeSettings: (value: Partial<VisualizationSettings>) => void,
+  ) => Partial<TProps>;
+  onChange?: (value: TValue) => void;
+  onChangeSettings?: (value: Partial<VisualizationSettings>) => void;
+  onUpdate?: (value: TValue, extra: SettingsExtra) => void;
   readDependencies?: string[];
   writeDependencies?: string[];
   eraseDependencies?: string[];
@@ -291,8 +384,204 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
   useRawSeries?: boolean;
 };
 
+export type CompleteVisualizationSettingDefinition<
+  T = unknown,
+  TValue = unknown,
+  TProps extends Record<string, unknown> = Record<string, unknown>,
+> = Omit<
+  VisualizationSettingDefinition<T, TValue, TProps>,
+  "getProps" | "getWrapperStyle"
+> & {
+  id: string;
+  style?: CSSProperties;
+  props: Partial<TProps>;
+};
+
+export type DatasetColumnSettingDefinition<
+  TValue = unknown,
+  TProps extends Record<string, unknown> = Record<string, unknown>,
+> = VisualizationSettingDefinition<DatasetColumn, TValue, TProps>;
+
+export type SeriesSettingDefinition<
+  TValue = unknown,
+  TProps extends Record<string, unknown> = Record<string, unknown>,
+> = VisualizationSettingDefinition<Series, TValue, TProps>;
+
+export type SingleSeriesSettingDefinition<
+  TValue = unknown,
+  TProps extends Record<string, unknown> = Record<string, unknown>,
+> = VisualizationSettingDefinition<SingleSeries, TValue, TProps>;
+
+type Value = unknown;
+
+type Props = Record<string, unknown>;
+
+/** Object keys are kept in alphabetical order */
 export type VisualizationSettingsDefinitions = {
-  [key: string]: VisualizationSettingDefinition<unknown, unknown>;
+  _column_title_full?: DatasetColumnSettingDefinition<Value, Props>;
+  _header_unit?: DatasetColumnSettingDefinition<Value, Props>;
+  _numberFormatter?: DatasetColumnSettingDefinition<Value, Props>;
+  axis?: SingleSeriesSettingDefinition<Value, Props>;
+  "boxplot.points_mode"?: SeriesSettingDefinition<Value, Props>;
+  "boxplot.show_mean"?: SeriesSettingDefinition<Value, Props>;
+  "boxplot.show_values_mode"?: SeriesSettingDefinition<Value, Props>;
+  "boxplot.whisker_type"?: SeriesSettingDefinition<Value, Props>;
+  "card.description"?: SeriesSettingDefinition<Value, Props>;
+  "card.hide_empty"?: SeriesSettingDefinition<Value, Props>;
+  "card.title"?: SeriesSettingDefinition<Value, Props>;
+  click_behavior?: SeriesSettingDefinition<Value, Props>;
+  color?: SingleSeriesSettingDefinition<Value, Props>;
+  column?: DatasetColumnSettingDefinition<Value, Props>;
+  column_settings?: DatasetColumnSettingDefinition<Value, Props>;
+  column_title?: DatasetColumnSettingDefinition<Value, Props>;
+  currency?: DatasetColumnSettingDefinition<Value, Props>;
+  currency_in_header?: DatasetColumnSettingDefinition<Value, Props>;
+  currency_style?: DatasetColumnSettingDefinition<Value, Props>;
+  date_abbreviate?: DatasetColumnSettingDefinition<Value, Props>;
+  date_separator?: DatasetColumnSettingDefinition<Value, Props>;
+  date_style?: DatasetColumnSettingDefinition<Value, Props>;
+  decimals?: DatasetColumnSettingDefinition<Value, Props>;
+  display?: SingleSeriesSettingDefinition<Value, Props>;
+  "gauge.range"?: SeriesSettingDefinition<Value, Props>;
+  "gauge.segments"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentsEditorProps
+  >;
+  "graph.colors"?: SeriesSettingDefinition<Value, Props>;
+  "graph.dimensions"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_label"?: SeriesSettingDefinition<Value, Props>;
+  "graph.goal_value"?: SeriesSettingDefinition<Value, Props>;
+  "graph.metrics"?: SeriesSettingDefinition<Value, Props>;
+  /**
+   * "graph.label_value_frequency" key is used for 2 different settings:
+   *   - in waterfall viz and every cartesian viz - as a segmented toggle
+   *   - in boxplot viz - as a switch (on/off)
+   *
+   * It's the only case in VisualizationSettingsDefinitions where 1 setting key has 2 meanings.
+   * For simplicity, we're defaulting to segmented toggle widget in types,
+   * and we make an exception for the boxplot with a cast.
+   */
+  "graph.label_value_frequency"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentedControlProps
+  >;
+  "graph.label_value_formatting"?: SeriesSettingDefinition<Value, Props>;
+  "graph.max_categories"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingMaxCategoriesProps
+  >;
+  "graph.max_categories_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.other_category_color"?: SeriesSettingDefinition<Value, Props>;
+  "graph.other_category_aggregation_fn"?: SeriesSettingDefinition<Value, Props>;
+  "graph.series_labels"?: SeriesSettingDefinition<Value, Props>;
+  "graph.series_order"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingSeriesOrderProps
+  >;
+  "graph.series_order_dimension"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_goal"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_mean"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_stack_values"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_trendline"?: SeriesSettingDefinition<Value, Props>;
+  "graph.show_values"?: SeriesSettingDefinition<Value, Props>;
+  "graph.split_panels"?: SeriesSettingDefinition<Value, Props>;
+  "graph.tooltip_columns"?: SeriesSettingDefinition<Value, Props>;
+  "graph.tooltip_type"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis._is_histogram"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis._is_numeric"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis._is_timeseries"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis.axis_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis.labels_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis.title_text"?: SeriesSettingDefinition<Value, Props>;
+  "graph.x_axis.scale"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.auto_range"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.auto_split"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.labels_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.max"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.min"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.axis_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.scale"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.split_number"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.title_text"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.unpin_from_zero"?: SeriesSettingDefinition<Value, Props>;
+  "legend.is_reversed"?: SeriesSettingDefinition<Value, Props>;
+  "line.interpolate"?: SingleSeriesSettingDefinition<Value, Props>;
+  "line.marker_enabled"?: SingleSeriesSettingDefinition<Value, Props>;
+  "line.missing"?: SingleSeriesSettingDefinition<Value, Props>;
+  "line.size"?: SingleSeriesSettingDefinition<Value, Props>;
+  "line.style"?: SingleSeriesSettingDefinition<Value, Props>;
+  "link.text"?: SeriesSettingDefinition<Value, Props>;
+  "link.url"?: SeriesSettingDefinition<Value, Props>;
+  markdown_template?: DatasetColumnSettingDefinition<Value, Props>;
+  number_separators?: DatasetColumnSettingDefinition<Value, Props>;
+  number_style?: DatasetColumnSettingDefinition<Value, Props>;
+  "pie._dimensions_widget"?: SeriesSettingDefinition<
+    Value,
+    DimensionsWidgetProps
+  >;
+  "pie.decimal_places"?: SeriesSettingDefinition<Value, Props>;
+  "pie.dimension"?: SeriesSettingDefinition<Value, Props>;
+  "pie.metric"?: SeriesSettingDefinition<Value, Props>;
+  "pie.percent_visibility"?: SeriesSettingDefinition<Value, Props>;
+  "pie.rows"?: SeriesSettingDefinition<Value, Props>;
+  "pie.slice_threshold"?: SeriesSettingDefinition<Value, Props>;
+  "pie.show_labels"?: SeriesSettingDefinition<Value, Props>;
+  "pie.show_legend"?: SeriesSettingDefinition<Value, Props>;
+  "pie.show_total"?: SeriesSettingDefinition<Value, Props>;
+  "pie.sort_rows"?: SeriesSettingDefinition<Value, Props>;
+  "pie.sort_rows_dimension"?: SeriesSettingDefinition<Value, Props>;
+  prefix?: DatasetColumnSettingDefinition<Value, Props>;
+  "progress.color"?: SeriesSettingDefinition<Value, Props>;
+  "progress.goal"?: SeriesSettingDefinition<Value, ChartSettingGoalInputProps>;
+  "progress.value"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.edge_color"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.label_value_formatting"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.node_align"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.show_edge_color"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.show_edge_labels"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.source"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.target"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.value"?: SeriesSettingDefinition<Value, Props>;
+  "scalar.compact_primary_number"?: SeriesSettingDefinition<Value, Props>;
+  "scalar.comparisons"?: SeriesSettingDefinition<
+    Value,
+    SmartScalarComparisonWidgetProps
+  >;
+  "scalar.field"?: SeriesSettingDefinition<Value, Props>;
+  "scalar.switch_positive_negative"?: SeriesSettingDefinition<Value, Props>;
+  scale?: DatasetColumnSettingDefinition<Value, Props>;
+  "scatter.bubble"?: SeriesSettingDefinition<Value, Props>;
+  show_series_trendline?: SingleSeriesSettingDefinition<Value, Props>;
+  show_series_values?: SingleSeriesSettingDefinition<Value, Props>;
+  "stackable.stack_type"?: SeriesSettingDefinition<Value, Props>;
+  suffix?: DatasetColumnSettingDefinition<Value, Props>;
+  "table.columns"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingTableColumnsProps
+  >;
+  time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
+  time_style?: DatasetColumnSettingDefinition<Value, Props>;
+  title?: SingleSeriesSettingDefinition<Value, Props>;
+  view_as?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.decrease_color"?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.increase_color"?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.show_total"?: SeriesSettingDefinition<Value, Props>;
+  "waterfall.total_color"?: SeriesSettingDefinition<Value, Props>;
+  /**
+   * TODO: next line should be removed when VisualizationSettingsDefinitions and VisualizationSettings are complete.
+   * Once that happens, it should be possible to safely use VisualizationSettingKey for
+   * both VisualizationSettings and VisualizationSettingsDefinitions.
+   */
+  [key: string]: any;
+};
+
+export type Widget = {
+  id: string;
+  section?: string;
+  hidden?: boolean;
+  props?: Record<string, unknown>;
+  title?: string;
+  widget?: string | ComponentType<any>;
 };
 
 export type VisualizationGridSize = {
@@ -303,7 +592,7 @@ export type VisualizationGridSize = {
 };
 
 // TODO: add component property for the react component instead of the intersection
-export type Visualization = React.ComponentType<
+export type Visualization = ComponentType<
   Omit<VisualizationProps, "width" | "height"> & {
     width?: number | null;
     height?: number | null;
@@ -330,14 +619,18 @@ export type VisualizationDefinition = {
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
   supportsVisualizer?: boolean;
+  disableVisualizer?: boolean;
 
-  minSize: VisualizationGridSize;
-  defaultSize: VisualizationGridSize;
+  minSize?: VisualizationGridSize;
+  defaultSize?: VisualizationGridSize;
 
-  settings: VisualizationSettingsDefinitions;
+  settings?: VisualizationSettingsDefinitions;
 
   transformSeries?: (series: Series) => TransformedSeries;
-  isSensible: (data: DatasetData) => boolean;
+  isSensible?: (data: DatasetData) => boolean;
+  columnSettings?:
+    | VisualizationSettingsDefinitions
+    | ((column: DatasetColumn) => VisualizationSettingsDefinitions);
   // checkRenderable throws an error if a visualization is not renderable
   checkRenderable: (
     series: Series,
@@ -345,4 +638,12 @@ export type VisualizationDefinition = {
   ) => void | never;
   isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
+};
+
+export type PivotedRowValues = RowValues & {
+  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
+};
+
+export type PivotedDatasetColumn = DatasetColumn & {
+  _dimension?: Lib.ClickObjectDimension; // present in pivoted data
 };

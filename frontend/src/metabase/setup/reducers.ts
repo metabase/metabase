@@ -1,10 +1,9 @@
 import { createReducer } from "@reduxjs/toolkit";
 
-import type { SetupState } from "metabase-types/store";
+import type { SetupState } from "metabase/redux/store";
 
 import {
   loadLocaleDefaults,
-  loadUserDefaults,
   selectStep,
   skipDatabase,
   submitDatabase,
@@ -51,11 +50,6 @@ const initialState: SetupState = {
 };
 
 export const reducer = createReducer(initialState, (builder) => {
-  builder.addCase(loadUserDefaults.fulfilled, (state, { payload: user }) => {
-    if (user) {
-      state.user = user;
-    }
-  });
   builder.addCase(
     loadLocaleDefaults.fulfilled,
     (state, { payload: locale }) => {

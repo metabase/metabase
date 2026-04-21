@@ -1,11 +1,12 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { H } = cy;
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > admin > datamodel > segments", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     cy.viewport(1400, 860);
   });
@@ -22,9 +23,7 @@ describe("scenarios > admin > datamodel > segments", () => {
       cy.button("New segment").click();
 
       cy.findByTestId("segment-editor").findByText("Select a table").click();
-      H.entityPickerModal().within(() => {
-        cy.findByText("Orders").click();
-      });
+      H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
 
       cy.findByTestId("segment-editor").findByText("Orders").should("exist");
 
@@ -44,6 +43,54 @@ describe("scenarios > admin > datamodel > segments", () => {
         .should("be.visible");
       cy.button("Learn how to create segments").should("be.visible");
     });
+
+    it("should track segment_created event when saving a new segment", () => {
+      cy.intercept("POST", "/api/segment").as("createSegment");
+      cy.intercept("GET", "/api/table/1").as("getTable");
+      cy.visit("/admin/datamodel/segments");
+
+      cy.button("New segment").click();
+
+      cy.log("verify segment_create_started event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "segment_create_started",
+        triggered_from: "admin_datamodel_segments",
+      });
+
+      cy.findByTestId("segment-editor").findByText("Select a table").click();
+      H.pickEntity({ path: ["Databases", /Sample Database/, "Orders"] });
+      cy.wait("@getTable");
+
+      cy.log("add filter");
+      cy.findByTestId("segment-editor")
+        .findByText("Add filters to narrow your answer")
+        .click();
+      H.popover().findByText("Total").click();
+      H.selectFilterOperator("Greater than");
+      H.popover().within(() => {
+        cy.findByLabelText("Filter value").type("100");
+        cy.button("Add filter").click();
+      });
+
+      cy.log("fill in segment name");
+      cy.findByLabelText(/Name your segment/i).type("High Value Orders");
+
+      cy.log("fill in description");
+      cy.findByLabelText(/Describe your segment/i).type(
+        "Orders with high values",
+      );
+
+      cy.log("save segment");
+      cy.button(/Save/).click();
+      cy.wait("@createSegment");
+
+      cy.log("verify segment_created event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "segment_created",
+        triggered_from: "admin_datamodel_segments",
+        result: "success",
+      });
+    });
   });
 
   describe("with segment", () => {
@@ -56,9 +103,12 @@ describe("scenarios > admin > datamodel > segments", () => {
         description: "All orders with a total under $100.",
         table_id: ORDERS_ID,
         definition: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          },
         },
       }).then(({ body }) => {
         cy.wrap(body.id).as("segmentId");
@@ -212,7 +262,6 @@ describe("scenarios > admin > datamodel > segments", () => {
         .find(".Icon-ellipsis")
         .click();
       H.popover().findByText("Retire Segment").click();
-      H.modal().find("textarea").type("delete it");
       H.modal().contains("button", "Retire").click();
     });
 
@@ -270,12 +319,167 @@ describe("scenarios > admin > datamodel > segments", () => {
           .first()
           .should("contain", "You edited the description")
           .and("contain", "Foo");
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         cy.get("@revisions")
           .last()
           .should("contain", `You created "${SEGMENT_NAME}"`)
           .and("contain", "All orders with a total under $100.");
       }
+    });
+  });
+
+  describe("x-ray", () => {
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should track x-raying a segment", () => {
+      cy.intercept("GET", "/api/automagic-dashboards/**").as(
+        "getXrayDashboard",
+      );
+
+      H.resetSnowplow();
+      H.restore();
+      cy.signInAsAdmin();
+      H.enableTracking();
+
+      H.createSegment({
+        name: "Foo",
+        description: "All orders with a total under $100.",
+        table_id: ORDERS_ID,
+        definition: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          },
+        },
+      }).then(({ body: { id } }) => {
+        cy.visit(`/reference/segments/${id}`);
+        cy.findAllByRole("listitem")
+          .filter(":contains(X-ray this segment)")
+          .click();
+        cy.wait("@getXrayDashboard");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "segment",
+        triggered_from: "data_reference",
+      });
+
+      cy.findByRole("complementary").within(() => {
+        cy.findByRole("heading", { name: "More X-rays" }).should("be.visible");
+        cy.findByRole("heading", { name: "Compare" })
+          .parent()
+          .findByText("Compare with entire dataset")
+          .click();
+        cy.wait("@getXrayDashboard");
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "x-ray_clicked",
+        event_detail: "compare",
+        triggered_from: "suggestion_sidebar",
+      });
+    });
+  });
+
+  describe("read-only remote sync", () => {
+    const SEGMENT_IN_ORDERS = "Segment in Orders table (published)";
+    const SEGMENT_IN_PEOPLE = "Segment in People table (Unpublished)";
+
+    beforeEach(() => {
+      H.activateToken("pro-self-hosted");
+      cy.log("set up remote sync");
+      H.setupGitSync();
+      H.configureGit("read-only");
+      H.createLibrary();
+      H.publishTables({ table_ids: [ORDERS_ID] });
+      // Let's leave PEOPLE_ID unpublished
+
+      cy.log("create segments");
+      H.createSegment({
+        name: SEGMENT_IN_ORDERS,
+        description: "Hey oh",
+        table_id: ORDERS_ID,
+        definition: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": ORDERS_ID,
+            filter: ["<", ["field", ORDERS.TOTAL, null], 100],
+          },
+        },
+      });
+
+      H.createSegment({
+        name: SEGMENT_IN_PEOPLE,
+        description: "This is a segment in the PEOPLE table",
+        table_id: PEOPLE_ID,
+        definition: {
+          type: "query",
+          database: 1,
+          query: {
+            "source-table": PEOPLE_ID,
+            filter: [">", ["field", 10, null], 100],
+          },
+        },
+      });
+    });
+
+    it("can't edit published segment from segment list", () => {
+      cy.visit("/admin/datamodel/segments");
+      const getEllipsisIcon = (segmentName: string) => {
+        return cy
+          .findByTestId("segment-list-app")
+          .contains(segmentName)
+          .parent()
+          .parent()
+          .findByRole("img", { name: "ellipsis icon" });
+      };
+
+      cy.log("don't show edit or retire menu options");
+      getEllipsisIcon(SEGMENT_IN_ORDERS).click();
+      H.popover().contains("Edit Segment").should("not.exist");
+      H.popover().contains("Retire Segment").should("not.exist");
+      getEllipsisIcon(SEGMENT_IN_ORDERS).click(); // Exit menu dropdown
+
+      getEllipsisIcon(SEGMENT_IN_PEOPLE).click();
+      // For unpublished segments, the edit menu options are visible
+      H.popover().contains("Edit Segment").should("be.visible");
+      H.popover().contains("Retire Segment").should("be.visible");
+    });
+
+    it("can't edit published segment from segment detail page", () => {
+      cy.visit("/admin/datamodel/segment/1");
+
+      cy.findByRole("alert", {
+        name: /This segment can't be edited/,
+      }).should("be.visible");
+      cy.findByLabelText("Name Your Segment").should("have.attr", "readonly");
+      cy.findByLabelText("Describe Your Segment").should(
+        "have.attr",
+        "readonly",
+      );
+      cy.findByRole("button", { name: /Save changes/ }).should("not.exist");
+
+      cy.log("can still edit a segment if table is not published");
+      cy.visit("/admin/datamodel/segment/2");
+
+      cy.findByRole("alert", {
+        name: /This segment can't be edited/,
+      }).should("not.exist");
+      cy.findByLabelText("Name Your Segment").should(
+        "not.have.attr",
+        "readonly",
+      );
+      cy.findByLabelText("Describe Your Segment").should(
+        "not.have.attr",
+        "readonly",
+      );
+      cy.findByRole("button", { name: /Save changes/ }).should("be.visible");
     });
   });
 });

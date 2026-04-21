@@ -2,29 +2,41 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListUsersQuery } from "metabase/api";
-import UserAvatar from "metabase/common/components/UserAvatar";
+import { UserAvatar } from "metabase/common/components/UserAvatar";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Flex, Pill, Popover, Text, UnstyledButton } from "metabase/ui";
-import type { Member, User } from "metabase-types/api";
+import type { Group, Member, User } from "metabase-types/api";
 
 import { userToColor } from "../colors";
 
 import { AddRow } from "./AddRow";
 
 interface AddMemberRowProps {
+  group: Group;
   members: Member[];
   onCancel: () => void;
   onDone: (userIds: number[]) => void;
 }
 
-export function AddMemberRow({ members, onCancel, onDone }: AddMemberRowProps) {
-  const listUsersReq = useListUsersQuery();
+export function AddMemberRow({
+  group,
+  members,
+  onCancel,
+  onDone,
+}: AddMemberRowProps) {
+  const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
+
+  const listUsersQuery = useListUsersQuery(
+    isTenantGroup ? { tenancy: "external" } : undefined,
+  );
+
   const [text, setText] = useState("");
   const [selectedUsersById, setSelectedUsersById] = useState<Map<number, User>>(
     new Map(),
   );
 
   const availableToSelectUsers = useMemo(() => {
-    const { isLoading, error, data } = listUsersReq;
+    const { isLoading, error, data } = listUsersQuery;
     if (isLoading || error) {
       return [];
     }
@@ -33,7 +45,7 @@ export function AddMemberRow({ members, onCancel, onDone }: AddMemberRowProps) {
     return allUsers.filter(
       ({ id }) => !selectedUsersById.has(id) && !groupMemberIds.has(id),
     );
-  }, [members, selectedUsersById, listUsersReq]);
+  }, [members, selectedUsersById, listUsersQuery]);
 
   const handleRemoveUser = (user: User) => {
     const newSelectedUsersById = new Map(selectedUsersById);
@@ -77,12 +89,13 @@ export function AddMemberRow({ members, onCancel, onDone }: AddMemberRowProps) {
                 onChange={(e) => setText(e.target.value)}
                 onDone={handleDone}
                 onCancel={onCancel}
+                ariaLabel={t`Search for a user to add`}
               >
                 {Array.from(selectedUsersById.values()).map((user, index) => (
                   <Pill
                     key={user.id}
                     size="xl"
-                    bg="bg-medium"
+                    bg="background-tertiary"
                     c="text-primary"
                     ms={index > 0 ? "sm" : ""}
                     withRemoveButton

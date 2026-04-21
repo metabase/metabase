@@ -1,4 +1,4 @@
-import { formatNativeQuery } from "metabase/lib/engine";
+import { formatNativeQuery } from "metabase/databases/utils/engine";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { NativeDatasetResponse } from "metabase-types/api";
@@ -16,7 +16,7 @@ export function createNativeQuestion(
     database.id,
     question.metadata(),
   );
-  const rawQuery = formatNativeQuery(response.query, database.engine);
+  const rawQuery = formatNativeQuery(response.query);
   const newQuery = Lib.nativeQuery(database.id, metadataProvider, rawQuery);
   const newQueryWithCollection =
     response.collection != null

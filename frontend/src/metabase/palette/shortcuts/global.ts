@@ -71,10 +71,17 @@ export const globalShortcuts = {
     shortcut: ["g k"],
     shortcutGroup: "global" as const,
   },
-
-  "report-issue": {
+  "navigate-data-studio": {
     get name() {
-      return t`Report an issue`;
+      return t`Go to Data Studio`;
+    },
+    shortcut: ["g s"],
+    shortcutGroup: "global" as const,
+  },
+
+  "download-diagnostics": {
+    get name() {
+      return t`Download diagnostics`;
     },
     shortcut: ["$mod+f1"],
     shortcutGroup: "global" as const,
@@ -132,5 +139,39 @@ export const globalShortcuts = {
     },
     shortcut: ["g h"],
     shortcutGroup: "global" as const,
+  },
+
+  "navigate-embed-js": {
+    get name() {
+      return t`New embed`;
+    },
+
+    shortcut: ["c e"],
+    shortcutGroup: "global" as const,
+  },
+
+  "toggle-dark-mode": {
+    get name() {
+      return t`Toggle dark/light mode`;
+    },
+
+    section: "basic",
+    keywords:
+      "toggle, toggle dark, toggle light, dark, light, dark mode, light mode, theme, mode, night",
+    icon: "moon",
+
+    shortcut: ["$mod+Shift+KeyL"],
+    shortcutGroup: "global" as const,
+  },
+
+  "toggle-dark-mode-2": {
+    get name() {
+      return t`Toggle dark mode`;
+    },
+    shortcutGroup: "global" as const,
+    hide: true,
+    shortcut: [
+      "ArrowUp ArrowUp ArrowDown ArrowDown ArrowLeft ArrowRight ArrowLeft ArrowRight B A",
+    ],
   },
 };

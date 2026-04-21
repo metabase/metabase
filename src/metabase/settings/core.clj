@@ -91,12 +91,16 @@
   can-read-setting?
   current-user-readable-visibilities
   custom-disabled-reasons!
+  db-stored-value
+  default-value
   defsetting
   disabled-for-db-reasons
+  env-var-name
   env-var-value
   export?
   get
   get-raw-value
+  log-deprecated-env-var-usage!
   get-value-of-type
   has-advanced-setting-access?
   migrate-encrypted-settings!
@@ -110,6 +114,7 @@
   set-value-of-type!
   setting-env-map-name
   string->boolean
+  user-facing-value
   user-readable-values-map
   uuid-nonce-base
   validate-settings-formatting!
@@ -117,6 +122,7 @@
   writable-settings]
  [metabase.settings.models.setting.cache
   cache-update-check-interval-ms
+  cache-last-updated-at
   restore-cache!]
  [metabase.settings.models.setting.multi-setting
   define-multi-setting
@@ -162,4 +168,10 @@
   (I think we are using an atom to facilitate updating the values??)"
   [new-values & body]
   `(binding [metabase.settings.models.setting/*user-local-values* ~new-values]
+     ~@body))
+
+(defmacro with-enforced-setting-access-checks
+  "Enable checks on Setting access."
+  [& body]
+  `(binding [metabase.settings.models.setting/*enforce-setting-access-checks* true]
      ~@body))

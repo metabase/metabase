@@ -1,8 +1,8 @@
 import { match } from "ts-pattern";
 
 import { Icon } from "metabase/ui";
+import type { DatabaseProviderName } from "metabase-types/api/settings";
 
-import type { DatabaseProviderName } from "./database-providers";
 import AivenIcon from "./providers/aiven.svg";
 import AmazonRDSIcon from "./providers/amazon-rds.svg";
 import AzureIcon from "./providers/azure.svg";
@@ -25,14 +25,7 @@ export function ProviderIcon({
   provider: DatabaseProviderName | null;
 }) {
   if (!provider) {
-    return (
-      <Icon
-        name="database"
-        size={ICON_SIZE}
-        color="icon-primary"
-        opacity={0.25}
-      />
-    );
+    return <Icon name="database" size={ICON_SIZE} c="icon-brand" />;
   }
 
   const image = match(provider)

@@ -1,18 +1,18 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { ScheduleType, TokenFeatures } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import type { ScheduleProps } from "./Schedule";
 import { Schedule } from "./Schedule";
 export interface SetupOpts {
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
@@ -29,7 +29,7 @@ const mockTimezone = "America/New_York";
 const mockOnScheduleChange = jest.fn();
 
 export const setup = ({
-  hasEnterprisePlugins,
+  enterprisePlugins,
   tokenFeatures = {},
   ...props
 }: SetupOpts & Partial<ScheduleProps> = {}) => {
@@ -42,8 +42,8 @@ export const setup = ({
     ),
   });
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   const propsWithDefaults = {

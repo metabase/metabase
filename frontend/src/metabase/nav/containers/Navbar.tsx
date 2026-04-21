@@ -4,12 +4,12 @@ import { withRouter } from "react-router";
 import _ from "underscore";
 
 import { getAdminPaths } from "metabase/admin/app/selectors";
-import Database from "metabase/entities/databases";
-import { connect } from "metabase/lib/redux";
+import { Databases } from "metabase/entities/databases";
+import type { AdminPath, State } from "metabase/redux/store";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import { getUser } from "metabase/selectors/user";
+import { connect } from "metabase/utils/redux";
 import type { User } from "metabase-types/api";
-import type { AdminPath, State } from "metabase-types/store";
 
 import { AdminNavbar } from "../components/AdminNavbar";
 
@@ -40,7 +40,7 @@ function Navbar({ isOpen, user, location, params, adminPaths }: NavbarProps) {
   }
 
   return isAdminApp ? (
-    <AdminNavbar user={user} path={location.pathname} adminPaths={adminPaths} />
+    <AdminNavbar path={location.pathname} adminPaths={adminPaths} />
   ) : (
     <MainNavbar isOpen={isOpen} location={location} params={params} />
   );
@@ -48,7 +48,7 @@ function Navbar({ isOpen, user, location, params, adminPaths }: NavbarProps) {
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
-  Database.loadList({
+  Databases.loadList({
     loadingAndErrorWrapper: false,
   }),
   withRouter,

@@ -1,5 +1,6 @@
 (ns metabase.driver.sql.query-processor
   "The Query Processor is responsible for translating the Metabase Query Language into HoneySQL SQL forms."
+  (:refer-clojure :exclude [some mapv every? select-keys empty? not-empty])
   (:require
    [clojure.core.match :refer [match]]
    [clojure.string :as str]
@@ -18,7 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :as perf]
+   [metabase.util.performance :as perf :refer [empty? every? mapv not-empty select-keys some]]
    [toucan2.pipeline :as t2.pipeline])
   (:import
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -29,9 +30,9 @@
 (def source-query-alias
   "Alias to use for source queries, e.g.:
 
-    SELECT source.*
-    FROM ( SELECT * FROM some_table ) source"
-  "source")
+    SELECT __mb_source.*
+    FROM ( SELECT * FROM some_table ) __mb_source"
+  "__mb_source")
 
 (def ^:dynamic *inner-query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
@@ -54,7 +55,7 @@
 
   That requires:
 
-  - Removal of traling comments (after the semicolon).
+  - Removal of trailing comments (after the semicolon).
   - Removing the semicolon(s).
   - Squashing whitespace at the end of the string and replacinig it with newline. This is required in case some
     comments were preceding semicolon.
@@ -242,7 +243,7 @@
   Used in implementations of ->integer."
   [driver value]
   ;; value can be either string or float
-  ;; if it's a float, coversion to float does nothing
+  ;; if it's a float, conversion to float does nothing
   ;; if it's a string, we can't round, so we need to convert to float first
   (->> value
        (->float driver)
@@ -268,7 +269,7 @@
     (inline-value driver/*driver* x)
     (honey.sql.protocols/sqlize x)))
 
-;;; Replace the implentation of [[honey.sql/sqlize-value]] with one that hands off to [[inline-value]] if driver is
+;;; Replace the implementation of [[honey.sql/sqlize-value]] with one that hands off to [[inline-value]] if driver is
 ;;; bound. This way we can have driver-specific inline behavior. Monkey-patching private functions like this is a little
 ;;; questionable for sure but I think it's justified here since there is on other way to consistently guarantee that we
 ;;; hand off to [[sqlize-value]] when compiling something inline.
@@ -331,7 +332,7 @@
 
 (defmethod date [:sql :week-of-year]
   [driver _ expr]
-  ;; Some DBs truncate when doing integer division, therefore force float arithmetics
+  ;; Some DBs truncate when doing integer division, therefore force float arithmetic
   (->honeysql driver [:ceil (compiled (h2x// (date driver :day-of-year (date driver :week expr)) 7.0))]))
 
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (h2x/month expr))
@@ -350,7 +351,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defn- days-till-start-of-first-full-week
-  "Takes a datetime expession, return a HoneySQL form
+  "Takes a datetime expression, return a HoneySQL form
   that calculate how many days from the Jan 1st till the start of `first full week`.
 
   A full week is a week that contains 7 days in the same year.
@@ -421,13 +422,17 @@
   (binding [driver.common/*start-of-week* :monday]
     (date driver :day-of-week honeysql-expr)))
 
+;; add-interval-honeysql-form is also defined in metabase.util.honey-sql-2 for Postgres, MySQL/MariaDB, and H2. Prefer
+;; that for app db queries to avoid unnecessary dependencies on the driver module.
 (defmulti add-interval-honeysql-form
-  "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
+  "Return a HoneySQL form that represents addition of some temporal interval to the original `hsql-form`.
   `unit` is one of the units listed in [[metabase.util.date-2/add-units]].
 
     (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> [:date_add hsql-form 1 (h2x/literal 'day')]
 
-  `amount` is usually an integer, but can be floating-point for units like seconds."
+  `amount` is usually an integer, but can be floating-point for units like seconds.
+
+  This multimethod can be extended by drivers in their respective namespaces."
   {:added "0.34.2" :arglists '([driver hsql-form amount unit])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -521,15 +526,15 @@
 
 (defmethod unix-timestamp->honeysql [:sql :milliseconds]
   [driver _ expr]
-  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000)))
+  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000.0)))
 
 (defmethod unix-timestamp->honeysql [:sql :microseconds]
   [driver _ expr]
-  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000)))
+  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000.0)))
 
 (defmethod unix-timestamp->honeysql [:sql :nanoseconds]
   [driver _ expr]
-  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000000)))
+  (unix-timestamp->honeysql driver :seconds (h2x// expr 1000000000.0)))
 
 (defmulti cast-temporal-byte
   "Cast a byte field"
@@ -697,22 +702,42 @@
   [[_ value {base-type :base_type effective-type :effective_type} :as clause]]
   (and (driver-api/is-clause? :value clause)
        (string? value)
-       (isa? (or effective-type base-type)
-             :type/Text)))
+       ;; If no type info is provided (nil opts), assume it's text since it's a string.
+       ;; This handles cases like [:value "some string" nil] from expression definitions.
+       (or (nil? base-type)
+           (isa? (or effective-type base-type)
+                 :type/Text))))
+
+(defn apply-temporal-bucketing
+  "Apply temporal bucketing for the `:temporal-unit` in the options of a `:field` clause; return a new HoneySQL form that
+  buckets `honeysql-form` appropriately."
+  [driver {:keys [temporal-unit]} honeysql-form]
+  (date driver temporal-unit honeysql-form))
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name opts :as _clause]]
   (let [source-table (get opts driver-api/qp.add.source-table)
         source-alias (get opts driver-api/qp.add.source-alias)
         expression-definition (driver-api/expression-with-name *inner-query* expression-name)]
-    (->honeysql driver (cond (= source-table driver-api/qp.add.source)
-                             (apply h2x/identifier :field source-query-alias source-alias)
+    (cond->>
+     (->honeysql driver (cond (= source-table driver-api/qp.add.source)
+                              (apply h2x/identifier :field source-query-alias source-alias)
 
-                             (literal-text-value? expression-definition)
-                             [::expression-literal-text-value expression-definition]
+                              (literal-text-value? expression-definition)
+                              [::expression-literal-text-value expression-definition]
 
-                             :else
-                             expression-definition))))
+                              ;; Handle raw string literals (not wrapped in :value) - needed for
+                              ;; expression definitions that are just string literals, e.g. from
+                              ;; custom columns like `"fixed literal string"`. Without this,
+                              ;; the string becomes a parameter placeholder without type info,
+                              ;; which some databases (like H2) can't handle.
+                              (string? expression-definition)
+                              [::expression-literal-text-value
+                               [:value expression-definition {:base_type :type/Text}]]
+
+                              :else
+                              expression-definition))
+      (:temporal-unit opts) (apply-temporal-bucketing driver opts))))
 
 (defmethod ->honeysql [:sql :now]
   [driver _clause]
@@ -812,12 +837,6 @@
   [_driver identifier]
   identifier)
 
-(defn apply-temporal-bucketing
-  "Apply temporal bucketing for the `:temporal-unit` in the options of a `:field` clause; return a new HoneySQL form that
-  buckets `honeysql-form` appropriately."
-  [driver {:keys [temporal-unit]} honeysql-form]
-  (date driver temporal-unit honeysql-form))
-
 (defn apply-binning
   "Apply `:binning` options from a `:field` clause; return a new HoneySQL form that bins `honeysql-form`
   appropriately."
@@ -864,14 +883,26 @@
         (:name (driver-api/field (driver-api/metadata-provider) id-or-name)))))
 
 (defn- field-nfc-path
-  [[_field id-or-name opts]]
-  (or (get opts driver-api/qp.add.nfc-path)
-      (when (integer? id-or-name)
-        (:nfc-path (driver-api/field (driver-api/metadata-provider) id-or-name)))))
+  [[_field _id-or-name opts]]
+  ;; ignore nfc paths for fields that don't come from a source table
+  (when (pos-int? (get opts driver-api/qp.add.source-table))
+    (get opts driver-api/qp.add.nfc-path)))
 
 (defmethod ->honeysql [:sql ::nfc-path]
   [_driver [_ _nfc-path]]
   nil)
+
+(defn- parent-id->ancestor-names
+  "Walk the parent chain for a field with `:parent-id` set and return the ancestor field names, \"oldest\" first.
+  For example, if field `c` has parent `b`, returns `[\"b\"]`.
+  If `c` has parent `b` which has parent `a`, returns `[\"a\" \"b\"]`."
+  [parent-id]
+  (loop [id   parent-id
+         path ()]
+    (if-not id
+      (vec path)
+      (let [parent (driver-api/field (driver-api/metadata-provider) id)]
+        (recur (:parent-id parent) (cons (:name parent) path))))))
 
 (defmethod ->honeysql [:sql :field]
   [driver [_ id-or-name options :as field-clause]]
@@ -885,24 +916,48 @@
           ;; https://linear.app/metabase-inc/issue/ENG-8766/[epic]-field-refs-overhaul
           field-metadata       (when (integer? id-or-name)
                                  (driver-api/field (driver-api/metadata-provider) id-or-name))
-          allow-casting?       (and field-metadata
+          ;; For fields with parent-id (struct-type nested fields), include parent field names
+          ;; in the identifier so e.g. `result.tag_name` is rendered instead of just `tag_name`.
+          parent-names         (when-let [parent-id (:parent-id field-metadata)]
+                                 (parent-id->ancestor-names parent-id))
+          allow-casting?       (and (or (:qp/native-sandbox-column.force-coercion-strategy options)
+                                        (and field-metadata
+                                             (or (pos-int? (driver-api/qp.add.source-table options))
+                                                 (:qp/allow-coercion-for-columns-without-integer-qp.add.source-table options))))
                                     (not (:qp/ignore-coercion options)))
           ;; preserve metadata attached to the original field clause, for example BigQuery temporal type information.
           identifier           (-> (apply h2x/identifier :field
-                                          (concat source-table-aliases (->honeysql driver [::nfc-path source-nfc-path]) [source-alias]))
+                                          (concat source-table-aliases
+                                                  (->honeysql driver [::nfc-path source-nfc-path])
+                                                  parent-names
+                                                  [source-alias]))
                                    (with-meta (meta field-clause)))
           identifier           (->honeysql driver identifier)
+          ;; If no field-metadata is available, but a coercion strategy must be applied, synthesize enough
+          ;; `field-metadata` to be able to cast it correctly.
+          field-metadata       (or field-metadata
+                                   (when allow-casting?
+                                     (-> options
+                                         (select-keys [:base-type :effetive-type])
+                                         (assoc :coercion-strategy
+                                                (:qp/native-sandbox-column.force-coercion-strategy options)))))
           casted-field         (cast-field-if-needed driver field-metadata identifier)
           database-type        (or (h2x/database-type casted-field)
                                    (:database-type field-metadata))
-          maybe-add-db-type    (fn [expr]
+          effective-type       (when-not database-type
+                                 (let [et (or (:effective-type options) (:base-type options))]
+                                   (when (isa? et :type/Temporal)
+                                     et)))
+          maybe-add-type-info  (fn [expr]
                                  (if (h2x/type-info->db-type (h2x/type-info expr))
                                    expr
-                                   (h2x/with-database-type-info expr database-type)))]
+                                   (if database-type
+                                     (h2x/with-database-type-info expr database-type)
+                                     (h2x/with-type-info expr {:effective-type effective-type}))))]
       (u/prog1
         (cond->> (if allow-casting? casted-field identifier)
           ;; only add type info if it wasn't added by [[cast-field-if-needed]]
-          database-type            maybe-add-db-type
+          (or database-type effective-type) maybe-add-type-info
           (:temporal-unit options) (apply-temporal-bucketing driver options)
           (:binning options)       (apply-binning options))
         (log/trace (binding [*print-meta* true]
@@ -979,7 +1034,7 @@
           (keep (fn [[direction expr]]
                   (if (aggregation? expr)
                     (let [[_aggregation index] expr
-                          agg (unwrap-aggregation-option (aggregations index))]
+                          agg                  (unwrap-aggregation-option (aggregations index))]
                       (when-not (contains-clause? #{:cum-count :cum-sum :offset} agg)
                         [(->honeysql driver agg) direction]))
                     [(->honeysql driver expr) direction])))
@@ -989,28 +1044,32 @@
   "Order by the first breakout, then partition by all the other ones. See #42003 and
   https://metaboat.slack.com/archives/C05MPF0TM3L/p1714084449574689 for more info."
   [driver inner-query]
-  (let [breakouts (remove
-                   (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                         #(nth % 2))
-                   (:breakout inner-query))
-        group-bys (:group-by (apply-top-level-clause driver :breakout {} inner-query))
+  (let [breakouts            (into []
+                                   (remove
+                                    (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
+                                          #(nth % 2)))
+                                   (:breakout inner-query))
+        group-bys            (:group-by (apply-top-level-clause driver :breakout {} inner-query))
         finest-temp-breakout (driver-api/finest-temporal-breakout-index breakouts 2)
-        partition-exprs (when (> (count breakouts) 1)
-                          (if finest-temp-breakout
-                            (m/remove-nth finest-temp-breakout group-bys)
-                            (butlast group-bys)))
-        order-bys (over-order-bys driver (:aggregation inner-query)
-                                  (remove
-                                   (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
-                                         #(nth % 2)
-                                         second)
-                                   (:order-by inner-query)))]
+        partition-exprs      (when (> (count breakouts) 1)
+                               (if finest-temp-breakout
+                                 (m/remove-nth finest-temp-breakout group-bys)
+                                 (butlast group-bys)))
+        order-bys            (remove
+                              (comp driver-api/qp.util.transformations.nest-breakouts.externally-remapped-field
+                                    #(nth % 2)
+                                    second)
+                              (:order-by inner-query))
+        order-bys            (over-order-bys driver
+                                             (:aggregation inner-query)
+                                             order-bys)]
     (merge
      (when (seq partition-exprs)
        {:partition-by (mapv (fn [expr]
                               [expr])
                             partition-exprs)})
-     {:order-by order-bys})))
+     (when (seq order-bys)
+       {:order-by order-bys}))))
 
 (defn- window-aggregation-over-expr-for-query-without-breakouts [driver inner-query]
   (when-let [order-bys (not-empty (:order-by (apply-top-level-clause driver :order-by {} inner-query)))]
@@ -1027,14 +1086,15 @@
              window-aggregation-over-expr-for-query-with-breakouts
 
              (seq (:order-by *inner-query*))
-             window-aggregation-over-expr-for-query-without-breakouts
-
-             :else
-             (throw (ex-info (tru "Window function requires either breakouts or order by in the query")
-                             {:type  driver-api/qp.error-type.invalid-query
-                              :query *inner-query*})))
-         m (f driver *inner-query*)]
-     (-> [:over [expr (merge m additional-hsql)]]
+             window-aggregation-over-expr-for-query-without-breakouts)
+         m (when f
+             (-> (f driver *inner-query*)
+                 (merge additional-hsql)))]
+     (-> (if (seq m)
+           [:over [expr m]]
+           (do
+             (log/debug "OVER contains no GROUP BYs or ORDER BYs, falling back to returning NULL")
+             [:inline nil]))
          (h2x/with-database-type-info (h2x/database-type expr))))))
 
 (defn- format-rows-unbounded-preceding [_clause _args]
@@ -1282,27 +1342,31 @@
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
 (defmethod ->honeysql [:sql :aggregation]
   [driver [_ index]]
-  (driver-api/match-one
-    (nth (:aggregation *inner-query*) index)
-    [:aggregation-options ag (options :guard :name)]
-    (->honeysql driver (h2x/identifier :field-alias (:name options)))
+  (driver-api/match-lite (nth (:aggregation *inner-query*) index)
+    [:aggregation-options ag {driver-api/qp.add.desired-alias desired-alias}]
+    (->honeysql driver (h2x/identifier :field-alias desired-alias))
 
-    [:aggregation-options ag _]
-    #_:clj-kondo/ignore
-    (recur ag)
+    [:aggregation-options ag {driver-api/qp.add.source-alias source-alias}]
+    (->honeysql driver (h2x/identifier :field-alias source-alias))
+
+    [:aggregation-options ag {:name name}]
+    (->honeysql driver (h2x/identifier :field-alias name))
+
+    [:aggregation-options ag options]
+    (&recur ag)
 
     ;; For some arcane reason we name the results of a distinct aggregation "count", everything else is named the
     ;; same as the aggregation
-    :distinct
+    [:distinct & _]
     (->honeysql driver (h2x/identifier :field-alias :count))
 
-    #{:+ :- :* :/}
+    [#{:+ :- :* :/} & _]
     (->honeysql driver &match)
 
-    [:offset (options :guard :name) _expr _n]
-    (->honeysql driver (h2x/identifier :field-alias (:name options)))
+    [:offset {:name name} _expr _n]
+    (->honeysql driver (h2x/identifier :field-alias name))
 
-    ;; for everything else just use the name of the aggregation as an identifer, e.g. `:sum`
+    ;; for everything else just use the name of the aggregation as an identifier, e.g. `:sum`
     ;;
     ;; TODO -- I don't think we will ever actually get to this anymore because everything should have been given a name
     ;; by [[metabase.query-processor.middleware.pre-alias-aggregations]]
@@ -1373,7 +1437,7 @@
 
 ;; TODO -- this name is a bit of a misnomer since it also handles `:aggregation` and `:expression` clauses.
 (mu/defn field-clause->alias :- some?
-  "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
+  "Generate HoneySQL for an appropriate alias (e.g., for use with SQL `AS`) for a `:field`, `:expression`, or
   `:aggregation` clause of any type, or `nil` if the Field should not be aliased. By default uses the
   `::add/desired-alias` key in the clause options.
 
@@ -1429,16 +1493,25 @@
     ;; -> [[::h2x/identifier ...] [[::h2x/identifier ...]]]
     ;; -> SELECT date_extract(\"x\", 'month') AS \"x\"
 
-  `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
+    `clause` will be wrapped in a ::cast if ::add-cast is found in the `clause` options
 
     ;; Honey SQL 2
     (as [:expression \"x\" {:base-type :type/Boolean, ::add-cast :bit}])
     ;; -> [[::h2x/typed [:cast ... [:raw \"bit\"]] {:database-type \"bit\"}] [[::h2x/identifier ...]]]
-    ;; -> SELECT CAST(1 AS bit) AS \"x\""
+    ;; -> SELECT CAST(1 AS bit) AS \"x\"
+
+    `clause` will be wrapped in a ::case if ::wrap-in-case is found in the `clause` options
+
+    ;; Honey SQL 2
+    (as [:expression \"x\" {:base-type :type/Boolean, ::wrap-in-case true}])
+    ;; -> [:case [:> ... ...] [:inline 1] :else [:inline 0]]
+    ;; -> SELECT CASE WHEN ... > ... THEN 1 ELSE 0 END AS \"x\""
   [driver clause & _unique-name-fn]
-  (let [cast-type     (-> clause driver-api/field-options ::add-cast)
-        wrap-cast     #(vector ::cast % cast-type)
-        maybe-cast    #(cond-> % cast-type wrap-cast)
+  (let [{cast-type ::add-cast
+         wrap-in-case? ::wrap-in-case} (driver-api/field-options clause)
+        maybe-cast    #(cond-> %
+                         wrap-in-case? (as-> <> (vector ::wrap-in-case <>))
+                         cast-type     (as-> <> (vector ::cast <> cast-type)))
         honeysql-form (->honeysql driver (maybe-cast clause))
         field-alias   (field-clause->alias driver clause)]
     (if field-alias
@@ -1456,7 +1529,7 @@
   ([form]
    (rewrite-fields-to-force-using-column-aliases form {:is-breakout false}))
   ([form {is-breakout :is-breakout}]
-   (driver-api/replace
+   (driver-api/replace-lite
      form
      [:field id-or-name opts]
      [:field id-or-name (cond-> opts
@@ -1540,6 +1613,42 @@
     [:fn {:error/message "string value"} #(string? (second %))]]
    driver-api/mbql.schema.FieldOrExpressionDef])
 
+(defmulti escape-like-pattern
+  "Handle escaping a literal string into a `LIKE` clause pattern which will match literally.
+
+  In particular, any `%` or `_` (the standard metacharacters) should be escaped. In some engines, that's done by a
+  preceding backslash `\\_`; in others by wrapping it in a character class `[%]`.
+
+  The default implementation for `:sql` uses backslashes, which appears to be the most common approach. Most SQL-based
+  drivers should not need to implement this."
+  {:added "0.59.0" :arglists '([driver like-pattern])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod escape-like-pattern :sql [_driver like-pattern]
+  (-> like-pattern
+      (str/replace "\\" "\\\\")
+      (str/replace "_" "\\_")
+      (str/replace "%" "\\%")))
+
+(defmulti transform-literal-like-pattern-honeysql
+  "When the RHS of a `LIKE` clause is a literal pattern, some drivers require extra HoneySQL clauses, such as
+  `:escape`, added to the expression.
+
+  This driver multimethod allows SQL drivers to adjust these clauses for any MBQL expression that uses `LIKE` under
+  the hood (eg. `:starts-with`, `:contains`, `:ends-with`), with a single, simpler override.
+
+  The default is to add `ESCAPE '\\'`, adopting a common default. This is compatible with the default
+  [[escape-like-pattern]]. Drivers which have an `ESCAPE` character built in can skip editing this clause by inheriting
+  from the `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` abstract driver."
+  {:added "0.59.0" :arglists '([driver like-rhs-honeysql])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod transform-literal-like-pattern-honeysql :sql
+  [_driver like-rhs-honeysql]
+  [:escape like-rhs-honeysql [:inline "\\"]])
+
 (mu/defn- generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
@@ -1548,8 +1657,10 @@
    post
    {:keys [case-sensitive] :or {case-sensitive true} :as _options}]
   (if (= :value type)
-    (->honeysql driver (update arg 1 #(cond-> (str pre % post)
-                                        (not case-sensitive) u/lower-case-en)))
+    (->> (update arg 1 #(cond-> (str pre (escape-like-pattern driver %) post)
+                          (not case-sensitive) u/lower-case-en))
+         (->honeysql driver)
+         (transform-literal-like-pattern-honeysql driver))
     (let [expr (->honeysql driver (into [:concat] (remove nil?) [pre arg post]))]
       (if case-sensitive
         expr
@@ -1581,7 +1692,7 @@
     [::cast-to-text field]
     field))
 
-(mu/defn- maybe-cast-uuid-for-text-compare
+(mu/defn maybe-cast-uuid-for-text-compare
   "For :contains, :starts-with, and :ends-with.
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [field]
@@ -1686,9 +1797,8 @@
   ;; We must not transform the head again else we'll have an infinite loop
   ;; (and we can't do it at the call-site as then it will be harder to fish out field references)
   (let [honeysql-clause (into [op] (map (partial ->honeysql driver)) args)]
-    (if-let [field-arg (driver-api/match-one args
-                         :field          &match
-                         :expression     &match)]
+    (if-let [field-arg (driver-api/match-lite args
+                         [#{:field :expression} & _] &match)]
       [:or
        honeysql-clause
        [:= (->honeysql driver field-arg) nil]]
@@ -1776,7 +1886,7 @@
 
 (defn- apply-joins-honey-sql-2
   "Use Honey SQL 2's `:join-by` so the joins are in the same order they are specified in MBQL (#15342).
-  See [[metabase.query-processor-test.explicit-joins-test/join-order-test]]."
+  See [[metabase.query-processor.explicit-joins-test/join-order-test]]."
   [driver honeysql-form joins]
   (letfn [(append-joins [join-by]
             (into (vec join-by)
@@ -1947,9 +2057,9 @@
 (declare apply-clauses)
 
 (defn- apply-source-query
-  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query.
-   If the source query has ambiguous column names, use a `WITH` statement to rename the source columns.
-   At the time of this writing, all source queries are aliased as `source`."
+  "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. If the source query has ambiguous
+  column names, use a `WITH` statement to rename the source columns. At the time of this writing, all source queries
+  are aliased as `__mb_source`."
   [driver honeysql-form {{:keys [native params] persisted :persisted-info/native :as source-query} :source-query
                          source-metadata :source-metadata}]
   (let [table-alias (->honeysql driver (h2x/identifier :table-alias source-query-alias))
@@ -1962,12 +2072,8 @@
 
                         :else
                         (apply-clauses driver {} source-query))
-        ;; TODO: Use MLv2 here to get source and desired-aliases
-        alias-info (mapv (fn [{[_ desired-ref-name] :field_ref source-name :name}]
-                           [source-name desired-ref-name])
-                         source-metadata)
-        source-aliases (mapv first alias-info)
-        desired-aliases (mapv second alias-info)
+        source-aliases (mapv :lib/source-column-alias source-metadata)
+        desired-aliases (mapv :lib/desired-column-alias source-metadata)
         duplicate-source-aliases? (and (> (count source-aliases) 1)
                                        (not (apply distinct? source-aliases)))
         needs-columns? (and (seq desired-aliases)
@@ -1978,7 +2084,7 @@
     (merge
      honeysql-form
      (if needs-columns?
-        ;; HoneySQL cannot expand [::h2x/identifier :table "source"] in the with alias.
+        ;; HoneySQL cannot expand [::h2x/identifier :table "__mb_source"] in the with alias.
         ;; This is ok since we control the alias.
        {:with [[[source-query-alias {:columns (mapv #(h2x/identifier :field %) desired-aliases)}]
                 source-clause]]
@@ -2002,60 +2108,41 @@
 (defmulti preprocess
   "Do miscellaneous transformations to the MBQL before compiling the query. These changes are idempotent, so it is safe
   to use this function in your own implementations of [[driver/mbql->native]], if you want to apply changes to the
-  same version of the query that we will ultimately be compiling."
-  {:changelog-test/ignore true, :arglists '([driver inner-query]), :added "0.42.0"}
+  same version of the query that we will ultimately be compiling.
+
+  Wants a `:lib/query` MBQL 5 query as input. Always returns an MBQL 4 **inner query**, for historical reasons."
+  {:changelog-test/ignore true, :arglists '([driver mbql5-query]), :added "0.42.0"}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-;;; This is a wrapper
-;;; around [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]], which is
-;;; written for pMBQL, so we can use it with a legacy inner query. Once we rework the SQL QP to use pMBQL we can remove
-;;; this.
-(mu/defn- nest-breakouts-in-queries-with-window-fn-aggregations :- driver-api/MBQLQuery
-  [inner-query :- driver-api/MBQLQuery]
-  (let [metadata-provider (driver-api/metadata-provider)
-        database-id       (u/the-id (driver-api/database (driver-api/metadata-provider)))]
-    (-> (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)
-        driver-api/nest-breakouts-in-stages-with-window-aggregation
-        driver-api/->legacy-MBQL
-        :query)))
-
-;;; [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]] already does
-;;; basically the same check, this is here mostly to avoid the performance hit of converting to pMBQL and back in
-;;; queries that have no cumulative aggregations at all. Once we convert the SQL QP to pMBQL we can remove this.
-(defn- has-window-function-aggregations? [inner-query]
-  (or (driver-api/match (mapcat inner-query [:aggregation :expressions])
-        #{:cum-sum :cum-count :offset}
-        true)
-      (when-let [source-query (:source-query inner-query)]
-        (has-window-function-aggregations? source-query))))
-
-(defn- maybe-nest-breakouts-in-queries-with-window-fn-aggregations
-  [inner-query]
-  (cond-> inner-query
-    (has-window-function-aggregations? inner-query)
-    nest-breakouts-in-queries-with-window-fn-aggregations))
-
 (defmethod preprocess :sql
-  [_driver inner-query]
-  (-> inner-query
-      maybe-nest-breakouts-in-queries-with-window-fn-aggregations
+  [_driver mbql5-query]
+  (-> mbql5-query
+      driver-api/nest-breakouts-in-stages-with-window-aggregation
+      driver-api/nest-expressions
       driver-api/add-alias-info
-      driver-api/nest-expressions))
+      driver-api/->legacy-MBQL
+      :query))
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver :- :keyword
    query  :- :map]
   (if (:lib/type query)
-    (recur driver (driver-api/->legacy-MBQL query))
-    (let [{inner-query :query} query]
-      (binding [driver/*driver* driver]
-        (let [inner-query (preprocess driver inner-query)]
-          (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
-          (u/prog1 (apply-clauses driver {} inner-query)
-            (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
-            (driver-api/debug> (list '🍯 <>))))))))
+    (binding [driver/*driver* driver]
+      (let [inner-query (preprocess driver query)]
+        (log/tracef "Compiling MBQL query\n%s" (u/pprint-to-str 'magenta inner-query))
+        (u/prog1 (apply-clauses driver {} inner-query)
+          (log/debugf "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))
+          (driver-api/debug> (list '🍯 <>)))))
+
+    (let [metadata-provider (driver-api/metadata-provider)
+          database-id       (if (:type query)
+                              (:database query)
+                              (u/the-id (driver-api/database metadata-provider)))
+          inner-query       (or (:query query) query)
+          mbql5-query (driver-api/query-from-legacy-inner-query metadata-provider database-id inner-query)]
+      (recur driver mbql5-query))))
 
 ;;;; MBQL -> Native
 
@@ -2074,9 +2161,18 @@
 
 (defmethod driver/compile-transform :sql
   [driver {:keys [query output-table]}]
-  (format-honeysql driver
-                   {:create-table-as [(keyword output-table)]
-                    :raw query}))
+  (let [{sql-query :query sql-params :params} query]
+    [(first (format-honeysql driver
+                             {:create-table-as [(keyword output-table)]
+                              :raw sql-query}))
+     sql-params]))
+
+(defmethod driver/compile-insert :sql
+  [driver {:keys [query output-table]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (format-honeysql driver
+                             {:insert-into [(keyword output-table) {:raw sql-query}]}))
+     sql-params]))
 
 (defmethod driver/compile-drop-table :sql
   [driver table]

@@ -1,14 +1,11 @@
-import { useMemo } from "react";
-
 import {
-  getBodyColumns,
   getColumnTitle,
   getRowValue,
   renderValue,
 } from "metabase/detail-view/utils";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import type { OptionsType } from "metabase/lib/formatting/types";
 import { Flex, Group, Stack, Text, rem } from "metabase/ui";
+import type { OptionsType } from "metabase/utils/formatting/types";
 import type { DatasetColumn, RowValues, Table } from "metabase-types/api";
 
 import S from "./DetailsGroup.module.css";
@@ -30,19 +27,13 @@ export const DetailsGroup = ({
   table,
 }: Props) => {
   const tc = useTranslateContent();
-  const bodyColumns = useMemo(() => getBodyColumns(columns), [columns]);
-  const columnIndexMap = useMemo(
-    () => new Map(columns.map((column, index) => [column, index])),
-    [columns],
-  );
 
   return (
     <Stack data-testid="object-details" gap="lg">
-      {bodyColumns.map((column, index) => {
+      {columns.map((column, index) => {
         const field = table?.fields?.find((field) => field.id === column.id);
         const value = getRowValue(columns, column, row);
-        const realIndex = columnIndexMap.get(column) ?? -1;
-        const columnSettings = columnsSettings?.[realIndex] ?? {};
+        const columnSettings = columnsSettings?.[index] ?? {};
 
         return (
           <Group

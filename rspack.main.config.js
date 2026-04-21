@@ -1,12 +1,11 @@
 // @ts-check
 /* eslint-env node */
-/* eslint-disable import/no-commonjs */
+
 const fs = require("fs");
 
 const rspack = require("@rspack/core");
 const ReactRefreshPlugin = require("@rspack/plugin-react-refresh");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 const WebpackNotifierPlugin = require("webpack-notifier");
 
 const {
@@ -19,35 +18,29 @@ const { CSS_CONFIG } = require("./frontend/build/shared/rspack/css-config");
 const {
   getBannerOptions,
 } = require("./frontend/build/shared/rspack/get-banner-options");
+const {
+  CssVarsDeclarationPlugin,
+} = require("./frontend/build/shared/rspack/plugins/CssVarsDeclarationPlugin/css-vars-declaration-plugin");
+const {
+  RESOLVE_ALIASES,
+} = require("./frontend/build/shared/rspack/resolve-aliases");
+const { SVGO_CONFIG } = require("./frontend/build/shared/rspack/svgo-config");
 
-const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
-const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
-const FRONTEND_BUILD_CONFIGS_PATH = __dirname + "/frontend/build";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
-const LIB_SRC_PATH = __dirname + "/frontend/src/metabase-lib";
-const ENTERPRISE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/metabase-enterprise";
-const EMBEDDING_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding";
-const SDK_PACKAGE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-package";
-const SDK_BUNDLE_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-bundle";
-const SDK_SHARED_SRC_PATH =
-  __dirname + "/enterprise/frontend/src/embedding-sdk-shared";
-const TYPES_SRC_PATH = __dirname + "/frontend/src/metabase-types";
-const CLJS_SRC_PATH = __dirname + "/target/cljs_release";
-const CLJS_SRC_PATH_DEV = __dirname + "/target/cljs_dev";
-const TEST_SUPPORT_PATH = __dirname + "/frontend/test/__support__";
 const BUILD_PATH = __dirname + "/resources/frontend_client";
-const E2E_PATH = __dirname + "/e2e";
 
-const PORT = process.env.PORT || 8080;
+// For sharing the embedding snippets in the docs with the embedding
+// onboarding flow in the app to keep the snippets always in sync.
+const SDK_DOCS_SNIPPETS_PATH = __dirname + "/docs/embedding/sdk/snippets";
+
+const PORT = process.env.MB_FRONTEND_DEV_PORT || 8080;
 const isDevMode = IS_DEV_MODE;
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
 // If you want to test metabase locally with a custom domain, either use
-// `metabase.local` or add your custom domain via the `MB_TEST_CUSTOM_DOMAINS`
-// environment variable so that rspack will allow requests from them.
+// `metabase.localhost` (anything .localhost should work out of the box) or add
+// your custom domain via the `MB_TEST_CUSTOM_DOMAINS` environment variable so
+// that rspack will allow requests from them.
 const TEST_CUSTOM_DOMAINS =
   process.env.MB_TEST_CUSTOM_DOMAINS?.split(",")
     .map((domain) => domain.trim())
@@ -84,8 +77,8 @@ const SWC_LOADER = {
 };
 
 class OnScriptError {
-  apply(compiler) {
-    compiler.hooks.compilation.tap("OnScriptError", (compilation) => {
+  apply(/** @type {import("webpack").Compiler} */ compiler) {
+    compiler.hooks.compilation.tap("OnScriptError", (/** @type {import("webpack").Compilation} */ compilation) => {
       HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
         "OnScriptError",
         (data, cb) => {
@@ -101,11 +94,6 @@ class OnScriptError {
   }
 }
 
-const resolveEnterprisePathOrNoop = (path) =>
-  process.env.MB_EDITION === "ee"
-    ? ENTERPRISE_SRC_PATH + path
-    : SRC_PATH + "/lib/noop";
-
 /** @type {import('@rspack/cli').Configuration} */
 const config = {
   mode: isDevMode ? "development" : "production",
@@ -115,8 +103,8 @@ const config = {
   // eventually we should have multiple (single file) entry points for various pieces of the app to enable code splitting
   entry: {
     "app-main": "./app-main.js",
-    "app-public": "./app-public.js",
-    "app-embed": "./app-embed.js",
+    "app-public": "./app-public.ts",
+    "app-embed": "./app-embed.ts",
     "app-embed-sdk": "./app-embed-sdk.tsx",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
@@ -149,8 +137,20 @@ const config = {
         use: [BABEL_LOADER],
       },
       {
+        // Embedding onboarding flow requires sharing snippets from
+        // docs, so we treat TypeScript files inside docs/ as raw text
+        test: /\.tsx?$/,
+        include: [SDK_DOCS_SNIPPETS_PATH],
+        type: "asset/source",
+      },
+      {
         test: /\.(tsx?|jsx?)$/,
-        exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
+        exclude: [
+          /node_modules/,
+          /cljs/,
+          /css\/core\/fonts\.styled\.ts/,
+          SDK_DOCS_SNIPPETS_PATH,
+        ],
         use: [SWC_LOADER],
         type: "javascript/auto",
       },
@@ -178,6 +178,10 @@ const config = {
         use: ["source-map-loader"],
       },
       {
+        test: /\.md/,
+        type: "asset/source",
+      },
+      {
         test: /\.svg/,
         type: "asset/source",
         resourceQuery: /source/, // *.svg?source
@@ -191,6 +195,7 @@ const config = {
             loader: "@svgr/webpack",
             options: {
               ref: true,
+              svgoConfig: SVGO_CONFIG,
             },
           },
         ],
@@ -208,35 +213,12 @@ const config = {
       ".css",
       ".svg",
     ],
-    alias: {
-      "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
-      assets: ASSETS_PATH,
-      fonts: FONTS_PATH,
-      metabase: SRC_PATH,
-      "metabase-lib": LIB_SRC_PATH,
-      "metabase-enterprise": ENTERPRISE_SRC_PATH,
-      "metabase-types": TYPES_SRC_PATH,
-      "metabase-dev": `${SRC_PATH}/dev${isDevMode ? "" : "-noop"}.js`,
-      cljs: isDevMode ? CLJS_SRC_PATH_DEV : CLJS_SRC_PATH,
-      __support__: TEST_SUPPORT_PATH,
-      e2e: E2E_PATH,
-      style: SRC_PATH + "/css/core/index",
-      // NOTE @kdoh - 7/24/18
-      // icepick 2.x is es6 by defalt, to maintain backwards compatability
-      // with ie11 point to the minified version
-      icepick: __dirname + "/node_modules/icepick/icepick.min",
-      // conditionally load either the EE plugins file or a empty file in the CE code tree
-      "ee-plugins": resolveEnterprisePathOrNoop("/plugins"),
-      "ee-overrides": resolveEnterprisePathOrNoop("/overrides"),
-      embedding: EMBEDDING_SRC_PATH,
-      "embedding-sdk-package": SDK_PACKAGE_SRC_PATH,
-      "embedding-sdk-bundle": SDK_BUNDLE_SRC_PATH,
-      "embedding-sdk-shared": SDK_SHARED_SRC_PATH,
-      "sdk-iframe-embedding-ee-plugins": resolveEnterprisePathOrNoop(
-        "/sdk-iframe-embedding-plugins",
-      ),
-      "sdk-ee-plugins": resolveEnterprisePathOrNoop("/sdk-plugins"),
-      "sdk-specific-imports": SRC_PATH + "/lib/noop",
+    alias: RESOLVE_ALIASES,
+    fallback: {
+      buffer: require.resolve("buffer/"),
+      url: require.resolve("url/"),
+      events: require.resolve("events/"),
+      querystring: require.resolve("querystring-es3"),
     },
   },
   optimization: {
@@ -244,24 +226,28 @@ const config = {
     splitChunks: {
       cacheGroups: {
         vendors: {
-          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas-pro)[\\/])/,
-          chunks: "all",
+          test: /[\\/]node_modules[\\/]/,
+          chunks: "initial",
           name: "vendor",
+          priority: -10,
         },
         sqlFormatter: {
-          test: /[\\/]node_modules[\\/]sql-formatter[\\/]/,
+          test: /[\\/]sql-formatter[\\/]/,
           chunks: "all",
           name: "sql-formatter",
+          priority: 10,
         },
         jspdf: {
-          test: /[\\/]node_modules[\\/]jspdf[\\/]/,
+          test: /[\\/]jspdf[\\/]/,
           chunks: "all",
           name: "jspdf",
+          priority: 10,
         },
         html2canvas: {
-          test: /[\\/]node_modules[\\/]html2canvas-pro[\\/]/,
+          test: /[\\/](html2canvas|html2canvas-pro)[\\/]/,
           chunks: "all",
           name: "html2canvas",
+          priority: 10,
         },
       },
     },
@@ -305,14 +291,16 @@ const config = {
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
-    new NodePolyfillPlugin(), // for crypto, among others
+    // https://github.com/orgs/remarkjs/discussions/903
+    new rspack.ProvidePlugin({
+      process: "process/browser.js",
+      Buffer: ["buffer", "Buffer"],
+    }),
     new rspack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
       ENABLE_CLJS_HOT_RELOAD: process.env.ENABLE_CLJS_HOT_RELOAD ?? "false",
     }),
-    // https://github.com/remarkjs/remark/discussions/903
-    new rspack.ProvidePlugin({ process: "process/browser.js" }),
   ],
 };
 
@@ -323,7 +311,7 @@ if (shouldEnableHotRefresh) {
     throw new Error("webpack config is missing configuration");
   }
 
-  // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
+  // suffixing with ".hot" allows us to run both `bun run build-hot` and `bun run test` or `bun run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js";
 
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
@@ -340,7 +328,7 @@ if (shouldEnableHotRefresh) {
     headers: {
       "Access-Control-Allow-Origin": "*",
     },
-    allowedHosts: ["localhost", "metabase.local", ...TEST_CUSTOM_DOMAINS],
+    allowedHosts: ["localhost", ...TEST_CUSTOM_DOMAINS],
     // tweak stats to make the output in the console more legible
     devMiddleware: {
       stats: { preset: "errors-warnings", timings: true },
@@ -366,6 +354,7 @@ if (shouldEnableHotRefresh) {
   config.plugins.unshift(
     new ReactRefreshPlugin({
       overlay: false,
+      exclude: [SDK_DOCS_SNIPPETS_PATH],
     }),
   );
 }
@@ -376,13 +365,18 @@ if (isDevMode) {
   }
 
   // replace minified files with un-minified versions
-  for (const name in config.resolve.alias) {
-    const minified = config.resolve.alias[name];
+  const aliases = config.resolve.alias || {};
+
+  Object.entries(aliases).forEach(([name, minified]) => {
+    if (typeof minified !== "string") {
+      return;
+    }
+
     const unminified = minified.replace(/[.-\/]min\b/g, "");
     if (minified !== unminified && fs.existsSync(unminified)) {
-      config.resolve.alias[name] = unminified;
+      aliases[name] = unminified;
     }
-  }
+  });
 
   // by default enable "cheap" source maps for fast re-build speed
   // with BETTER_SOURCE_MAPS we switch to sourcemaps that work with breakpoints and makes stacktraces readable
@@ -397,6 +391,10 @@ if (isDevMode) {
     new WebpackNotifierPlugin({
       excludeWarnings: true,
       skipFirstNotification: true,
+    }),
+    new CssVarsDeclarationPlugin({
+      frontendSrcPath: __dirname + "/frontend/src",
+      rootPath: __dirname,
     }),
   );
 }

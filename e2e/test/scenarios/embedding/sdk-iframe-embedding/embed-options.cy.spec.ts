@@ -6,6 +6,139 @@ import {
 
 const { H } = cy;
 
+describe("OSS", { tags: "@OSS" }, () => {
+  describe("scenarios > embedding > Modular embedding (ex EAJS)", () => {
+    beforeEach(() => {
+      H.prepareSdkIframeEmbedTest({
+        withToken: false,
+        enabledAuthMethods: ["api-key"],
+      });
+      H.setupSMTP();
+      cy.signOut();
+    });
+
+    describe("dashboards", () => {
+      it("should not render a subscription button even with `with-subscriptions=true`", () => {
+        cy.get<string>("@apiKey").then((apiKey) => {
+          const frame = H.loadSdkIframeEmbedTestPage({
+            elements: [
+              {
+                component: "metabase-dashboard",
+                attributes: {
+                  dashboardId: ORDERS_DASHBOARD_ID,
+                  withSubscriptions: true,
+                },
+              },
+            ],
+            metabaseConfig: { apiKey },
+          });
+
+          frame.within(() => {
+            cy.findByRole("button", { name: "Subscriptions" }).should(
+              "not.exist",
+            );
+          });
+        });
+      });
+    });
+  });
+});
+
+describe("EE without license", () => {
+  describe("scenarios > embedding > Modular embedding (EAJS)", () => {
+    beforeEach(() => {
+      H.prepareSdkIframeEmbedTest({
+        withToken: "starter",
+        enabledAuthMethods: ["api-key"],
+      });
+      H.setupSMTP();
+      cy.signOut();
+    });
+
+    describe("dashboards", () => {
+      it("should not render a subscription button even with `with-subscriptions=true`", () => {
+        cy.get<string>("@apiKey").then((apiKey) => {
+          const frame = H.loadSdkIframeEmbedTestPage({
+            elements: [
+              {
+                component: "metabase-dashboard",
+                attributes: {
+                  dashboardId: ORDERS_DASHBOARD_ID,
+                  withSubscriptions: true,
+                },
+              },
+            ],
+            metabaseConfig: { apiKey },
+          });
+
+          frame.within(() => {
+            cy.findByRole("button", { name: "Subscriptions" }).should(
+              "not.exist",
+            );
+          });
+        });
+      });
+    });
+  });
+});
+
+describe("EE", () => {
+  describe("scenarios > embedding > Modular embedding (EAJS)", () => {
+    beforeEach(() => {
+      H.prepareSdkIframeEmbedTest({ withToken: "bleeding-edge" });
+      H.setupSMTP();
+      cy.signOut();
+    });
+
+    describe("dashboards", () => {
+      it("should render a subscription button with `with-subscriptions=true`", () => {
+        const frame = H.loadSdkIframeEmbedTestPage({
+          elements: [
+            {
+              component: "metabase-dashboard",
+              attributes: {
+                dashboardId: ORDERS_DASHBOARD_ID,
+                withSubscriptions: true,
+              },
+            },
+          ],
+        });
+
+        frame.within(() => {
+          cy.findByRole("button", { name: "Subscriptions" })
+            .should("be.visible")
+            .click();
+          dashboardSidebar().within(() => {
+            cy.log("set up the first subscription");
+            cy.findByRole("button", { name: "Done" }).click();
+
+            cy.log("set up the second subscription");
+            cy.button("Set up a new schedule").click();
+            cy.findByDisplayValue("Hourly").click();
+          });
+
+          H.popover().findByRole("option", { name: "Daily" }).click();
+          cy.findByRole("button", { name: "Done" }).click();
+
+          dashboardSidebar().within(() => {
+            // Header
+            cy.findByText("Subscriptions").should("be.visible");
+
+            // Subscription list
+            cy.findAllByText("Bobby Tables").should("have.length", 2);
+            cy.findByText("Emailed hourly").should("be.visible");
+            cy.findByText("Emailed daily at 8:00 AM").should("be.visible");
+          });
+        });
+      });
+    });
+  });
+});
+
+function dashboardSidebar() {
+  return cy.findByRole("complementary");
+}
+
 describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
   beforeEach(() => {
     H.prepareSdkIframeEmbedTest({ signOut: true });
@@ -13,11 +146,15 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
   it("shows a static question with drills=false", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-question",
-      attributes: {
-        questionId: ORDERS_QUESTION_ID,
-        drills: false,
-      },
+      elements: [
+        {
+          component: "metabase-question",
+          attributes: {
+            questionId: ORDERS_QUESTION_ID,
+            drills: false,
+          },
+        },
+      ],
     });
 
     cy.wait("@getCardQuery");
@@ -29,19 +166,24 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       );
 
       cy.log("2. clicking on the column value should not show the popover");
-      cy.findAllByText("37.65").first().should("be.visible").click();
+      cy.findAllByText("37.65").first().should("be.visible");
+      cy.findAllByText("37.65").first().click();
       cy.findByText(/Filter by this value/).should("not.exist");
     });
   });
 
   it("shows a static question with drills=false, withTitle=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-question",
-      attributes: {
-        questionId: ORDERS_QUESTION_ID,
-        drills: false,
-        withTitle: true,
-      },
+      elements: [
+        {
+          component: "metabase-question",
+          attributes: {
+            questionId: ORDERS_QUESTION_ID,
+            drills: false,
+            withTitle: true,
+          },
+        },
+      ],
     });
 
     cy.wait("@getCardQuery");
@@ -57,13 +199,17 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
   it("shows a static dashboard using drills=false, withTitle=false, withDownloads=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-        drills: false,
-        withTitle: false,
-        withDownloads: true,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+            drills: false,
+            withTitle: false,
+            withDownloads: true,
+          },
+        },
+      ],
     });
 
     cy.wait("@getDashCardQuery");
@@ -79,20 +225,27 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.get('[aria-label="Download as PDF"]').should("be.visible");
 
       cy.log("4. clicking on the column value should not show the popover");
-      cy.findAllByText("37.65").first().should("be.visible").click();
+      cy.findAllByText("37.65").first().should("be.visible");
+
+      cy.findAllByText("37.65").first().click();
+
       cy.findByText(/Filter by this value/).should("not.exist");
     });
   });
 
   it("renders an interactive question with drills=true, withTitle=false, withDownloads=true", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-question",
-      attributes: {
-        questionId: ORDERS_QUESTION_ID,
-        drills: true,
-        withDownloads: true,
-        withTitle: false,
-      },
+      elements: [
+        {
+          component: "metabase-question",
+          attributes: {
+            questionId: ORDERS_QUESTION_ID,
+            drills: true,
+            withDownloads: true,
+            withTitle: false,
+          },
+        },
+      ],
     });
 
     cy.wait("@getCardQuery");
@@ -105,7 +258,8 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
       cy.get("[aria-label='download icon']").should("be.visible");
 
       cy.log("3. clicking on the column value should show the popover");
-      cy.findAllByText("37.65").first().should("be.visible").click();
+      cy.findAllByText("37.65").first().should("be.visible");
+      cy.findAllByText("37.65").first().click();
       cy.findByText(/Filter by this value/).should("be.visible");
 
       cy.log("4. clicking on the filter should drill down");
@@ -119,13 +273,17 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
   it("renders an interactive dashboard with drills=true, withDownloads=true, withTitle=false", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-dashboard",
-      attributes: {
-        dashboardId: ORDERS_DASHBOARD_ID,
-        drills: true,
-        withDownloads: true,
-        withTitle: false,
-      },
+      elements: [
+        {
+          component: "metabase-dashboard",
+          attributes: {
+            dashboardId: ORDERS_DASHBOARD_ID,
+            drills: true,
+            withDownloads: true,
+            withTitle: false,
+          },
+        },
+      ],
     });
 
     cy.wait("@getDashCardQuery");
@@ -155,13 +313,17 @@ describe("scenarios > embedding > sdk iframe embed options passthrough", () => {
 
   it("renders the exploration template with isSaveEnabled=true, targetCollection, entityTypes", () => {
     const frame = H.loadSdkIframeEmbedTestPage({
-      element: "metabase-question",
-      attributes: {
-        questionId: "new",
-        isSaveEnabled: true,
-        targetCollection: FIRST_COLLECTION_ID,
-        entityTypes: ["table"],
-      },
+      elements: [
+        {
+          component: "metabase-question",
+          attributes: {
+            questionId: "new",
+            isSaveEnabled: true,
+            targetCollection: FIRST_COLLECTION_ID,
+            entityTypes: ["table"],
+          },
+        },
+      ],
     });
 
     frame.within(() => {

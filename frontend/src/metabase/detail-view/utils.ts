@@ -1,6 +1,5 @@
-import { createMockMetadata } from "__support__/metadata";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
-import { type OptionsType, formatValue } from "metabase/lib/formatting";
+import { type OptionsType, formatValue } from "metabase/utils/formatting";
 import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
   getGlobalSettingsForColumn,
@@ -9,6 +8,7 @@ import {
 } from "metabase/visualizations/lib/settings/column";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import * as Lib from "metabase-lib";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   isAvatarURL,
   isEntityName,
@@ -16,8 +16,17 @@ import {
   isPK,
   isTitle,
 } from "metabase-lib/v1/types/utils/isa";
-import type { DatasetColumn, Field, RowValue, Table } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
+import type {
+  DatasetColumn,
+  Field,
+  RowValue,
+  Series,
+  Table,
+} from "metabase-types/api";
+import {
+  createMockCard,
+  createMockDatasetData,
+} from "metabase-types/api/mocks";
 
 export function renderValue(
   tc: ContentTranslationFunction,
@@ -25,7 +34,12 @@ export function renderValue(
   column: DatasetColumn,
   optionsOverride?: OptionsType,
 ) {
-  const mockSeries = [{ data: { cols: [column] }, card: createMockCard() }];
+  const mockSeries: Series = [
+    {
+      data: createMockDatasetData({ cols: [column] }),
+      card: createMockCard(),
+    },
+  ];
   const settingDefs = getSettingDefinitionsForColumn(mockSeries, column);
   const inheritedSettings = {
     ...getGlobalSettingsForColumn(),
@@ -117,11 +131,6 @@ export function getAvatarColumn(
   return avatar ?? image;
 }
 
-export function getBodyColumns(columns: DatasetColumn[]): DatasetColumn[] {
-  const headerColumns = getHeaderColumns(columns);
-  return columns.filter((column) => !headerColumns.includes(column));
-}
-
 export function getRowName(
   columns: DatasetColumn[],
   row: RowValue[] | undefined,
@@ -153,7 +162,12 @@ export const getColumnTitle = (
   column: DatasetColumn,
   settings: OptionsType,
 ) => {
-  const series = [{ data: { cols: [column] }, card: createMockCard() }];
+  const series: Series = [
+    {
+      data: createMockDatasetData({ cols: [column] }),
+      card: createMockCard(),
+    },
+  ];
 
   return getTitleForColumn(column, series, {
     ...getComputedSettingsForSeries(series),
@@ -179,24 +193,21 @@ export const getEntityIcon = (entityType?: Table["entity_type"]) => {
   }
 };
 
-export function getTableQuery(table: Table | undefined): Lib.Query | undefined {
+export function getTableQuery(
+  metadata: Metadata,
+  table: Table | undefined,
+): Lib.Query | undefined {
   if (!table) {
     return undefined;
   }
 
-  const metadata = createMockMetadata({
-    tables: [table],
-  });
-
   const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
+  const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
+  if (tableMetadata == null) {
+    return undefined;
+  }
 
-  return Lib.fromLegacyQuery(table.db_id, metadataProvider, {
-    type: "query",
-    database: table.db_id,
-    query: {
-      "source-table": table.id,
-    },
-  });
+  return Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
 }
 
 export function filterByPk(

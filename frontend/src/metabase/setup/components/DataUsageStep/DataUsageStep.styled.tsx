@@ -1,11 +1,11 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Toggle from "metabase/common/components/Toggle";
+import { Toggle } from "metabase/common/components/Toggle";
 
 export const StepDescription = styled.div`
   margin: 0.875rem 0 1.25rem;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 `;
 
 export const StepToggleContainer = styled.div`
@@ -22,13 +22,13 @@ export const StepToggle = styled(Toggle)`
 `;
 
 export const StepToggleLabel = styled.div`
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   margin-left: 0.5rem;
 `;
 
 export const StepInfoList = styled.ul`
   margin: 0 0 1.25rem;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   list-style: disc inside;
   line-height: 2;
 `;

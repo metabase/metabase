@@ -2,7 +2,7 @@
   color: var(--mb-color-brand);
 
   &:active {
-    color: var(--mb-text-text-dark);
+    color: var(--mb-color-text-primary);
     text-decoration: underline;
   }
 }

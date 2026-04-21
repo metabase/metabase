@@ -1,5 +1,5 @@
-import { utf8_to_b64url } from "metabase/lib/encoding";
-import * as Urls from "metabase/lib/urls";
+import { utf8_to_b64url } from "metabase/utils/encoding";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -19,12 +19,7 @@ type UrlBuilderOpts = {
 
 export function getUrl(
   question: Question,
-  {
-    originalQuestion,
-    query,
-    includeDisplayIsLocked,
-    creationType,
-  }: UrlBuilderOpts = {},
+  { originalQuestion, query, creationType }: UrlBuilderOpts = {},
 ) {
   question = question.omitTransientCardIds();
 
@@ -33,8 +28,8 @@ export function getUrl(
     (originalQuestion && question.isDirtyComparedTo(originalQuestion))
   ) {
     return Urls.question(null, {
-      hash: question._serializeForUrl({
-        includeDisplayIsLocked,
+      hash: question.serializeForUrl({
+        includeDisplayIsLocked: true,
         creationType,
       }),
       query,
@@ -48,7 +43,10 @@ export function getUrlWithParameters(
   question: Question,
   originalQuestion: Question,
   parameters: ParameterWithTarget[],
-  parameterValues: Record<ParameterId, ParameterValueOrArray>,
+  parameterValues: Record<
+    ParameterId,
+    ParameterValueOrArray | undefined | null
+  >,
   { objectId }: { objectId?: string | number } = {},
 ): string {
   const includeDisplayIsLocked = true;
@@ -101,7 +99,7 @@ export function getAutomaticDashboardUrl(
   questionWithFilters: Question,
 ) {
   const questionId = question.id();
-  const filterQuery = questionWithFilters.datasetQuery();
+  const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
   const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
   const cellQuery = filter
     ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}`
@@ -121,8 +119,8 @@ export function getComparisonDashboardUrl(
   questionWithFilters: Question,
 ) {
   const questionId = question.id();
-  const tableId = question.legacyQueryTableId();
-  const filterQuery = questionWithFilters.datasetQuery();
+  const tableId = Lib.sourceTableOrCardId(question.query());
+  const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
   const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
   const cellQuery = filter
     ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}`

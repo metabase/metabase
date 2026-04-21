@@ -6,14 +6,14 @@ import {
   useGetActionQuery,
   useListActionsQuery,
 } from "metabase/api";
+import type { Dispatch } from "metabase/redux/store";
+import { ActionSchema } from "metabase/schema";
 import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/lib/entities";
-import { createThunkAction } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { ActionSchema } from "metabase/schema";
+} from "metabase/utils/entities";
+import { createThunkAction } from "metabase/utils/redux";
 import type {
   CreateActionRequest,
   GetActionRequest,
@@ -24,7 +24,6 @@ import type {
   WritebackImplicitQueryAction,
   WritebackQueryAction,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 type BaseCreateActionParams = Pick<
   WritebackAction,
@@ -65,7 +64,7 @@ const defaultImplicitActionCreateOptions = {
 };
 
 const enableImplicitActionsForModel =
-  async (modelId: number, options = defaultImplicitActionCreateOptions) =>
+  (modelId: number, options = defaultImplicitActionCreateOptions) =>
   async (dispatch: Dispatch) => {
     // We're ordering actions that's most recently created first.
     // So if we want to show Create, Update, Delete, then we need
@@ -115,7 +114,7 @@ const DELETE_PUBLIC_LINK = "metabase/entities/actions/DELETE_PUBLIC_LINK";
 /**
  * @deprecated use "metabase/api" instead
  */
-const Actions = createEntity({
+export const Actions = createEntity({
   name: "actions",
   nameOne: "action",
   schema: ActionSchema,
@@ -207,7 +206,7 @@ const Actions = createEntity({
         undo({}, t`action`, archived ? t`archived` : t`unarchived`),
       ),
   },
-  reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
+  reducer: (state, { type, payload }: { type: string; payload: any }) => {
     switch (type) {
       case CREATE_PUBLIC_LINK: {
         const { id, uuid } = payload;
@@ -226,12 +225,4 @@ const Actions = createEntity({
       }
     }
   },
-  objectSelectors: {
-    getUrl: (action: WritebackAction) =>
-      Urls.action({ id: action.model_id }, action.id),
-    getIcon: () => ({ name: "bolt" }),
-  },
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Actions;

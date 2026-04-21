@@ -3,21 +3,21 @@ import { useHoverDirty } from "react-use";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
 import { Box, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import type Question from "metabase-lib/v1/Question";
 import { getDatasetMetadataCompletenessPercentage } from "metabase-lib/v1/metadata/utils/models";
 
 import DatasetMetadataStrengthIndicatorS from "./DatasetMetadataStrengthIndicator.module.css";
 
-function getIndicationColor(percentage: number, isHovered: boolean): string {
+function getIndicationColor(percentage: number, isHovered: boolean): ColorName {
   if (percentage <= 0.5) {
-    return color("danger");
+    return "danger";
   }
   if (!isHovered) {
-    return color("text-medium");
+    return "text-secondary";
   }
-  return percentage >= 0.9 ? color("success") : color("warning");
+  return percentage >= 0.9 ? "success" : "warning";
 }
 
 function getTooltipMessage(percentage: number) {
@@ -60,7 +60,7 @@ type Props = {
 
 const TOOLTIP_DELAY = 700;
 
-function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
+export function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
   const rootRef = useRef<HTMLDivElement>(null);
   const isHovering = useHoverDirty(rootRef);
   const resultMetadata = dataset.getResultMetadata();
@@ -98,6 +98,3 @@ function DatasetMetadataStrengthIndicator({ dataset, ...props }: Props) {
     </Box>
   );
 }
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatasetMetadataStrengthIndicator;

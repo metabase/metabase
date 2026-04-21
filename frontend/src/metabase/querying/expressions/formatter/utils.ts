@@ -5,7 +5,7 @@ import * as Lib from "metabase-lib";
 import { EXPRESSION_OPERATORS } from "../config";
 import * as literal from "../literal";
 
-type Assertion<T> = T extends (expr: any) => expr is infer U ? U : never;
+type Assertion<T> = T extends ((expr: any) => expr is infer U) ? U : never;
 type Lifted<T> = {
   [K in keyof T]: (path: AstPath<unknown>) => path is AstPath<Assertion<T[K]>>;
 };
@@ -50,6 +50,7 @@ export const pathMatchers = lift({
   isExpressionParts: Lib.isExpressionParts,
   isColumnMetadata: Lib.isColumnMetadata,
   isMetricMetadata: Lib.isMetricMetadata,
+  isMeasureMetadata: Lib.isMeasureMetadata,
   isSegmentMetadata: Lib.isSegmentMetadata,
   isExpressionOperator,
   isDimensionOperator,

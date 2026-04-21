@@ -9,6 +9,7 @@ import {
   getGenericVersion,
   getLastReleaseFromTags,
   getMajorVersion,
+  getMajorVersionFromRef,
   getMajorVersionNumberFromReleaseBranch,
   getMilestoneName,
   getMinorVersion,
@@ -679,6 +680,27 @@ describe("version-helpers", () => {
     });
   });
 
+  describe("getMajorVersionFromRef", () => {
+    it("should get major version from a tag", () => {
+      expect(getMajorVersionFromRef("refs/tags/v0.56.x")).toEqual("56");
+
+      expect(getMajorVersionFromRef("refs/tags/v1.56.0")).toEqual("56");
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.2.x")).toEqual("51");
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.0-beta")).toEqual("51");
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.2.3")).toEqual("51");
+
+      expect(getMajorVersionFromRef("refs/tags/v0.51.10")).toEqual("51");
+    });
+
+    it("should get major version from a release branch", () => {
+      expect(getMajorVersionFromRef("refs/heads/release-x.51.x")).toEqual("51");
+      expect(getMajorVersionFromRef("release-x.52.x")).toEqual("52");
+    });
+  });
+
   describe("getSdkVersionFromReleaseTagName", () => {
     it("should resolve sdk package version from assigned release tag", () => {
       expect(getSdkVersionFromReleaseTagName("embedding-sdk-0.51.9")).toEqual(
@@ -780,6 +802,70 @@ describe("version-helpers", () => {
         "v1.75.1.x",
       ]);
     });
+
+    it("should add latest tag when version major matches latestMajorVersion", () => {
+      expect(
+        getExtraTagsForVersion({ version: "v0.58.1", latestMajorVersion: "58" }),
+      ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x", "latest"]);
+
+      expect(
+        getExtraTagsForVersion({ version: "v1.58.2", latestMajorVersion: "58" }),
+      ).toEqual(["v0.58.x", "v1.58.x", "v0.58.2.x", "v1.58.2.x", "latest"]);
+    });
+
+    it("should add latest tag for major versions when major matches latestMajorVersion", () => {
+      expect(
+        getExtraTagsForVersion({ version: "v0.58.0", latestMajorVersion: "58" }),
+      ).toEqual(["v0.58.x", "v1.58.x", "latest"]);
+    });
+
+    it("should add latest tag for patch versions when major matches latestMajorVersion", () => {
+      expect(
+        getExtraTagsForVersion({
+          version: "v0.58.1.3",
+          latestMajorVersion: "58",
+        }),
+      ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x", "latest"]);
+    });
+
+    it("should NOT add latest tag when version major does not match latestMajorVersion", () => {
+      expect(
+        getExtraTagsForVersion({ version: "v0.57.5", latestMajorVersion: "58" }),
+      ).toEqual(["v0.57.x", "v1.57.x", "v0.57.5.x", "v1.57.5.x"]);
+
+      expect(
+        getExtraTagsForVersion({ version: "v0.59.0", latestMajorVersion: "58" }),
+      ).toEqual(["v0.59.x", "v1.59.x"]);
+    });
+
+    it("should add latest tag for pre-release versions when major matches", () => {
+      expect(
+        getExtraTagsForVersion({
+          version: "v0.58.1-rc1",
+          latestMajorVersion: "58",
+        }),
+      ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x", "latest"]);
+
+      expect(
+        getExtraTagsForVersion({
+          version: "v0.58.0-beta",
+          latestMajorVersion: "58",
+        }),
+      ).toEqual(["v0.58.x", "v1.58.x", "latest"]);
+    });
+
+    it("should NOT add latest tag when latestMajorVersion is not provided", () => {
+      expect(getExtraTagsForVersion({ version: "v0.58.1" })).toEqual([
+        "v0.58.x",
+        "v1.58.x",
+        "v0.58.1.x",
+        "v1.58.1.x",
+      ]);
+
+      expect(
+        getExtraTagsForVersion({ version: "v0.58.1", latestMajorVersion: "" }),
+      ).toEqual(["v0.58.x", "v1.58.x", "v0.58.1.x", "v1.58.1.x"]);
+    });
   });
 
   describe("filterOutNonSupportedPrereleaseIdentifier", () => {
@@ -836,10 +922,10 @@ describe("version-helpers", () => {
       });
 
       it("should set next pre-release version to .1 if no numeric part in suffix", () => {
-        const result = getNextSdkVersion("master", "0.57.0-beta");
+        const result = getNextSdkVersion("master", "0.57.0-alpha");
         expect(result).toEqual({
-          version: "0.57.0-beta.0",
-          preReleaseLabel: "beta",
+          version: "0.57.0-alpha.0",
+          preReleaseLabel: "alpha",
           majorVersion: "57",
         });
       });
@@ -861,10 +947,37 @@ describe("version-helpers", () => {
         });
       });
 
-      it("should increment patch version but keeps suffix if present", () => {
-        const result = getNextSdkVersion("release-x.57.x", "0.57.0-alpha.1");
+      it("should set proper initial patch version for a next major release", () => {
+        const result = getNextSdkVersion("release-x.57.x", "0.57.x");
         expect(result).toEqual({
-          version: "0.57.1-alpha.1",
+          version: "0.57.0",
+          preReleaseLabel: "",
+          majorVersion: "57",
+        });
+      });
+
+      it("should set initial pre-release version when suffix is preset, but pre-release version is not", () => {
+        const result = getNextSdkVersion("release-x.57.x", "0.57.0-beta");
+        expect(result).toEqual({
+          version: "0.57.0-beta.0",
+          preReleaseLabel: "",
+          majorVersion: "57",
+        });
+      });
+
+      it("should set proper initial patch version when pre-release suffix is preset", () => {
+        const result = getNextSdkVersion("release-x.57.x", "0.57.x-beta");
+        expect(result).toEqual({
+          version: "0.57.0-beta.0",
+          preReleaseLabel: "",
+          majorVersion: "57",
+        });
+      });
+
+      it("should increment pre-release version", () => {
+        const result = getNextSdkVersion("release-x.57.x", "0.57.0-beta.0");
+        expect(result).toEqual({
+          version: "0.57.0-beta.1",
           preReleaseLabel: "",
           majorVersion: "57",
         });

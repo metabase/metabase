@@ -93,9 +93,9 @@ describe("issue 15993", () => {
     // Drill-through
     cy.findAllByRole("gridcell").contains("0").realClick();
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains("117.03").should("not.exist"); // Total for the order in which quantity wasn't 0
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Quantity is equal to 0");
 
     const getVisualizationSettings = (targetId) => ({
@@ -473,7 +473,7 @@ describe("issue 17160", () => {
 
     cy.url().should("include", "/dashboard");
     cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(TARGET_DASHBOARD_NAME);
 
     assertMultipleValuesFilterState();
@@ -503,7 +503,7 @@ describe("issue 17160", () => {
       cy.url().should("include", "/public/dashboard");
       cy.location("search").should("eq", "?category=Doohickey&category=Gadget");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText(TARGET_DASHBOARD_NAME);
 
       assertMultipleValuesFilterState();
@@ -541,7 +541,7 @@ describe("issue 18454", () => {
     cy.findByTestId("dashcard-container").within(() => {
       cy.icon("info").trigger("mouseenter", { force: true });
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(CARD_DESCRIPTION);
   });
 });
@@ -630,70 +630,8 @@ describe("issue 23137", () => {
   });
 });
 
-describe("issues 27020 and 27105: static-viz fails to render for certain date formatting options", () => {
-  const questionDetails27105 = {
-    name: "27105",
-    native: { query: "select current_date::date, 1", "template-tags": {} },
-    display: "table",
-    visualization_settings: {
-      column_settings: {
-        '["name","CAST(CURRENT_DATE AS DATE)"]': {
-          date_style: "dddd, MMMM D, YYYY",
-        },
-      },
-      "table.pivot_column": "CAST(CURRENT_DATE AS DATE)",
-      "table.cell_column": "1",
-    },
-  };
-
-  const questionDetails27020 = {
-    name: "27020",
-    native: {
-      query: 'select current_date as "created_at", 1 "val"',
-      "template-tags": {},
-    },
-    visualization_settings: {
-      column_settings: { '["name","created_at"]': { date_abbreviate: true } },
-      "table.pivot_column": "created_at",
-      "table.cell_column": "val",
-    },
-  };
-
-  function assertStaticVizRenders(questionDetails) {
-    H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
-      cy.request({
-        method: "GET",
-        url: `/api/pulse/preview_card_png/${id}`,
-        failOnStatusCode: false,
-      }).then(({ status, body }) => {
-        expect(status).to.eq(200);
-        expect(body).to.contain("PNG");
-      });
-    });
-  }
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should render static-viz when date formatting is abbreviated (metabase#27020)", () => {
-    // This is currently the default setting, anyway.
-    // But we want to explicitly set it in case something changes in the future,
-    // because it is a crucial step for this reproduction.
-    H.updateSetting("custom-formatting", {
-      "type/Temporal": {
-        date_style: "MMMM D, YYYY",
-      },
-    });
-
-    assertStaticVizRenders(questionDetails27020);
-  });
-
-  it("should render static-viz when date formatting contains day (metabase#27105)", () => {
-    assertStaticVizRenders(questionDetails27105);
-  });
-});
+// Tests for issues 27020 and 27105 (static-viz rendering with date formatting options)
+// have been moved to backend tests in metabase.channel.render.card-test
 
 describe("issue 29304", () => {
   // Couldn't import from `metabase/common/components/ExplicitSize` because dependency issue.
@@ -800,11 +738,11 @@ describe("issue 29304", () => {
         // This extra 1ms is crucial, without this the test would fail.
         cy.tick(WAIT_TIME + 1);
 
-        const expectedWidth = 33;
+        const expectedWidth = 47;
         cy.findByTestId("scalar-value").should(([$scalarValue]) => {
           expect($scalarValue.offsetWidth).to.be.closeTo(
             expectedWidth,
-            expectedWidth * 0.1,
+            expectedWidth * 0.2, // 20% tolerance for font rendering differences across Chrome versions
           );
         });
       });
@@ -825,17 +763,6 @@ describe("issue 31628", () => {
     { size_x: 3, size_y, row: 0, col: 15 },
     { size_x: 2, size_y, row: 0, col: 18 },
   ];
-
-  const CARDS_SIZE_1X = {
-    cards: [
-      ...createCardsRow({ size_y: 1 }),
-      { size_x: 1, size_y: 1, row: 0, col: 20 },
-      { size_x: 1, size_y: 2, row: 1, col: 20 },
-      { size_x: 1, size_y: 4, row: 3, col: 20 },
-      { size_x: 1, size_y: 3, row: 7, col: 20 },
-    ],
-    name: "cards 1 cell high or wide",
-  };
 
   const VIEWPORTS = [
     // { width: 375, height: 667, openSidebar: false },
@@ -860,7 +787,6 @@ describe("issue 31628", () => {
     { cards: createCardsRow({ size_y: 2 }), name: "cards 2 cells high" },
     { cards: createCardsRow({ size_y: 3 }), name: "cards 3 cells high" },
     { cards: createCardsRow({ size_y: 4 }), name: "cards 4 cells high" },
-    CARDS_SIZE_1X,
   ];
 
   const SMART_SCALAR_QUESTION = {
@@ -971,16 +897,6 @@ describe("issue 31628", () => {
         scalarContainer().realHover({ position: "bottom" });
 
         cy.findByRole("tooltip").findByText("18,760").should("exist");
-
-        cy.log("should show ellipsis icon with question name in tooltip");
-        cy.findByTestId("scalar-title-icon").realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SCALAR_QUESTION.name)
-          .should("exist");
-
-        cy.log("should not show description");
-        cy.findByTestId("scalar-description").should("not.exist");
       });
     });
 
@@ -1003,24 +919,6 @@ describe("issue 31628", () => {
         scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("should not show ellipsis icon for title");
-        cy.findByTestId("scalar-title-icon").should("not.exist");
-
-        cy.log("should truncate title and show title tooltip on hover");
-        scalarTitle().then(($element) => H.assertIsEllipsified($element[0]));
-        scalarTitle().realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SCALAR_QUESTION.name)
-          .should("exist");
-
-        cy.log("should show description tooltip on hover");
-        cy.findByTestId("scalar-description").realHover();
-
-        cy.findByRole("tooltip")
-          .findByText(SCALAR_QUESTION.description)
-          .should("exist");
       });
     });
 
@@ -1043,22 +941,6 @@ describe("issue 31628", () => {
         scalarContainer().realHover();
 
         cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("should not show ellipsis icon for title");
-        cy.findByTestId("scalar-title-icon").should("not.exist");
-
-        cy.log(
-          "should not truncate title and should not show title tooltip on hover",
-        );
-        scalarTitle().then(($element) => H.assertIsNotEllipsified($element[0]));
-        scalarTitle().realHover();
-
-        cy.findByRole("tooltip").should("not.exist");
-
-        cy.log("should show description tooltip on hover");
-        cy.findByTestId("scalar-description").realHover();
-
-        H.tooltip().findByText(SCALAR_QUESTION.description).should("exist");
       });
     });
   });
@@ -1133,7 +1015,7 @@ describe("issue 31628", () => {
 
         cy.findByRole("tooltip").within(() => {
           cy.contains("34.72%").should("exist");
-          cy.contains("• vs. previous month: 527").should("exist");
+          cy.contains("vs. previous month: 527").should("exist");
         });
 
         cy.log(
@@ -1141,7 +1023,7 @@ describe("issue 31628", () => {
         );
         previousValue()
           .should("contain", "35%")
-          .and("not.contain", "• vs. previous month: 527");
+          .and("not.contain", "vs. previous month: 527");
 
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
@@ -1154,7 +1036,7 @@ describe("issue 31628", () => {
         previousValue()
           .should("contain", "35%")
           .and("not.contain", "34.72%")
-          .and("not.contain", "• vs. previous month: 527");
+          .and("not.contain", "vs. previous month: 527");
 
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
@@ -1191,7 +1073,7 @@ describe("issue 31628", () => {
         cy.findByRole("tooltip").should("not.exist");
 
         cy.log("it should display the period");
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2026");
+        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
 
         cy.log("should truncate title and show title tooltip on hover");
 
@@ -1214,7 +1096,7 @@ describe("issue 31628", () => {
         cy.log("should show previous value in full");
         previousValue()
           .should("contain", "34.72%")
-          .and("contain", "• vs. previous month: 527");
+          .and("contain", "vs. previous month: 527");
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
@@ -1247,7 +1129,7 @@ describe("issue 31628", () => {
         cy.findByRole("tooltip").should("not.exist");
 
         cy.log("it should display the period");
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2026");
+        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
 
         cy.log("should truncate title and show title tooltip on hover");
         cy.findByTestId("legend-caption-title")
@@ -1269,7 +1151,7 @@ describe("issue 31628", () => {
         cy.log("should show previous value in full");
         previousValue()
           .should("contain", "34.72%")
-          .and("contain", "• vs. previous month: 527");
+          .and("contain", "vs. previous month: 527");
         previousValue().then(($element) =>
           H.assertIsNotEllipsified($element[0]),
         );
@@ -1442,7 +1324,7 @@ describe("issue 48878", () => {
       cy.button("Save").click();
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.modal()
       .last()
       .within(() => {
@@ -1579,5 +1461,207 @@ SELECT 'group_2', 'sub_group_2', 52, 'group_2__sub_group_2';
 });
 
 const scalarContainer = () => cy.findByTestId("scalar-container");
-const scalarTitle = () => cy.findByTestId("scalar-title");
 const previousValue = () => cy.findByTestId("scalar-previous-value");
+
+describe("issue 67432", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should copy sorted table data in correct sorted order (metabase#67432)", () => {
+    H.grantClipboardPermissions();
+
+    const ROWS_LIMIT = 5;
+    const questionDetails = {
+      name: "67432 Question",
+      query: {
+        "source-table": PRODUCTS_ID,
+        fields: [
+          ["field", PRODUCTS.ID, null],
+          ["field", PRODUCTS.TITLE, null],
+          ["field", PRODUCTS.CATEGORY, null],
+        ],
+        limit: ROWS_LIMIT,
+      },
+    };
+
+    H.createQuestionAndDashboard({
+      questionDetails,
+      cardDetails: {
+        size_x: 16,
+        size_y: 10,
+      },
+    }).then(({ body: { dashboard_id } }) => {
+      H.visitDashboard(dashboard_id);
+    });
+
+    // Wait for table to load
+    H.tableInteractiveBody().should("be.visible");
+
+    // Sort by Category column (descending first click)
+    H.tableHeaderClick("Category");
+
+    // Wait for sort to apply - the sort icon should appear
+    H.tableHeaderColumn("Category")
+      .closest("[data-testid=header-cell]")
+      .icon("chevrondown")
+      .should("exist");
+
+    // Collect the visual order of categories from the table
+    const visualCategories = [];
+    H.tableInteractiveBody()
+      .find('[data-column-id="CATEGORY"]')
+      .each(($cell) => {
+        visualCategories.push($cell.text());
+      })
+      .then(() => {
+        // Select multiple cells across rows by dragging
+        const getNonPKCells = () =>
+          H.tableInteractiveBody().find(
+            '[data-selectable-cell]:not([data-column-id="ID"])',
+          );
+
+        // Select cells in first two rows (4 cells: Title+Category for 2 rows)
+        getNonPKCells()
+          .eq(0)
+          .trigger("mousedown", { which: 1 })
+          .then(() => {
+            const lastCellIndex = ROWS_LIMIT * 2 - 1;
+            getNonPKCells()
+              .should("have.length", ROWS_LIMIT * 2)
+              .eq(lastCellIndex)
+              .trigger("mouseover", { buttons: 1 });
+            getNonPKCells()
+              .should("have.length", ROWS_LIMIT * 2)
+              .eq(lastCellIndex)
+              .trigger("mouseup");
+          });
+
+        // Copy to clipboard
+        cy.realPress(["Meta", "c"]);
+
+        // Verify clipboard content has rows in sorted order
+        H.readClipboard().then((clipboardText) => {
+          // The clipboard should contain properly tab-separated content
+          // with newlines between rows (not a single cell)
+          const lines = clipboardText.split("\n");
+
+          // Should have header row + data rows (at least 6 lines: header + 5 data rows)
+          expect(lines.length).to.be.eq(ROWS_LIMIT + 1);
+
+          // Header should be tab-separated with both columns
+          const headerCells = lines[0].split("\t");
+          expect(headerCells).to.include("Title");
+          expect(headerCells).to.include("Category");
+
+          // Verify each data row is tab-separated and in the correct sorted order
+          const clipboardCategories = lines.slice(1).map((line) => {
+            const cells = line.split("\t");
+            // Category is the second column
+            return cells[1];
+          });
+
+          // The categories in clipboard should match the visual order
+          for (let i = 0; i < clipboardCategories.length; i++) {
+            expect(clipboardCategories[i]).to.equal(visualCategories[i]);
+          }
+        });
+      });
+  });
+});
+
+describe("issue 63416", () => {
+  const questionDetails = {
+    name: "63416 Question",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "month",
+          },
+        ],
+      ],
+      filter: [">=", ["field", ORDERS.CREATED_AT, null], "2027-01-01"],
+    },
+  };
+
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+
+    const textFilter = createMockParameter({
+      name: "Text",
+      slug: "string",
+      id: "5aefc726",
+      type: "string/=",
+      sectionId: "string",
+    });
+
+    H.createDashboardWithQuestions({
+      dashboardDetails: {
+        parameters: [textFilter],
+      },
+      questions: [questionDetails],
+    }).then(({ dashboard, questions }) => {
+      H.updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: questions[0].id,
+            parameter_mappings: [
+              {
+                parameter_id: textFilter.id,
+                card_id: questions[0].id,
+                target: [
+                  "dimension",
+                  [
+                    "field",
+                    PRODUCTS.CATEGORY,
+                    {
+                      "base-type": "type/Text",
+                      "source-field": ORDERS.PRODUCT_ID,
+                    },
+                  ],
+                  { "stage-number": 0 },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      H.visitDashboard(dashboard.id);
+    });
+  });
+
+  it("should download visualizer dashboard card without additional dataset with proper parameter values (metabase#63416)", () => {
+    H.editDashboard();
+
+    H.showDashcardVisualizerModalSettings(0, {
+      isVisualizerCard: false,
+    });
+    H.modal()
+      .findByLabelText("Description")
+      .type("Make this a visualizer card");
+
+    H.saveDashcardVisualizerModal();
+
+    H.saveDashboard();
+
+    H.toggleFilterWidgetValues(["Doohickey"]);
+
+    H.downloadAndAssert({
+      fileType: "csv",
+      isDashboard: true,
+      downloadMethod: "POST",
+      downloadUrl: "/api/dashboard/10/dashcard/*/card/*/query/csv",
+      assertParameters: [{ type: "string/=", value: ["Doohickey"] }],
+    });
+  });
+});

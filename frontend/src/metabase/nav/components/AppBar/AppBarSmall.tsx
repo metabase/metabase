@@ -1,22 +1,20 @@
 import { useCallback, useState } from "react";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
+import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";
 import { SearchBar } from "metabase/nav/components/search/SearchBar";
-import { PLUGIN_METABOT } from "metabase/plugins";
-import { Flex } from "metabase/ui";
-import type { DetailViewState } from "metabase-types/store";
+import type { DetailViewState } from "metabase/redux/store";
+import { Box, Flex } from "metabase/ui";
 
 import CollectionBreadcrumbs from "../../containers/CollectionBreadcrumbs";
 import QuestionLineage from "../../containers/QuestionLineage";
-import { ProfileLink } from "../ProfileLink";
+import { AppSwitcher } from "../AppSwitcher";
+import { SearchButton } from "../search/SearchButton/SearchButton";
 
 import { AppBarLogo } from "./AppBarLogo";
 import {
   AppBarHeader,
   AppBarLogoContainer,
-  AppBarMainContainer,
-  AppBarProfileLinkContainer,
-  AppBarRoot,
   AppBarSearchContainer,
   AppBarSubheader,
   AppBarToggleContainer,
@@ -30,12 +28,11 @@ export interface AppBarSmallProps {
   isLogoVisible?: boolean;
   isSearchVisible?: boolean;
   isEmbeddingIframe?: boolean;
-  isProfileLinkVisible?: boolean;
+  isAppSwitcherVisible?: boolean;
   isCollectionPathVisible?: boolean;
   isQuestionLineageVisible?: boolean;
   onToggleNavbar: () => void;
   onCloseNavbar: () => void;
-  onLogout: () => void;
 }
 
 const AppBarSmall = ({
@@ -45,19 +42,18 @@ const AppBarSmall = ({
   isLogoVisible,
   isSearchVisible,
   isEmbeddingIframe,
-  isProfileLinkVisible,
+  isAppSwitcherVisible,
   isCollectionPathVisible,
   isQuestionLineageVisible,
   onToggleNavbar,
   onCloseNavbar,
-  onLogout,
 }: AppBarSmallProps): JSX.Element => {
   const isNavBarVisible = isNavBarOpen && isNavBarEnabled;
 
   const [isSearchActive, setSearchActive] = useState(false);
   const isInfoVisible = isQuestionLineageVisible || isCollectionPathVisible;
   const isHeaderVisible =
-    isLogoVisible || isNavBarEnabled || isSearchVisible || isProfileLinkVisible;
+    isLogoVisible || isNavBarEnabled || isSearchVisible || isAppSwitcherVisible;
   const isSubheaderVisible = !isNavBarVisible && isInfoVisible;
 
   const handleSearchActive = useCallback(() => {
@@ -70,10 +66,10 @@ const AppBarSmall = ({
   }, []);
 
   return (
-    <AppBarRoot>
+    <Box bg="background-primary">
       {isHeaderVisible && (
         <AppBarHeader isSubheaderVisible={isSubheaderVisible}>
-          <AppBarMainContainer>
+          <Flex justify="space-between" align="center" gap="sm" h="100%">
             <AppBarToggleContainer>
               <AppBarToggle
                 isSmallAppBar
@@ -91,16 +87,13 @@ const AppBarSmall = ({
                   />
                 ) : (
                   <Flex justify="end">
-                    <PLUGIN_METABOT.SearchButton />
+                    <SearchButton />
                   </Flex>
                 ))}
             </AppBarSearchContainer>
-            {isProfileLinkVisible && (
-              <AppBarProfileLinkContainer>
-                <ProfileLink onLogout={onLogout} />
-              </AppBarProfileLinkContainer>
-            )}
-          </AppBarMainContainer>
+            {!isEmbeddingIframe && <MetabotAppBarButton />}
+            {isAppSwitcherVisible && <AppSwitcher />}
+          </Flex>
           <AppBarLogoContainer isVisible={isLogoVisible && !isSearchActive}>
             <AppBarLogo
               isSmallAppBar
@@ -125,7 +118,7 @@ const AppBarSmall = ({
           ) : null}
         </AppBarSubheader>
       )}
-    </AppBarRoot>
+    </Box>
   );
 };
 

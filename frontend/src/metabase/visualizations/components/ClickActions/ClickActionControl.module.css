@@ -1,14 +1,15 @@
 .horizontalButton[data-variant="inverse"] {
   &:hover {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
     background-color: var(--mb-color-brand);
 
-    .nested {
-      color: var(--mb-color-text-white);
+    .subtitle {
+      color: var(--mb-color-text-primary-inverse);
     }
 
-    .ClickActionButtonIcon {
-      color: white;
+    .clickActionButtonIcon,
+    .clickActionButtonTextIcon {
+      color: var(--mb-color-text-primary-inverse);
     }
   }
 
@@ -23,6 +24,36 @@
   }
 }
 
-.ClickActionButtonIcon {
-  margin-right: 0.2rem;
+.tokenFilterActionButton {
+  border-radius: 100px;
+  height: 1.4rem;
+  padding-bottom: 0.125rem;
+  border: 1px solid var(--mb-color-focus);
+}
+
+.tokenFilterActionTokenButton {
+  border-radius: 100px;
+  padding: 0.3125rem 0.875rem;
+  border: 1px solid var(--mb-color-focus);
+}
+
+.clickActionButtonTextIcon {
+  margin-right: 0.25rem;
+  width: 0.875rem;
+  height: 100%;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.infoControl {
+  color: var(--mb-color-text-primary);
+  font-weight: bold;
+  line-height: 1.5rem;
+  max-width: 10.75rem;
+}
+
+.subtitle {
+  color: var(--mb-color-text-tertiary);
+  font-weight: normal;
+  margin-left: 1rem;
 }

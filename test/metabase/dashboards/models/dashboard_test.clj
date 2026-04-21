@@ -23,26 +23,28 @@
     (tu/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Dashboard dashboard {:public_uuid (str (random-uuid))}]
         (is (=? u/uuid-regex
-                (:public_uuid dashboard)))))
+                (:public_uuid dashboard)))))))
 
+(deftest public-sharing-test-2
+  (testing "test that a Dashboard's :public_uuid comes back if public sharing is enabled..."
     (testing "...but if public sharing is *disabled* it should come back as `nil`"
       (tu/with-temporary-setting-values [enable-public-sharing false]
         (mt/with-temp [:model/Dashboard dashboard {:public_uuid (str (random-uuid))}]
           (is (= nil
                  (:public_uuid dashboard))))))))
 
-(def default-parameter
+(def ^:private default-parameter
   {:id   "_CATEGORY_NAME_"
-   :type "category"
+   :type :category
    :name "Category Name"
    :slug "category_name"})
 
-(deftest migrate-parameters-with-linked-filters-and-values-source-type-test
+(deftest ^:parallel migrate-parameters-with-linked-filters-and-values-source-type-test
   (testing "test that a Dashboard's :parameters filterParameters are cleared if the :values_source_type is not nil"
     (doseq [[values_source_type
-             keep-filtering-parameters?] {"card"        false
-                                          "static-list" false
-                                          nil           true}]
+             keep-filtering-parameters?] {:card        false
+                                          :static-list false
+                                          nil          true}]
       (testing (format "\nvalues_source_type=%s" values_source_type)
         (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
                                                                  default-parameter
@@ -54,7 +56,7 @@
                      (:filteringParameters parameter)))
               (is (not (contains? parameter :filteringParameters))))))))))
 
-(deftest migrate-parameters-with-linked-filters-and-values-query-type-test
+(deftest ^:parallel migrate-parameters-with-linked-filters-and-values-query-type-test
   (testing "test that a Dashboard's :parameters filterParameters are cleared if the :values_query_type is 'none'"
     (doseq [[values_query_type
              keep-filtering-parameters?] {"none" false
@@ -70,7 +72,7 @@
                      (:filteringParameters parameter)))
               (is (not (contains? parameter :filteringParameters))))))))))
 
-(deftest migrate-parameters-empty-name-test
+(deftest ^:parallel migrate-parameters-empty-name-test
   (testing "test that a Dashboard's :parameters is selected with a non-nil name and slug"
     (doseq [[name slug] [["" ""] ["" "slug"] ["name" ""]]]
       (mt/with-temp [:model/Dashboard dashboard {:parameters [(merge
@@ -99,7 +101,7 @@
         (is (nil? (t2/select-one :model/Pulse pulse-id)))
         (is (= 0 (count (pulse-channel-test/send-pulse-triggers pulse-id))))))))
 
-(deftest parameter-card-test
+(deftest ^:parallel parameter-card-test
   (testing "A new dashboard creates a new ParameterCard"
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
@@ -109,12 +111,13 @@
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
                :parameter_id              "_CATEGORY_NAME_"}
-              (t2/select-one 'ParameterCard :card_id card-id)))))
+              (t2/select-one :model/ParameterCard :card_id card-id))))))
 
+(deftest parameter-card-test-2
   (testing "Adding a card_id creates a new ParameterCard"
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
-      (is (nil? (t2/select-one 'ParameterCard :card_id card-id)))
+      (is (nil? (t2/select-one :model/ParameterCard :card_id card-id)))
       (t2/update! :model/Dashboard dashboard-id {:parameters [(merge default-parameter
                                                                      {:values_source_type    "card"
                                                                       :values_source_config {:card_id card-id}})]})
@@ -122,16 +125,17 @@
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
                :parameter_id              "_CATEGORY_NAME_"}
-              (t2/select-one 'ParameterCard :card_id card-id)))))
+              (t2/select-one :model/ParameterCard :card_id card-id))))))
 
+(deftest parameter-card-test-3
   (testing "Removing a card_id deletes old ParameterCards"
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [(merge default-parameter
                                                                             {:values_source_type    "card"
                                                                              :values_source_config {:card_id card-id}})]}]
-        ;; same setup as earlier test, we know the ParameterCard exists right now
+      ;; same setup as earlier test, we know the ParameterCard exists right now
       (t2/delete! :model/Dashboard :id dashboard-id)
-      (is (nil? (t2/select-one 'ParameterCard :card_id card-id))))))
+      (is (nil? (t2/select-one :model/ParameterCard :card_id card-id))))))
 
 (deftest do-not-update-parameter-card-if-it-doesn't-change-test
   (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"
@@ -207,7 +211,7 @@
         (try
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"A Dashboard can only go in Collections in the \"default\" or :analytics namespace."
+               #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
                (t2/insert! :model/Dashboard (assoc (mt/with-temp-defaults :model/Dashboard) :collection_id collection-id, :name dashboard-name))))
           (finally
             (t2/delete! :model/Dashboard :name dashboard-name)))))
@@ -216,16 +220,19 @@
       (mt/with-temp [:model/Dashboard {card-id :id}]
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"A Dashboard can only go in Collections in the \"default\" or :analytics namespace."
+             #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
              (t2/update! :model/Dashboard card-id {:collection_id collection-id})))))))
 
-(deftest validate-parameters-test
+(deftest ^:parallel validate-parameters-test
   (testing "Should validate Dashboard :parameters when"
     (testing "creating"
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #":parameters must be a sequence of maps with :id and :type keys"
-           (mt/with-temp [:model/Dashboard _ {:parameters {:a :b}}]))))
+           (mt/with-temp [:model/Dashboard _ {:parameters {:a :b}}]))))))
+
+(deftest validate-parameters-test-2
+  (testing "Should validate Dashboard :parameters when"
     (testing "updating"
       (mt/with-temp [:model/Dashboard {:keys [id]} {:parameters []}]
         (is (thrown-with-msg?
@@ -253,12 +260,12 @@
                    :id     "_CATEGORY_NAME_"
                    :type   :category
                    :target expected
-                   :values_query_type "list",
-                   :values_source_type "card",
+                   :values_query_type :list
+                   :values_source_type :card
                    :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
                  (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))))
 
-(deftest should-add-default-values-source-test
+(deftest ^:parallel should-add-default-values-source-test
   (testing "shoudld add default if not exists"
     (mt/with-temp [:model/Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
                                                                       :slug   "category_name"
@@ -268,8 +275,9 @@
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
                 :type                 :category}]
-              (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id)))))
+              (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))
 
+(deftest ^:parallel should-add-default-values-source-test-2
   (testing "shoudld not override if existsed "
     (mt/with-temp [:model/Card      {card-id :id} {}
                    :model/Dashboard {dashboard-id :id} {:parameters [{:name   "Category Name"
@@ -284,12 +292,12 @@
                 :slug                 "category_name"
                 :id                   "_CATEGORY_NAME_"
                 :type                 :category
-                :values_query_type    "list",
-                :values_source_type   "card",
+                :values_query_type    :list
+                :values_source_type   :card
                 :values_source_config {:card_id card-id, :value_field [:field 2 nil]}}]
               (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))))))
 
-(deftest identity-hash-test
+(deftest ^:parallel identity-hash-test
   (testing "Dashboard hashes are composed of the name and parent collection's hash"
     (let [now #t "2022-09-01T12:34:56Z"]
       (mt/with-temp [:model/Collection c1   {:name "top level" :location "/" :created_at now}
@@ -298,7 +306,7 @@
                (serdes/raw-hash ["my dashboard" (serdes/identity-hash c1) (:created_at dash)])
                (serdes/identity-hash dash)))))))
 
-(deftest descendants-test
+(deftest ^:parallel descendants-test
   (testing "dashboard which have parameter's source is another card"
     (mt/with-temp
       [:model/Field     field     {:name "A field"}
@@ -310,8 +318,9 @@
                                                  :values_source_config {:card_id     (:id card)
                                                                         :value_field [:field (:id field) nil]}}]}]
       (is (= {["Card" (:id card)] {"Dashboard" (:id dashboard)}}
-             (serdes/descendants "Dashboard" (:id dashboard))))))
+             (serdes/descendants "Dashboard" (:id dashboard) {}))))))
 
+(deftest descendants-test-2
   (testing "dashboard which has a dashcard with an action"
     (mt/with-actions [{:keys [action-id]} {}]
       (mt/with-temp
@@ -321,8 +330,9 @@
                                          :parameter_mappings []}]
         (is (= {["Action" action-id] {"Dashboard"     (:id dashboard)
                                       "DashboardCard" (:id dc)}}
-               (serdes/descendants "Dashboard" (:id dashboard)))))))
+               (serdes/descendants "Dashboard" (:id dashboard) {})))))))
 
+(deftest ^:parallel descendants-test-3
   (testing "dashboard in which its dashcards has parameter_mappings to a card"
     (mt/with-temp
       [:model/Card          card1     {:name "Card attached to dashcard"}
@@ -340,8 +350,9 @@
                                     "DashboardCard" (:id dc)}
               ["Card" (:id card2)] {"Dashboard"     (:id dashboard)
                                     "DashboardCard" (:id dc)}}
-             (serdes/descendants "Dashboard" (:id dashboard))))))
+             (serdes/descendants "Dashboard" (:id dashboard) {}))))))
 
+(deftest ^:parallel descendants-test-4
   (testing "dashboard in which its dashcards have series"
     (mt/with-temp
       [:model/Card                card1     {:name "Card attached to dashcard"}
@@ -358,7 +369,7 @@
                         [["Card" (:id card)] (cond-> {"Dashboard"           (:id dashboard)
                                                       "DashboardCard"       (:id dashcard)}
                                                series (assoc "DashboardCardSeries" (:id series)))]))
-             (serdes/descendants "Dashboard" (:id dashboard)))))))
+             (serdes/descendants "Dashboard" (:id dashboard) {}))))))
 
 (deftest ^:parallel hydrate-tabs-test
   (mt/with-temp

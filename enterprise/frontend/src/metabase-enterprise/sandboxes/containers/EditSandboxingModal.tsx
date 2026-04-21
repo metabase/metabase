@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import { useEffect } from "react";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
@@ -6,7 +7,7 @@ import _ from "underscore";
 import { useListUserAttributesQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/utils/redux";
 import {
   getGroupTableAccessPolicy,
   getPolicyRequestState,
@@ -31,6 +32,7 @@ interface EditSandboxingModalContainerProps {
   attributes: UserAttributeKey[];
   push: (path: string) => void;
   params: GroupTableAccessPolicyParams;
+  location: Location;
   route: any;
   policyRequestState: any;
   fetchPolicy: (params: GroupTableAccessPolicyParams) => void;
@@ -45,6 +47,7 @@ const EditSandboxingModalContainer = ({
   policy,
   push,
   params,
+  location,
   route,
   fetchPolicy,
   fetchUserAttributes,

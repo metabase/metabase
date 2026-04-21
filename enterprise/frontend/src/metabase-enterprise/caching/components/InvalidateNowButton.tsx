@@ -9,7 +9,6 @@ import { useIsFormPending } from "metabase/admin/performance/hooks/useIsFormPend
 import type { ModelWithClearableCache } from "metabase/admin/performance/types";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Form, FormProvider } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import type { InvalidateNowButtonProps } from "metabase/plugins";
 import { Group, Icon, Loader, Text } from "metabase/ui";
 
@@ -63,6 +62,7 @@ const InvalidateNowFormBody = ({
         .with("dashboard", () => t`Clear cache for this dashboard`)
         .with("question", () => t`Clear cache for this question`)
         .with("database", () => t`Clear cache for this database`)
+        .with("metric", () => t`Clear cache for this metric`)
         .exhaustive(),
     [targetModel],
   );
@@ -79,7 +79,7 @@ const InvalidateNowFormBody = ({
           disabled={wasFormRecentlyPending}
           label={
             <Group gap="sm">
-              <Icon color="var(--mb-color-danger)" name="trash" />
+              <Icon c="danger" name="trash" />
               <Text>{buttonText}</Text>
             </Group>
           }
@@ -92,7 +92,7 @@ const InvalidateNowFormBody = ({
           }
           successLabel={
             <Group gap="sm">
-              <IconInButton name="check" color={color("success")} />
+              <IconInButton name="check" c={"success"} />
               <Text>{t`Cache cleared`}</Text>
             </Group>
           }

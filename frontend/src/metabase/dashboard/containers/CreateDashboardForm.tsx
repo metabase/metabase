@@ -2,11 +2,11 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import { FormFooter } from "metabase/common/components/FormFooter";
-import Collections from "metabase/entities/collections";
+import { Collections } from "metabase/entities/collections";
 import {
   Form,
   FormErrorMessage,
@@ -15,9 +15,9 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
 import { Button, Stack } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
+import { useSelector } from "metabase/utils/redux";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 
 import {
@@ -56,36 +56,37 @@ export interface CreateDashboardProperties {
 
 export interface CreateDashboardFormOwnProps {
   collectionId?: CollectionId | null; // can be used by `getInitialCollectionId`
+  targetCollection?: SdkCollectionId | null;
   onCreate?: (dashboard: Dashboard) => void;
   onCancel?: () => void;
-  initialValues?: CreateDashboardProperties | null;
-  filterPersonalCollections?: FilterItemsInPersonalCollection;
 }
 
 export function CreateDashboardForm({
+  collectionId,
+  targetCollection,
   onCreate,
   onCancel,
-  initialValues,
-  filterPersonalCollections,
-  collectionId,
 }: CreateDashboardFormOwnProps) {
   const initialCollectionId = useSelector((state) =>
     Collections.selectors.getInitialCollectionId(state, { collectionId }),
   );
 
+  // When passing `"root"` it will be resolved to `null`
+  const hasTargetCollection = targetCollection !== undefined;
+
   const [handleCreateDashboard] = useCreateDashboardMutation();
-  const computedInitialValues = useMemo(
-    () => ({
+  const computedInitialValues = useMemo(() => {
+    return {
       ...DASHBOARD_SCHEMA.getDefault(),
-      collection_id: initialCollectionId,
-      ...initialValues,
-    }),
-    [initialCollectionId, initialValues],
-  );
+      collection_id: hasTargetCollection
+        ? targetCollection
+        : initialCollectionId,
+    };
+  }, [hasTargetCollection, initialCollectionId, targetCollection]);
 
   const handleCreate = useCallback(
     async (values: CreateDashboardProperties) => {
-      const { data: dashboard } = await handleCreateDashboard(values);
+      const dashboard = await handleCreateDashboard(values).unwrap();
       if (dashboard) {
         onCreate?.(dashboard);
       }
@@ -121,12 +122,14 @@ export function CreateDashboardForm({
             maxRows={5}
             my="md"
           />
-          <FormCollectionPicker
-            name="collection_id"
-            title={t`Which collection should this go in?`}
-            filterPersonalCollections={filterPersonalCollections}
-          />
-          <FormFooter>
+          {!hasTargetCollection && (
+            <FormCollectionPicker
+              name="collection_id"
+              title={t`Which collection should this go in?`}
+              entityType="dashboard"
+            />
+          )}
+          <FormFooter mt="md">
             <FormErrorMessage inline />
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>

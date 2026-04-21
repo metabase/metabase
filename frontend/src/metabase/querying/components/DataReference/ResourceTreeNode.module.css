@@ -1,0 +1,29 @@
+.ResourceListItem {
+  &[data-is-root="false"] {
+    margin-left: 32px;
+
+    & svg {
+      color: var(--mb-color-focus);
+    }
+
+    & svg[data-role="chevron"] {
+      color: var(--mb-color-brand);
+    }
+  }
+
+  &[data-is-expanded="true"] {
+    & svg[data-role="chevron"] {
+      transform: rotate(90deg);
+    }
+  }
+
+  & svg {
+    color: var(--mb-color-brand);
+  }
+
+  & svg[data-role="chevron"] {
+    width: 12px;
+    height: 12px;
+    margin-right: 4px;
+  }
+}

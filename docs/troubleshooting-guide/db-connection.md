@@ -106,6 +106,16 @@ psql -h HOSTNAME -p PORT -d DATABASENAME -U DATABASEUSER
    SELECT 1
    ```
 
+## Snowflake error when running via JAR file
+
+If you're connecting to Snowflake and encounter an error like, `JDBC driver internal error: exception creating result` and are running from the JAR file, add `--add-opens java.base/java.nio=ALL-UNNAMED` to your `java` command:
+
+```
+java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar
+```
+
+See the docs on [running the Metabase jar file](../installation-and-operation/running-the-metabase-jar-file.md).
+
 ## Related problems
 
 - [My connection or query is timing out](./timeout.md).

@@ -1,7 +1,6 @@
 import fs from "fs";
 
 import { graphql } from "@octokit/graphql";
-import _ from "underscore";
 
 import { hiddenLabels, nonUserFacingLabels } from "./constants";
 import {
@@ -121,13 +120,6 @@ async function getOriginalIssues({
 
   if (!issue) {
     console.log(`  Issue ${issueNumber} not found`);
-    return [];
-  }
-
-  // PRs or issues related to the SDK should not show up in core app milestones
-  // We'll probably revert this when/if we land hosted bundle
-  if (hasLabel(issue, "Embedding/SDK")) {
-    console.log("  Skip an Embedding SDK issue or PR");
     return [];
   }
 
@@ -255,7 +247,7 @@ export async function setMilestoneForCommits({
   console.log('Next milestone:', nextMilestone.title);
 
   // figure out issue or PR
-  const PRsToCheck = _.uniq(
+  const PRsToCheck = uniq(
     commitMessages
       .flatMap(getPRsFromCommitMessage)
       .filter(isNotNull)
@@ -277,7 +269,7 @@ export async function setMilestoneForCommits({
     })));
   }
 
-  const uniqueIssuesToTag = _.uniq(issuesToTag);
+  const uniqueIssuesToTag = uniq(issuesToTag);
 
   console.log(`Tagging ${uniqueIssuesToTag.length} issues with milestone ${nextMilestone.title}`)
 
@@ -366,7 +358,7 @@ export async function checkMilestoneForRelease({
       })));
     }
 
-    const uniqueIssues = _.uniq(issueNumbers.filter(isNotNull));
+    const uniqueIssues = uniq(issueNumbers.filter(isNotNull));
     commitIssueMap[commit.sha] = uniqueIssues;
 
     uniqueIssues.forEach(issueNumber => {
@@ -610,4 +602,8 @@ async function addIssueToProject({
       )
       { projectV2Item { id } }
     }`);
+}
+
+function uniq<T>(array: T[]) {
+  return Array.from<T>(new Set(array));
 }

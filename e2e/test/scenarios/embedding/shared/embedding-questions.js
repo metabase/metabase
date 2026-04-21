@@ -73,3 +73,19 @@ export const joinedQuestion = {
     ],
   },
 };
+
+export const questionAsPinMapWithTiles = {
+  name: "Orders",
+  description: "Foo",
+  enable_embedding: true,
+  native: {
+    query: "SELECT LATITUDE, LONGITUDE FROM PEOPLE ORDER BY ID LIMIT 10",
+  },
+  display: "map",
+  visualization_settings: {
+    "map.type": "pin",
+    "map.pin_type": "tiles",
+    "map.longitude_column": "LONGITUDE",
+    "map.latitude_column": "LATITUDE",
+  },
+};

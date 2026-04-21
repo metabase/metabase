@@ -1,12 +1,15 @@
 (ns metabase.query-processor.dashboard
   "Code for running a query in the context of a specific DashboardCard."
+  (:refer-clojure :exclude [some select-keys not-empty get-in])
   (:require
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.dashboards.schema :as dashboards.schema]
    [metabase.events.core :as events]
-   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
@@ -16,6 +19,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [select-keys some not-empty get-in]]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
@@ -122,7 +126,7 @@
    dashcard-id    :- ::lib.schema.id/dashcard
    request-params :- [:maybe [:sequential :map]]]
   (log/tracef "Resolving Dashboard %d Card %d query request parameters" dashboard-id card-id)
-  (let [request-params            (mbql.normalize/normalize-fragment [:parameters] request-params)
+  (let [request-params            (some-> request-params not-empty (->> (lib/normalize ::dashboards.schema/parameters)))
         dashboard                 (-> (t2/select-one :model/Dashboard :id dashboard-id)
                                       (t2/hydrate :resolved-params)
                                       (api/check-404))
@@ -176,6 +180,17 @@
     ;; [[qp.card/process-query-for-card]]
     (api/read-check :model/Dashboard dashboard-id)
     (check-card-and-dashcard-are-in-dashboard dashboard-id card-id dashcard-id)
+    ;; Early view-data permission check so that blocked users get a 403 *before* parameter
+    ;; resolution. Without this, a missing required parameter would produce a 400, and the
+    ;; frontend couldn't distinguish "no permission" (hide inline filters) from "missing
+    ;; params" (show inline filters). The QP middleware's check-block-permissions does a
+    ;; thorough check later on the resolved query; this is intentionally just the card's
+    ;; database_id since we don't have the resolved query yet.
+    (api/check-403
+     (not= :blocked
+           (perms/most-permissive-database-permission-for-user
+            api/*current-user-id* :perms/view-data
+            (t2/select-one-fn :database_id :model/Card card-id))))
     (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
           options         (merge
                            {:ignore-cache false

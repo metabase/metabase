@@ -62,7 +62,7 @@
 ;; We need to sync the attached datawarehouse to make sure that the data from the Google Drive folder is available to
 ;; the user in Metabase. Once the gdrive connection's status is set to 'active' by HM, they will call MB's
 ;; `api/notify/db/attached_datawarehouse` endpoint to trigger a sync. The data from the Google Drive folder is already
-;; availiable in the attached datawarehouse, and when MB finishes the sync (and puts an item into :model/TaskHistory
+;; available in the attached datawarehouse, and when MB finishes the sync (and puts an item into :model/TaskHistory
 ;; saying so), the user can start using their Google Sheets data in Metabase.
 ;;
 ;; ## Why do we check for multiple gdrive connections in the delete endpoint? We check for multiple gdrive connections
@@ -338,6 +338,10 @@
   [conn-id]
   (hm.client/make-request :put (str "/api/v2/mb/connections/" conn-id "/sync")))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/connection/sync"
   "Force a sync of the connection now.
 
@@ -358,6 +362,10 @@
                    :sync_started_at (seconds-from-epoch-now))
             (throw-error 502 (tru "Error requesting sync") response)))))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/connection"
   "Disconnect the google service account. There is only one (or zero) at the time of writing."
   []

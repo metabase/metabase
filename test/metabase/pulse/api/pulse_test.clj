@@ -7,18 +7,16 @@
    [metabase.api.response :as api.response]
    [metabase.channel.api.channel-test :as api.channel-test]
    [metabase.channel.impl.http-test :as channel.http-test]
-   [metabase.channel.render.style :as style]
    [metabase.channel.settings :as channel.settings]
    [metabase.driver :as driver]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   ^{:clj-kondo/ignore [:deprecated-namespace]}
-   [metabase.pulse.api.pulse :as api.pulse]
    [metabase.pulse.models.pulse-channel :as pulse-channel]
    [metabase.pulse.models.pulse-test :as pulse-test]
    [metabase.pulse.test-util :as pulse.test-util]
-   [metabase.queries.api.card-test :as api.card-test]
+   [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.http-client :as client]
@@ -33,7 +31,7 @@
 (defn- user-details [user]
   (select-keys
    user
-   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale :tenant_id]))
+   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale :tenant_id :is_data_analyst]))
 
 (defn- pulse-card-details [card]
   (-> (select-keys card [:id :collection_id :name :description :display])
@@ -54,7 +52,7 @@
    (select-keys
     pulse
     [:id :name :created_at :updated_at :creator_id :collection_id :collection_position :entity_id :archived
-     :skip_if_empty :dashboard_id :parameters])
+     :skip_if_empty :dashboard_id :parameters :disable_links])
    {:creator  (user-details (t2/select-one 'User :id (:creator_id pulse)))
     :cards    (map pulse-card-details (:cards pulse))
     :channels (map pulse-channel-details (:channels pulse))}))
@@ -126,7 +124,8 @@
 
            {:name  "abc"
             :cards ["abc"]}
-           default-post-card-ref-validation-error
+           {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.",
+                     :channels "one or more map"}}
 
            {:name  "abc"
             :cards [{:id 100, :include_csv false, :include_xls false, :dashboard_card_id nil}
@@ -163,7 +162,8 @@
    :archived            false
    :dashboard_id        nil
    :entity_id           true
-   :parameters          []})
+   :parameters          []
+   :disable_links       false})
 
 (def ^:private daily-email-channel
   {:enabled       true
@@ -464,7 +464,7 @@
              default-put-card-ref-validation-error
 
              {:cards ["abc"]}
-             default-put-card-ref-validation-error
+             {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`."}}
 
              {:channels 123}
              {:errors {:channels "nullable one or more map"}}
@@ -589,7 +589,7 @@
           ;; grant Permissions for only the *old* collection
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           ;; now make an API call to move collections. Should fail
-          (is (=? {:message "You do not have curate permissions for this Collection."}
+          (is (=? "You don't have permissions to do that."
                   (mt/user-http-request :rasta :put 403 (str "pulse/" (u/the-id pulse)) {:collection_id (u/the-id new-collection)}))))))))
 
 (deftest update-collection-position-test
@@ -1229,12 +1229,17 @@
 
 (deftest ^:parallel pulse-card-query-results-test
   (testing "viz-settings saved in the DB for a Card should be loaded"
-    (is (some? (get-in (#'api.pulse/pulse-card-query-results
-                        {:id            1
-                         :dataset_query {:database (mt/id)
-                                         :type     :query
-                                         :query    {:source-table (mt/id :venues)
-                                                    :limit        1}}})
+    (is (some? (get-in (qp/process-query
+                        (qp/userland-query
+                         {:database (mt/id)
+                          :type     :query
+                          :query    {:source-table (mt/id :venues)
+                                     :limit        1}
+                          :middleware {:process-viz-settings? true
+                                       :js-int-to-string?     false}}
+                         {:executed-by (mt/user->id :rasta)
+                          :context     :pulse
+                          :card-id     1}))
                        [:data :viz-settings])))))
 
 (deftest form-input-test
@@ -1287,55 +1292,77 @@
                                                       :id "U1DYU9W3WZ2"
                                                       :display-name "@user1"}]}]
         (is (= [{:name "channel", :type "select", :displayName "Post to",
-                 :options ["#foo" "#general" "@user1"], :required true}]
+                 :options [{:displayName "#foo"     :id "CAAS3DD9XND"}
+                           {:displayName "#general" :id "C3MJRZ9EUVA"}
+                           {:displayName "@user1"   :id "U1DYU9W3WZ2"}], :required true}]
                (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                    (get-in [:channels :slack :fields]))))))
 
+    (testing "Duplicate Slack channel display names are deduplicated"
+      (mt/with-temporary-setting-values [channel.settings/slack-channels-and-usernames-last-updated
+                                         (t/zoned-date-time)
+
+                                         channel.settings/slack-app-token "test-token"
+
+                                         channel.settings/slack-cached-channels-and-usernames
+                                         {:channels [{:type "channel"
+                                                      :name "channel"
+                                                      :display-name "#channel"
+                                                      :id "C001"}
+                                                     {:type "channel"
+                                                      :name "channel"
+                                                      :display-name "#channel"
+                                                      :id "C002"}
+                                                     {:type "channel"
+                                                      :name "general"
+                                                      :display-name "#general"
+                                                      :id "C003"}]}]
+        (is (= [{:displayName "#channel" :id "C001"}
+                {:displayName "#general" :id "C003"}]
+               (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
+                   (get-in [:channels :slack :fields])
+                   first
+                   :options)))
+        (is (apply distinct?
+                   (map :displayName
+                        (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
+                            (get-in [:channels :slack :fields])
+                            first
+                            :options))))))
+
+    (testing "Duplicate Slack channel IDs are deduplicated, keeping the first entry"
+      (mt/with-temporary-setting-values [channel.settings/slack-channels-and-usernames-last-updated
+                                         (t/zoned-date-time)
+
+                                         channel.settings/slack-app-token "test-token"
+
+                                         channel.settings/slack-cached-channels-and-usernames
+                                         {:channels [{:type "channel"
+                                                      :name "old-name"
+                                                      :display-name "#old-name"
+                                                      :id "C001"}
+                                                     {:type "channel"
+                                                      :name "new-name"
+                                                      :display-name "#new-name"
+                                                      :id "C001"}
+                                                     {:type "channel"
+                                                      :name "general"
+                                                      :display-name "#general"
+                                                      :id "C003"}]}]
+        (is (= [{:displayName "#old-name" :id "C001"}
+                {:displayName "#general"  :id "C003"}]
+               (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
+                   (get-in [:channels :slack :fields])
+                   first
+                   :options)))))
+
     (testing "When slack is not configured, `form_input` returns no channels"
-      (mt/with-temporary-setting-values [slack-token nil
-                                         slack-app-token nil]
+      (mt/with-temporary-setting-values [channel.settings/slack-app-token nil]
         (is (empty?
              (-> (mt/user-http-request :rasta :get 200 "pulse/form_input")
                  (get-in [:channels :slack :fields])
                  (first)
                  (:options))))))))
-
-(deftest preview-pulse-test
-  (testing "GET /api/pulse/preview_card/:id"
-    (mt/with-temp [:model/Collection _ {}
-                   :model/Card       card {:dataset_query (mt/mbql-query checkins {:limit 5})}]
-      (letfn [(preview [expected-status-code & [width]]
-                (let [url (str "pulse/preview_card_png/" (u/the-id card)
-                               (when width (str "?width=" width)))]
-                  (client/client-full-response (mt/user->credentials :rasta)
-                                               :get expected-status-code url)))]
-        (testing "Should be able to preview a Pulse"
-          (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 200)]
-            (is (= "image/png"
-                   Content-Type))
-            (is (some? body))))
-
-        (testing "Should respect the width query parameter"
-          (let [width 600
-                resp1 (preview 200)
-                resp2 (preview 200 width)]
-            (is (= "image/png" (get-in resp2 [:headers "Content-Type"])))
-            (is (not= (:body resp1) (:body resp2))) ;; crude check: different width should yield different PNG bytes
-            (is (some? (:body resp2)))))
-
-        (testing "If rendering a Pulse fails (e.g. because font registration failed) the endpoint should return the error message"
-          (with-redefs [style/register-fonts-if-needed! (fn []
-                                                          (throw (ex-info "Can't register fonts!"
-                                                                          {}
-                                                                          (NullPointerException.))))]
-            (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
-              (is (= "application/json; charset=utf-8"
-                     Content-Type))
-              (is (malli= [:map
-                           [:message  [:= "Can't register fonts!"]]
-                           [:trace    :any]
-                           [:via      :any]]
-                          body)))))))))
 
 (deftest delete-subscription-test
   (testing "DELETE /api/pulse/:id/subscription"

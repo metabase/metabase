@@ -1,9 +1,12 @@
 (ns metabase.lib-be.metadata.jvm
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
+  (:refer-clojure :exclude [get-in])
   (:require
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
+   [honey.sql.helpers :as sql.helpers]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.invocation-tracker :as lib.metadata.invocation-tracker]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -13,9 +16,10 @@
    [metabase.models.interface :as mi]
    [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.memoize :as u.memo]
-   [metabase.util.performance :as perf]
+   [metabase.util.performance :as perf :refer [get-in]]
    [metabase.util.snake-hating-map :as u.snake-hating-map]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -41,12 +45,14 @@
   (u.memo/fast-memo u/->kebab-case-en))
 
 (def ^:private metadata-type->schema
-  {:metadata/card ::lib.schema.metadata/card})
+  {:metadata/card   ::lib.schema.metadata/card
+   :metadata/column ::lib.schema.metadata/column})
 
-(defn instance->metadata
-  "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
+(mu/defn instance->metadata
+  "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a Lib style
   metadata instance with `:lib/type` and `kebab-case` keys."
-  [instance metadata-type]
+  [instance      :- :map
+   metadata-type :- :keyword]
   (let [normalize (if-let [schema (get metadata-type->schema metadata-type)]
                     (fn [instance]
                       (lib.normalize/normalize schema instance))
@@ -74,7 +80,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :details :timezone :router_database_id]}))
+         {:select [:id :engine :name :dbms_version :settings :is_audit :details :write_data_details :timezone :router_database_id]}))
 
 (t2/define-after-select :metadata/database
   [database]
@@ -100,7 +106,7 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :db_id :name :display_name :schema :active :visibility_type]}))
+         {:select [:id :db_id :name :display_name :schema :active :visibility_type :database_require_filter]}))
 
 (t2/define-after-select :metadata/table
   [table]
@@ -146,6 +152,7 @@
    {:select    [:field/active
                 :field/base_type
                 :field/coercion_strategy
+                :field/database_partitioned
                 :field/database_type
                 :field/description
                 :field/display_name
@@ -325,6 +332,49 @@
   (instance->metadata segment :metadata/segment))
 
 ;;;
+;;; Measure
+;;;
+
+(derive :metadata/measure :model/Measure)
+
+(methodical/defmethod t2.model/resolve-model :metadata/measure
+  [model]
+  (t2.model/resolve-model :model/Measure)
+  (t2.model/resolve-model :model/Table)
+  model)
+
+(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/measure
+                                             #_resolved-query clojure.lang.IPersistentMap
+                                             #_k              :default]
+  [model honeysql k v]
+  (let [k (if (not (qualified-key? k))
+            (keyword "measure" (name k))
+            k)]
+    (next-method model honeysql k v)))
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/measure
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-args honeysql]
+  (merge
+   (next-method query-type model parsed-args honeysql)
+   {:select    [:measure/id
+                :measure/table_id
+                :measure/name
+                :measure/description
+                :measure/archived
+                :measure/definition
+                :measure/dimensions
+                :measure/dimension_mappings]
+    :from      [[(t2/table-name :model/Measure) :measure]]
+    :left-join [[(t2/table-name :model/Table) :table]
+                [:= :measure/table_id :table/id]]}))
+
+(t2/define-after-select :metadata/measure
+  [measure]
+  (instance->metadata measure :metadata/measure))
+
+;;;
 ;;; Native Query Snippet
 ;;;
 
@@ -340,11 +390,33 @@
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :name :description :content :archived :collection_id]}))
+         {:select [:id :name :description :content :archived :collection_id :template_tags]}))
 
 (t2/define-after-select :metadata/native-query-snippet
   [snippet]
   (instance->metadata snippet :metadata/native-query-snippet))
+
+;;;
+;;; Transforms
+;;;
+
+(derive :metadata/transform :model/Transform)
+
+(methodical/defmethod t2.model/resolve-model :metadata/transform
+  [model]
+  (t2/resolve-model :model/Transform) ; for side-effects
+  model)
+
+(methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
+                                         #_model          :metadata/transform
+                                         #_resolved-query clojure.lang.IPersistentMap]
+  [query-type model parsed-args honeysql]
+  (merge (next-method query-type model parsed-args honeysql)
+         {:select [:id :name :source :target]}))
+
+(t2/define-after-select :metadata/transform
+  [snippet]
+  (instance->metadata snippet :metadata/transform))
 
 ;;;
 ;;; MetadataProvider
@@ -358,61 +430,130 @@
                     {})))
   (t2/select-one :metadata/database database-id))
 
-(defn- metadatas [database-id metadata-type ids]
-  (let [database-id-key (case metadata-type
-                          :metadata/table                :db_id
-                          :metadata/card                 :card/database_id
-                          :metadata/native-query-snippet nil
-                          :table/db_id)]
-    (when (seq ids)
-      (t2/select metadata-type
-                 :id [:in (set ids)]
-                 (if database-id-key
-                   {:where [:= database-id-key database-id]}
-                   {})))))
-
-(defn- tables [database-id]
-  (t2/select :metadata/table
-             {:where [:and
-                      [:= :db_id database-id]
-                      [:= :active true]
-                      [:or
-                       [:is :visibility_type nil]
-                       [:not-in :visibility_type #{"hidden" "technical" "cruft"}]]]}))
-
-(defn- metadatas-for-table [metadata-type table-id]
+(defn- db-id-key [metadata-type]
   (case metadata-type
+    :metadata/table                :db_id
+    :metadata/column               :table/db_id
+    :metadata/card                 :card/database_id
+    :metadata/metric               :database_id
+    :metadata/segment              :table/db_id
+    :metadata/measure              :table/db_id
+    :metadata/native-query-snippet nil
+    :metadata/transform            nil))
+
+(defn- id-key [metadata-type]
+  (case metadata-type
+    :metadata/table                :id
+    :metadata/column               :field/id
+    :metadata/card                 :card/id
+    :metadata/metric               :id
+    :metadata/segment              :segment/id
+    :metadata/measure              :measure/id
+    :metadata/native-query-snippet :id
+    :metadata/transform            :id))
+
+(defn- name-key [metadata-type]
+  (case metadata-type
+    :metadata/table                :name
+    :metadata/column               :field/name
+    :metadata/card                 :card/name
+    :metadata/metric               :name
+    :metadata/segment              :segment/name
+    :metadata/measure              :measure/name
+    :metadata/native-query-snippet :name
+    :metadata/transform            :name))
+
+(defn- table-id-key [metadata-type]
+  ;; types not in the case statement do not support Table ID
+  (case metadata-type
+    :metadata/column  :field/table_id
+    :metadata/metric  :table_id
+    :metadata/segment :segment/table_id
+    :metadata/measure :measure/table_id))
+
+(defn- card-id-key [metadata-type]
+    ;; types not in the case statement do not support Card ID
+  (case metadata-type
+    :metadata/metric :source_card_id))
+
+(defn- active-only-honeysql-filter [metadata-type {:keys [include-sensitive?]}]
+  (case metadata-type
+    :metadata/table
+    [:and
+     [:= :active true]
+     [:or
+      [:= :visibility_type nil]
+      [:not-in :visibility_type [:inline ["hidden" "technical" "cruft"]]]]]
+
     :metadata/column
-    (t2/select :metadata/column
-               :table_id        table-id
-               :active          true
-               :visibility_type [:not-in #{"sensitive" "retired"}])
+    (let [excluded-visibility-types (cond-> ["retired"]
+                                      (not include-sensitive?) (conj "sensitive"))]
+      [:and
+       [:= :field/active true]
+       [:or
+        [:= :field/visibility_type nil]
+        [:not-in :field/visibility_type [:inline excluded-visibility-types]]]])
+
+    :metadata/card
+    [:= :card/archived false]
 
     :metadata/metric
-    (t2/select :metadata/metric :table_id table-id, :source_card_id [:= nil], :type :metric, :archived false)
+    [:= :archived false]
 
     :metadata/segment
-    (t2/select :metadata/segment :table_id table-id, :archived false)))
+    [:= :segment/archived false]
 
-(defn- metadatas-for-card [metadata-type card-id]
-  (case metadata-type
-    :metadata/metric
-    (t2/select :metadata/metric :source_card_id card-id, :type :metric, :archived false)))
+    :metadata/measure
+    [:= :measure/archived false]
+
+    #_else
+    nil))
+
+(mu/defn- metadata-spec->honey-sql :- [:map
+                                       {:closed true}
+                                       [:where {:optional true} vector?]]
+  "This should match [[metabase.lib.metadata.protocols/default-spec-filter-xform]] as closely as possible."
+  [database-id                                                                                                            :- ::lib.schema.id/database
+   {metadata-type :lib/type, id-set :id, name-set :name, :keys [table-id card-id include-sensitive?], :as _metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
+  (let [database-id-key (db-id-key metadata-type)
+        active-only?    (not (or id-set name-set))
+        metric?         (= metadata-type :metadata/metric)
+        where-clauses   (cond-> []
+                          database-id-key        (conj [:= database-id-key database-id])
+                          id-set                 (conj [:in (id-key metadata-type) id-set])
+                          name-set               (conj [:in (name-key metadata-type) name-set])
+                          table-id               (conj [:= (table-id-key metadata-type) table-id])
+                          card-id                (conj [:= (card-id-key metadata-type) card-id])
+                          active-only?           (conj (active-only-honeysql-filter metadata-type {:include-sensitive? include-sensitive?}))
+                          metric?                (conj [:= :type [:inline "metric"]])
+                          (and metric? table-id) (conj [:= :source_card_id nil]))]
+    (reduce
+     sql.helpers/where
+     {}
+     where-clauses)))
+
+(mu/defn- metadatas
+  [database-id                                  :- ::lib.schema.id/database
+   {metadata-type :lib/type, :as metadata-spec} :- ::lib.metadata.protocols/metadata-spec]
+  (let [query (metadata-spec->honey-sql database-id metadata-spec)]
+    (try
+      (t2/select metadata-type query)
+      (catch Throwable e
+        (throw (ex-info "Error fetching metadata with spec"
+                        {:metadata-spec metadata-spec, :query query}
+                        e))))))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
     (database database-id))
-  (metadatas [_this metadata-type ids]
-    (metadatas database-id metadata-type ids))
-  (tables [_this]
-    (tables database-id))
-  (metadatas-for-table [_this metadata-type table-id]
-    (metadatas-for-table metadata-type table-id))
-  (metadatas-for-card [_this metadata-type card-id]
-    (metadatas-for-card metadata-type card-id))
+  (metadatas [_this metadata-spec]
+    (metadatas database-id metadata-spec))
   (setting [_this setting-name]
-    (setting/get setting-name))
+    (if (setting/database-local-values)
+      (setting/get setting-name)
+      (setting/with-database (database database-id)
+        (setting/get setting-name))))
 
   pretty/PrettyPrintable
   (pretty [_this]
@@ -439,16 +580,31 @@
   [[application-database-metadata-provider]] will use it for caching the `MetadataProvider` for each `database-id`
   over the lifespan of this binding.
 
-  This is useful for an API request, or group fo API requests like a dashboard load, to reduce appdb traffic."
+  This is useful for an API request, or group for API requests like a dashboard load, to reduce appdb traffic."
   nil)
+
+(defn metadata-provider-cache
+  "The currently bound [[*metadata-provider-cache*]], for Potemkin-export friendliness."
+  []
+  *metadata-provider-cache*)
 
 (defmacro with-metadata-provider-cache
   "Wrapper to create a [[*metadata-provider-cache*]] for the duration of the `body`.
 
-  If there is already a [[*metadata-provider-cache*]], this leaves it in place."
+  If there is already a [[*metadata-provider-cache*]], this leaves it in place.
+
+  Note that the metadata provider cache is initialized automatically in a REST API request context by
+  the [[metabase.server.middleware.metadata-provider-cache]] middleware; if writing a REST API endpoint you do not
+  need to manually initialize one."
   [& body]
   `(binding [*metadata-provider-cache* (or *metadata-provider-cache*
                                            (atom (cache/basic-cache-factory {})))]
+     ~@body))
+
+(defmacro with-existing-metadata-provider-cache
+  "Wrapper to bind [[*metadata-provider-cache*]] to an existing cache, if you are doing something weird."
+  [metadata-provider-cache & body]
+  `(binding [*metadata-provider-cache* ~metadata-provider-cache]
      ~@body))
 
 (mu/defn application-database-metadata-provider :- ::lib.schema.metadata/metadata-provider
@@ -463,3 +619,14 @@
   (if-let [cache-atom *metadata-provider-cache*]
     (cache.wrapped/lookup-or-miss cache-atom database-id application-database-metadata-provider-factory)
     (application-database-metadata-provider-factory database-id)))
+
+;;; do not encode MetadataProviders to JSON, just generate `nil` instead.
+(json/add-encoder
+ UncachedApplicationDatabaseMetadataProvider
+ (fn [_mp json-generator]
+   (json/generate-nil nil json-generator)))
+
+(extend-protocol clj-yaml.core/YAMLCodec
+  UncachedApplicationDatabaseMetadataProvider
+  (encode [_this]
+    nil))

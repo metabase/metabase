@@ -1,9 +1,10 @@
 (ns metabase.lib.types.isa
   "Ported from frontend/src/metabase-lib/types/utils/isa.js"
-  (:refer-clojure :exclude [isa? any? boolean? number? string? integer?])
+  (:refer-clojure :exclude [isa? any? boolean? number? string? integer? some])
   (:require
    [metabase.lib.types.constants :as lib.types.constants]
-   [metabase.types.core]))
+   [metabase.types.core]
+   [metabase.util.performance :refer [some]]))
 
 (comment metabase.types.core/keep-me)
 
@@ -42,6 +43,11 @@
       true
 
       :else false)))
+
+(defn column-type
+  "Returns the :effective-type of `column`, if set. Otherwise, returns the :base-type."
+  [column]
+  (or (:effective-type column) (:base-type column)))
 
 (defn ^:export temporal?
   "Is `column` of a temporal type?"
@@ -141,12 +147,17 @@
 (defn ^:export date-or-datetime?
   "Is `column` a date or datetime?"
   [column]
-  (clojure.core/isa? (:effective-type column) :type/HasDate))
+  (clojure.core/isa? (column-type column) :type/HasDate))
 
 (defn ^:export date-without-time?
   "Is `column` a date without time?"
   [column]
-  (clojure.core/isa? (:effective-type column) :type/Date))
+  (clojure.core/isa? (column-type column) :type/Date))
+
+(defn ^:export date-with-time?
+  "Is `column` a datetime (date with time)?"
+  [column]
+  (clojure.core/isa? (column-type column) :type/DateTime))
 
 (defn ^:export creation-timestamp?
   "Is `column` a creation timestamp column?"
@@ -171,7 +182,7 @@
 (defn ^:export time?
   "Is `column` a time?"
   [column]
-  (clojure.core/isa? (:effective-type column) :type/Time))
+  (clojure.core/isa? (column-type column) :type/Time))
 
 (defn ^:export address?
   "Is `column` an address?"
@@ -254,21 +265,24 @@
 (defn searchable?
   "Is this column one that we should show a search widget for (to search its values) in the QB filter UI? If so, we can
   give it a `has-field-values` value of `:search`."
-  [{:keys [base-type effective-type]}]
+  [column]
   ;; For the time being we will consider something to be "searchable" if it's a text Field since the `starts-with`
   ;; filter that powers the search queries (see [[metabase.parameters.field/search-values]]) doesn't work on anything else
-  (let [column-type (or effective-type base-type)]
-    (or (clojure.core/isa? column-type :type/Text)
-        (clojure.core/isa? column-type :type/TextLike))))
+  (let [col-type (column-type column)]
+    (or (clojure.core/isa? col-type :type/Text)
+        (clojure.core/isa? col-type :type/TextLike))))
 
-(defn valid-filter-for?
-  "Given two CLJS `:metadata/columns` returns true if `src-column` is a valid source to use for filtering `dst-column`.
+(defn compatible-type?
+  "Given two columns, returns true if they have compatible types.
 
-  That's the case if both are from the same family (strings, numbers, temporal) or if the `src-column` [[isa?]] subtype
-  of `dst-column`."
+  That's the case if both are from the same family (strings, numbers, dates/datetimes, times, booleans) or if
+  `src-column`'s base-type is a subtype of `dst-column`'s base-type."
   [src-column dst-column]
   (or
    (and (string? src-column)   (string? dst-column))
    (and (numeric? src-column)  (numeric? dst-column))
-   (and (temporal? src-column) (temporal? dst-column))
+   (and (date-without-time? src-column) (date-or-datetime? dst-column))
+   (and (date-with-time? src-column) (date-with-time? dst-column))
+   (and (time? src-column) (time? dst-column))
+   (and (boolean? src-column)  (boolean? dst-column))
    (clojure.core/isa? (:base-type src-column) (:base-type dst-column))))

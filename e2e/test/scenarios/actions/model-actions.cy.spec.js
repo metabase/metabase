@@ -773,7 +773,7 @@ describe(
           cy.button(SAMPLE_QUERY_ACTION.name).click();
 
           cy.findByText(
-            "Error executing Action: Error executing write query: ERROR: permission denied for table scoreboard_actions",
+            /Error executing Action:.*Invalid impersonated native query\. Must be a single select statement\./,
           );
         });
 
@@ -812,9 +812,11 @@ function openActionEditorFor(actionName, { isReadOnly = false } = {}) {
 }
 
 function assertQueryEditorDisabled() {
-  // Ace doesn't act as a normal input, so we can't use `should("be.disabled")`
-  // Instead we'd assert that a user can't type in the editor
-  H.fillActionQuery("QWERTY");
+  H.NativeEditor.get().click();
+  H.NativeEditor.get().should("not.be.focused");
+  H.NativeEditor.get().should("have.attr", "contenteditable", "false");
+
+  H.NativeEditor.type("QWERTY", { focus: false });
   cy.findByText("QWERTY").should("not.exist");
 }
 

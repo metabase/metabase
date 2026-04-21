@@ -8,13 +8,14 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]))
 
-;;; Schema for `info.context`; used for informational purposes to record how a query was executed.
 (mr/def ::context
+  "Schema for `info.context`; used for informational purposes to record how a query was executed."
   [:enum
    ;; do not decode, since this should not get written to the app DB or come in from the REST API.
    {:decode/normalize identity}
    :action
    :ad-hoc
+   :agent
    :cache-refresh
    :collection
    :map-tiles
@@ -35,7 +36,10 @@
    :embedded-csv-download
    :embedded-xlsx-download
    :embedded-json-download
-   :table-grid])
+   :table-grid
+   :table-rows-sample
+   :transform-inspector
+   :slackbot])
 
 (mr/def ::hash
   #?(:clj bytes?
@@ -61,6 +65,9 @@
    [:card-id                 {:optional true} [:maybe ::lib.schema.id/card]]
    [:card-name               {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
    [:dashboard-id            {:optional true} [:maybe ::lib.schema.id/dashboard]]
+   [:transform-id            {:optional true} [:maybe ::lib.schema.id/transform]]
+   [:lens-id                 {:optional true} [:maybe ::lib.schema.common/non-blank-string]]
+   [:lens-params             {:optional true} [:maybe [:map-of :keyword :any]]]
    [:pulse-id                {:optional true} [:maybe ::lib.schema.id/pulse]]
    ;; Metadata for datasets when querying the dataset. This ensures that user edits to dataset metadata are blended in
    ;; with runtime computed metadata so that edits are saved.

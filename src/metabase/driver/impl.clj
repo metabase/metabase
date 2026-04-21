@@ -1,10 +1,9 @@
 (ns metabase.driver.impl
   "Internal implementation functions for [[metabase.driver]]. These functions live in a separate namespace to reduce the
   clutter in [[metabase.driver]] itself."
-  #_{:clj-kondo/ignore [:metabase/modules]}
   (:require
-   [metabase.classloader.impl :as classloader]
-   [metabase.lib.util :as lib.util]
+   [metabase.classloader.core :as classloader]
+   [metabase.lib.core :as lib]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
@@ -81,7 +80,7 @@
         (throw (Exception. (tru "Could not load {0} driver." driver) e))))))
 
 (mu/defn load-driver-namespace-if-needed!
-  "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
+  "Load the expected namespace for a `driver` if it has not already been registered. This only works for core Metabase
   drivers, whose namespaces follow an expected pattern; drivers provided by 3rd-party plugins are expected to register
   themselves in their plugin initialization code.
 
@@ -234,4 +233,4 @@
    (truncate-alias s default-alias-max-length-bytes))
 
   (^String [^String s max-length-bytes]
-   (lib.util/truncate-alias s max-length-bytes)))
+   (lib/truncate-alias s max-length-bytes)))

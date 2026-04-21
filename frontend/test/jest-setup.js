@@ -1,12 +1,11 @@
-/* eslint-disable no-undef */
-import { Crypto, CryptoKey } from "@peculiar/webcrypto";
+import { webcrypto } from "crypto";
 import { TextDecoder, TextEncoder } from "util";
+
 import { ReadableStream } from "web-streams-polyfill";
 import "cross-fetch/polyfill";
 import "raf/polyfill";
-import "jest-localstorage-mock";
 import "jest-canvas-mock";
-import "metabase/lib/dayjs";
+import "metabase/utils/dayjs";
 import "__support__/mocks";
 
 // NOTE: this is needed because sometimes asynchronous code tries to access
@@ -41,10 +40,12 @@ class JSDOMTextEncoder extends TextEncoder {
 
 // global TextEncoder and Crypto are not available in jsdom + Jest, see
 // https://stackoverflow.com/questions/70808405/how-to-set-global-textdecoder-in-jest-for-jsdom-if-nodes-util-textdecoder-is-ty
-// (hacky fix)
-delete globalThis.crypto;
-globalThis.crypto = new Crypto();
-globalThis.CryptoKey = CryptoKey;
+// Use Node.js native webcrypto instead of @peculiar/webcrypto polyfill
+Object.defineProperty(globalThis, "crypto", {
+  value: webcrypto,
+  writable: true,
+  configurable: true,
+});
 global.TextEncoder = JSDOMTextEncoder;
 global.TextDecoder = TextDecoder;
 
@@ -60,3 +61,43 @@ Range.prototype.getBoundingClientRect = () => ({
   top: 0,
   width: 0,
 });
+
+// Mock getClientRects for ProseMirror/TipTap compatibility in tests
+Range.prototype.getClientRects = () => ({
+  0: {
+    bottom: 0,
+    height: 0,
+    left: 0,
+    right: 0,
+    top: 0,
+    width: 0,
+  },
+  length: 1,
+  item: () => null,
+  [Symbol.iterator]: function* () {
+    yield this[0];
+  },
+});
+
+// Also mock for Elements which ProseMirror might try to call getClientRects on
+Element.prototype.getClientRects =
+  Element.prototype.getClientRects ||
+  (() => ({
+    0: {
+      bottom: 0,
+      height: 0,
+      left: 0,
+      right: 0,
+      top: 0,
+      width: 0,
+    },
+    length: 1,
+    item: () => null,
+    [Symbol.iterator]: function* () {
+      yield this[0];
+    },
+  }));
+
+// Mock elementFromPoint for ProseMirror/TipTap compatibility in tests
+document.elementFromPoint = document.elementFromPoint || (() => null);
+document.elementsFromPoint = document.elementsFromPoint || (() => []);

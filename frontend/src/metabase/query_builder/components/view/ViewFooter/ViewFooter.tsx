@@ -1,16 +1,16 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import {
   getFirstQueryResult,
   getIsVisualized,
   getQuestion,
 } from "metabase/query_builder/selectors";
-import { Group } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 
-import ViewSection from "../ViewSection";
+import { ViewSection } from "../ViewSection";
 
 import { CenterViewFooterButtonGroup } from "./CenterViewFooterButtonGroup";
 import { LeftViewFooterButtonGroup } from "./LeftViewFooterButtonGroup";
@@ -38,7 +38,7 @@ export const ViewFooter = ({ className }: ViewFooterProps) => {
       data-testid="view-footer"
     >
       <Group justify="space-between" pos="relative" wrap="nowrap" w="100%">
-        {!hideChartSettings && <LeftViewFooterButtonGroup />}
+        {hideChartSettings ? <Box flex={1} /> : <LeftViewFooterButtonGroup />}
         {isVisualized && <CenterViewFooterButtonGroup />}
         <RightViewFooterButtonGroup />
       </Group>

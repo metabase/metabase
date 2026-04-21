@@ -5,7 +5,7 @@ import styled from "@emotion/styled";
 import type { FC, ReactElement } from "react";
 import ReactMarkdown from "react-markdown";
 
-import { color } from "metabase/lib/colors";
+import { color } from "metabase/ui/utils/colors";
 
 import type { MarkdownProps } from "./Markdown";
 
@@ -35,7 +35,7 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
     cursor: pointer;
     text-decoration: none;
     color: ${(props) =>
-      props.unstyleLinks ? color("text-white") : color("brand")};
+      props.unstyleLinks ? color("text-primary-inverse") : color("brand")};
   }
 
   a:hover {
@@ -51,7 +51,9 @@ export const MarkdownRoot = styled(getComponent(ReactMarkdown))<MarkdownProps>`
     border: none;
     border-bottom: 1px solid
       ${(props) =>
-        props.dark ? "var(--mb-color-bg-dark)" : "var(--mb-color-border)"};
+        props.dark
+          ? "var(--mb-color-background-tertiary-inverse)"
+          : "var(--mb-color-border)"};
   }
 `;
 

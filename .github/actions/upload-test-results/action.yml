@@ -7,9 +7,7 @@ inputs:
   output-name:
     required: true
     default: test
-  aws-access-key-id:
-    required: true
-  aws-secret-access-key:
+  role-to-assume:
     required: true
   aws-region:
     required: true
@@ -20,7 +18,9 @@ inputs:
     required: true
   variant:
     required: false
-    default: ''
+    default: ""
+  previous-step-outcome:
+    required: true
 
 runs:
   using: "composite"
@@ -28,8 +28,7 @@ runs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        aws-access-key-id: ${{ inputs.aws-access-key-id }}
-        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        role-to-assume: ${{ inputs.role-to-assume }}
         aws-region: ${{ inputs.aws-region }}
     - name: zip test results
       env:
@@ -48,11 +47,18 @@ runs:
         aws s3 cp ${OUTPUT_FILE}.zip s3://$BUCKET/$DATE/$GITHUB_RUN_ID/$GITHUB_RUN_ATTEMPT/
 
     - name: Upload results to Trunk
-      if: ${{ always() && !(github.event_name == 'pull_request' && github.event.pull_request.draft == true) }}
+      # Important!
+      # 1. This step must always run because it controls job's exit code.
+      # 2. There's no point in running this outside the organization
+      if: always() && github.repository_owner == 'metabase'
       uses: trunk-io/analytics-uploader@main
+      env:
+        TRUNK_REPO_URL: git@github.com:metabase/metabase.git
       with:
         junit-paths: ${{ inputs.input-path }}
         variant: ${{ inputs.variant || inputs.output-name }}
         org-slug: metabase
+        dry-run: ${{ (github.event_name == 'pull_request' && github.event.pull_request.draft == true) || github.repository != 'metabase/metabase' }} # quarantine, but do not upload results
         token: ${{ inputs.trunk-api-token }}
-      continue-on-error: true
+        use-cache: true
+        previous-step-outcome: ${{ inputs.previous-step-outcome }}

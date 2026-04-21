@@ -5,12 +5,12 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
-   [metabase.driver.common.parameters :as params]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters :as params]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
@@ -20,7 +20,6 @@
   (is (=? [:field
            (meta/id :venues :id)
            {:base-type                                                           :type/BigInteger
-            :temporal-unit                                                       nil
             :metabase.query-processor.util.add-alias-info/source-table           (meta/id :venues)
             :metabase.driver.sql.parameters.substitution/compiling-field-filter? true}]
           (#'sql.params.substitution/field->field-filter-clause
@@ -130,3 +129,74 @@
                       ;; no extra `sql.qp/date` calls due to `nil` returned from the override
                       :replacement-snippet "\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?"}
                      (sql.params.substitution/->replacement-snippet-info ::temporal-unit-alignment-override field-filter))))))))))
+
+(deftest ^:parallel table-query->replacement-snippet-test
+  (testing "Basic table reference without source-filters"
+    (mt/with-metadata-provider meta/metadata-provider
+      (is (= {:replacement-snippet     "\"PUBLIC\".\"ORDERS\""
+              :prepared-statement-args []}
+             (sql.params.substitution/->replacement-snippet-info
+              :h2
+              (params/map->ReferencedTableQuery
+               {:table-id (meta/id :orders)}))))))
+  (testing "Basic table reference with alias"
+    (mt/with-metadata-provider meta/metadata-provider
+      (is (= {:replacement-snippet     "\"PUBLIC\".\"ORDERS\" AS \"my_orders\""
+              :prepared-statement-args []}
+             (sql.params.substitution/->replacement-snippet-info
+              :h2
+              (params/map->ReferencedTableQuery
+               {:table-id (meta/id :orders)
+                :alias    "my_orders"})))))))
+
+(deftest ^:parallel table-query-with-source-filters->replacement-snippet-test
+  (testing "Table reference with a single source-filter produces a filtered subquery"
+    (mt/with-metadata-provider meta/metadata-provider
+      (is (= {:replacement-snippet     "(SELECT * FROM \"PUBLIC\".\"ORDERS\" WHERE (\"TOTAL\" > 100))"
+              :prepared-statement-args []}
+             (sql.params.substitution/->replacement-snippet-info
+              :h2
+              (params/map->ReferencedTableQuery
+               {:table-id       (meta/id :orders)
+                :source-filters [{:field-id (meta/id :orders :total)
+                                  :op       :>
+                                  :value    100}]}))))))
+  (testing "Table reference with multiple source-filters joins them with AND"
+    (mt/with-metadata-provider meta/metadata-provider
+      (is (= {:replacement-snippet     "(SELECT * FROM \"PUBLIC\".\"ORDERS\" WHERE (\"TOTAL\" > 100) AND (\"TOTAL\" <= 500))"
+              :prepared-statement-args []}
+             (sql.params.substitution/->replacement-snippet-info
+              :h2
+              (params/map->ReferencedTableQuery
+               {:table-id       (meta/id :orders)
+                :source-filters [{:field-id (meta/id :orders :total)
+                                  :op       :>
+                                  :value    100}
+                                 {:field-id (meta/id :orders :total)
+                                  :op       :<=
+                                  :value    500}]}))))))
+  (testing "Table reference with a timestamp source-filter value"
+    (driver/with-driver ::temporal-unit-alignment-override
+      (mt/with-metadata-provider meta/metadata-provider
+        (let [ts (t/offset-date-time 2024 1 15 0 0 0 0 (t/zone-offset 0))]
+          (is (= {:replacement-snippet     "(SELECT * FROM \"PUBLIC\".\"ORDERS\" WHERE (\"CREATED_AT\" > ?))"
+                  :prepared-statement-args [ts]}
+                 (sql.params.substitution/->replacement-snippet-info
+                  ::temporal-unit-alignment-override
+                  (params/map->ReferencedTableQuery
+                   {:table-id       (meta/id :orders)
+                    :source-filters [{:field-id (meta/id :orders :created-at)
+                                      :op       :>
+                                      :value    ts}]}))))))))
+  (testing "Table reference with source-filters and alias"
+    (mt/with-metadata-provider meta/metadata-provider
+      (is (= {:replacement-snippet     "(SELECT * FROM \"PUBLIC\".\"ORDERS\" WHERE (\"TOTAL\" > 100)) AS \"src\""
+              :prepared-statement-args []}
+             (sql.params.substitution/->replacement-snippet-info
+              :h2
+              (params/map->ReferencedTableQuery
+               {:table-id       (meta/id :orders)
+                :alias          "src"
+                :source-filters [{:field-id (meta/id :orders :total)
+                                  :op       :>
+                                  :value    100}]})))))))

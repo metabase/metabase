@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
 import { t } from "ttag";
 
-import { getCurrentUser } from "metabase/admin/datamodel/selectors";
-import { useUpsellLink } from "metabase/admin/upsells/components/use-upsell-link";
+import { useUpsellLink } from "metabase/common/components/upsells/components/use-upsell-link";
 import { useSetting, useStoreUrl, useToast } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { getUser } from "metabase/selectors/user";
 import { getIsHosted } from "metabase/setup/selectors";
+import { useSelector } from "metabase/utils/redux";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 
 const NOTIFICATION_TIMEOUT = 30_000;
@@ -37,7 +37,7 @@ export function useUpsellFlow({
       sendMessageTokenActivation(true, storeWindowRef.current, storeOrigin);
     }
   });
-  const currentUser = useSelector(getCurrentUser);
+  const currentUser = useSelector(getUser);
   const siteName = useSetting("site-name");
 
   const upsellLink = useUpsellLink({

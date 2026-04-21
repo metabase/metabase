@@ -87,7 +87,7 @@ export function toggleRequired() {
 export function runQuery(xhrAlias = "dataset") {
   getRunQueryButton().click();
   cy.wait("@" + xhrAlias);
-  cy.icon("play").should("not.exist");
+  cy.findByTestId("query-visualization-root").should("exist");
 }
 
 /**

@@ -18,6 +18,7 @@ type SearchEventSchema = {
   request_id?: string | null;
   offset?: number | null;
   entity_model?: string | null;
+  entity_id?: number | null;
   search_term_hash?: string | null;
   search_term?: string | null;
 };
@@ -27,18 +28,21 @@ type ValidateEvent<
     Record<Exclude<keyof T, keyof SearchEventSchema>, never>,
 > = T;
 
+// keep in sync with the `search` snowplow schema
 type SearchContentType =
   | "dashboard"
   | "card"
   | "dataset"
   | "segment"
+  | "measure"
   | "metric"
   | "collection"
   | "database"
   | "table"
   | "action"
   | "indexed-entity"
-  | "document";
+  | "document"
+  | "transform";
 
 type SearchContext =
   | "search-app"
@@ -75,6 +79,7 @@ export type SearchClickEvent = ValidateEvent<{
   search_engine: string | null;
   request_id: string | null;
   entity_model: string | null;
+  entity_id: number | null;
   search_term_hash: string | null;
   search_term: string | null;
 }>;

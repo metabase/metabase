@@ -1,4 +1,5 @@
-import { createMockSettingsState } from "metabase-types/store/mocks";
+import { createMockSettingsState } from "metabase/redux/store/mocks";
+import { createMockGroup } from "metabase-types/api/mocks";
 
 import { DataPermission, DataPermissionValue } from "../../types";
 
@@ -22,6 +23,12 @@ export const normalizedMetadata = {
       name: "Imaginary Schemaless Dataset",
       tables: [10, 11, 12, 13],
       id: 3,
+    },
+    "4": {
+      name: "Destination Database",
+      tables: [],
+      id: 4,
+      router_database_id: 2,
     },
   },
   schemas: {
@@ -118,22 +125,26 @@ export const normalizedMetadata = {
   fields: {
     /* stripped out */
   },
+  snippets: {},
   revisions: {},
-  databasesList: [2, 3],
+  databasesList: [2, 3, 4],
 
   groups: {
-    "1": {
+    "1": createMockGroup({
       id: 1,
       name: "Group starting with full access",
-    },
-    "2": {
+      magic_group_type: null,
+    }),
+    "2": createMockGroup({
       id: 2,
       name: "Group starting with no access at all",
-    },
-    "3": {
+      magic_group_type: null,
+    }),
+    "3": createMockGroup({
       id: 3,
       name: "All Users",
-    },
+      magic_group_type: "all-internal-users",
+    }),
   },
   groups_list: { null: { list: [1, 2, 3] } },
   questions: {},

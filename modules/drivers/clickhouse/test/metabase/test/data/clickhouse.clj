@@ -13,7 +13,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
+   [metabase.query-processor.alternative-date-test :as qp.alternative-date-test]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -33,7 +33,7 @@
 (defmethod driver/database-supports? [:clickhouse :metabase.driver.sql-jdbc.sync.describe-table-test/describe-materialized-view-fields]
   [_driver _feature _db] false)
 
-(defmethod driver/database-supports? [:clickhouse :metabase.query-processor-test.parameters-test/get-parameter-count]
+(defmethod driver/database-supports? [:clickhouse :metabase.query-processor.parameters-test/get-parameter-count]
   [_driver _feature _db] false)
 
 (defmethod qp.alternative-date-test/iso-8601-text-fields-expected-rows :clickhouse
@@ -53,10 +53,11 @@
    :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
    :jdbc_ignore_unsupported_values "true"
    :jdbc_schema_term               "schema",
+   :ignore_unknown_config_key      true
    :max_open_connections           100
    :remember_last_set_roles        true
    :http_connection_provider       "HTTP_URL_CONNECTION"
-   :custom_http_params             ""})
+   :custom_http_params             "select_sequential_consistency=1"})
 
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/Boolean]         [_ _] "Boolean")
 (defmethod sql.tx/field-base-type->sql-type [:clickhouse :type/BigInteger]      [_ _] "Int64")
@@ -73,16 +74,20 @@
 
 (defmethod tx/sorts-nil-first? :clickhouse [_ _] false)
 
-(defmethod tx/dbdef->connection-details :clickhouse [_ context {:keys [database-name]}]
+(defmethod tx/dbdef->connection-details :clickhouse [driver context {:keys [database-name]}]
   (merge
    {:host     (mt/db-test-env-var :clickhouse :host)
-    :port     (Integer/parseInt (mt/db-test-env-var :clickhouse :port))}
+    :port     (parse-long (mt/db-test-env-var-or-throw :clickhouse :port))
+    :enable-multiple-db true}
    (when-let [user (mt/db-test-env-var :clickhouse :user)]
      {:user user})
    (when-let [password (mt/db-test-env-var :clickhouse :password)]
      {:password password})
    (when (= context :db)
-     {:db database-name})))
+     (let [database-name (ddl.i/format-name driver database-name)]
+       {:db database-name
+        :db-filters-type "inclusion"
+        :db-filters-patterns database-name}))))
 
 (defmethod sql.tx/qualified-name-components :clickhouse
   ([_ db-name]                       [db-name])
@@ -138,20 +143,22 @@
 
 (defn- field->clickhouse-column
   [field]
-  (let [{:keys [field-name base-type pk?]} field
-        ch-type  (if (map? base-type)
-                   (:native base-type)
-                   (sql.tx/field-base-type->sql-type :clickhouse base-type))
-        col-name (quote-name field-name)
-        ch-col   (cond
-                   (or pk? (disallowed-as-nullable? ch-type) (map? base-type))
-                   (format "%s %s" col-name ch-type)
+  (let [{:keys [field-name base-type pk? not-null? default-expr generated-expr]} field
+        ch-type   (if (map? base-type)
+                    (:native base-type)
+                    (sql.tx/field-base-type->sql-type :clickhouse base-type))
+        col-name  (quote-name field-name)
+        ch-col    (cond
+                    (or pk? (disallowed-as-nullable? ch-type) (map? base-type) not-null?)
+                    (format "%s %s" col-name ch-type)
 
-                   (= ch-type "Time")
-                   (format "%s Nullable(DateTime64) COMMENT 'time'" col-name)
+                    (= ch-type "Time")
+                    (format "%s Nullable(DateTime64) COMMENT 'time'" col-name)
 
-                   :else (format "%s Nullable(%s)" col-name ch-type))]
-    ch-col))
+                    :else (format "%s Nullable(%s)" col-name ch-type))
+        default   (when default-expr (format "DEFAULT (%s)" default-expr))
+        generated (when generated-expr (format "ALIAS (%s)" generated-expr))]
+    (str/join " " (filter some? [ch-col default generated]))))
 
 (defn- ->comma-separated-str
   [coll]
@@ -185,6 +192,9 @@
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
 
 (defmethod sql.tx/session-schema :clickhouse [_] "default")
+
+(defmethod sql.tx/generated-column-sql :clickhouse [_ expr]
+  (format "ALIAS (%s)" expr))
 
 (defn rows-without-index
   "Remove the Metabase index which is the first column in the result set"
@@ -229,11 +239,25 @@
          ;; if the ResultSet returns anything we know the table is already loaded.
          (.next rset))))))
 
-(defn grant-table-perms-to-roles!
+(defn- quote-role
+  "Similar to sql.tx/qualify-and-quote but avoid replacing - with _"
+  [role]
+  (->> (apply sql.tx/qualified-name-components :clickhouse [role])
+       (apply sql.u/quote-name :clickhouse :field)))
+
+(defn- drop-if-exists-and-create-roles! [driver details roles]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
+    (doseq [[role-name _table-perms] roles]
+      (let [role-name (quote-role role-name)]
+        (doseq [statement [(format "DROP ROLE IF EXISTS %s;" role-name)
+                           (format "CREATE ROLE %s;" role-name)]]
+          (jdbc/execute! spec [statement] {:transaction? false}))))))
+
+(defn- grant-table-perms-to-roles!
   [driver details roles]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
     (doseq [[role-name table-perms] roles]
-      (let [role-name (sql.tx/qualify-and-quote driver role-name)]
+      (let [role-name (quote-role role-name)]
         (doseq [[table-name perms] table-perms]
           (jdbc/execute! spec [(format "GRANT SELECT ON %s TO %s" table-name role-name)] {:transaction? false})
           (when-let [rls-perms (:rls perms)]
@@ -242,6 +266,15 @@
               (jdbc/execute! spec [(format "CREATE ROW POLICY role_policy_%s ON %s AS RESTRICTIVE FOR SELECT USING %s TO %s"
                                            (mt/random-name) table-name policy-cond role-name)] {:transaction? false}))))))))
 
+(defn- grant-roles-to-user! [driver details roles user-name]
+  (let [spec (sql-jdbc.conn/connection-details->spec driver details)
+        user-name (sql.tx/qualify-and-quote driver user-name)]
+    (doseq [[role-name _table-perms] roles]
+      (let [role-name (quote-role role-name)]
+        (jdbc/execute! spec
+                       [(format "GRANT %s TO %s" role-name user-name)]
+                       {:transaction? false})))))
+
 (defmethod tx/create-and-grant-roles! :clickhouse
   [driver details roles user-name _default-role]
   (let [spec (sql-jdbc.conn/connection-details->spec driver details)]
@@ -249,9 +282,9 @@
     (doseq [statement [(format "DROP USER IF EXISTS %s" user-name)
                        (format "CREATE USER IF NOT EXISTS %s NOT IDENTIFIED;" user-name)]]
       (jdbc/execute! spec [statement] {:transaction? false})))
-  (sql-jdbc.tx/drop-if-exists-and-create-roles! driver details roles)
+  (drop-if-exists-and-create-roles! driver details roles)
   (grant-table-perms-to-roles! driver details roles)
-  (sql-jdbc.tx/grant-roles-to-user! driver details roles user-name))
+  (grant-roles-to-user! driver details roles user-name))
 
 (defmethod tx/drop-roles! :clickhouse
   [driver details roles user-name]

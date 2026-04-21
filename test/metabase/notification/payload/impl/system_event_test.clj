@@ -109,13 +109,14 @@
                             count)))))))
 
 (deftest user-invited-email-content-test
-  (let [check (fn [sent-from-setup? expected-subject regexes]
+  (let [check (fn [sent-from-setup? expected-subject regexes invitor-name]
                 (let [email (mt/with-temporary-setting-values
                               [site-url  "https://metabase.com"
-                               site-name "SuperStar"]
+                               site-name "SuperStar"
+                               application-logo-url "https://metabase.com/superstar.png"]
                               (-> (notification.tu/with-captured-channel-send!
                                     (publish-user-invited-event! (t2/select-one :model/User :email "crowberto@metabase.com")
-                                                                 {:first_name "Ngoc" :email "ngoc@metabase.com"}
+                                                                 {:first_name invitor-name :email "ngoc@metabase.com"}
                                                                  sent-from-setup?))
                                   :channel/email first))]
                   (is (= {:recipients     #{"crowberto@metabase.com"}
@@ -124,32 +125,74 @@
                           :message        [(zipmap (map str regexes) (repeat true))]
                           :recipient-type :cc}
                          (apply mt/summarize-multipart-single-email email regexes)))))]
-    (testing "sent from invite page"
+    (testing "sent from people page"
       (check false
              "You're invited to join SuperStar's Metabase"
-             [#"Crowberto's happiness and productivity over time"
-              #"Ngoc wants you to join them on Metabase"
-              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"])
+             [#"Ngoc wants you to join them on Metabase"
+              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"]
+             "Ngoc")
 
       (testing "with sso enabled"
         (with-redefs [sso.settings/sso-enabled? (constantly true)
                       session.settings/enable-password-login (constantly false)]
           (check false
                  "You're invited to join SuperStar's Metabase"
-                 [#"<a[^>]*href=\"https?://metabase\.com/auth/login\"[^>]*>Join now</a>"]))))
+                 [#"<a[^>]*href=\"https?://metabase\.com/auth/login\"[^>]*>Join now</a>"]
+                 "Ngoc")))
+
+      (testing "with invitor's first_name not defined"
+        (check false
+               "You're invited to join SuperStar's Metabase"
+               [#"You are invited to join Metabase"
+                #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>Join now</a>"]
+               nil)))
 
     (testing "subject is translated"
       (mt/with-mock-i18n-bundles! {"es" {:messages {"You''re invited to join {0}''s {1}"
                                                     "Estás invitado a unirte al {0} de {1}"}}}
         (mt/with-temporary-setting-values [site-locale "es"]
-          (check false "Estás invitado a unirte al SuperStar de Metabase" []))))
+          (check false "Estás invitado a unirte al SuperStar de Metabase" [] "Ngoc"))))
 
     (testing "sent from setup page"
       (check true
              "You're invited to join SuperStar's Metabase"
-             [#"Crowberto's happiness and productivity over time"
-              #"Ngoc could use your help setting up Metabase"
-              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*#new\"[^>]*>"]))))
+             [#"Kratos could use your help setting up Metabase"
+              #"Your Metabase is up and running, but Kratos needs you to connect your data. You'll probably need:"
+              #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*\?redirect(&#x3D;|=)/admin/databases/create.*#new\"[^>]*>"]
+             "Kratos")
+
+      (testing "with invitor's first_name not defined"
+        (check true
+               "You're invited to join SuperStar's Metabase"
+               [#"You are invited to help setting up Metabase"
+                #"Your Metabase is up and running, but your help is needed to connect data. You'll probably need:"
+                #"<a[^>]*href=\"https?://metabase\.com/auth/reset_password/.*\?redirect(&#x3D;|=)/admin/databases/create.*#new\"[^>]*>"]
+               nil)))
+
+    (testing "with custom application logo (external URL)"
+      (mt/with-premium-features #{:whitelabel}
+        (check false
+               "You're invited to join SuperStar's Metabase"
+               [#"<img[^>]*src=\"https://metabase\.com/superstar\.png\"[^>]*>"]
+               "Ngoc")))
+
+    (testing "with custom application logo (data URI - embedded as attachment)"
+      (mt/with-premium-features #{:whitelabel}
+        (let [email (mt/with-temporary-setting-values
+                      [site-url  "https://metabase.com"
+                       site-name "SuperStar"
+                       application-logo-url "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="]
+                      (-> (notification.tu/with-captured-channel-send!
+                            (publish-user-invited-event! (t2/select-one :model/User :email "crowberto@metabase.com")
+                                                         {:first_name "Ngoc" :email "ngoc@metabase.com"}
+                                                         false))
+                          :channel/email first))]
+                  ;; The logo should be embedded as an attachment with a cid: reference
+          (is (re-find #"<img[^>]*src=\"cid:[^\"]+@metabase\"[^>]*>" (-> email :message first :content)))
+                  ;; There should be an attachment for the logo
+          (is (some #(and (= (:type %) :inline)
+                          (= (:content-type %) "image/png"))
+                    (rest (:message email)))))))))
 
 (deftest notification-create-email-test
   (mt/with-temporary-setting-values [site-url "https://metabase.com"]
@@ -181,7 +224,25 @@
                 #"This alert will be sent\s+when this question meets its goal"]
                [:goal_below
                 #"This alert will be sent\s+when this question goes below its goal"]]]
-        (check send-condition condition-regex)))))
+        (check send-condition condition-regex))))
+
+  (notification.tu/with-notification-testing-setup!
+    (notification.tu/with-card-notification
+      [notification {:card              {:name "A Card"}
+                     :notification      {:creator_id (mt/user->id :rasta)}}]
+      (let [has-link? (fn [notification]
+                        (->> (notification.tu/with-captured-channel-send!
+                               (events/publish-event! :event/notification-create {:object notification
+                                                                                  :user-id (:id (mt/user->id :rasta))}))
+                             :channel/email first :message first :content
+                             (re-find #"href=")
+                             (= "href=")))]
+        (testing "test that disable_links: false will keep links in the alert confirmation email"
+          (is (true? (has-link? (assoc-in notification [:payload :disable_links] false)))))
+        (testing "test that disable_links: nil will keep links in the alert confirmation email"
+          (is (true? (has-link? (assoc-in notification [:payload :disable_links] nil)))))
+        (testing "test that disable_links: true will disable all links in the alert confirmation email"
+          (is (false? (has-link? (assoc-in notification [:payload :disable_links] true)))))))))
 
 (deftest slack-error-token-email-test
   (let [check (fn [recipients regexes]
@@ -200,7 +261,7 @@
         admin-emails (t2/select-fn-set :email :model/User :is_superuser true)]
     (testing "send to admins with a link to setting page"
       (check admin-emails [#"Your Slack connection stopped working"
-                           #"<a[^>]*href=\"https?://metabase\.com/admin/settings/notifications\"[^>]*>Go to settings</a>"]))
+                           #"<a[^>]*href=\"https?://metabase\.com/admin/settings/slack\"[^>]*>Go to settings</a>"]))
 
     (mt/with-temporary-setting-values
       [admin-email "it@metabase.com"]

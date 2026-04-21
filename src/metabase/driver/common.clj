@@ -4,6 +4,7 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -120,12 +121,24 @@
     :display-name (deferred-tru "Passphrase for SSH private key")
     :type         :password
     :placeholder  "******"
-    :visible-if   {"tunnel-auth-option" "ssh-key"}}])
+    :visible-if   {"tunnel-auth-option" "ssh-key"}}
+   {:name         "tunnel-known-hosts"
+    :display-name (deferred-tru "SSH known hosts")
+    :type         :secret
+    :secret-kind  :binary-blob
+    :placeholder  (deferred-tru "Paste known_hosts content or upload file")
+    :visible-if   {"tunnel-enabled" true}}])
 
 (def destination-database-option
   "Map representing the 'is this a destination database' option"
   {:name "destination-database"
    :type :hidden
+   :default false})
+
+(def write-data-connection-option
+  "Map representing the 'is this a writable connection' option"
+  {:name    "write-data-connection"
+   :type    :hidden
    :default false})
 
 (def advanced-options-start
@@ -145,7 +158,8 @@
    :description  (deferred-tru
                   (str "We execute the underlying query when you explore data using Summarize or Filter. "
                        "This is on by default but you can turn it off if performance is slow."))
-   :visible-if   {"advanced-options" true}})
+   :visible-if   {"advanced-options" true
+                  "write-data-connection" false}})
 
 (def let-user-control-scheduling
   "Map representing the `let-user-control-scheduling` option in a DB connection form."
@@ -153,7 +167,8 @@
    :type         :boolean
    :display-name (deferred-tru "Choose when syncs and scans happen")
    :description  (deferred-tru "By default, Metabase does a lightweight hourly sync and an intensive daily scan of field values. If you have a large database, turn this on to make changes.")
-   :visible-if   {"advanced-options" true}})
+   :visible-if   {"advanced-options" true
+                  "write-data-connection" false}})
 
 (def metadata-sync-schedule
   "Map representing the `schedules.metadata_sync` option in a DB connection form, which should be only visible if
@@ -182,7 +197,8 @@
   {:name         "json-unfolding"
    :display-name (deferred-tru "Allow unfolding of JSON columns")
    :type         :boolean
-   :visible-if   {"advanced-options" true}
+   :visible-if   {"advanced-options" true
+                  "write-data-connection" false}
    :description  (deferred-tru
                   (str "This enables unfolding JSON columns into their component fields. "
                        "Disable unfolding if performance is slow. If enabled, you can still disable unfolding for "
@@ -197,7 +213,8 @@
    :description  (deferred-tru
                   (str "This enables Metabase to scan for additional field values during syncs allowing smarter "
                        "behavior, like improved auto-binning on your bar charts."))
-   :visible-if   {"advanced-options" true}})
+   :visible-if   {"advanced-options" true
+                  "write-data-connection" false}})
 
 (def multi-level-schema
   "Map representing the `multi-level-schema` option for databases. Stores schemas with multiple levels of hierarchy."
@@ -206,8 +223,14 @@
    :default false})
 
 (def default-advanced-options
-  "Vector containing the three most common options present in the advanced option section of the DB connection form."
-  [destination-database-option auto-run-queries let-user-control-scheduling metadata-sync-schedule cache-field-values-schedule refingerprint])
+  "Vector containing the most common options present in the advanced option section of the DB connection form."
+  [destination-database-option
+   write-data-connection-option
+   auto-run-queries
+   let-user-control-scheduling
+   metadata-sync-schedule
+   cache-field-values-schedule
+   refingerprint])
 
 (def default-options
   "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection
@@ -249,36 +272,50 @@
   added to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
   {:cloud-ip-address-info cloud-ip-address-info})
 
-(def auth-provider-options
-  "Options for using an auth provider instead of a literal password."
-  [{:name "use-auth-provider"
-    :type :checked-section
-    :check (fn []
-             (and
-               ;; Managed Identities only make sense if Metabase is in the same cloud as the DW
-              (not (premium-features/is-hosted?))
-              (premium-features/enable-database-auth-providers?)))
-    :default false}
-   {:name "auth-provider"
-    :display-name (deferred-tru "Auth provider")
-    :type :select
-    :options [{:name (deferred-tru "Azure Managed Identity")
-               :value "azure-managed-identity"}
-              {:name (deferred-tru "OAuth")
-               :value "oauth"}]
-    :default "azure-managed-identity"
-    :visible-if {"use-auth-provider" true}}
-   {:name "azure-managed-identity-client-id"
-    :display-name (deferred-tru "Client ID")
-    :required true
-    :visible-if {"auth-provider" "azure-managed-identity"}}
-   {:name "oauth-token-url"
-    :display-name (deferred-tru "Auth token URL")
-    :required true
-    :visible-if {"auth-provider" "oauth"}}
-   {:name "oauth-token-headers"
-    :display-name (deferred-tru "Auth token request headers (a JSON map)")
-    :visible-if {"auth-provider" "oauth"}}])
+(defn auth-provider-options
+  "Options for using an auth provider instead of a literal password.
+  When called with no arguments, returns options for all available auth providers.
+  When called with a collection of provider keywords (e.g., #{:aws-iam}), returns options
+  filtered to only those providers."
+  ([]
+   (auth-provider-options nil))
+  ([allowed-providers]
+   (let [all-provider-options [{:name (deferred-tru "Azure Managed Identity")
+                                :value "azure-managed-identity"}
+                               {:name (deferred-tru "AWS IAM")
+                                :value "aws-iam"}
+                               {:name (deferred-tru "OAuth")
+                                :value "oauth"}]
+         provider-options (if (seq allowed-providers)
+                            (let [allowed-set (set (map name allowed-providers))]
+                              (filterv #(contains? allowed-set (:value %)) all-provider-options))
+                            all-provider-options)
+         default-provider (:value (first provider-options))]
+     [{:name "use-auth-provider"
+       :type :checked-section
+       :check (fn []
+                (and
+                  ;; Managed Identities only make sense if Metabase is in the same cloud as the DW
+                 (not (premium-features/is-hosted?))
+                 (premium-features/enable-database-auth-providers?)))
+       :default false}
+      {:name "auth-provider"
+       :display-name (deferred-tru "Auth provider")
+       :type :select
+       :options provider-options
+       :default default-provider
+       :visible-if {"use-auth-provider" true}}
+      {:name "azure-managed-identity-client-id"
+       :display-name (deferred-tru "Client ID")
+       :required true
+       :visible-if {"auth-provider" "azure-managed-identity"}}
+      {:name "oauth-token-url"
+       :display-name (deferred-tru "Auth token URL")
+       :required true
+       :visible-if {"auth-provider" "oauth"}}
+      {:name "oauth-token-headers"
+       :display-name (deferred-tru "Auth token request headers (a JSON map)")
+       :visible-if {"auth-provider" "oauth"}}])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Class -> Base Type                                               |
@@ -390,7 +427,7 @@
   ;; This allows adding support for nested-field-columns for drivers in the future and
   ;; have json-unfolding enabled by default, without
   ;; needing a migration to add the `json-unfolding=true` key to the database details.
-  (let [json-unfolding (get-in database [:details :json-unfolding])]
+  (let [json-unfolding (:json-unfolding (driver.conn/effective-details database))]
     (if (nil? json-unfolding)
       true
       json-unfolding)))

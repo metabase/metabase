@@ -141,7 +141,7 @@ describe("scenarios > collections > clean up", () => {
       });
     });
 
-    H.describeWithSnowplowEE("clean up collection modal", () => {
+    describe("clean up collection modal", () => {
       beforeEach(() => {
         H.resetSnowplow();
         cy.signInAsAdmin();
@@ -365,7 +365,7 @@ const closeCleanUpModal = () =>
   cy.findAllByTestId("cleanup-collection-modal-close-btn").click();
 
 const recursiveFilter = () =>
-  cy.findByText(/Include items in sub-collections/).should("exist");
+  cy.findByLabelText(/Include items in sub-collections/).should("exist");
 const dateFilter = () => cy.findByTestId("cleanup-date-filter");
 const pagination = () => cy.findByTestId("cleanup-collection-modal-pagination");
 const emptyState = () => cy.findByText(/All items have been used in the past/);

@@ -24,14 +24,13 @@ const sdkBundleCleanup = () => {
 
 describe(
   "scenarios > embedding-sdk > sdk-bundle",
-  // These test in some cases load a new SDK Bundle that in combination with the Component Testing is memory-consuming
-  { numTestsKeptInMemory: 1 },
+  {
+    tags: ["@skip-backward-compatibility"],
+    // These test in some cases load a new SDK Bundle that in combination with the Component Testing is memory-consuming
+    numTestsKeptInMemory: 1,
+  },
   () => {
     beforeEach(() => {
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
-
       signInAsAdminAndEnableEmbeddingSdk();
 
       cy.signOut();
@@ -42,10 +41,6 @@ describe(
     [{ strictMode: false }, { strictMode: true }].forEach(({ strictMode }) => {
       describe(`Common cases ${strictMode ? "with" : "without"} strict mode`, () => {
         it("should display an SDK question", () => {
-          cy.window().then((win) => {
-            cy.spy(win.console, "warn").as("consoleWarn");
-          });
-
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
             { strictMode },
@@ -170,25 +165,25 @@ describe(
             rerender(
               <MetabaseProvider
                 authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-                locale="es"
+                locale="en-ZZ"
               >
                 <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
               </MetabaseProvider>,
             );
 
             getSdkRoot().within(() => {
-              cy.findByText("Filtro").should("exist");
+              cy.findByText("[zz] Filter").should("exist");
             });
 
-            // Update props via the imperative API (via window)
+            // Update props via the imperative API (via window).
             cy.window().then((win) => {
               win.METABASE_PROVIDER_PROPS_STORE.setProps({
                 authConfig: DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-                locale: "fr",
+                locale: "en",
               });
 
               getSdkRoot().within(() => {
-                cy.findByText("Filtre").should("exist");
+                cy.findByText("Filter").should("exist");
               });
             });
           });
@@ -196,6 +191,12 @@ describe(
 
         it("should show a custom loader when the SDK bundle is loading", () => {
           sdkBundleCleanup();
+
+          // Intercept the SDK bundle script and never respond,
+          // keeping loadingState stuck at "Loading" so the Loader is rendered.
+          cy.intercept("GET", "**/app/embedding-sdk.js*", () => {
+            return new Promise(() => {}); // never resolves → request stays pending
+          });
 
           mountSdkContent(
             <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
@@ -283,7 +284,7 @@ describe(
     describe("Components", () => {
       it("should display an SDK question with custom layout components", () => {
         cy.window().then((win) => {
-          cy.spy(win.console, "warn").as("consoleWarn");
+          cy.spy(win.console, "error").as("consoleError");
         });
 
         mountSdkContent(
@@ -301,14 +302,12 @@ describe(
 
           cy.findByTestId("visualization-root").should("be.visible");
         });
+
+        cy.get("@consoleError").should("not.be.called");
       });
 
       it("should show an error on a component level if SDK components are not wrapped within the MetabaseProvider", () => {
         sdkBundleCleanup();
-
-        cy.window().then((win) => {
-          cy.spy(win.console, "warn").as("consoleWarn");
-        });
 
         cy.mount(<InteractiveQuestion questionId={ORDERS_QUESTION_ID} />);
 
@@ -318,54 +317,40 @@ describe(
           ).should("exist");
         });
       });
-    });
 
-    describe("Error handling", () => {
-      beforeEach(() => {
+      it("should show a console error if SDK Package component uses a prop that is not yet available in SDK bundle", () => {
         sdkBundleCleanup();
+
+        cy.window().then((win) => {
+          cy.spy(win.console, "error").as("consoleError");
+        });
+
+        mountSdkContent(
+          <InteractiveQuestion
+            questionId={ORDERS_QUESTION_ID}
+            {...{ foo: "bar" }}
+          />,
+        );
+
+        cy.get("@consoleError").should(
+          "be.calledWithMatch",
+          "this property is not recognized by the component",
+        );
       });
 
-      describe("when the SDK bundle can't be loaded", () => {
-        it("should show an error", () => {
-          cy.intercept("GET", "**/app/embedding-sdk.js", {
-            statusCode: 404,
-          });
+      it("should show a console error if SDK Package component does not use a prop that is still expected by SDK bundle", () => {
+        sdkBundleCleanup();
 
-          mountSdkContent(
-            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
-            {
-              waitForUser: false,
-            },
-          );
-
-          cy.findByTestId("sdk-error-container").should(
-            "contain.text",
-            "Error loading the Embedding Analytics SDK",
-          );
+        cy.window().then((win) => {
+          cy.spy(win.console, "error").as("consoleError");
         });
 
-        it("should show a custom error", () => {
-          cy.intercept("GET", "**/app/embedding-sdk.js", {
-            statusCode: 404,
-          });
+        mountSdkContent(<InteractiveQuestion />);
 
-          mountSdkContent(
-            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
-            {
-              sdkProviderProps: {
-                errorComponent: ({ message }) => (
-                  <div>Custom error: {message}</div>
-                ),
-              },
-              waitForUser: false,
-            },
-          );
-
-          cy.findByTestId("sdk-error-container").should(
-            "contain.text",
-            "Custom error: Error loading the Embedding Analytics SDK",
-          );
-        });
+        cy.get("@consoleError").should(
+          "be.calledWithMatch",
+          "this property is required by the component",
+        );
       });
     });
   },

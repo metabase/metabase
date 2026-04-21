@@ -1,8 +1,8 @@
 import type {
   Cell,
   CellContext,
+  Column,
   ColumnDefTemplate,
-  ColumnPinningState,
   ColumnSizingState,
   HeaderContext,
   OnChangeFn,
@@ -13,8 +13,7 @@ import type {
   SortingState,
   Table,
 } from "@tanstack/react-table";
-import type { VirtualItem } from "@tanstack/react-virtual";
-import type React from "react";
+import type { ScrollToOptions, VirtualItem } from "@tanstack/react-virtual";
 import type { RefObject } from "react";
 
 import type { ColumnsReordering } from "./hooks/use-columns-reordering";
@@ -29,6 +28,8 @@ declare module "@tanstack/react-table" {
     headerClickTargetSelector?: string;
     formatter?: CellFormatter<TValue>;
     clipboardFormatter?: PlainCellFormatter<TValue>;
+    width?: "auto";
+    isUtilityColumn?: boolean;
   }
 }
 
@@ -71,6 +72,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   /** Custom cell render template */
   cell?: ColumnDefTemplate<CellContext<TRow, TValue>>;
 
+  /** Custom cell render template for cells in editing state */
+  editingCell?: (props: CellContext<TRow, TValue>) => React.JSX.Element;
+
   /** Custom header render template */
   header?: ColumnDefTemplate<HeaderContext<TRow, TValue>>;
 
@@ -78,10 +82,18 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
   cellVariant?: BodyCellVariant;
 
   /** Function to determine CSS class names for cells */
-  getCellClassName?: (value: TValue, rowIndex: number) => string;
+  getCellClassName?: (
+    value: TValue,
+    rowIndex: number,
+    columnId: string,
+  ) => string;
 
   /** Function to determine CSS styles for cells */
-  getCellStyle?: (value: TValue, rowIndex: number) => React.CSSProperties;
+  getCellStyle?: (
+    value: TValue,
+    rowIndex: number,
+    columnId: string,
+  ) => React.CSSProperties;
 
   /** Visual style of the header cell */
   headerVariant?: HeaderCellVariant;
@@ -109,6 +121,9 @@ export interface ColumnOptions<TRow extends RowData, TValue = unknown> {
 
   /** Function to format cell values when copying to clipboard */
   clipboardFormatter?: PlainCellFormatter<TValue>;
+
+  /** Function to determine if a cell is in editing state */
+  getIsEditing?: (columnId: string, rowIndex: number) => boolean;
 }
 
 /**
@@ -162,8 +177,14 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Width of each column by ID */
   columnSizingMap?: ColumnSizingState;
 
-  /** Pinning state of columns */
-  columnPinning?: ColumnPinningState;
+  /** Number of left-pinned data columns (excluding rowId) */
+  pinnedLeftColumnsCount?: number;
+
+  /** number of top pinned rows */
+  pinnedTopRowsCount?: number;
+
+  /** Custom row ID accessor */
+  getRowId?: (originalRow: TData, index: number, parent?: Row<TData>) => string;
 
   /** Array of column sorting options */
   sorting?: SortingState;
@@ -192,10 +213,10 @@ export interface DataGridOptions<TData = any, TValue = any> {
   /** Data grid theme */
   theme?: DataGridTheme;
 
-  /** Controlls whether cell selection is enabled */
+  /** Controls whether cell selection is enabled */
   enableSelection?: boolean;
 
-  /** Controlls whether row selection is enabled */
+  /** Controls whether row selection is enabled */
   enableRowSelection?: RowSelectionOptions<TData>["enableRowSelection"];
 
   /** Row selection state */
@@ -272,6 +293,16 @@ export type CellId = {
   cellId: string;
 };
 
+export type ScrollToDestination = {
+  index: number;
+  options?: ScrollToOptions;
+};
+
+export type ScrollToDestinations = {
+  row?: ScrollToDestination;
+  column?: ScrollToDestination;
+};
+
 export interface DataGridInstance<TData> {
   table: Table<TData>;
   gridRef: RefObject<HTMLDivElement>;
@@ -282,8 +313,15 @@ export interface DataGridInstance<TData> {
   enableRowVirtualization: boolean;
   enablePagination: boolean;
   theme?: DataGridTheme;
+  sorting: SortingState | undefined;
   getTotalHeight: () => number;
-  getVisibleRows: () => MaybeVirtualRow<TData>[];
+  getCenterRows: () => DataGridRowType<TData>[];
+  getPinnedRows: () => DataGridRowType<TData>[];
+  getPinnedColumns: () => DataGridColumnType<TData>[];
+  getCenterColumns: () => DataGridColumnType<TData>[];
+  datasetIndexAttributeName: string;
+  rowMeasureRef: (element: Element | null) => void;
+  scrollTo: (destinations: ScrollToDestinations) => void;
   onHeaderCellClick?: (
     event: React.MouseEvent<HTMLDivElement>,
     columnId?: string,
@@ -297,9 +335,15 @@ export interface DataGridInstance<TData> {
   onWheel?: React.UIEventHandler<HTMLDivElement>;
 }
 
-export type VirtualRow<TData> = {
-  row: Row<TData>;
-  virtualRow: VirtualItem;
+export type DataGridRowType<TData> = {
+  origin: Row<TData>;
+  virtualItem?: VirtualItem;
+  displayIndex: number;
+  height: number;
 };
 
-export type MaybeVirtualRow<TData> = Row<TData> | VirtualRow<TData>;
+export type DataGridColumnType<TData, TValue = unknown> = {
+  origin: Column<TData, TValue>;
+  virtualItem?: VirtualItem;
+  getCell: (row: Row<TData>) => Cell<TData, TValue>;
+};

@@ -1,7 +1,7 @@
 (ns metabase.lib.drill-thru.summarize-column-by-time-test
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.summarize-column-by-time
@@ -11,6 +11,8 @@
    [metabase.lib.test-metadata :as meta]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
+
+(use-fixtures :each lib.drill-thru.tu/with-native-card-id)
 
 (deftest ^:parallel summarize-column-by-time-availability-test
   (testing (str "summarize-column-by-time is available for header click with no aggregations or breakouts, "

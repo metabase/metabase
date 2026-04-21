@@ -12,10 +12,11 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.image-bundle :as image-bundle]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.channel.shared :as channel.shared]
    [metabase.notification.payload.execute :as notification.execute]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.test :as qp]
    [toucan2.core :as t2])
   (:import
    (org.apache.batik.anim.dom SVGOMDocument AbstractElement$ExtendedNamedNodeHashMap)
@@ -182,7 +183,8 @@
   ([dashcard-id parameters]
    (let [dashcard                  (t2/select-one :model/DashboardCard :id dashcard-id)
          card                      (t2/select-one :model/Card :id (:card_id dashcard))
-         {:keys [result dashcard]} (notification.execute/execute-dashboard-subscription-card dashcard parameters)]
+         {:keys [result dashcard]} (channel.shared/maybe-realize-data-rows
+                                    (notification.execute/execute-dashboard-subscription-card dashcard parameters))]
      (with-redefs [js.svg/svg-string->bytes       identity
                    image-bundle/make-image-bundle (fn [_ s]
                                                     {:image-src   s

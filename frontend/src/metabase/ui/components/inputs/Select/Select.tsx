@@ -5,9 +5,11 @@ import type {
 } from "@mantine/core";
 import { Select as MantineSelect } from "@mantine/core";
 import { type Ref, forwardRef } from "react";
-export * from "./SelectItem";
 
 import type { IconName } from "../../icons";
+
+export type { DataAttributes, InputDescriptionProps } from "@mantine/core";
+export * from "./SelectItem";
 
 export type SelectOption<Value = string | null> = ComboboxItem & {
   value: Value;
@@ -23,8 +25,10 @@ export type SelectData<Value extends string | null> =
  * Mantine v7 loosened up the value types for Select, removing the generics, which sucks
  * This re-introduces the value generics to keep the type safety
  */
-export interface SelectProps<Value extends string | null = string>
-  extends Omit<MantineSelectProps, "data" | "onChange" | "value" | "ref"> {
+export interface SelectProps<Value extends string | null = string> extends Omit<
+  MantineSelectProps,
+  "data" | "onChange" | "value" | "ref"
+> {
   data: SelectData<Value>;
   value?: Value;
   onChange?: (newValue: Value) => void;

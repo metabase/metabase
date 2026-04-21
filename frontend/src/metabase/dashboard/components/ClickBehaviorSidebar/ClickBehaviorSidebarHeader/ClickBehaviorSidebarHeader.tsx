@@ -1,7 +1,6 @@
-import type * as React from "react";
 import { jt, t } from "ttag";
 
-import { isTableDisplay } from "metabase/lib/click-behavior";
+import { isTableDisplay } from "metabase/dashboard/utils";
 import { Box, Icon } from "metabase/ui";
 import type { DashboardCard, DatasetColumn } from "metabase-types/api";
 

@@ -1,11 +1,11 @@
 import { c, t } from "ttag";
 
 import EmptyEvent from "assets/img/empty-states/event.svg";
-import Link from "metabase/common/components/Link";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { Link } from "metabase/common/components/Link";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Stack, Text, Title, Tooltip } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 
 export interface TimelineEmptyStateProps {
@@ -27,7 +27,7 @@ const TimelineEmptyState = ({
   const applicationName = useSelector(getApplicationName);
   return (
     <Stack align="center" ta="center" gap="lg">
-      <Tooltip color="text-light" label={t`Launch of v2.0`} offset={-24} opened>
+      <Tooltip label={t`Launch of v2.0`} offset={-24} opened>
         <Box maw="6rem">
           <img src={EmptyEvent} alt={t`Collection event illustration`} />
         </Box>

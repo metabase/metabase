@@ -15,9 +15,10 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.util.match :as lib.util.match]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -122,12 +123,15 @@
                                           :field_ref    [:field "count" {:base-type :type/Integer}]}]
                       :native_form      {:collection "venues"
                                          :query      native-query}
-                      :results_timezone "UTC"}}
+                      :results_timezone "UTC"
+                      :results_metadata {:columns [{:name           "count"
+                                                    :base_type      :type/Integer
+                                                    :effective_type :type/Integer}]}}}
          (-> (qp/process-query {:native   {:query      native-query
                                            :collection "venues"}
                                 :type     :native
                                 :database (mt/id)})
-             (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
+             (m/dissoc-in [:data :insights]))))))
 
 (deftest ^:parallel nested-native-query-test
   (mt/test-driver :mongo
@@ -294,7 +298,7 @@
             (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :indexed))))
             (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
 
-          (testing "compount index"
+          (testing "compound index"
             (mongo.connection/with-mongo-database [db (mt/db)]
               (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
             (sync/sync-database! (mt/db))
@@ -667,11 +671,12 @@
 (deftest xrays-test
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
-      (is (empty?
-           (lib.util.match/match-one (->> (magic/automagic-analysis (t2/select-one :model/Field :id (mt/id :venues :price)) {})
-                                          :dashcards
-                                          (mapcat (comp :breakout :query :dataset_query :card)))
-             [:field _ (_ :guard :binning)]))))))
+      (is (nil?
+           (lib.util.match/match-lite
+             (->> (magic/automagic-analysis (t2/select-one :model/Field :id (mt/id :venues :price)) {})
+                  :dashcards
+                  (mapcat (comp :breakout :query :dataset_query :card)))
+             [:field _ {:binning &truthy}] true))))))
 
 (deftest no-values-test
   (mt/test-driver :mongo
@@ -1007,9 +1012,9 @@
 
   Forward bindings become delays of results of functions used in mongo's describe-table:
 
-  - `dbfields`     : reuslt of [[mongo/fetch-dbfields]],
-  - `ftree`        : reuslt of [[mongo/dbfields->ftree]],
-  - `nested-fields`: reuslt of [[mongo/ftree->nested-fields]]."
+  - `dbfields`     : result of [[mongo/fetch-dbfields]],
+  - `ftree`        : result of [[mongo/dbfields->ftree]],
+  - `nested-fields`: result of [[mongo/ftree->nested-fields]]."
   [documents & body]
   `(do-with-describe-table-for-sample ~documents (fn [~'dbfields ~'ftree ~'nested-fields] ~@body)))
 
@@ -1128,3 +1133,174 @@
     (with-describe-table-for-sample
       []
       (is (=? #{} @nested-fields)))))
+
+(deftest dbref-field-test
+  (mt/test-driver :mongo
+    (let [id-1 (ObjectId. "68bee671b76da7388a01e6c1")
+          id-2 (ObjectId. "68bee676e7c18921ff7dcf04")
+          ref-1 (com.mongodb.DBRef. "some_collection" id-1)
+          ref-2 (com.mongodb.DBRef. "some_db" "some_collection" id-2)]
+      (mt/dataset (mt/dataset-definition
+                   "dbref_db"
+                   [["dbref_coll"
+                     [{:field-name "name", :base-type :type/Text}
+                      {:field-name "dbref", :base-type :type/*}]
+                     [["ref1" ref-1]
+                      ["ref2" ref-2]]]])
+        (is (= [[1 "ref1" ref-1 "some_collection" id-1 nil]
+                [2 "ref2" ref-2 "some_collection" id-2 "some_db"]]
+               (mt/rows (mt/run-mbql-query dbref_coll))))))))
+
+(deftest ^:parallel type->database-type-test
+  (testing "type->database-type multimethod returns correct MongoDB types"
+    (are [base-type expected] (= expected (driver/type->database-type :mongo base-type))
+      :type/TextLike           "string"
+      :type/Text               "string"
+      :type/Number             "long"
+      :type/Integer            "int"
+      :type/BigInteger         "long"
+      :type/Float              "double"
+      :type/Decimal            "decimal"
+      :type/Boolean            "bool"
+      :type/Date               "date"
+      :type/DateTime           "date"
+      :type/DateTimeWithTZ     "date"
+      :type/Time               "date"
+      :type/TimeWithTZ         "date"
+      :type/Instant            "date"
+      :type/UUID               "uuid"
+      :type/JSON               "object"
+      :type/SerializedJSON     "string"
+      :type/Array              "array"
+      :type/Dictionary         "object"
+      :type/MongoBSONID        "objectId"
+      :type/MongoBinData       "binData"
+      :type/IPAddress          "string")))
+
+(deftest ^:parallel prettify-native-form-test
+  (mt/test-driver :mongo
+    (testing "prettifies normal lib query"
+      (let [mp (mt/metadata-provider)
+            products-table (lib.metadata/table mp (mt/id :products))
+            product-category (lib.metadata/field mp (mt/id :products :category))
+            query (-> (lib/query mp products-table)
+                      (lib/filter (lib/= product-category
+                                         "Widget")))]
+        (is (= (str/join "\n"
+                         ["["
+                          "  {"
+                          "    \"$match\": {"
+                          "      \"category\": \"Widget\""
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$project\": {"
+                          "      \"_id\": \"$_id\","
+                          "      \"ean\": \"$ean\","
+                          "      \"title\": \"$title\","
+                          "      \"category\": \"$category\","
+                          "      \"vendor\": \"$vendor\","
+                          "      \"price\": \"$price\","
+                          "      \"rating\": \"$rating\","
+                          "      \"created_at\": \"$created_at\""
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$limit\": 1048575"
+                          "  }"
+                          "]"])
+               (->> (qp.compile/compile-with-inline-parameters query)
+                    :query
+                    (driver/prettify-native-form :mongo))))))
+    (testing "prettifies native query with variable that is valid json"
+      (let [query {:database (mt/id)
+                   :type :native
+                   :native {:collection "products"
+                            :query (str/join "\n"
+                                             ["["
+                                              "  {"
+                                              "    \"$match\": {"
+                                              "      \"category\": {{category_var}}"
+                                              "    }},"
+                                              "  {"
+                                              "    \"$project\": {"
+                                              "      \"_id\": \"$_id\","
+                                              "      \"title\": \"$title\","
+                                              "      \"category\": \"$category\""
+                                              "    }},"
+                                              "  {"
+                                              "    \"$limit\": 1048575"
+                                              "  }"
+                                              "]"])
+                            :template-tags {"category_var" {:name "category_var"
+                                                            :display-name "Category Variable"
+                                                            :type :text}}}
+                   :parameters [{:type :text
+                                 :target [:variable [:template-tag "category_var"]]
+                                 :value "Gadget"}]}]
+        (is (= (str/join "\n"
+                         ["["
+                          "  {"
+                          "    \"$match\": {"
+                          "      \"category\": \"Gadget\""
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$project\": {"
+                          "      \"_id\": \"$_id\","
+                          "      \"title\": \"$title\","
+                          "      \"category\": \"$category\""
+                          "    }"
+                          "  },"
+                          "  {"
+                          "    \"$limit\": 1048575"
+                          "  }"
+                          "]"])
+               (->> (qp.compile/compile-with-inline-parameters query)
+                    :query
+                    (driver/prettify-native-form :mongo))))))
+    (testing "prettifies native query with variable that is not valid json"
+      (let [query {:database (mt/id)
+                   :type :native
+                   :native {:collection "products"
+                            :query (str/join "\n"
+                                             ["["
+                                              "  {"
+                                              "    \"$match\": {"
+                                              "      \"created_at\": {\"$gte\": {{created_at_var}}}"
+                                              "    }},"
+                                              "  {"
+                                              "    \"$project\": {"
+                                              "      \"_id\": \"$_id\","
+                                              "      \"title\": \"$title\","
+                                              "      \"category\": \"$category\""
+                                              "    }},"
+                                              "  {"
+                                              "    \"$limit\": 1048575"
+                                              "  }"
+                                              "]"])
+                            :template-tags {"created_at_var" {:name "created_at_var"
+                                                              :display-name "Created At Variable"
+                                                              :type :date}}}
+                   :parameters [{:type :date/single
+                                 :target [:variable [:template-tag "created_at_var"]]
+                                 :value "2018-01-01"}]}]
+        (is (= (str/join "\n"
+                         ["["
+                          "  {"
+                          "    \"$match\": {"
+                          "      \"created_at\": {\"$gte\": ISODate(\"2018-01-01\")}"
+                          "    }},"
+                          "  {"
+                          "    \"$project\": {"
+                          "      \"_id\": \"$_id\","
+                          "      \"title\": \"$title\","
+                          "      \"category\": \"$category\""
+                          "    }},"
+                          "  {"
+                          "    \"$limit\": 1048575"
+                          "  }"
+                          "]"])
+               (->> (qp.compile/compile-with-inline-parameters query)
+                    :query
+                    (driver/prettify-native-form :mongo))))))))

@@ -1,7 +1,7 @@
 .RowCountButton {
   font-weight: bold;
   cursor: pointer;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 
   &:hover {
     color: var(--mb-color-brand);
@@ -13,5 +13,5 @@
 }
 
 .RowCountStaticLabel {
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 }

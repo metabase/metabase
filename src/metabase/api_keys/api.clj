@@ -32,6 +32,10 @@
       (maybe-expose-key)
       (update :updated_by #(select-keys % [:common_name :id]))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/"
   "Create a new API key (and an associated `User`) with the provided name and group ID."
   [_route-params
@@ -43,12 +47,20 @@
   (-> (api-key/create-api-key-with-new-user! {:key-name key-name, :group-id group-id})
       present-api-key))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/count"
   "Get the count of API keys in the DB with the default scope."
   []
   (api/check-superuser)
   (t2/count :model/ApiKey :scope nil))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/:id"
   "Update an API key by changing its group and/or its name"
   [{:keys [id]} :- [:map
@@ -80,6 +92,10 @@
      :masked_key   (:masked-key regenerated)
      :prefix       (:prefix regenerated)}))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Get a list of API keys with the default scope. Non-paginated."
   []
@@ -87,6 +103,10 @@
   (let [api-keys (t2/hydrate (t2/select :model/ApiKey :scope nil) :group :updated_by)]
     (map present-api-key api-keys)))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/:id"
   "Delete an ApiKey"
   [{:keys [id]} :- [:map

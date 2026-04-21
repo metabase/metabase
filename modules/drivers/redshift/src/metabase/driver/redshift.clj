@@ -1,6 +1,7 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
@@ -15,12 +16,14 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sql.query-processor.like-escape-char-built-in :as-alias like-escape-char-built-in]
    [metabase.driver.sync :as driver.s]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :as perf])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
    (java.sql
@@ -28,32 +31,64 @@
     PreparedStatement
     ResultSet
     ResultSetMetaData
+    Statement
     Types)))
 
 (set! *warn-on-reflection* true)
 
-(driver/register! :redshift, :parent #{:postgres})
+(driver/register! :redshift, :parent #{:postgres
+                                       ::like-escape-char-built-in/like-escape-char-built-in})
 
-(doseq [[feature supported?] {:connection-impersonation  true
-                              :describe-fields           true
-                              :describe-fks              true
-                              :expression-literals       true
-                              :identifiers-with-spaces   false
-                              :uuid-type                 false
-                              :nested-field-columns      false
-                              :test/jvm-timezone-setting false
-                              :database-routing          true
-                              :transforms/table          false}]
+(doseq [[feature supported?] {:atomic-renames                   true
+                              :connection-impersonation         true
+                              :database-routing                 true
+                              :describe-default-expr            false
+                              :describe-fields                  true
+                              :describe-fks                     true
+                              :describe-is-generated            false
+                              :describe-is-nullable             false
+                              :expression-literals              true
+                              :identifiers-with-spaces          false
+                              :metadata/table-existence-check   true
+                              :nested-field-columns             false
+                              :regex/lookaheads-and-lookbehinds false
+                              :rename                           true
+                              :test/jvm-timezone-setting        false
+                              :transforms/python                true
+                              :transforms/table                 true
+                              :transforms/index-ddl             false
+                              :uuid-type                        false
+                              :workspace                        false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Skip the postgres implementation of describe fields as it has to handle custom enums which redshift doesn't support.
+(defn- remove-duplicate-fields
+  "Redshift views can have duplicate column names, but when these columns appear in a query
+   they produce an ambiguous column error. To avoid this remove all duplicate columns"
+  [fields]
+  (let [field-key      (fn [f] (perf/select-keys f [:table-schema :table-name :name]))
+        key-counts     (frequencies (map field-key fields))
+        duplicate-keys (into #{} (keep (fn [[k cnt]] (when (> cnt 1) k)) key-counts))]
+    (doseq [{:keys [table-schema table-name name]} duplicate-keys]
+      (log/warnf "Duplicate column '%s' in %s.%s - skipping all occurrences"
+                 name table-schema table-name))
+    (remove #(contains? duplicate-keys (field-key %)) fields)))
+
 (defmethod sql-jdbc.sync/describe-fields-pre-process-xf :redshift
-  [driver database & args]
-  (apply (get-method sql-jdbc.sync/describe-fields-pre-process-xf :sql-jdbc) driver database args))
+  [_driver _db & _args]
+  (fn [rf]
+    (let [fields (volatile! (transient []))]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [filtered (remove-duplicate-fields (persistent! @fields))]
+           (rf (reduce rf result filtered))))
+        ([result field]
+         (vswap! fields conj! field)
+         result)))))
 
 ;; Skip the postgres implementation  as it has to handle custom enums which redshift doesn't support.
 (defmethod driver/dynamic-database-types-lookup :redshift
@@ -87,9 +122,9 @@
      "  where c.relnamespace = n.oid"
      "    and n.nspname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
      "    and c.relkind in ('r', 'p', 'v', 'f', 'm')"
-     "    and pg_catalog.has_schema_privilege(n.nspname, 'USAGE')"
-     "    and (pg_catalog.has_table_privilege('\"'||n.nspname||'\".\"'||c.relname||'\"','SELECT')"
-     "         or pg_catalog.has_any_column_privilege('\"'||n.nspname||'\".\"'||c.relname||'\"','SELECT'))"
+     "    and pg_catalog.has_schema_privilege(n.oid, 'USAGE')"
+     "    and (pg_catalog.has_table_privilege(c.oid,'SELECT')"
+     "         or pg_catalog.has_any_column_privilege(c.oid,'SELECT'))"
      "union all"
      "select"
      "  tablename as name,"
@@ -165,8 +200,8 @@
                             [:= :c.column_name :pk.column_name]]]
                :where [:and
                        [:raw "c.table_schema !~ '^information_schema|catalog_history|pg_'"]
-                       (when schema-names [:in :c.table_schema schema-names])
-                       (when table-names [:in :c.table_name table-names])]
+                       (when schema-names [:in :c.table_schema (map u/lower-case-en schema-names)])
+                       (when table-names [:in :c.table_name (map u/lower-case-en table-names)])]
                :order-by [:table-schema :table-name :database-position]}
               :dialect (sql.qp/quote-style driver)))
 
@@ -217,6 +252,19 @@
         (str/starts-with? stn "mediumtext") :type/Text
         (str/starts-with? stn "longtext")   :type/Text
 
+        ;; Iceberg table types - https://docs.aws.amazon.com/redshift/latest/dg/querying-iceberg-supported-data-types.html
+        (= stn "string")                    :type/Text
+        (= stn "boolean")                   :type/Boolean
+        (= stn "long")                      :type/BigInteger
+        (str/starts-with? stn "decimal(")   :type/Decimal
+        (= stn "binary")                    :type/*
+        (= stn "date")                      :type/Date
+        (= stn "timestamp")                 :type/DateTime
+        (= stn "timestamptz")               :type/DateTimeWithTZ
+
+        ;; MySQL federated table enum types
+        (str/starts-with? stn "enum(")      :type/Text
+
         (= stn "datetime")                  :type/DateTime
         (= stn "year")                      :type/Integer))))
 
@@ -229,8 +277,7 @@
             :geometry    :type/*    ; spatial data
             :geography   :type/*    ; spatial data
             :intervaly2m :type/*    ; interval literal
-            :intervald2s :type/*}   ; interval literal
-           ))
+            :intervald2s :type/*}))   ; interval literal
 
 (defmethod sql-jdbc.sync/database-type->base-type :redshift
   [driver column-type]
@@ -459,15 +506,17 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql-jdbc.conn/connection-details->spec :redshift
-  [_ {:keys [host port db], :as opts}]
+  [_ {:keys [host port db dbname], :as opts}]
+  (when (and db dbname)
+    (log/warn "Redshift connection details should not contain both 'db' and 'dbname' options. Ignoring 'dbname'."))
   (sql-jdbc.common/handle-additional-options
    (merge
     {:classname                     "com.amazon.redshift.jdbc42.Driver"
      :subprotocol                   "redshift"
-     :subname                       (str "//" host ":" port "/" db)
+     :subname                       (str "//" host ":" port "/" (or db dbname))
      :ssl                           true
      :OpenSourceSubProtocolOverride false}
-    (dissoc opts :host :port :db))))
+    (dissoc opts :host :port :db :dbname))))
 
 (prefer-method
  sql-jdbc.execute/read-column-thunk
@@ -501,9 +550,9 @@
                 (if (contains? param :name)
                   [(:name param) (:value param)]
 
-                  (when-let [field-id (driver-api/match-one param
+                  (when-let [field-id (driver-api/match-lite param
                                         [:field (field-id :guard integer?) _]
-                                        (when (contains? (set &parents) :dimension)
+                                        (when (perf/some #{:dimension} &parents)
                                           field-id))]
                     [(:name (driver-api/field (driver-api/metadata-provider) field-id))
                      (:value param)]))))
@@ -537,6 +586,27 @@
     :metabase.upload/date                     [:date]
     :metabase.upload/datetime                 [:timestamp]
     :metabase.upload/offset-datetime          [:timestamp-with-time-zone]))
+
+(defmulti ^:private type->database-type
+  "Internal type->database-type multimethod for Redshift that dispatches on type."
+  {:arglists '([type])}
+  identity)
+
+(defmethod type->database-type :type/TextLike [_] [[:varchar 65535]])
+(defmethod type->database-type :type/Text [_] [[:varchar 65535]])
+(defmethod type->database-type :type/Number [_] [:bigint])
+(defmethod type->database-type :type/BigInteger [_] [:bigint])
+(defmethod type->database-type :type/Integer [_] [:integer])
+(defmethod type->database-type :type/Float [_] [(keyword "double precision")])
+(defmethod type->database-type :type/Boolean [_] [:boolean])
+(defmethod type->database-type :type/Date [_] [:date])
+(defmethod type->database-type :type/DateTime [_] [:timestamp])
+(defmethod type->database-type :type/DateTimeWithTZ [_] [:timestamp-with-time-zone])
+(defmethod type->database-type :type/Time [_] [:time])
+
+(defmethod driver/type->database-type :redshift
+  [_driver base-type]
+  (type->database-type base-type))
 
 (defmethod driver/allowed-promotions :redshift [_] {})
 
@@ -625,4 +695,66 @@
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :redshift
   [_ e]
-  (= (sql-jdbc/get-sql-state e) "42P01"))
+  ;; https://docs.aws.amazon.com/redshift/latest/mgmt/rsql-query-tool-error-codes.html
+  ;; 42P01: undefined_table, 3F000: invalid_schema_name
+  (contains? #{"42P01" "3F000"} (sql-jdbc/get-sql-state e)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         Workspace Isolation                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Redshift inherits init-workspace-isolation! and grant-workspace-read-access! from Postgres.
+;; Only destroy needs to be overridden because Redshift doesn't support DROP OWNED BY.
+
+(defn- user-exists?
+  "Check if a Redshift user exists."
+  [conn username]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_user WHERE usename = ?" username])))
+
+(defn- schema-exists?
+  "Check if a schema exists in Redshift."
+  [conn schema-name]
+  (seq (jdbc/query conn ["SELECT 1 FROM pg_namespace WHERE nspname = ?" schema-name])))
+
+(defn- schemas-with-user-grants
+  "Query Redshift to find schemas where the user has been granted privileges."
+  [conn username]
+  (->> (jdbc/query conn
+                   ["SELECT DISTINCT namespace_name FROM svv_relation_privileges
+           WHERE identity_name = ? AND identity_type = 'user'"
+                    username])
+       (keep :namespace_name)))
+
+(defmethod driver/destroy-workspace-isolation! :redshift
+  [_driver database workspace]
+  (let [schema-name (:schema workspace)
+        username    (-> workspace :database_details :user)]
+    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
+      (let [user-exists    (user-exists? t-conn username)
+            schema-exists  (schema-exists? t-conn schema-name)
+            granted-schemas (when user-exists
+                              (schemas-with-user-grants t-conn username))]
+        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
+          ;; Only revoke if user exists
+          (when user-exists
+            (doseq [schema granted-schemas]
+              (.addBatch ^Statement stmt
+                         ^String (format "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"%s\" FROM \"%s\""
+                                         schema username))
+              (.addBatch ^Statement stmt
+                         ^String (format "REVOKE ALL PRIVILEGES ON SCHEMA \"%s\" FROM \"%s\""
+                                         schema username)))
+            ;; Only revoke default privileges if both user and schema exist
+            (when schema-exists
+              (.addBatch ^Statement stmt
+                         ^String (format "ALTER DEFAULT PRIVILEGES IN SCHEMA \"%s\" REVOKE ALL ON TABLES FROM \"%s\""
+                                         schema-name username))))
+          ;; These are safe with IF EXISTS
+          (.addBatch ^Statement stmt
+                     ^String (format "DROP SCHEMA IF EXISTS \"%s\" CASCADE" schema-name))
+          (.addBatch ^Statement stmt
+                     ^String (format "DROP USER IF EXISTS \"%s\"" username))
+          (.executeBatch ^Statement stmt))))))
+
+(defmethod driver/llm-sql-dialect-resource :redshift [_]
+  "metabot/prompts/dialects/redshift.md")

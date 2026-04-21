@@ -2,32 +2,32 @@ import { Fragment, type JSX, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useUserAcknowledgement } from "metabase/common/hooks/use-user-acknowledgement";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
-  onOpenQuestionSettings,
   softReloadCard,
   turnModelIntoQuestion,
   turnQuestionIntoModel,
 } from "metabase/query_builder/actions";
 import { trackTurnIntoModelClicked } from "metabase/query_builder/analytics";
-import DatasetMetadataStrengthIndicator from "metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
+import { DatasetMetadataStrengthIndicator } from "metabase/query_builder/components/view/sidebars/DatasetManagementSection/DatasetMetadataStrengthIndicator";
 import { shouldShowQuestionSettingsSidebar } from "metabase/query_builder/components/view/sidebars/QuestionSettingsSidebar";
-import {
-  MODAL_TYPES,
-  type QueryModalType,
-} from "metabase/query_builder/constants";
 import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
+import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import { onOpenQuestionSettings } from "metabase/redux/query-builder";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Icon, Menu } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { checkCanBeModel } from "metabase-lib/v1/metadata/utils/models";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import QuestionActionsS from "./QuestionActions.module.css";
+import { QuestionAlertsMenuItem } from "./QuestionAlertsMenuItem";
 
 const ADD_TO_DASH_TESTID = "add-to-dashboard-button";
 const MOVE_TESTID = "move-button";
@@ -56,6 +56,7 @@ export const QuestionMoreActionsMenu = ({
   const underlyingQuestion = useSelector(getQuestionWithoutComposing);
 
   const dispatch = useDispatch();
+  const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   const isQuestion = question.type() === "question";
   const isModel = question.type() === "model";
@@ -65,6 +66,9 @@ export const QuestionMoreActionsMenu = ({
   const isDashboardQuestion = isQuestion && _.isNumber(question.dashboardId());
   const isStandaloneQuestion =
     isQuestion && !_.isNumber(question.dashboardId());
+
+  const collection = question.collection();
+  const isAnalytics = collection && isInstanceAnalyticsCollection(collection);
 
   const hasCollectionPermissions = question.canWrite();
   const enableSettingsSidebar = shouldShowQuestionSettingsSidebar(question);
@@ -82,7 +86,8 @@ export const QuestionMoreActionsMenu = ({
 
   const handleEditMetadata = () =>
     onSetQueryBuilderMode("dataset", {
-      datasetEditorTab: "metadata",
+      datasetEditorTab:
+        isModel && question.display() === "list" ? "metadata" : "columns",
     });
 
   const [ackedModelModal] = useUserAcknowledgement("turn_into_model_modal");
@@ -116,7 +121,14 @@ export const QuestionMoreActionsMenu = ({
         {t`Add to dashboard`}
       </Menu.Item>
     ),
-    ...PLUGIN_MODERATION.useQuestionMenuItems(question, reload),
+    canManageSubscriptions && !isModel && !isAnalytics && (
+      <QuestionAlertsMenuItem
+        key="alerts"
+        question={question}
+        onClick={() => onOpenModal(MODAL_TYPES.CREATE_ALERT)}
+      />
+    ),
+    ...PLUGIN_MODERATION.useCardMenuItems(question.card(), reload),
     hasCollectionPermissions && isModelOrMetric && hasDataPermissions && (
       <Menu.Item
         key="edit_definition"
@@ -171,17 +183,18 @@ export const QuestionMoreActionsMenu = ({
         {t`Edit settings`}
       </Menu.Item>
     ),
+    (hasCollectionPermissions || hasDataPermissions) && (
+      <Menu.Divider key="divider" />
+    ),
     hasCollectionPermissions && (
-      <Fragment key="move">
-        <Menu.Divider />
-        <Menu.Item
-          leftSection={<Icon name="move" />}
-          data-testid={MOVE_TESTID}
-          onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
-        >
-          {c("A verb, not a noun").t`Move`}
-        </Menu.Item>
-      </Fragment>
+      <Menu.Item
+        key="move"
+        leftSection={<Icon name="move" />}
+        data-testid={MOVE_TESTID}
+        onClick={() => onOpenModal(MODAL_TYPES.MOVE)}
+      >
+        {c("A verb, not a noun").t`Move`}
+      </Menu.Item>
     ),
     hasDataPermissions && (
       <Menu.Item

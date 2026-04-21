@@ -2,7 +2,7 @@
 import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupDashboardQuestionCandidatesEndpoint,
   setupStaleItemsEndpoint,
@@ -10,6 +10,7 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type {
   Collection,
   DashboardQuestionCandidate,
@@ -20,7 +21,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { CollectionMenu } from "../CollectionMenu";
 
@@ -29,7 +29,7 @@ export interface SetupOpts {
   tokenFeatures?: TokenFeatures;
   isAdmin?: boolean;
   isPersonalCollectionChild?: boolean;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   dashboardQuestionCandidates?: DashboardQuestionCandidate[];
   moveToDashboard?: boolean;
   numberOfCollectionItems?: number;
@@ -40,7 +40,7 @@ export const setup = ({
   collection = createMockCollection(),
   tokenFeatures = createMockTokenFeatures(),
   isAdmin = false,
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
   dashboardQuestionCandidates = [],
   moveToDashboard = false,
   numberOfCollectionItems = 10,
@@ -77,9 +77,9 @@ export const setup = ({
 
   const onUpdateCollection = jest.fn();
 
-  if (hasEnterprisePlugins) {
+  if (enterprisePlugins) {
     setupStaleItemsEndpoint(numberOfStaleItems);
-    setupEnterprisePlugins();
+    enterprisePlugins.forEach((plugin) => setupEnterpriseOnlyPlugin(plugin));
   }
 
   renderWithProviders(

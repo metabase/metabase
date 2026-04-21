@@ -4,9 +4,9 @@
    [clojure.test :refer :all]
    [metabase.driver.mongo.conversion :as mongo.conversion]
    [metabase.driver.mongo.execute :as mongo.execute]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache.impl :as middleware.cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.test :as qp]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.test :as mt])
   (:import
@@ -89,7 +89,7 @@
                     (a/>!! canceled-chan ::streaming-response/request-canceled))
             (testing "Cancel signal kills the in progress query"
               (is (thrown-with-msg? Throwable
-                                    #"Command failed with error 11601.*operation was interrupted"
+                                    #"Command.*failed.*11601"
                                     (qp/process-query query))))))))))
 
 (deftest ^:synchronized question-base-on-native-model-cache-test

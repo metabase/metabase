@@ -1,5 +1,9 @@
 const { H } = cy;
-import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -33,8 +37,10 @@ describe("issue 9357", () => {
       );
 
       // Drag the firstparameter to last position
-      H.moveDnDKitElement(H.filterWidget().findAllByRole("listitem").first(), {
+      H.filterWidget().findAllByRole("listitem").first().as("dragElement");
+      H.moveDnDKitElementByAlias("@dragElement", {
         vertical: 50,
+        useMouseEvents: true,
       });
 
       // Ensure they're in the right order
@@ -69,7 +75,7 @@ describe("issue 11480", () => {
 
     // Run the query and see an error.
     SQLFilter.runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.contains('Data conversion error converting "some text"');
 
     // Oh wait! That doesn't match the total column, so we'll change the parameter to a number.
@@ -85,7 +91,7 @@ describe("issue 11480", () => {
 describe("issue 11580", () => {
   function assertVariablesOrder() {
     cy.get("@variableLabels").first().should("have.text", "foo");
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.get("@variableLabels").last().should("have.text", "bar");
   }
 
@@ -145,7 +151,7 @@ describe("issue 12228", () => {
 
   it("can load a question with a date filter (metabase#12228)", () => {
     H.createNativeQuestion(nativeQuery).then(({ body: { id } }) => {
-      cy.visit(`/question/${id}?created_at=2026-01`);
+      cy.visit(`/question/${id}?created_at=2029-01`);
       cy.contains("580");
     });
   });
@@ -196,7 +202,7 @@ describe("issue 12581", () => {
     // Without them at least 1 in 10 test runs locally didn't fully clear the field or type correctly
     H.NativeEditor.clear().type("SELECT 1");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     cy.findByTestId("save-question-modal").within((modal) => {
@@ -295,7 +301,7 @@ describe("issue 13961", { tags: "@skip" }, () => {
     cy.log("URL is correct at this point, but there are no results");
 
     cy.location("search").should("eq", `?${productIdFilter.name}=1`);
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rustic Paper Wallet"); // Product ID 1, Gizmo
   });
 });
@@ -331,7 +337,7 @@ describe("issue 14302", () => {
   it("should not make the question dirty when there are no changes (metabase#14302)", () => {
     cy.log("Reported on v0.37.5 - Regression since v0.37.0");
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").should("not.exist");
   });
 });
@@ -423,16 +429,16 @@ describe("issue 14302", () => {
     });
 
     it(`${test.toUpperCase()} version:\n should be able to view SQL question when accessing via dashboard with filters connected to modified card without SQL permissions (metabase#15163)`, () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("New Title").click();
 
       cy.wait("@cardQuery", { timeout: 5000 }).then((xhr) => {
         expect(xhr.response.body.error).not.to.exist;
       });
 
-      H.NativeEditor.get().should("not.be.visible");
+      H.NativeEditor.get().should("not.exist");
       cy.get("[data-testid=cell-data]").should("contain", "51");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Showing 1 row");
     });
   });
@@ -575,7 +581,7 @@ describe("issue 15981", () => {
     cy.findByTestId("query-visualization-root").contains("Rustic Paper Wallet");
 
     cy.icon("contract").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 51 rows");
     cy.icon("play").should("not.exist");
   });
@@ -662,14 +668,14 @@ describe("issue 16756", () => {
     H.createNativeQuestion(questionDetails).then(({ body: { id } }) => {
       cy.intercept("POST", `/api/card/**/${id}/query`).as("cardQuery");
 
-      cy.visit(`/question/${id}?filter=2024-03-31~2025-03-31`);
+      cy.visit(`/question/${id}?filter=2027-03-31~2028-03-31`);
 
       cy.wait("@cardQuery");
     });
   });
 
   it("should allow switching between date filter types (metabase#16756)", () => {
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Open editor/i).click();
     cy.icon("variable").click();
 
@@ -681,8 +687,8 @@ describe("issue 16756", () => {
     // The previous filter value should reset
     cy.location("search").should("eq", "?filter=");
 
-    cy.log("Set the date to the 15th of October 2023");
-    cy.clock(new Date("2023-10-31"), ["Date"]);
+    cy.log("Set the date to the 15th of October 2026");
+    cy.clock(new Date("2026-10-31"), ["Date"]);
     H.filterWidget().click();
 
     H.popover().contains("15").click();
@@ -692,7 +698,7 @@ describe("issue 16756", () => {
     SQLFilter.runQuery();
 
     // We expect "No results"
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No results!");
   });
 });
@@ -771,28 +777,6 @@ describe("issue 17490", () => {
     H.restore();
     cy.signInAsAdmin();
   });
-
-  it(
-    "nav bar shouldn't cut off the popover with the tables for field filter selection (metabase#17490)",
-    { tags: "@skip" },
-    () => {
-      H.startNewNativeQuestion();
-      SQLFilter.enterParameterizedQuery("{{f}}");
-
-      SQLFilter.openTypePickerFromDefaultFilterType();
-      SQLFilter.chooseType("Field Filter");
-
-      /**
-       * Although `.click()` isn't neccessary for Cypress to fill out this input field,
-       * it's something that we can use to assert that the input field is covered by another element.
-       * Cypress fails to click any element that is not "actionable" (for example - when it's covered).
-       * In other words, the `.click()` part is essential for this repro to work. Don't remove it.
-       */
-      cy.findByPlaceholderText("Find...").click().type("Orders").blur();
-
-      cy.findByDisplayValue("Orders");
-    },
-  );
 });
 
 describe("issue 21160", () => {
@@ -904,8 +888,8 @@ describe("issue 21246", () => {
   });
 
   it("should be able to use sub-query referencing a GUI question and date based filters (metabase#21246)", () => {
-    const fieldFilterValue = "filter=2024-02";
-    const dateFilterValue = "datevariable=2024-02-19";
+    const fieldFilterValue = "filter=2027-02";
+    const dateFilterValue = "datevariable=2027-02-19";
 
     cy.get("@questionId").then((id) => {
       // Let's set filter values directly through URL, rather than through the UI
@@ -953,7 +937,7 @@ describe("issue 27257", () => {
 
   it("should not drop numeric filter widget value on refresh even if it's zero (metabase#27257)", () => {
     cy.reload();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Here's where your results will appear");
     cy.findByDisplayValue("0");
   });
@@ -975,8 +959,7 @@ describe("issue 29786", { tags: "@external" }, () => {
       query: SQL_QUERY,
     });
 
-    // type a space to trigger fields
-    H.NativeEditor.type(" ");
+    cy.findByTestId("native-query-top-bar").icon("variable").click();
 
     cy.findByTestId("tag-editor-variable-f1")
       .findByTestId("variable-type-select")
@@ -996,7 +979,7 @@ describe("issue 29786", { tags: "@external" }, () => {
     FieldFilter.addWidgetStringFilter("Von-Gulgowski");
 
     SQLFilter.runQuery();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("1087115303928").should("be.visible");
   });
 });
@@ -1199,7 +1182,8 @@ describe("issue 31606", () => {
     cy.findAllByRole("radio", { name: "Search box" }).first().click();
     H.filterWidget().first().click();
 
-    H.moveDnDKitElement(H.popover().findByText("Add filter"), {
+    H.popover().findByText("Add filter").as("dragElement");
+    H.moveDnDKitElementByAlias("@dragElement", {
       horizontal: 300,
     });
 
@@ -1219,7 +1203,7 @@ describe("issue 49577", () => {
   it("should not show the values initially when using a single select search box (metabase#49577)", () => {
     H.startNewNativeQuestion();
     H.NativeEditor.type("select * from {{param");
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.sidebar()
       .last()
       .within(() => {
@@ -1245,7 +1229,7 @@ describe("issue 49577", () => {
       cy.findByText("foo").should("be.visible");
     });
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.sidebar().last().findByText("Dropdown list").click();
 
     H.filterWidget().click();
@@ -1288,10 +1272,37 @@ describe("issue 58061", () => {
     }).then(({ body: card }) => {
       cy.visit({
         url: `/question/${card.id}`,
-        qs: { filter: "2024-09-08" },
+        qs: { filter: "2027-09-08" },
       });
       cy.wait("@cardQuery");
       H.assertQueryBuilderRowCount(1);
     });
+  });
+});
+
+describe("issue 63537", () => {
+  beforeEach(() => {
+    H.restore("postgres-writable");
+    H.resetTestTable({ type: "postgres", table: "many_data_types" });
+    cy.signInAsAdmin();
+    H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
+  });
+
+  it("should allow to use postgres enums in field filters (metabase#63537)", () => {
+    H.startNewNativeQuestion({ database: WRITABLE_DB_ID });
+    H.NativeEditor.type("SELECT * FROM many_data_types WHERE {{f}}");
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Field Filter");
+    FieldFilter.mapTo({
+      table: "Many Data Types",
+      field: "Enum",
+    });
+    H.filterWidget().click();
+    H.popover().within(() => {
+      cy.findByText("beta").click();
+      cy.button("Add filter").click();
+    });
+    H.runNativeQuery();
+    H.assertQueryBuilderRowCount(2);
   });
 });

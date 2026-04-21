@@ -5,6 +5,10 @@ import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/components/DataSelector";
 import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import {
   createMockDatabase,
   createMockSavedQuestionsDatabase,
   createMockTable,
@@ -13,10 +17,6 @@ import {
   SAMPLE_DB_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 const MULTI_SCHEMA_DB_ID = 2;
 const MULTI_SCHEMA_TABLE1_ID = 100;
@@ -285,7 +285,7 @@ describe("DataSelector", () => {
   it("should expand schemas after viewing tables on a single-schema db", async () => {
     // This is the same and the previous test except that it first opens/closes
     // the multi-schema db. This left some lingering traces in component state
-    // which caused a bug tha that the previous test didn't catch.
+    // which caused a bug that the previous test didn't catch.
     render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}

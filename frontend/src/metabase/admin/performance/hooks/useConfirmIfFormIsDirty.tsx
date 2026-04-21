@@ -1,17 +1,12 @@
 import { useCallback, useState } from "react";
-import type { InjectedRouter, Route } from "react-router";
 import { t } from "ttag";
 
-import useBeforeUnload from "metabase/common/hooks/use-before-unload";
+import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 
 import { useConfirmOnRouteLeave } from "./useConfirmOnRouteLeave";
 
-export const useConfirmIfFormIsDirty = (
-  /** If not specified, no confirmation will occur on route leave */
-  router?: InjectedRouter,
-  route?: Route,
-) => {
+export const useConfirmIfFormIsDirty = () => {
   const [isStrategyFormDirty, setIsStrategyFormDirty] = useState(false);
 
   const { show: askConfirmation, modalContent: confirmationModal } =
@@ -29,8 +24,6 @@ export const useConfirmIfFormIsDirty = (
   );
 
   useConfirmOnRouteLeave({
-    router,
-    route,
     shouldConfirm: isStrategyFormDirty,
     confirm: askBeforeDiscardingChanges,
   });

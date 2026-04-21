@@ -2,7 +2,7 @@ import Color from "color";
 
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { colors } from "metabase/lib/colors";
+import { colors } from "metabase/ui/colors";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -208,7 +208,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     cy.button("Add comparison").should("be.disabled");
 
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     cy.findByTestId("comparison-list")
       .children()
       .last()
@@ -377,7 +377,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     cy.icon("arrow_down").should(
       "have.css",
       "color",
-      Color(colors.success).string(),
+      Color(colors.success).rgb().string(),
     );
 
     // style
@@ -538,7 +538,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
     );
 
     cy.findByTestId("scalar-period")
-      .findByText("Apr 2026")
+      .findByText("Apr 2029")
       .should("be.visible");
     cy.findByTestId("scalar-container").findByText("344").click();
 
@@ -556,7 +556,7 @@ describe("scenarios > visualizations > trend chart (SmartScalar)", () => {
 
     // Validate that the filter was applied
     cy.findByTestId("scalar-period")
-      .findByText("Mar 2026")
+      .findByText("Mar 2029")
       .should("be.visible");
     cy.findByTestId("scalar-container").findByText("527").should("be.visible");
   });

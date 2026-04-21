@@ -1,0 +1,28 @@
+.disabledItem {
+  &:hover {
+    /**
+     * SelectItem applies color and background-color on hover.
+     * When it's disabled is uses pointer-events: none to prevent the colors being applied.
+     * Putting an info icon with a tooltip requires it to be pointer-evens-enabled, which causes
+     * its parent (i.e. SelectItem) to apply the hover styles. We override this here.
+     * This will effectively cover the element with a background
+     */
+    background-color: var(--mb-color-background-primary) !important;
+    color: var(--mb-color-text-primary) !important;
+    /**
+      * There's also margin-top: 1px involved, which causes 1px of the background color to be shown.
+      * We need to cover it, so we turn margin into padding here.
+      */
+    margin-top: 0 !important;
+    padding-top: 9px !important;
+  }
+}
+
+.infoIconContainer {
+  pointer-events: none;
+}
+
+.infoIcon {
+  display: block;
+  pointer-events: all;
+}

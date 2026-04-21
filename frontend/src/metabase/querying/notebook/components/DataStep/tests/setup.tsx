@@ -1,13 +1,16 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
+import { ROOT_COLLECTION } from "metabase/entities/collections";
 import * as Lib from "metabase-lib";
 import { columnFinder } from "metabase-lib/test-helpers";
+import { createMockCollection } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { createMockNotebookStep } from "../../../test-utils";
@@ -19,20 +22,25 @@ export interface SetupOpts {
   step?: NotebookStep;
   readOnly?: boolean;
   isEmbeddingSdk?: boolean;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
 }
 export const setup = ({
   step = createMockNotebookStep(),
   readOnly = false,
   isEmbeddingSdk = false,
-  hasEnterprisePlugins = false,
+  enterprisePlugins,
 }: SetupOpts = {}) => {
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach((plugin) => {
+      setupEnterpriseOnlyPlugin(plugin);
+    });
   }
   const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
 
   const updateQuery = jest.fn();
+  setupCollectionByIdEndpoint({
+    collections: [createMockCollection(ROOT_COLLECTION)],
+  });
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
 

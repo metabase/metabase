@@ -1,14 +1,19 @@
+import { useContext } from "react";
+
 import { skipToken, useGetCardQuery, useSearchQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_EMBEDDING } from "metabase/plugins";
-import { DEFAULT_EMBEDDING_ENTITY_TYPES } from "metabase/redux/embedding-data-picker";
-import { getEmbedOptions } from "metabase/selectors/embed";
-import { getEntityTypes } from "metabase/selectors/embedding-data-picker";
+import { EmbeddingDataPickerContext } from "metabase/querying/notebook/components/NotebookDataPicker/EmbeddingDataPicker/context";
+import {
+  DEFAULT_EMBEDDING_ENTITY_TYPES,
+  getDataPicker,
+  getEntityTypes,
+} from "metabase/redux/embedding-data-picker";
+import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
 import { getMetadata } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type { CardType, TableId } from "metabase-types/api";
-import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-picker";
 
 import { DataPickerTarget } from "../DataPickerTarget";
 
@@ -37,8 +42,6 @@ export function EmbeddingDataPicker({
     });
 
   const databaseId = Lib.databaseID(query);
-  const tableInfo =
-    table != null ? Lib.displayInfo(query, stageIndex, table) : undefined;
   const pickerInfo = table != null ? Lib.pickerInfo(query, table) : undefined;
   const { data: card } = useGetCardQuery(
     pickerInfo?.cardId != null ? { id: pickerInfo.cardId } : skipToken,
@@ -49,11 +52,19 @@ export function EmbeddingDataPicker({
    * which is incorrect.
    */
   const normalizedCard = pickerInfo?.cardId ? card : undefined;
+  const entityTypesFromRedux = useSelector(getEntityTypes);
+  const dataPickerFromRedux = useSelector(getDataPicker);
+  const queryingContext = useContext(EmbeddingDataPickerContext);
 
-  const entityTypes = useSelector(getEntityTypes);
-  const forceMultiStagedDataPicker = useSelector(
-    (state) => getEmbedOptions(state).data_picker === "staged",
-  );
+  /**
+   * It's by design that we have to check values from both the context and Redux,
+   * unlike the dashboard where we always get the values from only the context.
+   * Because it's impossible to determine all querying parent components and wrap
+   * them with the context provider.
+   */
+  const entityTypes = queryingContext?.entityTypes ?? entityTypesFromRedux;
+  const dataPicker = queryingContext?.dataPicker ?? dataPickerFromRedux;
+  const forceMultiStagedDataPicker = dataPicker === "staged";
 
   // a table or a virtual table (card)
   const sourceTable = useSourceTable(query);
@@ -95,7 +106,10 @@ export function EmbeddingDataPicker({
              * so we need to remove it. Treating it as a table.
              */
             getTableIcon={() => "table"}
-            tableInfo={tableInfo}
+            table={table}
+            query={query}
+            stageIndex={stageIndex}
+            setIsOpened={() => {}}
             placeholder={placeholder}
             isDisabled={isDisabled}
           />
@@ -127,7 +141,12 @@ export function EmbeddingDataPicker({
       canSelectQuestion={entityTypes.includes("question")}
       triggerElement={
         <DataPickerTarget
-          tableInfo={tableInfo}
+          table={table}
+          query={query}
+          stageIndex={stageIndex}
+          setIsOpened={() => {
+            /* intentionally empty */
+          }}
           placeholder={placeholder}
           isDisabled={isDisabled}
         />

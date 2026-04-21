@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type {
   DatasetColumn,
@@ -17,14 +17,20 @@ export const getColumnDescriptors = <TColumn extends DatasetColumn>(
   columnNames: string[],
   columns: TColumn[],
 ): ColumnDescriptor[] => {
-  return columnNames.map((columnName) => {
+  const result: ColumnDescriptor[] = [];
+
+  columnNames.forEach((columnName) => {
     const index = columns.findIndex((column) => column.name === columnName);
 
-    return {
-      index,
-      column: columns[index],
-    };
+    if (index > -1) {
+      result.push({
+        index,
+        column: columns[index],
+      });
+    }
   });
+
+  return result;
 };
 
 export const hasValidColumnsSelected = (
@@ -68,16 +74,6 @@ export type CartesianChartColumns =
   | BreakoutChartColumns
   | MultipleMetricsChartColumns
   | ScatterPlotColumns;
-
-export function assertMultiMetricColumns(
-  chartColumns: CartesianChartColumns,
-): MultipleMetricsChartColumns {
-  if ("breakout" in chartColumns) {
-    throw Error("Given `chartColumns` has breakout");
-  }
-
-  return chartColumns;
-}
 
 export const getCartesianChartColumns = (
   columns: RemappingHydratedDatasetColumn[],

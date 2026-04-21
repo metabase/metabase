@@ -1,14 +1,17 @@
 (ns metabase.driver.clickhouse-introspection
+  (:refer-clojure :exclude [empty?])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.performance :refer [empty?]])
   (:import
    (java.sql Connection DatabaseMetaData)))
 
@@ -113,49 +116,60 @@
   [table]
   (not (str/starts-with? (:table_name table) ".inner")))
 
-(defn- get-all-tables
+(defn- get-all-tables-in-all-dbs
   [driver db]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver db nil
-   (fn [^Connection conn]
-     (->> (get-tables-from-metadata (.getMetaData conn) "%")
-          jdbc/metadata-result
-          vec
-          (filter #(and
-                    (not (contains? (sql-jdbc.sync/excluded-schemas driver) (:table_schem %)))
-                    (not-inner-mv-table? %)))
-          tables-set))))
+  (let [details             (driver.conn/effective-details db)
+        db-filters-patterns (set (map (comp #(ddl.i/format-name driver %) str/trim)
+                                      (remove empty? (str/split (or (:db-filters-patterns details) "") #","))))
+        db-filters-type     (:db-filters-type details)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver db nil
+     (fn [^Connection conn]
+       (->> (get-tables-from-metadata (.getMetaData conn) "%")
+            jdbc/metadata-result
+            vec
+            (filter not-inner-mv-table?)
+            (filter (fn [table]
+                      (cond
+                        (= db-filters-type "inclusion")
+                        (contains? db-filters-patterns (:table_schem table))
+
+                        (= db-filters-type "exclusion")
+                        (and (not (contains? db-filters-patterns (:table_schem table)))
+                             (not (contains? (sql-jdbc.sync/excluded-schemas driver) (:table_schem table))))
+
+                        :else
+                        (not (contains? (sql-jdbc.sync/excluded-schemas driver) (:table_schem table))))))
+            tables-set)))))
 
 ;; Strangely enough, the tests only work with :db keyword,
 ;; but the actual sync from the UI uses :dbname
 (defn- get-db-name
   [db]
-  (or (get-in db [:details :dbname])
-      (get-in db [:details :db])))
+  (let [details (driver.conn/effective-details db)]
+    (or (:dbname details)
+        (:db details))))
 
-(defn- get-tables-in-dbs
-  [driver db-or-dbs]
-  (->> (for [db (as-> (or (get-db-name db-or-dbs) "default") dbs
-                  (str/split dbs #" ")
-                  (remove empty? dbs)
-                  (map (comp #(ddl.i/format-name driver %) str/trim) dbs))]
+(defn- get-tables-in-db
+  [driver db]
+  (->> (let [db-name (ddl.i/format-name driver (or (get-db-name db) "default"))]
          (sql-jdbc.execute/do-with-connection-with-options
-          driver db-or-dbs nil
+          driver db nil
           (fn [^Connection conn]
             (-> (.getMetaData conn)
-                (get-tables-from-metadata db)
+                (get-tables-from-metadata db-name)
                 jdbc/metadata-result))))
-       (apply concat)
        (filter not-inner-mv-table?)
-       (tables-set)))
+       (tables-set)
+       (set)))
 
 (defmethod driver/describe-database* :clickhouse
-  [driver {{:keys [scan-all-databases]}
-           :details :as db}]
-  {:tables
-   (if (boolean scan-all-databases)
-     (get-all-tables driver db)
-     (get-tables-in-dbs driver db))})
+  [driver db]
+  (let [{:keys [enable-multiple-db]} (driver.conn/effective-details db)
+        tables (if (boolean enable-multiple-db)
+                 (get-all-tables-in-all-dbs driver db)
+                 (get-tables-in-db driver db))]
+    {:tables tables}))
 
 (defn- ^:private is-db-required?
   [field]

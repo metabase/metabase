@@ -14,18 +14,17 @@ import {
 } from "react-transition-group";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import ZIndex from "metabase/css/core/z-index.module.css";
-import { capitalize, inflect } from "metabase/lib/formatting";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import type { Undo } from "metabase/redux/store/undo";
 import {
   dismissUndo,
   pauseUndo,
   performUndo,
   resumeUndo,
 } from "metabase/redux/undo";
-import { Portal, Progress } from "metabase/ui";
-import type { Undo } from "metabase-types/store/undo";
+import { Ellipsified, Portal, Progress } from "metabase/ui";
+import { capitalize, inflect } from "metabase/utils/formatting";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import CS from "./UndoListing.module.css";
 import {
@@ -93,7 +92,7 @@ function UndoToast({
   return (
     <ToastCard
       ref={undo.ref}
-      dark
+      dark={undo.dark ?? true}
       data-testid="toast-undo"
       color={undo.toastColor}
       role="status"
@@ -101,12 +100,12 @@ function UndoToast({
       className={CS.toast}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      style={style}
+      style={{ ...style, ...undo.style }}
     >
       {undo.showProgress && (
         <Progress
           size="sm"
-          color={undo.pausedAt ? "bg-dark" : "brand"}
+          color={undo.pausedAt ? "background-tertiary-inverse" : "brand"}
           /* we intentionally break a11y - css animation is smoother */
           value={100}
           pos="absolute"
@@ -125,10 +124,14 @@ function UndoToast({
           {undo.icon && (
             <CardIcon
               name={undo.icon}
-              color={undo.iconColor ?? "var(--mb-color-text-secondary-inverse)"}
+              c={undo.iconColor ?? "text-secondary-inverse"}
             />
           )}
-          <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
+          {undo.renderChildren ? (
+            undo.renderChildren(undo)
+          ) : (
+            <Ellipsified showTooltip={false}>{renderMessage(undo)}</Ellipsified>
+          )}
         </CardContentSide>
         <ControlsCardContent>
           {undo.actions && undo.actions.length > 0 && (
@@ -152,10 +155,7 @@ function UndoToast({
           )}
           {undo.canDismiss && (
             <DismissIcon
-              color={
-                undo.dismissIconColor ||
-                "var(--mb-color-text-secondary-inverse)"
-              }
+              color={undo.dismissIconColor || "text-secondary-inverse"}
               name="close"
               onClick={onDismiss}
             />
@@ -174,7 +174,10 @@ export function UndoListing() {
     <UndoListOverlay
       undos={undos}
       onUndo={(undo) => dispatch(performUndo(undo.id))}
-      onDismiss={(undo) => dispatch(dismissUndo({ undoId: undo.id }))}
+      onDismiss={(undo) => {
+        undo.onDismiss?.(undo.id);
+        dispatch(dismissUndo({ undoId: undo.id }));
+      }}
     />
   );
 }

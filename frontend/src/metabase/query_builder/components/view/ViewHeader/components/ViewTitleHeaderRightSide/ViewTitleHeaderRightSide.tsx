@@ -3,21 +3,22 @@ import type React from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import { QuestionSharingMenu } from "metabase/embedding/components/SharingMenu";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import MetabaseSettings from "metabase/lib/settings";
+import { AIQuestionAnalysisButton } from "metabase/metabot/components/AIQuestionAnalysisButton";
+import { canAnalyzeQuestion } from "metabase/metabot/utils/chart-analysis";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
-import { PLUGIN_AI_ENTITY_ANALYSIS } from "metabase/plugins";
-import RunButtonWithTooltip from "metabase/query_builder/components/RunButtonWithTooltip";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
-import type { QueryModalType } from "metabase/query_builder/constants";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
+import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
+import { getUserCanWriteToCollections } from "metabase/selectors/user";
 import { Box, Button, Flex, Tooltip } from "metabase/ui";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { useSelector } from "metabase/utils/redux";
+import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import ViewTitleHeaderS from "../../ViewTitleHeader.module.css";
 import { ExploreResultsLink } from "../ExploreResultsLink";
@@ -48,7 +49,7 @@ interface ViewTitleHeaderRightSideProps {
   }) => void;
   cancelQuery: () => void;
   onOpenModal: (modalType: QueryModalType) => void;
-  onEditSummary: () => void;
+  editSummary: () => void;
   onCloseSummary: () => void;
   setQueryBuilderMode: (
     mode: QueryBuilderMode,
@@ -84,7 +85,7 @@ export function ViewTitleHeaderRightSide({
   runQuestionQuery,
   cancelQuery,
   onOpenModal,
-  onEditSummary,
+  editSummary,
   onCloseSummary,
   setQueryBuilderMode,
   areFiltersExpanded,
@@ -97,7 +98,7 @@ export function ViewTitleHeaderRightSide({
   isObjectDetail,
 }: ViewTitleHeaderRightSideProps): React.JSX.Element {
   const isShowingNotebook = queryBuilderMode === "notebook";
-  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  const canWriteToCollections = useSelector(getUserCanWriteToCollections);
 
   const hasExploreResultsLink =
     canExploreResults(question) &&
@@ -110,7 +111,9 @@ export function ViewTitleHeaderRightSide({
     !isModelOrMetric &&
     isDirty &&
     !question.isArchived() &&
-    isActionListVisible;
+    isActionListVisible &&
+    canWriteToCollections;
+
   const isMissingPermissions =
     result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
   const hasRunButton =
@@ -138,9 +141,7 @@ export function ViewTitleHeaderRightSide({
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
   const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
-  const disabledSaveTooltip = isSaveDisabled
-    ? getDisabledSaveTooltip(isEditable)
-    : undefined;
+  const saveTooltip = getSaveTooltip(question);
 
   useRegisterShortcut(
     hasRunButton && !isShowingNotebook
@@ -167,7 +168,6 @@ export function ViewTitleHeaderRightSide({
         isActionListVisible,
       }) && (
         <FilterHeaderButton
-          className={cx(CS.hide, CS.smShow)}
           question={question}
           isExpanded={areFiltersExpanded}
           onExpand={onExpandFilters}
@@ -181,9 +181,8 @@ export function ViewTitleHeaderRightSide({
         isActionListVisible,
       }) && (
         <QuestionSummarizeWidget
-          className={cx(CS.hide, CS.smShow)}
           isShowingSummarySidebar={isShowingSummarySidebar}
-          onEditSummary={onEditSummary}
+          editSummary={editSummary}
           onCloseSummary={onCloseSummary}
         />
       )}
@@ -197,6 +196,7 @@ export function ViewTitleHeaderRightSide({
           setQueryBuilderMode={setQueryBuilderMode}
         />
       )}
+      <Box className={ViewTitleHeaderS.Divider} />
       {ToggleNativeQueryPreview.shouldRender({
         question,
         queryBuilderMode,
@@ -223,10 +223,11 @@ export function ViewTitleHeaderRightSide({
           />
         </Box>
       )}
-      {!isShowingNotebook && <QuestionSharingMenu question={question} />}
-      {!isShowingNotebook &&
-      PLUGIN_AI_ENTITY_ANALYSIS.canAnalyzeQuestion(question) ? (
-        <PLUGIN_AI_ENTITY_ANALYSIS.AIQuestionAnalysisButton />
+      {!isShowingNotebook && (hasSaveButton || isSaved) && (
+        <QuestionSharingMenu question={question} />
+      )}
+      {!isShowingNotebook && canAnalyzeQuestion(question.card().display) ? (
+        <AIQuestionAnalysisButton />
       ) : null}
       {isSaved && (
         <QuestionActions
@@ -240,11 +241,7 @@ export function ViewTitleHeaderRightSide({
         />
       )}
       {hasSaveButton && (
-        <Tooltip
-          disabled={!disabledSaveTooltip}
-          label={disabledSaveTooltip}
-          position="left"
-        >
+        <Tooltip disabled={!saveTooltip} label={saveTooltip} position="left">
           <Button
             className={ViewTitleHeaderS.SaveButton}
             data-testid="qb-save-button"
@@ -268,8 +265,13 @@ export function ViewTitleHeaderRightSide({
   );
 }
 
-function getDisabledSaveTooltip(isEditable: boolean) {
+function getSaveTooltip(question: Question) {
+  const query = question.query();
+  const { isEditable } = Lib.queryDisplayInfo(query);
   if (!isEditable) {
     return t`You don't have permission to save this question.`;
   }
+
+  const errors = Lib.validateTemplateTags(query);
+  return errors[0]?.message;
 }

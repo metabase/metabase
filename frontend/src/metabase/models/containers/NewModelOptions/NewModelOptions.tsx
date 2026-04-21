@@ -1,26 +1,21 @@
 import cx from "classnames";
 import type { Location } from "history";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { useListDatabasesQuery } from "metabase/api";
-import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
-import { Grid } from "metabase/common/components/Grid";
 import CS from "metabase/css/core/index.css";
-import Databases from "metabase/entities/databases";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import NewModelOption from "metabase/models/components/NewModelOption";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
-import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
-import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-
 import {
-  EducationalButton,
-  OptionsGridItem,
-  OptionsRoot,
-} from "./NewModelOptions.styled";
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { Group } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
+
+import { EducationalButton, OptionsRoot } from "./NewModelOptions.styled";
 
 const EDUCATIONAL_LINK = getLearnUrl("metabase-basics/getting-started/models");
 
@@ -29,10 +24,8 @@ interface NewModelOptionsProps {
 }
 
 const NewModelOptions = ({ location }: NewModelOptionsProps) => {
-  const { data, isFetching } = useListDatabasesQuery();
-  const databases = data?.data ?? [];
-  const hasDataAccess = getHasDataAccess(databases);
-  const hasNativeWrite = getHasNativeWrite(databases);
+  const hasDataAccess = useSelector(canUserCreateQueries);
+  const hasNativeWrite = useSelector(canUserCreateNativeQueries);
 
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
@@ -44,10 +37,6 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
-  if (isFetching) {
-    return <DelayedLoadingSpinner />;
-  }
-
   if (!hasDataAccess && !hasNativeWrite) {
     return (
       <div
@@ -58,14 +47,11 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
     );
   }
 
-  // Determine how many items will be shown based on permissions etc so we can make sure the layout adapts
-  const itemsCount = (hasDataAccess ? 1 : 0) + (hasNativeWrite ? 1 : 0);
-
   return (
     <OptionsRoot data-testid="new-model-options">
-      <Grid>
+      <Group justify="center">
         {hasDataAccess && (
-          <OptionsGridItem itemsCount={itemsCount}>
+          <div>
             <NewModelOption
               image="app/img/notebook_mode_illustration"
               title={t`Use the notebook editor`}
@@ -78,27 +64,27 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
                 collectionId,
               })}
             />
-          </OptionsGridItem>
+          </div>
         )}
         {hasNativeWrite && (
-          <OptionsGridItem itemsCount={itemsCount}>
+          <div>
             <NewModelOption
               image="app/img/sql_illustration"
               title={t`Use a native query`}
               description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
               to={Urls.newQuestion({
                 mode: "query",
-                type: "native",
+                DEPRECATED_RAW_MBQL_type: "native",
                 creationType: "native_question",
                 cardType: "model",
                 collectionId,
-                databaseId: lastUsedDatabaseId || undefined,
+                DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
               })}
               width={180}
             />
-          </OptionsGridItem>
+          </div>
         )}
-      </Grid>
+      </Group>
 
       {showMetabaseLinks && (
         <EducationalButton
@@ -113,8 +99,4 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 };
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-)(NewModelOptions);
+export default NewModelOptions;

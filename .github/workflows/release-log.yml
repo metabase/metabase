@@ -21,33 +21,36 @@ on:
         type: number # needs to be a number to pass variables
         required: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   update-release-log:
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     # don't run this workflow for forks
     if: ${{ github.event_name != 'push' || github.repository == 'metabase/metabase' }}
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
       - uses: actions/checkout@v4
         with:
           ref: master # this only works on master
           fetch-depth: 0 # we want all branches and tags
-      - name: Install Dependencies
-        run: yarn --cwd release --frozen-lockfile && npm i -g tsx
-      - name: Build release scripts
-        run: yarn --cwd release build
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+      - name: Install tsx
+        run: npm i -g tsx
       - name: Get version number
         uses: actions/github-script@v7
         with:
           script: | # js
             const {
-              getVersionFromReleaseBranch,
+              getMajorVersionFromRef,
               getMajorVersion,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
 
@@ -60,14 +63,15 @@ jobs:
             }
 
             // otherwise, get the version from the release branch name
-            const branch = context.payload.ref;
-            const version = getVersionFromReleaseBranch(branch);
-            const majorVersion = getMajorVersion(version);
+            const ref = context.payload.ref;
+            const majorVersion = getMajorVersionFromRef(ref);
 
-            console.log({ branch, version, majorVersion });
+            console.log({ ref, majorVersion });
             core.exportVariable('VERSION', majorVersion);
 
       - name: generate release Log
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd release && tsx ./src/release-log-run.ts $VERSION > v$VERSION.html
       - name: generate release channel log
         run: cd release && tsx ./src/release-channel-log.ts > channels.html

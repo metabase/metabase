@@ -5,7 +5,7 @@ import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 const { PEOPLE } = SAMPLE_DATABASE;
 
-describe("scenarios > dashboard > chained filter", { tags: "@flaky" }, () => {
+describe("scenarios > dashboard > chained filter", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -13,8 +13,8 @@ describe("scenarios > dashboard > chained filter", { tags: "@flaky" }, () => {
 
   for (const has_field_values of ["search", "list"]) {
     it(`limit ${has_field_values} options based on linked filter`, () => {
-      cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values }),
-        H.visitDashboard(ORDERS_DASHBOARD_ID);
+      cy.request("PUT", `/api/field/${PEOPLE.CITY}`, { has_field_values });
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
 
       H.editDashboard();
 
@@ -114,7 +114,7 @@ describe("scenarios > dashboard > chained filter", { tags: "@flaky" }, () => {
 
       H.filterWidget().contains("AK").click();
 
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover()
         .last()
         .within(() => {
@@ -148,7 +148,7 @@ describe("scenarios > dashboard > chained filter", { tags: "@flaky" }, () => {
       }
 
       H.filterWidget().contains("GA").click();
-      // eslint-disable-next-line no-unsafe-element-filtering
+      // eslint-disable-next-line metabase/no-unsafe-element-filtering
       H.popover()
         .last()
         .within(() => {

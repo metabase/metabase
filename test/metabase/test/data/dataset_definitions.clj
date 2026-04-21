@@ -166,7 +166,11 @@
                                                                           (for [[idx [username last-login password-text]] (m/indexed rows)]
                                                                             [username last-login password-text (if (zero? idx)
                                                                                                                  1
-                                                                                                                 idx)])))))
+                                                                                                                 idx)])))
+                                     ;; Self-referencing FKs require disabling FK checks during data loading on MySQL 9.6+,
+                                     ;; which enforces FK constraints row-by-row during bulk INSERT.
+                                     (fn [dbdef]
+                                       (assoc-in dbdef [:options :disable-fk-checks] true))))
 
 (tx/defdataset attempted-murders
   "A dataset for testing temporal values with and without timezones. Records of number of crow counts spoted and the
@@ -302,3 +306,24 @@
      [2 2.6 2.4]
      [3 3.6 3.3]
      [4 4.6 4.0]]]])
+
+(tx/defdataset nullable-db
+  [["nullable"
+    [{:field-name "a" :base-type :type/Integer, :pk? true :not-null? true}
+     {:field-name "b" :base-type :type/Integer, :not-null? false}
+     {:field-name "c" :base-type :type/Integer, :not-null? true}]
+    []]])
+
+(tx/defdataset default-expr-db
+  [["default_expr"
+    [{:field-name "a" :base-type :type/Integer, :pk? true}
+     {:field-name "b" :base-type :type/Integer, :default-expr "42"}
+     {:field-name "c" :base-type :type/Integer}]
+    []]])
+
+(tx/defdataset generated-column-db
+  [["generated_column"
+    [{:field-name "a" :base-type :type/Integer, :pk? true}
+     {:field-name "b" :base-type :type/Integer, :generated-expr "42"}
+     {:field-name "c" :base-type :type/Integer}]
+    []]])

@@ -3,18 +3,25 @@ import cx from "classnames";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
-import SnippetCollections from "metabase/entities/snippet-collections";
-import { Icon } from "metabase/ui";
+import { SnippetCollections } from "metabase/entities/snippet-collections";
+import { Ellipsified, Icon } from "metabase/ui";
 
-import CollectionOptionsButton from "./CollectionOptionsButton";
+import { SnippetCollectionMenu } from "./SnippetCollectionMenu";
 
 const ICON_SIZE = 16;
 
 class CollectionRow extends Component {
   render() {
-    const { snippetCollection: collection, setSnippetCollectionId } =
-      this.props;
-    const onSelectCollection = () => setSnippetCollectionId(collection.id);
+    const {
+      snippetCollection: collection,
+      setSnippetCollectionId,
+      setSidebarState,
+    } = this.props;
+    const onSelectCollection = () => {
+      if (setSnippetCollectionId) {
+        setSnippetCollectionId(collection.id);
+      }
+    };
 
     return (
       <div
@@ -30,16 +37,31 @@ class CollectionRow extends Component {
         )}
         {...(collection.archived ? undefined : { onClick: onSelectCollection })}
       >
-        <Icon name="folder" size={ICON_SIZE} style={{ opacity: 0.25 }} />
-        <span className={cx(CS.flexFull, CS.ml1, CS.textBold)}>
+        <Icon
+          name="folder"
+          size={ICON_SIZE}
+          style={{ opacity: 0.25 }}
+          className={CS.flexNoShrink}
+        />
+        <Ellipsified className={cx(CS.flexFull, CS.ml1, CS.textBold)} flex={1}>
           {collection.name}
-        </span>
-        <CollectionOptionsButton {...this.props} collection={collection} />
+        </Ellipsified>
+        <SnippetCollectionMenu
+          className={CS.flexNoShrink}
+          collection={collection}
+          onEditDetails={() => {
+            setSidebarState({ modalSnippetCollection: collection });
+          }}
+          onChangePermissions={() => {
+            setSidebarState({ permissionsModalCollectionId: collection.id });
+          }}
+        />
       </div>
     );
   }
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default SnippetCollections.load({
   id: (state, props) => props.item.id,
   wrapped: true,

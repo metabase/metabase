@@ -9,24 +9,24 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
-import { entityForObject } from "metabase/lib/schema";
+import { entityForObject } from "metabase/entities/utils";
 import { ObjectUnionSchema } from "metabase/schema";
+import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 
-import Actions from "./actions";
-import Bookmarks from "./bookmarks";
-import Collections from "./collections";
-import Dashboards from "./dashboards";
-import Pulses from "./pulses";
-import Questions from "./questions";
-import Segments from "./segments";
-import SnippetCollections from "./snippet-collections";
-import Snippets from "./snippets";
+import { Actions } from "./actions";
+import { Bookmarks } from "./bookmarks";
+import { Collections } from "./collections";
+import { Dashboards } from "./dashboards";
+import { Pulses } from "./pulses";
+import { Questions } from "./questions";
+import { Segments } from "./segments";
+import { SnippetCollections } from "./snippet-collections";
+import { Snippets } from "./snippets";
 
 /**
  * @deprecated use "metabase/api" instead
  */
-export default createEntity({
+export const Search = createEntity({
   name: "search",
   path: "/api/search",
 
@@ -163,13 +163,6 @@ export default createEntity({
       const entity = entityForObject(object);
       return entity
         ? (entity?.objectSelectors?.getColor?.(object) ?? null)
-        : warnEntityAndReturnObject(object);
-    },
-
-    getIcon: (object) => {
-      const entity = entityForObject(object);
-      return entity
-        ? (entity?.objectSelectors?.getIcon?.(object) ?? null)
         : warnEntityAndReturnObject(object);
     },
   },

@@ -1,5 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
-import { checkNotNull } from "metabase/lib/types";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
@@ -22,7 +22,7 @@ function getQueryWithTableDataSource() {
 function getQueryWithCardDataSource() {
   const cardId = 1;
   const card = Question.create({
-    dataset_query: Lib.toLegacyQuery(getQueryWithTableDataSource()),
+    dataset_query: Lib.toJsQuery(getQueryWithTableDataSource()),
   })
     .setId(cardId)
     .setDisplayName("Card")

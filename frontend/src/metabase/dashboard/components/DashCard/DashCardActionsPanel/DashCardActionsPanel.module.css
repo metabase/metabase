@@ -1,12 +1,13 @@
 .DashCardActionButtonsContainer {
   display: flex;
   align-items: center;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   line-height: 1px;
   gap: 0.5rem;
 }
 
 .DashCardActionsPanelContainer {
+  min-width: fit-content;
   padding: 0.125em 0.25em;
   background: var(--mb-color-bg-dashboard-card);
   transform: translateY(-50%);

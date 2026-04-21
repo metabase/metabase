@@ -3,8 +3,17 @@ import {
   NORMAL_USER_ID,
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { DashboardDetails } from "e2e/support/helpers";
+import type {
+  DashboardDetails,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers";
+import { uploadTranslationDictionaryViaAPI } from "e2e/support/helpers/e2e-content-translation-helpers";
+import {
+  ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY,
+  PRODUCTS_COUNT_BY_CATEGORY_PIE,
+} from "e2e/support/test-visualizer-data";
 import type { DictionaryArray } from "metabase-types/api";
+const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const { ACCOUNTS_ID, ACCOUNTS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
   SAMPLE_DATABASE;
@@ -14,11 +23,432 @@ import {
   germanFieldNames,
   germanFieldValues,
 } from "./constants";
-import { uploadTranslationDictionaryViaAPI } from "./helpers/e2e-content-translation-helpers";
 
 const { H } = cy;
 
-describe("scenarios > content translation > static embedding > dashboards", () => {
+describe("scenarios > content translation > static embeds > dashboards", () => {
+  describe("pivot table renamed column (metabase#63296)", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      uploadTranslationDictionaryViaAPI([
+        { locale: "fr", msgid: "Category", msgstr: "La catégorie" },
+        { locale: "fr", msgid: "Title", msgstr: "Le titre" },
+      ]);
+
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+
+      cy.signInAsAdmin();
+
+      H.createQuestion(ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY, {
+        idAlias: "productsCountByCreatedAtQuestionId",
+        wrapId: true,
+      });
+
+      H.createQuestion({
+        name: "Pivot table",
+        display: "pivot",
+        query: {
+          aggregation: [["count"]],
+          breakout: [
+            ["field", PRODUCTS.CATEGORY, null],
+            ["field", PRODUCTS.TITLE, null],
+          ],
+          "source-table": PRODUCTS_ID,
+        },
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: ["CATEGORY", "TITLE"],
+            columns: [],
+            values: ["count"],
+          },
+          column_settings: {
+            '["name", "CATEGORY"]': {
+              column_title: "Category",
+            },
+          },
+        },
+      });
+    });
+
+    it("should assign the proper colors to a pie", () => {
+      H.createDashboard({
+        name: "the_dashboard",
+      }).then(({ body: { id: dashboardId } }) => {
+        H.visitDashboard(dashboardId);
+        H.editDashboard();
+        H.openQuestionsSidebar();
+
+        H.sidebar().findByText("Pivot table").click();
+
+        H.saveDashboard();
+
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
+        });
+        H.publishChanges("dashboard", () => {});
+
+        H.visitEmbeddedPage(
+          {
+            resource: { dashboard: dashboardId as number },
+            params: {},
+          },
+          {
+            additionalHashOptions: {
+              locale: "fr",
+            },
+          },
+        );
+
+        cy.wait("@dashboard");
+
+        H.getDashboardCard(0).within(() => {
+          cy.findByText("La catégorie").should("exist");
+        });
+      });
+    });
+  });
+
+  describe("card titles and descriptions", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      uploadTranslationDictionaryViaAPI([
+        { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
+        { locale: "fr", msgid: "Doohickey", msgstr: "Le doohickey" },
+        { locale: "fr", msgid: "Gizmo", msgstr: "Le gizmo" },
+        { locale: "fr", msgid: "Widget", msgstr: "Le widget" },
+        {
+          locale: "fr",
+          msgid: "Products by Category (Pie)",
+          msgstr: "Produits par catégorie (Camembert)",
+        },
+        {
+          locale: "fr",
+          msgid: "A breakdown of products by category",
+          msgstr: "Une répartition des produits par catégorie",
+        },
+      ]);
+
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+
+      cy.signInAsAdmin();
+
+      H.createQuestion(ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY, {
+        idAlias: "productsCountByCreatedAtQuestionId",
+        wrapId: true,
+      });
+
+      H.createQuestion(
+        {
+          ...PRODUCTS_COUNT_BY_CATEGORY_PIE,
+          description: "A breakdown of products by category",
+        },
+        {
+          idAlias: "productsCountByCategoryPieQuestionId",
+          wrapId: true,
+        },
+      );
+    });
+
+    it("should translate guest embeds dashboard card titles and descriptions", () => {
+      H.createDashboard({
+        name: "the_dashboard",
+      }).then(({ body: { id: dashboardId } }) => {
+        H.visitDashboard(dashboardId);
+        H.editDashboard();
+        H.openQuestionsSidebar();
+
+        H.sidebar().findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).click();
+        H.saveDashboard();
+
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
+        });
+        H.publishChanges("dashboard", () => {});
+
+        H.visitEmbeddedPage(
+          {
+            resource: { dashboard: dashboardId as number },
+            params: {},
+          },
+          {
+            additionalHashOptions: {
+              locale: "fr",
+            },
+          },
+        );
+
+        cy.wait("@dashboard");
+        cy.wait("@cardQuery");
+
+        // Check that the title is translated
+        cy.findByText("Produits par catégorie (Camembert)").should("exist");
+
+        H.getDashboardCard(0).realHover().icon("info").realHover();
+        H.tooltip().within(() => {
+          // Check that the description is translated
+          cy.findByText("Une répartition des produits par catégorie").should(
+            "exist",
+          );
+        });
+      });
+    });
+  });
+
+  describe("values translation", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      uploadTranslationDictionaryViaAPI([
+        { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
+        { locale: "fr", msgid: "Doohickey", msgstr: "Le doohickey" },
+        { locale: "fr", msgid: "Gizmo", msgstr: "Le gizmo" },
+        { locale: "fr", msgid: "Widget", msgstr: "Le widget" },
+      ]);
+
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+
+      cy.signInAsAdmin();
+
+      H.createQuestion(ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY, {
+        idAlias: "productsCountByCreatedAtQuestionId",
+        wrapId: true,
+      });
+
+      H.createQuestion(
+        {
+          ...PRODUCTS_COUNT_BY_CATEGORY_PIE,
+          visualization_settings: {
+            "pie.rows": [
+              ["Widget", "#69C8C8"],
+              ["Gadget", "#C7EAEA"],
+              ["Gizmo", "#98D9D9"],
+              ["Doohickey", "#F3F3F4"],
+            ].map(([key, color]) => ({
+              key,
+              name: key,
+              originalName: key,
+              color,
+              defaultColor: false,
+              enabled: true,
+              hidden: false,
+              isOther: false,
+            })),
+          },
+        },
+        {
+          idAlias: "productsCountByCategoryPieQuestionId",
+          wrapId: true,
+        },
+      );
+    });
+
+    it("should assign the proper colors to a pie", () => {
+      H.createDashboard({
+        name: "the_dashboard",
+      }).then(({ body: { id: dashboardId } }) => {
+        H.visitDashboard(dashboardId);
+        H.editDashboard();
+        H.openQuestionsSidebar();
+
+        H.sidebar().findByText(PRODUCTS_COUNT_BY_CATEGORY_PIE.name).click();
+        H.saveDashboard();
+
+        H.openLegacyStaticEmbeddingModal({
+          resource: "dashboard",
+          resourceId: dashboardId,
+        });
+        H.publishChanges("dashboard", () => {});
+
+        H.visitEmbeddedPage(
+          {
+            resource: { dashboard: dashboardId as number },
+            params: {},
+          },
+          {
+            additionalHashOptions: {
+              locale: "fr",
+            },
+          },
+        );
+
+        cy.wait("@dashboard");
+        cy.wait("@cardQuery");
+
+        H.getDashboardCard(0).within(() => {
+          cy.findAllByText("Le gadget").should("exist");
+          cy.findAllByText("Le doohickey").should("exist");
+          cy.findAllByText("Le gizmo").should("exist");
+          cy.findAllByText("Le widget").should("exist");
+
+          // Verify colors
+          cy.findByTestId("chart-legend").within(() => {
+            cy.get("button [color]").then(($elements) => {
+              const actualColors = Array.from($elements).map((el) =>
+                el.getAttribute("color"),
+              );
+              expect(actualColors).to.deep.equal([
+                "#69C8C8",
+                "#C7EAEA",
+                "#98D9D9",
+                "#F3F3F4",
+              ]);
+            });
+          });
+        });
+      });
+    });
+
+    it("should translate guest embeds dashboard values on visualizer cards (metabase#62373)", () => {
+      H.visitDashboard(ORDERS_DASHBOARD_ID);
+
+      H.editDashboard();
+      H.removeDashboardCard(0);
+      H.openQuestionsSidebar();
+
+      // Add the regular question
+      H.sidebar()
+        .findByText(ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name)
+        .click();
+
+      // Add the visualizer question
+      H.clickVisualizeAnotherWay(
+        ORDERS_COUNT_BY_CREATED_AT_AND_PRODUCT_CATEGORY.name,
+      );
+      H.selectVisualization("bar");
+      H.saveDashcardVisualizerModal({ mode: "create" });
+      H.saveDashboard();
+
+      H.openLegacyStaticEmbeddingModal({
+        resource: "dashboard",
+        resourceId: ORDERS_DASHBOARD_ID,
+      });
+      H.publishChanges("dashboard", () => {});
+
+      H.visitEmbeddedPage(
+        {
+          resource: { dashboard: ORDERS_DASHBOARD_ID as number },
+          params: {},
+        },
+        {
+          additionalHashOptions: {
+            locale: "fr",
+          },
+        },
+      );
+
+      cy.wait("@dashboard");
+      cy.wait("@cardQuery");
+      cy.wait("@cardQuery");
+
+      H.getDashboardCard(0).within(() => {
+        cy.findAllByText("Le gadget").should("exist");
+        cy.findAllByText("Le doohickey").should("exist");
+        cy.findAllByText("Le gizmo").should("exist");
+        cy.findAllByText("Le widget").should("exist");
+      });
+
+      H.getDashboardCard(1).within(() => {
+        cy.findAllByText("Le gadget").should("exist");
+        cy.findAllByText("Le doohickey").should("exist");
+        cy.findAllByText("Le gizmo").should("exist");
+        cy.findAllByText("Le widget").should("exist");
+      });
+    });
+  });
+
+  describe("measure names", () => {
+    before(() => {
+      cy.intercept("POST", "/api/ee/content-translation/upload-dictionary").as(
+        "uploadDictionary",
+      );
+
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      uploadTranslationDictionaryViaAPI([
+        ...germanFieldNames,
+        ...germanFieldValues,
+        ...frenchNames,
+        ...frenchBooleanTranslations,
+      ]);
+      H.snapshot("with-translations");
+    });
+
+    beforeEach(() => {
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+      cy.intercept("GET", "/api/embed/dashboard/**/search/*").as("searchQuery");
+      H.restore("with-translations" as any);
+    });
+
+    it("should translate pivot table measure names", () => {
+      const pivotQuestionDetails: StructuredQuestionDetails = {
+        name: "Pivot Table Test",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ["field", ORDERS.QUANTITY, null],
+          ],
+        },
+        display: "pivot",
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: [ORDERS.CREATED_AT, ORDERS.QUANTITY] as any,
+            columns: [],
+            values: ["count"],
+          },
+          column_settings: {
+            '["name","count"]': {
+              column_title: "Price",
+            },
+          },
+        },
+      };
+
+      H.createQuestionAndDashboard({
+        questionDetails: pivotQuestionDetails,
+        dashboardDetails: {
+          name: "Pivot Dashboard Test",
+          enable_embedding: true,
+          embedding_params: {},
+        },
+      }).then(({ body: { dashboard_id } }) => {
+        H.visitEmbeddedPage(
+          {
+            resource: { dashboard: dashboard_id as number },
+            params: {},
+          },
+          {
+            additionalHashOptions: {
+              locale: "de",
+            },
+          },
+        );
+
+        cy.wait("@dashboard");
+
+        H.getDashboardCard(0).within(() => {
+          cy.findByText("Preis").should("exist");
+        });
+      });
+    });
+  });
+
   describe("filters and field values", () => {
     describe("ee", () => {
       before(() => {
@@ -29,7 +459,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
 
         H.restore();
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
 
         uploadTranslationDictionaryViaAPI([
           ...germanFieldNames,
@@ -250,7 +680,6 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           );
           cy.wait("@cardQuery");
 
-          H.filterWidget().contains("vrai");
           cy.findByTestId("table-body").within(() => {
             cy.findAllByText(/vrai/).should("have.length", 2);
             cy.findAllByText(/true/).should("have.length", 0);
@@ -361,6 +790,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
           // Search matches against untranslated text, hence "Fran" matching these names
           cy.findByPlaceholderText("Recherche dans la liste").type("Fran");
           cy.findByText(/Hammera Francite/).click();
+          cy.realPress("Escape");
           cy.findByTestId("parameter-value-dropdown")
             .button(/Mettre à jour le filtre/)
             .click();
@@ -373,6 +803,155 @@ describe("scenarios > content translation > static embedding > dashboards", () =
             cy.findByText(/Francesca Gleason/).should("not.exist");
             cy.findByText(/Francesca Hammes/).should("not.exist");
           });
+        });
+      });
+
+      it("translates selected static-list filter label in guest embed", () => {
+        const staticListFilter = {
+          name: "Number",
+          slug: "number",
+          id: "static-list-id",
+          type: "number/=",
+          sectionId: "number",
+          values_source_type: "static-list" as const,
+          values_source_config: {
+            values: [
+              ["1", "Gadget"],
+              ["2", "Widget"],
+            ],
+          },
+        };
+
+        cy.signInAsAdmin();
+        H.createQuestionAndDashboard({
+          questionDetails: {
+            name: "Expression Question",
+            query: {
+              "source-table": PEOPLE_ID,
+            },
+          },
+          dashboardDetails: {
+            parameters: [staticListFilter as any], // current API isn't set to accept string[][] as values
+            enable_embedding: true,
+            embedding_params: {
+              [staticListFilter.slug]: "enabled",
+            },
+          },
+        }).then(({ body: { id, card_id, dashboard_id } }) => {
+          // Map the parameter to an expression column so the filter widget
+          // is visible, but hasFields() returns false (testing the tc()
+          // fix in FormattedParameterValue)
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 9,
+                parameter_mappings: [
+                  {
+                    parameter_id: staticListFilter.id,
+                    card_id,
+                    target: [
+                      "dimension",
+                      ["expression", "Thing", { "base-type": "type/Integer" }],
+                      { "stage-number": 0 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+
+          H.visitEmbeddedPage(
+            {
+              resource: { dashboard: dashboard_id as number },
+              params: {},
+            },
+            {
+              setFilters: { [staticListFilter.slug]: "1" },
+              additionalHashOptions: {
+                locale: "de",
+              },
+            },
+          );
+
+          H.filterWidget().findByText("Gerät").should("be.visible");
+        });
+      });
+
+      it("translates selected static-list filter label in guest embed for values without labels", () => {
+        const staticListFilter = {
+          name: "String",
+          slug: "string",
+          id: "static-list-id",
+          type: "string/=",
+          sectionId: "string",
+          values_source_type: "static-list" as const,
+          values_source_config: {
+            values: [["Gadget"], ["Widget"]],
+          },
+        };
+
+        cy.signInAsAdmin();
+        H.createQuestionAndDashboard({
+          questionDetails: {
+            name: "Expression Question",
+            query: {
+              "source-table": PEOPLE_ID,
+            },
+          },
+          dashboardDetails: {
+            parameters: [staticListFilter as any], // current API isn't set to accept string[][] as values
+            enable_embedding: true,
+            embedding_params: {
+              [staticListFilter.slug]: "enabled",
+            },
+          },
+        }).then(({ body: { id, card_id, dashboard_id } }) => {
+          // Map the parameter to an expression column so the filter widget
+          // is visible, but hasFields() returns false (testing the tc()
+          // fix in FormattedParameterValue)
+          cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+            dashcards: [
+              {
+                id,
+                card_id,
+                row: 0,
+                col: 0,
+                size_x: 24,
+                size_y: 9,
+                parameter_mappings: [
+                  {
+                    parameter_id: staticListFilter.id,
+                    card_id,
+                    target: [
+                      "dimension",
+                      ["expression", "Thing", { "base-type": "type/Integer" }],
+                      { "stage-number": 0 },
+                    ],
+                  },
+                ],
+              },
+            ],
+          });
+
+          H.visitEmbeddedPage(
+            {
+              resource: { dashboard: dashboard_id as number },
+              params: {},
+            },
+            {
+              setFilters: { [staticListFilter.slug]: "Gadget" },
+              additionalHashOptions: {
+                locale: "de",
+              },
+            },
+          );
+
+          H.filterWidget().findByText("Gerät").should("be.visible");
         });
       });
     });
@@ -392,7 +971,7 @@ describe("scenarios > content translation > static embedding > dashboards", () =
     before(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       uploadTranslationDictionaryViaAPI(translations);
       cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
         enable_embedding: true,
@@ -482,4 +1061,78 @@ describe("scenarios > content translation > static embedding > dashboards", () =
   });
 
   describe("Boolean content", () => {});
+
+  describe("funnel chart with translated dimension values (metabase#71488)", () => {
+    beforeEach(() => {
+      H.restore();
+      cy.signInAsAdmin();
+      H.activateToken("pro-self-hosted");
+
+      uploadTranslationDictionaryViaAPI([
+        { locale: "fr", msgid: "Gadget", msgstr: "Le gadget" },
+        { locale: "fr", msgid: "Doohickey", msgstr: "Le doohickey" },
+        { locale: "fr", msgid: "Gizmo", msgstr: "Le gizmo" },
+        { locale: "fr", msgid: "Widget", msgstr: "Le widget" },
+      ]);
+
+      cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
+      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+
+      cy.signInAsAdmin();
+    });
+
+    it("should render funnel with translated dimension labels in a static embed", () => {
+      H.createQuestion({
+        name: "Products Funnel",
+        display: "funnel",
+        query: {
+          "source-table": PRODUCTS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", PRODUCTS.CATEGORY, null]],
+        },
+        visualization_settings: {
+          "funnel.metric": "count",
+          "funnel.dimension": "CATEGORY",
+        },
+      }).then(({ body: card }) => {
+        H.createDashboard({
+          name: "funnel_dashboard",
+        }).then(({ body: { id: dashboardId } }) => {
+          // Add the funnel card to the dashboard
+          H.addOrUpdateDashboardCard({
+            dashboard_id: dashboardId,
+            card_id: card.id,
+            card: { size_x: 16, size_y: 8 },
+          });
+          H.visitDashboard(dashboardId);
+          H.openLegacyStaticEmbeddingModal({
+            resource: "dashboard",
+            resourceId: dashboardId,
+          });
+          H.publishChanges("dashboard", () => {});
+          H.visitEmbeddedPage(
+            {
+              resource: { dashboard: dashboardId as number },
+              params: {},
+            },
+            {
+              additionalHashOptions: {
+                locale: "fr",
+              },
+            },
+          );
+          // The funnel should render without crashing
+          cy.findByTestId("funnel-chart", { timeout: 10_000 }).should("exist");
+          // Dimension labels should be translated
+          cy.findAllByTestId("funnel-chart-header").should("have.length", 4);
+          cy.findByTestId("funnel-chart").within(() => {
+            cy.findByText("Le gadget").should("exist");
+            cy.findByText("Le doohickey").should("exist");
+            cy.findByText("Le gizmo").should("exist");
+            cy.findByText("Le widget").should("exist");
+          });
+        });
+      });
+    });
+  });
 });

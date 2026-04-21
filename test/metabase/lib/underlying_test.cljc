@@ -98,14 +98,14 @@
                 (lib.underlying/top-level-column query (first cols)))))
       (testing "CATEGORY"
         (is (=? {:name                         "CATEGORY"
-                 :metabase.lib.join/join-alias "P"
+                 :lib/join-alias "P"
                  :lib/source                   :source/joins
                  :lib/breakout?                true}
                 (lib.underlying/top-level-column query (second cols))))))))
 
 (deftest ^:parallel top-level-column-rename-options-test
   (testing `lib.underlying/top-level-column
-    (testing "respects rename-superflous-options?"
+    (testing "respects rename-superfluous-options?"
       (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                       (lib/aggregate (lib/sum (meta/field-metadata :orders :subtotal)))
                       (lib/breakout (-> (meta/field-metadata :orders :created-at)
@@ -123,9 +123,9 @@
         (doseq [[col key-name] [[temporal-col "temporal-unit"]
                                 [binned-col "binning"]]
                 rename?        [true false]]
-          (let [orig-key      (keyword "metabase.lib.field" key-name)
+          (let [orig-key      (keyword "lib" key-name)
                 renamed-key   (keyword "metabase.lib.underlying" key-name)
-                top-level-col (lib.underlying/top-level-column query col :rename-superflous-options? rename?)]
+                top-level-col (lib.underlying/top-level-column query col :rename-superfluous-options? rename?)]
             (testing (str "\nrename? " rename?
                           "\norig-key " orig-key
                           "\nrenamed-key " renamed-key
@@ -171,7 +171,7 @@
                 :lib/breakout?      true
                 ::breakout-sourced? true}
                {:name                         "CATEGORY"
-                :metabase.lib.join/join-alias "P"
+                :lib/join-alias "P"
                 :lib/source                   :source/joins
                 :lib/breakout?                true
                 ::breakout-sourced?           true}]
@@ -183,7 +183,7 @@
                 ::breakout-sourced? true}
                {:name                         "CATEGORY"
                 :lib/original-join-alias      "P"
-                :metabase.lib.join/join-alias (symbol "nil #_\"key is not present.\"")
+                :lib/join-alias (symbol "nil #_\"key is not present.\"")
                 :lib/source                   :source/previous-stage
                 :lib/breakout?                false
                 ::breakout-sourced?           true}]

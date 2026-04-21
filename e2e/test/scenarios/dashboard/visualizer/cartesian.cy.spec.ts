@@ -116,7 +116,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
       });
     });
 
-    H.popover().findByLabelText("#DCDFE0").click();
+    H.popover().findByLabelText("#F9D45C").click();
 
     const assertUpdatedVizSettingsApplied = () => {
       H.goalLine().should("exist");
@@ -125,7 +125,7 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
         cy.findByText("Series B").should("exist");
         cy.findByText(PRODUCTS_COUNT_BY_CREATED_AT.name).should("not.exist");
       });
-      H.chartPathWithFillColor("#DCDFE0");
+      H.chartPathWithFillColor("#F9D45C");
     };
 
     H.modal().within(() => {
@@ -334,6 +334,23 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
     });
   });
 
+  it("should support trend lines (metabase #61197)", () => {
+    createDashboardWithVisualizerDashcards();
+    H.editDashboard();
+
+    H.showDashcardVisualizerModalSettings(0);
+
+    H.modal().within(() => {
+      cy.findByText("Trend line").click();
+      H.trendLine().should("have.length", 2);
+      cy.findByText("Save").click();
+    });
+
+    H.getDashboardCard(0).within(() => {
+      H.trendLine().should("have.length", 2);
+    });
+  });
+
   describe("timeseries breakout", () => {
     it("should automatically use new columns whenever possible", () => {
       const Q1_NAME = ORDERS_COUNT_BY_CREATED_AT.name;
@@ -359,8 +376,8 @@ describe("scenarios > dashboard > visualizer > cartesian", () => {
 
         H.echartsContainer().within(() => {
           // x-axis labels
-          cy.findByText("January 2023").should("exist");
           cy.findByText("January 2026").should("exist");
+          cy.findByText("January 2029").should("exist");
           // y-axis labels
           cy.findByText("600").should("exist");
           cy.findByText("10").should("exist");

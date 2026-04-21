@@ -21,7 +21,7 @@ describe("scenarios > models > create", () => {
     navigateToNewModelPage();
 
     // Clicking on metadata should not work until we run a query
-    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
+    cy.findByTestId("editor-tabs-columns").should("be.disabled");
 
     H.NativeEditor.focus().type("select 42");
     cy.findByTestId("native-query-editor-container").icon("play").click();
@@ -51,7 +51,8 @@ describe("scenarios > models > create", () => {
     cy.findByTestId("new-model-options")
       .findByText("Use the notebook editor")
       .click();
-    H.entityPickerModal().findByText("People").click();
+    H.miniPicker().findByText("Sample Database").click();
+    H.miniPicker().findByText("People").click();
     cy.findByTestId("dataset-edit-bar").button("Save").click();
     cy.findByTestId("save-question-modal")
       .should("contain", "Save model")

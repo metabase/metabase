@@ -1,13 +1,13 @@
-import { goBack, push } from "react-router-redux";
+import { push } from "react-router-redux";
 import _ from "underscore";
 
-import TimelineEvents from "metabase/entities/timeline-events";
-import Timelines from "metabase/entities/timelines";
-import { connect } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { TimelineEvents } from "metabase/entities/timeline-events";
+import { Timelines } from "metabase/entities/timelines";
+import type { State } from "metabase/redux/store";
 import EditEventModal from "metabase/timelines/common/components/EditEventModal";
+import { connect } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
@@ -33,14 +33,15 @@ const timelineEventProps = {
 const mapDispatchToProps = (dispatch: any) => ({
   onSubmit: async (event: TimelineEvent, timeline?: Timeline) => {
     await dispatch(TimelineEvents.actions.update(event));
-    timeline && dispatch(push(Urls.timelineInCollection(timeline)));
+    if (timeline) {
+      dispatch(push(Urls.timelineInCollection(timeline)));
+    }
   },
   onArchive: async (event: TimelineEvent, timeline?: Timeline) => {
     await dispatch(TimelineEvents.actions.setArchived(event, true));
-    timeline && dispatch(push(Urls.timelineInCollection(timeline)));
-  },
-  onCancel: () => {
-    dispatch(goBack());
+    if (timeline) {
+      dispatch(push(Urls.timelineInCollection(timeline)));
+    }
   },
 });
 

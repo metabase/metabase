@@ -1,8 +1,7 @@
 import { c, t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
-import DateTime from "metabase/common/components/DateTime";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { DateTime } from "metabase/common/components/DateTime";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
 import {
   ColumnHeader,
@@ -12,7 +11,8 @@ import {
   TableColumn,
 } from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
 import { Columns } from "metabase/common/components/ItemsTable/Columns";
-import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
+import { Ellipsified, FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
 import type { SortingOptions } from "metabase-types/api/sorting";
 
 import type {
@@ -97,7 +97,7 @@ export const CleanupCollectionTable = ({
             {/* Select */}
             <Columns.Select.Cell
               testIdPrefix="clean-up-table"
-              icon={item.getIcon()}
+              icon={getIcon(item)}
               isPinned={false}
               isSelected={getIsSelected(item)}
               handleSelectionToggled={() => onToggleSelected(item)}
@@ -105,10 +105,7 @@ export const CleanupCollectionTable = ({
             {/* Name */}
             <ItemCell data-testid="clean-up-table-collection">
               <Flex align="center" gap="sm">
-                <FixedSizeIcon
-                  name={item.getIcon().name}
-                  color="var(--mb-color-brand)"
-                />
+                <FixedSizeIcon name={getIcon(item).name} c="brand" />
                 <Ellipsified>{item.name}</Ellipsified>
               </Flex>
             </ItemCell>

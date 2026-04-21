@@ -35,6 +35,7 @@ import barNonLinearNumericXAxis from "./bar-non-linear-numeric-x-axis.json";
 import barOrdinalXScaleAutoRotatedLabels from "./bar-ordinal-x-scale-auto-rotated-labels.json";
 import barOrdinalXScale from "./bar-ordinal-x-scale.json";
 import barRelativeDatetimeOrdinalScale from "./bar-relative-datetime-ordinal-scale.json";
+import barSplitPanelsOrdinalMixedTicksWidthsPerPanel from "./bar-split-panels-ordinal-mixed-ticks-widths-per-panel.json";
 import barStackLinearXAxis from "./bar-stack-linear-x-axis.json";
 import barStackedAllLabelsTimeseriesWithGap45717 from "./bar-stacked-all-labels-timeseries-with-gap-45717.json";
 import barStackedLabelsNullVsZero from "./bar-stacked-labels-null-vs-zero.json";
@@ -61,6 +62,7 @@ import combinedWithInvalidSettings from "./combined-with-invalid-settings.json";
 import comboDataLabelsAutoCompactnessPropagatesFromLine from "./combo-data-labels-auto-compactness-propagates-from-line.json";
 import comboDataLabelsAutoCompactnessPropagatesFromTotals from "./combo-data-labels-auto-compactness-propagates-from-totals.json";
 import comboHistogram from "./combo-histogram.json";
+import comboSplitPanelsMixedSeriesDisplaySettings from "./combo-split-panels-mixed-series-display-settings.json";
 import comboStackedBarsAreasNormalized from "./combo-stacked-bars-areas-normalized.json";
 import comboStackedBarsAreas from "./combo-stacked-bars-areas.json";
 import compactXAxisDoesNotWork38917 from "./compact-x-axis-does-not-work-38917.json";
@@ -78,6 +80,7 @@ import histogramTicks90Degrees from "./histogram-ticks-90-degrees.json";
 import imageCutOff37275 from "./image-cut-off-37275.json";
 import incorrectLabelYAxisSplit41285 from "./incorrect-label-y-axis-split-41285.json";
 import lineChartBrokenDimensionsMetricsSettings from "./line-chart-broken-dimensions-metrics-settings.json";
+import lineChartSplitPanelsTimeseriesDifferentRanges from "./line-chart-split-panels-timeseries-different-ranges.json";
 import lineCustomYAxisRangeEqualsExtents from "./line-custom-y-axis-range-equals-extents.json";
 import lineFullyNullDimension37902 from "./line-fully-null-dimension-37902.json";
 import lineLinearXScaleUnsorted from "./line-linear-x-scale-unsorted.json";
@@ -103,6 +106,7 @@ import powYScaleCustomYAxisRange from "./pow-y-scale-custom-y-axis-range.json";
 import safariNonIanaTimezoneRepro44128 from "./safari-non-iana-timezone-repro-44128.json";
 import seriesOrderSettingsDoNotMatchSeriesCount from "./series-order-settings-do-not-match-series-count.json";
 import stackedChartCustomYAxisRange from "./stacked-chart-custom-y-axis-range.json";
+import symlogDecimals from "./symlog-decimals.json";
 import ticksNativeWeekWithGapLongRange from "./ticks-native-week-with-gap-long-range.json";
 import ticksNativeWeekWithGapShortRange from "./ticks-native-week-with-gap-short-range.json";
 import timeSeriesTicksCompactFormattingMixedTimezones from "./time-series-ticks-compact-formatting-mixed-timezones.json";
@@ -248,10 +252,14 @@ export const data = {
   combinedWithInvalidSettings,
   stackedChartCustomYAxisRange,
   seriesOrderSettingsDoNotMatchSeriesCount,
+  symlogDecimals,
   trendGoalLinesWithScalingPowScaleCustomRange,
   barStackedAllLabelsTimeseriesWithGap45717,
   offsetBasedTimezone47835,
   barNonLinearNumericXAxis,
   barWidthDstTimezones56424,
   visualizerTimeseriesDifferentUnits,
+  lineChartSplitPanelsTimeseriesDifferentRanges,
+  comboSplitPanelsMixedSeriesDisplaySettings,
+  barSplitPanelsOrdinalMixedTicksWidthsPerPanel,
 };

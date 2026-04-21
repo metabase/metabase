@@ -3,17 +3,24 @@ import fetchMock from "fetch-mock";
 
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import { downloadDataset } from "metabase/redux/downloads";
+import type { Dispatch, DownloadsState } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { HIDE_DELAY } from "metabase/status/hooks/use-status-visibility";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
-import type { Dispatch, Download } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { DownloadsStatus } from "./DownloadsStatus";
 
-jest.mock("metabase/lib/dom", () => ({
-  ...jest.requireActual("metabase/lib/dom"),
+jest.mock("metabase/utils/dom", () => ({
+  ...jest.requireActual("metabase/utils/dom"),
   openSaveDialog: jest.fn(),
+}));
+
+jest.mock("metabase/utils/iframe", () => ({
+  ...jest.requireActual("metabase/utils/iframe"),
+  // For some reason, this is undefined. I think it's because we're requiring while mocking, but
+  // It's unclear.
+  isWithinIframe: () => false,
 }));
 
 const getDownloadDatasetAction = () =>
@@ -27,10 +34,15 @@ const getDownloadDatasetAction = () =>
   });
 
 interface SetupOpts {
-  downloads?: Download[];
+  downloads?: DownloadsState;
 }
 
-const setup = ({ downloads = [] }: SetupOpts = {}) => {
+const setup = ({
+  downloads = {
+    datasetRequests: [],
+    isDownloadingToImage: false,
+  },
+}: SetupOpts = {}) => {
   const state = createMockState({
     downloads,
   });
@@ -126,11 +138,14 @@ describe("DownloadsStatus", () => {
     expect(screen.getByRole("status")).toBeInTheDocument();
 
     // Dismiss the error
-    userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    const dismissPromise = userEvent.click(
+      screen.getByRole("button", { name: "Dismiss" }),
+    );
 
     await waitFor(() =>
       expect(screen.queryByRole("status")).not.toBeInTheDocument(),
     );
+    await dismissPromise;
   });
 
   it("should collapse and expand", async () => {
@@ -155,7 +170,9 @@ describe("DownloadsStatus", () => {
 
     expect(screen.getByText("Results for test card")).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("button", { name: "Collapse" }));
+    const collapsePromise = userEvent.click(
+      screen.getByRole("button", { name: "Collapse" }),
+    );
 
     // Shows smaller status without text
     await waitFor(() => {
@@ -163,6 +180,7 @@ describe("DownloadsStatus", () => {
         screen.queryByText("Results for test card"),
       ).not.toBeInTheDocument();
     });
+    await collapsePromise;
     expect(screen.getByRole("status")).toBeInTheDocument();
 
     act(() => {
@@ -174,9 +192,10 @@ describe("DownloadsStatus", () => {
     expect(screen.queryByText("test.csv")).not.toBeInTheDocument();
 
     // Expand by clicking on the smaller status
-    userEvent.click(screen.getByRole("status"));
+    const expandPromise = userEvent.click(screen.getByRole("status"));
 
     // Now status shows file names
     expect(await screen.findByText("test.csv")).toBeInTheDocument();
+    await expandPromise;
   });
 });

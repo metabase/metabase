@@ -3,14 +3,14 @@
    [clojure.test :refer :all]
    [metabase-enterprise.action-v2.models.undo :as undo]
    [metabase-enterprise.action-v2.test-util :as action-v2.tu]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
-(deftest diff-keys-test
+(deftest ^:parallel diff-keys-test
   (testing "Detect which keys have changes"
     (is (= [:a :b :c] (#'undo/diff-keys
                        nil

@@ -1,14 +1,11 @@
 (ns metabase.sso.google-test
   (:require
    [clojure.test :refer :all]
-   [metabase.channel.email-test :as et]
-   [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.sso.google :as google]
    [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.test.fixtures :as fixtures]))
 
 (set! *warn-on-reflection* true)
 
@@ -56,26 +53,7 @@
            clojure.lang.ExceptionInfo
            (sso.settings/google-auth-auto-create-accounts-domain! "metabase.com, example.com"))))))
 
-(deftest google-auth-create-new-user!-test
-  (mt/with-model-cleanup [:model/User]
-    (with-no-sso-google-token!
-      (testing "shouldn't be allowed to create a new user via Google Auth if their email doesn't match the auto-create accounts domain"
-        (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"]
-          (is (thrown?
-               clojure.lang.ExceptionInfo
-               (#'google/google-auth-create-new-user! {:first_name "Rasta"
-                                                       :last_name  "Toucan"
-                                                       :email      "rasta@metabase.com"})))))
-
-      (testing "should totally work if the email domains match up"
-        (et/with-fake-inbox
-          (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
-                                             admin-email                             "rasta@toucans.com"]
-            (let [user (#'google/google-auth-create-new-user! {:first_name "Rasta"
-                                                               :last_name  "Toucan"
-                                                               :email      "rasta@sf-toucannery.com"})]
-              (is (= {:first_name "Rasta", :last_name "Toucan", :email "rasta@sf-toucannery.com"}
-                     (select-keys user [:first_name :last_name :email]))))))))))
+;; google-auth-create-new-user! test removed - function no longer exists, moved to provider system
 
 ;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
 
@@ -130,41 +108,6 @@
 
 ;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
 
-(deftest google-auth-fetch-or-create-user!-test
-  (mt/with-model-cleanup [:model/User]
-    (with-no-sso-google-token!
-      (testing "test that an existing user can log in with Google auth even if the auto-create accounts domain is different from"
-        (mt/with-temp [:model/User _ {:email "cam@sf-toucannery.com"}]
-          (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-            (testing "their account should return a UserInstance"
-              (is (mi/instance-of? :model/User
-                                   (#'google/google-auth-fetch-or-create-user!
-                                    "Cam" "Saul" "cam@sf-toucannery.com")))))))
+;; google-auth-fetch-or-create-user! test removed - function no longer exists, moved to provider system
 
-      (testing "test that a user that doesn't exist with a *different* domain than the auto-create accounts domain gets an exception"
-        (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain nil
-                                           admin-email                             "rasta@toucans.com"]
-          (is (thrown?
-               clojure.lang.ExceptionInfo
-               (#'google/google-auth-fetch-or-create-user!
-                "Rasta" "Can" "rasta@sf-toucannery.com")))))
-
-      (testing "test that a user that doesn't exist with the *same* domain as the auto-create accounts domain means a new user gets created"
-        (et/with-fake-inbox
-          (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
-                                             admin-email                             "rasta@toucans.com"]
-            (is (mi/instance-of? :model/User
-                                 (#'google/google-auth-fetch-or-create-user!
-                                  "Rasta" "Toucan" "rasta@sf-toucannery.com")))))))))
-
-(deftest google-auth-fetch-or-create-user!-updated-name-test
-  (testing "test that a existing user gets an updated name when calling google-auth-fetch-or-create-user!"
-    (et/with-fake-inbox
-      (mt/with-temporary-setting-values [google-auth-auto-create-accounts-domain "sf-toucannery.com"
-                                         admin-email                             "rasta@toucans.com"]
-        (mt/with-model-cleanup [:model/User]
-          (#'google/google-auth-fetch-or-create-user! "Rasta" "Toucan" "rasta@sf-toucannery.com")
-          (#'google/google-auth-fetch-or-create-user! "Basta" "Boucan" "rasta@sf-toucannery.com")
-          (let [user (t2/select-one [:model/User :first_name :last_name] :email "rasta@sf-toucannery.com")]
-            (is (= "Basta" (:first_name user)))
-            (is (= "Boucan" (:last_name user)))))))))
+;; google-auth-fetch-or-create-user!-updated-name-test removed - function no longer exists, moved to provider system

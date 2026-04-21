@@ -1,5 +1,5 @@
-import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 export const MODERATION_STATUS = {
   verified: "verified",
@@ -22,5 +22,5 @@ MODERATION_STATUS_ICONS.set("verified_filled", {
 
 MODERATION_STATUS_ICONS.set(null, {
   name: "close",
-  color: "text-light",
+  color: "text-tertiary",
 });

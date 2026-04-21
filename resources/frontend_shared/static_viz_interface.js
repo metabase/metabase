@@ -36,17 +36,6 @@ function funnel(data, settings, tokenFeatures) {
   });
 }
 
-/**
- * @deprecated use javascript_visualization instead
- */
-function progress(data, settings, instanceColors, tokenFeatures) {
-  return StaticViz.LegacyRenderChart("progress", {
-    data: JSON.parse(data),
-    settings: JSON.parse(settings),
-    colors: JSON.parse(instanceColors),
-    tokenFeatures: JSON.parse(tokenFeatures),
-  });
-}
 
 function javascript_visualization(rawSeries, dashcardSettings, options) {
   const content = StaticViz.RenderChart(

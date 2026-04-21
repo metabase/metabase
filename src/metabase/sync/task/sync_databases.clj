@@ -11,6 +11,7 @@
    [java-time.api :as t]
    [metabase.audit-app.core :as audit]
    [metabase.config.core :as config]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -20,6 +21,7 @@
    [metabase.sync.schedules :as sync.schedules]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.task.core :as task]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.log :as log]
@@ -86,13 +88,20 @@
                   (catch Throwable e
                     e))]
       (log/warnf ex "Cannot sync Database %s: %s" (:name database) (ex-message ex))
-      (do
-        (sync-metadata/sync-db-metadata! database)
-        ;; only run analysis if this is a "full sync" database
-        (when (:is_full_sync database)
-          (let [results (analyze/analyze-db! database)]
-            (when (and (:refingerprint database) (should-refingerprint-fields? results))
-              (analyze/refingerprint-db! database))))))))
+      (database-routing/with-database-routing-off
+        (let [db-id            (:id database)
+              metadata-results (tracing/with-span :sync "sync.metadata" {:db/id db-id}
+                                 (sync-metadata/sync-db-metadata! database))
+              analyze-results  (when (:is_full_sync database)
+                                 (tracing/with-span :sync "sync.analyze" {:db/id db-id}
+                                   (analyze/analyze-db! database)))
+              refingerprint-results (when (and (:refingerprint database)
+                                               (should-refingerprint-fields? analyze-results))
+                                      (tracing/with-span :sync "sync.refingerprint" {:db/id db-id}
+                                        (analyze/refingerprint-db! database)))]
+          (cond-> {:metadata-results metadata-results}
+            analyze-results (assoc :analyze-results analyze-results)
+            refingerprint-results (assoc :refingerprint-results refingerprint-results)))))))
 
 (defn- sync-and-analyze-database!
   "The sync and analyze database job, as a function that can be used in a test"

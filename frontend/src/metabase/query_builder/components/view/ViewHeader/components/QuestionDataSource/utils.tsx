@@ -1,10 +1,10 @@
 import { type ReactElement, isValidElement } from "react";
-import { match } from "ts-pattern";
 
 import { TableInfoIcon } from "metabase/common/components/MetadataInfo/TableInfoIcon/TableInfoIcon";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import type { IconName } from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
+import { isNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Table from "metabase-lib/v1/metadata/Table";
@@ -148,7 +148,8 @@ function QuestionTableBadges({
   hasLink,
   isLast,
 }: QuestionTableBadgesProps) {
-  const badgeInactiveColor = isLast && !subHead ? "text-dark" : "text-light";
+  const badgeInactiveColor =
+    isLast && !subHead ? "text-primary" : "text-tertiary";
 
   const parts = tables.map((table) => (
     <HeadBreadcrumbs.Badge
@@ -162,8 +163,8 @@ function QuestionTableBadges({
           <span className={S.IconWrapper}>
             <TableInfoIcon
               table={table}
-              icon="info_filled"
-              size={12}
+              icon="info"
+              size={16}
               position="bottom"
               className={HeaderS.HeaderBadgeIcon}
             />
@@ -194,10 +195,5 @@ function getTableURL(table: Table) {
 }
 
 export function getQuestionIcon(question: Question): IconName {
-  return match(question.type())
-    .returnType<IconName>()
-    .with("question", () => "table2")
-    .with("model", () => "model")
-    .with("metric", () => "metric")
-    .exhaustive();
+  return getIcon({ model: "card", type: question.type() }).name;
 }

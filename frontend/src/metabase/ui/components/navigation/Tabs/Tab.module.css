@@ -31,13 +31,13 @@
   }
 
   &:disabled {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
     opacity: 1;
   }
 
   &[data-active="true"] {
     color: var(--mb-color-text-brand);
-    border-color: var(--mb-color-background-brand);
+    border-color: var(--mb-color-brand);
   }
 }
 

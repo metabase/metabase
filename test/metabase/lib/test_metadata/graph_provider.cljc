@@ -1,11 +1,13 @@
 (ns metabase.lib.test-metadata.graph-provider
+  (:refer-clojure :exclude [get-in])
   (:require
    #?@(:clj
        ([pretty.core :as pretty]))
    [clojure.core.protocols]
    [clojure.test :refer [deftest is]]
    [medley.core :as m]
-   [metabase.lib.metadata.protocols :as lib.metadata.protocols]))
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.util.performance :refer [get-in]]))
 
 (defn- graph-database [metadata-graph]
   (dissoc metadata-graph :tables))
@@ -14,50 +16,28 @@
   (m/find-first #(= (:id %) table-id)
                 (:tables metadata-graph)))
 
-(defn- graph-table [metadata-graph table-id]
-  (dissoc (find-table metadata-graph table-id) :fields :metrics :segments))
-
-(defn- graph-field [metadata-graph field-id]
-  (some (fn [table-metadata]
-          (m/find-first #(= (:id %) field-id)
-                        (:fields table-metadata)))
-        (:tables metadata-graph)))
-
-(defn- graph-segment [metadata-graph segment-id]
-  (some (fn [table-metadata]
-          (m/find-first #(= (:id %) segment-id)
-                        (:segments table-metadata)))
-        (:tables metadata-graph)))
-
-(defn- graph-card [_metadata-graph _card-id]
-  ;; not implemented for the simple graph metadata provider.
-  nil)
-
-(defn- graph-metadatas [metadata-graph metadata-type ids]
-  (let [f (case metadata-type
-            :metadata/table         graph-table
-            :metadata/column        graph-field
-            :metadata/segment       graph-segment
-            :metadata/card          graph-card)]
+(defn- graph-metadatas
+  [metadata-graph {metadata-type :lib/type, :keys [table-id], :as metadata-spec}]
+  (let [objects (case metadata-type
+                  :metadata/table   (:tables metadata-graph)
+                  :metadata/column  (if table-id
+                                      (:fields (find-table metadata-graph table-id))
+                                      (mapcat :fields (:tables metadata-graph)))
+                  :metadata/metric  (if table-id
+                                      (:metrics (find-table metadata-graph table-id))
+                                      (mapcat :metrics (:tables metadata-graph)))
+                  :metadata/segment (if table-id
+                                      (:segments (find-table metadata-graph table-id))
+                                      (mapcat :segments (:tables metadata-graph)))
+                  #_else
+                  ;; not implemented for the simple graph metadata provider.
+                  nil)]
     (into []
-          (keep (fn [id]
-                  (f metadata-graph id)))
-          ids)))
-
-(defn- graph-tables [metadata-graph]
-  (for [table-metadata (:tables metadata-graph)]
-    (dissoc table-metadata :fields :metrics :segments)))
-
-(defn- graph-metadatas-for-table [metadata-graph metadata-type table-id]
-  (let [k     (case metadata-type
-                :metadata/column        :fields
-                :metadata/metric        :cards
-                :metadata/segment       :segments)
-        table (find-table metadata-graph table-id)]
-    (cond->> (get table k)
-      (= metadata-type :metadata/metric)
-      (filterv #(and (= (:type %) :metric)
-                     (not (:archived %)))))))
+          (comp (lib.metadata.protocols/default-spec-filter-xform metadata-spec)
+                (map #(assoc % :lib/type metadata-type))
+                (map #(cond-> %
+                        (= metadata-type :metadata/table) (dissoc :fields :metrics :segments))))
+          objects)))
 
 (defn- graph-setting [metadata-graph setting-name]
   (get-in metadata-graph [:settings (keyword setting-name)]))
@@ -67,15 +47,8 @@
   lib.metadata.protocols/MetadataProvider
   (database [_this]
     (graph-database metadata-graph))
-  (metadatas [_this metadata-type ids]
-    (graph-metadatas metadata-graph metadata-type ids))
-  (tables [_this]
-    (graph-tables metadata-graph))
-  (metadatas-for-table [_this metadata-type table-id]
-    (graph-metadatas-for-table metadata-graph metadata-type table-id))
-  (metadatas-for-card [_this _metadata-type _card-id]
-    ;; not implemented for the simple graph metadata provider
-    nil)
+  (metadatas [_this metadata-spec]
+    (graph-metadatas metadata-graph metadata-spec))
   (setting [_this setting-key]
     (graph-setting metadata-graph setting-key))
 

@@ -2,7 +2,7 @@
 
 import { schema } from "normalizr";
 
-import { entityTypeForObject } from "metabase/lib/schema";
+import { entityTypeForObject } from "metabase/entities/utils";
 import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
@@ -13,9 +13,11 @@ export const CacheConfigSchema = new schema.Entity("cacheConfigs");
 export const IndexedEntitySchema = new schema.Entity("indexedEntities");
 export const BookmarkSchema = new schema.Entity("bookmarks");
 export const DocumentSchema = new schema.Entity("documents");
+export const TransformSchema = new schema.Entity("transforms");
 export const DashboardSchema = new schema.Entity("dashboards");
 export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
+export const GroupSchema = new schema.Entity("groups");
 
 export const DatabaseSchema = new schema.Entity("databases");
 export const SchemaSchema = new schema.Entity("schemas");
@@ -67,7 +69,10 @@ export const FieldSchema = new schema.Entity("fields", undefined, {
   },
 });
 
+export const ForeignKeySchema = new schema.Entity("foreignKeys");
 export const SegmentSchema = new schema.Entity("segments");
+export const MeasureSchema = new schema.Entity("measures");
+export const MetricSchema = new schema.Entity("metrics");
 export const PersistedModelSchema = new schema.Entity("persistedModels");
 export const SnippetSchema = new schema.Entity("snippets");
 export const SnippetCollectionSchema = new schema.Entity("snippetCollections");
@@ -91,7 +96,9 @@ TableSchema.define({
   fks: [{ origin: FieldSchema, destination: FieldSchema }],
   metrics: [QuestionSchema],
   segments: [SegmentSchema],
+  measures: [MeasureSchema],
   schema: SchemaSchema,
+  collection: CollectionSchema,
 });
 
 FieldSchema.define({
@@ -101,7 +108,16 @@ FieldSchema.define({
   dimensions: [{ human_readable_field: FieldSchema }],
 });
 
+ForeignKeySchema.define({
+  origin: FieldSchema,
+  destination: FieldSchema,
+});
+
 SegmentSchema.define({
+  table: TableSchema,
+});
+
+MeasureSchema.define({
   table: TableSchema,
 });
 
@@ -122,6 +138,8 @@ export const ENTITIES_SCHEMA_MAP = {
   pulses: PulseSchema,
   collections: CollectionSchema,
   segments: SegmentSchema,
+  measures: MeasureSchema,
+  metrics: MetricSchema,
   snippets: SnippetSchema,
   snippetCollections: SnippetCollectionSchema,
   documents: DocumentSchema,
@@ -135,3 +153,12 @@ export const ObjectUnionSchema = new schema.Union(
 CollectionSchema.define({
   items: [ObjectUnionSchema],
 });
+
+export const QueryMetadataSchema = {
+  databases: [DatabaseSchema],
+  tables: [TableSchema],
+  fields: [FieldSchema],
+  snippets: [SnippetSchema],
+  cards: [QuestionSchema],
+  dashboards: [DashboardSchema],
+};

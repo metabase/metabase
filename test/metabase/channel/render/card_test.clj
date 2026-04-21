@@ -8,7 +8,7 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.pulse.render.test-util :as render.tu]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -39,9 +39,9 @@
                                        :display                :line
                                        :visualization_settings {:graph.dimensions ["CREATED_AT"]
                                                                 :graph.metrics    ["count"]}}]
-        (is (some? (lib.util.match/match-one
+        (is (some? (lib.util.match/match-lite
                      (render-pulse-card card)
-                     [:img _])))))))
+                     [:img _] true)))))))
 
 (deftest ^:parallel render-error-test
   (testing "gives us a proper error if we have erroring card"
@@ -107,7 +107,7 @@
 
 (deftest ^:parallel detect-pulse-chart-type-test-5
   (testing "Progress charts are correctly identified"
-    (is (= :progress
+    (is (= :javascript_visualization
            (channel.render/detect-pulse-chart-type {:display :progress}
                                                    {}
                                                    {:cols [{:base_type :type/Number}]
@@ -137,7 +137,6 @@
                                                                   :rows [["A" 2]
                                                                          ["B" 3]]}))
       :funnel
-      :progress
       :table)))
 
 (deftest ^:parallel detect-pulse-chart-type-test-8
@@ -294,10 +293,25 @@
                                                                                 nil
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))]
-          (is (some? (lib.util.match/match-one rendered-card-content
-                       [:a (_ :guard #(= (format "https://mb.com/question/%d" (:id card)) (:href %))) "A Card"]))))))))
+          (is (lib.util.match/match-lite rendered-card-content
+                [:a {:href (href :guard (= href (format "https://mb.com/question/%d" (:id card))))} "A Card"]
+                true)))))))
 
-(deftest visualizer-href-includes-scroll
+(deftest href-includes-scroll
+  (testing "the title and body hrefs for cards in dashboards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
+    (mt/with-temp [:model/Card           card {:name          "A Card"
+                                               :dataset_query (mt/mbql-query venues {:limit 1})}
+                   :model/Dashboard      dashboard {}
+                   :model/DashboardCard  dc1 {:dashboard_id (:id dashboard) :card_id (:id card)}]
+      (mt/with-temp-env-var-value! [mb-site-url "https://mb.com"]
+        (let [rendered-card-content (:content (channel.render/render-pulse-card :inline
+                                                                                (channel.render/defaulted-timezone card)
+                                                                                card
+                                                                                dc1
+                                                                                (qp/process-query (:dataset_query card))
+                                                                                {:channel.render/include-title? true}))
+              expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
+          (is (every? #(= % expected-href) (lib.util.match/match-many rendered-card-content {:href href} href)))))))
   (testing "the title and body hrefs for visualizer cards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
     (mt/with-temp [:model/Card           card {:name          "A Card"
                                                :dataset_query (mt/mbql-query venues {:limit 1})}
@@ -311,4 +325,63 @@
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
-          (is (every? true? (map #(= (:href %) expected-href) (lib.util.match/match rendered-card-content  {:href _})))))))))
+          (is (every? #(= % expected-href) (lib.util.match/match-many rendered-card-content {:href href} href))))))))
+
+(deftest render-card-with-abbreviated-dates-test
+  (testing "Static-viz should render without error when date formatting is abbreviated (metabase#27020)"
+    (mt/with-temporary-setting-values [custom-formatting {:type/Temporal {:date_style "MMMM D, YYYY"}}]
+      (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
+                                                                :type     :native
+                                                                :native   {:query "select current_date as \"created_at\", 1 \"val\""}}
+                                       :display                :table
+                                       :visualization_settings {:column_settings {"[\"name\",\"created_at\"]" {:date_abbreviate true}}
+                                                                "table.pivot_column" "created_at"
+                                                                "table.cell_column" "val"}}]
+        (let [result (qp/process-query
+                      (assoc (:dataset_query card)
+                             :middleware {:process-viz-settings? true
+                                          :js-int-to-string?     false}))
+              ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                              card
+                                                              result
+                                                              400
+                                                              {:channel.render/include-title? true})]
+          (is (pos? (alength ba)) "PNG byte array should not be empty"))))))
+
+(deftest render-card-with-day-date-style-test
+  (testing "Static-viz should render without error when date formatting contains day (metabase#27105)"
+    (mt/with-temp [:model/Card card {:dataset_query          {:database (mt/id)
+                                                              :type     :native
+                                                              :native   {:query "select current_date::date, 1"}}
+                                     :display                :table
+                                     :visualization_settings {:column_settings {"[\"name\",\"CAST(CURRENT_DATE AS DATE)\"]" {:date_style "dddd, MMMM D, YYYY"}}
+                                                              "table.pivot_column" "CAST(CURRENT_DATE AS DATE)"
+                                                              "table.cell_column" "1"}}]
+      (let [result (qp/process-query
+                    (assoc (:dataset_query card)
+                           :middleware {:process-viz-settings? true
+                                        :js-int-to-string?     false}))
+            ba     (channel.render/render-pulse-card-to-png (channel.render/defaulted-timezone card)
+                                                            card
+                                                            result
+                                                            400
+                                                            {:channel.render/include-title? true})]
+        (is (pos? (alength ba)) "PNG byte array should not be empty")))))
+
+(deftest render-card-with-unused-column-test
+  (testing "Static-viz render does not throw when there is an unused returned column (metabase#27427)"
+    (let [q (mt/mbql-query orders
+              {:aggregation [[:count] [:sum $total]]
+               :breakout    [!year.created_at]})]
+      (mt/with-temp [:model/Card card {:dataset_query          q
+                                       :display                :bar
+                                       :visualization_settings {"graph.dimensions" ["CREATED_AT"]
+                                                                "graph.metrics"    ["count"]}}]
+        (let [result (qp/process-query q)]
+          ;; The original bug (metabase#27427) caused a divide-by-zero crash when extra columns
+          ;; were returned but not referenced in graph.metrics. We verify the render completes
+          ;; without throwing — the JS static-viz may produce an error card in test environments
+          ;; where the full rendering pipeline isn't available.
+          (is (some? (channel.render/render-pulse-card-for-display
+                      (channel.render/defaulted-timezone card) card result
+                      {:channel.render/include-title? true}))))))))

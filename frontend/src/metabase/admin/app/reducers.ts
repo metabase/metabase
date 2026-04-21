@@ -1,15 +1,11 @@
 import { createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { combineReducers } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
-import {
-  PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
-  PLUGIN_METABOT,
-  PLUGIN_TRANSFORMS,
-} from "metabase/plugins";
+import { PLUGIN_ADMIN_ALLOWED_PATH_GETTERS } from "metabase/plugins";
+import type { AdminPath, AdminPathKey } from "metabase/redux/store";
 import { refreshCurrentUser } from "metabase/redux/user";
-import type { AdminPath, AdminPathKey } from "metabase-types/store";
+import { combineReducers } from "metabase/utils/redux";
+import { isNotNull } from "metabase/utils/types";
 
 export const getAdminPaths: () => AdminPath[] = () => {
   const items: AdminPath[] = [
@@ -23,13 +19,21 @@ export const getAdminPaths: () => AdminPath[] = () => {
       path: "/admin/databases",
       key: "databases",
     },
-    ...PLUGIN_METABOT.getAdminPaths(),
+    {
+      name: t`Embedding`,
+      path: "/admin/embedding",
+      key: "embedding",
+    },
+    {
+      name: t`AI`,
+      path: "/admin/metabot",
+      key: "metabot",
+    },
     {
       name: t`Table Metadata`,
       path: "/admin/datamodel",
       key: "data-model",
     },
-    ...PLUGIN_TRANSFORMS.getAdminPaths(),
     {
       name: t`People`,
       path: "/admin/people",

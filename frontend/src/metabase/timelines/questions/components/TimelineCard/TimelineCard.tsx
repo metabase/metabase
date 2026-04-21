@@ -3,8 +3,8 @@ import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import { getTimelineName } from "metabase/lib/timelines";
+import { getTimelineName } from "metabase/common/utils/timelines";
+import { Ellipsified } from "metabase/ui";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import EventCard from "../EventCard";
@@ -67,10 +67,12 @@ const TimelineCard = ({
 
   const handleChangeVisibility = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
-      if (e.target.checked) {
-        timeline.events && onShowTimelineEvents(timeline.events);
-      } else {
-        timeline.events && onHideTimelineEvents(timeline.events);
+      if (timeline.events) {
+        if (e.target.checked) {
+          onShowTimelineEvents(timeline.events);
+        } else {
+          onHideTimelineEvents(timeline.events);
+        }
       }
     },
     [timeline, onShowTimelineEvents, onHideTimelineEvents],
@@ -95,7 +97,7 @@ const TimelineCard = ({
           onChange={handleChangeVisibility}
         />
         <CardLabel>
-          <Ellipsified tooltipMaxWidth="auto">
+          <Ellipsified tooltipProps={{ w: "auto" }}>
             {getTimelineName(timeline)}
           </Ellipsified>
         </CardLabel>

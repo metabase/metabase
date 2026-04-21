@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-export const DEFAULT_COLLECTION_COLOR_ALIAS = "brand";
+import type { CollectionId } from "metabase-types/api";
 
 export const ROOT_COLLECTION = {
-  id: "root" as const,
+  id: "root" as CollectionId,
   get name() {
     return t`Our analytics`;
   },
@@ -25,7 +25,7 @@ export const PERSONAL_COLLECTION = {
 
 // fake collection for admins that contains all other user's collections
 export const PERSONAL_COLLECTIONS = {
-  id: "personal" as const, // placeholder id
+  id: "personal" as CollectionId,
   get name() {
     return t`All personal collections`;
   },
@@ -33,4 +33,13 @@ export const PERSONAL_COLLECTIONS = {
   path: [ROOT_COLLECTION.id],
   can_write: false,
   is_personal: true,
+};
+
+export const DATABASES_COLLECTION = {
+  id: "databases" as const,
+  get name() {
+    return t`Databases`;
+  },
+  location: "/",
+  can_write: false,
 };

@@ -1,9 +1,12 @@
 (ns metabase.lib.parse
+  "Code for parsing parameters in raw SQL strings."
+  (:refer-clojure :exclude [some empty? #?(:clj for)])
   (:require
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [some empty? #?(:clj for)]]))
 
 (defn- combine-adjacent-strings
   "Returns any adjacent strings in coll combined together"
@@ -138,7 +141,7 @@
               (recur (apply conj acc parsed) more in-string?)))
 
           (:line-comment-begin :block-comment-begin)
-          (if (or comment-mode (pos? optional-level) in-string?)
+          (if (or comment-mode (pos? optional-level) (pos? param-level) in-string?)
             (recur (conj acc text) more in-string?)
             (let [[parsed more] (parse-tokens* opts more optional-level param-level in-string? token)]
               (recur (into acc (cons text parsed)) more in-string?)))

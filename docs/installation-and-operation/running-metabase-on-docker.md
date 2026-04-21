@@ -28,7 +28,7 @@ Then start the Metabase container:
 docker run -d -p 3000:3000 --name metabase metabase/metabase
 ```
 
-This will launch an Metabase server on port 3000 by default.
+This will launch a Metabase server on port 3000 by default.
 
 Optional: to view the logs as your Open Source Metabase initializes, run:
 
@@ -80,7 +80,7 @@ docker run -d -p 12345:3000 --name metabase metabase/metabase-enterprise
 
 Metabase ships with an embedded H2 database that uses the file system to store its own application data. Meaning, if you remove the container, you'll lose your Metabase application data (your questions, dashboards, collections, and so on).
 
-If you want to run Metabase in production, you'll need store your application data in a [production-ready database](./migrating-from-h2.md#supported-databases-for-storing-your-metabase-application-data).
+If you want to run Metabase in production, you'll need to store your application data in a [production-ready database](./migrating-from-h2.md#supported-databases-for-storing-your-metabase-application-data).
 
 Once you've provisioned a database, like Postgres, for Metabase to use to store its application data, all you need to do is provide Metabase with the connection information and credentials so Metabase can connect to it.
 
@@ -117,7 +117,7 @@ If you've already been running Metabase with the default application database (H
 
 Here's an example `docker-compose.yml` file for running Metabase with a PostgreSQL database `metabaseappdb`:
 
-> This is an example file and and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production)
+> This is an example file and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production)
 
 ```yml
 services:
@@ -144,13 +144,15 @@ services:
       timeout: 5s
       retries: 5
   postgres:
-    image: postgres:latest
+    image: postgres:16
     container_name: postgres
     hostname: postgres
     environment:
       POSTGRES_USER: metabase
       POSTGRES_DB: metabaseappdb
       POSTGRES_PASSWORD: mysecretpassword
+    volumes:
+      - ./pg_data:/var/lib/postgresql/data
     networks:
       - metanet1
 networks:
@@ -216,7 +218,7 @@ docker run -d -p 3000:3000 \
   --name metabase metabase/metabase
 ```
 
-When you launch your container, Metabase will use the database file (`MB_DB_FILE`) at `~/metabase-data/metabase.db` instead of its default location. and we are mounting that folder from our local filesystem into the container.
+When you launch your container, Metabase will use the database file (`MB_DB_FILE`) at `~/metabase-data/metabase.db` instead of its default location, and we are mounting that folder from our local filesystem into the container.
 
 ### Getting your config back if you stopped your container
 
@@ -251,7 +253,7 @@ You should have your previously configured Metabase Installation back. If it's n
 
 ### Adding external dependencies or plugins
 
-To add external dependency JAR files, such as the Oracle or Vertica JDBC drivers or 3rd-party Metabase drivers), you'll need to:
+To add external dependency JAR files, such as the Oracle or Vertica JDBC drivers or 3rd-party Metabase drivers, you'll need to:
 
 - create a `plugins` directory in your host system, and
 - bind that directory so it's available to Metabase as the path `/plugins` (using either `--mount` or `-v`/`--volume`).
@@ -298,6 +300,8 @@ services:
       MB_DB_USER_FILE: /run/secrets/db_user
       MB_DB_PASS_FILE: /run/secrets/db_password
       MB_DB_HOST: postgres
+    logging:
+      driver: local
     networks:
       - metanet1
     secrets:
@@ -343,7 +347,7 @@ We currently support the following [environment variables](../configuring-metaba
 
 In order for the Metabase container to read the files and use the contents as a secret, the environment variable name needs to be appended with a "\_FILE" as explained above.
 
-> This is an example file and and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
+> This is an example file and is not meant to be used when running Metabase in a production environment. Please refer to our guide about [How to run Metabase in production](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-in-production).
 
 ## Troubleshooting
 

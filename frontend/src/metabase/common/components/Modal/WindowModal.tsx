@@ -12,10 +12,10 @@ import {
   getModalContent,
   modalSizes,
 } from "metabase/common/components/Modal/utils";
-import SandboxedPortal from "metabase/common/components/SandboxedPortal";
+import { SandboxedPortal } from "metabase/common/components/SandboxedPortal";
+import { getPortalRootElement } from "metabase/common/utils/portal";
 import ModalS from "metabase/css/components/modal.module.css";
 import CS from "metabase/css/core/index.css";
-import { getPortalRootElement } from "metabase/css/core/overlays/utils";
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { FocusTrap } from "metabase/ui";
 

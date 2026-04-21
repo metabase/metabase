@@ -8,7 +8,8 @@ import type {
 } from "react";
 import { forwardRef, isValidElement, useRef } from "react";
 
-import { Tooltip } from "metabase/ui";
+import { Flex, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 import {
   CheckBoxContainer,
@@ -26,8 +27,10 @@ import {
 } from "./constants";
 import { isEllipsisActive } from "./utils";
 
-export interface CheckBoxProps
-  extends Omit<HTMLAttributes<HTMLElement>, "onChange" | "onFocus" | "onBlur"> {
+export interface CheckBoxProps extends Omit<
+  HTMLAttributes<HTMLElement>,
+  "onChange" | "onFocus" | "onBlur"
+> {
   name?: string;
   label?: ReactNode;
   labelEllipsis?: boolean;
@@ -35,8 +38,8 @@ export interface CheckBoxProps
   indeterminate?: boolean;
   disabled?: boolean;
   size?: number;
-  checkedColor?: string;
-  uncheckedColor?: string;
+  checkedColor?: ColorName;
+  uncheckedColor?: ColorName;
   autoFocus?: boolean;
   onChange?: (event: ChangeEvent<HTMLInputElement>) => void;
   onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
@@ -85,7 +88,7 @@ const BaseCheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(
           hasTooltip={!!(labelEllipsis && hasLabelEllipsis)}
           tooltipLabel={label}
         >
-          <div>
+          <Flex>
             {/* the div is needed because CheckTooltip requires 1 child when hasTooltip is true */}
             <CheckBoxInput
               id={id ?? name}
@@ -126,7 +129,7 @@ const BaseCheckBox = forwardRef<HTMLLabelElement, CheckBoxProps>(
                   </CheckBoxLabel>
                 ))}
             </CheckBoxContainer>
-          </div>
+          </Flex>
         </CheckboxTooltip>
       </CheckBoxRoot>
     );
@@ -148,9 +151,6 @@ function CheckboxTooltip({
 /**
  * @deprecated: use Checkbox from "metabase/ui"
  */
-const Checkbox = Object.assign(BaseCheckBox, {
+export const CheckBox = Object.assign(BaseCheckBox, {
   Label: CheckBoxLabel,
 });
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Checkbox;

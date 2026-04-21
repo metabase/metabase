@@ -16,5 +16,6 @@ export const RuleBackground = ({
   rule.type === "range" ? (
     <ColorRange colors={rule.colors} className={className} style={style} />
   ) : rule.type === "single" ? (
+    // @ts-expect-error viz settings need to accept hex color values
     <Box className={className} style={style} bg={rule.color} />
   ) : null;

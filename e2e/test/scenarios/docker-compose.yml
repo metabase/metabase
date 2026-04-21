@@ -12,7 +12,7 @@ services:
       - 5404:5432
 
   mongo-sample:
-    image: metabase/qa-databases:mongo-sample-5.0
+    image: metabase/qa-databases:mongo-sample-5
     ports:
       - 27004:27017
 
@@ -53,7 +53,7 @@ services:
       - ./maildev-keys:/keys
 
   ldap:
-    image: bitnami/openldap:2.6.4
+    image: bitnamilegacy/openldap:2.6.4
     ports:
       - "389:389"
     environment:

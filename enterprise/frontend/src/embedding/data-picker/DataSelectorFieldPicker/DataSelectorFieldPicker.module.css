@@ -4,7 +4,7 @@
 
 .HeaderContainer {
   align-items: center;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   cursor: pointer;
   display: flex;
   gap: 0.5rem;

@@ -5,20 +5,26 @@ import { t } from "ttag";
 import { BrowseCard } from "metabase/browse/components/BrowseCard";
 import { BrowseGrid } from "metabase/browse/components/BrowseGrid";
 import { BrowserCrumbs } from "metabase/common/components/BrowserCrumbs";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
-import { color } from "metabase/lib/colors";
-import { isSyncInProgress } from "metabase/lib/syncing";
-import { Box, Group, Icon, Loader } from "metabase/ui";
+import { PLUGIN_TABLE_EDITING } from "metabase/plugins";
+import { getShallowDatabases as getDatabases } from "metabase/selectors/metadata";
+import { getUserIsAdmin } from "metabase/selectors/user";
+import { ActionIcon, Flex, Group, Icon, Loader, Paper } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import { isSyncInProgress } from "metabase/utils/syncing";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
-import { BrowseHeaderContent } from "../../components/BrowseHeader.styled";
-import { trackTableClick } from "../analytics";
+import {
+  trackBrowseXRayClicked,
+  trackEditDataButtonClicked,
+  trackTableClick,
+} from "../analytics";
 
+import S from "./TableBrowser.module.css";
 import { useDatabaseCrumb } from "./useDatabaseCrumb";
 
 const propTypes = {
-  database: PropTypes.object,
   tables: PropTypes.array.isRequired,
   getTableUrl: PropTypes.func.isRequired,
   metadata: PropTypes.object,
@@ -37,11 +43,18 @@ export const TableBrowser = ({
   xraysEnabled,
   showSchemaInHeader = true,
 }) => {
+  const databases = useSelector(getDatabases);
+  const database = databases[dbId];
+  const isAdmin = useSelector(getUserIsAdmin);
   const databaseCrumb = useDatabaseCrumb(dbId);
+  const canEditTables =
+    database &&
+    isAdmin &&
+    PLUGIN_TABLE_EDITING.isDatabaseTableEditingEnabled(database);
 
   return (
     <>
-      <BrowseHeaderContent>
+      <Flex align="center" pt="md" pr="sm" pb="sm">
         <BrowserCrumbs
           crumbs={[
             { title: t`Databases`, to: "/browse/databases" },
@@ -49,7 +62,7 @@ export const TableBrowser = ({
             showSchemaInHeader && { title: schemaName },
           ]}
         />
-      </BrowseHeaderContent>
+      </Flex>
       <BrowseGrid pt="lg">
         {tables.map((table) => (
           <TableBrowserItem
@@ -59,6 +72,7 @@ export const TableBrowser = ({
             getTableUrl={getTableUrl}
             xraysEnabled={xraysEnabled}
             metadata={metadata}
+            canEditTables={canEditTables}
           />
         ))}
       </BrowseGrid>
@@ -74,6 +88,7 @@ const itemPropTypes = {
   xraysEnabled: PropTypes.bool,
   metadata: PropTypes.object,
   getTableUrl: PropTypes.func.isRequired,
+  canEditTables: PropTypes.bool,
 };
 
 const TableBrowserItem = ({
@@ -82,9 +97,11 @@ const TableBrowserItem = ({
   xraysEnabled,
   metadata,
   getTableUrl,
+  canEditTables,
 }) => {
   const isVirtual = isVirtualCardId(table.id);
   const isLoading = isSyncInProgress(table);
+  const isTableWritable = table.is_writable;
 
   return (
     <BrowseCard
@@ -100,6 +117,7 @@ const TableBrowserItem = ({
             tableId={table.id}
             dbId={dbId}
             xraysEnabled={xraysEnabled}
+            canEditTables={canEditTables && isTableWritable}
           />
         )}
       </>
@@ -113,33 +131,65 @@ const itemButtonsPropTypes = {
   tableId: PropTypes.number,
   dbId: PropTypes.number,
   xraysEnabled: PropTypes.bool,
+  canEditTables: PropTypes.bool,
 };
 
-const TableBrowserItemButtons = ({ tableId, dbId, xraysEnabled }) => {
+const TableBrowserItemButtons = ({
+  tableId,
+  dbId,
+  xraysEnabled,
+  canEditTables,
+}) => {
+  const handleEditTableClicked = () => {
+    trackEditDataButtonClicked(tableId);
+  };
+
   return (
-    <Box className={cx(CS.hoverChild)}>
-      <Group gap="md">
+    <Paper p="sm" className={cx(CS.hoverChild, S.tableBrowserItemButtons)}>
+      <Group gap="sm">
         {xraysEnabled && (
-          <Link to={`/auto/dashboard/table/${tableId}`}>
-            <Icon
-              name="bolt_filled"
-              tooltip={t`X-ray this table`}
-              color={color("warning")}
-            />
-          </Link>
+          <ActionIcon
+            component={Link}
+            to={`/auto/dashboard/table/${tableId}`}
+            size="sm"
+            tooltip={t`X-ray this table`}
+            color="warning"
+            aria-label={t`X-ray this table`}
+            onClick={trackBrowseXRayClicked}
+          >
+            <Icon name="bolt" />
+          </ActionIcon>
         )}
-        <Link to={`/reference/databases/${dbId}/tables/${tableId}`}>
-          <Icon
-            name="reference"
-            tooltip={t`Learn about this table`}
-            color={color("text-medium")}
-          />
-        </Link>
+        {canEditTables && (
+          <ActionIcon
+            component={Link}
+            to={PLUGIN_TABLE_EDITING.getTableEditUrl(tableId, dbId)}
+            onClick={handleEditTableClicked}
+            size="sm"
+            tooltip={t`Edit this table`}
+            color="text-secondary"
+            aria-label={t`Edit this table`}
+            data-testid="edit-table-icon"
+          >
+            <Icon name="pencil" />
+          </ActionIcon>
+        )}
+        <ActionIcon
+          component={Link}
+          to={`/reference/databases/${dbId}/tables/${tableId}`}
+          size="sm"
+          tooltip={t`Learn about this table`}
+          color="text-secondary"
+          aria-label={t`Learn about this table`}
+        >
+          <Icon name="reference" />
+        </ActionIcon>
       </Group>
-    </Box>
+    </Paper>
   );
 };
 
 TableBrowserItemButtons.propTypes = itemButtonsPropTypes;
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableBrowser;

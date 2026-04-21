@@ -3,21 +3,18 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { Component, createRef } from "react";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
-import { Icon, Tooltip } from "metabase/ui";
+import { Box, Ellipsified, Icon, Tooltip } from "metabase/ui";
 
 import LegendS from "./Legend.module.css";
-import { IconContainer } from "./LegendItem.styled";
 import { LegendItemDot } from "./legend/LegendItemDot";
 
 const propTypes = {
   icon: PropTypes.object,
 };
 
-export default class LegendItem extends Component {
+export class LegendItem extends Component {
   constructor(props, context) {
     super(props, context);
     this.state = {};
@@ -44,6 +41,7 @@ export default class LegendItem extends Component {
       title,
       color,
       icon,
+      dotSize,
       showDot,
       showTitle,
       isVisible,
@@ -69,8 +67,7 @@ export default class LegendItem extends Component {
           { [LegendS.LegendItemMuted]: isMuted },
           CS.noDecoration,
           DashboardS.fullscreenNormalText,
-          DashboardS.fullscreenNightText,
-          EmbedFrameS.fullscreenNightText,
+          DashboardS.DashboardChartLegend,
           CS.flex,
           CS.alignCenter,
           {
@@ -88,9 +85,9 @@ export default class LegendItem extends Component {
         onClick={onClick}
       >
         {icon && (
-          <IconContainer>
+          <Box pr="xs">
             <Icon {...icon} />
-          </IconContainer>
+          </Box>
         )}
         {showDot && (
           <Tooltip
@@ -100,6 +97,7 @@ export default class LegendItem extends Component {
           >
             <LegendItemDot
               color={color}
+              dotSize={dotSize}
               isVisible={isVisible}
               onClick={onToggleSeriesVisibility}
             />
@@ -121,7 +119,7 @@ export default class LegendItem extends Component {
                   CS.textMedium,
                 )}
               >
-                <Tooltip tooltip={description} maxWidth="22em">
+                <Tooltip label={description} maxWidth="22em">
                   <Icon className={infoClassName} name="info" />
                 </Tooltip>
               </div>

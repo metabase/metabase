@@ -1,3 +1,4 @@
+const { H } = cy;
 import { CollectionBrowser } from "@metabase/embedding-sdk-react";
 import { useState } from "react";
 
@@ -69,6 +70,25 @@ describe("scenarios > embedding-sdk > collection browser", () => {
 
       getSdkRoot().findByText("Our analytics").should("exist");
     });
+
+    it("should be able to move resources to trash (EMB-892)", () => {
+      mountSdkContent(<CollectionBrowser collectionId="root" />);
+
+      const dashboardName = "Orders in a dashboard";
+
+      getSdkRoot().within(() => {
+        cy.findByText("Our analytics").should("exist");
+        cy.findByText("Orders in a dashboard").should("exist");
+
+        cy.log("move the dashboard to trash");
+        cy.findByText(dashboardName).closest("tr").button("Actions").click();
+      });
+
+      H.popover().findByRole("menuitem", { name: "Move to trash" }).click();
+
+      cy.log("the deleted dashboard should be gone");
+      getSdkRoot().findByText(dashboardName).should("not.exist");
+    });
   });
 
   describe("collection using entity ids", () => {
@@ -76,6 +96,19 @@ describe("scenarios > embedding-sdk > collection browser", () => {
       signInAsAdminAndEnableEmbeddingSdk();
       cy.signOut();
       mockAuthProviderAndJwtSignIn();
+    });
+
+    it("does not contain parent collection in breadcrumb (EMB-596)", () => {
+      cy.intercept("GET", "/api/collection/*").as("getCollection");
+
+      mountSdkContent(
+        <CollectionBrowser collectionId={SECOND_COLLECTION_ENTITY_ID} />,
+      );
+
+      getSdkRoot().within(() => {
+        cy.findByText("Second collection").should("exist");
+        cy.findByText("First collection").should("not.exist");
+      });
     });
 
     it("can change collection to a different entity id without crashing (metabase#57438)", () => {

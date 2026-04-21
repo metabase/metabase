@@ -1,8 +1,8 @@
 import { push } from "react-router-redux";
 
 import { getDashboard } from "metabase/dashboard/selectors";
-import { createThunkAction } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { createThunkAction } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Dashboard } from "metabase-types/api";
 
 const ADD_DASHBOARD_QUESTION = "metabase/dashboard/ADD_DASHBOARD_QUESTION";
@@ -22,7 +22,7 @@ export const getNewQuestionUrl = ({
         } as const)
       : ({
           mode: "query",
-          type: "native",
+          DEPRECATED_RAW_MBQL_type: "native",
           creationType: "native_question",
         } as const);
 

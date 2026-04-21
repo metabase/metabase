@@ -10,18 +10,19 @@ import { GenericError } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
-import {
-  DatabaseForm,
-  type DatabaseFormConfig,
-} from "metabase/databases/components/DatabaseForm";
-import { useDispatch } from "metabase/lib/redux";
+import { DatabaseForm } from "metabase/databases/components/DatabaseForm";
+import type {
+  DatabaseFormConfig,
+  FormLocation,
+} from "metabase/databases/types";
+import type { Dispatch } from "metabase/redux/store";
 import { Text } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type {
   DatabaseData,
   DatabaseEditErrorType,
   DatabaseId,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 import { saveDatabase } from "../database";
 import { isDbModifiable } from "../utils";
@@ -39,9 +40,11 @@ export const DatabaseEditConnectionForm = withRouter(
     handleSaveDb,
     onSubmitted,
     onCancel,
+    onEngineChange,
     route,
     location,
     config,
+    formLocation,
     ...props
   }: {
     database?: Partial<DatabaseData>;
@@ -50,10 +53,12 @@ export const DatabaseEditConnectionForm = withRouter(
     handleSaveDb?: (database: DatabaseData) => Promise<{ id: DatabaseId }>;
     onSubmitted: (savedDB: { id: DatabaseId }) => void;
     onCancel: () => void;
+    onEngineChange?: (engineKey: string | undefined) => void;
     route: Route;
     location: LocationDescriptorObject;
     autofocusFieldName?: string;
     config?: Omit<DatabaseFormConfig, "isAdvanced">;
+    formLocation: Extract<FormLocation, "admin" | "full-page">;
   }) => {
     const dispatch = useDispatch();
 
@@ -82,7 +87,11 @@ export const DatabaseEditConnectionForm = withRouter(
 
     return (
       <ErrorBoundary errorComponent={GenericError as ComponentType}>
-        <LoadingAndErrorWrapper loading={!database} error={initializeError}>
+        <LoadingAndErrorWrapper
+          loading={!database}
+          error={initializeError}
+          noWrapper
+        >
           {isDbModifiable({
             id: database?.id,
             is_attached_dwh: isAttachedDWH,
@@ -93,8 +102,9 @@ export const DatabaseEditConnectionForm = withRouter(
               config={{ isAdvanced: true, ...config }}
               onCancel={onCancel}
               onSubmit={handleSubmit}
-              setIsDirty={setIsDirty}
-              location="admin"
+              onDirtyStateChange={setIsDirty}
+              location={formLocation}
+              onEngineChange={onEngineChange}
             />
           ) : (
             <Text my="md">{t`This database is managed by Metabase Cloud and cannot be modified.`}</Text>

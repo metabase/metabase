@@ -1,3 +1,4 @@
+import { isNotNull } from "metabase/utils/types";
 import { OTHER_DATA_KEY } from "metabase/visualizations/echarts/cartesian/constants/dataset";
 import {
   getXAxisModel,
@@ -24,6 +25,7 @@ import { getAreDimensionsAndMetricsValid } from "metabase/visualizations/shared/
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
+  VisualizationGridSize,
 } from "metabase/visualizations/types";
 import type { RawSeries, SingleSeries } from "metabase-types/api";
 
@@ -52,8 +54,8 @@ const getSettingsWithDefaultMetricsAndDimensions = (series: SingleSeries) => {
   const { dimensions, metrics } = getSingleSeriesDimensionsAndMetrics(series);
   const settingsWithDefaults = { ...settings };
 
-  settingsWithDefaults["graph.dimensions"] = dimensions;
-  settingsWithDefaults["graph.metrics"] = metrics;
+  settingsWithDefaults["graph.dimensions"] = dimensions.filter(isNotNull);
+  settingsWithDefaults["graph.metrics"] = metrics.filter(isNotNull);
 
   return settingsWithDefaults;
 };
@@ -85,6 +87,7 @@ export const getCartesianChartModel = (
   hiddenSeries: string[],
   renderingContext: RenderingContext,
   showWarning?: ShowWarning,
+  gridSize?: VisualizationGridSize,
 ): CartesianChartModel => {
   // rawSeries has more than one element when two or more cards are combined on a dashboard
   const hasMultipleCards = rawSeries.length > 1;
@@ -174,16 +177,18 @@ export const getCartesianChartModel = (
     renderingContext,
   );
 
-  const { leftAxisModel, rightAxisModel } = getYAxesModels(
-    seriesModels,
-    dataset,
-    transformedDataset,
-    settings,
-    columnByDataKey,
-    true,
-    stackModels,
-    isCompactFormatting,
-  );
+  const { leftAxisModel, rightAxisModel, splitPanelYAxisModels } =
+    getYAxesModels(
+      seriesModels,
+      dataset,
+      transformedDataset,
+      settings,
+      columnByDataKey,
+      true,
+      stackModels,
+      isCompactFormatting,
+      gridSize,
+    );
 
   const trendLinesModel = getTrendLines(
     rawSeries,
@@ -207,6 +212,7 @@ export const getCartesianChartModel = (
     xAxisModel,
     leftAxisModel,
     rightAxisModel,
+    splitPanelYAxisModels,
     trendLinesModel,
     seriesLabelsFormatters,
     stackedLabelsFormatters,

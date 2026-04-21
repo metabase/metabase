@@ -1,12 +1,12 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import Link from "metabase/common/components/Link";
-import { alpha } from "metabase/lib/colors";
+import { Link } from "metabase/common/components/Link";
 import {
   breakpointMinLarge,
   breakpointMinSmall,
 } from "metabase/styled-components/theme";
+import { alpha } from "metabase/ui/colors";
 
 export const CardRoot = styled(Link)`
   display: flex;
@@ -14,7 +14,7 @@ export const CardRoot = styled(Link)`
   padding: 1rem;
   border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
-  background-color: var(--mb-color-bg-white);
+  background-color: var(--mb-color-background-primary);
   box-shadow: 0 7px 20px var(--mb-color-shadow);
   max-width: 100%;
 

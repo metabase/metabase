@@ -4,8 +4,9 @@
    [metabase-enterprise.test :as met]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
-   [metabase.queries.api.card-test :as api.card-test]
-   [metabase.query-processor :as qp]
+   [metabase.permissions.schema :as permissions.schema]
+   [metabase.queries-rest.api.card-test :as api.card-test]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -18,8 +19,8 @@
                        :model/Table                      table {:db_id (u/the-id db)}
                        :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                        :model/PermissionsGroup           group {}
-                       :model/GroupTableAccessPolicy     _ {:group_id (u/the-id group)
-                                                            :table_id (u/the-id table)}]
+                       :model/Sandbox     _ {:group_id (u/the-id group)
+                                             :table_id (u/the-id table)}]
           (perms/add-user-to-group! (mt/user->id :rasta) group)
           (mt/with-db db
             (mt/with-no-data-perms-for-all-users!
@@ -40,8 +41,8 @@
                      :model/PermissionsGroup           group {}
                      :model/Card                       card {:name "Some Name"
                                                              :collection_id (u/the-id collection)}
-                     :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
-                                                             :table_id (u/the-id table)}]
+                     :model/Sandbox     _    {:group_id (u/the-id group)
+                                              :table_id (u/the-id table)}]
         (perms/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
@@ -64,8 +65,8 @@
                      :model/PermissionsGroup           group {}
                      :model/Card                       card {:name "Some Name"
                                                              :collection_id (u/the-id collection)}
-                     :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
-                                                             :table_id (u/the-id table)}]
+                     :model/Sandbox     _    {:group_id (u/the-id group)
+                                              :table_id (u/the-id table)}]
         (perms/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
@@ -86,8 +87,8 @@
                      :model/Table                      other-table {:db_id (u/the-id db)}
                      :model/Field                      _field {:table_id (u/the-id table) :name "field"}
                      :model/PermissionsGroup           group {}
-                     :model/GroupTableAccessPolicy     _    {:group_id (u/the-id group)
-                                                             :table_id (u/the-id table)}]
+                     :model/Sandbox     _    {:group_id (u/the-id group)
+                                              :table_id (u/the-id table)}]
         (perms/add-user-to-group! (mt/user->id :rasta) group)
         (mt/with-db db
           (mt/with-no-data-perms-for-all-users!
@@ -121,8 +122,8 @@
                            [:blocked :query-builder-and-native]
                            [:blocked :query-builder]]]
         (is (= (count cases)
-               (- (* (-> data-perms/Permissions :perms/view-data :values count)
-                     (-> data-perms/Permissions :perms/create-queries :values count))
+               (- (* (-> permissions.schema/data-permissions :perms/view-data :values count)
+                     (-> permissions.schema/data-permissions :perms/create-queries :values count))
                   (count invalid-cases)))
             "Please test these permissions settings behaviors exhaustively: if you add perms, add the tests for them.")
         (mt/with-no-data-perms-for-all-users!
@@ -130,10 +131,11 @@
             (data-perms/set-table-permission! group (mt/id :venues) :perms/view-data view-perm)
             (data-perms/set-table-permission! group (mt/id :venues) :perms/create-queries create-perm)
             (testing (str "view-data: " view-perm ", create-queries: " create-perm)
-              (let [response (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))]
-                (if should-succeed?
-                  (is (= 1 (count (mt/rows response))))
-                  (is (thrown? clojure.lang.ExceptionInfo (mt/rows response))))))))))))
+              (if should-succeed?
+                (let [response (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))]
+                  (is (= 1 (count (mt/rows response)))))
+                (let [response (mt/user-http-request user-id :post 403 (str "card/" (u/the-id card) "/query"))]
+                  (is (partial= {:error_type "missing-required-permissions"} response)))))))))))
 
 (deftest sandbox-join-permissions-test
   (testing "Sandboxed query can't be saved when sandboxed table is joined to a table that the current user doesn't have access to"

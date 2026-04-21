@@ -1,4 +1,4 @@
-# Docs for development on the sdk
+# Docs for development on the sdk package
 
 These docs are for building the sdk locally, if you just want to use the sdk, please refer to the [sdk documentation](https://www.metabase.com/docs/latest/embedding/sdk/introduction).
 
@@ -8,19 +8,11 @@ Code in this directory should carefully reference external code, including code 
 
 ## Build
 
-You can build the SDK NPM package with `yarn build-embedding-sdk-package`.
-You can build the SDK bundle with `yarn build-release:embedding-sdk-bundle`
+You can build the SDK NPM package with `bun run build-embedding-sdk-package`.
 
-#### embedding-sdk:dev
+The SDK bundle is built with the core app frontend and served by the core app, so you'll probably want to have `build-hot` (with `MB_EDITION=ee`) running.
 
-The `embedding-sdk:dev` command builds both SDK NPM package and SDK bundle in the `watch` mode.
-
-It runs a local dev server that serves compiled files; the server is used by `Cypress`.
-
-It uses `tsc --incremental` to generate the dts files and fixes them automatically by running the fixup script on watch.
-
-The `tsc` command will output a lot of errors, to keep the terminal output under control you may want to run the three different `embedding-sdk:dev:*` commands on different terminals.
-There is a VS code task named `Run embedding sdk dev commands` that does that
+If you have `SKIP_EMBEDDING_SDK`, you'll have to unset it for the sdk bundle to be built.
 
 ## Storybook
 
@@ -33,10 +25,10 @@ Storybook expects an instance running on `localhost:3000` with some configuratio
   - Set JWT secret to be "`0000000000000000000000000000000000000000000000000000000000000000`" in Admin > Authentication >
     JWT > String used by the JWT signing key
   - Press "Save and enable"
-- on [/admin/settings/embedding-in-other-applications](http://localhost:3000/admin/settings/embedding-in-other-applications)
-  - Enable the sdk
+- on [/admin/embedding/modular](http://localhost:3000/admin/embedding/modular)
+  - Enable the "SDK for React" card
 
-Then you can run `yarn storybook-embedding-sdk` to start storybook.
+Then you can run `bun run storybook-embedding-sdk` to start storybook.
 
 Storybook will use the source files and not the built package.
 
@@ -57,15 +49,13 @@ MB_PRO_SELF_HOSTED_TOKEN=${usual token from password manager}
 ```
 
 Cypress will use the built package, so you'll have to build the sdk first (see above).
-We recommend running either the dev or the watch command to have shorter a feedback loop.
+Make sure `build-hot` is running (with `MB_EDITION=ee`) — it builds the SDK bundle that the package loads at runtime.
 
-To start the cypress for the e2e tests:
+To start cypress for the e2e tests:
 
 ```bash
-TEST_SUITE="component" yarn test-cypress
+CYPRESS_TESTING_TYPE="component" bun run test-cypress
 ```
-
-Then in a separate terminal run `yarn embedding-sdk:dev` to build SDK NPM package and SDK bundle in the `watch` mode.
 
 ### Sample Apps compatibility with Embedding SDK tests
 
@@ -73,23 +63,29 @@ In order to check compatibility between Sample Apps and Embedding SDK, we have a
 
 #### Local runs
 
+Define one of the following environment variables with enterprise token: `CYPRESS_MB_ALL_FEATURES_TOKEN`, `CYPRESS_ALL_FEATURES_TOKEN`, `MB_ALL_FEATURES_TOKEN`, `ENTERPRISE_TOKEN`.
+
 To run these tests locally, run:
+
 ```
-TEST_SUITE=<sample_app_repo_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
+SDK_TEST_SUITE=<sample_app_repo_name>-e2e bun run test-cypress-host-sample-apps
 ```
 
 For example for the `metabase-nodejs-react-sdk-embedding-sample`, run:
+
 ```
-TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local START_METABASE=false GENERATE_SNAPSHOTS=false START_CONTAINERS=false yarn test-cypress
+SDK_TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e bun run test-cypress-host-sample-apps
 ```
 
 ##### :warning: Obtaining the Shoppy's Metabase App DB Dump locally
-For the Shoppy's Sample App Tests (`TEST_SUITE=shoppy-e2e`) locally, a proper App DB dump of the Shoppy's Metabase Instance must be placed to the `./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql`
+
+For the Shoppy's Sample App Tests (`SDK_TEST_SUITE=shoppy-e2e`) locally, a proper App DB dump of the Shoppy's Metabase instance must be placed to the `./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql`
 
 You can get it by:
+
 - Enabling the `Tailscale` and logging in using your work email address.
 - Running `pg_dump "postgres://{{ username }}:{{ password }}@{{ host }}:{{ port }}/{{ database }}" > ./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql` command.
-    - See the `Shoppy Coredev Appdb` record in `1password` for credentials.
+  - See the `Shoppy Coredev Appdb` record in `1password` for credentials.
 
 #### CI runs
 
@@ -98,11 +94,13 @@ On our CI, test failures do not block the merging of a pull request (PR). Howeve
 - **Build Failure**:
 
   The failure occurs during the build of a local `@metabase/embedding-sdk-react` dist. This indicates there is likely a syntax or type error in the front-end code.
+
 - **Test Run Failure**:
 
   The failure occurs during the actual test execution. In this case, the PR may have introduced a change that either:
-    - Breaks the entire Metabase or Embedding SDK, or
-    - Breaks the compatibility between the Embedding SDK and the Sample Apps.
+
+  - Breaks the entire Metabase or Embedding SDK, or
+  - Breaks the compatibility between the Embedding SDK and the Sample Apps.
 
 If a PR breaks compatibility between the Embedding SDK and the Sample Apps, the PR can still be merged. However, for each Sample App affected, a separate PR should be created to restore compatibility with the new `@metabase/embedding-sdk-react` version when it is released. These compatibility PRs should be merged only once the Embedding SDK version containing breaking changes is officially released.
 
@@ -111,6 +109,7 @@ If a PR breaks compatibility between the Embedding SDK and the Sample Apps, the 
 When we want to check integration of the Embedding SDK with consumer's apps that use different frameworks/bundlers, or when we want to test some tricky integration cases like conflicting types, we use Host App tests.
 
 Tests a bit similar to Sample App tests, but:
+
 - Host Apps are placed in the `metabase` repo `e2e/embedding-sdk-host-apps/<HOST_APP_NAME>`.
 - Host Apps tests are under `e2e/test-host-app/<HOST_APP_NAME>/*`.
 - Host app contains the client application only that is run in a Docker container during e2e testing.
@@ -119,13 +118,15 @@ Tests a bit similar to Sample App tests, but:
 #### Local runs
 
 To run these tests locally, run:
+
 ```
-ENTERPRISE_TOKEN=<token> TEST_SUITE=<host_app_name>-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local HOST_APP_ENVIRONMENT=production yarn test-cypress
+ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=<host_app_name>-e2e HOST_APP_ENVIRONMENT=production bun run test-cypress-host-sample-apps
 ```
 
 For example for the `vite-6-host-app` Host App, run:
+
 ```
-ENTERPRISE_TOKEN=<token> TEST_SUITE=vite-6-host-app-e2e OPEN_UI=false EMBEDDING_SDK_VERSION=local HOST_APP_ENVIRONMENT=production yarn test-cypress
+ENTERPRISE_TOKEN=<token> SDK_TEST_SUITE=vite-6-host-app-e2e HOST_APP_ENVIRONMENT=production bun run test-cypress-host-sample-apps
 ```
 
 #### CI runs

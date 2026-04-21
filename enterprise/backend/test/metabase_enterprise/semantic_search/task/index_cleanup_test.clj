@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
+   [metabase-enterprise.semantic-search.repair :as repair]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.task.index-cleanup :as sut]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
@@ -68,7 +69,7 @@
 
 (deftest stale-index-cleanup-test
   (mt/with-premium-features #{:semantic-search}
-    (let [pgvector semantic.tu/db
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           retention-hours 24
           old-time (t/minus (t/offset-date-time) (t/hours (inc retention-hours)))
@@ -132,7 +133,7 @@
 
 (deftest tombstone-cleanup-test
   (mt/with-premium-features #{:semantic-search}
-    (let [pgvector semantic.tu/db
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
           index-metadata (semantic.tu/unique-index-metadata)
           retention-hours (semantic.settings/tombstone-retention-hours)
           old-time (t/minus (t/offset-date-time) (t/hours (inc retention-hours)))
@@ -224,3 +225,45 @@
                                                      {:builder-fn jdbc.rs/as-unqualified-lower-maps})
                     remaining-ids (map :id remaining-records)]
                 (is (= #{"recent-tombstone" "non-tombstone"} (set remaining-ids)))))))))))
+
+(deftest repair-table-cleanup-test
+  (mt/with-premium-features #{:semantic-search}
+    (let [pgvector (semantic.env/get-pgvector-datasource!)
+          retention-hours 2
+          old-time (t/minus (t/instant) (t/hours (inc retention-hours))) ; 3 hours ago
+          recent-time (t/minus (t/instant) (t/hours 1))]                 ; 1 hour ago
+      (testing "parse-repair-table-timestamp"
+        (let [repair-table-name (with-redefs [t/instant (constantly old-time)]
+                                  (#'repair/repair-table-name))
+              parsed-time (#'sut/parse-repair-table-timestamp repair-table-name)]
+          (is (= (t/truncate-to old-time :millis)
+                 parsed-time))))
+
+      (testing "orphan repair table detection and cleanup"
+        (let [old-repair-table-name (with-redefs [t/instant (constantly old-time)]
+                                      (#'repair/repair-table-name))
+              recent-repair-table-name (with-redefs [t/instant (constantly recent-time)]
+                                         (#'repair/repair-table-name))
+              non-repair-table-name "regular_table_123"]
+          (try
+            (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" old-repair-table-name)])
+            (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" recent-repair-table-name)])
+            (jdbc/execute! pgvector [(format "CREATE TABLE \"%s\" (id INT)" non-repair-table-name)])
+
+            (with-redefs [semantic.settings/repair-table-retention-hours (constantly retention-hours)]
+              (let [orphan-tables (#'sut/orphan-repair-tables pgvector)]
+                (is (= #{old-repair-table-name} (set orphan-tables))
+                    "Only old repair table should be detected as orphan"))
+
+              (#'sut/cleanup-orphan-repair-tables! pgvector)
+
+              (is (not (semantic.tu/table-exists-in-db? old-repair-table-name))
+                  "Old repair table should be dropped")
+              (is (semantic.tu/table-exists-in-db? recent-repair-table-name)
+                  "Recent repair table should still exist")
+              (is (semantic.tu/table-exists-in-db? non-repair-table-name)
+                  "Regular table should still exist"))
+            (finally
+              (jdbc/execute! pgvector [(format "DROP TABLE IF EXISTS \"%s\"" old-repair-table-name)])
+              (jdbc/execute! pgvector [(format "DROP TABLE IF EXISTS \"%s\"" recent-repair-table-name)])
+              (jdbc/execute! pgvector [(format "DROP TABLE IF EXISTS \"%s\"" non-repair-table-name)]))))))))

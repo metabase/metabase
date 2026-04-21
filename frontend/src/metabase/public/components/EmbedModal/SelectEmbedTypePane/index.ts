@@ -1,1 +1,0 @@
-export { SelectEmbedTypePane } from "./SelectEmbedTypePane";

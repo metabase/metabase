@@ -4,7 +4,7 @@ import { c, jt, t } from "ttag";
 import * as Yup from "yup";
 
 import { useTestChannelMutation } from "metabase/api/channel";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useActionButtonLabel } from "metabase/common/hooks/use-action-button-label";
 import {
   Form,
@@ -13,8 +13,6 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import {
   Alert,
@@ -28,6 +26,8 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { getResponseErrorMessage } from "metabase/utils/errors";
+import { useSelector } from "metabase/utils/redux";
 import {
   type NotificationAuthMethods,
   type NotificationAuthType,
@@ -227,7 +227,7 @@ export const WebhookForm = ({
           <Alert
             variant="light"
             mb="1.5rem"
-            style={{ backgroundColor: "var(--mb-color-bg-light)" }}
+            style={{ backgroundColor: "var(--mb-color-background-secondary)" }}
             px="1.5rem"
             py="1rem"
             radius="0.5rem"
@@ -264,7 +264,7 @@ export const WebhookForm = ({
                 <Box
                   py="0.5rem"
                   px="1.5rem"
-                  bg="bg-light"
+                  bg="background-secondary"
                   style={{ borderRadius: "0.5rem" }}
                   data-testid="notification-test-response"
                 >
@@ -335,7 +335,7 @@ export const WebhookForm = ({
             {onDelete && (
               <Button
                 variant="subtle"
-                c="text-medium"
+                c="text-secondary"
                 size="compact-md"
                 pl="0"
                 leftSection={<Icon name="trash" />}

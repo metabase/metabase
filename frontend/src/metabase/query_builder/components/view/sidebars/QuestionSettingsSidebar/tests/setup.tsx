@@ -1,6 +1,6 @@
 import { Route } from "react-router";
 
-import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCardEndpoints,
   setupDatabaseEndpoints,
@@ -10,10 +10,12 @@ import { setupModelPersistenceEndpoints } from "__support__/server-mocks/persist
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
 import type { Card, Settings } from "metabase-types/api";
 import {
+  COMMON_DATABASE_FEATURES,
   createMockCard,
   createMockSettings,
   createMockTokenFeatures,
@@ -21,22 +23,23 @@ import {
   getMockModelCacheInfo,
 } from "metabase-types/api/mocks";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { QuestionSettingsSidebar } from "../QuestionSettingsSidebar";
 
 export interface SetupOpts {
   card?: Card;
   settings?: Settings;
-  hasEnterprisePlugins?: boolean;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
   dbHasModelPersistence?: boolean;
+  dbSupportsModelPersistence?: boolean;
 }
 
 export const setup = async ({
   card = createMockCard(),
   settings = createMockSettings(),
-  hasEnterprisePlugins,
+  enterprisePlugins,
   dbHasModelPersistence = true,
+  dbSupportsModelPersistence = true,
 }: SetupOpts) => {
   const currentUser = createMockUser();
   setupCardEndpoints(card);
@@ -50,9 +53,12 @@ export const setup = async ({
 
   setupDatabaseEndpoints(
     createSampleDatabase({
-      settings: {
-        "persist-models-enabled": dbHasModelPersistence,
-      },
+      settings: { "persist-models-enabled": dbHasModelPersistence },
+      features: dbSupportsModelPersistence
+        ? COMMON_DATABASE_FEATURES
+        : COMMON_DATABASE_FEATURES.filter(
+            (feature) => feature !== "persist-models",
+          ),
     }),
   );
 
@@ -72,8 +78,8 @@ export const setup = async ({
   const metadata = getMetadata(state);
   const question = checkNotNull(metadata.question(card.id));
 
-  if (hasEnterprisePlugins) {
-    setupEnterprisePlugins();
+  if (enterprisePlugins) {
+    enterprisePlugins.forEach(setupEnterpriseOnlyPlugin);
   }
 
   const TestQuestionSettingsSidebar = () => (

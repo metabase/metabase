@@ -7,13 +7,13 @@ import {
   useCollectionQuery,
   useDatabaseListQuery,
 } from "metabase/common/hooks";
-import Bookmark from "metabase/entities/bookmarks";
-import Databases from "metabase/entities/databases";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { Bookmarks } from "metabase/entities/bookmarks";
+import { Databases } from "metabase/entities/databases";
 import type { UploadFileProps } from "metabase/redux/uploads";
 import { uploadFile as uploadFileAction } from "metabase/redux/uploads";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type {
   BookmarkId,
   BookmarkType,
@@ -60,9 +60,9 @@ export function CollectionContent({
   const dispatch = useDispatch();
 
   const createBookmark = (id: BookmarkId, type: BookmarkType) =>
-    dispatch(Bookmark.actions.create({ id, type }));
+    dispatch(Bookmarks.actions.create({ id, type }));
   const deleteBookmark = (id: BookmarkId, type: BookmarkType) =>
-    dispatch(Bookmark.actions.delete({ id, type }));
+    dispatch(Bookmarks.actions.delete({ id, type }));
 
   const uploadFile = useCallback(
     ({ file, modelId, collectionId, tableId, uploadMode }: UploadFileProps) =>

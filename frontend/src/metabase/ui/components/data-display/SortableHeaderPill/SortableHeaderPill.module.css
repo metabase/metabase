@@ -1,0 +1,27 @@
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  padding: 0.25rem 0.625em;
+  overflow: hidden;
+  font-weight: 700;
+  color: var(--mb-color-brand);
+  white-space: nowrap;
+  border-radius: 5px;
+  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 92%);
+  cursor: pointer;
+  transition: background-color 200ms ease-in-out;
+}
+
+.pill:hover {
+  background-color: color-mix(in srgb, var(--mb-color-brand), transparent 82%);
+}
+
+.alignRight {
+  flex-direction: row-reverse;
+}
+
+.sortIcon {
+  flex-shrink: 0;
+}

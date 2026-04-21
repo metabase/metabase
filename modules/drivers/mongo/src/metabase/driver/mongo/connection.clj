@@ -1,15 +1,18 @@
 (ns metabase.driver.mongo.connection
   "This namespace contains code responsible for connecting to mongo deployment."
+  (:refer-clojure :exclude [not-empty])
   (:require
    [clojure.string :as str]
    [metabase.driver-api.core :as driver-api]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.util :as mongo.util]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [not-empty]])
   (:import
    (com.mongodb
     ConnectionString
@@ -93,6 +96,7 @@
   (let [db-details (mongo.db/details-normalized database)]
     (ssh/with-ssh-tunnel [details-with-tunnel db-details]
       (let [client (mongo.util/mongo-client (db-details->mongo-client-settings details-with-tunnel))]
+        (driver.conn/track-connection-acquisition! db-details)
         (log/debug (u/format-color 'cyan "Opened new MongoClient."))
         (try
           (binding [*mongo-client* client]

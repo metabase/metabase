@@ -2,8 +2,13 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.sso.settings :as sso-settings]
+   [metabase.session.core :as session]
+   [metabase.sso.settings :as sso.settings]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.test.util :as tu]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (def ^:private default-idp-uri "http://test.idp.metabase.com")
 (def ^:private default-idp-cert (slurp "test_resources/sso/auth0-public-idp.cert"))
@@ -201,3 +206,74 @@
            clojure.lang.ExceptionInfo
            #"Setting jwt-enabled is not enabled because feature :sso-jwt is not available"
            (sso-settings/jwt-enabled! true))))))
+
+(deftest jwt-enabled-without-configuration-test
+  (testing "jwt-enabled returns true even when JWT is not configured"
+    (mt/with-premium-features #{:sso-jwt}
+      (tu/with-temporary-setting-values [jwt-enabled             true
+                                         jwt-identity-provider-uri nil
+                                         jwt-shared-secret         nil]
+        (is (true? (sso-settings/jwt-enabled)))
+        (is (false? (sso-settings/jwt-configured)))
+        (is (false? (sso-settings/jwt-enabled-and-configured))))))
+  (testing "jwt-enabled-and-configured returns true only when both enabled and configured"
+    (mt/with-premium-features #{:sso-jwt}
+      (tu/with-temporary-setting-values [jwt-enabled               true
+                                         jwt-identity-provider-uri "example.com"
+                                         jwt-shared-secret         "0123456789012345678901234567890123456789012345678901234567890123"]
+        (is (true? (sso-settings/jwt-enabled)))
+        (is (true? (sso-settings/jwt-configured)))
+        (is (true? (sso-settings/jwt-enabled-and-configured)))))))
+
+(deftest can-turn-off-password-login-with-jwt-enabled
+  (mt/with-premium-features #{:sso-jwt}
+    (tu/with-temporary-setting-values [jwt-enabled               true
+                                       jwt-identity-provider-uri "example.com"
+                                       jwt-shared-secret         "0123456789012345678901234567890123456789012345678901234567890123"
+                                       enable-password-login     true]
+      (testing "can't change enable-password-login setting if disabled-password-login feature is disabled"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Setting enable-password-login is not enabled because feature :disable-password-login is not available"
+             (session/enable-password-login! false))))
+      (testing "can change enable-password-login setting if jwt enabled and have disabled-password-login feature"
+        (mt/with-additional-premium-features #{:disable-password-login}
+          (session/enable-password-login! false)
+          (is (= false
+                 (session/enable-password-login))))))))
+
+(deftest sso-source-enabled?-saml-test
+  (testing "sso-source-enabled? for SAML"
+    (mt/with-premium-features #{:sso-saml}
+      (tu/with-temporary-setting-values [saml-identity-provider-uri         default-idp-uri
+                                         saml-identity-provider-certificate default-idp-cert
+                                         saml-enabled                       true]
+        (testing "returns true when SAML is configured, enabled, and licensed"
+          (is (true? (sso.settings/sso-source-enabled? :saml))))
+        (testing "returns false when SAML feature is unlicensed (e.g., license downgrade)"
+          (mt/with-premium-features #{}
+            (is (false? (sso.settings/sso-source-enabled? :saml)))))))))
+
+(deftest sso-source-enabled?-jwt-test
+  (testing "sso-source-enabled? for JWT"
+    (mt/with-premium-features #{:sso-jwt}
+      (tu/with-temporary-setting-values [jwt-identity-provider-uri default-idp-uri
+                                         jwt-shared-secret         "01234"
+                                         jwt-enabled               true]
+        (testing "returns true when JWT is configured, enabled, and licensed"
+          (is (true? (sso.settings/sso-source-enabled? :jwt))))
+        (testing "returns false when JWT feature is unlicensed (e.g., license downgrade)"
+          (mt/with-premium-features #{}
+            (is (false? (sso.settings/sso-source-enabled? :jwt)))))))))
+
+(deftest sso-source-enabled?-google-test
+  (testing "sso-source-enabled? for Google"
+    (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                       google-auth-enabled   true]
+      (is (true? (sso.settings/sso-source-enabled? :google))))
+    (mt/with-temporary-setting-values [google-auth-enabled false]
+      (is (false? (sso.settings/sso-source-enabled? :google))))))
+
+(deftest sso-source-enabled?-unknown-test
+  (testing "sso-source-enabled? returns false for unknown sources"
+    (is (false? (sso.settings/sso-source-enabled? :unknown-provider)))))

@@ -3,6 +3,7 @@ import cx from "classnames";
 import { msgid, ngettext } from "ttag";
 
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
+import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import { FOOTER_HEIGHT } from "metabase/data-grid/constants";
 import { PaginationFooter } from "metabase/visualizations/components/PaginationFooter/PaginationFooter";
 
@@ -12,8 +13,10 @@ export interface FooterProps<TData> {
   table: Table<TData>;
   enablePagination?: boolean;
   showRowsCount?: boolean;
+  rowsTruncated?: number;
   style?: React.CSSProperties;
   className?: string;
+  tableFooterExtraButtons?: React.ReactNode;
 }
 
 export const Footer = <TData,>({
@@ -22,6 +25,8 @@ export const Footer = <TData,>({
   enablePagination,
   className,
   style,
+  tableFooterExtraButtons,
+  rowsTruncated,
 }: FooterProps<TData>) => {
   const formatNumber = useNumberFormatter();
   const wrapperAttributes = {
@@ -39,6 +44,7 @@ export const Footer = <TData,>({
       Math.min((pagination.pageIndex + 1) * pagination.pageSize, total) - 1;
     return (
       <div {...wrapperAttributes}>
+        {tableFooterExtraButtons}
         <PaginationFooter
           start={start}
           end={end}
@@ -53,12 +59,21 @@ export const Footer = <TData,>({
   if (showRowsCount) {
     return (
       <div {...wrapperAttributes}>
+        {tableFooterExtraButtons}
         <span className={S.rowsCount}>
-          {ngettext(
-            msgid`${formatNumber(total)} row`,
-            `${formatNumber(total)} rows`,
-            total,
-          )}
+          {rowsTruncated !== undefined
+            ? getRowCountMessage(
+                {
+                  data: { rows_truncated: rowsTruncated ?? 0 },
+                  row_count: total,
+                },
+                formatNumber,
+              )
+            : ngettext(
+                msgid`${formatNumber(total)} row`,
+                `${formatNumber(total)} rows`,
+                total,
+              )}
         </span>
       </div>
     );

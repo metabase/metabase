@@ -1,14 +1,22 @@
 import type { Location } from "history";
+import { getIn } from "icepick";
+import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import { isJWT } from "metabase/lib/utils";
-import { isUuid } from "metabase/lib/uuid";
+import type { SelectedTabId } from "metabase/redux/store";
+import {
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
+import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
+import type { StaticEmbeddingEntityError } from "metabase/utils/errors/types";
 import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
+import Question from "metabase-lib/v1/Question";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   areParameterValuesIdentical,
@@ -20,12 +28,15 @@ import type {
   CacheableDashboard,
   Card,
   CardId,
+  ClickBehavior,
+  ColumnSettings,
   DashCardDataMap,
   Dashboard,
   DashboardCard,
   DashboardCardLayoutAttrs,
   Database,
   Dataset,
+  DatasetQuery,
   EmbedDataset,
   Parameter,
   ParameterId,
@@ -34,7 +45,6 @@ import type {
   VirtualCardDisplay,
   VirtualDashboardCard,
 } from "metabase-types/api";
-import type { SelectedTabId } from "metabase-types/store";
 
 export function syncParametersAndEmbeddingParams(before: any, after: any) {
   if (after.parameters && before.embedding_params && before.enable_embedding) {
@@ -82,36 +92,6 @@ export function expandInlineCard(card?: Card | VirtualCard) {
     ...card,
     id: _.uniqueId("card"),
   };
-}
-
-export function isQuestionCard(card: Card | VirtualCard) {
-  // Some old virtual cards have dataset_query equal to {} so we need to check for null and empty object
-  return (
-    card.dataset_query != null && Object.keys(card.dataset_query).length > 0
-  );
-}
-
-export function isQuestionDashCard(
-  dashcard: BaseDashboardCard,
-): dashcard is QuestionDashboardCard {
-  return (
-    "card_id" in dashcard &&
-    "card" in dashcard &&
-    !isVirtualDashCard(dashcard) &&
-    !isActionDashCard(dashcard)
-  );
-}
-
-export function isActionDashCard(
-  dashcard: BaseDashboardCard,
-): dashcard is ActionDashboardCard {
-  return "action" in dashcard;
-}
-
-export function isVirtualDashCard(
-  dashcard: Pick<BaseDashboardCard, "visualization_settings">,
-): dashcard is VirtualDashboardCard {
-  return _.isObject(dashcard?.visualization_settings?.virtual_card);
 }
 
 export function getVirtualCardType(dashcard: BaseDashboardCard) {
@@ -198,7 +178,11 @@ export function getInlineParameterTabMap(dashboard: Dashboard) {
 
 export function isNativeDashCard(dashcard: QuestionDashboardCard) {
   // The `dataset_query` is null for questions on a dashboard the user doesn't have access to
-  return dashcard.card.dataset_query?.type === "native";
+  if (dashcard.card.dataset_query == null) {
+    return false;
+  }
+  const question = new Question(dashcard.card);
+  return question.isNative();
 }
 
 // For a virtual (text) dashcard without any parameters, returns a boolean indicating whether we should display the
@@ -236,29 +220,27 @@ export function hasDatabaseActionsEnabled(database: Database) {
   return database.settings?.["database-enable-actions"] ?? false;
 }
 
-export function isTransientId(id: unknown) {
-  return typeof id === "string" && /\/auto\/dashboard/.test(id);
-}
-
-export function getDashboardType(id: unknown) {
-  if (id == null || typeof id === "object") {
-    // HACK: support inline dashboards
-    return "inline";
-  } else if (isUuid(id)) {
-    return "public";
-  } else if (isJWT(id)) {
-    return "embed";
-  } else if (isTransientId(id)) {
-    return "transient";
-  } else {
-    return "normal";
-  }
-}
-
 export async function fetchDataOrError<T>(dataPromise: Promise<T>) {
   try {
     return await dataPromise;
   } catch (error) {
+    // For 4xx errors from streaming query endpoints, the error response body
+    // contains the actual error data that should be displayed (just like the old
+    // 202-with-error-in-body behavior). Treat these as successful responses.
+    if (
+      error &&
+      typeof error === "object" &&
+      "status" in error &&
+      typeof error.status === "number" &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      "data" in error &&
+      typeof error.data === "object"
+    ) {
+      // Return the error data as if it were a successful response
+      return error.data;
+    }
+    // For 5xx errors or other errors, maintain the original behavior
     return { error };
   }
 }
@@ -279,7 +261,10 @@ export function isDashcardLoading(
   return cardData.length === 0 || cardData.some((data) => data == null);
 }
 
-export function getDashcardResultsError(datasets: Dataset[]) {
+export function getDashcardResultsError(
+  datasets: Dataset[],
+  isGuestEmbed: boolean,
+) {
   const isAccessRestricted = datasets.some(
     (s) =>
       s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
@@ -290,6 +275,19 @@ export function getDashcardResultsError(datasets: Dataset[]) {
     return {
       message: getPermissionErrorMessage(),
       icon: "key" as const,
+    };
+  }
+
+  const staticEntityLoadingError = datasets.find((dataset) =>
+    isStaticEmbeddingEntityLoadingError(dataset.error, {
+      isGuestEmbed,
+    }),
+  )?.error as StaticEmbeddingEntityError | undefined;
+
+  if (staticEntityLoadingError) {
+    return {
+      message: staticEntityLoadingError.data,
+      icon: "warning" as const,
     };
   }
 
@@ -352,7 +350,7 @@ const shouldHideCard = (
 
   return (
     !hasRows(dashcardData) &&
-    !getDashcardResultsError(Object.values(dashcardData))
+    !getDashcardResultsError(Object.values(dashcardData), false)
   );
 };
 
@@ -529,4 +527,73 @@ export function setDashboardHeaderParameterIndex(
 
   result.splice(targetIndex, 0, movedParam);
   return result;
+}
+
+export function getClickBehaviorDescription(dashcard: DashboardCard) {
+  const noBehaviorMessage = hasActionsMenu(dashcard)
+    ? t`Open the drill-through menu`
+    : t`Do nothing`;
+  if (isTableDisplay(dashcard)) {
+    const columnSettings: Record<string, ColumnSettings> =
+      getIn(dashcard, ["visualization_settings", "column_settings"]) || {};
+
+    const count = Object.values(columnSettings).filter(
+      (settings) => settings.click_behavior != null,
+    ).length;
+
+    if (count === 0) {
+      return noBehaviorMessage;
+    }
+    return ngettext(
+      msgid`${count} column has custom behavior`,
+      `${count} columns have custom behavior`,
+      count,
+    );
+  }
+
+  if (
+    dashcard.visualization_settings == null ||
+    dashcard.visualization_settings.click_behavior == null
+  ) {
+    return noBehaviorMessage;
+  }
+
+  const clickBehavior = dashcard.visualization_settings
+    .click_behavior as ClickBehavior;
+
+  if (clickBehavior.type === "link") {
+    const { linkType } = clickBehavior;
+    return linkType == null
+      ? t`Go to...`
+      : linkType === "dashboard"
+        ? t`Go to dashboard`
+        : linkType === "question"
+          ? t`Go to question`
+          : t`Go to url`;
+  }
+
+  return t`Filter this dashboard`;
+}
+
+function isEmptyDatasetQuery(
+  datasetQuery: DatasetQuery | Record<string, never> | undefined | null,
+): datasetQuery is Record<string, never> | undefined {
+  return datasetQuery == null || Object.keys(datasetQuery).length === 0;
+}
+
+export function hasActionsMenu(dashcard: DashboardCard) {
+  if (isEmptyDatasetQuery(dashcard.card.dataset_query)) {
+    return false;
+  }
+
+  // This seems to work, but it isn't the right logic.
+  // The right thing to do would be to check for any drills. However, we'd need a "clicked" object for that.
+  const question = Question.create({
+    dataset_query: dashcard.card.dataset_query,
+  });
+  return !question.isNative();
+}
+
+export function isTableDisplay(dashcard: DashboardCard) {
+  return dashcard?.card?.display === "table";
 }

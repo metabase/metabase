@@ -13,7 +13,7 @@
 (set! *warn-on-reflection* true)
 
 (defn ^:private job []
-  (if (slack/slack-configured?)
+  (if (channel.settings/slack-configured?)
     (let [_        (log/info "Starting Slack user/channel startup cache refresh...")
           timer    (u/start-timer)
           _        (slack/refresh-channels-and-usernames!)]

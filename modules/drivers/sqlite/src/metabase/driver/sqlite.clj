@@ -1,6 +1,9 @@
 (ns metabase.driver.sqlite
+  (:refer-clojure :exclude [mapv])
   (:require
    [clojure.java.io :as io]
+   [clojure.java.jdbc :as jdbc]
+   [clojure.math :as math]
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
@@ -11,13 +14,13 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [mapv]])
   (:import
    (java.sql Connection ResultSet Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -44,7 +47,11 @@
                               :case-sensitivity-string-filter-options false
                               ;; Index sync is turned off across the application as it is not used ATM.
                               :index-info                             false
-                              :database-routing                       true}]
+                              :table-privileges                       true
+                              :database-routing                       true
+                              :describe-default-expr                  true
+                              :describe-is-nullable                   true
+                              :describe-is-generated                  true}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
 ;; Every SQLite3 file starts with "SQLite Format 3"
@@ -103,7 +110,7 @@
     [#"CLOB"      :type/Text]
     [#"BLOB"      :type/*]
     [#"REAL"      :type/Float]
-    [#"DOUB"      :type/Float]
+    [#"DOUB"      :type/Float] ; codespell:ignore
     [#"FLOA"      :type/Float]
     [#"NUMERIC"   :type/Float]
     [#"DECIMAL"   :type/Decimal]
@@ -124,6 +131,20 @@
   (sql.qp/format-honeysql driver {:select [:*]
                                   :from   [[(h2x/identifier :table table-name)]]
                                   :limit  1}))
+
+(defmethod sql-jdbc.sync/current-user-table-privileges :sqlite
+  [_driver conn-spec & _options]
+  ;; SQLite has no per-user privileges; allow SELECT on all tables and views
+  (let [rows (jdbc/query conn-spec ["SELECT name AS \"table\" FROM sqlite_master WHERE type IN ('table','view')"])]
+    (map (fn [{:keys [table]}]
+           {:role   nil
+            :schema nil
+            :table  table
+            :select true
+            :insert true
+            :update true
+            :delete true})
+         rows)))
 
 (defn- ->date [& args]
   (-> (into [:date] args)
@@ -261,19 +282,33 @@
     (->datetime hsql-form (h2x/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:sqlite :seconds]
-  [_ _ expr]
+  [_driver _precision expr]
   (->datetime expr (h2x/literal "unixepoch")))
 
+(defn- unix-timestamp->honeysql [expr power]
+  (let [divisor       (long (math/pow 10 power))
+        format-string (format "%%0%dd" power)]
+    [:concat
+     (->datetime (h2x// expr divisor) (h2x/literal "unixepoch"))
+     (h2x/literal ".")
+     [:printf
+      (h2x/literal format-string)
+      (h2x/mod expr divisor)]]))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlite :milliseconds] [_driver _precision expr] (unix-timestamp->honeysql expr 3))
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlite :microseconds] [_driver _precision expr] (unix-timestamp->honeysql expr 6))
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlite :nanoseconds]  [_driver _precision expr] (unix-timestamp->honeysql expr 9))
+
 (defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->DateTime]
-  [_driver _semantic_type expr]
+  [_driver _semantic-type expr]
   (->datetime expr))
 
 (defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->Date]
-  [_driver _semantic_type expr]
+  [_driver _semantic-type expr]
   (->date expr))
 
 (defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/ISO8601->Time]
-  [_driver _semantic_type expr]
+  [_driver _semantic-type expr]
   (->time expr))
 
 (defmethod sql.qp/cast-temporal-string [:sqlite :Coercion/YYYYMMDDHHMMSSString->Temporal]
@@ -491,12 +526,17 @@
 (defn- sqlite-handle-timestamp
   [^ResultSet rs ^Integer i]
   (let [obj (.getObject rs i)]
-    (cond
-      ;; For strings, use our own parser which is more flexible than sqlite-jdbc's and handles timezones correctly
-      (instance? String obj) (u.date/parse obj)
-      ;; For other types, fallback to sqlite-jdbc's parser
-      ;; Even in DATE column, it is possible to put DATETIME, so always treat as DATETIME
-      (some? obj) (t/local-date-time (.getTimestamp rs i)))))
+    (try
+      (cond
+        ;; For strings, use our own parser which is more flexible than sqlite-jdbc's and handles timezones correctly
+        (instance? String obj) (u.date/parse obj)
+        ;; For other types, fallback to sqlite-jdbc's parser
+        ;; Even in DATE column, it is possible to put DATETIME, so always treat as DATETIME
+        (some? obj) (t/local-date-time (.getTimestamp rs i)))
+      (catch Exception _
+        ;; Just return the object as is if we are unable to parse it as a date.
+        ;; This can happen when there are non-date objects in the column (#71205).
+        obj))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:sqlite Types/DATE]
   [_ ^ResultSet rs _ ^Integer i]
@@ -511,3 +551,6 @@
 (defmethod sql.qp/->integer :sqlite
   [driver value]
   (sql.qp/->integer-with-round driver value))
+
+(defmethod driver/llm-sql-dialect-resource :sqlite [_]
+  "metabot/prompts/dialects/sqlite.md")

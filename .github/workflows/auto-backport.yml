@@ -6,13 +6,21 @@ on:
 
 jobs:
   create-backport:
-    if: | # the PR must be merged and have a backport label
+    if:
+      | # the PR must have a backport label when it's merged, or be labeled with a backport label after merge
       github.event.pull_request.merged == true && (
-        contains(github.event.pull_request.labels.*.name, 'backport') ||
-        contains(github.event.pull_request.labels.*.name, 'double-backport') ||
-        contains(github.event.pull_request.labels.*.name, 'triple-backport')
+        github.event.action == 'closed' && (
+          contains(github.event.pull_request.labels.*.name, 'backport') ||
+          contains(github.event.pull_request.labels.*.name, 'double-backport') ||
+          contains(github.event.pull_request.labels.*.name, 'triple-backport')
+        ) ||
+        github.event.action == 'labeled' && (
+          github.event.label.name == 'backport' ||
+          github.event.label.name == 'double-backport' ||
+          github.event.label.name == 'triple-backport'
+        )
       )
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:

@@ -56,7 +56,7 @@ function ParameterMultiSelectHelpInfo() {
       <HoverCard.Target>
         <Icon
           c="text-secondary"
-          name="info_filled"
+          name="info"
           data-testid="multi-select-info-icon"
         />
       </HoverCard.Target>
@@ -64,11 +64,11 @@ function ParameterMultiSelectHelpInfo() {
         <Box p="md" maw="24rem">
           <Text>
             {jt`Most of the time you’ll want to use this with an ${(
-              <Code key="in" bg="bg-medium">
+              <Code key="in" bg="background-tertiary">
                 {"IN"}
               </Code>
             )} clause, like ${(
-              <Code key="where" bg="bg-medium">
+              <Code key="where" bg="background-tertiary">
                 {"WHERE category IN ({{categories}})"}
               </Code>
             )}`}

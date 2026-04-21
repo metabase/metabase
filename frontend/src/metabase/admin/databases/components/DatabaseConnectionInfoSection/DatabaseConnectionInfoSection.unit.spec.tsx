@@ -8,9 +8,9 @@ import {
 } from "__support__/server-mocks/database";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Database, InitialSyncStatus } from "metabase-types/api";
 import { createMockDatabase } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { DatabaseConnectionInfoSection } from "./DatabaseConnectionInfoSection";
 
@@ -101,6 +101,28 @@ describe("DatabaseConnectionInfoSection", () => {
       });
     });
 
+    it("shows an error when a schema sync fails", async () => {
+      const { database } = setup();
+      fetchMock.modifyRoute(`database-${database.id}-sync-schema`, {
+        response: 500,
+      });
+
+      await userEvent.click(screen.getByText(/Sync database schema/i));
+      expect(await screen.findByText(/Failed to sync/i)).toBeInTheDocument();
+    });
+
+    it("shows an error when a field sync fails", async () => {
+      const { database } = setup();
+      fetchMock.modifyRoute(`database-${database.id}-rescan-values`, {
+        response: 500,
+      });
+
+      await userEvent.click(screen.getByText(/Re-scan field values/i));
+      expect(
+        await screen.findByText(/failed to start scan/i),
+      ).toBeInTheDocument();
+    });
+
     it("re-scans database field values", async () => {
       const { database } = setup();
       await userEvent.click(screen.getByText(/Re-scan field values/i));
@@ -152,6 +174,18 @@ describe("DatabaseConnectionInfoSection", () => {
           ).toBe(1);
         });
       });
+    });
+  });
+
+  describe("Cloud-attached databases", () => {
+    it("should not show the sync actions", async () => {
+      setup({ database: createMockDatabase({ is_attached_dwh: true }) });
+      expect(
+        screen.queryByText(/Sync database schema/i),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Re-scan field values/i),
+      ).not.toBeInTheDocument();
     });
   });
 });

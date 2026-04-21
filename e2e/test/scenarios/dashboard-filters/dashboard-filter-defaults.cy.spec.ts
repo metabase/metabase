@@ -92,10 +92,9 @@ describe("scenarios > dashboard > filters > reset", () => {
     H.sidebar().within(() => {
       cy.findByLabelText("Input box").click();
       clearDefaultFilterValue();
-      setDefaultFilterValue("Foo");
     });
 
-    H.popover().button("Add filter").click();
+    setDefaultFilterValue("Foo");
 
     cy.location("search").should("eq", "?filter_one=&filter_two=Foo");
 
@@ -153,10 +152,9 @@ describe("scenarios > dashboard > filters > reset", () => {
 
     H.sidebar().within(() => {
       cy.findByLabelText("Input box").click();
-      setDefaultFilterValue("Foo");
     });
 
-    H.popover().button("Add filter").click();
+    setDefaultFilterValue("Foo");
 
     cy.location("search").should("eq", "?filter_one=Foo&filter_two=Bar");
 
@@ -174,5 +172,11 @@ function clearDefaultFilterValue() {
 }
 
 function setDefaultFilterValue(value: string) {
-  cy.findByLabelText("No default").type(value);
+  H.sidebar().within(() => {
+    cy.findByLabelText("No default").click();
+  });
+  H.popover().within(() => {
+    cy.findByPlaceholderText("Enter some text").type(value);
+    cy.button("Add filter").click();
+  });
 }

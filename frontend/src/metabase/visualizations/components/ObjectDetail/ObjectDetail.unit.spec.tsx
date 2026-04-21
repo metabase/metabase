@@ -14,7 +14,11 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 import registerVisualizations from "metabase/visualizations/register";
 import type { Field } from "metabase-types/api";
 import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
@@ -25,12 +29,8 @@ import {
   createProductsTable,
   createReviewsTable,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
-import ObjectDetail from "./ObjectDetail";
+import { ObjectDetail } from "./ObjectDetail";
 
 registerVisualizations();
 
@@ -41,8 +41,7 @@ const HIDDEN_ORDERS_TABLE = createOrdersTable({
 });
 const REVIEWS_TABLE = createReviewsTable();
 
-const PRODUCTS_RECORD_RELATED_ORDERS_COUNT = 93;
-const PRODUCTS_RECORD_RELATED_REVIEWS_COUNT = 8;
+const FK_RECORDS_COUNT = 93;
 
 interface SetupOpts {
   hideOrdersTable?: boolean;
@@ -112,6 +111,7 @@ function setup({ hideOrdersTable = false }: SetupOpts = {}) {
       isObjectDetail
       onVisualizationClick={jest.fn()}
       visualizationIsClickable={jest.fn()}
+      isDashboard={false}
     />,
     {
       storeInitialState: state,
@@ -123,28 +123,10 @@ function setupForeignKeyCountQueryEndpoints() {
   fetchMock.post({
     name: "ordersCountQuery",
     url: "path:/api/dataset",
-    matchPartialBody: true,
-    body: {
-      query: { "source-table": ORDERS_TABLE.id },
-    },
     response: createMockDataset({
       status: "completed",
       data: {
-        rows: [[PRODUCTS_RECORD_RELATED_ORDERS_COUNT]],
-      },
-    }),
-  });
-  fetchMock.post({
-    name: "reviewsCountQuery",
-    url: "path:/api/dataset",
-    matchPartialBody: true,
-    body: {
-      query: { "source-table": REVIEWS_TABLE.id },
-    },
-    response: createMockDataset({
-      status: "completed",
-      data: {
-        rows: [[PRODUCTS_RECORD_RELATED_REVIEWS_COUNT]],
+        rows: [[FK_RECORDS_COUNT]],
       },
     }),
   });
@@ -165,16 +147,12 @@ describe("ObjectDetail", () => {
 
     expect(
       await screen.findByText(
-        getBrokenUpTextMatcher(
-          [PRODUCTS_RECORD_RELATED_REVIEWS_COUNT, "Reviews"].join(""),
-        ),
+        getBrokenUpTextMatcher([FK_RECORDS_COUNT, "Reviews"].join("")),
       ),
     ).toBeInTheDocument();
     expect(
       await screen.findByText(
-        getBrokenUpTextMatcher(
-          [PRODUCTS_RECORD_RELATED_ORDERS_COUNT, "Orders"].join(""),
-        ),
+        getBrokenUpTextMatcher([FK_RECORDS_COUNT, "Orders"].join("")),
       ),
     ).toBeInTheDocument();
   });
@@ -189,15 +167,11 @@ describe("ObjectDetail", () => {
 
     expect(
       await screen.findByText(
-        getBrokenUpTextMatcher(
-          [PRODUCTS_RECORD_RELATED_REVIEWS_COUNT, "Reviews"].join(""),
-        ),
+        getBrokenUpTextMatcher([FK_RECORDS_COUNT, "Reviews"].join("")),
       ),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText(
-        [PRODUCTS_RECORD_RELATED_ORDERS_COUNT, "Orders"].join(""),
-      ),
+      screen.queryByText([FK_RECORDS_COUNT, "Orders"].join("")),
     ).not.toBeInTheDocument();
   });
 });

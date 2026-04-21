@@ -4,9 +4,8 @@
  * to be treated as an entity (for now at least) so that it will play nicely with search
  */
 
-import { createEntity } from "metabase/lib/entities";
-import { indexedEntity as indexedEntityUrl } from "metabase/lib/urls";
 import { IndexedEntitySchema } from "metabase/schema";
+import { createEntity } from "metabase/utils/entities";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -15,8 +14,4 @@ export const IndexedEntities = createEntity({
   name: "indexedEntities",
   nameOne: "indexedEntity",
   schema: IndexedEntitySchema,
-  objectSelectors: {
-    getUrl: indexedEntityUrl,
-    getIcon: () => ({ name: "index" }),
-  },
 });

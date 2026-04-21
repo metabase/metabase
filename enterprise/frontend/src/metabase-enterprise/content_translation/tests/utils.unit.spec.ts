@@ -2,6 +2,7 @@ import type { HoveredObject } from "metabase/visualizations/types";
 import type { DatasetColumn, DictionaryArray } from "metabase-types/api";
 import { createMockColumn, createMockSeries } from "metabase-types/api/mocks";
 
+import { leaveUntranslated } from "../use-translate-content";
 import {
   translateCardNames,
   translateContentString,
@@ -101,13 +102,13 @@ describe("content translation utils", () => {
       ).toBe("Whitespace Translation");
     });
 
-    it("should handle case sensitivity", () => {
+    it("should be case insensitive for msgid (metabase#61795)", () => {
       expect(translateContentString(mockDictionary, "es", "hello")).toBe(
-        "hello",
-      ); // no match
-      expect(translateContentString(mockDictionary, "ES", "Hello")).toBe(
-        "Hello",
-      ); // no match
+        "Hola",
+      );
+      expect(translateContentString(mockDictionary, "es", "WORLD")).toBe(
+        "Mundo",
+      );
     });
   });
 
@@ -122,7 +123,11 @@ describe("content translation utils", () => {
 
     it("should translate display_name fields in simple objects", () => {
       const input = { display_name: "Test Name", other_field: "unchanged" };
-      const result = translateDisplayNames(input, mockTc);
+      const result = translateDisplayNames({
+        obj: input,
+        tc: mockTc,
+        locale: "en",
+      });
 
       expect(result).toEqual({
         display_name: "mock translation of Test Name",
@@ -133,7 +138,12 @@ describe("content translation utils", () => {
 
     it("should translate custom field names when specified", () => {
       const input = { title: "Test Title", name: "Test Name" };
-      const result = translateDisplayNames(input, mockTc, ["title", "name"]);
+      const result = translateDisplayNames({
+        obj: input,
+        tc: mockTc,
+        locale: "en",
+        fieldsToTranslate: ["title", "name"],
+      });
 
       expect(result).toEqual({
         title: "mock translation of Test Title",
@@ -148,7 +158,11 @@ describe("content translation utils", () => {
         { display_name: "First", id: 1 },
         { display_name: "Second", id: 2 },
       ];
-      const result = translateDisplayNames(input, mockTc);
+      const result = translateDisplayNames({
+        obj: input,
+        tc: mockTc,
+        locale: "en",
+      });
 
       expect(result).toEqual([
         { display_name: "mock translation of First", id: 1 },
@@ -166,7 +180,11 @@ describe("content translation utils", () => {
           value: 42,
         },
       };
-      const result = translateDisplayNames(input, mockTc);
+      const result = translateDisplayNames({
+        obj: input,
+        tc: mockTc,
+        locale: "en",
+      });
 
       expect(result).toEqual({
         display_name: "mock translation of Parent",
@@ -195,7 +213,11 @@ describe("content translation utils", () => {
           },
         ],
       };
-      const result = translateDisplayNames(input, mockTc);
+      const result = translateDisplayNames({
+        obj: input,
+        tc: mockTc,
+        locale: "en",
+      });
 
       expect(result).toEqual({
         display_name: "mock translation of Root",
@@ -224,7 +246,11 @@ describe("content translation utils", () => {
         other_display_name: null,
         another_display_name: undefined,
       };
-      const result = translateDisplayNames(input, mockTc);
+      const result = translateDisplayNames({
+        obj: input,
+        tc: mockTc,
+        locale: "en",
+      });
 
       expect(result).toEqual({
         display_name: 123,
@@ -235,11 +261,21 @@ describe("content translation utils", () => {
     });
 
     it("should handle primitive values", () => {
-      expect(translateDisplayNames("string", mockTc)).toBe("string");
-      expect(translateDisplayNames(123, mockTc)).toBe(123);
-      expect(translateDisplayNames(true, mockTc)).toBe(true);
-      expect(translateDisplayNames(null, mockTc)).toBe(null);
-      expect(translateDisplayNames(undefined, mockTc)).toBe(undefined);
+      expect(
+        translateDisplayNames({ obj: "string", tc: mockTc, locale: "en" }),
+      ).toBe("string");
+      expect(
+        translateDisplayNames({ obj: 123, tc: mockTc, locale: "en" }),
+      ).toBe(123);
+      expect(
+        translateDisplayNames({ obj: true, tc: mockTc, locale: "en" }),
+      ).toBe(true);
+      expect(
+        translateDisplayNames({ obj: null, tc: mockTc, locale: "en" }),
+      ).toBe(null);
+      expect(
+        translateDisplayNames({ obj: undefined, tc: mockTc, locale: "en" }),
+      ).toBe(undefined);
       expect(mockTc).not.toHaveBeenCalled();
     });
 
@@ -248,7 +284,11 @@ describe("content translation utils", () => {
         display_name: "Original",
         nested: { display_name: "Nested" },
       };
-      const result = translateDisplayNames(input, mockTc);
+      const result = translateDisplayNames({
+        obj: input,
+        tc: mockTc,
+        locale: "en",
+      });
 
       expect(input.display_name).toBe("Original");
       expect(input.nested.display_name).toBe("Nested");
@@ -259,8 +299,12 @@ describe("content translation utils", () => {
     });
 
     it("should handle empty arrays and objects", () => {
-      expect(translateDisplayNames([], mockTc)).toEqual([]);
-      expect(translateDisplayNames({}, mockTc)).toEqual({});
+      expect(
+        translateDisplayNames({ obj: [], tc: mockTc, locale: "en" }),
+      ).toEqual([]);
+      expect(
+        translateDisplayNames({ obj: {}, tc: mockTc, locale: "en" }),
+      ).toEqual({});
       expect(mockTc).not.toHaveBeenCalled();
     });
   });
@@ -400,9 +444,8 @@ describe("content translation utils", () => {
 
     it("should return the original series if no translations are available", () => {
       const series = createMockSeries();
-      const result = translateFieldValuesInSeries(series, mockTC);
+      const result = translateFieldValuesInSeries(leaveUntranslated)(series);
       expect(result).toEqual(series);
-      expect(mockTC).not.toHaveBeenCalled();
     });
 
     it("should translate all columns in the series", () => {
@@ -419,7 +462,7 @@ describe("content translation utils", () => {
       ];
       series[0].data.rows = [["a", "b"]];
 
-      const result = translateFieldValuesInSeries(series, mockTC);
+      const result = translateFieldValuesInSeries(mockTC)(series);
 
       expect(result[0].data.rows).toEqual([
         ["mock translation of a", "mock translation of b"],
@@ -438,7 +481,7 @@ describe("content translation utils", () => {
 
     it("translates card names in a series", () => {
       const series = createMockSeries([{ name: "a" }, { name: "b" }]);
-      const result = translateCardNames(series, mockTC);
+      const result = translateCardNames(mockTC)(series);
       expect(result[0].card.name).toEqual("mock translation of a");
     });
   });

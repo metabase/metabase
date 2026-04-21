@@ -2,10 +2,18 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen, waitFor } from "__support__/ui";
 import { FormProvider } from "metabase/forms";
+import { createMockGroup } from "metabase-types/api/mocks";
 
 import { GroupMappingsWidgetView } from "./GroupMappingsWidgetView";
 
-const defaultGroups = [{ id: 1, name: "Administrators", member_count: 1 }];
+const defaultGroups = [
+  createMockGroup({
+    id: 1,
+    name: "Administrators",
+    member_count: 1,
+    magic_group_type: "admin",
+  }),
+];
 const defaultMappings = { "group=Administrators": [1] };
 
 const setup = ({
@@ -76,7 +84,7 @@ describe("GroupMappingsWidgetView", () => {
 
       expect(
         await screen.findByText(
-          "No mappings yet, groups will be automatically assgined by exactly matching names",
+          "No mappings yet, groups will be automatically assigned by exactly matching names",
         ),
       ).toBeInTheDocument();
     });

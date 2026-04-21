@@ -9,14 +9,13 @@ import {
 } from "react";
 import { jt, t } from "ttag";
 
-import ExternalLink from "metabase/common/components/ExternalLink";
-import Link from "metabase/common/components/Link";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { Link } from "metabase/common/components/Link";
+import { OnboardingIllustration } from "metabase/common/components/OnboardingIllustration";
 import { useSetting, useTempStorage } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { getIsXrayEnabled } from "metabase/home/selectors";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { useHelpLink } from "metabase/nav/components/ProfileLink/useHelpLink";
+import { useHelpLink } from "metabase/nav/components/AppSwitcher/useHelpLink";
 import {
   getDocsUrl,
   getIsPaidPlan,
@@ -39,6 +38,8 @@ import {
   Title,
   rem,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 
 import S from "./Onboarding.module.css";
 import {
@@ -98,11 +99,11 @@ export const Onboarding = () => {
   );
 
   const newNativeQuestionUrl = Urls.newQuestion({
-    type: "native",
+    DEPRECATED_RAW_MBQL_type: "native",
     creationType: "native_question",
     collectionId: "root",
     cardType: "question",
-    databaseId: lastUsedDatabaseId || undefined,
+    DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
   });
 
   const [lastItemOpened, setLastItemOpened] = useTempStorage(
@@ -211,6 +212,7 @@ export const Onboarding = () => {
       pt="xl"
       pb={212}
     >
+      <OnboardingIllustration />
       <Box maw={592} m="0 auto">
         <Accordion
           defaultValue={lastItemOpened || DEFAULT_ITEM}
@@ -284,10 +286,10 @@ export const Onboarding = () => {
                       width="100%"
                     />
                     {!isPaidPlan ? (
-                      // eslint-disable-next-line no-literal-metabase-strings -- OSS doesn't have whitelabeling option
+                      // eslint-disable-next-line metabase/no-literal-metabase-strings -- OSS doesn't have whitelabeling option
                       <Text>{t`Don't be shy with invites. Metabase makes self-service analytics easy.`}</Text>
                     ) : (
-                      // eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins
+                      // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins
                       <Text>{t`Don't be shy with invites. Metabase Starter plan includes 5 users, and Pro includes 10 users without the need to pay additionally.`}</Text>
                     )}
 
@@ -337,7 +339,7 @@ export const Onboarding = () => {
                       <Text>
                         {jt`Hover over a table and click the yellow lightning bolt ${(
                           <Icon
-                            c="var(--mb-color-warning)"
+                            c="warning"
                             className={S.inlineIcon}
                             key="bolt_icon"
                             name="bolt_filled"
@@ -471,7 +473,7 @@ export const Onboarding = () => {
                           t`dashboard with tabs`
                         )
                       } and add text, link, and iframe cards.`}</li>
-                      <li>{jt`Add ${(<b key="filters">{t`filters`}</b>)} to dashboards and connect them to fields on questions to narrow the results.`}</li>
+                      <li>{jt`Add ${<b key="filters">{t`filters`}</b>} to dashboards and connect them to fields on questions to narrow the results.`}</li>
                       <li>{t`Drill-through charts on your dashboard to see different groupings or individual records.`}</li>
                     </ul>
                   </Text>
@@ -521,7 +523,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="subscription-slack"
-                          to="/admin/settings/notifications"
+                          to="/admin/settings/slack"
                         >{t`Slack`}</Link>
                       )}.`}
                     </Text>
@@ -541,7 +543,7 @@ export const Onboarding = () => {
                         name="subscription"
                         className={S.inlineIcon}
                       />
-                    )} ${(<b key="subscriptions">{t`Subscriptions`}</b>)}.`}
+                    )} ${<b key="subscriptions">{t`Subscriptions`}</b>}.`}
                   </Text>
                   {isAdmin && exampleDashboardId && (
                     <Box data-testid="subscription-cta">
@@ -569,8 +571,8 @@ export const Onboarding = () => {
               <Accordion.Panel>
                 <Stack gap="lg">
                   <VideoTutorial
-                    id="pbkECx-1Cos"
-                    si="r1KRkR0CJ3BmHOOE"
+                    id="MPw5__mVg58"
+                    si="jaUgne1VDg6VXprJ"
                     title="How to create an alert?"
                   />
                   {shouldConfigureCommunicationChannels && (
@@ -585,7 +587,7 @@ export const Onboarding = () => {
                         <Link
                           className={CS.link}
                           key="alert-slack"
-                          to="/admin/settings/notifications"
+                          to="/admin/settings/slack"
                         >{t`Slack`}</Link>
                       )}.`}
                     </Text>
@@ -593,8 +595,8 @@ export const Onboarding = () => {
                   <Text>
                     {jt`Go to a question and click on the ${(
                       <Icon
-                        key="sharing-icon"
-                        name="share"
+                        key="more-icon"
+                        name="ellipsis"
                         className={S.inlineIcon}
                       />
                     )} icon on the top bar, then ${(
@@ -603,7 +605,7 @@ export const Onboarding = () => {
                         key="alert-icon"
                         name="alert"
                       />
-                    )} ${(<b key="create-alert">{t`Create an alert`}</b>)}.`}
+                    )} ${<b key="create-alert">{t`Create an alert`}</b>}.`}
                   </Text>
                   <Text>
                     {t`There are three kinds of things you can get alerted about in ${applicationName}:`}

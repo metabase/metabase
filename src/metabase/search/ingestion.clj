@@ -6,9 +6,12 @@
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.app-db.core :as mdb]
+   [metabase.lib-be.core :as lib-be]
    [metabase.search.engine :as search.engine]
    [metabase.search.spec :as search.spec]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
    [metabase.util.queue :as queue]
@@ -51,11 +54,43 @@
 
 (defn- searchable-text [m]
   ;; For now, we never index the native query content
-  (->> (:search-terms (search.spec/spec (:model m)))
-       (keep m)
-       (map str/trim)
-       (remove str/blank?)
-       (str/join " ")))
+  (let [search-terms (:search-terms (search.spec/spec (:model m)))
+        getter       (if (map? search-terms)
+                       (fn [[k tx]]
+                         (let [tx (if (true? tx) identity tx)]
+                           (some-> (get m k) tx)))
+                       m)
+        xf           (comp (keep getter)
+                           (map str/trim)
+                           (remove str/blank?))]
+    (->> (into [] xf search-terms)
+         (str/join " "))))
+
+(defn- embeddable-text
+  "Generate labeled text for semantic search embeddings.
+  Format:
+    [model]
+    field1: value1
+    field2: value2
+
+  Note: Unlike searchable-text, transformation functions in search-terms
+  (e.g., explode-camel-case) are NOT applied. Transformations like camel-case
+  explosion are specific to full-text search optimization."
+  [m]
+  (let [search-terms (:search-terms (search.spec/spec (:model m)))
+        field-keys   (cond-> search-terms (map? search-terms) keys)
+        header       (str "[" (:model m) "]")
+        fields        (keep (fn [k]
+                              (let [v (get m k)]
+                                (when (not (str/blank? (str v)))
+                                  (str (name k) ": " (str/trim (str v))))))
+                            field-keys)]
+    (str header "\n" (str/join "\n" fields))))
+
+(defn- search-term-columns
+  "Extract column names from search-terms spec for SQL query generation"
+  [search-terms]
+  (if (map? search-terms) (keys search-terms) search-terms))
 
 (defn- display-data [m]
   (perf/select-keys m [:name :display_name :description :collection_name]))
@@ -64,20 +99,29 @@
   "Execute a single function attribute and return the result"
   [attr-key attr-def record]
   (try
-    (let [f (:fn attr-def)]
-      (f record))
+    (let [f (:fn attr-def)
+          fields (:fields attr-def)
+          input (if fields
+                  (select-keys record fields)
+                  record)]
+      (f input))
     (catch Exception e
       (log/warn e "Function execution failed for attribute" attr-key)
       false)))
 
 (defn- execute-all-function-attrs
-  "Execute all function attributes for a given spec and return computed values"
+  "Execute all function attributes for a given spec and return computed values.
+  If a function returns a map, its entries are merged directly into the result —
+  this allows a single function to populate multiple document keys (e.g. :temporal-info
+  returns both :has_temporal_dim and :non_temporal_dim_ids in one call)."
   [spec record]
   (reduce-kv
    (fn [acc attr-key attr-def]
      (if (search.spec/function-attr? attr-def)
-       (let [snake-key (keyword (u/->snake_case_en (name attr-key)))]
-         (assoc acc snake-key (execute-function-attr attr-key attr-def record)))
+       (let [result (execute-function-attr attr-key attr-def record)]
+         (if (map? result)
+           (merge acc result)
+           (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
        acc))
    {}
    (:attrs spec)))
@@ -91,8 +135,9 @@
                         (update :archived boolean)
                         (assoc
                          :display_data (display-data m)
-                         :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
-                         :searchable_text (searchable-text m)))]
+                         :legacy_input (json/encode (dissoc m :pinned :view_count :last_viewed_at :native_query :dataset_query))
+                         :searchable_text (searchable-text m)
+                         :embeddable_text (embeddable-text m)))]
     (merge fn-results sql-results)))
 
 (defn- attrs->select-items [attrs]
@@ -102,23 +147,22 @@
       (if (true? v) as [v as]))))
 
 (defn- spec-index-query*
-  [search-model]
-  (let [spec (search.spec/spec search-model)
-        fn-deps (search.spec/collect-fn-attr-req-fields spec)
-        fn-selects (map (fn [field]
-                          [(keyword (str "this." (name field))) field])
-                        fn-deps)]
+  [_db-type search-model]
+  (let [spec         (search.spec/spec search-model)
+        fn-deps      (search.spec/collect-fn-attr-req-fields spec)
+        fn-selects   (map (fn [field]
+                            [(keyword (str "this." (name field))) field])
+                          fn-deps)
+        search-terms (set (search-term-columns (:search-terms spec)))]
     (u/remove-nils
      {:select    (search.spec/qualify-columns :this
                                               (concat
                                                (map (fn [term] [(searchable-value-trim-sql (keyword (str "this." (name term))))
                                                                 term])
-                                                    (:search-terms spec))
+                                                    search-terms)
                                                (mapcat (fn [k] (attrs->select-items
-                                                                (let [search-terms (set (:search-terms spec))]
-                                                                  (->> k
-                                                                       (get spec)
-                                                                       (remove (comp search-terms key))))))
+                                                                (->> (get spec k)
+                                                                     (remove (comp search-terms key)))))
                                                        [:attrs :render-terms])
                                                fn-selects))
       :from      [[(t2/table-name (:model spec)) :this]]
@@ -130,8 +174,13 @@
                            [[(t2/table-name join-model) join-alias]
                             join-condition])))})))
 
-(def ^{:private true, :arglists '([search-model])} spec-index-query
-  (memoize spec-index-query*))
+(def ^:private spec-index-query-memo (memoize spec-index-query*))
+
+(defn- spec-index-query
+  ;; Memoized per db-type since the generated HoneySQL varies by database engine
+  ;; (e.g. searchable-value-trim-sql emits LEFT/CAST only for postgres and h2).
+  [search-model]
+  (spec-index-query-memo (mdb/db-type) search-model))
 
 (defn- spec-index-query-where [search-model where-clause]
   (-> (spec-index-query search-model)
@@ -139,8 +188,12 @@
 
 (defn- spec-index-reducible [search-model & [where-clause]]
   (->> (spec-index-query-where search-model where-clause)
-       t2/reducible-query
-       (eduction (map #(assoc % :model search-model)))))
+       mdb/streaming-reducible-query
+       (eduction (cond-> (map #(assoc % :model search-model))
+                   ;; It's possible to get redundant entries from the indexed-entities table.
+                   ;; We deduplicate only that model to avoid an unbounded set over all documents.
+                   (= "indexed-entity" search-model)
+                   (comp (m/distinct-by (juxt :id :model)))))))
 
 (defn- search-items-reducible []
   (let [models search.spec/search-models
@@ -157,9 +210,6 @@
        (eduction
         (comp
          (map t2.realize/realize)
-         ;; It's possible to get redundant entries from the indexed-entities table.
-         ;; We remove duplicates to avoid creating invalid insert statements.
-         (m/distinct-by (juxt :id :model))
          (map ->document)))))
 
 (defn searchable-documents
@@ -194,22 +244,23 @@
     ;; We are partitioning the documents into batches at this level and sending each batch to all the engines
     ;; to avoid having to retain the head of the sequences as we work through all the documents.
     ;; Individual engines may also partition the documents further if they prefer
-    (let [timer (u/start-timer)
-          update-report (reduce (fn [_ batch] (search.engine/update! e batch)) nil
-                                (eduction (partition-all 150) documents-reducible))
-          delete-report (reduce (fn [acc batch]
-                                  (->> batch
-                                       (remove nil?)
-                                       (u/group-by first second)
-                                       (map (fn [[group ids]] (search.engine/delete! e group ids)))
-                                       (apply merge-with + acc))) {}
-                                (eduction (partition-all 1000) removed-models-reducible))
-          duration (u/since-ms timer)]
-      (log/debugf "Updated search entries in %.0fms Updated: %s Deleted: %s" duration (sort-by (comp - val) update-report) (sort-by (comp - val) delete-report))
-      (analytics/inc! :metabase-search/index-update-ms duration)
-      (prometheus/observe! :metabase-search/index-update-duration-ms duration)
-      (doseq [[model cnt] (merge-with + update-report delete-report)]
-        (analytics/inc! :metabase-search/index-updates {:model model} cnt)))))
+    (tracing/with-span :search "search.ingestion.update" {:search/engine (name e)}
+      (let [timer (u/start-timer)
+            update-report (reduce (fn [_ batch] (search.engine/update! e batch)) nil
+                                  (eduction (partition-all 150) documents-reducible))
+            delete-report (reduce (fn [acc batch]
+                                    (->> batch
+                                         (remove nil?)
+                                         (u/group-by first second)
+                                         (map (fn [[group ids]] (search.engine/delete! e group ids)))
+                                         (apply merge-with + acc))) {}
+                                  (eduction (partition-all 1000) removed-models-reducible))
+            duration (u/since-ms timer)]
+        (log/debugf "Updated search entries in %.0fms Updated: %s Deleted: %s" duration (sort-by (comp - val) update-report) (sort-by (comp - val) delete-report))
+        (analytics/inc! :metabase-search/index-update-ms duration)
+        (prometheus/observe! :metabase-search/index-update-duration-ms duration)
+        (doseq [[model cnt] (merge-with + update-report delete-report)]
+          (analytics/inc! :metabase-search/index-updates {:model model} cnt))))))
 
 (comment
   (u/group-by first second [["metric" 124] ["dataset" 124] ["metric" 124] ["other" 5]]))
@@ -234,23 +285,27 @@
 (defn bulk-ingest!
   "Process the given search model updates."
   [updates]
-  (if (seq (search.engine/active-engines))
-    (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
-                           (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
-                         ;; init collection is only for clj-kondo, as we know that the list is non-empty
-                         (reduce u/rconcat [])
-                         query->documents)
-          passed-documents (map extract-model-and-id updates)
-          indexed-documents (map (juxt :model (comp str :id)) (into [] documents))
-          ;; TODO: The list of documents to delete is not completely accurate.
-          ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
-          ;; This will not work for cases like indexed-entries with compound PKs,
-          ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
-          ;; Long-term, we should find a better approach to knowing what to purge.
-          to-delete (remove (set indexed-documents) passed-documents)]
+  (tracing/with-span :search "search.ingestion.bulk-ingest" {:search/update-count (count updates)}
+    (lib-be/with-metadata-provider-cache
+      (if (seq (search.engine/active-engines))
+        (let [documents (->> (for [[search-model where-clauses] (u/group-by first second updates)]
+                               (spec-index-reducible search-model (into [:or] (distinct where-clauses))))
+                             ;; init collection is only for clj-kondo, as we know that the list is non-empty
+                             (reduce u/rconcat [])
+                             query->documents)
+              passed-documents (map extract-model-and-id updates)
+              ;; Collect just [model, id] pairs — tiny memory footprint vs materializing full document maps.
+              ;; The eduction will replay the streaming query when passed to update!.
+              indexed-pairs (into #{} (map (juxt :model (comp str :id))) documents)
+              ;; TODO: The list of documents to delete is not completely accurate.
+              ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
+              ;; This will not work for cases like indexed-entries with compound PKs,
+              ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
+              ;; Long-term, we should find a better approach to knowing what to purge.
+              to-delete (remove indexed-pairs passed-documents)]
 
-      (update! documents to-delete))
-    {}))
+          (update! documents to-delete))
+        {}))))
 
 (defn- track-queue-size! []
   (analytics/set! :metabase-search/queue-size (.size queue)))
@@ -274,6 +329,34 @@
            (queue/put-with-delay! queue message-delay-ms update))
          (track-queue-size!)
          true)))))
+
+(defn wait-for-idle!
+  "Block until the ingestion queue has been drained and no more items arrive.
+   Polls the queue and considers it idle when it has been empty for `settle-ms`
+   (default 500ms). Gives up after `timeout-ms` (default 30s)."
+  [& {:keys [settle-ms timeout-ms poll-ms]
+      :or   {settle-ms 500, timeout-ms 30000, poll-ms 50}}]
+  (let [deadline-ns (+ (System/nanoTime) (* (long timeout-ms) 1000000))
+        settle-ns   (* (long settle-ms) 1000000)
+        poll-ms     (long poll-ms)
+        empty-since (atom nil)]
+    (loop []
+      (let [now-ns       (System/nanoTime)
+            sz           (.size queue)
+            remaining-ns (- settle-ns (- now-ns (or @empty-since now-ns)))]
+        (cond
+          (>= now-ns deadline-ns)
+          (log/warnf "wait-for-idle! timed out with %d items still in the queue" sz)
+
+          (pos? sz)
+          (do (reset! empty-since nil)
+              (Thread/sleep poll-ms)
+              (recur))
+
+          (pos? remaining-ns)
+          (do (when-not @empty-since (reset! empty-since now-ns))
+              (Thread/sleep (long (max poll-ms (quot remaining-ns 1000000))))
+              (recur)))))))
 
 (defn start-listener!
   "Starts the ingestion listener on the queue"

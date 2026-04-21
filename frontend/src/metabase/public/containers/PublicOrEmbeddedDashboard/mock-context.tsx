@@ -10,7 +10,7 @@ import {
   mapDispatchToProps,
   mapStateToProps,
 } from "metabase/dashboard/context/context.redux";
-import { connect } from "metabase/lib/redux";
+import { connect } from "metabase/utils/redux";
 
 export type MockDashboardContextProps = Partial<
   Omit<PropsWithChildren<DashboardContextReturned>, "dashboardActions"> & {
@@ -24,13 +24,18 @@ const DashboardContextWithReduxProps = (
   const {
     isEditing,
     downloadsEnabled,
+    withSubscriptions,
     dashboardActions: dashboardActionsOrGetter,
   } = props;
 
   // Use exact same implementation as in DashboardContextProviderInner
   const dashboardActions =
     typeof dashboardActionsOrGetter === "function"
-      ? dashboardActionsOrGetter({ isEditing, downloadsEnabled })
+      ? dashboardActionsOrGetter({
+          isEditing,
+          downloadsEnabled,
+          withSubscriptions,
+        })
       : (dashboardActionsOrGetter ?? null);
 
   return (
@@ -81,24 +86,19 @@ export const MockDashboardContext = ({
   cardTitled = true,
   getClickActionMode = undefined,
   withFooter = true,
-  isNightMode = false,
   isFullscreen = false,
   dashboardActions = undefined,
   dashcardMenu = undefined,
   ...reduxProps
 }: PropsWithChildren<MockDashboardContextProps>) => {
-  const shouldRenderAsNightMode = Boolean(isNightMode && isFullscreen);
-
   return (
     <ConnectedDashboardContextWithReduxProps
       dashboardId={dashboardId}
       parameterQueryParams={parameterQueryParams}
       onLoad={onLoad}
       onError={onError}
-      isNightMode={isNightMode}
       isFullscreen={isFullscreen}
       navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-      shouldRenderAsNightMode={shouldRenderAsNightMode}
       background={background}
       bordered={bordered}
       titled={titled}

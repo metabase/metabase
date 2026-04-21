@@ -8,15 +8,18 @@
    [metabase.actions.models :as action]
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
-   [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.driver.connection :as driver.conn]
+   ;; legacy usage, do not use this in new code
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.queries.models.query :as query]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.core :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.writeback :as qp.writeback]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -30,33 +33,30 @@
   `action` should already be hydrated with its `:card`."
   [{query :dataset_query, model-id :model_id, :as action} :- [:map
                                                               [:model_id      ::lib.schema.id/card]
-                                                              [:dataset_query [:map
-                                                                               [:type   [:= :native]]
-                                                                               [:native [:map
-                                                                                         [:query :string]]]]]]
+                                                              [:dataset_query ::lib.schema/native-only-query]]
    request-parameters]
   (log/tracef "Executing action\n\n%s" (u/pprint-to-str action))
-  (try
-    (let [parameters (for [parameter (:parameters action)]
-                       (assoc parameter :value (get request-parameters (:id parameter))))
-          query (-> query
-                    (update :type keyword)
-                    (assoc :parameters parameters))]
-      (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
-      (binding [qp.perms/*card-id* model-id]
-        (qp.writeback/execute-write-query! query)))
-    (catch Throwable e
-      (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
-        (api/throw-403 e)
-        (throw (ex-info (format "Error executing Action: %s" (ex-message e))
-                        {:action     action
-                         :parameters request-parameters}
-                        e))))))
+  (driver.conn/with-write-connection
+    (try
+      (let [parameters (for [parameter (:parameters action)]
+                         (assoc parameter :value (get request-parameters (:id parameter))))
+            query      (-> query
+                           (assoc :parameters parameters))]
+        (log/debugf "Query (before preprocessing):\n\n%s" (u/pprint-to-str query))
+        (binding [qp.perms/*card-id* model-id]
+          (qp/execute-write-query! query)))
+      (catch Throwable e
+        (if (= (:type (u/all-ex-data e)) qp.error-type/missing-required-permissions)
+          (api/throw-403 e)
+          (throw (ex-info (format "Error executing Action: %s" (ex-message e))
+                          {:action     action
+                           :parameters request-parameters}
+                          e)))))))
 
 (mu/defn- implicit-action-table
-  [card-id :- pos-int?]
-  (let [card (t2/select-one :model/Card :id card-id)
-        {:keys [table-id]} (query/query->database-and-table-ids (:dataset_query card))]
+  [card-id :- ::lib.schema.id/card]
+  (let [query              (t2/select-one-fn :dataset_query :model/Card :id card-id)
+        {:keys [table-id]} (query/query->database-and-table-ids query)]
     (t2/hydrate (t2/select-one :model/Table :id table-id) :fields)))
 
 (defn- execute-custom-action! [action request-parameters]
@@ -113,13 +113,10 @@
 (mu/defn- build-implicit-query :- [:map
                                    [:query          ::mbql.s/Query]
                                    [:row-parameters ::actions.args/row]
-                                   ;; TODO -- the schema for these should probably be
-                                   ;; `:metabase.lib.schema.parameter/parameter` instead of `:any`, but I'm not
-                                   ;; 100% sure about that.
-                                   [:prefetch-parameters {:optional true} [:tuple :any]]]
+                                   [:prefetch-parameters {:optional true} [:maybe ::parameters.schema/parameters]]]
   [{:keys [model_id parameters] :as _action} implicit-action request-parameters]
   (let [{database-id :db_id
-         table-id :id :as table} (implicit-action-table model_id)
+         table-id    :id :as table} (implicit-action-table model_id)
         table-fields             (:fields table)
         pk-fields                (filterv #(isa? (:semantic_type %) :type/PK) table-fields)
         slug->field-name         (->> table-fields
@@ -158,9 +155,15 @@
                 [:= [:field (:id pk-field) nil] (get simple-parameters pk-field-name)])
 
       requires-pk?
-      (assoc :prefetch-parameters [{:target [:dimension [:field (:id pk-field) nil]]
-                                    :type "id"
-                                    :value [(get simple-parameters pk-field-name)]}]))))
+      (assoc :prefetch-parameters [{;; parameter ID here is not really important but let's generate something
+                                    ;; consistent rather than random to make this easier to test
+                                    :id     "metabase.actions.execution/prefetch-parameters-pk"
+                                    :target [:dimension [:field (:id pk-field) nil]]
+                                    ;; :type/UUID derives from :type/Text, so UUIDs are handled as strings
+                                    :type   (if (isa? (:base_type pk-field) :type/Number)
+                                              :number/=
+                                              :string/=)
+                                    :value  [(get simple-parameters pk-field-name)]}]))))
 
 (defn- parse-implicit-action [action-instance]
   (let [k (keyword (:kind action-instance))]

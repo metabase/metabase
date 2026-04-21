@@ -1,7 +1,11 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
-import { Api, useGetSettingsQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
+import {
+  Api,
+  useGetSettingsQuery,
+  useRefreshTokenStatusMutation,
+} from "metabase/api";
+import { useDispatch } from "metabase/utils/redux";
 import type { TokenStatusFeature } from "metabase-types/api";
 
 const REFRESH_INTERVAL = 10 * 1000; // 10 seconds
@@ -12,7 +16,7 @@ const REFRESH_INTERVAL = 10 * 1000; // 10 seconds
  * every 10 seconds until it gets a payload that doesn't have the refresh token feature.
  */
 export function useTokenRefresh() {
-  /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the patten in many components */
+  /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the pattern in many components */
   const res = useGetSettingsQuery();
   const dispatch = useDispatch();
 
@@ -41,12 +45,43 @@ export function useTokenRefreshUntil(
   tokenFeature: TokenStatusFeature,
   {
     intervalMs = REFRESH_INTERVAL,
+    onSatisfied,
     skip = false,
-  }: { intervalMs?: number; skip?: boolean },
+  }: {
+    intervalMs?: number;
+    onSatisfied?: () => void | Promise<void>;
+    skip?: boolean;
+  },
 ) {
-  /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the patten in many components */
+  /* in order to force this hook to re-run on every request, even if the response data is the same, we can't destructure only the data prop from this hook, as is the pattern in many components */
   const res = useGetSettingsQuery();
   const dispatch = useDispatch();
+  const [refreshTokenStatus] = useRefreshTokenStatusMutation();
+  const hasCalledOnSatisfied = useRef(false);
+
+  if (skip) {
+    hasCalledOnSatisfied.current = false;
+  }
+
+  const refreshToken = useCallback(async () => {
+    // Bust the server-side cache first; the mutation's invalidatesTags will
+    // also invalidate session-properties on success, but we do it in finally
+    // too so the UI updates even if the request fails.
+    try {
+      const status = await refreshTokenStatus().unwrap();
+
+      if (
+        onSatisfied &&
+        !hasCalledOnSatisfied.current &&
+        status.features?.includes(tokenFeature)
+      ) {
+        hasCalledOnSatisfied.current = true;
+        onSatisfied();
+      }
+    } finally {
+      dispatch(Api.util.invalidateTags(["session-properties"]));
+    }
+  }, [dispatch, onSatisfied, refreshTokenStatus, tokenFeature]);
 
   useEffect(() => {
     if (skip) {
@@ -57,10 +92,8 @@ export function useTokenRefreshUntil(
     const isTokenFeatureMissing = !tokenStatusFeatures?.includes(tokenFeature);
 
     if (isTokenFeatureMissing) {
-      const timeout = setTimeout(() => {
-        dispatch(Api.util.invalidateTags(["session-properties"]));
-      }, intervalMs);
+      const timeout = setTimeout(refreshToken, intervalMs);
       return () => clearTimeout(timeout);
     }
-  }, [res, dispatch, tokenFeature, intervalMs, skip]);
+  }, [res, dispatch, tokenFeature, intervalMs, skip, refreshToken]);
 }

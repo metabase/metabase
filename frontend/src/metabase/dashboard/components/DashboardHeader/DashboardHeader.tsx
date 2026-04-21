@@ -16,10 +16,11 @@ import {
   getIsEditing,
 } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
 import { getSetting } from "metabase/selectors/settings";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Flex, Loader } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { Dashboard } from "metabase-types/api";
 
 import { SIDEBAR_NAME } from "../../constants";
@@ -35,9 +36,13 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure();
 
   const dispatch = useDispatch();
+  const { isGuestEmbed } = useDashboardContext();
+  const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   useMount(() => {
-    dispatch(fetchPulseFormInput());
+    if (!isGuestEmbed && canManageSubscriptions) {
+      dispatch(fetchPulseFormInput());
+    }
   });
 
   const isEditing = useSelector(getIsEditing);
@@ -54,7 +59,12 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
   );
 
   const { data: collection, isLoading: isLoadingCollection } =
-    useGetCollectionQuery({ id: dashboard.collection_id || "root" });
+    useGetCollectionQuery(
+      { id: dashboard.collection_id || "root" },
+      {
+        skip: isGuestEmbed,
+      },
+    );
 
   const onRequestCancel = () => {
     if (isDirty && isEditing) {
@@ -103,12 +113,15 @@ export const DashboardHeaderInner = ({ dashboard }: DashboardHeaderProps) => {
     ];
   };
 
-  if (isLoadingCollection || !collection) {
-    return (
-      <Flex justify="center" py="1.5rem">
-        <Loader size={29} />
-      </Flex>
-    );
+  // We don't fetch collection info for static embedding
+  if (!isGuestEmbed) {
+    if (isLoadingCollection || !collection) {
+      return (
+        <Flex justify="center" py="1.5rem">
+          <Loader size={29} />
+        </Flex>
+      );
+    }
   }
 
   const hasLastEditInfo = dashboard["last-edit-info"] != null;

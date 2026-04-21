@@ -1,13 +1,15 @@
 import type { ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
-import type { FlexProps, IconName } from "metabase/ui";
+import type { FlexProps, GroupProps, IconName } from "metabase/ui";
 import { Flex, Group, Icon } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 interface BaseBannerProps extends FlexProps {
   icon?: IconName;
-  iconColor?: string;
+  iconColor?: ColorName;
   body: ReactNode;
+  contentGroupProps?: GroupProps;
 }
 
 export type BannerProps =
@@ -21,21 +23,22 @@ export const Banner = ({
   closable,
   onClose,
   bg,
+  contentGroupProps,
   ...flexProps
 }: BannerProps) => {
   return (
     <Flex
       data-testid="app-banner"
       align="center"
-      bg={bg || "bg-medium"}
+      bg={bg || "background-tertiary"}
       py="sm"
       justify="space-between"
       pl="1.325rem"
       pr="md"
       {...flexProps}
     >
-      <Group gap="xs">
-        {icon && <Icon name={icon} w={36} color={iconColor} />}
+      <Group gap="xs" {...contentGroupProps}>
+        {icon && <Icon name={icon} w={36} c={iconColor} />}
         {body}
       </Group>
       {closable && (
@@ -44,7 +47,7 @@ export const Banner = ({
           name="close"
           onClick={onClose}
           w={36}
-          color={iconColor}
+          c={iconColor}
         />
       )}
     </Flex>

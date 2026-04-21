@@ -1,7 +1,7 @@
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { darken } from "metabase/lib/colors";
+import { darken } from "metabase/ui/colors";
 
 interface TooltipRowRootProps {
   isHeader?: boolean;
@@ -71,12 +71,12 @@ export const ValueCell = styled(Cell)`
 
 export const PercentCell = styled(Cell)`
   padding-left: 1rem;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-tooltip-text-secondary);
   text-align: right;
 `;
 
 export const TotalRowRoot = styled.tr`
   width: 100%;
   border-radius: 60px;
-  background-color: ${() => darken("text-dark", 0.6)};
+  background-color: ${() => darken("text-primary", 0.6)};
 `;

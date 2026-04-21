@@ -3,7 +3,6 @@ import { css } from "@emotion/react";
 // eslint-disable-next-line no-restricted-imports
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon, Text, type TextProps } from "metabase/ui";
 
 export const ItemTitle = styled(Text)<TextProps>`
@@ -11,9 +10,9 @@ export const ItemTitle = styled(Text)<TextProps>`
   word-break: break-word;
 ` as unknown as typeof Text;
 
-export const ItemIcon = styled(Icon)<{ color?: string | null }>`
-  color: ${(props) => color(props.color ?? "text-light")};
+export const ItemIcon = styled(Icon)`
   justify-self: end;
+  color: var(--mb-color-brand);
 `;
 
 const activeItemCss = css`
@@ -21,7 +20,7 @@ const activeItemCss = css`
 
   ${ItemIcon},
   ${ItemTitle} {
-    color: var(--mb-color-text-white);
+    color: var(--mb-color-text-primary-inverse);
   }
 `;
 
@@ -45,11 +44,13 @@ export const BaseItemRoot = styled.li<{
     margin-bottom: 0;
   }
 
-  ${(props) => props.isSelected && activeItemCss}
-
-  &:hover {
-    ${activeItemCss}
+  @media (hover: hover) {
+    &:hover {
+      ${activeItemCss}
+    }
   }
+
+  ${(props) => props.isSelected && activeItemCss}
 `;
 
 const getGridTemplateColumns = (hasLeftIcon: boolean, hasRightIcon: boolean) =>

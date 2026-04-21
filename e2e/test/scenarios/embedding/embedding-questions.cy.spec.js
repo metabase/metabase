@@ -44,10 +44,17 @@ describe("scenarios > embedding > questions", () => {
         display: "scalar",
         enable_embedding: true,
       },
-      { visitQuestion: true },
+      { visitQuestion: true, wrapId: true },
     );
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+    cy.get("@questionId").then((questionId) => {
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: questionId,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
+    });
 
     H.visitIframe();
 
@@ -66,9 +73,13 @@ describe("scenarios > embedding > questions", () => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: id,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
     });
-
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
     H.visitIframe();
 
@@ -92,7 +103,7 @@ describe("scenarios > embedding > questions", () => {
       // Question settings: Column formating
       cy.findByText("€39.72");
       // Question settings: Abbreviated date, day enabled, 24H clock with seconds
-      cy.findByText("Tue, Feb 11, 2025, 21:40:27");
+      cy.findByText("Fri, Feb 11, 2028, 21:40:27");
       // Question settings: Show mini-bar
       cy.findAllByTestId("mini-bar-container");
 
@@ -106,27 +117,32 @@ describe("scenarios > embedding > questions", () => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
-    });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: id,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
+    });
 
     H.visitIframe();
 
     assertOnXYAxisLabels({ xLabel: "Created At", yLabel: "Count" });
 
     H.echartsContainer()
-      .findAllByText(/2022/)
+      .findAllByText(/2025/)
       .should("have.length", 5)
-      .and("contain", "Apr 2022");
+      .and("contain", "Apr 2025");
 
     H.echartsContainer().should("contain", "60");
 
     // Check the tooltip for the last point on the line
-    // eslint-disable-next-line no-unsafe-element-filtering
+    // eslint-disable-next-line metabase/no-unsafe-element-filtering
     H.cartesianChartCircle().last().trigger("mousemove");
 
     H.assertEChartsTooltip({
-      header: "Aug 2022",
+      header: "Aug 2025",
       rows: [{ name: "2", value: "79" }],
     });
   });
@@ -141,35 +157,40 @@ describe("scenarios > embedding > questions", () => {
         cy.request("PUT", `/api/card/${nestedId}`, { enable_embedding: true });
 
         H.visitQuestion(nestedId);
+
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: nestedId,
+          activeTab: "parameters",
+          unpublishBeforeOpen: false,
+        });
       });
     });
-
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
 
     H.visitIframe();
 
     // Global (Data model) settings should be preserved
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Product ID as Title");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Awesome Concrete Shoes");
 
     // Custom column
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Math");
 
     // Base question visualization settings should reset to the defaults (inherit global formatting)
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Total");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("February 11, 2025, 9:40 PM");
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("February 11, 2028, 9:40 PM");
 
     cy.findAllByTestId("mini-bar-container").should("not.exist");
 
     // Data model: Subtotal is turned off globally
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Subtotal").should("not.exist");
   });
 
@@ -178,9 +199,14 @@ describe("scenarios > embedding > questions", () => {
       cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
 
       H.visitQuestion(id);
-    });
 
-    H.openStaticEmbeddingModal({ activeTab: "parameters" });
+      H.openLegacyStaticEmbeddingModal({
+        resource: "question",
+        resourceId: id,
+        activeTab: "parameters",
+        unpublishBeforeOpen: false,
+      });
+    });
 
     H.visitIframe();
 
@@ -191,7 +217,7 @@ describe("scenarios > embedding > questions", () => {
       .should("contain", "Math")
       .should("contain", "Billed")
       .should("contain", "€39.72")
-      .should("contain", "Tue, Feb 11, 2025, 21:40:27")
+      .should("contain", "Fri, Feb 11, 2028, 21:40:27")
       .should("not.contain", "Subtotal");
 
     cy.findAllByTestId("mini-bar-container").should("have.length", 5);
@@ -202,7 +228,7 @@ describe("scenarios > embedding > questions", () => {
       .should("contain", "98.52598640° W")
       .should("contain", "User → Birth Date")
       .should("contain", "December 12, 1986")
-      .should("contain", "October 7, 2023, 1:34 AM");
+      .should("contain", "October 7, 2026, 1:34 AM");
   });
 });
 
@@ -247,7 +273,7 @@ describe("scenarios [EE] > embedding > questions", () => {
 
     cy.wait("@deLocale");
 
-    H.main().findByText("Februar 11, 2025, 9:40 PM");
+    H.main().findByText("Februar 11, 2028, 9:40 PM").realHover();
     cy.findByRole("button", { name: "Ergebnis downloaden" }).should("exist");
     cy.url().should("include", "locale=de");
   });
@@ -313,7 +339,11 @@ describe("scenarios > embedding > questions > downloads", () => {
       cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
-        H.openStaticEmbeddingModal({ activeTab: "lookAndFeel" });
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: questionId,
+          activeTab: "lookAndFeel",
+        });
 
         cy.log(
           "Embedding settings page should not show option to disable downloads",
@@ -375,9 +405,10 @@ describe("scenarios > embedding > questions > downloads", () => {
       cy.get("@questionId").then((questionId) => {
         H.visitQuestion(questionId);
 
-        H.openStaticEmbeddingModal({
+        H.openLegacyStaticEmbeddingModal({
+          resource: "question",
+          resourceId: questionId,
           activeTab: "lookAndFeel",
-          acceptTerms: false,
         });
 
         cy.log("Disable downloads");
@@ -385,7 +416,7 @@ describe("scenarios > embedding > questions > downloads", () => {
           .as("allow-download-toggle")
           .should("be.checked");
 
-        cy.findByText("Download (csv, xlsx, json, png)").click();
+        cy.findByLabelText("Download (csv, xlsx, json, png)").click();
         cy.get("@allow-download-toggle").should("not.be.checked");
 
         cy.log('Use API to "publish" this question and to enable its filter');

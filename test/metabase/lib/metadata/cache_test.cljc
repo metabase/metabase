@@ -18,7 +18,7 @@
     (is (lib.metadata.protocols/cached-metadata-provider? mp1)
         "Should automatically get wrapped in a cached metadata provider")
     (testing "Do something to populate the cache"
-      (is (seq (lib/returned-columns query))))
+      (is (seq (lib/visible-columns query))))
     (testing "After warming the cache..."
       (let [mp2 (:lib/metadata query)]
         (is (identical? mp1 mp2)
@@ -43,11 +43,11 @@
           (let [num-misses (atom 0)]
             (binding [lib.metadata.cache/*cache-miss-hook* (fn [_k]
                                                              (swap! num-misses inc))]
-              (is (seq (lib/returned-columns query')))
+              (is (seq (lib/visible-columns query')))
               (is (pos-int? @num-misses)))))
-        (testing "Calling lib/returned-columns on a query a second time should result in returning cached results (no cache misses)"
+        (testing "Calling lib/visible-columns on a query a second time should result in returning cached results (no cache misses)"
           (let [num-misses (atom 0)]
             (binding [lib.metadata.cache/*cache-miss-hook* (fn [_k]
                                                              (swap! num-misses inc))]
-              (is (seq (lib/returned-columns query')))
+              (is (seq (lib/visible-columns query')))
               (is (zero? @num-misses)))))))))

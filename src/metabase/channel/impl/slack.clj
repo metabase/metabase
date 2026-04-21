@@ -15,9 +15,14 @@
    [metabase.util.markdown :as markdown]))
 
 (defn- notification-recipient->channel
+  "Returns the Slack channel target for a raw-value notification recipient.
+  Prefers the immutable `:channel_id` (e.g. \"C0ABC123\") over the display `:value`
+  (e.g. \"#my-channel\") so that delivery survives channel renames. Falls back to
+  `:value` for legacy subscriptions that pre-date channel ID storage."
   [notification-recipient]
   (when (= (:type notification-recipient) :notification-recipient/raw-value)
-    (-> notification-recipient :details :value)))
+    (let [details (:details notification-recipient)]
+      (or (:channel_id details) (:value details)))))
 
 (defn- escape-mkdwn
   "Escapes slack mkdwn special characters in the string, as specified here:
@@ -86,42 +91,47 @@
 
 (defn- part->sections!
   "Converts a notification part directly into Slack Block Kit blocks."
-  [part]
-  (let [part (channel.shared/maybe-realize-data-rows part)]
-    (case (:type part)
-      :card
-      (let [{:keys [card dashcard result]}         part
-            {card-id :id card-name :name :as card} card
-            title                                  (or (-> dashcard :visualization_settings :card.title)
-                                                       card-name)
-            rendered-info                          (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
-            title-link                             (when-not (= :table-editable (:display card))
-                                                     (urls/card-url card-id))]
-        (conj (maybe-append-params-block
-               [{:type "section"
-                 :text {:type     "mrkdwn"
-                        :text     (mkdwn-link-text title-link title)
-                        :verbatim true}}]
-               (-> dashcard  :visualization_settings :inline_parameters))
-              (if (:render/text rendered-info)
-                {:type "section"
-                 :text {:type "plain_text"
-                        :text (:render/text rendered-info)}}
-                {:type       "image"
-                 :slack_file {:id (-> rendered-info
-                                      (channel.render/png-from-render-info slack-width)
-                                      (slack/upload-file! (format "%s.png" title))
-                                      :id)}
-                 :alt_text   title})))
+  ([part]
+   (part->sections! {} part))
+  ([all-params part]
+   (let [part (channel.shared/maybe-realize-data-rows part)]
+     (case (:type part)
+       :card
+       (binding [urls/*dashcard-parameters* all-params]
+         (let [{:keys [card dashcard result]}         part
+               {card-id :id card-name :name :as card} card
+               title                                  (or (-> dashcard :visualization_settings :card.title)
+                                                          card-name)
+               rendered-info                          (channel.render/render-pulse-card :inline (channel.render/defaulted-timezone card) card dashcard result)
+               title-link                             (if dashcard
+                                                        (urls/dashcard-url dashcard)
+                                                        (when-not (= :table-editable (:display card))
+                                                          (urls/card-url card-id)))]
+           (conj (maybe-append-params-block
+                  [{:type "section"
+                    :text {:type     "mrkdwn"
+                           :text     (mkdwn-link-text title-link title)
+                           :verbatim true}}]
+                  (-> dashcard  :visualization_settings :inline_parameters))
+                 (if (:render/text rendered-info)
+                   {:type "section"
+                    :text {:type "plain_text"
+                           :text (:render/text rendered-info)}}
+                   {:type       "image"
+                    :slack_file {:id (-> rendered-info
+                                         (channel.render/png-from-render-info slack-width)
+                                         (slack/upload-file! (format "%s.png" title))
+                                         :id)}
+                    :alt_text   title}))))
 
-      :heading
-      [(maybe-append-params-block (text->markdown-section (format "## %s" (:text part))) (:inline_parameters part))]
+       :heading
+       [(maybe-append-params-block (text->markdown-section (format "## %s" (:text part))) (:inline_parameters part))]
 
-      :text
-      [(maybe-append-params-block (text->markdown-section (:text part)) (:inline_parameters part))]
+       :text
+       [(maybe-append-params-block (text->markdown-section (:text part)) (:inline_parameters part))]
 
-      :tab-title
-      [(text->markdown-section (format "# %s" (:text part)))])))
+       :tab-title
+       [(text->markdown-section (format "# %s" (:text part)))]))))
 
 (def ^:private SlackMessage
   [:map {:closed true}
@@ -132,6 +142,43 @@
   [_channel {:keys [channel blocks]} :- SlackMessage]
   (doseq [block-chunk (partition-all 50 blocks)]
     (slack/post-chat-message! {:channel channel :blocks block-chunk})))
+
+;; ------------------------------------------------------------------------------------------------;;
+;;                                    System Event Notifications                                   ;;
+;; ------------------------------------------------------------------------------------------------;;
+
+(mu/defmethod channel/render-notification [:channel/slack :notification/system-event] :- [:sequential SlackMessage]
+  [_channel-type {:keys [payload]} {:keys [recipients]}]
+  (let [{:keys [event_topic event_info custom]} payload
+        blocks (case event_topic
+                 :event/security-advisory-match
+                 (let [{:keys [title description severity]} (:object event_info)
+                       severity-emoji (case severity
+                                        :critical ":red_circle:"
+                                        :high     ":large_orange_circle:"
+                                        :medium   ":large_yellow_circle:"
+                                        :low      ":large_blue_circle:")]
+                   [{:type "header"
+                     :text {:type  "plain_text"
+                            :text  (truncate (str severity-emoji " Security Advisory: " title) header-text-limit)
+                            :emoji true}}
+                    {:type "section"
+                     :text {:type "mrkdwn"
+                            :text (truncate (escape-mkdwn description) block-text-length-limit)}}
+                    {:type "section"
+                     :fields [{:type "mrkdwn" :text (str "*Severity:* " (:severity_label custom))}
+                              {:type "mrkdwn" :text (str "*Status:* " (:status_label custom))}]}
+                    {:type "actions"
+                     :elements [{:type "button"
+                                 :text {:type "plain_text" :text "View in Security Center"}
+                                 :url  (:security_center_url custom)}]}])
+                 ;; fallback for other system events: simple text block
+                 [{:type "section"
+                   :text {:type "mrkdwn"
+                          :text (truncate (str "System event: " (name event_topic)) block-text-length-limit)}}])]
+    (doall (for [channel (keep notification-recipient->channel recipients)]
+             {:channel channel
+              :blocks  blocks}))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                      Notification Card                                          ;;
@@ -190,7 +237,7 @@
         top-level-params (impl.util/remove-inline-parameters all-params (:dashboard_parts payload))
         dashboard        (:dashboard payload)
         blocks           (->> [(slack-dashboard-header dashboard (:common_name creator) all-params top-level-params)
-                               (mapcat part->sections! (:dashboard_parts payload))]
+                               (mapcat (partial part->sections! all-params) (:dashboard_parts payload))]
                               flatten
                               (remove nil?))]
     (for [channel-id (map notification-recipient->channel recipients)]

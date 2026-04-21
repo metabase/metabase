@@ -7,21 +7,25 @@
   The default backend is `db`, which uses the application database; this value can be changed by setting the env var
   `MB_QP_CACHE_BACKEND`. Refer to [[metabase.query-processor.middleware.cache-backend.interface]] for more details
   about how the cache backends themselves."
+  (:refer-clojure :exclude [get-in])
   (:require
+   [clojure.string :as str]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.cache.core :as cache]
    [metabase.config.core :as config]
-   [metabase.lib.query :as lib.query]
+   [metabase.lib.core :as lib]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
    [metabase.query-processor.middleware.cache-backend.interface :as i]
    [metabase.query-processor.middleware.cache.impl :as impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
+   [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.performance :refer [get-in]])
   (:import
    (org.eclipse.jetty.io EofException)))
 
@@ -59,7 +63,8 @@
   [object]
   (when *in-fn*
     (*in-fn* (cond-> object
-               (map? object) (m/update-existing :json_query lib.query/serializable)))))
+               (map? object) (-> (m/update-existing :json_query lib/prepare-for-serialization)
+                                 (m/update-existing :preprocessed_query lib/prepare-for-serialization))))))
 
 (def ^:private ^:dynamic *result-fn*
   "The `result-fn` provided by [[impl/do-with-serialization]]."
@@ -219,10 +224,31 @@
               (fn [metadata]
                 (save-results-xform start-time-ns metadata query-hash cache-strategy (rff metadata)))))))))
 
-(defn- is-cacheable? [{:keys [cache-strategy], :as _query}]
-  (and (cache/enable-query-caching)
-       (some? cache-strategy)
-       (not= (:type cache-strategy) :nocache)))
+(defn- has-cache-strategy? [cache-strategy]
+  (some? cache-strategy))
+
+(defn- strategy-not-nocache? [cache-strategy]
+  (not= (:type cache-strategy) :nocache))
+
+(defn- is-cacheable?
+  "Returns true if the query has a valid cache strategy."
+  [{:keys [cache-strategy], :as _query}]
+  (let [has-strat?  (has-cache-strategy? cache-strategy)
+        not-nocache? (strategy-not-nocache? cache-strategy)]
+    (and has-strat? not-nocache?)))
+
+(defn- get-cache-eligibility-description
+  "Returns a descriptive string explaining why a query is or isn't cacheable."
+  [{:keys [cache-strategy], :as _query}]
+  (let [has-strat?  (has-cache-strategy? cache-strategy)
+        not-nocache? (strategy-not-nocache? cache-strategy)]
+    (if (and has-strat? not-nocache?)
+      (str "cache strategy provided: " (pr-str cache-strategy) "; "
+           "cache strategy type is not :nocache")
+      (str/join ", "
+                (cond-> []
+                  (not has-strat?)   (conj "no cache strategy provided")
+                  (not not-nocache?) (conj "cache strategy is :nocache"))))))
 
 (mu/defn maybe-return-cached-results :- ::qp.schema/qp
   "Middleware for caching results of a query if applicable.
@@ -239,7 +265,8 @@
   [qp :- ::qp.schema/qp]
   (fn maybe-return-cached-results* [query rff]
     (let [cacheable? (is-cacheable? query)]
-      (log/tracef "Query is cacheable? %s" (boolean cacheable?))
+      (log/tracef "Query is %scacheable: %s" (if-not cacheable? "not " "") (get-cache-eligibility-description query))
       (if cacheable?
-        (run-query-with-cache qp query rff)
+        (tracing/with-span :qp "qp.cache" {:cache/eligible true}
+          (run-query-with-cache qp query rff))
         (qp query rff)))))

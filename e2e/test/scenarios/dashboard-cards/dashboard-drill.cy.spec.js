@@ -45,7 +45,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.get("input").first().type("/foo/{{my_number}}/{{my_param}}", {
           parseSpecialCharSequences: false,
         });
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         cy.get("input")
           .last()
           .type("column value: {{my_number}}", {
@@ -111,7 +111,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
       },
     );
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Click to find out which state does Rye belong to.").click();
 
     cy.log("Reported failing on v0.37.2");
@@ -226,29 +226,28 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     // configure clicks on "MY_NUMBER to update the param
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("On-click behavior for each column")
       .parent()
       .parent()
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("MY_NUMBER").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Go to a custom destination").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Link to")
       .parent()
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("Dashboard").click());
     H.entityPickerModal().within(() => {
-      cy.findByRole("tab", { name: /Dashboards/ }).click();
       cy.findByText("end dash").click();
     });
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Available filters")
       .parent()
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("My Param").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("MY_STRING").click());
 
     // set the text template
@@ -256,11 +255,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
       "text: {{my_string}}",
       { parseSpecialCharSequences: false },
     );
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     // click on table value
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("text: foo").click();
 
     // check that param was set to "foo"
@@ -288,7 +287,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
         cy.get("input")
           .first()
           .type(`/dashboard/${dashboardId}?my_param=Aaron Hand`, { delay: 0 });
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         cy.get("input").last().type("Click behavior", { delay: 0 }).blur();
         cy.button("Done").click();
       });
@@ -315,34 +314,34 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
 
     // configure clicks on "MY_NUMBER to update the param
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("On-click behavior for each column")
       .parent()
       .parent()
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("MY_NUMBER").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Update a dashboard filter").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick one or more filters to update")
       .parent()
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("My Param").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     H.popover().within(() => cy.findByText("MY_STRING").click());
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Save").click();
 
     // click on table value
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("111").click();
 
     // check that param was set to "foo"
     cy.location("search").should("eq", "?my_param=foo");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("My Param")
       .parent()
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       .within(() => cy.findByText("foo"));
   });
 
@@ -544,16 +543,19 @@ describe("scenarios > dashboard > dashboard drill", () => {
 
     H.visitDashboard(ORDERS_DASHBOARD_ID);
     // Product ID in the first row (query fails for User ID as well)
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("105").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("View details").click();
 
     cy.log("Reported on v0.29.3");
     cy.wait("@dataset").then((xhr) => {
       expect(xhr.response.body.error).not.to.exist;
     });
-    cy.findByTestId("object-detail").findByText("Fantastic Wool Shirt");
+    cy.findByTestId("object-detail")
+      .findAllByText("Fantastic Wool Shirt")
+      .should("have.length", 2)
+      .and("be.visible");
   });
 
   it("should apply correct date range on a graph drill-through (metabase#13785)", () => {
@@ -626,11 +628,11 @@ describe("scenarios > dashboard > dashboard drill", () => {
         ).as("cardQuery");
 
         H.chartPathWithFillColor("#509EE3")
-          .eq(14) // August 2023 (Total of 12 reviews, 9 unique days)
+          .eq(14) // August 2026 (Total of 12 reviews, 9 unique days)
           .click();
 
         cy.wait("@cardQuery");
-        cy.url().should("include", "2023-08");
+        cy.url().should("include", "2026-08");
         H.chartPathWithFillColor("#509EE3").should("have.length", 1);
         // Since hover doesn't work in Cypress we can't assert on the popover that's shown when one hovers the bar
         // But when this issue gets fixed, Y-axis should definitely show "12" (total count of reviews)
@@ -709,7 +711,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     );
 
     // formatting works, so we see "USD" in the table
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("USD 111.00").click();
     cy.location("pathname").should("eq", "/it/worked");
   });
@@ -824,10 +826,9 @@ describe("scenarios > dashboard > dashboard drill", () => {
       });
     });
     H.tableHeaderColumn("Quantity");
-    cy.get(".test-Table-ID")
-      .first()
-      // Mid-point check that this cell actually contains ID = 1
-      .contains("1")
+    cy.findByTestId("table-body")
+      .get("[data-dataset-index=0] > [data-column-id='ID']")
+      .should("have.text", "3") // Subject to change - sensitive to year shifting in the Sample Database
       .click();
 
     cy.wait("@dataset").then((xhr) => {
@@ -835,7 +836,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     });
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("Subtotal");
-      cy.findByText("37.65");
+      cy.findByText("52.72");
     });
   });
 
@@ -996,7 +997,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
     function postDrillAssertion(filterName) {
       cy.findByTestId("qb-filters-panel").findByText(filterName).click();
       H.popover({ testId: "filter-picker-dropdown" }).within(() => {
-        // eslint-disable-next-line no-unsafe-element-filtering
+        // eslint-disable-next-line metabase/no-unsafe-element-filtering
         cy.findAllByRole("combobox")
           .last()
           .parent()

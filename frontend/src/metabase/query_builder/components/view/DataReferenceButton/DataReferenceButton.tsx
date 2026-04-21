@@ -1,9 +1,9 @@
 import cx from "classnames";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
 import { toggleDataReference } from "metabase/query_builder/actions";
 import { Box, Icon, Tooltip } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 import DataReferenceButtonS from "./DataReferenceButton.module.css";
 
@@ -33,6 +33,7 @@ export const DataReferenceButton = ({
   return (
     <Tooltip label={t`Learn about your data`}>
       <Box
+        aria-label={t`Learn about your data`}
         component="a"
         h={size}
         className={cx(className, DataReferenceButtonS.ButtonRoot, {

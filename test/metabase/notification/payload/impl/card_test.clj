@@ -6,6 +6,7 @@
    [medley.core :as m]
    [metabase.channel.core :as channel]
    [metabase.notification.core :as notification]
+   [metabase.notification.models :as models.notification]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.send :as notification.send]
@@ -137,8 +138,8 @@
 (deftest card-with-rows-saved-to-disk-test
   (testing "whether the rows of a card saved to disk or in memory, all channels should work\n"
     (doseq [limit [1 10]]
-      (with-redefs [notification.payload.execute/rows-to-disk-threadhold 5]
-        (testing (if (> limit @#'notification.payload.execute/rows-to-disk-threadhold)
+      (with-redefs [notification.payload.execute/cells-to-disk-threshold 5]
+        (testing (if (> limit @#'notification.payload.execute/cells-to-disk-threshold)
                    "card has rows saved to disk"
                    "card has rows saved in memory")
           (notification.tu/with-notification-testing-setup!
@@ -184,7 +185,7 @@
 (deftest cards-with-rows-saved-to-disk-will-cleanup-the-files
   (let [f               (atom nil)
         orig-execute-fn @#'notification.payload.execute/execute-card]
-    (with-redefs [notification.payload.execute/rows-to-disk-threadhold 1
+    (with-redefs [notification.payload.execute/cells-to-disk-threshold 1
                   notification.payload.execute/execute-card
                   (fn [& args]
                     (let [result (apply orig-execute-fn args)]
@@ -197,9 +198,9 @@
                          :handlers [@notification.tu/default-email-handler]}]
           (notification/send-notification! notification)
           (testing "sanity check that the file exists in the first place"
-            (is (notification.payload/is-cleanable? @f)))
+            (is (notification.payload/cleanable? @f)))
           (testing "the files are cleaned up"
-            (is (not (.exists ^java.io.File (.file ^metabase.notification.payload.temp_storage.TempFileStorage @f))))))))))
+            (is (not (.exists ^java.io.File (.file ^metabase.notification.payload.temp_storage.StreamingTempFileStorage @f))))))))))
 
 (deftest ensure-constraints-test
   (testing "Validate card queries are limited by `default-query-constraints`"
@@ -235,6 +236,25 @@
                     (map (comp set :recipients))
                     set))))})))
 
+(deftest deactivated-user-recipients-are-not-emailed-test
+  (testing "card alert emails are not sent to deactivated user recipients (GDGT-1927)"
+    (mt/with-temp [:model/User {deactivated-id :id} {:email "deactivated@metabase.com" :is_active false}
+                   :model/User {active-id :id}      {:email "active@metabase.com"      :is_active true}]
+      (notification.tu/with-card-notification
+        [notification {:handlers [{:channel_type :channel/email
+                                   :recipients   [{:type :notification-recipient/user :user_id deactivated-id}
+                                                  {:type :notification-recipient/user :user_id active-id}
+                                                  {:type :notification-recipient/raw-value :details {:value "external@metabase.com"}}]}]}]
+        (notification.tu/test-send-notification!
+         notification
+         {:channel/email
+          (fn [emails]
+            (let [all-recipients (into #{} (mapcat :recipients) emails)]
+              (is (contains? all-recipients "active@metabase.com"))
+              (is (contains? all-recipients "external@metabase.com"))
+              (is (not (contains? all-recipients "deactivated@metabase.com"))
+                  "deactivated user must not receive the alert")))})))))
+
 (deftest send-condition-has-result-test
   (testing "no result should skip sending"
     (doseq [has-result [true false]]
@@ -257,40 +277,53 @@
                 (is (= 1 (count messages)))
                 (is (= 0 (count messages)))))}))))))
 
-(deftest ^:parallel goal-met-test
-  (let [alert-above-pulse {:send_condition "goal_above"}
-        alert-below-pulse {:send_condition "goal_below"}
-        progress-result   (fn [val] {:card   {:display                :progress
-                                              :visualization_settings {:progress.goal    5}}
-                                     :result {:data {:rows [[val]]}}})
-        timeseries-result (fn [val] {:card   {:display                :bar
-                                              :visualization_settings {:graph.goal_value 5}}
-                                     :result {:data {:cols [{:source :breakout}
-                                                            {:name           "avg"
-                                                             :source         :aggregation
-                                                             :base_type      :type/Integer
-                                                             :effective-type :type/Integer
-                                                             :semantic_type  :type/Quantity}]
-                                                     :rows [["2021-01-01T00:00:00Z" val]]}}})
-        goal-met?           (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
-    (testing "Progress bar"
-      (testing "alert above"
-        (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (progress-result 4)))))
-        (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (progress-result 6))))))
-      (testing "alert below"
-        (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (progress-result 4)))))
-        (testing "value equals goal (#10899)" (is (= false  (goal-met? alert-below-pulse (progress-result 5)))))
-        (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (progress-result 6)))))))
-    (testing "Timeseries"
-      (testing "alert above"
-        (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (timeseries-result 6))))))
-      (testing "alert below"
-        (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (timeseries-result 4)))))
-        (testing "value equals goal" (is (= false  (goal-met? alert-below-pulse (timeseries-result 5)))))
-        (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (timeseries-result 6)))))))))
+(defn- progress-result [val]
+  {:card   {:display                :progress
+            :visualization_settings {:progress.goal    5}}
+   :result {:data {:rows [[val]]}}})
+
+(defn- timeseries-result [val]
+  {:card   {:display                :bar
+            :visualization_settings {:graph.goal_value 5}}
+   :result {:data {:cols [{:source :breakout}
+                          {:name           "avg"
+                           :source         :aggregation
+                           :base_type      :type/Integer
+                           :effective-type :type/Integer
+                           :semantic_type  :type/Quantity}]
+                   :rows [["2021-01-01T00:00:00Z" val]]}}})
+
+(deftest ^:parallel goal-met-progress-bar-alert-above-test
+  (testing "Progress bar with alert above"
+    (let [alert-above-pulse {:send_condition "goal_above"}
+          goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (progress-result 4)))))
+      (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (progress-result 5)))))
+      (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (progress-result 6))))))))
+
+(deftest ^:parallel goal-met-progress-bar-alert-below-test
+  (testing "Progress bar with alert below"
+    (let [alert-below-pulse {:send_condition "goal_below"}
+          goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (progress-result 4)))))
+      (testing "value equals goal (#10899)" (is (= false  (goal-met? alert-below-pulse (progress-result 5)))))
+      (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (progress-result 6))))))))
+
+(deftest ^:parallel goal-met-timeseries-alert-above-test
+  (testing "Timeseries with alert above"
+    (let [alert-above-pulse {:send_condition "goal_above"}
+          goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (testing "value below goal"  (is (= false  (goal-met? alert-above-pulse (timeseries-result 4)))))
+      (testing "value equals goal" (is (true?    (goal-met? alert-above-pulse (timeseries-result 5)))))
+      (testing "value above goal"  (is (true?    (goal-met? alert-above-pulse (timeseries-result 6))))))))
+
+(deftest ^:parallel goal-met-timeseries-alert-below-test
+  (testing "Timeseries with alert below"
+    (let [alert-below-pulse {:send_condition "goal_below"}
+          goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)]
+      (testing "value below goal"  (is (true?    (goal-met? alert-below-pulse (timeseries-result 4)))))
+      (testing "value equals goal" (is (= false  (goal-met? alert-below-pulse (timeseries-result 5)))))
+      (testing "value above goal"  (is (= false  (goal-met? alert-below-pulse (timeseries-result 6))))))))
 
 (deftest send-condition-above-goal-test
   (testing "skip is the goal is not met"
@@ -542,6 +575,35 @@
               (t2/select [:model/TaskHistory :status :task_details] :task "notification-send"
                          {:order-by [[:started_at :asc]]}))))))
 
+(deftest orphaned-notification-deactivates-on-send-test
+  (testing "A notification whose card no longer exists should deactivate itself instead of crashing forever"
+    (notification.tu/with-notification-cleanup!
+      (mt/with-temp [:model/Card {card-id :id} {:name          notification.tu/default-card-name
+                                                :dataset_query (mt/mbql-query products {:aggregation [[:count]]})}]
+        (let [notification (models.notification/create-notification!
+                            {:payload_type :notification/card
+                             :payload      {:card_id card-id}
+                             :creator_id   (mt/user->id :crowberto)}
+                            []
+                            [@notification.tu/default-email-handler])]
+          (testing "sanity: notification is active"
+            (is (true? (t2/select-one-fn :active :model/Notification (:id notification)))))
+          ;; Simulate an orphaned notification: delete the NotificationCard directly.
+          ;; This mirrors what happens in prod when there is no Malli validation and a card is deleted (FK cascade deletes NotificationCard)
+          ;; but the Notification row itself survives.
+          (t2/delete! :model/NotificationCard (:payload_id notification))
+          (testing "sanity: notification still exists but its payload record is gone"
+            (is (t2/exists? :model/Notification (:id notification)))
+            (is (not (t2/exists? :model/NotificationCard (:payload_id notification)))))
+          (testing "sending the orphaned notification should delete it rather than crash forever"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Card no longer exists"
+                 (#'notification.send/send-notification-sync!
+                  (t2/select-one :model/Notification (:id notification))))))
+          (testing "the notification should be deleted"
+            (is (not (t2/exists? :model/Notification (:id notification))))))))))
+
 (defn- email->attachment-line-count
   [email]
   (let [attachment (m/find-first #(= "text/csv" (:content-type %)) (:message email))]
@@ -612,3 +674,30 @@
                                           "ngoc@metabase.com"]
                              :filters    nil}}
                  (mt/latest-audit-log-entry :alert-send (:id notification)))))))))
+
+(deftest ^:parallel progress-value-column-test
+  (testing "Progress charts should use progress.value column instead of first column"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)
+          notification-card {:send_condition "goal_above"}
+          card-part {:card {:display :progress
+                            :visualization_settings {:progress.value "actual_value"
+                                                     :progress.goal "Target"}}
+                     :result {:data {:cols [{:name "ignore_me" :base_type :type/Integer}
+                                            {:name "actual_value" :base_type :type/Integer}
+                                            {:name "Target" :base_type :type/Integer}]
+                                     :rows [[999 120 100]]}}}]
+      (is (true? (goal-met? notification-card card-part))
+          "Should return true when actual_value (120) >= Target (100)"))))
+
+(deftest ^:parallel progress-value-fallback-test
+  (testing "Progress charts should fall back to first numeric column when no progress.value is set"
+    (let [goal-met? (requiring-resolve 'metabase.notification.payload.impl.card/goal-met?)
+          notification-card {:send_condition "goal_above"}
+          card-part {:card {:display :progress
+                            :visualization_settings {:progress.goal "Target"}}
+                     :result {:data {:cols [{:name "text_col" :base_type :type/Text}
+                                            {:name "numeric_col" :base_type :type/Integer}
+                                            {:name "Target" :base_type :type/Integer}]
+                                     :rows [["text" 120 100]]}}}]
+      (is (true? (goal-met? notification-card card-part))
+          "Should return true when first numeric column (120) >= Target (100)"))))

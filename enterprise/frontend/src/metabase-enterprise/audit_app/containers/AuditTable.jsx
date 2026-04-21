@@ -9,8 +9,8 @@ import _ from "underscore";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import CS from "metabase/css/core/index.css";
-import { connect } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import { connect } from "metabase/utils/redux";
 import Question from "metabase-lib/v1/Question";
 
 import { AuditMode } from "../lib/mode";
@@ -80,8 +80,9 @@ function AuditTable({
         dispatch={dispatch}
         {...rest}
       />
-      <PaginationControlsContainer>
-        {shouldShowPagination && (
+
+      {shouldShowPagination && (
+        <PaginationControlsContainer>
           <PaginationControls
             page={page}
             pageSize={pageSize}
@@ -89,11 +90,13 @@ function AuditTable({
             onNextPage={loadedCount === pageSize ? handleNextPage : null}
             onPreviousPage={handlePreviousPage}
           />
-        )}
-      </PaginationControlsContainer>
+        </PaginationControlsContainer>
+      )}
+
       {children}
     </div>
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(connect(mapStateToProps))(AuditTable);

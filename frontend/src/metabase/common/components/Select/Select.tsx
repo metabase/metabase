@@ -14,15 +14,12 @@ import {
   AccordionList,
   type SearchProps,
 } from "metabase/common/components/AccordionList";
-import PopoverWithTrigger from "metabase/common/components/PopoverWithTrigger";
 import type { SelectButtonProps } from "metabase/common/components/SelectButton";
-import SelectButton from "metabase/common/components/SelectButton";
+import { SelectButton } from "metabase/common/components/SelectButton";
 import CS from "metabase/css/core/index.css";
 import Uncontrollable from "metabase/hoc/Uncontrollable";
-import { color } from "metabase/lib/colors";
-import { composeEventHandlers } from "metabase/lib/compose-event-handlers";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Icon, Popover } from "metabase/ui";
 
 const MIN_ICON_WIDTH = 20;
 
@@ -46,7 +43,7 @@ export interface SelectProps<
   disabled?: boolean;
   hiddenIcons?: boolean;
 
-  // PopoverWithTrigger props
+  // Popover props
   isInitiallyOpen?: boolean;
   triggerElement?: ReactNode;
   onClose?: () => void;
@@ -100,11 +97,14 @@ export interface SelectChangeTarget<TValue> {
   value: TValue;
 }
 
+interface SelectState {
+  isPopoverOpen: boolean;
+}
+
 class BaseSelect<
   TValue,
   TOption extends object = SelectOption<TValue>,
-> extends Component<SelectProps<TValue, TOption>> {
-  _popover?: any;
+> extends Component<SelectProps<TValue, TOption>, SelectState> {
   selectButtonRef: RefObject<any>;
   _getValues: () => TValue[];
   _getValuesSet: () => Set<TValue>;
@@ -139,6 +139,9 @@ class BaseSelect<
     this._getValues = () => _getValues(this.props);
     this._getValuesSet = () => _getValuesSet(this.props);
     this.selectButtonRef = createRef();
+    this.state = {
+      isPopoverOpen: props.isInitiallyOpen || false,
+    };
   }
 
   _getSections(): SelectSection<TOption>[] {
@@ -193,8 +196,8 @@ class BaseSelect<
     }
     onChange?.({ target: { name, value } });
     if (!multiple) {
-      this._popover?.close();
-      this.handleClose();
+      this.closePopover();
+      this.restoreTriggerFocus();
     }
   };
 
@@ -209,7 +212,7 @@ class BaseSelect<
         <Icon
           name={icon}
           size={(item as any).iconSize || 16}
-          color={(item as any).iconColor || color("text-dark")}
+          c={(item as any).iconColor || "text-primary"}
           style={{ minWidth: MIN_ICON_WIDTH }}
         />
       );
@@ -219,7 +222,7 @@ class BaseSelect<
       return (
         <Icon
           name="check"
-          color={color("text-dark")}
+          c="text-primary"
           style={{ minWidth: MIN_ICON_WIDTH }}
         />
       );
@@ -228,12 +231,34 @@ class BaseSelect<
     return <span style={{ minWidth: MIN_ICON_WIDTH }} />;
   };
 
-  handleClose = () => {
+  restoreTriggerFocus = () => {
     // Focusing in the next tick prevents it is from reopening
     // when closed by selecting an item with Enter
     setTimeout(() => {
       this.selectButtonRef.current?.focus();
     }, 0);
+  };
+
+  closePopover = () => {
+    this.setState({ isPopoverOpen: false });
+  };
+
+  togglePopover = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (!this.props.disabled) {
+      this.setState(({ isPopoverOpen }) => {
+        if (isPopoverOpen) {
+          this.restoreTriggerFocus();
+        }
+        return { isPopoverOpen: !isPopoverOpen };
+      });
+    }
+  };
+
+  handlePopoverDismiss = () => {
+    this.props.onClose?.();
+    this.closePopover();
+    this.restoreTriggerFocus();
   };
 
   render() {
@@ -244,13 +269,12 @@ class BaseSelect<
       placeholder,
       searchProp,
       searchPlaceholder,
-      isInitiallyOpen,
-      onClose,
       disabled,
       width,
       footer,
       "data-testid": testId,
     } = this.props;
+    const { isPopoverOpen } = this.state;
     const sections = this._getSections();
     const selectedNames = sections
       .map((section) =>
@@ -263,68 +287,78 @@ class BaseSelect<
       .flat()
       .filter((n) => n);
 
-    return (
-      <PopoverWithTrigger
-        ref={(ref) => (this._popover = ref)}
-        triggerElement={
-          this.props.triggerElement || (
-            <SelectButton
-              ref={this.selectButtonRef}
-              hasValue={selectedNames.length > 0}
-              disabled={disabled}
-              {...buttonProps}
-              className={CS.flexFull}
-            >
-              {this.props.buttonText
-                ? this.props.buttonText
-                : selectedNames.length > 0
-                  ? selectedNames.map((name, index) => (
-                      <span key={index}>
-                        {name}
-                        {index < selectedNames.length - 1 ? ", " : ""}
-                      </span>
-                    ))
-                  : placeholder}
-            </SelectButton>
-          )
-        }
-        onClose={composeEventHandlers(onClose, this.handleClose)}
-        triggerClasses={cx(CS.flex, className)}
-        isInitiallyOpen={isInitiallyOpen}
-        containerClassName={containerClassName}
+    const triggerElement: ReactNode = this.props.triggerElement || (
+      <SelectButton
+        ref={this.selectButtonRef}
+        hasValue={selectedNames.length > 0}
         disabled={disabled}
-        verticalAttachments={["top", "bottom"]}
-        // keep the popover from jumping around one its been opened,
-        // this can happen when filtering items via search
-        pinInitialAttachment
+        {...buttonProps}
+        className={CS.flexFull}
       >
-        <AccordionList<TOption>
-          hasInitialFocus
-          sections={sections}
-          className="MB-Select"
-          alwaysExpanded
-          width={width}
-          role="listbox"
-          itemIsSelected={this.itemIsSelected}
-          itemIsClickable={this.itemIsClickable}
-          renderItemName={this.props.optionNameFn}
-          getItemClassName={this.props.optionClassNameFn}
-          getItemStyles={this.props.optionStylesFn}
-          renderItemDescription={this.props.optionDescriptionFn}
-          renderItemIcon={this.renderItemIcon}
-          onChange={this.handleChange}
-          searchable={!!searchProp}
-          searchProp={searchProp}
-          searchPlaceholder={searchPlaceholder}
-          globalSearch={this.props.globalSearch}
-          data-testid={testId ? `${testId}-list` : null}
-          style={{
-            color: "var(--mb-color-brand)",
-            outline: "none",
-          }}
-        />
-        {footer}
-      </PopoverWithTrigger>
+        {this.props.buttonText
+          ? this.props.buttonText
+          : selectedNames.length > 0
+            ? selectedNames.map((name, index) => (
+                <span key={index}>
+                  {name}
+                  {index < selectedNames.length - 1 ? ", " : ""}
+                </span>
+              ))
+            : placeholder}
+      </SelectButton>
+    );
+
+    return (
+      <Popover
+        opened={isPopoverOpen}
+        onDismiss={this.handlePopoverDismiss}
+        position="bottom-start"
+        offset={5}
+      >
+        <Popover.Target>
+          <a
+            onClick={this.togglePopover}
+            className={cx(CS.flex, className, CS.noDecoration, {
+              [CS.cursorInherit]: disabled,
+            })}
+            aria-disabled={disabled}
+          >
+            {triggerElement}
+          </a>
+        </Popover.Target>
+        <Popover.Dropdown
+          className={containerClassName}
+          p={0}
+          data-testid="popover"
+        >
+          <AccordionList<TOption>
+            hasInitialFocus
+            sections={sections}
+            className="MB-Select"
+            alwaysExpanded
+            width={width}
+            role="listbox"
+            itemIsSelected={this.itemIsSelected}
+            itemIsClickable={this.itemIsClickable}
+            renderItemName={this.props.optionNameFn}
+            getItemClassName={this.props.optionClassNameFn}
+            getItemStyles={this.props.optionStylesFn}
+            renderItemDescription={this.props.optionDescriptionFn}
+            renderItemIcon={this.renderItemIcon}
+            onChange={this.handleChange}
+            searchable={!!searchProp}
+            searchProp={searchProp}
+            searchPlaceholder={searchPlaceholder}
+            globalSearch={this.props.globalSearch}
+            data-testid={testId ? `${testId}-list` : null}
+            style={{
+              color: "var(--mb-color-brand)",
+              outline: "none",
+            }}
+          />
+          {footer}
+        </Popover.Dropdown>
+      </Popover>
     );
   }
 }
@@ -332,10 +366,7 @@ class BaseSelect<
 /**
  * @deprecated: use Select from "metabase/ui"
  */
-const Select = Uncontrollable()(BaseSelect);
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Select;
+export const Select = Uncontrollable()(BaseSelect);
 
 export interface OptionSectionProps {
   name?: string;

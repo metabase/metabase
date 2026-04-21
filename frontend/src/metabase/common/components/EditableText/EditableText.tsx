@@ -10,7 +10,7 @@ import type {
 import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { usePrevious } from "react-use";
 
-import Markdown from "metabase/common/components/Markdown";
+import { Markdown } from "metabase/common/components/Markdown";
 import { Box, type BoxProps } from "metabase/ui";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
@@ -30,12 +30,13 @@ export interface EditableTextProps extends BoxProps, EditableTextAttributes {
   isDisabled?: boolean;
   isMarkdown?: boolean;
   onChange?: (value: string) => void;
+  onContentChange?: (value: string) => void;
   onFocus?: FocusEventHandler<HTMLTextAreaElement>;
   onBlur?: FocusEventHandler<HTMLTextAreaElement>;
   "data-testid"?: string;
 }
 
-const EditableText = forwardRef(function EditableText(
+const EditableTextInner = forwardRef(function EditableText(
   {
     initialValue,
     placeholder,
@@ -46,6 +47,7 @@ const EditableText = forwardRef(function EditableText(
     isDisabled = false,
     isMarkdown = false,
     onChange,
+    onContentChange,
     onFocus,
     onBlur,
     "data-testid": dataTestId,
@@ -95,10 +97,12 @@ const EditableText = forwardRef(function EditableText(
 
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLTextAreaElement>) => {
-      setInputValue(event.currentTarget.value);
+      const nextValue = event.currentTarget.value;
+      setInputValue(nextValue);
       submitOnBlur.current = true;
+      onContentChange?.(nextValue);
     },
-    [submitOnBlur],
+    [onContentChange],
   );
 
   const handleKeyDown = useCallback(
@@ -177,5 +181,6 @@ const EditableText = forwardRef(function EditableText(
 
 const shouldPassKeyToTextarea = (key: string) => key !== "Enter";
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(EditableText, { Root: EditableTextRoot });
+export const EditableText = Object.assign(EditableTextInner, {
+  Root: EditableTextRoot,
+});

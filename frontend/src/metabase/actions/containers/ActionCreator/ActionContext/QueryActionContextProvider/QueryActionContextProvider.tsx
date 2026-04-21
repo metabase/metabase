@@ -27,8 +27,7 @@ import {
   setTemplateTagTypesFromFieldSettings,
 } from "./utils";
 
-export interface QueryActionContextProviderProps
-  extends ActionContextProviderProps<WritebackQueryAction> {
+export interface QueryActionContextProviderProps extends ActionContextProviderProps<WritebackQueryAction> {
   metadata: Metadata;
   databaseId?: DatabaseId;
 }

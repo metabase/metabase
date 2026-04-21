@@ -18,9 +18,18 @@
 (def ^:private class-dir
   (u/filename u/project-root-directory "target" "classes"))
 
+(def ^:private uberjar-dir
+  "Canonical directory for all uberjar builds."
+  (u/filename u/project-root-directory "target" "uberjar"))
+
+(def ^:private artifact-name
+  "The uberjar artifact name, customizable via the MB_JAR_FILENAME env var."
+  (or (System/getenv "MB_JAR_FILENAME")
+      "metabase.jar"))
+
 (def uberjar-filename
-  "Target filename for the Metabase uberjar."
-  (u/filename u/project-root-directory "target" "uberjar" "metabase.jar"))
+  "Full path to the Metabase uberjar, including the artifact name."
+  (u/filename uberjar-dir artifact-name))
 
 (defn- do-with-duration-ms [thunk f]
   (let [timer      (u/start-timer)
@@ -116,6 +125,9 @@
 
 (defn- copy-resources! [basis]
   (u/step "Copy resources"
+    ;; put module config file on classpath for log team attribution
+    (b/copy-file {:src ".clj-kondo/config/modules/config.edn"
+                  :target "resources/metabase/config/modules.edn"})
     (doseq [path (all-paths basis)]
       (u/step (format "Copy resources from %s" path)
         (b/copy-dir {:target-dir class-dir
@@ -164,7 +176,7 @@
   to do it by hand for the time being."
   []
   (u/step "Update META-INF/MANIFEST.MF"
-    (u/with-open-jar-file-system [fs "target/uberjar/metabase.jar"]
+    (u/with-open-jar-file-system [fs uberjar-filename]
       (let [manifest-path (u/get-path-in-filesystem fs "META-INF" "MANIFEST.MF")]
         (with-open [os (Files/newOutputStream manifest-path (into-array OpenOption [StandardOpenOption/WRITE
                                                                                     StandardOpenOption/TRUNCATE_EXISTING]))]
@@ -184,5 +196,4 @@
         (copy-resources! basis)
         (create-uberjar! basis)
         (update-manifest!))
-      (u/announce "Built target/uberjar/metabase.jar in %.1f seconds."
-                  (/ duration-ms 1000.0)))))
+      (u/announce "Built %s in %.1f seconds." uberjar-filename (/ duration-ms 1000.0)))))

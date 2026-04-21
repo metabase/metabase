@@ -66,13 +66,15 @@ describe("Inaccessible Onboarding checklist", () => {
 
     cy.log("The link should not exist in the main settings menu either");
     cy.findByLabelText("Settings menu").click();
-    H.popover()
+    H.popover().findByText("Help").click();
+
+    cy.findByTestId("help-submenu")
       .should("contain", "About Acme, corp.")
       .and("not.contain", "How to use Metabase");
   });
 });
 
-H.describeWithSnowplow("Onboarding checklist events", () => {
+describe("Onboarding checklist events", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();

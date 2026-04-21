@@ -1,5 +1,5 @@
 (ns metabase.driver.athena
-  (:refer-clojure :exclude [second])
+  (:refer-clojure :exclude [some select-keys mapv empty? not-empty get-in])
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -18,18 +19,12 @@
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.performance :refer [some select-keys mapv empty? not-empty get-in]])
   (:import
-   (java.sql
-    Connection
-    DatabaseMetaData
-    Date
-    ResultSet
-    Time
-    Timestamp
-    Types)
+   (java.sql Connection DatabaseMetaData Date ResultSet Time Types)
    (java.time OffsetDateTime ZonedDateTime)
-   [java.util UUID]))
+   (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
@@ -39,20 +34,21 @@
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:datetime-diff                 true
-                              :nested-fields                 false
-                              :uuid-type                     true
-                              :connection/multiple-databases true
-                              :expression-literals           true
-                              :identifiers-with-spaces       false
-                              :metadata/key-constraints      false
-                              :test/jvm-timezone-setting     false
-                              :database-routing              true}]
+(doseq [[feature supported?] {:connection/multiple-databases    true
+                              :database-routing                 true
+                              :datetime-diff                    true
+                              :expression-literals              true
+                              :identifiers-with-spaces          false
+                              :metadata/key-constraints         false
+                              :nested-fields                    false
+                              :regex/lookaheads-and-lookbehinds false
+                              :test/jvm-timezone-setting        false
+                              :uuid-type                        true}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:athena :schemas]
   [_driver _feature db]
-  (not (seq (:dbname (:details db)))))
+  (not (seq (:dbname (driver.conn/effective-details db)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     metabase.driver.sql-jdbc method impls                                      |
@@ -60,19 +56,19 @@
 
 ;;; ---------------------------------------------- sql-jdbc.connection -----------------------------------------------
 
-(defn endpoint-for-region
+(defn- endpoint-for-region
   "Returns the endpoint URL for a specific region"
   [region]
-  (cond
-    (str/starts-with? region "cn-") ".amazonaws.com.cn"
-    :else ".amazonaws.com"))
+  (str "//athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn") ":443"))
 
 (defmethod sql-jdbc.conn/connection-details->spec :athena
-  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname], :as details}]
+  [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname hostname], :as details}]
   (-> (merge
        {:classname      "com.amazon.athena.jdbc.AthenaDriver"
         :subprotocol    "athena"
-        :subname        (str "//athena." region (endpoint-for-region region) ":443")
+        :subname       (if (str/blank? hostname)
+                         (endpoint-for-region region)
+                         (str "//" hostname ":443"))
         :User           access_key
         :Password       secret_key
         :OutputLocation s3_staging_dir
@@ -88,7 +84,7 @@
        (dissoc details
                ;; Remove 2.x jdbc driver version options from details.
                ;; They are mapped to appropriate 3.x keys on preceding lines
-               :db :dbname :catalog :region :access_key :secret_key :s3_staging_dir :workgroup))
+               :db :dbname :catalog :region :access_key :secret_key :s3_staging_dir :workgroup :hostname))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
 (defmethod sql-jdbc.conn/data-source-name :athena
@@ -101,36 +97,42 @@
 
 ;;; ------------------------------------------------- sql-jdbc.sync --------------------------------------------------
 
+(def ^:private db-type->base-type
+  {:array                               :type/Array
+   :bigint                              :type/BigInteger
+   :binary                              :type/*
+   :varbinary                           :type/*
+   :boolean                             :type/Boolean
+   :char                                :type/Text
+   :date                                :type/Date
+   :decimal                             :type/Decimal
+   :double                              :type/Float
+   :float                               :type/Float
+   :integer                             :type/Integer
+   :int                                 :type/Integer
+   :uuid                                :type/UUID
+   :map                                 :type/*
+   :smallint                            :type/Integer
+   :string                              :type/Text
+   :struct                              :type/Dictionary
+   ;; Athena sort of has a time type, sort of does not. You can specify it in literals but I don't think you can store
+   ;; it.
+   :time                                :type/Time
+   :timestamp                           :type/DateTime
+   ;; Same for timestamp with time zone... the type sort of exists. You can't store it AFAIK but you can create one
+   ;; from a literal or by converting a `timestamp` column, e.g. with the `with_timezone` function.
+   (keyword "timestamp with time zone") :type/DateTimeWithZoneID
+   :tinyint                             :type/Integer
+   :varchar                             :type/Text})
+
 ;; Map of column types -> Field base types
 ;; https://s3.amazonaws.com/athena-downloads/drivers/JDBC/SimbaAthenaJDBC_2.0.5/docs/Simba+Athena+JDBC+Driver+Install+and+Configuration+Guide.pdf
 (defmethod sql-jdbc.sync/database-type->base-type :athena
   [_driver database-type]
-  ({:array                               :type/Array
-    :bigint                              :type/BigInteger
-    :binary                              :type/*
-    :varbinary                           :type/*
-    :boolean                             :type/Boolean
-    :char                                :type/Text
-    :date                                :type/Date
-    :decimal                             :type/Decimal
-    :double                              :type/Float
-    :float                               :type/Float
-    :integer                             :type/Integer
-    :int                                 :type/Integer
-    :uuid                                :type/UUID
-    :map                                 :type/*
-    :smallint                            :type/Integer
-    :string                              :type/Text
-    :struct                              :type/Dictionary
-    ;; Athena sort of has a time type, sort of does not. You can specify it in literals but I don't think you can store
-    ;; it.
-    :time                                :type/Time
-    :timestamp                           :type/DateTime
-    ;; Same for timestamp with time zone... the type sort of exists. You can't store it AFAIK but you can create one
-    ;; from a literal or by converting a `timestamp` column, e.g. with the `with_timezone` function.
-    (keyword "timestamp with time zone") :type/DateTimeWithZoneID
-    :tinyint                             :type/Integer
-    :varchar                             :type/Text} database-type))
+  ;; Most databases have a canonical spelling for the types returned by JDBC, and ignore the upper/lower case you type
+  ;; in eg. `CREATE TABLE` statements. However, Athena has an admin interface where the case typed by the user is what
+  ;; gets returned by JDBC calls. Therefore, lower-case the incoming `database-type` and then look up its `base-type`.
+  (-> database-type name u/lower-case-en keyword db-type->base-type))
 
 ;;; ------------------------------------------------ sql-jdbc execute ------------------------------------------------
 
@@ -154,29 +156,24 @@
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP_WITH_TIMEZONE]
   [_driver ^ResultSet rs _rs-meta ^Long i]
-  (fn []
-    ;; Using ZonedDateTime if available to conform tests first. OffsetDateTime if former is not available.
-    (when-some [^Timestamp timestamp (.getObject rs i Timestamp)]
-      (let [timestamp-instant (.toInstant timestamp)
-            results-timezone (driver-api/results-timezone-id)]
+  (let [results-timezone (driver-api/results-timezone-id)]
+    (fn []
+      ;; always get the timestamp as a string because the underlying JDBC implementation parses strings to
+      ;; `java.sql.Timestamp` anyway and it barfs if it has a nanosecond component.
+      (when-some [t (some-> (.getString rs i) u.date/parse)]
+        ;; Using ZonedDateTime if available to conform tests first. OffsetDateTime if former is not available.
         (try
-          (t/zoned-date-time timestamp-instant (t/zone-id results-timezone))
+          (u.date/with-time-zone-same-instant t results-timezone)
           (catch Throwable _
             (log/warnf "Failed to construct ZonedDateTime from `%s` using `%s` timezone."
-                       (pr-str timestamp-instant)
+                       (pr-str t)
                        (pr-str results-timezone))
-            (try
-              (t/offset-date-time timestamp-instant results-timezone)
-              (catch Throwable _
-                (log/warnf "Failed to construct OffsetDateTime from `%s` using `%s` offset. Using `Z` fallback."
-                           (pr-str timestamp-instant)
-                           (pr-str results-timezone))
-                (t/offset-date-time timestamp-instant "Z")))))))))
+            t))))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/TIMESTAMP]
   [_driver ^ResultSet rs _rs-meta ^Long i]
-  (fn [] (some-> ^Timestamp (.getObject rs i Timestamp)
-                 (t/local-date-time))))
+  (fn []
+    (some-> (.getString rs i) u.date/parse)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:athena Types/DATE]
   [_driver ^ResultSet rs _rs-meta ^Long i]
@@ -291,8 +288,25 @@
   (sql.qp/adjust-day-of-week driver [:day_of_week expr]))
 
 (defmethod sql.qp/unix-timestamp->honeysql [:athena :seconds]
-  [_driver _seconds-or-milliseconds expr]
-  [:from_unixtime expr])
+  [_driver _precision expr]
+  (-> [:from_unixtime expr]
+      (h2x/with-database-type-info "timestamp")))
+
+(defn- from-unixtime-nanos [expr]
+  (-> [:from_unixtime_nanos expr]
+      (h2x/with-database-type-info "timestamp")))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:athena :milliseconds]
+  [_driver _precision expr]
+  (from-unixtime-nanos (h2x/* expr 1000000)))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:athena :microseconds]
+  [_driver _precision expr]
+  (from-unixtime-nanos (h2x/* expr 1000)))
+
+(defmethod sql.qp/unix-timestamp->honeysql [:athena :nanoseconds]
+  [_driver _precision expr]
+  (from-unixtime-nanos expr))
 
 (defmethod sql.qp/add-interval-honeysql-form :athena
   [_driver hsql-form amount unit]
@@ -400,7 +414,7 @@
       (when (not (str/blank? remarks))
         {:field-comment remarks})))))
 
-;; Not all tables in the Data Catalog are guaranted to be compatible with Athena
+;; Not all tables in the Data Catalog are guaranteed to be compatible with Athena
 ;; If an exception is thrown, log and throw an error
 
 (defn- table-has-nested-fields? [columns]
@@ -421,34 +435,45 @@
   [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name} catalog dbname]
   (let [schema (or schema dbname)]
     (try
-      (let [columns (get-columns metadata catalog schema table-name)]
+      (let [columns (get-columns metadata catalog schema table-name)
+            duplicates? (and (seq columns)
+                             (not (apply distinct? (map :column_name columns))))]
         (when (empty? columns)
           (log/trace "Falling back to DESCRIBE due to #43980"))
+        (when duplicates?
+          (log/trace "Falling back to DESCRIBE due to duplicate column names (#58441)"
+                     (into {} (keep (fn [[col-name cols]]
+                                      (when (next cols)
+                                        [col-name (mapv :type_name cols)])))
+                           (group-by :column_name columns))))
         (if (or (table-has-nested-fields? columns)
                   ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
                   ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
-                (empty? columns))
+                (empty? columns)
+                duplicates?)
           (describe-table-fields-with-nested-fields database schema table-name)
           (describe-table-fields-without-nested-fields driver schema table-name columns)))
       (catch Throwable e
-        (log/errorf e "Error retreiving fields for DB %s.%s" schema table-name)
+        (log/errorf e "Error retrieving fields for DB %s.%s" schema table-name)
         (throw e)))))
 
-;; Becuse describe-table-fields might fail, we catch the error here and return an empty set of columns
+;; Because describe-table-fields might fail, we catch the error here and return an empty set of columns
 
 (defmethod driver/describe-table :athena
-  [driver {{:keys [catalog dbname]} :details, :as database} table]
-  (sql-jdbc.execute/do-with-connection-with-options
-   driver
-   database
-   nil
-   (fn [^Connection conn]
-     (let [metadata (.getMetaData conn)]
-       (assoc (select-keys table [:name :schema])
-              :fields (try
-                        (describe-table-fields metadata database driver table catalog dbname)
-                        (catch Throwable _
-                          (set nil))))))))
+  [driver database table]
+  (let [{:keys [catalog dbname]} (driver.conn/effective-details database)]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     database
+     nil
+     (fn [^Connection conn]
+       (let [metadata (.getMetaData conn)]
+         (assoc (select-keys table [:name :schema])
+                :fields (try
+                          (describe-table-fields metadata database driver table catalog dbname)
+                          (catch Throwable _
+                            (set nil)))))))))
+
 (defn- get-tables
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
@@ -503,14 +528,14 @@
                                remarks)}))))))
 
 (defmethod driver/describe-database* :athena
-  [driver {details :details, :as database}]
+  [driver database]
   (sql-jdbc.execute/do-with-connection-with-options
    driver
    database
    nil
    (fn [^Connection conn]
      (let [metadata (.getMetaData conn)]
-       {:tables (fast-active-tables driver metadata details)}))))
+       {:tables (fast-active-tables driver metadata (driver.conn/effective-details database))}))))
 
 (defmethod sql.qp/format-honeysql :athena
   [driver honeysql-form]
@@ -522,3 +547,6 @@
   (assert (empty? (get-in query [:native :params]))
           "Athena queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))
+
+(defmethod driver/llm-sql-dialect-resource :athena [_]
+  "metabot/prompts/dialects/athena.md")

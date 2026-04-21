@@ -6,11 +6,11 @@
    [kixi.stats.math :as math]
    [medley.core :as m]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
-   [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.interface :as mi]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.performance :refer [mapv-indexed]]
    [redux.core :as redux])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -217,8 +217,14 @@
   [from to unit]
   (when (and from to unit)
     ;; Make sure we work for both ascending and descending time series
-    (let [[from to] (sort [from to])]
-      (about= (- to from) (unit->duration unit)))))
+    (let [[from to] (sort [from to])
+          diff      (- to from)]
+      (if (= unit :year)
+        ;; Special handling for years: accept both 365 days (non-leap) and 366 days (leap year),
+        ;; but reject anything less than 365 days
+        (and (>= diff 364.5)
+             (<= diff 366.5))
+        (about= diff (unit->duration unit))))))
 
 (defn- infer-unit
   [from to]
@@ -241,11 +247,16 @@
         xfn        #(nth % x-position)]
     (fingerprinters/with-error-handling
       ((map (fn [row]
-              ;; Convert string datetimes or Instants into into days-from-epoch early.
-              (update (vec row) x-position #(some-> %
-                                                    fingerprinters/->temporal
-                                                    ->millis-from-epoch
-                                                    ms->day))))
+              ;; Convert string datetimes or Instants into into days-from-epoch, and BigDecimals into Doubles early.
+              (mapv-indexed (fn [^long i x]
+                              (cond (= i x-position)
+                                    (some-> x
+                                            fingerprinters/->temporal
+                                            ->millis-from-epoch
+                                            ms->day)
+                                    (decimal? x) (double x)
+                                    :else x))
+                            row)))
        (redux/juxt*
         (for [number-col numbers]
           (redux/post-complete
@@ -257,7 +268,7 @@
                           (simple-linear-regression xfn yfn :linear :linear)
                           (best-fit xfn yfn))))
            (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit-equation]]
-             (let [unit         (let [unit (some-> datetime :unit mbql.u/normalize-token)]
+             (let [unit         (let [unit (some-> datetime :unit keyword)]
                                   (if (or (nil? unit)
                                           (= unit :default))
                                     (infer-unit x-previous x-current)
@@ -277,8 +288,18 @@
       (format "Error generating timeseries insight keyed by: %s"
               (sync-util/name-for-logging (mi/instance :model/Field datetime))))))
 
+(defn- resolve-agg-datetimes
+  "If no breakout datetime exists, we use aggregated datetimes as :datetimes
+   Otherwise, move them to :others"
+  [{:keys [agg-datetimes datetimes] :as cols-by-type}]
+  (cond-> (dissoc cols-by-type :agg-datetimes)
+    (and (seq agg-datetimes) (empty? datetimes))
+    (assoc :datetimes agg-datetimes)
+    (and (seq agg-datetimes) (seq datetimes))
+    (update :others into agg-datetimes)))
+
 (defn insights
-  "Based on the shape of returned data construct a transducer to statistically analyize data."
+  "Based on the shape of returned data construct a transducer to statistically analyze data."
   [cols]
   (let [cols-by-type (->> cols
                           (map-indexed (fn [idx col]
@@ -286,14 +307,41 @@
                           (group-by (fn [{base-type      :base_type
                                           effective-type :effective_type
                                           semantic-type  :semantic_type
-                                          unit           :unit}]
+                                          unit           :unit
+                                          source         :source
+                                          lib-source     :lib/source
+                                          lib-breakout?  :lib/breakout?}]
                                       (cond
-                                        (isa? semantic-type :Relation/*)                    :others
-                                        (u.date/truncate-units unit)                        :datetimes
-                                        (u.date/extract-units unit)                         :numbers
-                                        (isa? (or effective-type base-type) :type/Temporal) :datetimes
-                                        (isa? base-type :type/Number)                       :numbers
-                                        :else                                               :others))))]
+                                        ;; Prefer datetime columns from breakouts, not aggregations (#62069)
+                                        ;; Datetime columns with FK/PK semantic types should still be recognized as
+                                        ;; datetimes for timeseries insights (#35281)
+                                        (and
+                                         (or (u.date/truncate-units unit)
+                                             (isa? (or effective-type base-type) :type/Temporal))
+                                         (or lib-breakout?
+                                             (= source :breakout)
+                                             (and (not= source :aggregation)
+                                                  (not (= lib-source :source/aggregations)))))
+                                        :datetimes
+
+                                        ;; Aggregated datetimes (like max(created_at)) are tracked separately so
+                                        ;; they can be used as a fallback when no breakout datetime exists (#70613)
+                                        (and
+                                         (or (u.date/truncate-units unit)
+                                             (isa? (or effective-type base-type) :type/Temporal))
+                                         (or (= source :aggregation)
+                                             (= lib-source :source/aggregations)))
+                                        :agg-datetimes
+
+                                        (u.date/extract-units unit) :numbers
+                                        ;; Don't treat numeric FK/PK columns as numbers - they are identifiers, not
+                                        ;; values to compute insights over
+                                        (and (isa? base-type :type/Number)
+                                             (not (isa? semantic-type :Relation/*)))
+                                        :numbers
+                                        :else :others)))
+                          (resolve-agg-datetimes))]
+
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
-      :else                      (fingerprinters/constant-fingerprinter nil))))
+      :else (fingerprinters/constant-fingerprinter nil))))

@@ -1,15 +1,15 @@
 import { createMockMetadata } from "__support__/metadata";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import {
+  createMockQueryBuilderState,
+  createMockQueryBuilderUIControlsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import registerVisualizations from "metabase/visualizations/register";
 import {
   PRODUCTS_ID,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockQueryBuilderState,
-  createMockQueryBuilderUIControlsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { ChartSettingsSidebar } from "./ChartSettingsSidebar";
 
@@ -38,7 +38,7 @@ describe("ChartSettingsSidebar", () => {
     // see options header with sections
     expect(screen.queryByText("Gauge options")).not.toBeInTheDocument();
     expect(screen.getByText("Formatting")).toBeInTheDocument();
-    expect(screen.getByText("Display")).toBeInTheDocument();
+    expect(screen.getByText("Ranges")).toBeInTheDocument();
 
     // click on formatting section
     fireEvent.click(screen.getByText("Formatting"));
@@ -49,7 +49,7 @@ describe("ChartSettingsSidebar", () => {
     // but the sections and back title are unchanged
     expect(screen.queryByText("Gauge options")).not.toBeInTheDocument();
     expect(screen.getByText("Formatting")).toBeInTheDocument();
-    expect(screen.getByText("Display")).toBeInTheDocument();
+    expect(screen.getByText("Ranges")).toBeInTheDocument();
   });
 
   it("should not hide the title when showSidebarTitle is false", () => {

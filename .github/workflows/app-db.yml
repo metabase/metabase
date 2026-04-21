@@ -14,20 +14,20 @@ concurrency:
 jobs:
   be-tests-mariadb:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         version:
-          - name: MariaDB 10.2
-            junit-name: be-tests-mariadb-10-2-ee
-            image: circleci/mariadb:10.2.23
+          - name: MariaDB 10.6
+            junit-name: be-tests-mariadb-10-6-ee
+            image: metabase/mariadb:10.6 # https://github.com/metabase/metabase-mariadb-docker-image
             env:
               enable-ssl-tests: 'false'
           - name: MariaDB Latest
             junit-name: be-tests-mariadb-latest-ee
-            image: circleci/mariadb:latest
+            image: mariadb:latest
             env:
               enable-ssl-tests: 'false'
         job:
@@ -35,21 +35,21 @@ jobs:
             build-static-viz: false
             test-args: >-
               :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 0
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 1
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
 
     services:
       mysql:
@@ -57,8 +57,8 @@ jobs:
         ports:
           - "3306:3306"
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: circle_test
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: true
+          MARIADB_DATABASE: mb_test
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
       # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
@@ -68,8 +68,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||
@@ -81,7 +81,7 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
       #
@@ -100,11 +100,12 @@ jobs:
       MB_MYSQL_SSL_TEST_USER: metabase
       MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
     # for historic reasons (I don't want to mess around with required jobs) the job name should be something like
-    # "be-tests-mariadb-10-2-ee (0)"
+    # "be-tests-mariadb-10-6-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
@@ -119,49 +120,51 @@ jobs:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-mysql:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         version:
-          - name: MySQL 8.0
-            junit-name: be-tests-mysql-8-0-ee
-            image: cimg/mysql:8.0
+          - name: MySQL 8.4
+            junit-name: be-tests-mysql-8-4-ee
+            image: mysql:8.4
             env:
               enable-ssl-tests: 'false'
+              enable-aws-iam-tests: 'false'
           - name: MySQL Latest
             junit-name: be-tests-mysql-latest-ee
             image: mysql:latest
             env:
               enable-ssl-tests: 'true'
+              enable-aws-iam-tests: 'true'
         job:
           - name: Enterprise Tests
             build-static-viz: false
             test-args: >-
               :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 0
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 1
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
 
     services:
       mysql:
@@ -170,7 +173,7 @@ jobs:
           - "3306:3306"
         env:
           MYSQL_ALLOW_EMPTY_PASSWORD: true
-          MYSQL_DATABASE: circle_test
+          MYSQL_DATABASE: mb_test
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
       # with the tag `mb/old-migrations-test`. `__ADDITIONAL_EXCLUDED_TAG__` is not used anywhere outside of splicing
@@ -180,8 +183,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||
@@ -193,7 +196,7 @@ jobs:
       MB_DB_TYPE: mysql
       MB_DB_HOST: localhost
       MB_DB_PORT: 3306
-      MB_DB_DBNAME: circle_test
+      MB_DB_DBNAME: mb_test
       MB_DB_USER: root
       MB_MYSQL_TEST_USER: root
       #
@@ -211,12 +214,21 @@ jobs:
       MB_MYSQL_SSL_TEST_SSL_CERT: ${{ secrets.MB_MYSQL_SSL_TEST_SSL_CERT }}
       MB_MYSQL_SSL_TEST_USER: metabase
       MB_MYSQL_SSL_TEST_PASSWORD: ${{ secrets.MYSQL_RDS_SSL_INSTANCE_PASSWORD }}
+      MB_MYSQL_AWS_IAM_TEST: ${{ matrix.version.env.enable-aws-iam-tests }}
+      MB_MYSQL_AWS_IAM_TEST_HOST: ${{ secrets.MYSQL_AURORA_IAM_INSTANCE_HOST }}
+      MB_MYSQL_AWS_IAM_TEST_PORT: 3306
+      MB_MYSQL_AWS_IAM_TEST_USER: my_iam_user
+      MB_MYSQL_AWS_IAM_TEST_DBNAME: test_db
+      MB_MYSQL_AWS_IAM_TEST_SSL_CERT: trust
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_AURORA_IAM_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
     # for historic reasons (I don't want to mess around with required jobs) the job name should be something like
-    # "be-tests-mariadb-10-2-ee (0)"
+    # "be-tests-mariadb-10-6-ee (0)"
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }}
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
@@ -231,39 +243,37 @@ jobs:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   be-tests-postgres:
     if: ${{ !inputs.skip }}
-    runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         version:
-          - name: Postgres 12.x
+          - name: Postgres 14.x
             junit-name: postgres-ee
-            docker-image: postgres:12-alpine
+            docker-image: postgres:14-alpine
             env:
               enable-ssl-tests: 'false'
+              enable-aws-iam-tests: 'false'
           - name: Postgres Latest
             junit-name: postgres-latest-ee
             docker-image: postgres:latest
             env:
               enable-ssl-tests: 'true'
+              enable-aws-iam-tests: 'true'
         job:
-          - name: Driver Tests
-            build-static-viz: false
-            test-args: >-
-              :only-tags [:mb/driver-tests]
           - name: Enterprise Tests
             build-static-viz: false
             test-args: >-
               :only '"enterprise/backend/test"'
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 1)
             build-static-viz: true
             test-args: >-
@@ -271,14 +281,14 @@ jobs:
               :exclude-tags [:mb/driver-tests]
               :partition/total 2
               :partition/index 0
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
           - name: EE App DB Tests (Part 2)
             build-static-viz: true
             test-args: >-
               :only '"test"'
               :partition/total 2
               :partition/index 1
-            exclude-tag: ':mb/driver-tests'
+            exclude-tag: ':mb/driver-tests :mb/transforms-python-test'
     name: "${{ matrix.version.name }} ${{ matrix.job.name }}"
     env:
       # Only run old migrations tests on pushes to master or release branches. All other branches should skip tests
@@ -289,8 +299,8 @@ jobs:
           (
             github.event_name == 'push' &&
             (
-              github.ref == 'master' ||
-              startsWith(github.ref, 'release-')
+              github.ref_name == 'master' ||
+              startsWith(github.ref_name, 'release-')
             ) &&
             ''
           ) ||
@@ -309,6 +319,13 @@ jobs:
       MB_POSTGRES_SSL_TEST_SSL: ${{ matrix.version.env.enable-ssl-tests }}
       MB_POSTGRES_SSL_TEST_SSL_MODE: verify-full
       MB_POSTGRES_SSL_TEST_SSL_ROOT_CERT_PATH: 'test-resources/certificates/us-east-2-bundle.pem'
+      MB_POSTGRES_AWS_IAM_TEST: ${{ matrix.version.env.enable-aws-iam-tests }}
+      MB_POSTGRES_AWS_IAM_TEST_HOST: ${{ secrets.POSTGRES_AURORA_IAM_INSTANCE_HOST }}
+      MB_POSTGRES_AWS_IAM_TEST_PORT: 5432
+      MB_POSTGRES_AWS_IAM_TEST_USER: my_iam_user
+      MB_POSTGRES_AWS_IAM_TEST_DBNAME: test_db
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_AURORA_IAM_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_AURORA_IAM_SECRET_ACCESS_KEY }}
     services:
       postgres:
         image: ${{ matrix.version.docker-image }}
@@ -321,6 +338,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test ${{ matrix.version.name }} (${{ matrix.job.name }})
+        id: test-driver
         uses: ./.github/actions/test-driver
         with:
           build-static-viz: ${{ matrix.job.build-static-viz }}
@@ -335,17 +353,17 @@ jobs:
           input-path: ./target/junit/
           output-name: ${{ github.job }}
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
+          previous-step-outcome: ${{ steps.test-driver.outputs.test-outcome }}
 
   app-db-tests-result:
     needs:
       - be-tests-mariadb
       - be-tests-mysql
       - be-tests-postgres
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     name: app-db-tests-result
     if: always() && !cancelled()

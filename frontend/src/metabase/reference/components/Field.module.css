@@ -1,5 +1,5 @@
 :root {
-  --title-color: var(--mb-color-text-medium);
+  --title-color: var(--mb-color-text-secondary);
 }
 
 .field {
@@ -45,13 +45,6 @@
   composes: textMonospace textLight from "style";
   font-size: 12px;
   letter-spacing: 1px;
-}
-
-.fieldForeignKey {
-  composes: textMedium from "style";
-  flex: 0.25;
-  overflow: hidden;
-  white-space: nowrap;
 }
 
 .fieldOther {

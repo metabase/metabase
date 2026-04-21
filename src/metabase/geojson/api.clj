@@ -64,7 +64,8 @@
       :else (:body resp))))
 
 (defn- url->reader [url]
-  (if-let [resource (io/resource url)]
+  (if-let [resource (and (geojson.settings/valid-geojson-resource-path? url)
+                         (io/resource url))]
     (io/reader resource)
     (url->geojson url)))
 
@@ -76,6 +77,10 @@
     (respond (-> (response/response is)
                  (response/content-type "application/json")))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:key"
   "Fetch a custom GeoJSON file as defined in the [[metabase.geojson.settings/custom-geojson]] setting. (This just acts
   as a simple proxy for the file specified for `key`)."
@@ -86,15 +91,19 @@
    _request
    respond
    raise]
-  (when-not (or (geojson.settings/custom-geojson-enabled) ((geojson.settings/builtin-geojson) (keyword k)))
+  (when-not (geojson.settings/custom-geojson-enabled)
     (raise (ex-info (tru "Custom GeoJSON is not enabled") {:status-code 400})))
-  (if-let [url (get-in (geojson.settings/custom-geojson) [(keyword k) :url])]
+  (if-let [url (get-in (geojson.settings/user-defined-custom-geojson) [(keyword k) :url])]
     (try
       (read-url-and-respond url respond)
       (catch Throwable e
         (raise e)))
     (raise (ex-info (tru "Invalid custom GeoJSON key: {0}" k) {:status-code 400}))))
 
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/"
   "Load a custom GeoJSON file based on a URL or file path provided as a query parameter.
   This behaves similarly to /api/geojson/:key but doesn't require the custom map to be saved to the DB first."

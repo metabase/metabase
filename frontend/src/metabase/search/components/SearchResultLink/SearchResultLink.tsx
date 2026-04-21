@@ -1,7 +1,7 @@
 import type { MouseEvent } from "react";
 
-import { useIsTruncated } from "metabase/common/hooks/use-is-truncated";
 import { Anchor, Text, Tooltip } from "metabase/ui";
+import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
 
 import { ResultLink, ResultLinkWrapper } from "./SearchResultLink.styled";
 
@@ -40,7 +40,7 @@ export const SearchResultLink = ({
         <ResultLink
           {...componentProps}
           span
-          c="text-medium"
+          c="text-secondary"
           size="sm"
           truncate
           ref={truncatedRef}

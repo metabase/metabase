@@ -1,11 +1,11 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 import { Route } from "react-router";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
+  setupCardsUsingModelEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
@@ -14,7 +14,11 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import { checkNotNull } from "metabase/utils/types";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type { Card, Collection, Database, Settings } from "metabase-types/api";
@@ -34,10 +38,6 @@ import {
   createSavedNativeCard,
   createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { ModelUsageDetails } from "./ModelUsageDetails";
 import { DEFAULT_LIST_LIMIT } from "./hooks";
@@ -152,13 +152,7 @@ async function setup({
   );
 
   setupDatabasesEndpoints(databases);
-
-  fetchMock.get({
-    url: "path:/api/card",
-    query: { f: "using_model", model_id: card.id },
-    response: usedBy,
-  });
-
+  setupCardsUsingModelEndpoint(card, usedBy);
   setupCardsEndpoints([card]);
   setupCardQueryMetadataEndpoint(
     card,
@@ -168,7 +162,7 @@ async function setup({
         createMockTable({
           id: `card__${card.id}`,
           name: card.name,
-          fields: card.result_metadata,
+          fields: card.result_metadata ?? [],
         }),
       ],
     }),

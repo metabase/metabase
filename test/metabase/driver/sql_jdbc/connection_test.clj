@@ -12,13 +12,16 @@
    [metabase.config.core :as config]
    [metabase.core.core :as mbc]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
+   [metabase.driver.connection.workspaces :as driver.w]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel-test :as ssh-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
-   [metabase.query-processor :as qp]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -28,9 +31,12 @@
    [metabase.test.util :as tu]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
+   [metabase.util.log :as log]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2])
   (:import
+   (com.google.common.cache Cache)
+   (com.mchange.v2.c3p0 DataSources)
    (org.h2.tools Server)))
 
 (set! *warn-on-reflection* true)
@@ -61,6 +67,7 @@
       ;; need to create a new, nonexistent h2 db
       (let [destroyed?         (atom false)
             original-destroy   @#'sql-jdbc.conn/destroy-pool!
+            pool-cache-key     @#'sql-jdbc.conn/pool-cache-key
             connection-details {:db "mem:connection_test"}
             spec               (mdb/spec :h2 connection-details)]
         (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
@@ -74,22 +81,159 @@
              (next.jdbc/execute! conn ["CREATE TABLE birds (name varchar)"])
              (next.jdbc/execute! conn ["INSERT INTO birds values ('rasta'),('lucky')"])
              (mt/with-temp [:model/Database database {:engine :h2, :details connection-details}]
-               (testing "database id is not in our connection map initially"
+               (let [cache-key (pool-cache-key database)]
+                 (testing "database id is not in our connection map initially"
                  ;; deref'ing a var to get the atom. looks weird
-                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
-                                     (u/id database)))))
-               (testing "when getting a pooled connection it is now in our connection map"
-                 (let [stored-spec (sql-jdbc.conn/db->pooled-connection-spec database)
-                       birds       (jdbc/query stored-spec ["SELECT * FROM birds"])]
-                   (is (seq birds))
-                   (is (contains? @@#'sql-jdbc.conn/database-id->connection-pool
-                                  (u/id database)))))
-               (testing "and is no longer in our connection map after cleanup"
-                 (driver/notify-database-updated :h2 database)
-                 (is (not (contains? @@#'sql-jdbc.conn/database-id->connection-pool
-                                     (u/id database)))))
-               (testing "the pool has been destroyed"
-                 (is @destroyed?))))))))))
+                   (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool cache-key))))
+                 (testing "when getting a pooled connection it is now in our connection map"
+                   (let [stored-spec (sql-jdbc.conn/db->pooled-connection-spec database)
+                         birds       (jdbc/query stored-spec ["SELECT * FROM birds"])]
+                     (is (seq birds))
+                     (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool cache-key))))
+                 (testing "and is no longer in our connection map after cleanup"
+                   (driver/notify-database-updated :h2 database)
+                   (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool cache-key))))
+                 (testing "the pool has been destroyed"
+                   (is @destroyed?)))))))))))
+
+(deftest connection-type-pool-separation-test
+  (mt/test-driver :h2
+    (when config/ee-available?
+      (mt/with-premium-features #{:writable-connection}
+        (testing "Different connection types get separate pools for the same database"
+          (let [read-details  {:db "mem:read_pool_test"}
+                write-details {:db "mem:write_pool_test"}
+                spec          (mdb/spec :h2 read-details)]
+          ;; Create an in-memory H2 db we can use for the test
+            (sql-jdbc.execute/do-with-connection-with-options
+             :h2
+             spec
+             {:write? true}
+             (fn [conn]
+               (next.jdbc/execute! conn ["CREATE TABLE IF NOT EXISTS test_tbl (id int)"])
+             ;; Use snake_case for column name since deftransforms uses snake_case keys
+               (mt/with-temp [:model/Database database {:engine             :h2
+                                                        :details            read-details
+                                                        :write_data_details write-details}]
+                 (let [db-id             (u/the-id database)
+                       default-cache-key [db-id :default]
+                       write-cache-key   [db-id :write-data]]
+               ;; Ensure pools are cleared
+                   (sql-jdbc.conn/invalidate-pool-for-db! database)
+
+                   (testing "initially no pools exist"
+                     (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)))
+                     (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+
+                   (testing "getting a default connection creates only the default pool"
+                     (sql-jdbc.conn/db->pooled-connection-spec database)
+                     (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))
+                     (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+
+                   (testing "getting a write connection creates a separate write pool"
+                     (driver.conn/with-write-connection
+                       (sql-jdbc.conn/db->pooled-connection-spec database))
+                     (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))
+                     (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+
+                   (testing "the two pools are different objects"
+                     (let [default-pool (get @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)
+                           write-pool   (get @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)]
+                       (is (some? default-pool))
+                       (is (some? write-pool))
+                       (is (not (identical? default-pool write-pool)))))
+
+               ;; Cleanup
+                   (sql-jdbc.conn/invalidate-pool-for-db! database)))))))))))
+
+(deftest write-connection-reuses-default-pool-when-unconfigured-test
+  (mt/test-driver :h2
+    (testing "When write-data-details is not configured, with-write-connection reuses the default pool"
+      (mt/with-temp [:model/Database database {:engine :h2
+                                               :details {:db "mem:no_write_details_test"}}]
+        (let [db-id (u/the-id database)
+              default-cache-key [db-id :default]
+              write-cache-key [db-id :write-data]]
+          (sql-jdbc.conn/invalidate-pool-for-db! database)
+          (testing "get the default pool"
+            (sql-jdbc.conn/db->pooled-connection-spec database)
+            (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)))
+          (testing "with-write-connection reuses the default pool, no duplicate created"
+            (let [default-pool (get @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)
+                  write-pool (driver.conn/with-write-connection
+                               (sql-jdbc.conn/db->pooled-connection-spec database))]
+              (is (identical? default-pool write-pool)
+                  "Should return the exact same pool object")
+              (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))
+                  "No separate write pool entry should exist")))
+          (sql-jdbc.conn/invalidate-pool-for-db! database))))))
+
+(deftest write-pool-uses-write-details-test
+  (mt/test-driver :h2
+    (when config/ee-available?
+      (mt/with-premium-features #{:writable-connection}
+        (testing "Write connection pool uses :write-data-details when available"
+          (let [read-details  {:db "mem:read_details_db"}
+                write-details {:db "mem:write_details_db"}]
+          ;; Use snake_case for column name since deftransforms uses snake_case keys
+            (mt/with-temp [:model/Database database {:engine             :h2
+                                                     :details            read-details
+                                                     :write_data_details write-details}]
+              (let [db-id (u/the-id database)]
+              ;; Ensure pools are cleared
+                (sql-jdbc.conn/invalidate-pool-for-db! database)
+
+                (testing "jdbc-spec-hash differs between default and write connection types"
+                  (let [default-hash (#'sql-jdbc.conn/jdbc-spec-hash database)
+                        write-hash   (driver.conn/with-write-connection
+                                       (#'sql-jdbc.conn/jdbc-spec-hash database))]
+                    (is (integer? default-hash))
+                    (is (integer? write-hash))
+                    (is (not= default-hash write-hash)
+                        "Hash should differ because effective-details returns different details")))
+
+                (testing "hash cache uses composite keys"
+                ;; Get both pools
+                  (sql-jdbc.conn/db->pooled-connection-spec database)
+                  (driver.conn/with-write-connection
+                    (sql-jdbc.conn/db->pooled-connection-spec database))
+
+                  (let [default-cached-hash (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash [db-id :default])
+                        write-cached-hash   (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash [db-id :write-data])]
+                    (is (some? default-cached-hash))
+                    (is (some? write-cached-hash))
+                    (is (not= default-cached-hash write-cached-hash))))
+
+              ;; Cleanup
+                (sql-jdbc.conn/invalidate-pool-for-db! database)))))))))
+
+(deftest invalidate-pool-clears-both-connection-types-test
+  (mt/test-driver :h2
+    (when config/ee-available?
+      (mt/with-premium-features #{:writable-connection}
+        (testing "invalidate-pool-for-db! clears both default and write pools"
+          (let [read-details  {:db "mem:invalidate_test"}
+                write-details {:db "mem:invalidate_write_test"}]
+          ;; Use snake_case for column name since deftransforms uses snake_case keys
+            (mt/with-temp [:model/Database database {:engine             :h2
+                                                     :details            read-details
+                                                     :write_data_details write-details}]
+              (let [db-id             (u/the-id database)
+                    default-cache-key [db-id :default]
+                    write-cache-key   [db-id :write-data]]
+              ;; Create both pools
+                (sql-jdbc.conn/db->pooled-connection-spec database)
+                (driver.conn/with-write-connection
+                  (sql-jdbc.conn/db->pooled-connection-spec database))
+
+                (testing "both pools exist before invalidation"
+                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))
+                  (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
+
+                (testing "invalidate-pool-for-db! removes both pools"
+                  (sql-jdbc.conn/invalidate-pool-for-db! database)
+                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)))
+                  (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))))))))))
 
 (deftest ^:parallel c3p0-datasource-name-test
   (mt/test-drivers (mt/driver-select {:+parent :sql-jdbc})
@@ -144,13 +288,23 @@
             hash-change-fn           (fn [db-id]
                                        (is (= (u/the-id db) db-id))
                                        (swap! hash-change-called-times inc)
-                                       nil)]
+                                       nil)
+            ;; HACK: The ClickHouse driver also calls `db->pooled-connection-spec` to answer
+            ;; `driver-supports? :connection-impersonation`. That perturbs the call count, so add a special case
+            ;; to [[driver.u/supports?]].
+            original-supports?       driver.u/supports?
+            supports?-fn             (fn [driver feature database]
+                                       (if (and #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+                                            (= driver :clickhouse)
+                                                (= feature :connection-impersonation))
+                                         true
+                                         (original-supports? driver feature database)))]
         (try
           (sql-jdbc.conn/invalidate-pool-for-db! db)
-          ;; a little bit hacky to redefine the log fn, but it's the most direct way to test
-          (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn]
+          (with-redefs [sql-jdbc.conn/log-jdbc-spec-hash-change-msg! hash-change-fn
+                        driver.u/supports?                           supports?-fn]
             (let [pool-spec-1 (sql-jdbc.conn/db->pooled-connection-spec db)
-                  db-hash-1   (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash (u/the-id db))]
+                  db-hash-1   (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key db))]
               (testing "hash value calculated correctly for new pooled conn"
                 (is (some? pool-spec-1))
                 (is (integer? db-hash-1))
@@ -163,8 +317,8 @@
                   (t2/update! :model/Database (mt/id) {:details (:details db-perturbed)})
                   (let [;; this call should result in the connection pool becoming invalidated, and the new hash value
                         ;; being stored based upon these updated details
-                        pool-spec-2  (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
-                        db-hash-2    (get @@#'sql-jdbc.conn/database-id->jdbc-spec-hash (u/the-id db))]
+                        pool-spec-2 (sql-jdbc.conn/db->pooled-connection-spec db-perturbed)
+                        db-hash-2   (get @@#'sql-jdbc.conn/pool-cache-key->jdbc-spec-hash (#'sql-jdbc.conn/pool-cache-key db))]
                     ;; to throw a wrench into things, kick off a sync of the original db (unperturbed); this
                     ;; simulates a long running sync that began before the perturbed details were saved to the app DB
                     ;; the sync steps SHOULD NOT invalidate the connection pool, because doing so could cause a seesaw
@@ -196,14 +350,15 @@
                                          :source     nil
                                          :value      (.getBytes "super secret")
                                          :creator_id (mt/user->id :crowberto)}]
-      (let [db {:engine  :postgres
-                :details {:ssl                      true
-                          :ssl-mode                 "verify-ca"
-                          :ssl-root-cert-options    "uploaded"
-                          :ssl-root-cert-creator-id (mt/user->id :crowberto)
-                          :ssl-root-cert-source     nil
-                          :ssl-root-cert-id         (:id secret)
-                          :ssl-root-cert-created-at "2022-07-25T15:57:51.556-05:00"}}]
+      (let [db {:lib/type :metadata/database
+                :engine   :postgres
+                :details  {:ssl                      true
+                           :ssl-mode                 "verify-ca"
+                           :ssl-root-cert-options    "uploaded"
+                           :ssl-root-cert-creator-id (mt/user->id :crowberto)
+                           :ssl-root-cert-source     nil
+                           :ssl-root-cert-id         (:id secret)
+                           :ssl-root-cert-created-at "2022-07-25T15:57:51.556-05:00"}}]
         (is (instance? java.io.File
                        (:sslrootcert (#'sql-jdbc.conn/connection-details->spec :postgres
                                                                                (:details db))))
@@ -220,16 +375,18 @@
 (deftest connection-pool-does-not-cache-audit-db
   (mt/test-drivers app-db-types
     (when config/ee-available?
-      (t2/delete! 'Database {:where [:= :is_audit true]})
-      (let [status (mbc/ensure-audit-db-installed!)
+      ;; TODO (Cam 9/30/25) -- sort of evil to delete databases like this in a test, shouldn't we do this in a
+      ;; transaction or something?
+      (t2/delete! :model/Database {:where [:= :is_audit true]})
+      (let [status      (mbc/ensure-audit-db-installed!)
             audit-db-id (t2/select-one-fn :id :model/Database {:where [:= :is_audit true]})
-            _ (is (= :metabase-enterprise.audit-app.audit/installed status))
-            _ (is (= 13371337 audit-db-id))
-            first-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)
+            _           (is (= :metabase-enterprise.audit-app.audit/installed status))
+            _           (is (= 13371337 audit-db-id))
+            first-pool  (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)
             second-pool (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)]
         (is (= first-pool second-pool))
         (is (= ::audit-db-not-in-cache!
-               (get @#'sql-jdbc.conn/database-id->connection-pool audit-db-id ::audit-db-not-in-cache!)))))))
+               (get @#'sql-jdbc.conn/pool-cache-key->connection-pool audit-db-id ::audit-db-not-in-cache!)))))))
 
 (deftest ^:parallel include-unreturned-connection-timeout-test
   (testing "We should be setting unreturnedConnectionTimeout; it should be the same as the query timeout (#33646)"
@@ -345,6 +502,74 @@
                        (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))
                               ;; we must have created more than one connection
                 (is (> @connection-creations 1))))))))))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest test-aws-iam-auth-provider-connection
+  (mt/with-premium-features #{:database-auth-providers}
+    (testing "AWS IAM authentication for Postgres"
+      (mt/test-driver :postgres
+        (let [db-details (:details (mt/db))
+              iam-db-details (-> db-details
+                                 (dissoc :password)
+                                 (assoc :use-auth-provider true
+                                        :auth-provider :aws-iam
+                                        :ssl true))]
+          (testing "Connection spec is configured with AWS wrapper"
+            (let [spec (sql-jdbc.conn/connection-details->spec :postgres iam-db-details)]
+              (is (= "aws-wrapper:postgresql" (:subprotocol spec)))
+              (is (= "software.amazon.jdbc.ds.AwsWrapperDataSource" (:classname spec)))
+              (is (= "iam" (:wrapperPlugins spec))))))))
+    (testing "AWS IAM authentication for MySQL"
+      (mt/test-driver :mysql
+        (let [db-details (:details (mt/db))
+              iam-db-details (-> db-details
+                                 (dissoc :password)
+                                 (assoc :use-auth-provider true
+                                        :auth-provider :aws-iam
+                                        :ssl true))]
+          (testing "Connection spec is configured with AWS wrapper"
+            (let [spec (sql-jdbc.conn/connection-details->spec :mysql iam-db-details)]
+              (is (= "aws-wrapper:mysql" (:subprotocol spec)))
+              (is (= "software.amazon.jdbc.ds.AwsWrapperDataSource" (:classname spec)))
+              (is (= "iam" (:wrapperPlugins spec)))
+              (is (= "VERIFY_CA" (:sslMode spec))))))))))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest ^:parallel test-aws-iam-requires-ssl
+  (testing "AWS IAM authentication requires SSL to be enabled"
+    (testing "Postgres throws error when SSL is disabled"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"You must enable SSL in order to use AWS IAM authentication"
+           (sql-jdbc.conn/connection-details->spec :postgres
+                                                   {:host "localhost"
+                                                    :port 5432
+                                                    :user "cam"
+                                                    :auth-provider :aws-iam
+                                                    :ssl false
+                                                    :db "metabase"}))))
+    (testing "MySQL throws error when SSL is disabled"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"You must enable SSL in order to use AWS IAM authentication"
+           (sql-jdbc.conn/connection-details->spec :mysql
+                                                   {:host "localhost"
+                                                    :port 3306
+                                                    :user "root"
+                                                    :auth-provider :aws-iam
+                                                    :ssl false
+                                                    :db "metabase"})))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"sslMode must be VERIFY_CA in order to use AWS IAM authentication"
+           (sql-jdbc.conn/connection-details->spec :mysql
+                                                   {:host "localhost"
+                                                    :port 3306
+                                                    :user "root"
+                                                    :auth-provider :aws-iam
+                                                    :ssl true
+                                                    :additional-options "sslMode=require"
+                                                    :db "metabase"}))))))
 
 (defmacro ^:private with-tunnel-details!
   [& body]
@@ -496,3 +721,287 @@
                   ;; check the query again; the tunnel should have been reestablished
                   (check-data))))
             (finally (.stop ^Server server))))))))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest postgres-aws-iam-can-connect
+  (if (config/config-bool :mb-postgres-aws-iam-test)
+    (let [host   (config/config-str :mb-postgres-aws-iam-test-host)
+          port   (config/config-int :mb-postgres-aws-iam-test-port)
+          user   (config/config-str :mb-postgres-aws-iam-test-user)
+          dbname (config/config-str :mb-postgres-aws-iam-test-dbname)]
+      (with-redefs [premium-features/is-hosted? (constantly false)]
+        (testing "Connection details are configured"
+          (is (string? host))
+          (is (string? user))
+          (is (int? port))
+          (is (string? dbname)))
+
+        (mt/with-temporary-setting-values [db-connection-timeout-ms 10000]
+          (is
+           (driver.u/can-connect-with-details? :postgres {:host   host
+                                                          :port   port
+                                                          :dbname dbname
+                                                          :user   user
+                                                          :use-auth-provider true
+                                                          :auth-provider :aws-iam
+                                                          :ssl true})))))
+    (log/info "Skipping test: MB_POSTGRES_AWS_IAM_TEST not set")))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest mysql-aws-iam-can-connect
+  (if (config/config-bool :mb-mysql-aws-iam-test)
+    (let [host   (config/config-str :mb-mysql-aws-iam-test-host)
+          port   (config/config-int :mb-mysql-aws-iam-test-port)
+          user   (config/config-str :mb-mysql-aws-iam-test-user)
+          dbname (config/config-str :mb-mysql-aws-iam-test-dbname)
+          ssl-cert (config/config-str :mb-mysql-aws-iam-test-ssl-cert)]
+      (with-redefs [premium-features/is-hosted? (constantly false)]
+        (testing "Connection details are configured"
+          (is (string? host))
+          (is (string? user))
+          (is (int? port))
+          (is (string? dbname))
+          (is (string? ssl-cert)))
+
+        (mt/with-temporary-setting-values [db-connection-timeout-ms 10000]
+          (is
+           (driver.u/can-connect-with-details? :mysql {:host   host
+                                                       :port   port
+                                                       :dbname dbname
+                                                       :user   user
+                                                       :additional-options (if (= ssl-cert "trust")
+                                                                             "trustServerCertificate=true"
+                                                                             (str "serverSslCert=" ssl-cert))
+                                                       :use-auth-provider true
+                                                       :auth-provider :aws-iam
+                                                       :ssl true})))))
+    (log/info "Skipping test: MB_MYSQL_AWS_IAM_TEST not set")))
+
+(defn- count-swapped-pools-for-db
+  "Count the number of swapped connection pools for a given database ID.
+  Since pools are keyed by [db-id, details-hash], we need to iterate through
+  all cache entries and count those matching the db-id."
+  [db-id]
+  (let [cache ^Cache @#'sql-jdbc.conn/swapped-connection-pools]
+    (count (filter (fn [[cached-db-id _details-hash]]
+                     (= cached-db-id db-id))
+                   (keys (.asMap cache))))))
+
+(defn- swap-cache-key
+  "Helper to compute the cache key for a swapped pool, matching the implementation in connection.clj.
+  Takes a db map (with :id, :engine, :details) and returns [db-id, jdbc-spec-hash]."
+  [db]
+  [(:id db) (#'sql-jdbc.conn/jdbc-spec-hash db)])
+
+(deftest with-swapped-connection-details-test
+  (testing "Swap connection details temporarily"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      (let [db    (mt/db)
+            db-id (u/the-id db)]
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (let [original-spec (sql-jdbc.conn/db->pooled-connection-spec db)]
+          (testing "Swap map is merged into details when creating connection"
+            (driver.w/with-swapped-connection-details db-id {:test-swap true}
+              (testing "spec is swapped"
+                (is (not= original-spec (sql-jdbc.conn/db->pooled-connection-spec db))))
+              (testing "Pool was created with swap in swapped pools cache"
+                (is (= 1 (count-swapped-pools-for-db db-id)))))))
+
+        (testing "Connection works normally outside swap scope"
+          (sql-jdbc.conn/invalidate-pool-for-db! db)
+          (let [spec (sql-jdbc.conn/db->pooled-connection-spec db)]
+            (is (some? spec))))))))
+
+(deftest different-swap-details-get-separate-pools-test
+  (testing "Different swap details for the same database get separate pools, identical details share pools"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      (let [db    (mt/db)
+            db-id (u/the-id db)]
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (let [pool-a-1 (atom nil)
+              pool-b   (atom nil)
+              pool-a-2 (atom nil)]
+          (testing "User A swaps with their credentials"
+            (driver.w/with-swapped-connection-details db-id {:user "user-a" :password "pass-a" :log-level 100}
+              (reset! pool-a-1 (sql-jdbc.conn/db->pooled-connection-spec db))
+              (is (= 1 (count-swapped-pools-for-db db-id)) "First swap creates one pool")))
+          (testing "User B swaps with different credentials"
+            (driver.w/with-swapped-connection-details db-id {:user "user-b" :password "pass-b" :log-level 99}
+              (reset! pool-b (sql-jdbc.conn/db->pooled-connection-spec db))
+              (is (= 2 (count-swapped-pools-for-db db-id)) "Different swap details create a second pool")
+              (is (not (identical? @pool-a-1 @pool-b)) "Different swap details return different pool instances")))
+          (testing "User A returns - should reuse their original pool (still in cache due to TTL)"
+            (driver.w/with-swapped-connection-details db-id {:user "user-a" :password "pass-a" :log-level 100}
+              (reset! pool-a-2 (sql-jdbc.conn/db->pooled-connection-spec db))
+              (is (= 2 (count-swapped-pools-for-db db-id)) "Identical swap details reuse existing pool")
+              (is (identical? @pool-a-1 @pool-a-2) "Identical swap details return the same pool instance"))))))))
+
+(deftest with-swapped-connection-details-nested-test
+  (testing "Nested swaps for the same database throw an exception"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      (let [db    (mt/db)
+            db-id (u/the-id db)]
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (driver.w/with-swapped-connection-details db-id {:outer-swap true}
+          (sql-jdbc.conn/db->pooled-connection-spec db)
+          (testing "Attempting nested swap for same database throws"
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Nested connection detail swaps are not supported"
+                 (driver.w/with-swapped-connection-details db-id {:inner-swap true}
+                   (sql-jdbc.conn/db->pooled-connection-spec db)))))))))
+
+  (testing "Different databases can have concurrent swaps"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      (let [db-1    (mt/db)
+            db-1-id (u/the-id db-1)]
+        ;; We can only test this with one db in most test setups, but the code path works
+        (driver.w/with-swapped-connection-details db-1-id {:swap-1 true}
+          ;; This would work for a different db-id
+          (is (some? (sql-jdbc.conn/db->pooled-connection-spec db-1))))))))
+
+(deftest invalidate-pool-clears-both-canonical-and-swapped-test
+  (testing "invalidate-pool-for-db! clears canonical pools (default and write) and swapped pools"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      (let [db                (mt/db)
+            db-id             (u/the-id db)
+            default-cache-key [db-id :default]
+            write-cache-key   [db-id :write-data]]
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+
+        ;; Create default canonical pool
+        (sql-jdbc.conn/db->pooled-connection-spec db)
+        (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key)
+            "default canonical pool exists")
+
+        ;; Insert a fake write pool entry to verify it gets cleared.
+        ;; Needs :datasource so destroy-pool! can handle it.
+        (let [fake-ds (DataSources/pooledDataSource
+                       (DataSources/unpooledDataSource "jdbc:h2:mem:fake_write_pool"))]
+          (swap! @#'sql-jdbc.conn/pool-cache-key->connection-pool
+                 assoc write-cache-key {:datasource fake-ds}))
+        (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)
+            "write canonical pool exists")
+
+        ;; Create swapped pool (for default connection type)
+        (driver.w/with-swapped-connection-details db-id {:test-swap true}
+          (sql-jdbc.conn/db->pooled-connection-spec db))
+        (is (= 1 (count-swapped-pools-for-db db-id))
+            "swapped pool exists")
+
+        ;; Now invalidate - should clear all pools
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+
+        (testing "Default canonical pool is cleared"
+          (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool default-cache-key))))
+        (testing "Write canonical pool is cleared"
+          (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
+        (testing "Swapped pool is cleared"
+          (is (= 0 (count-swapped-pools-for-db db-id))))))))
+
+(deftest swapped-pool-recreated-when-expired-test
+  (testing "Swapped pools are recreated when password expires"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      (let [db           (mt/db)
+            db-id        (u/the-id db)
+            swap-details {:test-swap true}
+            create-count (atom 0)]
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (with-redefs [sql-jdbc.conn/create-pool! (let [original @#'sql-jdbc.conn/create-pool!]
+                                                   (fn [db]
+                                                     (swap! create-count inc)
+                                                     (original db)))]
+          (driver.w/with-swapped-connection-details db-id swap-details
+            ;; First call creates a pool
+            (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
+              (is (= 1 @create-count))
+              (is (some? pool-1))
+
+              ;; Simulate password expiration by modifying the cached pool
+              ;; Cache key is [db-id, jdbc-spec-hash-of-swapped-db]
+              (let [cache             ^Cache @#'sql-jdbc.conn/swapped-connection-pools
+                    swapped-db        (update db :details merge swap-details)
+                    cache-key         (swap-cache-key swapped-db)
+                    ;; Use a fixed past timestamp (year 2020) to simulate expired password
+                    expired-timestamp 1577836800000]
+                (.put cache cache-key (assoc pool-1 :password-expiry-timestamp expired-timestamp)))
+
+              ;; Next call should detect invalid pool and recreate
+              (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
+                (is (= 2 @create-count) "Pool should have been recreated due to expired password")
+                (is (some? pool-2))
+                (is (not (identical? pool-1 pool-2)) "Should be a different pool instance")))))))))
+
+(deftest swapped-pool-recreated-when-tunnel-closed-test
+  (testing "Swapped pools are recreated when SSH tunnel is closed"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      (let [db           (mt/db)
+            db-id        (u/the-id db)
+            swap-details {:test-swap true}
+            create-count (atom 0)]
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (with-redefs [sql-jdbc.conn/create-pool! (let [original @#'sql-jdbc.conn/create-pool!]
+                                                   (fn [db]
+                                                     (swap! create-count inc)
+                                                     (original db)))]
+          (driver.w/with-swapped-connection-details db-id swap-details
+            ;; First call creates a pool
+            (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
+              (is (= 1 @create-count))
+              (is (some? pool-1))
+
+              ;; Simulate closed tunnel by modifying the cached pool
+              ;; We add a tunnel-session that reports as closed
+              ;; Cache key is [db-id, jdbc-spec-hash-of-swapped-db]
+              (let [cache      ^Cache @#'sql-jdbc.conn/swapped-connection-pools
+                    swapped-db (update db :details merge swap-details)
+                    cache-key  (swap-cache-key swapped-db)]
+                (.put cache cache-key (assoc pool-1 :tunnel-session :mock-closed-session)))
+
+              ;; Mock ssh-tunnel-open? to return false for our mock session
+              (with-redefs [ssh/ssh-tunnel-open? (fn [pool-spec]
+                                                   (not= :mock-closed-session (:tunnel-session pool-spec)))]
+                ;; Next call should detect invalid pool and recreate
+                (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
+                  (is (= 2 @create-count) "Pool should have been recreated due to closed tunnel")
+                  (is (some? pool-2))
+                  (is (not (identical? pool-1 pool-2)) "Should be a different pool instance"))))))))))
+
+(deftest swapped-pool-reused-when-valid-test
+  (testing "Valid swapped pools are reused without recreation"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+      (let [db           (mt/db)
+            db-id        (u/the-id db)
+            create-count (atom 0)]
+        (sql-jdbc.conn/invalidate-pool-for-db! db)
+        (with-redefs [sql-jdbc.conn/create-pool! (let [original @#'sql-jdbc.conn/create-pool!]
+                                                   (fn [db]
+                                                     (swap! create-count inc)
+                                                     (original db)))]
+          (driver.w/with-swapped-connection-details db-id {:test-swap true}
+            ;; First call creates a pool
+            (let [pool-1 (sql-jdbc.conn/db->pooled-connection-spec db)]
+              (is (= 1 @create-count))
+              (is (some? pool-1))
+
+              ;; Second call should reuse the same pool
+              (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
+                (is (= 1 @create-count) "Pool should be reused, not recreated")
+                (is (identical? pool-1 pool-2) "Should be the same pool instance")))))))))
+
+(defmulti has-default-port?
+  "Whether a driver has a default port"
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod has-default-port? :default [_driver] true)
+
+(doseq [driver [:h2 :athena :databricks :snowflake :sqlite :sqlserver]]
+  (defmethod has-default-port? driver [_driver] false))
+
+(deftest ^:parallel default-ssh-tunnel-target-port-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :+fns [has-default-port?]})
+    (is (integer? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*))))
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc :-fns [has-default-port?]})
+    (is (nil? (#'sql-jdbc.conn/default-ssh-tunnel-target-port driver/*driver*)))))

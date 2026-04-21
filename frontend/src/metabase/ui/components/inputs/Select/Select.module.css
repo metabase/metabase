@@ -1,7 +1,6 @@
 .SelectRoot {
   border-color: var(--mb-color-border);
   padding: 0;
-  overflow: auto;
 
   & > div {
     max-height: none !important;
@@ -9,7 +8,7 @@
 }
 
 .SelectWrapper {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &[data-disabled] {
     opacity: 1;
@@ -39,19 +38,19 @@
 
 .SelectInput {
   color: var(--mb-color-text-primary);
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
 
   &[data-disabled] {
     opacity: 1;
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
   }
 
   &::placeholder {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
   }
 
   [data-position="right"] {
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
   }
 
   /*
@@ -80,19 +79,13 @@
 
   [data-disabled] & {
     opacity: 1;
-    color: var(--mb-color-text-light);
-    background-color: var(--mb-color-bg-medium);
+    color: var(--mb-color-text-tertiary);
+    background-color: var(--mb-color-background-tertiary);
 
     &::placeholder {
-      color: var(--mb-color-text-light);
+      color: var(--mb-color-text-tertiary);
     }
   }
-}
-
-.SelectItems_Options {
-  padding: 0.75rem;
-  max-height: rem(500px);
-  overflow-y: auto;
 }
 
 .SelectItems_Item {
@@ -115,7 +108,7 @@
 
   &[data-combobox-disabled] {
     cursor: default;
-    color: var(--mb-color-text-light);
+    color: var(--mb-color-text-tertiary);
     pointer-events: none;
     opacity: 0.75;
   }
@@ -144,16 +137,24 @@
 }
 
 .SelectItemsNothingFound {
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
   padding: var(--mantine-spacing-sm);
   font-size: var(--select-item-font-size);
   line-height: var(--select-item-line-height);
 }
 
+.SelectItems_Options {
+  padding: 0.75rem;
+  /*
+    this clobbers bottom padding when the content overflows, but it's less bad than
+    double scrollbars or overflowing the viewport, see #62466, #61889
+  */
+  max-height: rem(500px);
+}
+
 .Dropdown {
-  background-color: var(--mb-color-background);
+  background-color: var(--mb-color-background-primary);
   border-color: var(--mb-color-border);
-  overflow: auto;
 }
 
 .SelectError {
@@ -163,5 +164,5 @@
 }
 
 .SelectClearButton {
-  color: var(--mb-color-text-dark) !important;
+  color: var(--mb-color-text-primary) !important;
 }

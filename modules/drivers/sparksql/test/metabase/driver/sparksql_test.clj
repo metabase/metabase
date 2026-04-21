@@ -6,8 +6,8 @@
    [metabase.driver.sparksql :as sparksql]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.test :as qp]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -64,9 +64,12 @@
                   {:aggregation [[:count]]
                    :filter      [:= $name "wow"]})]
       (testing "The native query returned in query results should use user-friendly splicing"
-        (is (= "SELECT COUNT(*) AS `count` FROM `test_data`.`venues` AS `t1` WHERE `t1`.`name` = 'wow'"
-               (:query (qp.compile/compile-with-inline-parameters query))
-               (-> (qp/process-query query) :data :native_form :query)))))))
+        (let [expected "SELECT COUNT(*) AS `count` FROM `test_data`.`venues` AS `t1` WHERE `t1`.`name` = 'wow'"
+              replaced "SELECT COUNT(*) AS `count` FROM `test_data`.`venues` AS `t1` WHERE `t1`.`name` = decode(unhex('776f77'), 'utf-8')"]
+          (is (= "SELECT COUNT(*) AS `count` FROM `test_data`.`venues` AS `t1` WHERE `t1`.`name` = 'wow'"
+                 (:query (qp.compile/compile-with-inline-parameters query))))
+          (is (contains? #{expected replaced}
+                         (-> (qp/process-query query) :data :native_form :query))))))))
 
 (deftest paranoid-inline-strings-test
   (mt/test-driver :sparksql

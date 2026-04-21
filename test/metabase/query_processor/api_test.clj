@@ -5,7 +5,8 @@
   {:clj-kondo/config '{:linters
                        ;; allowing `with-temp` here for now since this tests the REST API which doesn't fully use
                        ;; metadata providers.
-                       {:discouraged-var {metabase.test/with-temp {:level :off}}}}}
+                       {:discouraged-var {metabase.test/with-temp           {:level :off}
+                                          toucan2.tools.with-temp/with-temp {:level :off}}}}}
   (:require
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -18,14 +19,14 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.util.unique-name-generator]
    [metabase.permissions.core :as perms]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
@@ -34,6 +35,7 @@
    [metabase.test.http-client :as client]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -113,6 +115,9 @@
                   :card_id          nil
                   :is_sandboxed     false
                   :dashboard_id     nil
+                  :transform_id     nil
+                  :lens_id          nil
+                  :lens_params      nil
                   :error            nil
                   :id               true
                   :action_id        nil
@@ -130,13 +135,13 @@
   ;; clear out recent query executions!
   (t2/delete! :model/QueryExecution)
   (testing "POST /api/dataset"
-    (testing "\nEven if a query fails we still expect a 202 response from the API"
+    (testing "\nA failed query should return a 400 response from the API"
       ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
       ;; that it exists and contains the substring "Syntax error in SQL statement"
       (let [query  {:database (mt/id)
                     :type     "native"
                     :native   {:query "foobar"}}
-            result (mt/user-http-request :crowberto :post 202 "dataset" query)]
+            result (mt/user-http-request :crowberto :post 400 "dataset" query)]
         (testing "\nAPI Response"
           (is (malli= [:map
                        [:data        [:map
@@ -234,33 +239,34 @@
 
 (deftest native-query-with-long-column-alias
   (testing "nested native query with long column alias (#47584)"
-    (let [short-col-name "coun"
-          long-col-name  "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
-
+    (let [short-col-name       "coun"
+          long-col-name        "Total_number_of_people_from_each_state_separated_by_state_and_then_we_do_a_count"
           ;; Lightly validate the native form that comes back. Resist the urge to check for exact equality.
           validate-native-form (fn [native-form-lines]
                                  (and (some #(str/includes? % short-col-name) native-form-lines)
                                       (some #(str/includes? % long-col-name) native-form-lines)))
-
           ;; Disable truncate-alias when compiling the native query to ensure we don't truncate the column.
           ;; We want to simulate a user-defined query where the column name is long, but valid for the driver.
-          native-sub-query (with-redefs [lib.util/truncate-alias
-                                         (fn mock-truncate-alias
-                                           [ss & _] ss)]
-                             (-> (mt/mbql-query people
-                                   {:source-table $$people
-                                    :aggregation  [[:aggregation-options [:count] {:name short-col-name}]]
-                                    :breakout     [[:field %state {:name long-col-name}]]
-                                    :limit        5})
-                                 qp.compile/compile
-                                 :query))
-          native-query (mt/native-query {:query native-sub-query})
-
+          native-sub-query     (with-redefs [metabase.lib.util.unique-name-generator/truncate-alias
+                                             (fn mock-truncate-alias
+                                               [ss & _] ss)]
+                                 ;; make sure the schema checks don't fail for aliases > 60 characters
+                                 (mu/disable-enforcement
+                                   (-> (mt/mbql-query people
+                                         {:source-table $$people
+                                          :aggregation  [[:aggregation-options [:count] {:name short-col-name}]]
+                                          :breakout     [[:field %state {:name long-col-name}]]
+                                          :limit        5})
+                                       qp.compile/compile
+                                       :query)))
+          _                    (is (not (str/includes? native-sub-query "_00028d48"))
+                                   "double-check that the native-sub-query was not truncated")
+          native-query         (mt/native-query {:query native-sub-query})
           ;; Let metadata-provider-with-cards-with-metadata-for-queries calculate the result-metadata.
-          metadata-provider (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])
-          metadata-card     (lib.metadata/card metadata-provider 1)]
+          metadata-provider    (qp.test-util/metadata-provider-with-cards-with-metadata-for-queries [native-query])
+          metadata-card        (lib.metadata/card metadata-provider 1)]
       (mt/with-temp
-        [:model/Card card {:dataset_query native-query
+        [:model/Card card {:dataset_query   native-query
                            :entity_id       (:entity-id metadata-card)
                            :result_metadata (:result-metadata metadata-card)}]
         (let [card-query {:database (mt/id)
@@ -333,11 +339,11 @@
                                   encoded? json/encode)]]
           (testing (format "encoded? %b" encoded?)
             (doseq [mp [(lib.tu/remap-metadata-provider
-                         (mt/application-database-metadata-provider (mt/id))
+                         (mt/metadata-provider)
                          (mt/id :venues :category_id)
                          (mt/id :categories :name))
                         (lib.tu/remap-metadata-provider
-                         (mt/application-database-metadata-provider (mt/id))
+                         (mt/metadata-provider)
                          (mt/id :venues :category_id)
                          (mapv first (mt/rows (qp/process-query
                                                (mt/mbql-query categories
@@ -372,6 +378,19 @@
                      [:error  [:= "You do not have permissions to run this query."]]]
                     (mt/user-http-request :rasta :post "dataset"
                                           (mt/mbql-query venues {:limit 1}))))))))
+
+(deftest blocked-database-permissions-test
+  (testing "POST /api/dataset should return an error when the user has blocked view-data permissions on the database (OSS)"
+    (mt/with-premium-features #{}
+      (mt/with-temp-copy-of-db
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :blocked)
+          (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :no)
+          (is (malli= [:map
+                       [:status [:= "failed"]]
+                       [:error  [:= "You do not have permissions to run this query."]]]
+                      (mt/user-http-request :rasta :post "dataset"
+                                            (mt/mbql-query venues {:limit 1})))))))))
 
 (deftest api-card-join-permissions-test
   (testing "POST /api/dataset should error for card join permission violations"
@@ -552,6 +571,16 @@
                                    (assoc (mt/mbql-query venues {:fields [$id $name]})
                                           :pretty false)))))))
 
+(deftest ^:parallel compile-disable-max-results-test
+  (testing "POST /api/dataset/native"
+    (testing "\nWith disable-max-results? the compiled SQL should not include a LIMIT clause"
+      (let [query (-> (mt/mbql-query venues {:fields [$id $name]})
+                      (assoc-in [:middleware :disable-max-results?] true)
+                      (assoc :pretty false))
+            result (mt/user-http-request :crowberto :post 200 "dataset/native" query)]
+        (is (not (re-find #"(?i)\bLIMIT\b" (:query result)))
+            (str "Expected no LIMIT in SQL, got: " (:query result)))))))
+
 (deftest ^:parallel compile-test-2
   (testing "POST /api/dataset/native"
     (testing "\nCan we fetch a native version of an MBQL query?"
@@ -661,12 +690,12 @@
 (deftest databricks-stack-trace-test
   (testing "exceptions with stacktraces should have the stacktrace removed"
     (mt/test-driver :databricks
-      (let [res (mt/user-http-request :rasta :post 202 "dataset"
+      (let [res (mt/user-http-request :rasta :post 400 "dataset"
                                       (lib/native-query (mt/metadata-provider)
                                                         "asdf;"))]
         (is (= {:error_type "invalid-query"
                 :status "failed"
-                :class "class com.databricks.client.support.exceptions.ErrorException"}
+                :class "class com.databricks.jdbc.exception.DatabricksSQLException"}
                (select-keys res [:error_type :status :class])))
         (is (not (str/includes? (:error res) "\n\tat ")))))))
 
@@ -916,9 +945,9 @@
       (is (= ["A   sian" "As"]
              (mt/user-http-request :crowberto :post 200 "dataset/parameter/remapping" body))))))
 
-(deftest ^:parallel adhoc-mlv2-query-test
+(deftest ^:parallel adhoc-mbql5-query-test
   (testing "POST /api/dataset"
-    (testing "Should be able to run an ad-hoc MLv2 query (#39024)"
+    (testing "Should be able to run an ad-hoc MBQL 5 query (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -928,9 +957,9 @@
                                [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]}}
                 (mt/user-http-request :crowberto :post 202 "dataset" query)))))))
 
-(deftest ^:parallel mlv2-query-convert-to-native-test
+(deftest ^:parallel mbql5-query-convert-to-native-test
   (testing "POST /api/dataset/native"
-    (testing "Should be able to convert an MLv2 query to native (#39024)"
+    (testing "Should be able to convert an MBQL 5 query to native (#39024)"
       (let [metadata-provider (mt/metadata-provider)
             venues            (lib.metadata/table metadata-provider (mt/id :venues))
             query             (-> (lib/query metadata-provider venues)
@@ -956,6 +985,16 @@
                                      (some->> s
                                               (driver/prettify-native-form :h2)
                                               str/split-lines))))))))))
+
+(deftest ^:parallel mbql5-query-convert-to-native-disable-default-limit-test
+  (testing "POST /api/dataset/native"
+    (testing "MBQL 5 query with disable-default-limit should compile to SQL without a LIMIT clause"
+      (let [metadata-provider (mt/metadata-provider)
+            venues            (lib.metadata/table metadata-provider (mt/id :venues))
+            query             (-> (lib/query metadata-provider venues)
+                                  lib/disable-default-limit)]
+        (is (not (re-find #"(?i)\bLIMIT\b" (:query (mt/user-http-request :crowberto :post 200 "dataset/native" query))))
+            "Expected no LIMIT in SQL for query with disable-default-limit")))))
 
 (deftest ^:parallel format-export-middleware-test
   (testing "The `:format-export?` query processor middleware has the intended effect on file exports."
@@ -1019,8 +1058,9 @@
   (testing "Don't throw an error if source card is deleted (#48461)"
     (mt/with-temp
       [:model/Card {card-id-1 :id} {:dataset_query (mt/mbql-query products)}
-       :model/Card {card-id-2 :id} {:dataset_query {:type  :query
-                                                    :query {:source-table (str "card__" card-id-1)}}}]
+       :model/Card {card-id-2 :id} {:dataset_query {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table (str "card__" card-id-1)}}}]
       (letfn [(query-metadata [expected-status card-id]
                 (-> (mt/user-http-request :crowberto :post expected-status
                                           "dataset/query_metadata"
@@ -1038,9 +1078,59 @@
                     :databases [{:id (mt/id) :engine string?}]}
                    (query-metadata 200 card-id)))))
          #(testing "After delete"
-            (doseq [card-id [card-id-1 card-id-2]]
-              (is (=?
-                   {:fields    empty?
-                    :tables    empty?
-                    :databases [{:id (mt/id) :engine string?}]}
-                   (query-metadata 200 card-id))))))))))
+            ;; card-id-1 is deleted, so querying it as a source returns empty tables
+            (is (=?
+                 {:fields    empty?
+                  :tables    empty?
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-1)))
+            ;; card-id-2 still exists, so querying it as a source still works
+            (is (=?
+                 {:fields    empty?
+                  :tables    [{:id (str "card__" card-id-2)}]
+                  :databases [{:id (mt/id) :engine string?}]}
+                 (query-metadata 200 card-id-2)))))))))
+
+(deftest published-table-does-not-grant-database-access-oss-test
+  (testing "POST /api/dataset in OSS: published table access does NOT grant database access"
+    (mt/with-premium-features #{}
+      (mt/with-restored-data-perms-for-group! (u/the-id (perms/all-users-group))
+        (t2/with-transaction [_conn nil {:rollback-only true}]
+          (mt/with-temp [:model/User       {user-id :id} {:email "oss-db-access-test@example.com"}
+                         :model/Collection collection {}]
+            ;; Publish the venues table into this collection
+            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (let [all-users (perms/all-users-group)]
+              ;; Set database-level permissions first to establish baseline
+              (perms/set-database-permission! all-users (mt/id) :perms/view-data :unrestricted)
+              (perms/set-database-permission! all-users (mt/id) :perms/create-queries :no)
+              ;; Grant collection read permission - gives create-queries via published table mechanism in EE
+              (perms/grant-collection-read-permissions! all-users (u/the-id collection))
+              ;; Set table-level permissions
+              (perms/set-table-permission! all-users (mt/id :venues) :perms/view-data :unrestricted)
+              (perms/set-table-permission! all-users (mt/id :venues) :perms/create-queries :no)
+              ;; In OSS: published tables don't grant database access, so user gets a permission error
+              (testing "Query should be blocked because OSS doesn't grant database access via published tables"
+                (is (malli= [:map
+                             [:status [:= "failed"]]
+                             [:error  [:= "You do not have permissions to run this query."]]]
+                            (mt/with-current-user user-id
+                              (mt/user-http-request user-id :post "dataset"
+                                                    (mt/mbql-query venues {:limit 1})))))))))))))
+
+(deftest query-metadata-sensitive-fields-test
+  (testing "POST /api/dataset/query_metadata"
+    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :sensitive}
+      (testing "sensitive fields are excluded by default"
+        (let [result (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                           (mt/mbql-query venues))]
+          (is (not (some #(= (:id %) (mt/id :venues :price))
+                         (->> result :tables (mapcat :fields))))
+              "Sensitive field should NOT be included by default")))
+      (testing "sensitive fields are included when :settings :include-sensitive-fields is true"
+        (let [result (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                           (assoc (mt/mbql-query venues)
+                                                  :settings {:include_sensitive_fields true}))]
+          (is (some #(= (:id %) (mt/id :venues :price))
+                    (->> result :tables (mapcat :fields)))
+              "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))

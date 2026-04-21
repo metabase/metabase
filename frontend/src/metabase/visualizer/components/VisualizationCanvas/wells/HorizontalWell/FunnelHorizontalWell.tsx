@@ -17,8 +17,8 @@ import {
 import cx from "classnames";
 
 import { Sortable } from "metabase/common/components/Sortable";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Flex, type FlexProps, Text } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";
 import {
@@ -147,7 +147,7 @@ function FunnelWellItem({
   const box = (
     <WellItem
       {...props}
-      bg={isDraggable ? "var(--mb-color-bg-white)" : "transparent"}
+      bg={isDraggable ? "background-primary" : "transparent"}
       style={{
         cursor: isDraggable ? "grab" : "default",
       }}

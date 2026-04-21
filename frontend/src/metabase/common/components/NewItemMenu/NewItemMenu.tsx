@@ -1,19 +1,18 @@
 import { push } from "react-router-redux";
 import _ from "underscore";
 
-import Databases from "metabase/entities/databases";
-import { connect } from "metabase/lib/redux";
+import { Databases } from "metabase/entities/databases";
 import { closeNavbar } from "metabase/redux/app";
+import type { State } from "metabase/redux/store";
+import { getHasDatabaseWithJsonEngine } from "metabase/selectors/data";
 import {
-  getHasDataAccess,
-  getHasDatabaseWithJsonEngine,
-  getHasNativeWrite,
-} from "metabase/selectors/data";
-import { getUserIsAdmin } from "metabase/selectors/user";
+  canUserCreateNativeQueries,
+  canUserCreateQueries,
+} from "metabase/selectors/user";
+import { connect } from "metabase/utils/redux";
 import type Database from "metabase-lib/v1/metadata/Database";
-import type { State } from "metabase-types/store";
 
-import NewItemMenuView from "./NewItemMenuView";
+import { NewItemMenuView } from "./NewItemMenuView";
 
 interface MenuDatabaseProps {
   databases?: Database[];
@@ -23,10 +22,9 @@ const mapStateToProps = (
   state: State,
   { databases = [] }: MenuDatabaseProps,
 ) => ({
-  hasDataAccess: getHasDataAccess(databases),
-  hasNativeWrite: getHasNativeWrite(databases),
+  hasDataAccess: canUserCreateQueries(state),
+  hasNativeWrite: canUserCreateNativeQueries(state),
   hasDatabaseWithJsonEngine: getHasDatabaseWithJsonEngine(databases),
-  isAdmin: getUserIsAdmin(state),
 });
 
 const mapDispatchToProps = {
@@ -34,8 +32,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
+export const NewItemMenu = _.compose(
   Databases.loadList({
     loadingAndErrorWrapper: false,
   }),

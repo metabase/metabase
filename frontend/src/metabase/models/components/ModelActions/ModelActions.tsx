@@ -1,8 +1,8 @@
 import { jt, t } from "ttag";
 
-import Link from "metabase/common/components/Link";
-import * as Urls from "metabase/lib/urls";
+import { Link } from "metabase/common/components/Link";
 import { Group, Icon, Paper, Stack, Title } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import ModelActionDetails from "./ModelActionDetails";
@@ -18,7 +18,7 @@ function ModelActions({ model, shouldShowActionsUI }: Props) {
       <Title order={2}>
         <Group gap="sm">
           {jt`Actions for ${(
-            <Group gap="xs">
+            <Group key="group" gap="xs">
               <Icon name="model" size={24} />
               <Link variant="brand" to={Urls.model({ id: model.id() })}>
                 {model.displayName()}

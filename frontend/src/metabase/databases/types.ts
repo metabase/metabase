@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from "react";
+import type { ComponentType, JSX, ReactNode } from "react";
 
 import type { EngineFieldOption, EngineFieldType } from "metabase-types/api";
 
@@ -23,3 +23,25 @@ export interface EngineFieldProps {
   description?: ReactNode;
   placeholder?: string;
 }
+
+export type FormLocation = "admin" | "setup" | "embedding_setup" | "full-page";
+
+export type FieldState = "default" | "hidden" | "disabled";
+
+export interface DatabaseFormConfig {
+  /** present the form with advanced configuration options */
+  isAdvanced?: boolean;
+  engine?: {
+    fieldState?: FieldState;
+  };
+  name?: {
+    fieldState?: FieldState;
+    isSlug?: boolean;
+  };
+}
+
+export type ContinueWithoutDataComponent = (props: {
+  onCancel?: () => void;
+}) => JSX.Element;
+
+export type FieldType = EngineFieldType | ComponentType<EngineFieldProps>;

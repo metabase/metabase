@@ -23,11 +23,14 @@
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
+   [malli.util]
    [medley.core :as m]
    [metabase.api.common.internal]
    [metabase.api.macros.defendpoint.open-api]
+   [metabase.api.macros.scope]
    [metabase.api.open-api :as open-api]
    [metabase.config.core :as config]
+   [metabase.events.core :as events]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -78,7 +81,7 @@
 ;;; having two routes with the same method and param that only differ by regex patterns. It makes using this stuff more
 ;;; annoying
 (mr/def ::unique-key
-  "Unique indentifier for an api endpoint. `(:api/endpoints (meta a-namespace))` is a map of `::unique-key` => `::info`"
+  "Unique identifier for an api endpoint. `(:api/endpoints (meta a-namespace))` is a map of `::unique-key` => `::info`"
   [:tuple
    #_method ::method
    #_route  string?
@@ -169,9 +172,7 @@
              (= (mc/type route-params-schema) :map))
     (some (fn [[k _options v-schema]]
             (when (= k route-param)
-              (or
-               (:api/regex (mc/properties v-schema))
-               (second (metabase.api.common.internal/->matching-regex v-schema)))))
+              (second (metabase.api.common.internal/->matching-regex v-schema))))
           (mc/children route-params-schema))))
 
 (mu/defn- inferred-route-regexes :- [:maybe [:map-of :keyword (ms/InstanceOfClass java.util.regex.Pattern)]]
@@ -351,16 +352,26 @@
       me/with-spell-checking
       (me/humanize {:wrap mu/humanize-include-value})))
 
-(defn- invalid-params-errors [schema explanation specific-errors]
-  (or (when (and (map? specific-errors)
-                 (= (mc/type schema) :map))
-        (into {}
-              (let [specific-error-keys (set (keys specific-errors))]
-                (keep (fn [child]
-                        (when (contains? specific-error-keys (first child))
-                          [(first child) (umd/describe (last child))]))))
-              (mc/children schema)))
-      (me/humanize explanation {:wrap #(umd/describe (:schema %))})))
+(defn- invalid-params-errors [{:keys [schema], :as explanation}]
+  (reduce
+   (fn [m {:keys [path in], :as _explanation}]
+     (let [error-path (remove integer? in)]
+       ;; if there is already an error here keep the existing one, this is usually something like an `[:and x y]`
+       ;; where `x` has already failed so it's preferable to return the error for that than the `y` one, which
+       ;; probably won't make any sense (for some weird reason Malli `:and` schemas don't short-circut)
+       (if (get-in m error-path)
+         m
+         (let [nice-path     (loop [path (vec path)]
+                               (if (integer? (last path))
+                                 (recur (pop path))
+                                 path))
+               nested-schema (loop [path nice-path]
+                               (when (seq path)
+                                 (or (malli.util/get-in schema path)
+                                     (recur (pop path)))))]
+           (assoc-in m error-path (umd/describe nested-schema))))))
+   {}
+   (:errors explanation)))
 
 (mu/defn decode-and-validate-params
   "Impl for [[defendpoint]]."
@@ -376,7 +387,7 @@
                                              :body  "body"))
                       (let [explanation     (mr/explain schema decoded)
                             specific-errors (invalid-params-specific-errors explanation)
-                            errors          (invalid-params-errors schema explanation specific-errors)]
+                            errors          (invalid-params-errors explanation)]
                         {:status-code     400
                          #_:api/debug     #_{:params-type params-type
                                              :schema      (mc/form schema)
@@ -573,13 +584,23 @@
           body))))
 
 (mu/defn- middleware-forms
-  "Middleware to apply to base handler. Currently the only option is middleware for handling multipart requests, applied
-  if the handler metadata contains
+  "Middleware to apply to base handler. Supports:
 
-    {:multipart true}"
+    {:multipart true}  — wraps with multipart-params middleware
+    {:scope \"agent:workspaces\"} — wraps with scope enforcement middleware
+    {:scope :unchecked} — skips both enforce-scope and ensure-scopes-checked
+
+   Endpoints without `:scope` get [[metabase.api.macros.scope/ensure-scopes-checked]] to prevent scoped
+   tokens from reaching endpoints that haven't opted in."
   [{:keys [metadata], :as _args} :- ::parsed-args]
-  (when (:multipart metadata)
-    '[ring.middleware.multipart-params/wrap-multipart-params]))
+  (let [scope            (:scope metadata)
+        scope-middleware (cond
+                           (= scope :unchecked) []
+                           (some? scope) [(list 'metabase.api.macros.scope/enforce-scope scope)]
+                           :else ['metabase.api.macros.scope/ensure-scopes-checked])]
+    (cond-> (vec scope-middleware)
+      (:multipart metadata)
+      (conj 'ring.middleware.multipart-params/wrap-multipart-params))))
 
 (mu/defn- apply-middleware :- ::handler
   [handler    :- ::handler
@@ -626,11 +647,18 @@
 
 (mr/def ::ns-endpoints [:map-of ::unique-key ::info])
 
+(mr/def ::route-metadata
+  "Metadata declared on a route via defendpoint, e.g. `{:access :workspace}`."
+  :map)
+
 (mr/def ::handler-map
-  [:map-of ::method [:sequential [:tuple (ms/InstanceOfClass clout.core.CompiledRoute) ::handler]]])
+  [:map-of ::method [:sequential [:tuple
+                                  (ms/InstanceOfClass clout.core.CompiledRoute)
+                                  ::handler
+                                  [:maybe ::route-metadata]]]])
 
 (mu/defn- ns-handler-map :- ::handler-map
-  "Build a map of method => [[clout-route handler]+] used to power the combined ns handler built
+  "Build a map of method => [[clout-route handler metadata]+] used to power the combined ns handler built
   by [[build-ns-handler]]."
   [endpoints :- ::ns-endpoints]
   (->> endpoints
@@ -640,7 +668,8 @@
                      (mapv (fn [route]
                              [(clout/route-compile (get-in route [:form :route :path])
                                                    (get-in route [:form :route :regexes] {}))
-                              (:handler route)])
+                              (:handler route)
+                              (get-in route [:form :metadata])])
                            routes)))))
 
 (defn- decode-route-params [route-params]
@@ -651,7 +680,7 @@
 
     [request' handler]
 
-  (Request is updated to include parsed Clout parameters.)"
+  (Request is updated to include parsed Clout parameters and route metadata.)"
   [handler-map :- ::handler-map
    request      :- ::request]
   (let [request-method (:request-method request)
@@ -660,9 +689,11 @@
         request        (cond-> request
                          path (assoc :path-info path))]
     ;; TODO -- we could probably make this a little faster by unrolling this loop
-    (some (fn [[route handler]]
+    (some (fn [[route handler metadata]]
             (when-let [route-params (clout/route-matches route request)]
-              [(assoc request :route-params (decode-route-params route-params))
+              [(-> request
+                   (assoc :route-params (decode-route-params route-params))
+                   (assoc :route-metadata metadata))
                handler]))
           handlers)))
 
@@ -699,7 +730,16 @@
                  (update metadata :api/endpoints update-api-endpoints))
                (rebuild-handler [metadata]
                  (assoc metadata :api/handler (build-ns-handler (:api/endpoints metadata))))]
-         (-> metadata update-info rebuild-handler))))))
+         (-> metadata update-info rebuild-handler))))
+    ;; Publish event for API handler update (e.g., for OpenAPI regeneration)
+    ;; Set MB_ENABLE_OPENAPI_AUTO_REGEN=true to enable auto-regeneration on defendpoint evaluation
+    (when (config/config-bool :mb-enable-openapi-auto-regen)
+      (try
+        (events/publish-event! :event/api-handler-update
+                               {:api.docs/request-rebuild
+                                (requiring-resolve 'metabase.api.docs/request-spec-regeneration!)})
+        (catch Throwable e
+          (log/debug e "Failed to publish api-handler-update event"))))))
 
 (defn- quote-parsed-args
   "Quote the appropriate parts of the parsed [[defendpoint]] args (body and param bindings) so they can be emitted in
@@ -725,7 +765,12 @@
   motivation behind it.
 
   REPL Tip: use [[call-core-fn]] to call the core-fn directly."
-  {:added "0.53.0"}
+  {:added "0.53.0", :arglists '([method
+                                 route
+                                 docstring?
+                                 metadata?
+                                 [route-params? query-params? body-params? request? respond? raise?]
+                                 & body])}
   [& args]
   (let [parsed (parse-args args)]
     `(let [core-fn#  (endpoint-core-fn ~parsed)
@@ -782,9 +827,11 @@
        (resolve-handler))))
 
   ([nmspace & middleware :- [:sequential {:min 1} ::middleware]]
-   (apply-middleware
-    (ns-handler nmspace)
-    middleware)))
+   (let [handler (ns-handler nmspace)]
+     (open-api/handler-with-open-api-spec
+      (apply-middleware handler middleware)
+      (fn [prefix]
+        (open-api/open-api-spec handler prefix))))))
 
 (extend-protocol open-api/OpenAPISpec
   clojure.lang.Namespace

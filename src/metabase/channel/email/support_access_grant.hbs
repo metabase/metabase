@@ -1,0 +1,85 @@
+{{> metabase/channel/email/_dashsub_alert_header.hbs }}
+  <body style="padding: 0px; margin: 0px">
+    <table class="background" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #F9F9F9; padding: 48px; table-layout: fixed;">
+      <tr>
+        <td>
+          <div class="container" style="background-color: white; max-width: 555px; border-radius: 24px; margin: 0 auto; padding: 40px; border: 1px solid rgba(7, 23, 34, 0.14)">
+            <div style="text-align: center; margin-bottom: 32px;">
+              <img style="max-height: 45px; max-width: 100%;" src="{{context.application_logo_url}}" alt="{{context.application_name}} logo"/>
+            </div>
+
+            <h1 style="text-align: center; font-size: 27px; line-height: 36px; font-weight: 400; margin: 0 0 8px 0; color: #2F3C45;">
+              Support Access Grant Created
+            </h1>
+
+            <p style="text-align: center; font-size: 15px; line-height: 165%; color: #656F76; margin: 0 0 32px 0;">
+              A support access grant has been created for a Metabase instance.
+            </p>
+
+            {{!-- Grant details --}}
+            <div style="background-color: #FAFAFB; border-radius: 12px; padding: 24px; margin: 0 auto 32px auto;">
+              <table style="width: 100%; font-size: 14px; color: #2F3C45; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 700; width: 40%;">Duration:</td>
+                  <td style="padding: 8px 0;">{{payload.event_info.duration_minutes}} minutes</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 700;">Expires:</td>
+                  <td style="padding: 8px 0;">{{format-date payload.event_info.grant_end_time "MMM d, yyyy 'at' h:mm a"}} UTC</td>
+                </tr>
+              </table>
+
+              {{#if payload.event_info.notes}}
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(7, 23, 34, 0.08);">
+                  <div style="font-weight: 700; font-size: 14px; color: #2F3C45; margin-bottom: 8px;">Notes:</div>
+                  <div style="font-size: 14px; color: #656F76; line-height: 20px; white-space: pre-wrap;">{{payload.event_info.notes}}</div>
+                </div>
+              {{/if}}
+
+              {{#if payload.event_info.ticket_number}}
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(7, 23, 34, 0.08);">
+                  <div style="font-size: 12px; color: #92999E;">
+                    Reference: {{payload.event_info.ticket_number}}
+                  </div>
+                </div>
+              {{/if}}
+            </div>
+
+            {{!-- CTA button --}}
+            <div style="text-align: center; margin: 12px 0 32px 0;">
+              <a href="{{payload.event_info.password_reset_url}}"
+                 style="display: inline-block; background-color: {{context.application_color}}; color: #ffffff !important; font-weight: 700; font-size: 14px; border-radius: 8px; padding: 12px 16px; text-decoration: none;">
+                 Set Password & Access Instance
+              </a>
+            </div>
+
+            <p style="font-size: 13px; line-height: 20px; color: #656F76; text-align: center; margin: 0;">
+              This link will expire when the grant period ends.
+            </p>
+
+            <hr style="margin-top: 32px; margin-bottom: 32px;">
+            <div style="font-size: 12px; line-height: 16px; width: max-content; margin: 0 auto; color: #656F76; text-align: center;">
+              Sent from <a href="{{context.site_url}}" style="color: {{context.application_color}}">{{context.site_url}}</a>.
+            </div>
+          </div>
+
+          <div style="margin-top: 40px;">
+            <div style="text-align: center; color: #92999E; font-size: 13px;">
+              Metabase, Inc.
+            </div>
+
+            <div style="text-align: center; color: #92999E; font-size: 13px;">
+              9740 Campo Rd., Suite 1029, Spring Valley, CA 91977
+            </div>
+
+            <div style="text-align: center; margin-top: 8px;">
+              <a href="https://www.metabase.com" style="color: #656F76 !important; font-size: 13px;">
+                www.metabase.com
+              </a>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

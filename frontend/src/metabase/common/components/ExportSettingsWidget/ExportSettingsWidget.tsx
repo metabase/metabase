@@ -4,9 +4,9 @@ import { c, t } from "ttag";
 import { useSetting } from "metabase/common/hooks";
 import type { ExportFormat } from "metabase/common/types/export";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Checkbox, SegmentedControl, Stack } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 interface ExportSettingsWidgetProps {
   formats: ExportFormat[];
@@ -46,7 +46,7 @@ const useFormattingLabel = ({
       { isEmbeddingSdk: false, isFormattingEnabled: true },
       () =>
         c(
-          // eslint-disable-next-line no-literal-metabase-strings -- used for translation context
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- used for translation context
           "Refers to formatting for a piece of data, like long or short form dates, or currency. {0} is the name of the application, typically Metabase.",
         ).t`E.g. September 6, 2024 or $187.50, like in ${applicationName}`,
     )
@@ -88,7 +88,7 @@ export const ExportSettingsWidget = ({
         onChange={onChangeFormat}
         styles={{
           root: {
-            backgroundColor: "var(--mb-color-background-light)",
+            backgroundColor: "var(--mb-color-background-secondary)",
           },
         }}
       />

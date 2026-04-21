@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useState } from "react";
+import { type PropsWithChildren, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
@@ -9,15 +9,15 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { UpsellBetterSupport } from "metabase/admin/upsells";
-import Code from "metabase/common/components/Code";
 import { CopyButton } from "metabase/common/components/CopyButton";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { UtilApi } from "metabase/services";
-import { Box, Group } from "metabase/ui";
+import { Box, Code, Group } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import S from "./help.module.css";
 
@@ -85,11 +85,13 @@ const InfoBlock = ({ children }: InfoBlockProps) => (
     <Box className={S.InfoBlockButton}>
       <CopyButton value={children} />
     </Box>
-    <Code>{children}</Code>
+    <Code bg="transparent" block>
+      {children}
+    </Code>
   </Box>
 );
 
-export const Help = () => {
+export const Help = ({ children }: PropsWithChildren) => {
   const [details, setDetails] = useState({ "browser-info": navigatorInfo() });
   const { tag } = useSetting("version");
   const isPaidPlan = useSelector(getIsPaidPlan);
@@ -123,6 +125,8 @@ export const Help = () => {
 
       <UpsellBetterSupport location="settings-troubleshooting" />
 
+      {PLUGIN_SUPPORT.isEnabled && <PLUGIN_SUPPORT.SupportSettings />}
+
       <SettingsSection
         title={t`Diagnostic info`}
         description={t`Please include these details in support requests. Thank you!`}
@@ -139,6 +143,8 @@ export const Help = () => {
           link={UtilApi.get_connection_pool_details_url()}
         />
       </SettingsSection>
+      {/* render 'children' so that the child modal routes can show up */}
+      {children}
     </SettingsPageWrapper>
   );
 };

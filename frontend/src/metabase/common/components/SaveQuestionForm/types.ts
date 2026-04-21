@@ -15,6 +15,7 @@ export type SaveQuestionProps<C = CollectionId> = {
     },
   ) => Promise<Question>;
   onSave: (question: Question) => Promise<void>;
+  onCancel?: () => void;
 
   closeOnSuccess?: boolean;
   multiStep?: boolean;

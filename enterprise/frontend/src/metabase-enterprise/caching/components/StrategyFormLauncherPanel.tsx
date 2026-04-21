@@ -1,11 +1,10 @@
-import { type Dispatch, type SetStateAction, useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Panel } from "metabase/admin/performance/components/StrategyEditorForDatabases.styled";
 import { rootId } from "metabase/admin/performance/constants/simple";
 import type { UpdateTargetId } from "metabase/admin/performance/types";
 import { FormProvider } from "metabase/forms";
-import { color } from "metabase/lib/colors";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { CacheConfig } from "metabase-types/api";
 
@@ -20,7 +19,6 @@ import {
 
 export const StrategyFormLauncherPanel = ({
   configs,
-  setConfigs,
   targetId,
   updateTargetId,
   databases,
@@ -28,7 +26,6 @@ export const StrategyFormLauncherPanel = ({
   shouldShowResetButton,
 }: {
   configs: CacheConfig[];
-  setConfigs: Dispatch<SetStateAction<CacheConfig[]>>;
   targetId: number | null;
   updateTargetId: UpdateTargetId;
   databases: Database[];
@@ -41,14 +38,15 @@ export const StrategyFormLauncherPanel = ({
     handleSubmit: resetAllToDefault,
     versionNumber: resetFormVersionNumber,
   } = useResetToDefaultForm({
-    configs,
-    setConfigs,
     databaseIds,
     isFormVisible: targetId !== null,
   });
 
   return (
-    <Panel role="group" style={{ backgroundColor: color("bg-light") }}>
+    <Panel
+      role="group"
+      style={{ backgroundColor: "var(--mb-color-background-secondary)" }}
+    >
       <StrategyFormLauncherPanelBox>
         <StrategyFormLauncher
           forId={rootId}

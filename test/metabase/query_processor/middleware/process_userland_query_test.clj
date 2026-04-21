@@ -7,12 +7,12 @@
    [metabase.driver :as driver]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
-   [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
-   [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [methodical.core :as methodical]))
@@ -170,7 +170,7 @@
 (deftest ^:parallel viewlog-call-test
   (testing "no viewlog event with nil card id"
     (binding [*viewlog-call-count* (atom 0)]
-      (process-userland-query {:database 2, :type :query, :query {:source-table 26}})
+      (process-userland-query (mt/mbql-query checkins))
       (is (zero? @*viewlog-call-count*)))))
 
 (deftest cancel-test

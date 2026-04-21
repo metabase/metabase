@@ -1,0 +1,131 @@
+[
+  {
+    "card": {
+      "display": "boxplot",
+      "visualization_settings": {
+        "graph.y_axis.scale": "linear",
+        "boxplot.whisker_type": "tukey",
+        "graph.label_value_frequency": "fit",
+        "graph.label_value_formatting": "compact",
+        "boxplot.show_values_mode": "all",
+        "graph.show_values": true,
+        "boxplot.points_mode": "outliers",
+        "series_settings": {
+          "VAL": {
+            "color": "#E75454"
+          }
+        }
+      }
+    },
+    "data": {
+      "rows": [
+        ["Compact", 1000],
+        ["Compact", 10000],
+        ["Compact", 100000],
+        ["Compact", 500000],
+        ["Compact", 1000000],
+        ["Overlap", 48],
+        ["Overlap", 49],
+        ["Overlap", 50],
+        ["Overlap", 51],
+        ["Overlap", 52]
+      ],
+      "cols": [
+        {
+          "name": "CATEGORY",
+          "display_name": "CATEGORY",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "field_ref": [
+            "field",
+            "CATEGORY",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "source": "native"
+        },
+        {
+          "name": "VAL",
+          "display_name": "VAL",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "field_ref": [
+            "field",
+            "VAL",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "source": "native"
+        }
+      ],
+      "results_metadata": {
+        "columns": [
+          {
+            "name": "CATEGORY",
+            "display_name": "CATEGORY",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "field_ref": [
+              "field",
+              "CATEGORY",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "source": "native",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 7
+                }
+              }
+            }
+          },
+          {
+            "name": "VAL",
+            "display_name": "VAL",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "field_ref": [
+              "field",
+              "VAL",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "source": "native",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 48,
+                  "q1": 50,
+                  "q3": 100000,
+                  "max": 1000000,
+                  "sd": 333414.71610859915,
+                  "avg": 161125
+                }
+              }
+            }
+          }
+        ]
+      },
+      "results_timezone": "UTC"
+    }
+  }
+]

@@ -5,14 +5,18 @@ import { MantineProvider } from "@mantine/core";
 import { merge } from "icepick";
 import { type ReactNode, useContext, useMemo } from "react";
 
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type { ColorName } from "metabase/ui/colors/types";
+import type { ResolvedColorScheme } from "metabase/utils/color-scheme";
+import { getCspNonce } from "metabase/utils/csp";
+import type { ColorSettings } from "metabase-types/api";
 
 import { getThemeOverrides } from "../../../theme";
+import { useColorScheme } from "../ColorSchemeProvider";
 import { DatesProvider } from "../DatesProvider";
 
 import { ThemeProviderContext } from "./context";
 
-interface ThemeProviderProps {
+export interface ThemeProviderProps {
   children: ReactNode;
 
   /**
@@ -21,51 +25,72 @@ interface ThemeProviderProps {
    * to allow SDK users to customize the theme.
    */
   theme?: MantineThemeOverride;
+
+  /**
+   * Resolved color scheme to use. If not provided, reads from ColorSchemeContext.
+   */
+  resolvedColorScheme?: ResolvedColorScheme;
+
+  /**
+   * Whitelabel color settings. If not provided, defaults to undefined (no whitelabel).
+   */
+  whitelabelColors?: ColorSettings | null;
+
+  /**
+   * Callback invoked when whitelabel colors should be updated.
+   */
+  onUpdateWhitelabelColors?: (colors: ColorSettings) => void;
+
+  /**
+   * CSS selector for Mantine CSS variables injection.
+   */
+  cssVariablesSelector?: string;
 }
 
-export const ThemeProvider = (props: ThemeProviderProps) => {
-  // Merge default theme overrides with user-provided theme overrides
+export const ThemeProvider = ({
+  children,
+  theme: themeOverride,
+  resolvedColorScheme: resolvedColorSchemeProp,
+  whitelabelColors,
+  onUpdateWhitelabelColors,
+  cssVariablesSelector,
+}: ThemeProviderProps) => {
+  const colorSchemeContext = useColorScheme();
+  const resolvedColorScheme =
+    resolvedColorSchemeProp ?? colorSchemeContext.resolvedColorScheme;
+
   const theme = useMemo(() => {
-    const theme = merge(getThemeOverrides(), props.theme) as MantineTheme;
+    const baseTheme = merge(
+      getThemeOverrides(resolvedColorScheme, whitelabelColors),
+      themeOverride,
+    ) as MantineTheme;
 
     return {
-      ...theme,
+      ...baseTheme,
+      other: {
+        ...baseTheme.other,
+        ...(onUpdateWhitelabelColors && {
+          updateColorSettings: onUpdateWhitelabelColors,
+        }),
+      },
       fn: {
-        themeColor: (
-          color: string,
-          shade?: number,
-          primaryFallback: boolean = true,
-          useSplittedShade: boolean = true,
-        ) => {
-          if (typeof color === "string" && color.includes(".")) {
-            const [splitterColor, _splittedShade] = color.split(".");
-            const splittedShade = parseInt(_splittedShade, 10);
+        themeColor: (color: ColorName): string => {
+          const { primaryShade, primaryColor } = baseTheme;
 
-            if (
-              splitterColor in theme.colors &&
-              splittedShade >= 0 &&
-              splittedShade < 10
-            ) {
-              return theme.colors[splitterColor][
-                typeof shade === "number" && !useSplittedShade
-                  ? shade
-                  : splittedShade
+          return color in baseTheme.colors
+            ? baseTheme.colors[color][primaryShade as number]
+            : baseTheme.colors[primaryColor as ColorName][
+                primaryShade as number
               ];
-            }
-          }
-
-          const _shade =
-            typeof shade === "number" ? shade : (theme.primaryShade as number);
-
-          return color in theme.colors
-            ? theme.colors[color][_shade]
-            : primaryFallback
-              ? theme.colors[theme.primaryColor][_shade]
-              : color;
         },
       },
     } as MantineTheme;
-  }, [props.theme]);
+  }, [
+    themeOverride,
+    resolvedColorScheme,
+    whitelabelColors,
+    onUpdateWhitelabelColors,
+  ]);
 
   const { withCssVariables, withGlobalClasses } =
     useContext(ThemeProviderContext);
@@ -73,15 +98,15 @@ export const ThemeProvider = (props: ThemeProviderProps) => {
   return (
     <MantineProvider
       theme={theme}
-      getStyleNonce={() => window.MetabaseNonce ?? "metabase"}
+      forceColorScheme={resolvedColorScheme}
+      getStyleNonce={() => getCspNonce() ?? "metabase"}
       classNamesPrefix="mb-mantine"
-      cssVariablesSelector={isEmbeddingSdk() ? ".mb-wrapper" : undefined}
-      // This slows down unit tests like crazy
+      cssVariablesSelector={cssVariablesSelector}
       withCssVariables={withCssVariables}
       withGlobalClasses={withGlobalClasses}
     >
       <_CompatibilityEmotionThemeProvider theme={theme}>
-        <DatesProvider>{props.children}</DatesProvider>
+        <DatesProvider>{children}</DatesProvider>
       </_CompatibilityEmotionThemeProvider>
     </MantineProvider>
   );

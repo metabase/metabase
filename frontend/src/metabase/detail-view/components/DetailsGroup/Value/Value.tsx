@@ -1,10 +1,12 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { Box, Image, Stack, Text, rem } from "metabase/ui";
-import { isFK } from "metabase-lib/v1/types/utils/isa";
+import { TYPE } from "metabase-lib/v1/types/constants";
+import { isFK, isa } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, Field, RowValue } from "metabase-types/api";
 
 import S from "./Value.module.css";
@@ -24,18 +26,30 @@ export const Value = ({ children, column, field, value }: Props) => {
   const newTableId = field?.target?.table_id;
   const isValidLink = Boolean(
     column.settings?.view_as === "link" &&
-      column.settings.link_text &&
-      column.settings.link_url,
+    column.settings.link_text &&
+    column.settings.link_url,
   );
+  const json = useMemo(() => getJson(column, value), [column, value]);
 
   if (isEmptyValue) {
-    return <Text c="text-light">{t`empty`}</Text>;
+    return <Text c="text-tertiary">{t`empty`}</Text>;
+  }
+
+  if (json) {
+    return (
+      <CodeEditor
+        className={S.json}
+        language="json"
+        lineNumbers={false}
+        value={json}
+      />
+    );
   }
 
   if (isFK(column) && newTableId != null && !isValidLink) {
     return (
       <Text
-        bg="var(--mb-color-bg-light)"
+        bg="background-secondary"
         c="text-primary"
         className={S.fk}
         component={Link}
@@ -53,7 +67,7 @@ export const Value = ({ children, column, field, value }: Props) => {
     return (
       <Stack className={S.value} gap="sm" align="flex-start">
         <Box
-          bg="var(--mb-color-background-light)"
+          bg="background-secondary"
           className={S.imageFrame}
           mah={FRAME_SIZE}
           maw={FRAME_SIZE}
@@ -83,3 +97,34 @@ export const Value = ({ children, column, field, value }: Props) => {
     </Text>
   );
 };
+
+function getJson(
+  column: DatasetColumn,
+  value: RowValue | undefined,
+): string | undefined {
+  if (!value || typeof value === "number" || typeof value === "boolean") {
+    return undefined;
+  }
+
+  if (
+    column.semantic_type &&
+    isa(column.semantic_type, TYPE.SerializedJSON) &&
+    typeof value == "string"
+  ) {
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2);
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch (error) {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}

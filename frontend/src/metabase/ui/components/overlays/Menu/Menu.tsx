@@ -13,3 +13,4 @@ Menu.Dropdown = MenuDropdown;
 Menu.Item = MenuItem;
 Menu.Label = MantineMenu.Label;
 Menu.Divider = MantineMenu.Divider;
+Menu.Sub = MantineMenu.Sub;

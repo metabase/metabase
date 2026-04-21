@@ -2,14 +2,16 @@ import fetchMock from "fetch-mock";
 import type { LocationDescriptorObject } from "history";
 
 import { createMockEntitiesState } from "__support__/store";
-import Databases from "metabase/entities/databases";
-import Snippets from "metabase/entities/snippets";
-import * as CardLib from "metabase/lib/card";
-import { checkNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
+import { Databases } from "metabase/entities/databases";
+import { Snippets } from "metabase/entities/snippets";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
+import * as sharedQB from "metabase/redux/query-builder";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as CardLib from "metabase/utils/card";
+import { checkNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -22,7 +24,11 @@ import type {
   UnsavedCard,
   User,
 } from "metabase-types/api";
-import { createMockSegment, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockSegment,
+  createMockUser,
+  createMockUserPermissions,
+} from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   SAMPLE_DB_ID,
@@ -34,12 +40,10 @@ import {
   createSavedStructuredCard,
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import * as querying from "../querying";
 
 import * as cardActions from "./card";
-import * as core from "./core";
 import { initializeQB } from "./initializeQB";
 
 type DisplayLock = { displayIsLocked?: boolean };
@@ -61,23 +65,25 @@ async function baseSetup({
   hasDataPermissions = true,
 }: BaseSetupOpts) {
   jest.useFakeTimers();
-
-  const databases = hasDataPermissions ? [createSampleDatabase()] : [];
-  const dispatch = jest
-    .fn()
-    .mockReturnValue({ unwrap: () => ({ data: databases }) });
-
   const state = createMockState({
     entities: createMockEntitiesState({
-      databases,
+      databases: hasDataPermissions ? [createSampleDatabase()] : [],
       segments: [SEGMENT],
     }),
-    currentUser: user === undefined ? createMockUser() : user,
+    currentUser:
+      user === undefined
+        ? createMockUser({
+            permissions: createMockUserPermissions({
+              can_create_queries: hasDataPermissions,
+            }),
+          })
+        : user,
   });
 
   const metadata = getMetadata(state);
   const getState = () => state;
 
+  const dispatch = jest.fn();
   await initializeQB(location, params)(dispatch, getState);
   jest.runAllTimers();
 
@@ -136,7 +142,7 @@ async function setup({
 
   jest
     .spyOn(cardActions, "loadCard")
-    .mockReturnValue(Promise.resolve({ ...card }));
+    .mockReturnValue(Promise.resolve({ ...card } as Card));
 
   return baseSetup({ location, params, ...opts });
 }
@@ -234,7 +240,7 @@ describe("QB Actions > initializeQB", () => {
 
       describe(questionType, () => {
         it("resets QB state before doing anything", async () => {
-          const resetQBSpy = jest.spyOn(core, "resetQB");
+          const resetQBSpy = jest.spyOn(sharedQB, "resetQB");
           await setup({ card });
           expect(resetQBSpy).toHaveBeenCalledTimes(1);
         });
@@ -435,7 +441,7 @@ describe("QB Actions > initializeQB", () => {
 
         jest
           .spyOn(cardActions, "loadCard")
-          .mockReturnValueOnce(Promise.resolve({ ...originalCard }));
+          .mockReturnValueOnce(Promise.resolve({ ...originalCard } as Card));
 
         return setup({ card: q, ...opts });
       }
@@ -484,11 +490,9 @@ describe("QB Actions > initializeQB", () => {
 
         it("handles error if couldn't deserialize card hash", async () => {
           const error = new Error("failed to deserialize card");
-          jest
-            .spyOn(CardLib, "deserializeCardFromUrl")
-            .mockImplementation(() => {
-              throw error;
-            });
+          jest.spyOn(CardLib, "deserializeCard").mockImplementation(() => {
+            throw error;
+          });
 
           const { dispatch } = await setup({ card: card });
 
@@ -562,6 +566,18 @@ describe("QB Actions > initializeQB", () => {
 
           expect(result.uiControls.queryBuilderMode).toBe("dataset");
           expect(result.uiControls.datasetEditorTab).toBe("query");
+        });
+
+        it("sets UI state correctly for /columns route", async () => {
+          const baseUrl = Urls.question(card);
+          const location = getLocationForCard(card, {
+            pathname: `${baseUrl}/columns`,
+          });
+
+          const { result } = await setup({ card, location });
+
+          expect(result.uiControls.queryBuilderMode).toBe("dataset");
+          expect(result.uiControls.datasetEditorTab).toBe("columns");
         });
 
         it("sets UI state correctly for /metadata route", async () => {
@@ -699,7 +715,7 @@ describe("QB Actions > initializeQB", () => {
 
     it("constructs a card based on provided 'db' param", async () => {
       const expectedCard = Question.create({
-        databaseId: SAMPLE_DB_ID,
+        DEPRECATED_RAW_MBQL_databaseId: SAMPLE_DB_ID,
       }).card();
 
       const { result, metadata } = await setupBlank({ db: SAMPLE_DB_ID });

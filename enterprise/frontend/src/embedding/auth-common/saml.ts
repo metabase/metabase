@@ -1,5 +1,6 @@
 import * as MetabaseError from "embedding-sdk-bundle/errors";
-import type { MetabaseEmbeddingSessionToken } from "embedding-sdk-bundle/types/refresh-token";
+// eslint-disable-next-line no-restricted-imports -- import type
+import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 
 /*
  * For the markup for the popup (nice rhyme), visit

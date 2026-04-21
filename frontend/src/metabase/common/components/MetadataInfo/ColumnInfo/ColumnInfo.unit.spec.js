@@ -1,15 +1,19 @@
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
 import * as Lib from "metabase-lib";
-import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import {
+  DEFAULT_TEST_QUERY,
+  SAMPLE_PROVIDER,
+  columnFinder,
+} from "metabase-lib/test-helpers";
 import {
   PRODUCTS,
   PRODUCT_CATEGORY_VALUES,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { QueryColumnInfo, TableColumnInfo } from "./ColumnInfo";
 
@@ -28,8 +32,8 @@ function setup(field) {
   });
 }
 
-function setupMLv2(table, column) {
-  const query = createQuery();
+function setupLib(table, column) {
+  const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
   const columns = Lib.visibleColumns(query, 0);
   const findColumn = columnFinder(query, columns);
   const col = findColumn(table, column);
@@ -62,21 +66,21 @@ describe("FieldInfo", () => {
   });
 });
 
-describe("FieldInfo (MLv2)", () => {
+describe("FieldInfo (Lib)", () => {
   it("should show the given dimension's semantic type name", async () => {
-    setupMLv2("PRODUCTS", "CATEGORY");
+    setupLib("PRODUCTS", "CATEGORY");
 
     expect(await screen.findByText("Category")).toBeInTheDocument();
   });
 
   it("should display the given dimension's description", async () => {
-    setupMLv2("PRODUCTS", "CATEGORY");
+    setupLib("PRODUCTS", "CATEGORY");
 
     expect(await screen.findByText("The type of product.")).toBeInTheDocument();
   });
 
   it("should show a placeholder for a dimension with no description", () => {
-    setupMLv2("PRODUCTS", "CREATED_AT");
+    setupLib("PRODUCTS", "CREATED_AT");
 
     expect(screen.getByText("No description")).toBeInTheDocument();
   });

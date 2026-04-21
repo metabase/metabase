@@ -5,6 +5,7 @@ import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getTemplateTagFromTarget } from "metabase-lib/v1/parameters/utils/targets";
+import { InternalQuery } from "metabase-lib/v1/queries/InternalQuery";
 import type {
   Card,
   Parameter,
@@ -22,8 +23,7 @@ function getParameterType(tag: TemplateTag) {
   if (type === "date") {
     return "date/single";
   }
-  // @ts-expect-error -- preserving preexisting incorrect types (for now)
-  if (type === "string" || type === "text") {
+  if (type === "text") {
     return "string/=";
   }
   if (type === "number") {
@@ -36,7 +36,7 @@ function getParameterType(tag: TemplateTag) {
     return "temporal-unit";
   }
 
-  return "category";
+  return "string/=";
 }
 
 function getParameterTarget(tag: TemplateTag): ParameterTarget {
@@ -47,7 +47,7 @@ function getParameterTarget(tag: TemplateTag): ParameterTarget {
 
 export function getTemplateTagParameter(
   tag: TemplateTag,
-  oldParameter?: Parameter,
+  oldParameter?: Partial<Parameter>,
 ): ParameterWithTarget {
   return {
     id: tag.id,
@@ -79,6 +79,7 @@ export function getTemplateTagParameters(
       (tag) =>
         tag.type != null &&
         tag.type !== "card" &&
+        tag.type !== "table" &&
         tag.type !== "snippet" &&
         ((tag.type !== "dimension" && tag.type !== "temporal-unit") ||
           tag.dimension != null ||
@@ -89,6 +90,10 @@ export function getTemplateTagParameters(
 
 export function getTemplateTags(card: Card, metadata: Metadata): TemplateTag[] {
   const question = new Question(card, metadata);
+  // this code path is used by the last audit v1 query, `bad_table`
+  if (InternalQuery.isDatasetQueryType(question.datasetQuery())) {
+    return [];
+  }
   const query = question.query();
   const { isNative } = Lib.queryDisplayInfo(query);
   return isNative ? Object.values(Lib.templateTags(question.query())) : [];

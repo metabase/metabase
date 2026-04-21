@@ -1,7 +1,7 @@
 import { useArgs } from "@storybook/preview-api";
 import type { StoryFn } from "@storybook/react";
 
-import BookmarkToggle from "./BookmarkToggle";
+import { BookmarkToggle } from "./BookmarkToggle";
 
 export default {
   title: "Components/BookmarkToggle",

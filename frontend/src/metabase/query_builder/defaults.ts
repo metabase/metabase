@@ -2,7 +2,7 @@ import type {
   QueryBuilderLoadingControls,
   QueryBuilderQueryStatus,
   QueryBuilderUIControls,
-} from "metabase-types/store";
+} from "metabase/redux/store";
 
 export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   dataReferenceStack: null,
@@ -21,9 +21,9 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   initialChartSetting: {},
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: "view", // "view" | "notebook" | "dataset"
-  previousQueryBuilderMode: false,
+  previousQueryBuilderMode: null,
   snippetCollectionId: null,
-  datasetEditorTab: "query", // "query" / "metadata"
+  datasetEditorTab: "query",
   isShowingQuestionDetailsSidebar: false,
   isShowingSnippetSidebar: false,
   isShowingNotebookNativePreview: false,
@@ -32,6 +32,9 @@ export const DEFAULT_UI_CONTROLS: QueryBuilderUIControls = {
   modal: null,
   modalContext: null,
   highlightedNativeQueryLineNumbers: [],
+  isShowingListViewConfiguration: false,
+  nativeEditorSelectedRange: [],
+  questionDetailsTimelineDrawerState: null,
 };
 
 export const DEFAULT_LOADING_CONTROLS: QueryBuilderLoadingControls = {

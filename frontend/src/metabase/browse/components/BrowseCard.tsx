@@ -1,8 +1,8 @@
 import cx from "classnames";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
-import Link from "metabase/common/components/Link";
+import { Link } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
+import { Ellipsified } from "metabase/ui";
 import {
   Box,
   Card,
@@ -11,6 +11,7 @@ import {
   type IconName,
   Title,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 
 const sizeOptions = {
   md: {
@@ -40,7 +41,7 @@ export const BrowseCard = ({
 }: {
   icon: IconName;
   to: string;
-  iconColor?: string;
+  iconColor?: ColorName;
   title: string;
   size?: "md" | "lg";
   children?: React.ReactNode;
@@ -57,7 +58,7 @@ export const BrowseCard = ({
       p="1.5rem"
       classNames={{
         root: cx(
-          CS.bgBrandLighterHover,
+          CS.bgBrandHover,
           CS.hoverParent,
           CS.hoverDisplay,
           CS.textBrandHover,

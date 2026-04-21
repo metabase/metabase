@@ -3,13 +3,12 @@ import { forwardRef } from "react";
 
 import { TextAreaRoot } from "./TextArea.styled";
 
-export interface TextAreaProps
-  extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   error?: boolean;
   fullWidth?: boolean;
 }
 
-const TextArea = forwardRef(function TextArea(
+const TextAreaInner = forwardRef(function TextArea(
   { error, fullWidth, ...props }: TextAreaProps,
   ref: Ref<HTMLTextAreaElement>,
 ) {
@@ -18,7 +17,6 @@ const TextArea = forwardRef(function TextArea(
   );
 });
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default Object.assign(TextArea, {
+export const TextArea = Object.assign(TextAreaInner, {
   Root: TextAreaRoot,
 });

@@ -1,8 +1,8 @@
 (ns metabase-enterprise.impersonation.api-test
-  "Tests for creating and updating Connection Impersonation configs via the permisisons API"
+  "Tests for creating and updating Connection Impersonation configs via the permissions API"
   (:require
    [clojure.test :refer :all]
-   [metabase.permissions.models.data-permissions.graph :as data-perms.graph]
+   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))

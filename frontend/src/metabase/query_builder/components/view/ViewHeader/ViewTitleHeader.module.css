@@ -6,14 +6,37 @@
 
     &:hover {
       color: var(--mb-color-filter);
-      background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
-      border-color: color-mix(in srgb, var(--mb-color-filter) 40%, white);
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-filter) 10%,
+        var(--mb-color-white)
+      );
+      border-color: color-mix(
+        in srgb,
+        var(--mb-color-filter) 40%,
+        var(--mb-color-white)
+      );
     }
 
-    /* this pevents the divider between the button group from changing color */
+    /* this prevents the divider between the button group from changing color */
     &:hover&.FiltersActive {
       border-right-color: var(--mb-color-border);
     }
+  }
+}
+
+@container query-builder (max-width: 50em) {
+  .ActionButtonRoot[data-variant="default"] {
+    flex-shrink: 0;
+    padding: 11px;
+  }
+
+  .ActionButtonLabel {
+    display: none;
+  }
+
+  .ActionButtonSection[data-position="left"] {
+    margin-right: 0;
   }
 }
 
@@ -25,14 +48,22 @@
       border 300ms linear;
 
     &:hover {
-      background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
-      border-color: color-mix(in srgb, var(--mb-color-filter) 40%, white);
+      background-color: color-mix(
+        in srgb,
+        var(--mb-color-filter) 10%,
+        var(--mb-color-white)
+      );
+      border-color: color-mix(
+        in srgb,
+        var(--mb-color-filter) 40%,
+        var(--mb-color-white)
+      );
     }
 
     &:hover,
     &[data-expanded="true"] {
       .FilterCountChip {
-        color: var(--mb-color-text-selected);
+        color: var(--mb-color-text-primary-inverse);
         background-color: var(--mb-color-filter);
       }
     }
@@ -45,7 +76,11 @@
   line-height: 1rem;
   padding-inline: 0.5rem;
   color: var(--mb-color-text-primary);
-  background-color: color-mix(in srgb, var(--mb-color-filter) 15%, white);
+  background-color: color-mix(
+    in srgb,
+    var(--mb-color-filter) 15%,
+    var(--mb-color-white)
+  );
 }
 
 .SummarizeButton {
@@ -55,8 +90,16 @@
 
   &:hover:not([data-active="true"]) {
     color: var(--mb-color-summarize);
-    border-color: color-mix(in srgb, var(--mb-color-summarize) 40%, white);
-    background-color: color-mix(in srgb, var(--mb-color-summarize) 15%, white);
+    border-color: color-mix(
+      in srgb,
+      var(--mb-color-summarize) 40%,
+      var(--mb-color-white)
+    );
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-summarize) 15%,
+      var(--mb-color-white)
+    );
   }
 }
 
@@ -67,20 +110,16 @@
 
   &:hover:not([data-active="true"]) {
     color: var(--mb-color-brand);
-    border-color: color-mix(in srgb, var(--mb-color-brand) 40%, white);
-    background-color: color-mix(in srgb, var(--mb-color-brand) 15%, white);
-  }
-}
-
-.ToggleNativeQueryButton {
-  transition:
-    background 300ms linear,
-    border 300ms linear;
-
-  &:hover:not([data-active="true"]) {
-    color: var(--mb-color-brand);
-    border-color: color-mix(in srgb, var(--mb-color-brand) 40%, white);
-    background-color: color-mix(in srgb, var(--mb-color-brand) 15%, white);
+    border-color: color-mix(
+      in srgb,
+      var(--mb-color-brand) 40%,
+      var(--mb-color-white)
+    );
+    background-color: color-mix(
+      in srgb,
+      var(--mb-color-brand) 15%,
+      var(--mb-color-white)
+    );
   }
 }
 
@@ -93,7 +132,7 @@
   font-size: 1.25rem;
   line-height: 1.5rem;
   font-weight: 700;
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
   padding-left: 0.5rem;
   padding-right: 0.25rem;
 }
@@ -112,8 +151,12 @@
   }
 
   &:hover {
-    background-color: var(--mb-color-bg-light);
+    background-color: var(--mb-color-background-secondary);
   }
+}
+
+.Divider {
+  flex-grow: 1;
 }
 
 .ViewHeaderActionPanel {
@@ -123,13 +166,17 @@
   gap: 0.5rem;
   position: relative;
 
-  @media screen and (max-width: 40em) {
+  @container query-builder (max-width: 70em) {
     margin-left: 0;
     width: 100%;
-    justify-content: space-between;
+    justify-content: start;
     border-top: 1px solid var(--mb-color-border);
     margin-top: 1rem;
-    padding: 0.5rem 2.5rem 0 2rem;
+    padding: 0.5rem 1.325rem 0 1.325rem;
+  }
+
+  @media screen and (max-width: 40em) {
+    padding-inline: 1.325rem;
   }
 
   /* increase specificity */
@@ -141,13 +188,13 @@
 }
 
 .ViewRunButtonWithTooltip {
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
 
   &:hover {
     color: var(--mb-color-brand);
 
     &.isDirty {
-      color: var(--mb-color-text-white);
+      color: var(--mb-color-text-primary-inverse);
     }
   }
 }
@@ -159,14 +206,23 @@
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
 
-  @media screen and (max-width: 40em) {
+  @media screen and (max-width: 70em) {
+    &.isNavBarOpen {
+      gap: 0.25rem;
+
+      .ViewHeaderActionPanel {
+        margin-left: 0;
+      }
+
+      flex-direction: column;
+      align-items: start;
+    }
+  }
+
+  @container query-builder (max-width: 70em) {
     flex-direction: column;
     align-items: start;
     padding: 0.5rem 0;
-
-    &.isNavBarOpen {
-      margin-top: var(--app-subheader-height);
-    }
   }
 }
 
@@ -178,20 +234,36 @@
 
     &:hover {
       color: var(--mb-color-brand);
-      background-color: var(--mb-color-bg-medium);
+      background-color: var(--mb-color-background-tertiary);
     }
   }
 }
 
 .SavedQuestionHeaderButtonContainer {
   right: 0.38rem;
+  width: 100%;
 
   &.isModelOrMetric {
     right: 0;
   }
 }
 
+.ViewHeaderLeftSideWrapper {
+  flex-grow: 1;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  gap: 0.5rem;
+
+  @container query-builder (max-width: 70em) {
+    padding-left: 1.325rem;
+  }
+}
+
 .SavedQuestionLeftSideRoot {
+  width: 100%;
+  min-width: 0;
+
   .SavedQuestionHeaderButtonContainer {
     transition: all 400ms ease;
     position: relative;
@@ -224,9 +296,7 @@
     }
   }
 
-  @media screen and (max-width: 40em) {
-    padding: 0 1.25rem;
-
+  @container query-builder (max-width: 70em) {
     .SavedQuestionHeaderButtonContainer {
       top: 0;
     }
@@ -241,9 +311,16 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  column-gap: 1rem;
+  row-gap: 0.25rem;
+}
+
+.FilterPanel:not([data-css-specificity-hack]) {
+  @container query-builder (max-width: 70em) {
+    padding-inline: 1.325rem;
+  }
 
   @media screen and (max-width: 40em) {
-    flex-direction: column;
-    align-items: start;
+    padding-inline: 1.325rem;
   }
 }

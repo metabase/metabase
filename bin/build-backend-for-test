@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+# Build a backend-only uberjar for e2e testing.
+#
+# This script builds a minimal backend uberjar (metabase-backend.jar) that contains
+# only the Clojure backend code. It is NOT the same as the all-in-one metabase.jar
+# which includes backend, frontend, static assets, and other resources.
+#
+# The backend-only jar is used for e2e tests where the frontend is served separately
+# and we only need the backend API server.
+#
+# Features:
+#   - Outputs to target/uberjar/metabase-backend.jar
+#   - Caches builds based on source file hashes to avoid unnecessary rebuilds
+#   - Embeds a source hash in version.properties to detect when rebuilds are needed
+
+set -eu
+
+readonly VERSION_PROPERTY_NAME="src_hash"
+readonly JAR_FILENAME="metabase-backend.jar"
+readonly JAR_PATH="target/uberjar/$JAR_FILENAME"
+
+backend-source-hash() {
+  # hash all the files that might change a backend-only uberjar build
+  (
+    find src deps.edn resources/sample-database.db.mv.db -type f -print0 | xargs -0 shasum ;
+    find resources -type f \( -iname \*.clj -o -iname \*.edn -o -iname \*.yaml -o -iname \*.properties -o -iname \*.html \) -not -name "version.properties" -print0 | xargs -0 shasum ;
+  ) | shasum | awk '{ print $1 }'
+}
+
+backend-jar-hash() {
+  # pulling the version.properties directly from the jar is much faster than starting the JVM
+  unzip -c "$JAR_PATH" version.properties | grep "$VERSION_PROPERTY_NAME" | cut -f2 -d=
+}
+
+check-backend-jar-hash() {
+  local expected_hash actual_hash
+  expected_hash=$(backend-source-hash)
+  actual_hash=$(backend-jar-hash)
+  if [ "$expected_hash" == "$actual_hash" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+build-backend-uberjar() {
+  local source_hash
+  source_hash=$(backend-source-hash)
+  ./bin/build.sh :steps [:version]
+  echo -e "\n$VERSION_PROPERTY_NAME=$source_hash" >> resources/version.properties
+  MB_JAR_FILENAME="$JAR_FILENAME" ./bin/build.sh :steps [:uberjar]
+}
+
+if [ ! -f "$JAR_PATH" ] || ! check-backend-jar-hash; then
+  echo "Building backend uberjar for e2e testing ($JAR_FILENAME)"
+  build-backend-uberjar
+else
+  echo "Backend uberjar already up to date for e2e testing ($JAR_FILENAME)"
+fi

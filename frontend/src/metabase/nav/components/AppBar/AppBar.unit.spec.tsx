@@ -1,3 +1,4 @@
+import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import {
   createMockMediaQueryList,
   renderWithProviders,
@@ -26,6 +27,7 @@ describe("AppBar", () => {
   let matchMediaSpy: jest.SpyInstance;
 
   beforeEach(() => {
+    setupUserMetabotPermissionsEndpoint();
     matchMediaSpy = jest.spyOn(window, "matchMedia");
   });
 
@@ -167,6 +169,5 @@ const getProps = (opts?: Partial<AppBarProps>): AppBarProps => ({
   currentUser: createMockUser(),
   onToggleNavbar: jest.fn(),
   onCloseNavbar: jest.fn(),
-  onLogout: jest.fn(),
   ...opts,
 });

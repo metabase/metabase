@@ -41,7 +41,6 @@ export const createAdHocNativeCard = (
     database: SAMPLE_DB_ID,
     native: {
       query: "select * from orders",
-      "template-tags": {},
     },
   },
   ...opts,
@@ -57,7 +56,6 @@ export const createEmptyAdHocNativeCard = (
     database: SAMPLE_DB_ID,
     native: {
       query: "",
-      "template-tags": {},
     },
   },
   ...opts,
@@ -91,7 +89,6 @@ export const createSavedNativeCard = (
       database: SAMPLE_DB_ID,
       native: {
         query: "select * from orders",
-        "template-tags": {},
       },
     },
     ...opts,

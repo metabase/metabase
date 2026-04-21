@@ -1,4 +1,8 @@
-import { ORDERS_COUNT_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import { embedModalEnableEmbedding } from "e2e/support/helpers";
 
 import {
   assertDashboard,
@@ -12,18 +16,23 @@ const { H } = cy;
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > select embed experience";
 
-H.describeWithSnowplow(suiteTitle, () => {
+describe(suiteTitle, () => {
   beforeEach(() => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.enableTracking();
+
     H.updateSetting("enable-embedding-simple", true);
+    H.updateSetting("enable-embedding-static", true);
+    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
 
     cy.intercept("GET", "/api/dashboard/*").as("dashboard");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("GET", "/api/activity/recents?*").as("recentActivity");
+    cy.intercept("GET", "/api/activity/recents?context=selections*").as(
+      "recentActivity",
+    );
   });
 
   afterEach(() => {
@@ -37,7 +46,18 @@ H.describeWithSnowplow(suiteTitle, () => {
       visitNewEmbedPage();
       assertRecentItemName("dashboard", dashboardName);
 
+      H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
       H.waitForSimpleEmbedIframesToLoad();
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Next").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_experience_completed",
+        event_detail:
+          "authType=guest-embed,experience=dashboard,isDefaultExperience=true",
+      });
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("dashboard title is visible");
@@ -57,15 +77,18 @@ H.describeWithSnowplow(suiteTitle, () => {
 
       visitNewEmbedPage();
       assertRecentItemName("card", questionName);
+      H.expectUnstructuredSnowplowEvent({ event: "embed_wizard_opened" });
 
-      getEmbedSidebar().findByText("Chart").click();
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_selected",
-        event_detail: "chart",
+      getEmbedSidebar().within(() => {
+        cy.findByText("Chart").click();
+        cy.findByText("Next").click();
       });
 
-      cy.wait("@cardQuery");
+      H.expectUnstructuredSnowplowEvent({
+        event: "embed_wizard_experience_completed",
+        event_detail:
+          "authType=guest-embed,experience=chart,isDefaultExperience=false",
+      });
 
       H.getSimpleEmbedIframeContent().within(() => {
         cy.log("question title is visible");
@@ -75,11 +98,18 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     it("shows exploration template when selected", { tags: "@skip" }, () => {
       visitNewEmbedPage();
-      getEmbedSidebar().findByText("Exploration").click();
+
+      getEmbedSidebar().within(() => {
+        cy.findByLabelText("Metabase account (SSO)").click();
+
+        cy.findByText("Exploration").click();
+        cy.findByText("Next").click();
+      });
 
       H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_selected",
-        event_detail: "exploration",
+        event: "embed_wizard_experience_completed",
+        event_detail:
+          "authType=sso,experience=exploration,isDefaultExperience=false",
       });
 
       H.waitForSimpleEmbedIframesToLoad();
@@ -92,11 +122,22 @@ H.describeWithSnowplow(suiteTitle, () => {
 
     it("shows browser template when selected", () => {
       visitNewEmbedPage();
-      getEmbedSidebar().findByText("Browser").click();
+
+      getEmbedSidebar().within(() => {
+        cy.findByLabelText("Metabase account (SSO)").click();
+      });
+
+      embedModalEnableEmbedding();
+
+      getEmbedSidebar().within(() => {
+        cy.findByText("Browser").click();
+        cy.findByText("Next").click();
+      });
 
       H.expectUnstructuredSnowplowEvent({
-        event: "embed_wizard_experience_selected",
-        event_detail: "browser",
+        event: "embed_wizard_experience_completed",
+        event_detail:
+          "authType=sso,experience=browser,isDefaultExperience=false",
       });
 
       H.getSimpleEmbedIframeContent().within(() => {
@@ -117,6 +158,14 @@ H.describeWithSnowplow(suiteTitle, () => {
       cy.log("simulate an empty activity log");
       cy.intercept("GET", "/api/activity/recents?*", { recents: [] }).as(
         "emptyRecentItems",
+      );
+
+      // The embed wizard calls the search API to find recently created
+      // dashboards. Without this, the snapshot's admin-owned dashboards
+      // would be returned and selected as the default.
+      cy.log("simulate that there are no recently created dashboards");
+      cy.intercept("GET", "/api/search?*", { data: [], total: 0 }).as(
+        "emptySearch",
       );
     });
 
@@ -142,11 +191,15 @@ H.describeWithSnowplow(suiteTitle, () => {
         visitNewEmbedPage();
         cy.wait("@emptyRecentItems");
 
-        getEmbedSidebar().findByText("Chart").click();
+        getEmbedSidebar().within(() => {
+          cy.findByText("Chart").click();
+          cy.findByText("Next").click();
+        });
 
         H.expectUnstructuredSnowplowEvent({
-          event: "embed_wizard_experience_selected",
-          event_detail: "chart",
+          event: "embed_wizard_experience_completed",
+          event_detail:
+            "authType=guest-embed,experience=chart,isDefaultExperience=false",
         });
 
         H.waitForSimpleEmbedIframesToLoad();
@@ -159,22 +212,89 @@ H.describeWithSnowplow(suiteTitle, () => {
     );
   });
 
-  // TODO: fix this flaky test
-  it(
-    "localizes the iframe preview when ?locale is passed",
-    { tags: "@skip" },
-    () => {
-      visitNewEmbedPage({ locale: "fr" });
+  it("should show a fake loading indicator in embed preview", () => {
+    cy.visit(`/question/${ORDERS_QUESTION_ID}`);
 
-      // TODO: update this test once "Exploration" is localized in french.
-      getEmbedSidebar().findByText("Exploration").click();
+    H.openEmbedJsModal();
+    H.embedModalEnableEmbedding();
 
-      H.waitForSimpleEmbedIframesToLoad();
+    cy.get("#iframe-embed-container")
+      .findByTestId("preview-loading-indicator", { timeout: 20_000 })
+      .should("be.visible");
 
-      H.getSimpleEmbedIframeContent().within(() => {
-        cy.log("data picker is localized");
-        cy.findByText("Choisissez vos données de départ").should("be.visible");
+    cy.get("[data-iframe-loaded]", { timeout: 20_000 }).should(
+      "have.length",
+      1,
+    );
+
+    cy.findByTestId("preview-loading-indicator").should("not.exist");
+  });
+
+  it("should respect slow loading of recent dashboars and wait till loading complete", () => {
+    cy.intercept("GET", "/api/activity/recents*", (req) => {
+      req.on("response", (res) => {
+        res.setThrottle(0.3); // Slow down the response
       });
-    },
-  );
+    }).as("getRecents");
+
+    visitNewEmbedPage();
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Person overview").should("not.exist");
+      cy.findByText("Orders in a dashboard").should("be.visible");
+    });
+  });
+
+  it("shows no-data block when example-dashboard-id points to an archived dashboard", () => {
+    H.createDashboard({
+      name: "Archived Dashboard",
+    }).then(({ body: { id: dashboardId } }) => {
+      H.archiveDashboard(dashboardId);
+
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["example-dashboard-id"] = dashboardId;
+          res.send();
+        });
+      });
+    });
+
+    cy.intercept("GET", "/api/activity/recents*", {
+      body: [],
+    }).as("emptyRecentItems");
+
+    visitNewEmbedPage({ waitForResource: false });
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Metabase account (SSO)").click();
+    });
+
+    cy.wait("@emptyRecentItems");
+
+    cy.findByAltText("No results").should("be.visible");
+  });
+
+  it("shows Metabot experience when selected", () => {
+    visitNewEmbedPage();
+
+    getEmbedSidebar().within(() => {
+      cy.findByLabelText("Metabase account (SSO)").click();
+    });
+
+    embedModalEnableEmbedding();
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Metabot").click();
+      cy.findByText("Next").click();
+    });
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_experience_completed",
+      event_detail: "authType=sso,experience=metabot,isDefaultExperience=false",
+    });
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Ask questions to AI.").should("be.visible");
+    });
+  });
 });

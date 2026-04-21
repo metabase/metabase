@@ -6,8 +6,8 @@ import { c, t } from "ttag";
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useGetEnvVarDocsUrl } from "metabase/admin/settings/utils";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { isNotNull } from "metabase/lib/types";
 import { Anchor, Button, Text } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import type { SettingDefinition } from "metabase-types/api";
 
 import {
@@ -27,8 +27,8 @@ export interface AuthCardProps {
   description: string;
   isEnabled: boolean;
   isConfigured: boolean;
-  onChange: (value: boolean) => void;
-  onDeactivate: () => void;
+  onChange?: (value: boolean) => void;
+  onDeactivate?: () => void;
 }
 
 export const AuthCard = ({
@@ -55,7 +55,7 @@ export const AuthCard = ({
   }, []);
 
   const handleDeactivate = useCallback(async () => {
-    await onDeactivate();
+    await onDeactivate?.();
     handleClose();
   }, [onDeactivate, handleClose]);
 
@@ -64,7 +64,7 @@ export const AuthCard = ({
   const footer = isEnvSetting ? (
     <Text>
       {c("{0} is the name of a variable")
-        .jt`Set with env var ${(<Anchor href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>)}`}
+        .jt`Set with env var ${<Anchor key="anchor" href={docsUrl} target="_blank">{`$${setting.env_name}`}</Anchor>}`}
     </Text>
   ) : null;
 
@@ -77,7 +77,7 @@ export const AuthCard = ({
       isConfigured={isConfigured && !isEnvSetting}
       footer={footer}
     >
-      {isConfigured && !isEnvSetting && (
+      {isConfigured && !isEnvSetting && onChange && (
         <AuthCardMenu
           isEnabled={isEnabled}
           onChange={onChange}

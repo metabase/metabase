@@ -45,6 +45,11 @@
   "The current user does not have required permissions to run the current query."
   :parent client)
 
+(defn permission-error?
+  "Is `error-type` a permissions error"
+  [error-type]
+  (= missing-required-permissions error-type))
+
 (deferror bad-configuration
   "Something related to configuration (e.g. of a sandbox/GTAP) is preventing us from being able to run the query."
   :parent client)
@@ -55,6 +60,16 @@
 
 (deferror missing-required-parameter
   "The query is parameterized, and a required parameter was not supplied."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror multiple-conflicting-parameter-values
+  "The query is parameterized, and multiple filters provided conflicting values."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror multiple-conflicting-default-values
+  "The query is parameterized, no value was supplied, and multiple filters have conflicting default values."
   :parent invalid-query
   :show-in-embeds? true)
 
@@ -70,6 +85,27 @@
 
 (deferror disabled-feature
   "The query is using a feature that is disabled globally."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror missing-measure
+  "The query references a measure that does not exist or belongs to a different database."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror invalid-measure
+  "The query references a measure that has an invalid definition (e.g., no aggregation, contains metric references,
+  has cycles, etc.)."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror dangling-lhs-ref-in-join-condition
+  "The query contains a join condition which refers to a field on the LHS of the join which is no longer available."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror circular-reference
+  "The query has circular referencing sub-queries."
   :parent invalid-query
   :show-in-embeds? true)
 

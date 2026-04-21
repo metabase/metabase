@@ -79,7 +79,7 @@ export function Sortable({
       }}
       data-is-dragging={isDragging}
       ref={setNodeRef}
-      {...attributes}
+      {...(disabled ? {} : attributes)}
       {...(!childrenAsFunction && listeners)}
       role={role}
     >

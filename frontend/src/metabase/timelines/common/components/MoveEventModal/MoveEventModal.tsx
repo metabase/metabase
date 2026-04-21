@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/common/components/Button/Button";
-import { getSortedTimelines } from "metabase/lib/timelines";
+import { Button } from "metabase/common/components/Button/Button";
+import { getSortedTimelines } from "metabase/common/utils/timelines";
 import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 
 import ModalFooter from "../ModalFooter";
@@ -21,7 +21,6 @@ export interface MoveEventModalProps {
     oldTimeline?: Timeline,
   ) => void;
   onSubmitSuccess?: () => void;
-  onCancel?: () => void;
   onClose?: () => void;
 }
 
@@ -31,7 +30,6 @@ const MoveEventModal = ({
   collection,
   onSubmit,
   onSubmitSuccess,
-  onCancel,
   onClose,
 }: MoveEventModalProps): JSX.Element => {
   const oldTimeline = timelines.find((t) => t.id === event.timeline_id);
@@ -58,7 +56,7 @@ const MoveEventModal = ({
         />
       </ModalBody>
       <ModalFooter>
-        <Button onClick={onCancel}>{t`Cancel`}</Button>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button primary disabled={!isEnabled} onClick={handleSubmit}>
           {t`Move`}
         </Button>

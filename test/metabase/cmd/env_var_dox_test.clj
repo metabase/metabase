@@ -8,9 +8,9 @@
 
 (deftest ^:parallel test-format-prefix
   (testing "format-prefix handles deprecated variables."
-    (let [normal-var {:munged-name "test-setting"}
-          deprecated-var {:munged-name "old-setting" :deprecated true}
-          deprecated-with-msg-var {:munged-name "very-old-setting" :deprecated "Since v0.53"}]
+    (let [normal-var {:name :test-setting}
+          deprecated-var {:name :old-setting :deprecated true}
+          deprecated-with-msg-var {:name :very-old-setting :deprecated "Since v0.53"}]
       (is (= "MB_TEST_SETTING" (#'sut/format-prefix normal-var)))
       (is (= "MB_OLD_SETTING [DEPRECATED]" (#'sut/format-prefix deprecated-var)))
       (is (= "MB_VERY_OLD_SETTING [DEPRECATED]" (#'sut/format-prefix deprecated-with-msg-var))))))
@@ -60,3 +60,29 @@
     (let [generated-docs (sut/format-env-var-docs settings-filtered)]
       (is (= expected-docs
              (str/join "\n\n" generated-docs))))))
+
+(deftest ^:parallel format-doc-test
+  (testing "format-doc handles different doc values correctly"
+    (testing "returns string doc values"
+      (is (= "This is documentation"
+             (#'sut/format-doc {:doc "This is documentation"}))))
+    (testing "returns nil for false doc values (not a string)"
+      (is (nil? (#'sut/format-doc {:doc false}))))
+    (testing "returns nil for true doc values (not a string)"
+      (is (nil? (#'sut/format-doc {:doc true}))))
+    (testing "returns nil for nil doc values"
+      (is (nil? (#'sut/format-doc {:doc nil}))))
+    (testing "returns nil when doc key is missing"
+      (is (nil? (#'sut/format-doc {}))))))
+
+(deftest ^:parallel format-env-var-entry-with-false-doc-test
+  (testing "format-env-var-entry doesn't crash when env-var has :doc false"
+    (let [env-var-with-false-doc {:name :test-setting
+                                  :munged-name "test-setting"
+                                  :type :string
+                                  :default "default-value"
+                                  :description (constantly "Test description")
+                                  :doc false
+                                  :visibility :public}]
+      (is (string? (#'sut/format-env-var-entry env-var-with-false-doc)))
+      (is (str/includes? (#'sut/format-env-var-entry env-var-with-false-doc) "MB_TEST_SETTING")))))

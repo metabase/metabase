@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { jt, t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
-import ExternalLink from "metabase/common/components/ExternalLink";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import {
   Box,
@@ -12,6 +12,7 @@ import {
   Stack,
   Switch,
   TextInput,
+  type TextProps,
   Textarea,
 } from "metabase/ui";
 import type {
@@ -57,6 +58,7 @@ type InputDetails =
 export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
   name: S;
   title?: string;
+  titleProps?: TextProps;
   description?: React.ReactNode;
   hidden?: boolean;
   disabled?: boolean;
@@ -71,6 +73,7 @@ export type AdminSettingInputProps<S extends EnterpriseSettingKey> = {
  */
 export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
   title,
+  titleProps,
   description,
   name,
   inputType,
@@ -89,6 +92,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
     description: settingDescription,
     settingDetails,
   } = useAdminSetting(name);
+  const displayValue = settingDetails?.value ?? initialValue;
 
   const handleChange = (newValue: EnterpriseSettingValue) => {
     if (newValue === initialValue) {
@@ -106,6 +110,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
       <SettingHeader
         id={name}
         title={title}
+        titleProps={titleProps}
         description={description ?? settingDescription}
       />
       {settingDetails?.is_env_setting && settingDetails?.env_name ? (
@@ -113,7 +118,7 @@ export function AdminSettingInput<SettingName extends EnterpriseSettingKey>({
       ) : (
         <BasicAdminSettingInput
           name={name}
-          value={initialValue}
+          value={displayValue}
           onChange={handleChange}
           options={options}
           placeholder={placeholder}

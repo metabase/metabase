@@ -1,21 +1,16 @@
-import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useState } from "react";
 
-import { CacheConfigApi } from "metabase/services";
-import type { CacheConfig } from "metabase-types/api";
+import { useDeleteCacheConfigsMutation } from "metabase/api";
 
 export const useResetToDefaultForm = ({
-  configs,
-  setConfigs,
   databaseIds,
   isFormVisible,
 }: {
-  configs: CacheConfig[];
-  setConfigs: Dispatch<SetStateAction<CacheConfig[]>>;
   databaseIds: number[];
   isFormVisible: boolean;
 }) => {
   const [versionNumber, setVersionNumber] = useState(0);
+  const [deleteCacheConfigs] = useDeleteCacheConfigsMutation();
 
   useEffect(() => {
     // Avoid stale context in the form
@@ -25,23 +20,14 @@ export const useResetToDefaultForm = ({
   }, [isFormVisible]);
 
   const handleSubmit = useCallback(async () => {
-    const originalConfigs = [...configs];
     if (databaseIds.length === 0) {
       return;
     }
-    try {
-      await CacheConfigApi.delete(
-        { model_id: databaseIds, model: "database" },
-        { hasBody: true },
-      );
-      setConfigs((configs: CacheConfig[]) =>
-        configs.filter(({ model }) => model !== "database"),
-      );
-    } catch (e) {
-      setConfigs(originalConfigs);
-      throw e;
-    }
-  }, [configs, setConfigs, databaseIds]);
+    await deleteCacheConfigs({
+      model: "database",
+      model_id: databaseIds,
+    }).unwrap();
+  }, [databaseIds, deleteCacheConfigs]);
 
   return { handleSubmit, versionNumber };
 };

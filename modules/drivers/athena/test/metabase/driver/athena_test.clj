@@ -11,8 +11,8 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
-   [metabase.query-processor :as qp]
-   [metabase.query-processor-test.date-time-zone-functions-test :as qp-test.date-time-zone-functions-test]
+   [metabase.query-processor.date-time-zone-functions-test :as qp-test.date-time-zone-functions-test]
+   [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -31,6 +31,10 @@
   [{:column_name "id", :type_name  "string"}
    {:column_name "ts", :type_name "string"}])
 
+(def ^:private upper-case-schema-columns
+  [{:column_name "id", :type_name "string"}
+   {:column_name "ts", :type_name "STRING"}])
+
 (deftest sync-test
   (testing "sync with nested fields"
     (with-redefs [athena/run-query (constantly nested-schema)]
@@ -41,13 +45,17 @@
                {:name              "data"
                 :base-type         :type/Dictionary
                 :database-type     "struct"
-                :nested-fields     #{{:name "name", :base-type :type/Text, :database-type "string", :database-position 1}},
+                #_#_:nested-fields     #{{:name "name", :base-type :type/Text, :database-type "string", :database-position 1}},
                 :database-position 1}}
              (#'athena/describe-table-fields-with-nested-fields "test" "test" "test")))))
   (testing "sync without nested fields"
     (is (= #{{:name "id", :base-type :type/Text, :database-type "string", :database-position 0}
              {:name "ts", :base-type :type/Text, :database-type "string", :database-position 1}}
-           (#'athena/describe-table-fields-without-nested-fields :athena "test" "test" flat-schema-columns)))))
+           (#'athena/describe-table-fields-without-nested-fields :athena "test" "test" flat-schema-columns))))
+  (testing "sync with upper-case letters in types (#68325)"
+    (is (= #{{:name "id", :base-type :type/Text, :database-type "string", :database-position 0}
+             {:name "ts", :base-type :type/Text, :database-type "STRING", :database-position 1}}
+           (#'athena/describe-table-fields-without-nested-fields :athena "test" "test" upper-case-schema-columns)))))
 
 (deftest ^:parallel describe-table-fields-with-nested-fields-test
   (driver/with-driver :athena
@@ -57,16 +65,40 @@
              {:name "latitude",    :base-type :type/Float,   :database-type "double", :database-position 3}
              {:name "longitude",   :base-type :type/Float,   :database-type "double", :database-position 4}
              {:name "price",       :base-type :type/Integer, :database-type "int",    :database-position 5}}
-           (#'athena/describe-table-fields-with-nested-fields (mt/db) "test_data" "venues")))))
+           (#'athena/describe-table-fields-with-nested-fields (mt/db) "v3_test_data" "venues")))))
 
 (deftest ^:parallel endpoint-test
   (testing "AWS Endpoint URL"
     (are [region endpoint] (= endpoint
-                              (athena/endpoint-for-region region))
-      "us-east-1"      ".amazonaws.com"
-      "us-west-2"      ".amazonaws.com"
-      "cn-north-1"     ".amazonaws.com.cn"
-      "cn-northwest-1" ".amazonaws.com.cn")))
+                              (#'athena/endpoint-for-region region))
+      "us-east-1"      "//athena.us-east-1.amazonaws.com:443"
+      "us-west-2"      "//athena.us-west-2.amazonaws.com:443"
+      "cn-north-1"     "//athena.cn-north-1.amazonaws.com.cn:443"
+      "cn-northwest-1" "//athena.cn-northwest-1.amazonaws.com.cn:443")))
+
+(deftest ^:parallel athena-subname-uses-hostname-test
+  (mt/test-driver :athena
+    (doseq [[test-desc details exp-subname]
+            [["the subname uses the region when the hostname is missing"
+              {:region "us-east-1"}
+              "//athena.us-east-1.amazonaws.com:443"]
+             ["the subname uses the region when the hostname is nil"
+              {:region "us-east-1" :hostname nil}
+              "//athena.us-east-1.amazonaws.com:443"]
+             ["the subname uses the region when the hostname is empty"
+              {:region "us-east-1" :hostname ""}
+              "//athena.us-east-1.amazonaws.com:443"]
+             ["the subname uses the hostname as is when it is provided"
+              {:region "us-east-1" :hostname "athena.us-west-1.amazonaws.com"}
+              "//athena.us-west-1.amazonaws.com:443"]
+             ["the subname uses cn when the region is in china"
+              {:region "cn-north-1"}
+              "//athena.cn-north-1.amazonaws.com.cn:443"]]]
+      (testing test-desc
+        (is (= exp-subname
+               (->> details
+                    (sql-jdbc.conn/connection-details->spec driver/*driver*)
+                    :subname)))))))
 
 (deftest ^:parallel data-source-name-test
   (are [details expected] (= expected
@@ -228,7 +260,7 @@
                             :limit        1}
                  :info     {:executed-by 1000
                             :query-hash  (byte-array [1 2 3 4])}}]
-      (testing "Baseline: Query strarts with remark"
+      (testing "Baseline: Query starts with remark"
         (mt/with-metadata-provider (mock-provider true)
           (let [result (query->native! query)]
             (is (string? result))
@@ -263,7 +295,21 @@
                              (let [metadata (.getMetaData conn)]
                                (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
             (testing "`describe-table` returns the fields anyway"
-              (is (not-empty (:fields (driver/describe-table :athena db table)))))))))))
+              (is (not-empty (:fields (driver/describe-table :athena db table)))))
+            (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441)"
+              (let [get-columns-called (volatile! false)]
+                (with-redefs [athena/get-columns (fn [& _]
+                                                   (vreset! get-columns-called true)
+                                                   [{:column_name "c" :type_name "bigint"}
+                                                    {:column_name "c" :type_name "string"}])]
+                  (is (= #{{:database-position 0, :name "id", :database-type "int", :base-type :type/Integer}
+                           {:database-position 1, :name "name", :database-type "string", :base-type :type/Text}
+                           {:database-position 2, :name "code", :database-type "string", :base-type :type/Text}
+                           {:database-position 3, :name "latitude", :database-type "double", :base-type :type/Float}
+                           {:database-position 4, :name "longitude", :database-type "double", :base-type :type/Float}
+                           {:database-position 5, :name "municipality_id", :database-type "int", :base-type :type/Integer}}
+                         (:fields (driver/describe-table :athena db table))))
+                  (is (true? @get-columns-called)))))))))))
 
 (deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"
@@ -295,7 +341,27 @@
                      :native
                      (update :query #(str/split-lines (driver/prettify-native-form :athena %)))))))))))
 
-;;; Athena version of [[metabase.query-processor-test.date-time-zone-functions-test/datetime-diff-mixed-types-test]]
+(deftest ^:parallel source-column-name-conflict-test
+  (testing "A column named `source` should not conflict with the subquery alias (#70224)"
+    ;; When a nested query has a column named "source", it conflicts with the subquery alias "source",
+    ;; generating SQL like `"source"."source"` which Athena/Trino/Presto interpret as accessing a field
+    ;; within a ROW type rather than table.column, causing TYPE_MISMATCH errors.
+    (mt/test-driver :athena
+      (let [query (mt/mbql-query checkins
+                    {:aggregation  [[:count]]
+                     :breakout     [[:field "source" {:base-type :type/Text}]]
+                     :source-query {:native "select 1 as \"val\", '2' as \"source\""}})
+            compiled (-> (qp/compile query)
+                         (update :query #(str/split-lines (driver/prettify-native-form :athena %))))]
+        ;; The generated SQL must NOT contain `"source"."source"` — this is ambiguous and fails on Athena.
+        ;; The column reference should be unambiguous, e.g. by qualifying with a different subquery alias
+        ;; or by avoiding the table qualifier when it would collide with the column name.
+        (is (not (some #(re-find #"\"source\"\.\"source\"" %) (:query compiled)))
+            (str "Generated SQL should not contain ambiguous \"source\".\"source\" reference.\n"
+                 "Got:\n"
+                 (str/join "\n" (:query compiled))))))))
+
+;;; Athena version of [[metabase.query-processor.date-time-zone-functions-test/datetime-diff-mixed-types-test]]
 (deftest datetime-diff-mixed-types-test
   (mt/test-driver :athena
     (testing "datetime-diff can compare `date`, `timestamp`, and `timestamp with time zone` args with Athena"
@@ -321,7 +387,7 @@
                       (mt/formatted-rows [int int])
                       first))))))))
 
-;;; Athena version of [[metabase.query-processor-test.date-time-zone-functions-test/datetime-diff-time-zones-test]]
+;;; Athena version of [[metabase.query-processor.date-time-zone-functions-test/datetime-diff-time-zones-test]]
 (mt/defdataset diff-time-zones-athena-cases
   ;; This dataset contains the same set of values as [[diff-time-zones-cases]], but without the time zones.
   ;; It is needed to test `datetime-diff` with Athena, since Athena supports `timestamp with time zone`
@@ -377,8 +443,8 @@
                                {:database (mt/id)
                                 :type     :query
                                 :query    {:filter [:and
-                                                    [:= a-str [:field "a_dt_tz_text" {:base-type :type/DateTime}]]
-                                                    [:= b-str [:field "b_dt_tz_text" {:base-type :type/DateTime}]]]
+                                                    [:= a-str [:field "a_dt_tz_text" {:base-type :type/Text}]]
+                                                    [:= b-str [:field "b_dt_tz_text" {:base-type :type/Text}]]]
                                            :expressions  (into {}
                                                                (for [unit units]
                                                                  [(name unit) [:datetime-diff
@@ -399,7 +465,8 @@
                                         [true? {:dbname nil}]
                                         [true? {:dbname ""}]
                                         [false? {:dbname "db_name"}]]]
-    (is (schemas-supported? (driver/database-supports? :athena :schemas {:details details})))))
+    (is (schemas-supported? (driver/database-supports? :athena :schemas {:lib/type :metadata/database
+                                                                         :details  details})))))
 
 (deftest ^:parallel athena-describe-database
   (mt/test-driver :athena

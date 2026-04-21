@@ -2,13 +2,17 @@ import type { CSSProperties, ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import IconButtonWrapper from "metabase/common/components/IconButtonWrapper";
-import { Icon, Popover, Tooltip } from "metabase/ui";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { isEmbedding } from "metabase/embedding/config";
+import { Box, Icon, Popover, Tooltip } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
+import { METAKEY } from "metabase/utils/browser";
 import type * as Lib from "metabase-lib";
 
 import { NotebookCellItem } from "../../NotebookCell";
 import { CONTAINER_PADDING } from "../../NotebookCell/constants";
 import { NotebookDataPicker } from "../../NotebookDataPicker";
+import { DataPickerTarget } from "../../NotebookDataPicker/DataPickerTarget";
 
 import S from "./JoinTablePicker.module.css";
 
@@ -16,7 +20,7 @@ interface JoinTablePickerProps {
   query: Lib.Query;
   stageIndex: number;
   table: Lib.Joinable | undefined;
-  color: string;
+  color: ColorName;
   isReadOnly: boolean;
   columnPicker: ReactNode;
   onChange: (table: Lib.Joinable) => void;
@@ -31,35 +35,60 @@ export function JoinTablePicker({
   columnPicker,
   onChange,
 }: JoinTablePickerProps) {
-  const isDisabled = isReadOnly;
+  const [isOpened, setIsOpened] = useState(!table);
+  const isEmbed = isEmbedding();
 
   return (
-    <NotebookCellItem
-      inactive={!table}
-      readOnly={isReadOnly}
-      disabled={isDisabled}
-      color={color}
-      right={
-        table != null && !isReadOnly ? (
-          <JoinTableColumnPicker columnPicker={columnPicker} />
-        ) : null
-      }
-      containerStyle={CONTAINER_STYLE}
-      rightContainerStyle={RIGHT_CONTAINER_STYLE}
-      aria-label={t`Right table`}
-    >
-      <NotebookDataPicker
-        title={t`Pick data to join`}
-        query={query}
-        stageIndex={stageIndex}
-        table={table}
-        placeholder={t`Pick data…`}
-        canChangeDatabase={false}
-        hasMetrics={false}
-        isDisabled={isDisabled}
-        onChange={onChange}
-      />
-    </NotebookCellItem>
+    <Box aria-label={t`Right table`}>
+      {isOpened || !table || isEmbed ? (
+        <NotebookDataPicker
+          title={t`Pick data to join`}
+          query={query}
+          stageIndex={stageIndex}
+          table={table}
+          placeholder={t`Pick data…`}
+          isOpened={isOpened}
+          setIsOpened={setIsOpened}
+          canChangeDatabase={false}
+          hasMetrics={false}
+          isDisabled={isReadOnly}
+          onChange={onChange}
+          columnPicker={
+            table != null && !isReadOnly ? (
+              <JoinTableColumnPicker columnPicker={columnPicker} />
+            ) : null
+          }
+        />
+      ) : (
+        <NotebookCellItem
+          inactive={!table}
+          readOnly={isReadOnly}
+          disabled={isReadOnly}
+          color={color}
+          right={
+            table != null && !isReadOnly ? (
+              <JoinTableColumnPicker columnPicker={columnPicker} />
+            ) : null
+          }
+          containerStyle={CONTAINER_STYLE}
+          rightContainerStyle={RIGHT_CONTAINER_STYLE}
+        >
+          <Tooltip
+            label={t`${METAKEY}+click to open in new tab`}
+            hidden={!table || isReadOnly}
+            events={{ hover: true, focus: false, touch: false }}
+          >
+            <DataPickerTarget
+              table={table}
+              query={query}
+              setIsOpened={setIsOpened}
+              stageIndex={stageIndex}
+              isDisabled={isReadOnly}
+            />
+          </Tooltip>
+        </NotebookCellItem>
+      )}
+    </Box>
   );
 }
 
@@ -100,6 +129,5 @@ const CONTAINER_STYLE = {
 
 const RIGHT_CONTAINER_STYLE = {
   width: 37,
-  height: "100%",
   padding: 0,
 };

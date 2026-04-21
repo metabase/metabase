@@ -2,13 +2,13 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import FormInput from "metabase/common/components/FormInput";
-import FormSubmitButton from "metabase/common/components/FormSubmitButton";
+import { FormInput } from "metabase/common/components/FormInput";
+import { FormSubmitButton } from "metabase/common/components/FormSubmitButton";
 import { Form, FormProvider } from "metabase/forms";
-import * as Errors from "metabase/lib/errors";
-import type { InviteInfo, UserInfo } from "metabase-types/store";
+import type { InviteInfo, UserInfo } from "metabase/redux/store";
+import * as Errors from "metabase/utils/errors";
 
-import { UserFieldGroup } from "./InviteUserForm.styled";
+import S from "./InviteUserForm.module.css";
 
 const INVITE_USER_SCHEMA = Yup.object({
   first_name: Yup.string().nullable().default(null).max(100, Errors.maxLength),
@@ -46,8 +46,8 @@ export const InviteUserForm = ({
       validationContext={user}
       onSubmit={onSubmit}
     >
-      <Form>
-        <UserFieldGroup>
+      <Form data-testid="invite-user-form">
+        <div className={S.UserFieldGroup}>
           <FormInput
             name="first_name"
             title={t`First name`}
@@ -61,7 +61,7 @@ export const InviteUserForm = ({
             placeholder={t`Appleseed`}
             nullable
           />
-        </UserFieldGroup>
+        </div>
         <FormInput
           name="email"
           title={t`Email`}

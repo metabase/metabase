@@ -1,0 +1,47 @@
+name: Querying On-call PagerDuty Alert
+
+on:
+  issues:
+    types:
+      - labeled
+
+jobs:
+  notify-querying-on-call:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    if: |
+      (github.event.label.name == 'Priority:P0' || github.event.label.name == 'Priority:P1' || github.event.label.name == '.Escalation') &&
+      contains(github.event.issue.labels.*.name, '.Team/Querying')
+    steps:
+      - name: Trigger PagerDuty Incident
+        env:
+          ROUTING_KEY: ${{ secrets.QUERYING_PAGERDUTY_INTEGRATION_KEY }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          LABEL_NAME: ${{ github.event.label.name }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          REPO: ${{ github.repository }}
+          ALL_LABELS: ${{ join(github.event.issue.labels.*.name, ', ') }}
+        run: |
+          payload=$(jq -n \
+            --arg rk  "$ROUTING_KEY" \
+            --arg dk  "github-issue-$ISSUE_NUMBER" \
+            --arg sum "[$LABEL_NAME] $ISSUE_TITLE" \
+            --arg src "GitHub Issues - $REPO" \
+            --arg lbl "$ALL_LABELS" \
+            --arg url "$ISSUE_URL" \
+            '{
+              routing_key: $rk,
+              event_action: "trigger",
+              dedup_key: $dk,
+              payload: {
+                summary: $sum,
+                source: $src,
+                severity: "critical",
+                custom_details: { Labels: $lbl }
+              },
+              links: [{ href: $url, text: "View GitHub Issue" }]
+            }')
+          curl -X POST https://events.pagerduty.com/v2/enqueue \
+            -H 'Content-Type: application/json' \
+            -d "$payload"

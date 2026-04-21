@@ -1,16 +1,16 @@
 import { getSegmentQuery } from "metabase/admin/datamodel/utils/segments";
-import { useSelector } from "metabase/lib/redux";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Flex } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
-import type { StructuredQuery, TableId } from "metabase-types/api";
+import type { DatasetQuery, TableId } from "metabase-types/api";
 
 const STAGE_INDEX = -1;
 
 type QueryDefinitionProps = {
   className?: string;
-  definition: StructuredQuery;
+  definition: DatasetQuery;
   tableId: TableId;
 };
 
