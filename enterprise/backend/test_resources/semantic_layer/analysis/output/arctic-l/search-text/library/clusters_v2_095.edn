@@ -1,0 +1,158 @@
+{:threshold 0.95,
+ :catalog :library,
+ :embeddings "search-text_arctic-l_1024d.json",
+ :name-count 253,
+ :degree-distribution {:min 0, :p25 0, :median 0, :p75 0, :max 3, :mean 0.1264822134387352},
+ :connected-components
+ {:count 239,
+  :multi-member 11,
+  :top
+  [{:members ["hi_metabase_field_values" "hi_metabase_field" "hi_metabase_table" "hi_metabase_database"],
+    :size 4,
+    :density 0.6666666666666667,
+    :avg-sim 0.9568480687195738,
+    :min-sim 0.9320619902504571}
+   {:members ["action_event" "model_event" "task_event"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9635044287730253,
+    :min-sim 0.960632638807322}
+   {:members ["open p1 bugs" "open bugs"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9612393137449752,
+    :min-sim 0.9612393137449752}
+   {:members ["gh_workflow_job" "gh_workflow_step"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9567153229239608,
+    :min-sim 0.9567153229239608}
+   {:members ["usage_stats_anonymous" "usage_stats_anonymous_history"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9579307171751646,
+    :min-sim 0.9579307171751646}
+   {:members ["monthly_revenue_change_customer" "monthly_revenue_change"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9550887943720217,
+    :min-sim 0.9550887943720217}
+   {:members ["hi_notification" "hi_channel"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9578420606803464,
+    :min-sim 0.9578420606803464}
+   {:members ["monthly_account_subscription_status_and_usage" "monthly_account_subscription_status"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.97255195511762,
+    :min-sim 0.97255195511762}
+   {:members ["linear_team" "linear_user"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9585968794144784,
+    :min-sim 0.9585968794144784}
+   {:members ["website_page_view_anonymous" "page_view_anonymous"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9756914533663543,
+    :min-sim 0.9756914533663543}
+   {:members ["hi_query_execution_daily" "hi_query_execution_monthly"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9642185323715099,
+    :min-sim 0.9642185323715099}
+   {:members ["visitors to checkout funnel"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["average number of metrics per instance"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["new organization self-service signups"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["average customer lifetime (self-service accounts)"],
+    :size 1,
+    :density 1.0,
+    :avg-sim 1.0,
+    :min-sim 1.0}]},
+ :greedy-cliques
+ {:count 240,
+  :multi-member 12,
+  :top
+  [{:members ["hi_metabase_field" "hi_metabase_field_values" "hi_metabase_table"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9717076448821151,
+    :min-sim 0.9594618851515057}
+   {:members ["model_event" "action_event" "task_event"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9635044287730253,
+    :min-sim 0.960632638807322}
+   {:members ["open bugs" "open p1 bugs"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9612393137449752,
+    :min-sim 0.9612393137449752}
+   {:members ["gh_workflow_step" "gh_workflow_job"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9567153229239608,
+    :min-sim 0.9567153229239608}
+   {:members ["usage_stats_anonymous_history" "usage_stats_anonymous"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9579307171751646,
+    :min-sim 0.9579307171751646}
+   {:members ["monthly_revenue_change" "monthly_revenue_change_customer"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9550887943720217,
+    :min-sim 0.9550887943720217}
+   {:members ["hi_channel" "hi_notification"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9578420606803464,
+    :min-sim 0.9578420606803464}
+   {:members ["monthly_account_subscription_status_and_usage" "monthly_account_subscription_status"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.97255195511762,
+    :min-sim 0.97255195511762}
+   {:members ["linear_team" "linear_user"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9585968794144784,
+    :min-sim 0.9585968794144784}
+   {:members ["page_view_anonymous" "website_page_view_anonymous"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9756914533663543,
+    :min-sim 0.9756914533663543}
+   {:members ["hi_query_execution_monthly" "hi_query_execution_daily"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9642185323715099,
+    :min-sim 0.9642185323715099}
+   {:members ["hi_metabase_database" "hi_metabase_table"],
+    :size 2,
+    :density 1.0,
+    :avg-sim 0.9529582173831538,
+    :min-sim 0.9529582173831538}
+   {:members ["visitors to checkout funnel"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["average number of metrics per instance"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}
+   {:members ["new organization self-service signups"], :size 1, :density 1.0, :avg-sim 1.0, :min-sim 1.0}]},
+ :avg-linkage-hac
+ {:count 240,
+  :multi-member 11,
+  :top
+  [{:size 3, :members ["model_event" "action_event" "task_event"]}
+   {:size 3, :members ["hi_metabase_field" "hi_metabase_field_values" "hi_metabase_table"]}
+   {:size 2, :members ["hi_query_execution_monthly" "hi_query_execution_daily"]}
+   {:size 2, :members ["monthly_account_subscription_status_and_usage" "monthly_account_subscription_status"]}
+   {:size 2, :members ["linear_team" "linear_user"]}
+   {:size 2, :members ["hi_channel" "hi_notification"]}
+   {:size 2, :members ["gh_workflow_step" "gh_workflow_job"]}
+   {:size 2, :members ["open bugs" "open p1 bugs"]}
+   {:size 2, :members ["usage_stats_anonymous_history" "usage_stats_anonymous"]}
+   {:size 2, :members ["page_view_anonymous" "website_page_view_anonymous"]}
+   {:size 2, :members ["monthly_revenue_change" "monthly_revenue_change_customer"]}
+   {:size 1, :members ["visitors to checkout funnel"]}
+   {:size 1, :members ["ms_experiment_entity"]}
+   {:size 1, :members ["website_page_view"]}
+   {:size 1, :members ["case_studies_page_views"]}]}}

@@ -1,0 +1,910 @@
+{"0.50-0.60"
+ {:count 100,
+  :pairs
+  [{:a "bugs customers mentioned by month", :b "test flakiness", :similarity 6000}
+   {:a "weekly active users in stats", :b "grain_recording", :similarity 5998}
+   {:a "weekly active users in stats", :b "paypal_settlement_report_row", :similarity 5994}
+   {:a "bugs customers mentioned by month", :b "crisp contacts", :similarity 5990}
+   {:a "bugs customers mentioned by month", :b "open scored issues - duplicate", :similarity 5986}
+   {:a "weekly active users in stats", :b "stg_stripe__invoice_tmp", :similarity 5986}
+   {:a "bugs customers mentioned by month", :b "test summary", :similarity 5985}
+   {:a "weekly active users in stats", :b "stg_pylon_ticket_product_area", :similarity 5985}
+   {:a "weekly active users in stats", :b "stg_stripe__invoice_line_item", :similarity 5979}
+   {:a "bugs customers mentioned by month", :b "stg_salesforce_task", :similarity 5976}
+   {:a "weekly active users in stats", :b "int_salesforce_opportunity_history", :similarity 5976}
+   {:a "metric on a table without dates", :b "win rate (enterprise)", :similarity 5976}
+   {:a "weekly active users in stats", :b "stripe__invoice_line_item_details", :similarity 5974}
+   {:a "metric on a table without dates", :b "average customer lifetime (self-service accounts)", :similarity 5969}
+   {:a "weekly active users in stats", :b "pull request review", :similarity 5966}
+   {:a "metric on a table without dates", :b "access requests", :similarity 5965}
+   {:a "bugs customers mentioned by month", :b "sso_domains", :similarity 5962}
+   {:a "weekly active users in stats", :b "conversion rate to data & ai newsletter - duplicate", :similarity 5960}
+   {:a "bugs customers mentioned by month", :b "saml_relay_states", :similarity 5953}
+   {:a "bugs customers mentioned by month", :b "pylon_ticket_tag", :similarity 5952}
+   {:a "bugs customers mentioned by month", :b "hi_connection_impersonations", :similarity 5951}
+   {:a "weekly active users in stats", :b "ticket comment", :similarity 5950}
+   {:a "bugs customers mentioned by month", :b "hi_view_log", :similarity 5943}
+   {:a "weekly active users in stats", :b "paypal_settlement_report", :similarity 5943}
+   {:a "bugs customers mentioned by month", :b "ms_organization", :similarity 5942}
+   {:a "weekly active users in stats", :b "pylon_ticket_tag", :similarity 5937}
+   {:a "bugs customers mentioned by month", :b "average number of metrics per instance", :similarity 5930}
+   {:a "bugs customers mentioned by month", :b "grain_recording", :similarity 5924}
+   {:a "bugs customers mentioned by month", :b "daily snowplow event version counts", :similarity 5923}
+   {:a "bugs customers mentioned by month", :b "stripe_invoice_item", :similarity 5911}
+   {:a "bugs customers mentioned by month", :b "previous_channel_name", :similarity 5894}
+   {:a "weekly active users in stats", :b "session intent", :similarity 5892}
+   {:a "weekly active users in stats", :b "stg_zendesk_ticket_product_area", :similarity 5882}
+   {:a "metric on a table without dates", :b "self-service conversion rate", :similarity 5880}
+   {:a "bugs customers mentioned by month", :b "view log", :similarity 5878}
+   {:a "weekly active users in stats", :b "gh_test_flakiness", :similarity 5873}
+   {:a "bugs customers mentioned by month", :b "salesforce opportunity", :similarity 5866}
+   {:a "bugs customers mentioned by month", :b "gh_test_flakiness", :similarity 5851}
+   {:a "weekly active users in stats", :b "ms_organization", :similarity 5818}
+   {:a "metric on a table without dates", :b "crisp contacts", :similarity 5815}
+   {:a "bugs customers mentioned by month", :b "metabase_admins", :similarity 5810}
+   {:a "bugs customers mentioned by month", :b "int_enterprise_contract_cancelled", :similarity 5800}
+   {:a "weekly active users in stats", :b "int_salesforce_email", :similarity 5783}
+   {:a "weekly active users in stats", :b "stripe_invoice_item", :similarity 5783}
+   {:a "bugs customers mentioned by month", :b "paypal_settlement_report_row", :similarity 5778}
+   {:a "weekly active users in stats", :b "stripe_subscription_item", :similarity 5768}
+   {:a "bugs customers mentioned by month", :b "self-service trial activation rate", :similarity 5759}
+   {:a "bugs customers mentioned by month", :b "screen easy triage", :similarity 5751}
+   {:a "weekly active users in stats", :b "workflow run", :similarity 5736}
+   {:a "weekly active users in stats", :b "paypal_payment_transaction", :similarity 5733}
+   {:a "bugs customers mentioned by month", :b "paypal_settlement_report", :similarity 5732}
+   {:a "bugs customers mentioned by month", :b "mean_years_of_schooling_long_run_20240205162158", :similarity 5728}
+   {:a "weekly active users in stats", :b "paid campaign ad group", :similarity 5721}
+   {:a "bugs customers mentioned by month", :b "stripe_subscription_item", :similarity 5713}
+   {:a "weekly active users in stats", :b "cancellation survey response (with account info)", :similarity 5660}
+   {:a "weekly active users in stats", :b "zendesk_ticket_tag", :similarity 5654}
+   {:a "weekly active users in stats", :b "int_enterprise_contract_cancelled", :similarity 5648}
+   {:a "bugs customers mentioned by month", :b "checkout funnel conversion rate", :similarity 5647}
+   {:a "weekly active users in stats", :b "salesforce_email", :similarity 5641}
+   {:a "bugs customers mentioned by month", :b "hosting shared resource", :similarity 5633}
+   {:a "bugs customers mentioned by month", :b "zendesk_ticket_tag", :similarity 5626}
+   {:a "weekly active users in stats", :b "past due enterprise customers - based on open invoices", :similarity 5608}
+   {:a "bugs customers mentioned by month", :b "daily_downloads_distinct_ip", :similarity 5598}
+   {:a "bugs customers mentioned by month", :b "pull request review", :similarity 5573}
+   {:a "bugs customers mentioned by month", :b "ms_max_user_count", :similarity 5569}
+   {:a "bugs customers mentioned by month",
+    :b "past due enterprise customers - based on open invoices",
+    :similarity 5560}
+   {:a "weekly active users in stats", :b "nps survey response", :similarity 5513}
+   {:a "bugs customers mentioned by month", :b "credit note", :similarity 5506}
+   {:a "metric on a table without dates", :b "checkout funnel conversion rate", :similarity 5489}
+   {:a "bugs customers mentioned by month", :b "query_execution", :similarity 5477}
+   {:a "weekly active users in stats", :b "stripe_refund", :similarity 5472}
+   {:a "bugs customers mentioned by month", :b "int_salesforce_opportunity_history", :similarity 5446}
+   {:a "metric on a table without dates", :b "self-service trial activation rate", :similarity 5439}
+   {:a "bugs customers mentioned by month",
+    :b "product arr change model (dev separated non-prorated self serve invoices)",
+    :similarity 5437}
+   {:a "weekly active users in stats", :b "aws monthly infrastructure cost", :similarity 5437}
+   {:a "bugs customers mentioned by month", :b "top search terms on discourse (90d)", :similarity 5432}
+   {:a "bugs customers mentioned by month", :b "cancellation survey response (with account info)", :similarity 5427}
+   {:a "bugs customers mentioned by month", :b "paypal_payment_transaction", :similarity 5426}
+   {:a "bugs customers mentioned by month", :b "stripe_refund", :similarity 5398}
+   {:a "bugs customers mentioned by month", :b "conversion rate to data & ai newsletter - duplicate", :similarity 5381}
+   {:a "weekly active users in stats", :b "aws_aggregated_monthly_cost", :similarity 5371}
+   {:a "weekly active users in stats", :b "docker_pull_stats", :similarity 5355}
+   {:a "bugs customers mentioned by month", :b "aws monthly infrastructure cost", :similarity 5339}
+   {:a "bugs customers mentioned by month", :b "int_salesforce_email", :similarity 5330}
+   {:a "bugs customers mentioned by month", :b "aws_aggregated_monthly_cost", :similarity 5329}
+   {:a "bugs customers mentioned by month", :b "email campaign activity", :similarity 5269}
+   {:a "bugs customers mentioned by month", :b "nps survey response", :similarity 5268}
+   {:a "bugs customers mentioned by month", :b "stripe_credit_note", :similarity 5255}
+   {:a "metric on a table without dates", :b "email campaign activity", :similarity 5235}
+   {:a "weekly active users in stats",
+    :b "product arr change model (dev separated non-prorated self serve invoices)",
+    :similarity 5221}
+   {:a "weekly active users in stats", :b "ticket tag", :similarity 5216}
+   {:a "bugs customers mentioned by month", :b "salesforce_email", :similarity 5211}
+   {:a "bugs customers mentioned by month", :b "session intent", :similarity 5185}
+   {:a "bugs customers mentioned by month", :b "workflow run", :similarity 5153}
+   {:a "weekly active users in stats", :b "credit note", :similarity 5152}
+   {:a "bugs customers mentioned by month", :b "ticket tag", :similarity 5136}
+   {:a "weekly active users in stats", :b "product arr change model", :similarity 5128}
+   {:a "weekly active users in stats", :b "gh_workflow_run", :similarity 5111}
+   {:a "bugs customers mentioned by month", :b "product arr change model", :similarity 5066}
+   {:a "weekly active users in stats", :b "airbnb_sandiego", :similarity 5046}]},
+ "0.60-0.70"
+ {:count 100,
+  :pairs
+  [{:a "bugs customers mentioned by month", :b "invoices", :similarity 6991}
+   {:a "bugs customers mentioned by month", :b "pull request", :similarity 6987}
+   {:a "bugs customers mentioned by month", :b "m: m2[sql,widget] + m2[sql,gadget] - try3", :similarity 6974}
+   {:a "bugs customers mentioned by month", :b "question event", :similarity 6968}
+   {:a "bugs customers mentioned by month", :b "embed flow event", :similarity 6965}
+   {:a "bugs customers mentioned by month", :b "repro[qb,m,agg]", :similarity 6954}
+   {:a "bugs customers mentioned by month", :b "revenue and orders over time - duplicate", :similarity 6951}
+   {:a "bugs customers mentioned by month", :b "first active self-serve account by email domain", :similarity 6944}
+   {:a "bugs customers mentioned by month", :b "m2[sql,widget] + m2[sql,gadget]", :similarity 6942}
+   {:a "bugs customers mentioned by month", :b "adhoc: icp customer features", :similarity 6933}
+   {:a "bugs customers mentioned by month", :b "daily instance tracking attributes", :similarity 6924}
+   {:a "bugs customers mentioned by month", :b "hashed tokens - redshift", :similarity 6919}
+   {:a "bugs customers mentioned by month", :b "metabot event", :similarity 6913}
+   {:a "bugs customers mentioned by month", :b "permissions group membership", :similarity 6901}
+   {:a "bugs customers mentioned by month", :b "metabase field values", :similarity 6895}
+   {:a "bugs customers mentioned by month", :b "checkout funnel by user - wide format", :similarity 6893}
+   {:a "bugs customers mentioned by month", :b "scored issues", :similarity 6892}
+   {:a "bugs customers mentioned by month", :b "baseball native model", :similarity 6885}
+   {:a "bugs customers mentioned by month", :b "contact", :similarity 6873}
+   {:a "bugs customers mentioned by month", :b "test bigquery space in column name error", :similarity 6872}
+   {:a "bugs customers mentioned by month", :b "enriched enterprise subscriptions", :similarity 6863}
+   {:a "bugs customers mentioned by month",
+    :b "repro for 45567 - metabase employees, count, grouped by team",
+    :similarity 6857}
+   {:a "bugs customers mentioned by month", :b "api key", :similarity 6842}
+   {:a "bugs customers mentioned by month", :b "orders", :similarity 6841}
+   {:a "bugs customers mentioned by month", :b "webinar registrant", :similarity 6831}
+   {:a "bugs customers mentioned by month", :b "m[m2[sql,gadget] + m2[sql,gadget]] - repro 4", :similarity 6830}
+   {:a "bugs customers mentioned by month", :b "ticket reason", :similarity 6825}
+   {:a "bugs customers mentioned by month", :b "query execution", :similarity 6818}
+   {:a "bugs customers mentioned by month", :b "visitors to checkout funnel", :similarity 6817}
+   {:a "bugs customers mentioned by month", :b "task history", :similarity 6803}
+   {:a "bugs customers mentioned by month",
+    :b "checkout funnel by user - wide format - (exclude embedding)",
+    :similarity 6801}
+   {:a "bugs customers mentioned by month", :b "first [active] account for domain", :similarity 6795}
+   {:a "bugs customers mentioned by month", :b "active hosted instance with feature usage", :similarity 6793}
+   {:a "bugs customers mentioned by month", :b "m2[sql,widget] + m2[sql,gadget] - try 2", :similarity 6791}
+   {:a "bugs customers mentioned by month", :b "first time action", :similarity 6791}
+   {:a "bugs customers mentioned by month", :b "metabase database", :similarity 6789}
+   {:a "bugs customers mentioned by month", :b "enriched webinar registrant", :similarity 6785}
+   {:a "bugs customers mentioned by month", :b "number of orders", :similarity 6782}
+   {:a "bugs customers mentioned by month", :b "usage stats anonymous", :similarity 6781}
+   {:a "bugs customers mentioned by month", :b "cache config", :similarity 6780}
+   {:a "bugs customers mentioned by month", :b "test - modern baseball games", :similarity 6772}
+   {:a "bugs customers mentioned by month", :b "lead", :similarity 6755}
+   {:a "bugs customers mentioned by month", :b "monthly revenue change (customer)", :similarity 6748}
+   {:a "bugs customers mentioned by month", :b "contract with flat variable unit", :similarity 6736}
+   {:a "bugs customers mentioned by month", :b "enterprise churns and downgrades", :similarity 6735}
+   {:a "bugs customers mentioned by month",
+    :b "retention analytics model (v1/deprecated: use v3 instead)",
+    :similarity 6729}
+   {:a "bugs customers mentioned by month", :b "crm contact request", :similarity 6709}
+   {:a "bugs customers mentioned by month", :b "database event", :similarity 6691}
+   {:a "bugs customers mentioned by month", :b "account event", :similarity 6677}
+   {:a "bugs customers mentioned by month", :b "notification recipient", :similarity 6673}
+   {:a "bugs customers mentioned by month", :b "board games with domains - duplicate", :similarity 6668}
+   {:a "bugs customers mentioned by month", :b "hosted instance action", :similarity 6667}
+   {:a "bugs customers mentioned by month", :b "arpa (self-service accounts)", :similarity 6657}
+   {:a "bugs customers mentioned by month", :b "page visited before checkout", :similarity 6651}
+   {:a "bugs customers mentioned by month", :b "visitors to website", :similarity 6644}
+   {:a "bugs customers mentioned by month", :b "native query snippet", :similarity 6626}
+   {:a "bugs customers mentioned by month", :b "moderation review", :similarity 6581}
+   {:a "bugs customers mentioned by month", :b "email campaign", :similarity 6580}
+   {:a "bugs customers mentioned by month", :b "customer", :similarity 6561}
+   {:a "bugs customers mentioned by month", :b "monthly infrastructure cost legacy", :similarity 6555}
+   {:a "bugs customers mentioned by month", :b "rds_migration_customer_list_second_batch.csv", :similarity 6554}
+   {:a "bugs customers mentioned by month",
+    :b "success coordinator survey (responses) form responses 1",
+    :similarity 6541}
+   {:a "bugs customers mentioned by month", :b "metabase version", :similarity 6540}
+   {:a "bugs customers mentioned by month", :b "simple event", :similarity 6538}
+   {:a "bugs customers mentioned by month", :b "salesforce token", :similarity 6527}
+   {:a "bugs customers mentioned by month", :b "page views with conversion details - duplicate", :similarity 6502}
+   {:a "bugs customers mentioned by month", :b "salesforce lead", :similarity 6487}
+   {:a "bugs customers mentioned by month", :b "latest token check", :similarity 6484}
+   {:a "bugs customers mentioned by month", :b "retention analysis (sql)", :similarity 6474}
+   {:a "bugs customers mentioned by month", :b "retention analysis", :similarity 6469}
+   {:a "bugs customers mentioned by month", :b "embedding homepage event", :similarity 6468}
+   {:a "bugs customers mentioned by month", :b "crm article feedback", :similarity 6465}
+   {:a "bugs customers mentioned by month", :b "attribution touchpoint", :similarity 6380}
+   {:a "bugs customers mentioned by month", :b "page view", :similarity 6372}
+   {:a "bugs customers mentioned by month", :b "hosting customer migration", :similarity 6351}
+   {:a "bugs customers mentioned by month", :b "token usage event", :similarity 6347}
+   {:a "bugs customers mentioned by month", :b "pokemon cards 2024 10 18t13 27 59.638645z", :similarity 6340}
+   {:a "bugs customers mentioned by month", :b "ticket", :similarity 6308}
+   {:a "bugs customers mentioned by month", :b "paid campaign keyword", :similarity 6303}
+   {:a "bugs customers mentioned by month", :b "pokemon tcg cards", :similarity 6291}
+   {:a "bugs customers mentioned by month", :b "page view anonymous", :similarity 6253}
+   {:a "bugs customers mentioned by month", :b "plan transition", :similarity 6251}
+   {:a "bugs customers mentioned by month", :b "salesforce account", :similarity 6230}
+   {:a "bugs customers mentioned by month", :b "average customer lifetime (self-service accounts)", :similarity 6192}
+   {:a "bugs customers mentioned by month", :b "deal", :similarity 6174}
+   {:a "bugs customers mentioned by month", :b "crm product feedback", :similarity 6156}
+   {:a "bugs customers mentioned by month", :b "hosted instance", :similarity 6154}
+   {:a "bugs customers mentioned by month", :b "metabase employees", :similarity 6132}
+   {:a "bugs customers mentioned by month", :b "ticket comment", :similarity 6132}
+   {:a "bugs customers mentioned by month", :b "csv upload event", :similarity 6129}
+   {:a "bugs customers mentioned by month", :b "salesforce contact", :similarity 6122}
+   {:a "bugs customers mentioned by month", :b "connection impersonations", :similarity 6102}
+   {:a "bugs customers mentioned by month", :b "access requests", :similarity 6094}
+   {:a "bugs customers mentioned by month", :b "self-service conversion rate", :similarity 6081}
+   {:a "bugs customers mentioned by month", :b "pokemon tcg cards 20230609205606", :similarity 6058}
+   {:a "bugs customers mentioned by month", :b "audit event", :similarity 6052}
+   {:a "bugs customers mentioned by month", :b "email campaign - duplicate", :similarity 6047}
+   {:a "bugs customers mentioned by month", :b "win rate (enterprise)", :similarity 6039}
+   {:a "bugs customers mentioned by month", :b "churn ratio by primary contact title", :similarity 6032}
+   {:a "bugs customers mentioned by month", :b "pulse channel", :similarity 6022}]},
+ "0.70-0.75"
+ {:count 100,
+  :pairs
+  [{:a "bugs customers mentioned by month", :b "model_users", :similarity 7499}
+   {:a "bugs customers mentioned by month", :b "contacts", :similarity 7494}
+   {:a "bugs customers mentioned by month", :b "orders, 500000000 rows - duplicate", :similarity 7492}
+   {:a "bugs customers mentioned by month", :b "demo watches", :similarity 7492}
+   {:a "bugs customers mentioned by month", :b "upgrades from oss", :similarity 7490}
+   {:a "bugs customers mentioned by month", :b "ranked issues with all types", :similarity 7487}
+   {:a "bugs customers mentioned by month", :b "customer - duplicate", :similarity 7483}
+   {:a "bugs customers mentioned by month", :b "nps carrera", :similarity 7478}
+   {:a "bugs customers mentioned by month",
+    :b "products + orders, filtered by category is 2 selections",
+    :similarity 7474}
+   {:a "bugs customers mentioned by month", :b "accounts, count, grouped by source", :similarity 7472}
+   {:a "bugs customers mentioned by month", :b "cloud: failed task history with error message", :similarity 7466}
+   {:a "bugs customers mentioned by month", :b "test model sql", :similarity 7463}
+   {:a "bugs customers mentioned by month", :b "dashboard tab", :similarity 7461}
+   {:a "bugs customers mentioned by month", :b "question events", :similarity 7461}
+   {:a "bugs customers mentioned by month", :b "nomad cities", :similarity 7453}
+   {:a "bugs customers mentioned by month", :b "aapl data", :similarity 7449}
+   {:a "bugs customers mentioned by month", :b "customer health score history", :similarity 7442}
+   {:a "bugs customers mentioned by month", :b "weekly active users - wow growth rate", :similarity 7442}
+   {:a "bugs customers mentioned by month", :b "m2[sql,widget]", :similarity 7433}
+   {:a "bugs customers mentioned by month", :b "active installs", :similarity 7429}
+   {:a "bugs customers mentioned by month", :b "account + domain name - (margaret's)", :similarity 7429}
+   {:a "bugs customers mentioned by month", :b "crossbeam open opportunities snowflake - march 2026", :similarity 7429}
+   {:a "bugs customers mentioned by month", :b "retention analysis presentation view", :similarity 7425}
+   {:a "bugs customers mentioned by month", :b "storage invoice line items - modified", :similarity 7413}
+   {:a "bugs customers mentioned by month", :b "pokedex_ver_sv1-withpks", :similarity 7409}
+   {:a "bugs customers mentioned by month", :b "checkins, filtered by person is 3 selections", :similarity 7389}
+   {:a "bugs customers mentioned by month", :b "sql dialect test 2 data", :similarity 7382}
+   {:a "bugs customers mentioned by month", :b "questions with model information", :similarity 7381}
+   {:a "bugs customers mentioned by month", :b "upsell event", :similarity 7378}
+   {:a "bugs customers mentioned by month", :b "notification subscription", :similarity 7378}
+   {:a "bugs customers mentioned by month", :b "page views with conversion details", :similarity 7370}
+   {:a "bugs customers mentioned by month",
+    :b "action, filtered by created at is in the previous 3 months",
+    :similarity 7370}
+   {:a "bugs customers mentioned by month", :b "accounts, googlies, grouped by created at: month", :similarity 7363}
+   {:a "bugs customers mentioned by month", :b "setting event", :similarity 7360}
+   {:a "bugs customers mentioned by month", :b "instance", :similarity 7353}
+   {:a "bugs customers mentioned by month", :b "airtravel 2", :similarity 7352}
+   {:a "bugs customers mentioned by month", :b "my nice orders model without clauses", :similarity 7352}
+   {:a "bugs customers mentioned by month", :b "orders, filtered by total is greater than 10", :similarity 7350}
+   {:a "bugs customers mentioned by month", :b "upgrade (deprecated)", :similarity 7344}
+   {:a "bugs customers mentioned by month", :b "products", :similarity 7339}
+   {:a "bugs customers mentioned by month", :b "test_model_t", :similarity 7338}
+   {:a "bugs customers mentioned by month", :b "invite events", :similarity 7336}
+   {:a "bugs customers mentioned by month", :b "frontend goals modules", :similarity 7329}
+   {:a "bugs customers mentioned by month", :b "demo csv and json", :similarity 7328}
+   {:a "bugs customers mentioned by month", :b "organizing dashboards in collections - dynamic data", :similarity 7328}
+   {:a "bugs customers mentioned by month", :b "school census data", :similarity 7325}
+   {:a "bugs customers mentioned by month", :b "checkout funnel", :similarity 7325}
+   {:a "bugs customers mentioned by month", :b "monthly account subscription status and usage", :similarity 7325}
+   {:a "bugs customers mentioned by month", :b "metabase docs inkeep sessions", :similarity 7318}
+   {:a "bugs customers mentioned by month", :b "invoice", :similarity 7315}
+   {:a "bugs customers mentioned by month", :b "new organization self-service signups", :similarity 7311}
+   {:a "bugs customers mentioned by month", :b "unique instances: no automated", :similarity 7297}
+   {:a "bugs customers mentioned by month", :b "setting", :similarity 7297}
+   {:a "bugs customers mentioned by month", :b "qrtz triggers", :similarity 7296}
+   {:a "bugs customers mentioned by month", :b "action", :similarity 7296}
+   {:a "bugs customers mentioned by month",
+    :b "meetabase data, dashboards and vibes in madrid 🇪🇸 guests 2025 09 23 21 11 37",
+    :similarity 7294}
+   {:a "bugs customers mentioned by month",
+    :b "games, count, grouped by game length in minutes: auto binned",
+    :similarity 7290}
+   {:a "bugs customers mentioned by month", :b "orders, count, grouped by product id", :similarity 7287}
+   {:a "bugs customers mentioned by month", :b "setup events", :similarity 7284}
+   {:a "bugs customers mentioned by month", :b "country", :similarity 7278}
+   {:a "bugs customers mentioned by month",
+    :b "contacts per account - sql (for programmatic workflow, not used now)",
+    :similarity 7262}
+   {:a "bugs customers mentioned by month", :b "hubspot crm exports all deals 2024 07 22", :similarity 7253}
+   {:a "bugs customers mentioned by month", :b "people_snowflake_test", :similarity 7252}
+   {:a "bugs customers mentioned by month",
+    :b "orders + people, filtered by quantity is equal to 5 and people - user → state is ar",
+    :similarity 7245}
+   {:a "bugs customers mentioned by month", :b "pokedex with images", :similarity 7245}
+   {:a "bugs customers mentioned by month", :b "unified instance event", :similarity 7238}
+   {:a "bugs customers mentioned by month", :b "customer health score", :similarity 7237}
+   {:a "bugs customers mentioned by month", :b "orders + people", :similarity 7229}
+   {:a "bugs customers mentioned by month",
+    :b "data assets org surv oct 15 organizing datasets separately",
+    :similarity 7226}
+   {:a "bugs customers mentioned by month", :b "activation signals", :similarity 7219}
+   {:a "bugs customers mentioned by month", :b "post", :similarity 7206}
+   {:a "bugs customers mentioned by month", :b "gadgetcount[m,sql]", :similarity 7198}
+   {:a "bugs customers mentioned by month", :b "page views by url and count", :similarity 7184}
+   {:a "bugs customers mentioned by month", :b "activation rate (cloud) - duplicate", :similarity 7183}
+   {:a "bugs customers mentioned by month", :b "account events", :similarity 7175}
+   {:a "bugs customers mentioned by month", :b "dashboard events", :similarity 7169}
+   {:a "bugs customers mentioned by month", :b "page_views form submission", :similarity 7165}
+   {:a "bugs customers mentioned by month", :b "monthly revenue (account)", :similarity 7157}
+   {:a "bugs customers mentioned by month", :b "audit log", :similarity 7154}
+   {:a "bugs customers mentioned by month", :b "self-service accounts for retention", :similarity 7152}
+   {:a "bugs customers mentioned by month", :b "hosted instance quota usage", :similarity 7148}
+   {:a "bugs customers mentioned by month", :b "token check", :similarity 7147}
+   {:a "bugs customers mentioned by month", :b "dashboard event", :similarity 7145}
+   {:a "bugs customers mentioned by month", :b "dashboard", :similarity 7144}
+   {:a "bugs customers mentioned by month", :b "all unique instances: includes automated", :similarity 7141}
+   {:a "bugs customers mentioned by month", :b "post link", :similarity 7139}
+   {:a "bugs customers mentioned by month", :b "orders, count, grouped by created at: month", :similarity 7138}
+   {:a "bugs customers mentioned by month", :b "openpowerlifting", :similarity 7138}
+   {:a "bugs customers mentioned by month", :b "model activity + user + session", :similarity 7132}
+   {:a "bugs customers mentioned by month", :b "acv (enterprise)", :similarity 7099}
+   {:a "bugs customers mentioned by month", :b "serialization event", :similarity 7099}
+   {:a "bugs customers mentioned by month", :b "notification card", :similarity 7062}
+   {:a "bugs customers mentioned by month", :b "database events", :similarity 7061}
+   {:a "bugs customers mentioned by month", :b "browse data event", :similarity 7054}
+   {:a "bugs customers mentioned by month",
+    :b "weekly 90th percentile of running time (secs) in stats",
+    :similarity 7047}
+   {:a "bugs customers mentioned by month", :b "dog breeds", :similarity 7045}
+   {:a "bugs customers mentioned by month",
+    :b "orders + people, filtered by quantity is equal to 5 and people - user → state is ar - duplicate",
+    :similarity 7035}
+   {:a "bugs customers mentioned by month", :b "widgetcount[m,sql]", :similarity 7032}
+   {:a "bugs customers mentioned by month", :b "accounts", :similarity 7029}
+   {:a "bugs customers mentioned by month", :b "recording", :similarity 7023}]},
+ "0.75-0.80"
+ {:count 100,
+  :pairs
+  [{:a "bugs customers mentioned by month",
+    :b "orders, count, filtered by product → category is widget",
+    :similarity 7998}
+   {:a "bugs customers mentioned by month", :b "orders1weeklag", :similarity 7994}
+   {:a "bugs customers mentioned by month", :b "model executions", :similarity 7989}
+   {:a "bugs customers mentioned by month",
+    :b "heap oom kills by day and host data 2026 01 14 04 48 29",
+    :similarity 7984}
+   {:a "bugs customers mentioned by month", :b "metric 6: widget order count", :similarity 7978}
+   {:a "bugs customers mentioned by month", :b "metric 4: avg category sales by month (multi-stage)", :similarity 7977}
+   {:a "bugs customers mentioned by month",
+    :b "heap oom kills by day and host data 2026 01 14 04 42 41",
+    :similarity 7974}
+   {:a "bugs customers mentioned by month", :b "native orders model", :similarity 7972}
+   {:a "bugs customers mentioned by month", :b "lf #35319 | orders model", :similarity 7971}
+   {:a "bugs customers mentioned by month", :b "orders, 500000000 rows", :similarity 7970}
+   {:a "bugs customers mentioned by month", :b "sql model", :similarity 7967}
+   {:a "bugs customers mentioned by month", :b "cards v2", :similarity 7959}
+   {:a "bugs customers mentioned by month",
+    :b "orders + products, sum of total, grouped by created at: month",
+    :similarity 7957}
+   {:a "bugs customers mentioned by month", :b "test metric: activation signal completion", :similarity 7956}
+   {:a "bugs customers mentioned by month", :b "wcount", :similarity 7954}
+   {:a "bugs customers mentioned by month", :b "orders2", :similarity 7952}
+   {:a "bugs customers mentioned by month", :b "user activity model", :similarity 7951}
+   {:a "bugs customers mentioned by month", :b "products model for basic action test", :similarity 7948}
+   {:a "bugs customers mentioned by month", :b "calendar information events (deprecated)", :similarity 7944}
+   {:a "bugs customers mentioned by month", :b "metacritic games", :similarity 7942}
+   {:a "bugs customers mentioned by month", :b "stock prices 3months", :similarity 7941}
+   {:a "bugs customers mentioned by month", :b "opp", :similarity 7938}
+   {:a "bugs customers mentioned by month", :b "date test", :similarity 7935}
+   {:a "bugs customers mentioned by month", :b "workflow failures", :similarity 7929}
+   {:a "bugs customers mentioned by month", :b "account", :similarity 7929}
+   {:a "bugs customers mentioned by month", :b "total arr by plan, sum of arr", :similarity 7928}
+   {:a "bugs customers mentioned by month", :b "orders sql", :similarity 7927}
+   {:a "bugs customers mentioned by month",
+    :b "orders, distinct values of user id, grouped by created at: month",
+    :similarity 7926}
+   {:a "bugs customers mentioned by month", :b "storage subscriptions (metabase store)", :similarity 7926}
+   {:a "bugs customers mentioned by month", :b "page views by section", :similarity 7926}
+   {:a "bugs customers mentioned by month", :b "analytic events + people", :similarity 7925}
+   {:a "bugs customers mentioned by month", :b "number of cloud instances with analytics tracking", :similarity 7912}
+   {:a "bugs customers mentioned by month", :b "reviews (cd)", :similarity 7912}
+   {:a "bugs customers mentioned by month", :b "gh release stats", :similarity 7912}
+   {:a "bugs customers mentioned by month", :b "16249-1", :similarity 7910}
+   {:a "bugs customers mentioned by month", :b "strip subscriptions ids based on page views", :similarity 7908}
+   {:a "bugs customers mentioned by month", :b "sankey data", :similarity 7906}
+   {:a "bugs customers mentioned by month", :b "weekly total views by country", :similarity 7893}
+   {:a "bugs customers mentioned by month", :b "team", :similarity 7891}
+   {:a "bugs customers mentioned by month", :b "orders + products + people", :similarity 7886}
+   {:a "bugs customers mentioned by month", :b "repro 43993 mbql model", :similarity 7881}
+   {:a "bugs customers mentioned by month", :b "sql query", :similarity 7869}
+   {:a "bugs customers mentioned by month", :b "16249-2", :similarity 7863}
+   {:a "bugs customers mentioned by month", :b "games as a model", :similarity 7863}
+   {:a "bugs customers mentioned by month", :b "my model", :similarity 7848}
+   {:a "bugs customers mentioned by month", :b "raw token usage event", :similarity 7846}
+   {:a "bugs customers mentioned by month", :b "an sql model", :similarity 7837}
+   {:a "bugs customers mentioned by month", :b "accounts, count, grouped by created at: month", :similarity 7834}
+   {:a "bugs customers mentioned by month", :b "amplitude sample1", :similarity 7833}
+   {:a "bugs customers mentioned by month", :b "organizing data assets when stored together", :similarity 7831}
+   {:a "bugs customers mentioned by month", :b "m2[sql,gadget]", :similarity 7818}
+   {:a "bugs customers mentioned by month", :b "person", :similarity 7795}
+   {:a "bugs customers mentioned by month", :b "reviews", :similarity 7783}
+   {:a "bugs customers mentioned by month", :b "mymodel", :similarity 7781}
+   {:a "bugs customers mentioned by month", :b "alternative metal", :similarity 7780}
+   {:a "bugs customers mentioned by month", :b "charges (use monthly revenue for new questions)", :similarity 7775}
+   {:a "bugs customers mentioned by month", :b "orders, count, grouped by created at: month, 1 row", :similarity 7770}
+   {:a "bugs customers mentioned by month", :b "repro for 45567", :similarity 7759}
+   {:a "bugs customers mentioned by month", :b "cleaned up lever data for success jobs", :similarity 7756}
+   {:a "bugs customers mentioned by month", :b "self-hosted customers metabot survey model", :similarity 7755}
+   {:a "bugs customers mentioned by month",
+    :b "metric 123, metric 123, grouped by total: auto binned",
+    :similarity 7739}
+   {:a "bugs customers mentioned by month", :b "pokedex_ver_sv1", :similarity 7736}
+   {:a "bugs customers mentioned by month", :b "[dashviz] open bugs", :similarity 7733}
+   {:a "bugs customers mentioned by month", :b "accounts model sql", :similarity 7724}
+   {:a "bugs customers mentioned by month", :b "vamsi products model", :similarity 7719}
+   {:a "bugs customers mentioned by month", :b "pokemon count metric", :similarity 7717}
+   {:a "bugs customers mentioned by month", :b "core session", :similarity 7711}
+   {:a "bugs customers mentioned by month", :b "subscription history", :similarity 7710}
+   {:a "bugs customers mentioned by month", :b "new oss instances", :similarity 7703}
+   {:a "bugs customers mentioned by month", :b "feedback", :similarity 7685}
+   {:a "bugs customers mentioned by month",
+    :b "products, filtered by category equals any of \"gadget\" or \"gizmo\"",
+    :similarity 7685}
+   {:a "bugs customers mentioned by month", :b "core user", :similarity 7680}
+   {:a "bugs customers mentioned by month", :b "accounts, average of seats", :similarity 7679}
+   {:a "bugs customers mentioned by month", :b "26202 repro", :similarity 7679}
+   {:a "bugs customers mentioned by month", :b "customer model - sql", :similarity 7674}
+   {:a "bugs customers mentioned by month", :b "refund", :similarity 7669}
+   {:a "bugs customers mentioned by month", :b "page views with cookie id + website section", :similarity 7669}
+   {:a "bugs customers mentioned by month", :b "total paying customers", :similarity 7666}
+   {:a "bugs customers mentioned by month", :b "interview", :similarity 7663}
+   {:a "bugs customers mentioned by month", :b "maz big accts model", :similarity 7663}
+   {:a "bugs customers mentioned by month", :b "adding in an underscore", :similarity 7661}
+   {:a "bugs customers mentioned by month", :b "sheet3", :similarity 7655}
+   {:a "bugs customers mentioned by month", :b "customer interaction", :similarity 7653}
+   {:a "bugs customers mentioned by month", :b "table test 1 model", :similarity 7651}
+   {:a "bugs customers mentioned by month", :b "revenue", :similarity 7639}
+   {:a "bugs customers mentioned by month", :b "metabase field", :similarity 7637}
+   {:a "bugs customers mentioned by month", :b "modeltest", :similarity 7635}
+   {:a "bugs customers mentioned by month", :b "people_moddel", :similarity 7635}
+   {:a "bugs customers mentioned by month", :b "issue customer mention", :similarity 7630}
+   {:a "bugs customers mentioned by month", :b "dashboards", :similarity 7620}
+   {:a "bugs customers mentioned by month", :b "gcount + wcount", :similarity 7614}
+   {:a "bugs customers mentioned by month", :b "simple team roster (employee)", :similarity 7603}
+   {:a "bugs customers mentioned by month", :b "unify performance tracking emails sent", :similarity 7592}
+   {:a "bugs customers mentioned by month", :b "dog_breeds", :similarity 7591}
+   {:a "bugs customers mentioned by month", :b "storage invoice line items", :similarity 7583}
+   {:a "bugs customers mentioned by month", :b "bgg dataset 2", :similarity 7573}
+   {:a "bugs customers mentioned by month", :b "dashboard card", :similarity 7540}
+   {:a "bugs customers mentioned by month", :b "pokedex", :similarity 7528}
+   {:a "bugs customers mentioned by month", :b "issue assignee", :similarity 7511}
+   {:a "bugs customers mentioned by month", :b "shirt responses (cd)", :similarity 7507}]},
+ "0.80-0.85"
+ {:count 100,
+  :pairs
+  [{:a "bugs customers mentioned by month", :b "metric with a filter", :similarity 8498}
+   {:a "bugs customers mentioned by month", :b "metric 1: orders by month - percentage change", :similarity 8485}
+   {:a "bugs customers mentioned by month", :b "testing: aov metric", :similarity 8484}
+   {:a "bugs customers mentioned by month", :b "test metric 2", :similarity 8480}
+   {:a "bugs customers mentioned by month", :b "cd orders metric", :similarity 8476}
+   {:a "bugs customers mentioned by month", :b "enterprise arr", :similarity 8469}
+   {:a "bugs customers mentioned by month", :b "m: s:orders + reviews on id, a:count", :similarity 8469}
+   {:a "bugs customers mentioned by month", :b "active employees over time", :similarity 8460}
+   {:a "bugs customers mentioned by month",
+    :b "m: s: orders + reviews on not= id, cc: t + d, f: c_at before 1feb2024, a:sum of t + d, b:c_at month",
+    :similarity 8460}
+   {:a "bugs customers mentioned by month", :b "customers model", :similarity 8459}
+   {:a "bugs customers mentioned by month", :b "metric a: daily order count", :similarity 8457}
+   {:a "bugs customers mentioned by month", :b "number of active enterprise customers", :similarity 8438}
+   {:a "bugs customers mentioned by month", :b "new dashviz all bugs", :similarity 8435}
+   {:a "bugs customers mentioned by month", :b "mark's question", :similarity 8427}
+   {:a "bugs customers mentioned by month", :b "instances with analytics opt-in and events activity", :similarity 8422}
+   {:a "bugs customers mentioned by month", :b "arr", :similarity 8421}
+   {:a "bugs customers mentioned by month", :b "metric orders + products, sum of total", :similarity 8421}
+   {:a "bugs customers mentioned by month", :b "metric - orders, count", :similarity 8411}
+   {:a "bugs customers mentioned by month", :b "leads since 10/10/2025 and conversion details", :similarity 8408}
+   {:a "bugs customers mentioned by month", :b "products model", :similarity 8396}
+   {:a "bugs customers mentioned by month", :b "metric herve", :similarity 8390}
+   {:a "bugs customers mentioned by month", :b "test metric: discounted orders", :similarity 8388}
+   {:a "bugs customers mentioned by month", :b "metric on a table without dates", :similarity 8386}
+   {:a "bugs customers mentioned by month", :b "total arr", :similarity 8381}
+   {:a "bugs customers mentioned by month", :b "orders, sum of total", :similarity 8379}
+   {:a "bugs customers mentioned by month", :b "orders + products", :similarity 8376}
+   {:a "bugs customers mentioned by month", :b "bug repro 45146 part 2", :similarity 8376}
+   {:a "bugs customers mentioned by month", :b "metric c, either 0 or metric a", :similarity 8361}
+   {:a "bugs customers mentioned by month", :b "[new] embedding issues", :similarity 8354}
+   {:a "bugs customers mentioned by month", :b "dates", :similarity 8353}
+   {:a "bugs customers mentioned by month", :b "metric 9: revenue with multiple breakouts", :similarity 8351}
+   {:a "bugs customers mentioned by month", :b "accounts model", :similarity 8351}
+   {:a "bugs customers mentioned by month", :b "products (cd)", :similarity 8342}
+   {:a "bugs customers mentioned by month", :b "orders model", :similarity 8335}
+   {:a "bugs customers mentioned by month", :b "cloud customers monthly usage (base)", :similarity 8325}
+   {:a "bugs customers mentioned by month", :b "my metric test 2", :similarity 8321}
+   {:a "bugs customers mentioned by month", :b "verified questions/models", :similarity 8320}
+   {:a "bugs customers mentioned by month", :b "[dashviz] all closed + open bugs", :similarity 8317}
+   {:a "bugs customers mentioned by month", :b "important number of kittens", :similarity 8312}
+   {:a "bugs customers mentioned by month", :b "customer model", :similarity 8300}
+   {:a "bugs customers mentioned by month", :b "registrants with account", :similarity 8288}
+   {:a "bugs customers mentioned by month", :b "characters", :similarity 8272}
+   {:a "bugs customers mentioned by month", :b "dynamic goal metric", :similarity 8271}
+   {:a "bugs customers mentioned by month", :b "all survey responses  + account information", :similarity 8251}
+   {:a "bugs customers mentioned by month", :b "creeping on my own hosted instance", :similarity 8245}
+   {:a "bugs customers mentioned by month", :b "libor's count of closed issues by month", :similarity 8234}
+   {:a "bugs customers mentioned by month",
+    :b "m: s: orders + products on not= id, a: sum total, b: c_at month",
+    :similarity 8232}
+   {:a "bugs customers mentioned by month", :b "custom expression metric", :similarity 8227}
+   {:a "bugs customers mentioned by month", :b "activation rate (cloud)", :similarity 8221}
+   {:a "bugs customers mentioned by month", :b "orders, count (metric)", :similarity 8218}
+   {:a "bugs customers mentioned by month", :b "accounts, basic to business ratio", :similarity 8212}
+   {:a "bugs customers mentioned by month", :b "games test model", :similarity 8211}
+   {:a "bugs customers mentioned by month", :b "all surveys responses with account information", :similarity 8211}
+   {:a "bugs customers mentioned by month", :b "sets", :similarity 8210}
+   {:a "bugs customers mentioned by month", :b "metric 5: gadget order count", :similarity 8208}
+   {:a "bugs customers mentioned by month", :b "people, count, grouped by source", :similarity 8208}
+   {:a "bugs customers mentioned by month", :b "list of models", :similarity 8205}
+   {:a "bugs customers mentioned by month", :b "test orders model", :similarity 8201}
+   {:a "bugs customers mentioned by month", :b "cynthia's sample data", :similarity 8199}
+   {:a "bugs customers mentioned by month", :b "issue, median of days open", :similarity 8196}
+   {:a "bugs customers mentioned by month", :b "metabot usage snapshot", :similarity 8196}
+   {:a "bugs customers mentioned by month", :b "mail interactions with trialers", :similarity 8195}
+   {:a "bugs customers mentioned by month", :b "total before tax", :similarity 8194}
+   {:a "bugs customers mentioned by month", :b "project issue", :similarity 8191}
+   {:a "bugs customers mentioned by month", :b "people + country", :similarity 8189}
+   {:a "bugs customers mentioned by month",
+    :b "orders, sum of discount, grouped by created at: month",
+    :similarity 8184}
+   {:a "bugs customers mentioned by month", :b "abcdef", :similarity 8184}
+   {:a "bugs customers mentioned by month", :b "orderss + people", :similarity 8163}
+   {:a "bugs customers mentioned by month", :b "collection", :similarity 8157}
+   {:a "bugs customers mentioned by month",
+    :b "m: s: orders + products on not= id, a: sum total, b: c_at month (public)",
+    :similarity 8145}
+   {:a "bugs customers mentioned by month", :b "monthly revenue - duplicate", :similarity 8139}
+   {:a "bugs customers mentioned by month",
+    :b "m: s: orders + products on id, f: c_at before 1feb20224, a: count, b: c_at month (public)",
+    :similarity 8134}
+   {:a "bugs customers mentioned by month", :b "user", :similarity 8127}
+   {:a "bugs customers mentioned by month", :b "orderss", :similarity 8125}
+   {:a "bugs customers mentioned by month", :b "test model", :similarity 8121}
+   {:a "bugs customers mentioned by month", :b "telemetry", :similarity 8118}
+   {:a "bugs customers mentioned by month", :b "test", :similarity 8117}
+   {:a "bugs customers mentioned by month", :b "organization", :similarity 8111}
+   {:a "bugs customers mentioned by month", :b "a", :similarity 8105}
+   {:a "bugs customers mentioned by month", :b "accounts22", :similarity 8097}
+   {:a "bugs customers mentioned by month",
+    :b "orders + products + people, sum of total, grouped by created at: month",
+    :similarity 8096}
+   {:a "bugs customers mentioned by month", :b "named success engineer", :similarity 8083}
+   {:a "bugs customers mentioned by month", :b "linear issue 202509161110", :similarity 8080}
+   {:a "bugs customers mentioned by month", :b "m1", :similarity 8074}
+   {:a "bugs customers mentioned by month", :b "monthly page views", :similarity 8073}
+   {:a "bugs customers mentioned by month", :b "analytic events + people, count (metric)", :similarity 8071}
+   {:a "bugs customers mentioned by month",
+    :b "metric: orders + people, count, filtered by dta is before feb 1, 2024",
+    :similarity 8070}
+   {:a "bugs customers mentioned by month", :b "accounts from fb/google v2 (model)", :similarity 8070}
+   {:a "bugs customers mentioned by month", :b "total_amount", :similarity 8061}
+   {:a "bugs customers mentioned by month", :b "question", :similarity 8060}
+   {:a "bugs customers mentioned by month", :b "stats sync percentile 90", :similarity 8048}
+   {:a "bugs customers mentioned by month", :b "account, count, filtered by plan name is enterprise", :similarity 8043}
+   {:a "bugs customers mentioned by month", :b "collections per customer model", :similarity 8041}
+   {:a "bugs customers mentioned by month",
+    :b "m: s: orders + products on id, f: c_at before 1feb20224, a: count, b: c_at month",
+    :similarity 8026}
+   {:a "bugs customers mentioned by month", :b "a + b", :similarity 8026}
+   {:a "bugs customers mentioned by month", :b "testing a theory", :similarity 8024}
+   {:a "bugs customers mentioned by month", :b "orders, sum of total, grouped by created at: month", :similarity 8022}
+   {:a "bugs customers mentioned by month", :b "gcount", :similarity 8018}
+   {:a "bugs customers mentioned by month", :b "issue label", :similarity 8013}
+   {:a "bugs customers mentioned by month", :b "creator nps survey responses", :similarity 8012}]},
+ "0.85-0.90"
+ {:count 100,
+  :pairs
+  [{:a "weekly active users in stats", :b "active employees over time", :similarity 8983}
+   {:a "bugs customers mentioned by month", :b "new success tickets by month", :similarity 8962}
+   {:a "bugs customers mentioned by month", :b "monthly revenue", :similarity 8952}
+   {:a "bugs customers mentioned by month", :b "metric 1: orders by month", :similarity 8940}
+   {:a "bugs customers mentioned by month", :b "number of open bugs", :similarity 8911}
+   {:a "bugs customers mentioned by month", :b "number of active customers", :similarity 8905}
+   {:a "bugs customers mentioned by month", :b "all bugs", :similarity 8855}
+   {:a "bugs customers mentioned by month", :b "monthly average of metrics per instance", :similarity 8854}
+   {:a "bugs customers mentioned by month", :b "median of metrics by month and running instance", :similarity 8847}
+   {:a "bugs customers mentioned by month", :b "monthly arr", :similarity 8833}
+   {:a "weekly active users in stats", :b "monthly revenue", :similarity 8812}
+   {:a "bugs customers mentioned by month", :b "orders metric", :similarity 8797}
+   {:a "bugs customers mentioned by month", :b "conversion rate", :similarity 8793}
+   {:a "bugs customers mentioned by month", :b "[test] github issues", :similarity 8787}
+   {:a "bugs customers mentioned by month", :b "yet another test metric", :similarity 8781}
+   {:a "bugs customers mentioned by month", :b "big orders count", :similarity 8780}
+   {:a "bugs customers mentioned by month", :b "trial conversion rate", :similarity 8771}
+   {:a "bugs customers mentioned by month", :b "count of metrics", :similarity 8763}
+   {:a "weekly active users in stats", :b "accounts over time", :similarity 8761}
+   {:a "bugs customers mentioned by month", :b "weekly queries in stats", :similarity 8757}
+   {:a "bugs customers mentioned by month", :b "monthly average of segments per instance", :similarity 8757}
+   {:a "weekly active users in stats", :b "metric 2: customers by month", :similarity 8753}
+   {:a "weekly active users in stats", :b "basic accounts count", :similarity 8737}
+   {:a "bugs customers mentioned by month", :b "bugs opened by me", :similarity 8736}
+   {:a "bugs customers mentioned by month", :b "active employees", :similarity 8735}
+   {:a "bugs customers mentioned by month", :b "orders[metric]", :similarity 8729}
+   {:a "bugs customers mentioned by month", :b "issues on tickets", :similarity 8728}
+   {:a "weekly active users in stats", :b "people, count", :similarity 8721}
+   {:a "bugs customers mentioned by month", :b "number of products", :similarity 8711}
+   {:a "bugs customers mentioned by month", :b "metrics_table_1_20240412021317", :similarity 8709}
+   {:a "bugs customers mentioned by month", :b "metrics_table_1_20240407174724", :similarity 8706}
+   {:a "bugs customers mentioned by month", :b "metric 1: orders by year", :similarity 8699}
+   {:a "bugs customers mentioned by month", :b "subscription count test", :similarity 8696}
+   {:a "bugs customers mentioned by month", :b "metrics_table_1_20240407173135", :similarity 8692}
+   {:a "bugs customers mentioned by month", :b "weekly active users in stats", :similarity 8681}
+   {:a "bugs customers mentioned by month", :b "metrics_table_1_20240407164316", :similarity 8678}
+   {:a "bugs customers mentioned by month", :b "metric 3: revenue by month", :similarity 8675}
+   {:a "bugs customers mentioned by month", :b "hosting customer monthly changes", :similarity 8674}
+   {:a "bugs customers mentioned by month", :b "open p1 bugs", :similarity 8666}
+   {:a "bugs customers mentioned by month", :b "number of active pro customers", :similarity 8666}
+   {:a "bugs customers mentioned by month", :b "accounts over time", :similarity 8666}
+   {:a "weekly active users in stats", :b "orders + people, count", :similarity 8656}
+   {:a "bugs customers mentioned by month", :b "metrics_table_1_20240407164007", :similarity 8654}
+   {:a "weekly active users in stats", :b "metric b: customer count by day", :similarity 8652}
+   {:a "bugs customers mentioned by month", :b "metric b: customer count by day", :similarity 8651}
+   {:a "weekly active users in stats", :b "(cd) user metric", :similarity 8651}
+   {:a "bugs customers mentioned by month", :b "metric 7: avg orders by customer by month", :similarity 8650}
+   {:a "bugs customers mentioned by month", :b "orders + people, count", :similarity 8648}
+   {:a "bugs customers mentioned by month", :b "count", :similarity 8646}
+   {:a "bugs customers mentioned by month", :b "metric 1: orders by category", :similarity 8646}
+   {:a "bugs customers mentioned by month", :b "organization employees", :similarity 8642}
+   {:a "weekly active users in stats", :b "count", :similarity 8641}
+   {:a "weekly active users in stats", :b "number of active pro customers", :similarity 8640}
+   {:a "bugs customers mentioned by month", :b "customers running custom builds (that we know of)", :similarity 8638}
+   {:a "bugs customers mentioned by month", :b "metrics table 1", :similarity 8638}
+   {:a "bugs customers mentioned by month", :b "db share of success", :similarity 8637}
+   {:a "bugs customers mentioned by month", :b "metric 1: orders by day", :similarity 8635}
+   {:a "weekly active users in stats", :b "db share of success", :similarity 8634}
+   {:a "bugs customers mentioned by month", :b "metric: products by category", :similarity 8633}
+   {:a "bugs customers mentioned by month", :b "orders, count", :similarity 8626}
+   {:a "weekly active users in stats", :b "metric 1: orders by day", :similarity 8624}
+   {:a "bugs customers mentioned by month", :b "orders, count metric", :similarity 8618}
+   {:a "weekly active users in stats", :b "monthly arr", :similarity 8613}
+   {:a "weekly active users in stats", :b "metric 1: orders by month", :similarity 8612}
+   {:a "bugs customers mentioned by month", :b "test metric 193841", :similarity 8607}
+   {:a "bugs customers mentioned by month", :b "basic accounts count", :similarity 8607}
+   {:a "weekly active users in stats", :b "open bugs", :similarity 8607}
+   {:a "weekly active users in stats", :b "metric 3: revenue by month", :similarity 8605}
+   {:a "bugs customers mentioned by month", :b "orders + products, count", :similarity 8598}
+   {:a "bugs customers mentioned by month", :b "monthly sales", :similarity 8597}
+   {:a "bugs customers mentioned by month", :b "metric 1: orders by month by category", :similarity 8595}
+   {:a "bugs customers mentioned by month", :b "metric_results_20251127134806", :similarity 8592}
+   {:a "bugs customers mentioned by month", :b "ltv", :similarity 8587}
+   {:a "bugs customers mentioned by month", :b "alexyar's test metric", :similarity 8576}
+   {:a "weekly active users in stats", :b "orders, count", :similarity 8576}
+   {:a "weekly active users in stats", :b "trial conversion rate", :similarity 8566}
+   {:a "bugs customers mentioned by month", :b "metric", :similarity 8565}
+   {:a "weekly active users in stats", :b "number of products", :similarity 8555}
+   {:a "bugs customers mentioned by month", :b "ticket reasons", :similarity 8551}
+   {:a "weekly active users in stats", :b "people, count, grouped by source", :similarity 8547}
+   {:a "bugs customers mentioned by month", :b "account, max of customer name", :similarity 8542}
+   {:a "weekly active users in stats", :b "yet another test metric", :similarity 8541}
+   {:a "weekly active users in stats", :b "metric 1: orders by category", :similarity 8535}
+   {:a "weekly active users in stats", :b "instances with analytics opt-in and events activity", :similarity 8534}
+   {:a "bugs customers mentioned by month", :b "something", :similarity 8531}
+   {:a "weekly active users in stats", :b "orders + products, count", :similarity 8531}
+   {:a "bugs customers mentioned by month", :b "new enterprise leads", :similarity 8529}
+   {:a "weekly active users in stats", :b "orders metric", :similarity 8529}
+   {:a "bugs customers mentioned by month", :b "metric 123", :similarity 8528}
+   {:a "bugs customers mentioned by month",
+    :b "feature requests for notifications & actions, nov 15, 2024",
+    :similarity 8528}
+   {:a "bugs customers mentioned by month", :b "test metric 3", :similarity 8517}
+   {:a "bugs customers mentioned by month",
+    :b "customers_in_old_versions_203c80a7b01147bcab4eac_20240701192921",
+    :similarity 8514}
+   {:a "bugs customers mentioned by month", :b "m[totalchangeperiodoverperiod]", :similarity 8510}
+   {:a "bugs customers mentioned by month", :b "self-service arr", :similarity 8510}
+   {:a "bugs customers mentioned by month", :b "april", :similarity 8510}
+   {:a "weekly active users in stats", :b "metric a: daily order count", :similarity 8508}
+   {:a "bugs customers mentioned by month", :b "(cd) user metric", :similarity 8506}
+   {:a "bugs customers mentioned by month", :b "issues associated with this account", :similarity 8506}
+   {:a "bugs customers mentioned by month", :b "people, count", :similarity 8504}
+   {:a "bugs customers mentioned by month", :b "blog page views 2025 12 19", :similarity 8501}]},
+ "0.90-0.95"
+ {:count 100,
+  :pairs
+  [{:a "orders metric", :b "metric 1: orders by year", :similarity 9495}
+   {:a "orders + products, count", :b "metric - orders, count", :similarity 9491}
+   {:a "orders metric", :b "cd orders metric", :similarity 9470}
+   {:a "weekly active users in stats", :b "weekly queries in stats", :similarity 9428}
+   {:a "orders + products, count", :b "big orders count", :similarity 9422}
+   {:a "orders metric", :b "orders + people, count", :similarity 9403}
+   {:a "orders metric", :b "metric orders + products, sum of total", :similarity 9393}
+   {:a "orders + products, count", :b "number of products", :similarity 9392}
+   {:a "orders metric", :b "big orders count", :similarity 9384}
+   {:a "orders + products, count", :b "orders, sum of total", :similarity 9383}
+   {:a "orders + products, count", :b "metric orders + products, sum of total", :similarity 9383}
+   {:a "orders metric", :b "metric 1: orders by day", :similarity 9360}
+   {:a "metric 1: orders by month", :b "metric 1: orders by month - percentage change", :similarity 9357}
+   {:a "metric 1: orders by month", :b "metric 7: avg orders by customer by month", :similarity 9354}
+   {:a "orders + products, count", :b "m: s:orders + reviews on id, a:count", :similarity 9352}
+   {:a "activation rate (cloud)", :b "activation rate (cloud) - duplicate", :similarity 9350}
+   {:a "metric 1: orders by month", :b "metric 1: orders by category", :similarity 9343}
+   {:a "metric c, either 0 or metric a", :b "something", :similarity 9340}
+   {:a "orders + products, count", :b "orders, count (metric)", :similarity 9339}
+   {:a "metric c, either 0 or metric a", :b "metric with a filter", :similarity 9336}
+   {:a "metric 1: orders by month", :b "metric 2: customers by month", :similarity 9314}
+   {:a "orders metric", :b "count of metrics", :similarity 9299}
+   {:a "metric c, either 0 or metric a", :b "metric 123", :similarity 9293}
+   {:a "orders + products, count", :b "metric a: daily order count", :similarity 9290}
+   {:a "orders metric", :b "ltv", :similarity 9287}
+   {:a "monthly revenue", :b "monthly arr", :similarity 9282}
+   {:a "orders metric", :b "orders, count (metric)", :similarity 9279}
+   {:a "metric c, either 0 or metric a", :b "orders[metric]", :similarity 9268}
+   {:a "orders metric", :b "orders, sum of total", :similarity 9267}
+   {:a "orders metric", :b "metric with a filter", :similarity 9266}
+   {:a "orders metric", :b "metric 123", :similarity 9262}
+   {:a "orders metric", :b "arr", :similarity 9255}
+   {:a "orders metric", :b "something", :similarity 9252}
+   {:a "monthly revenue", :b "monthly revenue - duplicate", :similarity 9247}
+   {:a "orders metric", :b "metric 1: orders by month", :similarity 9244}
+   {:a "orders + products, count", :b "metric 1: orders by day", :similarity 9242}
+   {:a "metric c, either 0 or metric a", :b "test metric 2", :similarity 9232}
+   {:a "orders metric", :b "count", :similarity 9232}
+   {:a "orders + products, count", :b "orders metric", :similarity 9224}
+   {:a "metric c, either 0 or metric a", :b "yet another test metric", :similarity 9218}
+   {:a "metric c, either 0 or metric a", :b "test metric 3", :similarity 9217}
+   {:a "metric c, either 0 or metric a", :b "arr", :similarity 9215}
+   {:a "orders + products, count", :b "metric 1: orders by year", :similarity 9211}
+   {:a "orders + products, count", :b "metric 1: orders by month", :similarity 9209}
+   {:a "metric 1: orders by month", :b "orders, count metric", :similarity 9206}
+   {:a "metric c, either 0 or metric a", :b "orders metric", :similarity 9200}
+   {:a "metric 1: orders by month", :b "orders, count", :similarity 9199}
+   {:a "orders metric", :b "conversion rate", :similarity 9187}
+   {:a "metric c, either 0 or metric a", :b "count of metrics", :similarity 9181}
+   {:a "orders + products, count", :b "metric 1: orders by category", :similarity 9175}
+   {:a "metric c, either 0 or metric a", :b "count", :similarity 9170}
+   {:a "metric 1: orders by month", :b "metric a: daily order count", :similarity 9165}
+   {:a "orders metric", :b "metric herve", :similarity 9161}
+   {:a "bugs customers mentioned by month", :b "metric 2: customers by month", :similarity 9160}
+   {:a "metric 1: orders by month", :b "metric 3: revenue by month", :similarity 9159}
+   {:a "orders metric", :b "yet another test metric", :similarity 9157}
+   {:a "orders metric", :b "open bugs", :similarity 9148}
+   {:a "orders + products, count", :b "orders, count, filtered by product → category is widget", :similarity 9145}
+   {:a "monthly revenue", :b "metric 1: orders by month", :similarity 9145}
+   {:a "orders metric", :b "test metric 193841", :similarity 9143}
+   {:a "dynamic goal metric", :b "yet another test metric", :similarity 9137}
+   {:a "orders metric", :b "test metric 2", :similarity 9130}
+   {:a "orders metric", :b "test metric 3", :similarity 9128}
+   {:a "orders + products, count", :b "count of metrics", :similarity 9118}
+   {:a "dynamic goal metric", :b "custom expression metric", :similarity 9117}
+   {:a "orders metric", :b "orders model", :similarity 9114}
+   {:a "dynamic goal metric", :b "ltv", :similarity 9111}
+   {:a "orders + products, count", :b "count", :similarity 9110}
+   {:a "monthly revenue", :b "monthly average of metrics per instance", :similarity 9110}
+   {:a "monthly revenue", :b "metric 2: customers by month", :similarity 9109}
+   {:a "metric c, either 0 or metric a", :b "test metric 193841", :similarity 9109}
+   {:a "dynamic goal metric", :b "metric with a filter", :similarity 9108}
+   {:a "metric 1: orders by month", :b "metric - orders, count", :similarity 9108}
+   {:a "metric c, either 0 or metric a", :b "ltv", :similarity 9100}
+   {:a "weekly active users in stats", :b "active employees", :similarity 9097}
+   {:a "monthly revenue", :b "conversion rate", :similarity 9090}
+   {:a "orders + products, count", :b "orders[metric]", :similarity 9088}
+   {:a "dynamic goal metric", :b "count of metrics", :similarity 9081}
+   {:a "orders metric", :b "metric: products by category", :similarity 9081}
+   {:a "orders metric", :b "metric a: daily order count", :similarity 9067}
+   {:a "orders metric", :b "orders (model)", :similarity 9066}
+   {:a "dynamic goal metric", :b "something", :similarity 9057}
+   {:a "metric 1: orders by month", :b "orders[metric]", :similarity 9055}
+   {:a "orders + products, count", :b "metric 1: orders by month by category", :similarity 9052}
+   {:a "monthly revenue", :b "monthly sales", :similarity 9044}
+   {:a "metric c, either 0 or metric a", :b "open bugs", :similarity 9043}
+   {:a "bugs customers mentioned by month", :b "open bugs", :similarity 9041}
+   {:a "dynamic goal metric", :b "test metric 3", :similarity 9040}
+   {:a "weekly active users in stats", :b "number of active customers", :similarity 9034}
+   {:a "metric c, either 0 or metric a", :b "metric herve", :similarity 9034}
+   {:a "orders metric", :b "(cd) user metric", :similarity 9034}
+   {:a "orders metric", :b "m: s:orders + reviews on id, a:count", :similarity 9029}
+   {:a "dynamic goal metric", :b "test metric 2", :similarity 9027}
+   {:a "orders metric", :b "accounts over time", :similarity 9027}
+   {:a "orders metric", :b "alexyar's test metric", :similarity 9021}
+   {:a "orders metric", :b "monthly arr", :similarity 9017}
+   {:a "orders metric", :b "self-service arr", :similarity 9017}
+   {:a "orders metric", :b "metrics table 1", :similarity 9017}
+   {:a "orders metric", :b "number of products", :similarity 9015}
+   {:a "orders metric", :b "trial conversion rate", :similarity 9010}]},
+ "0.95-1.01"
+ {:count 100,
+  :pairs
+  [{:a "orders, count", :b "orders, count metric", :similarity 9951}
+   {:a "orders sql", :b "orders model sql", :similarity 9937}
+   {:a "16249-1", :b "16249-2", :similarity 9916}
+   {:a "m2[sql,widget] + m2[sql,gadget] - try 2", :b "m2[sql,widget] + m2[sql,gadget]", :similarity 9891}
+   {:a "metric - orders, count", :b "orders, count metric", :similarity 9889}
+   {:a "orders metric", :b "orders[metric]", :similarity 9869}
+   {:a "orders + products, sum of total, grouped by created at: month",
+    :b "orders, sum of total, grouped by created at: month",
+    :similarity 9869}
+   {:a "customers model", :b "customer model", :similarity 9868}
+   {:a "mymodel", :b "my model", :similarity 9863}
+   {:a "m: s: orders + products on id, f: c_at before 1feb20224, a: count, b: c_at month",
+    :b "m: s: orders + products on id, f: c_at before 1feb20224, a: count, b: c_at month (public)",
+    :similarity 9852}
+   {:a "metric - orders, count", :b "orders, count", :similarity 9850}
+   {:a "test metric 3", :b "test metric 2", :similarity 9834}
+   {:a "m: s: orders + products on not= id, a: sum total, b: c_at month",
+    :b "m: s: orders + products on not= id, a: sum total, b: c_at month (public)",
+    :similarity 9833}
+   {:a "orders model", :b "orders (model)", :similarity 9818}
+   {:a "orders + products + people, sum of total, grouped by created at: month",
+    :b "orders + products, sum of total, grouped by created at: month",
+    :similarity 9797}
+   {:a "orders, count (metric)", :b "orders, count metric", :similarity 9794}
+   {:a "a", :b "a model", :similarity 9790}
+   {:a "metric 1: orders by month", :b "metric 1: orders by month by category", :similarity 9769}
+   {:a "orders, count", :b "orders, count (metric)", :similarity 9763}
+   {:a "orders + people, filtered by quantity is equal to 5 and people - user → state is ar",
+    :b "orders + people, filtered by quantity is equal to 5 and people - user → state is ar - duplicate",
+    :similarity 9760}
+   {:a "metric - orders, count", :b "orders, count (metric)", :similarity 9759}
+   {:a "a", :b "b", :similarity 9757}
+   {:a "orders, sum of total", :b "metric orders + products, sum of total", :similarity 9755}
+   {:a "orders model", :b "orderss", :similarity 9753}
+   {:a "monthly average of metrics per instance", :b "monthly average of segments per instance", :similarity 9749}
+   {:a "count", :b "count of metrics", :similarity 9710}
+   {:a "trial conversion rate", :b "conversion rate", :similarity 9708}
+   {:a "active employees", :b "active employees over time", :similarity 9706}
+   {:a "orders + products, count", :b "orders, count", :similarity 9705}
+   {:a "m2[sql,gadget]", :b "m2[sql,widget]", :similarity 9691}
+   {:a "pokedex with images", :b "pokedex", :similarity 9690}
+   {:a "orders + products + people, sum of total, grouped by created at: month",
+    :b "orders, sum of total, grouped by created at: month",
+    :similarity 9688}
+   {:a "storage invoice line items", :b "storage invoice line items - modified", :similarity 9668}
+   {:a "orders model", :b "orders model test", :similarity 9667}
+   {:a "orders, count", :b "orders + people, count", :similarity 9665}
+   {:a "orders model", :b "orders table", :similarity 9660}
+   {:a "orders, sum of discount, grouped by created at: month",
+    :b "orders, sum of total, grouped by created at: month",
+    :similarity 9658}
+   {:a "dog breeds", :b "dog_breeds", :similarity 9653}
+   {:a "orders model", :b "orders (cd)", :similarity 9648}
+   {:a "orders, 500000000 rows", :b "orders, 500000000 rows - duplicate", :similarity 9643}
+   {:a "orders + products, count", :b "orders, count metric", :similarity 9633}
+   {:a "orders + people, count", :b "orders, count metric", :similarity 9630}
+   {:a "26202 repro", :b "repro 61336", :similarity 9630}
+   {:a "orders metric", :b "orders, count metric", :similarity 9625}
+   {:a "open bugs", :b "number of open bugs", :similarity 9624}
+   {:a "modeltest", :b "test model", :similarity 9617}
+   {:a "my metric test 2", :b "test metric 2", :similarity 9613}
+   {:a "open p1 bugs", :b "open bugs", :similarity 9612}
+   {:a "orders2", :b "orderss", :similarity 9611}
+   {:a "orders model", :b "orders + products", :similarity 9604}
+   {:a "a", :b "model", :similarity 9601}
+   {:a "mark's question", :b "let's see", :similarity 9600}
+   {:a "orders model", :b "new orders model", :similarity 9598}
+   {:a "orders + people, count", :b "people, count", :similarity 9597}
+   {:a "orders metric", :b "metric 1: orders by category", :similarity 9595}
+   {:a "orders2", :b "orders (model)", :similarity 9589}
+   {:a "orders, sum of discount, grouped by created at: month",
+    :b "orders + products, sum of total, grouped by created at: month",
+    :similarity 9580}
+   {:a "number of active enterprise customers", :b "number of active customers", :similarity 9580}
+   {:a "my model", :b "x", :similarity 9576}
+   {:a "test metric 193841", :b "test metric 2", :similarity 9571}
+   {:a "metric 1: orders by year", :b "metric 1: orders by category", :similarity 9566}
+   {:a "orders model", :b "model", :similarity 9564}
+   {:a "orders metric", :b "orders, count", :similarity 9563}
+   {:a "orders, count", :b "big orders count", :similarity 9563}
+   {:a "accounts model", :b "accounts question to model", :similarity 9558}
+   {:a "metric 1: orders by month", :b "metric 1: orders by day", :similarity 9553}
+   {:a "test metric 193841", :b "test metric 3", :similarity 9552}
+   {:a "monthly revenue", :b "metric 3: revenue by month", :similarity 9550}
+   {:a "email campaign", :b "email campaign - duplicate", :similarity 9549}
+   {:a "mark's question", :b "mark's interesting model", :similarity 9548}
+   {:a "orders[metric]", :b "orders, count metric", :similarity 9546}
+   {:a "orders, sum of total, grouped by created at: month",
+    :b "orders, count, grouped by created at: month, 1 row",
+    :similarity 9545}
+   {:a "orders model", :b "test orders model", :similarity 9543}
+   {:a "monthly average of metrics per instance",
+    :b "median of metrics by month and running instance",
+    :similarity 9540}
+   {:a "active employees", :b "organization employees", :similarity 9537}
+   {:a "orders, count", :b "count", :similarity 9537}
+   {:a "yet another test metric", :b "test metric 3", :similarity 9536}
+   {:a "a", :b "x", :similarity 9534}
+   {:a "orders metric", :b "metric - orders, count", :similarity 9533}
+   {:a "orders model", :b "orders2", :similarity 9532}
+   {:a "modeltest", :b "test file", :similarity 9530}
+   {:a "metric - orders, count", :b "orders + people, count", :similarity 9528}
+   {:a "m1", :b "m2", :similarity 9528}
+   {:a "gcount", :b "gcount + wcount", :similarity 9527}
+   {:a "sets", :b "model", :similarity 9526}
+   {:a "count", :b "orders, count metric", :similarity 9525}
+   {:a "metric 1: orders by year", :b "metric 1: orders by day", :similarity 9522}
+   {:a "metric 1: orders by month", :b "metric 1: orders by year", :similarity 9521}
+   {:a "16249-2", :b "23022", :similarity 9521}
+   {:a "accounts model", :b "account v2", :similarity 9521}
+   {:a "orders, count metric", :b "big orders count", :similarity 9518}
+   {:a "mark's question", :b "model", :similarity 9518}
+   {:a "16249-2", :b "2ecb7779", :similarity 9517}
+   {:a "yet another test metric", :b "test metric 2", :similarity 9514}
+   {:a "orders + products, count", :b "orders + people, count", :similarity 9510}
+   {:a "count", :b "something", :similarity 9507}
+   {:a "orders model", :b "orders + products model", :similarity 9506}
+   {:a "orders, count", :b "orders[metric]", :similarity 9505}
+   {:a "test metric 3", :b "my metric test 2", :similarity 9505}
+   {:a "sets", :b "x", :similarity 9502}]}}

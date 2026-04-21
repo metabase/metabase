@@ -1,0 +1,714 @@
+{:threshold 0.85,
+ :catalog :universe,
+ :embeddings "names_arctic-l_1024d.json",
+ :name-count 4306,
+ :degree-distribution {:min 0, :p25 7, :median 27, :p75 107, :max 879, :mean 79.3065490013934},
+ :connected-components
+ {:count 179,
+  :multi-member 38,
+  :top
+  [{:members
+    ["bugs customers mentioned by month"
+     "customers_10000_20240530173511"
+     "customers notified from 50"
+     "1 request, 1 customer, 1 ticket comment"
+     "customers_10000_20240530173441"
+     "customer_discount"
+     "monthly_revenue_customer"
+     "customers_orders_last_3_months"
+     "customers"
+     "number of open bugs"
+     "all bugs"
+     "customers_notified_from_50_20240913160706"
+     "customers_1000_20250520124535"
+     "metric 2: customers by month"
+     "customers_1000_20250520124248"
+     "all bug counts"
+     "customers_1000_20250520124624"
+     "test_csv_1_20240906154004"
+     "characters_20230627161111"
+     "all_surveys_responses_sheet3_20250305182516"
+     "export_demo_20240917230918"
+     "page_view"
+     "log_visitor_online"
+     "a6ee2aaf_2023_08_21_90_20230821182217"
+     "customer_survey_q_3_2025_dropdown_lists"
+     "trend_analysis_data_sheet1_20250929213307"
+     "characters_20230613124615"
+     "thisone_20251128180856"
+     "emails_unresponsive_20240902205900"
+     "webinar_registrant"
+     "... (4049 total)"],
+    :size 4049,
+    :density :skipped,
+    :avg-sim :skipped,
+    :min-sim :skipped}
+   {:members
+    ["2022 mlb payrolls"
+     "2022_mlb_payrolls_20240209214015"
+     "mlb_2023_attendance_clean_20231012212705"
+     "mlb attendance in 2023"
+     "mlb_2023_attendance_20231012212430"
+     "nba_payroll_1990_2023__20230530151644"
+     "nba_payroll_1990_2023__20230530152400"
+     "mlb_elo_latest_20230703180543"
+     "baseball stats"
+     "nba payroll(1990-2023)"],
+    :size 10,
+    :density 0.4666666666666667,
+    :avg-sim 0.8454900913831473,
+    :min-sim 0.6973532816876743}
+   {:members
+    ["territory_planning_active_customers_import_recor_20260203202327"
+     "territory_planning_active_customers_active_custo_20260204194346"
+     "territory_planning_active_customers_active_custo_20260204201237"
+     "territory_planning_active_customers_active_custo_20260204194214"
+     "territory_planning_active_customers_geo_and_rout_20260203212309"
+     "territory_planning_active_customers_2025_opps_2_20260204203656"
+     "territory_planning_active_customers_2025_opps_1_20260204203606"],
+    :size 7,
+    :density 1.0,
+    :avg-sim 0.9489226829464824,
+    :min-sim 0.9326982772526666}
+   {:members
+    ["heap oom kills by day and host data 2026 01 14 04 42 41"
+     "heap oom kills by day and host data 2026 01 14 04 40 05"
+     "heap_oom_kills_by_day_and_host_data_2026_01_14_0_20260114044910"
+     "heap oom kills by day and host data 2026 01 14 04 48 29"
+     "heap_oom_kills_by_day_and_host_data_2026_01_14_0_20260114044355"
+     "heap_oom_kills_by_day_and_host_data_2026_01_14_0_20260114044325"],
+    :size 6,
+    :density 1.0,
+    :avg-sim 0.9702714229572967,
+    :min-sim 0.9515160561120838}
+   {:members
+    ["umami events sample 2"
+     "umami events sample"
+     "umami_events_sample_20260316170446"
+     "umami_events_sample_2_20260316170704"
+     "umami_events_sample_20260316170428"],
+    :size 5,
+    :density 1.0,
+    :avg-sim 0.9497992711841668,
+    :min-sim 0.9141714996999981}
+   {:members
+    ["airbnb_combined_data" "airbnb_metrics" "airbnb_sandiego" "sf_airbnb_listings_2018" "airbnb_sf_neighborhoods"],
+    :size 5,
+    :density 0.5,
+    :avg-sim 0.848590666072537,
+    :min-sim 0.8082747674842403}
+   {:members
+    ["hubspot crm exports all deals 2024 07 22"
+     "hubspot_crm_exports_all_deals_2024_07_22_20240722091339"
+     "hubspot_crm_exports_all_deals_2024_07_22_20240722090759"
+     "hubspot_crm_exports_all_deals_2024_07_22_20240722102708"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9692935706306026,
+    :min-sim 0.9378773944407249}
+   {:members
+    ["uk car accidents (2)"
+     "uk_car_accidents_20240214175934"
+     "uk_car_accidents__2__20240322230435"
+     "uk_car_accidents__1__20240315173034"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.952454672342892,
+    :min-sim 0.9165394685860584}
+   {:members
+    ["calendly_calendly_routing_form_questions_answers_c"
+     "calendly_calendly_action_c"
+     "calendly_calendly_link_c"
+     "calendly_calendly_routing_form_submission_c"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9182512733278533,
+    :min-sim 0.8875874945689266}
+   {:members
+    ["already_added_prospects_active_embedding_subscri_20251014053926"
+     "already_added_prospects_active_embedding_subscri_20251011040321"
+     "already_added_prospects_active_embedding_subscri_20251011030105"
+     "already_added_prospects_active_embedding_subscri_20251014053324"],
+    :size 4,
+    :density 1.0,
+    :avg-sim 0.9986250409804635,
+    :min-sim 0.9979901607551507}
+   {:members
+    ["meetabase data, dashboards and vibes in madrid 🇪🇸 guests 2025 09 23 21 11 37"
+     "meetabase_data_dashboards_and_vibes_in_ba_guests_20250626160559"
+     "meetabase_data_dashboards_and_vibes_in_madrid_gu_20250923212105"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9102255015366106,
+    :min-sim 0.8959978036113567}
+   {:members ["linkedin analytics feb 2024" "linkedin daily metrics" "linkedin post analytics, jan 12-apr 10 2024"],
+    :size 3,
+    :density 0.6666666666666667,
+    :avg-sim 0.8776695940226195,
+    :min-sim 0.84497834984462}
+   {:members
+    ["waterfall unaggregated ordinal nulls"
+     "waterfall_unaggregated_ordinal_2_20240214181234"
+     "waterfall_unaggregated_ordinal_nulls_20240109230433"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9201138276532639,
+    :min-sim 0.8843703285617648}
+   {:members ["netflix top 100 in 2023" "netflix all weeks global" "netflix_all_weeks_global_20231214030044"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.878930588332174,
+    :min-sim 0.8508030235458318}
+   {:members
+    ["2019 census us population data by state lat long 20240207171019, filtered by _mb_row_id is 1"
+     "2019_census_us_population_data_by_state_lat_long_20240207171019"
+     "2019 census us population data by state lat long"],
+    :size 3,
+    :density 1.0,
+    :avg-sim 0.9230895604608548,
+    :min-sim 0.9014933280713164}]},
+ :greedy-cliques
+ {:count 3191,
+  :multi-member 3050,
+  :top
+  [{:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_173"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_80"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "... (200 total)"],
+    :size 200,
+    :density 1.0,
+    :avg-sim 0.9547385957801199,
+    :min-sim 0.858879266013452}
+   {:members
+    ["fake_table_130"
+     "fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_60"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_173"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_53"
+     "fake_table_41"
+     "fake_table_80"
+     "fake_table_10"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "... (195 total)"],
+    :size 195,
+    :density 1.0,
+    :avg-sim 0.9549317032611755,
+    :min-sim 0.8501276965349084}
+   {:members
+    ["pokemon_v2_locationgameindex"
+     "pokemon_v2_moveeffectchange"
+     "pokedex_ver_sv1"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_itemattributemap"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_encountermethodname"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_itemattributedescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_itemattributename"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_moveattribute"
+     "pokemon_v2_movelearnmethod"
+     "... (144 total)"],
+    :size 144,
+    :density 1.0,
+    :avg-sim 0.9090399303593657,
+    :min-sim 0.8512345669045717}
+   {:members
+    ["fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_173"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_41"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_121"
+     "fake_table_72"
+     "fake_table_136"
+     "fake_table_159"
+     "fake_table_106"
+     "fake_table_45"
+     "... (143 total)"],
+    :size 143,
+    :density 1.0,
+    :avg-sim 0.9560182733354313,
+    :min-sim 0.8500645080724971}
+   {:members
+    ["pokemon_v2_locationgameindex"
+     "pokemon_v2_moveeffectchange"
+     "pokedex_ver_sv1"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_itemattributemap"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_encountermethodname"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_itemattributedescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_itemattributename"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_moveattribute"
+     "pokemon_v2_movelearnmethod"
+     "... (143 total)"],
+    :size 143,
+    :density 1.0,
+    :avg-sim 0.9092904912688045,
+    :min-sim 0.8512345669045717}
+   {:members
+    ["pokemon_v2_locationgameindex"
+     "pokemon_v2_moveeffectchange"
+     "pokedex_ver_sv1"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_itemattributemap"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_encountermethodname"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_itemattributedescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_itemattributename"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_moveattribute"
+     "pokemon_v2_movelearnmethod"
+     "... (143 total)"],
+    :size 143,
+    :density 1.0,
+    :avg-sim 0.9092453140328022,
+    :min-sim 0.8506445331641279}
+   {:members
+    ["pokemon_v2_locationgameindex"
+     "pokemon_v2_moveeffectchange"
+     "pokedex_ver_sv1"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_itemattributemap"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_encountermethodname"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_itemattributedescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_itemattributename"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_moveattribute"
+     "pokemon_v2_movelearnmethod"
+     "... (143 total)"],
+    :size 143,
+    :density 1.0,
+    :avg-sim 0.909316475053831,
+    :min-sim 0.8512345669045717}
+   {:members
+    ["pokemon_v2_locationgameindex"
+     "pokemon_v2_moveeffectchange"
+     "pokedex_ver_sv1"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_itemattributemap"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_encountermethodname"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_itemattributedescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_itemattributename"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_movelearnmethod"
+     "pokemon_v2_move"
+     "... (142 total)"],
+    :size 142,
+    :density 1.0,
+    :avg-sim 0.9094156778036996,
+    :min-sim 0.8529232887115412}
+   {:members
+    ["pokemon_v2_locationgameindex"
+     "pokemon_v2_moveeffectchange"
+     "pokedex_ver_sv1"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_itemattributemap"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_encountermethodname"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_itemattributedescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_itemattributename"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_movelearnmethod"
+     "pokemon_v2_move"
+     "... (141 total)"],
+    :size 141,
+    :density 1.0,
+    :avg-sim 0.9095978819791044,
+    :min-sim 0.8502746742704306}
+   {:members
+    ["pokemon_v2_locationgameindex"
+     "pokemon_v2_moveeffectchange"
+     "pokedex_ver_sv1"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_itemattributemap"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_encountermethodname"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_itemattributedescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_itemattributename"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_movelearnmethod"
+     "pokemon_v2_move"
+     "... (141 total)"],
+    :size 141,
+    :density 1.0,
+    :avg-sim 0.9094807119218012,
+    :min-sim 0.8504429544493805}
+   {:members
+    ["pokemon_v2_locationgameindex"
+     "pokemon_v2_moveeffectchange"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_itemattributemap"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_encountermethodname"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_itemattributedescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_itemattributename"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_moveattribute"
+     "pokemon_v2_movelearnmethod"
+     "pokemon_v2_move"
+     "... (141 total)"],
+    :size 141,
+    :density 1.0,
+    :avg-sim 0.9094145443139408,
+    :min-sim 0.8506445331641279}
+   {:members
+    ["fake_table_130"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_99"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_136"
+     "fake_table_150"
+     "fake_table_159"
+     "fake_table_110"
+     "fake_table_38"
+     "fake_table_45"
+     "fake_table_196"
+     "fake_table_98"
+     "... (139 total)"],
+    :size 139,
+    :density 1.0,
+    :avg-sim 0.9546870294828718,
+    :min-sim 0.850051679814629}
+   {:members
+    ["fake_table_92"
+     "fake_table_47"
+     "fake_table_83"
+     "fake_table_107"
+     "fake_table_155"
+     "fake_table_118"
+     "fake_table_82"
+     "fake_table_34"
+     "fake_table_89"
+     "fake_table_88"
+     "fake_table_15"
+     "fake_table_36"
+     "fake_table_173"
+     "fake_table_134"
+     "fake_table_78"
+     "fake_table_79"
+     "fake_table_21"
+     "fake_table_170"
+     "fake_table_105"
+     "fake_table_46"
+     "fake_table_28"
+     "fake_table_11"
+     "fake_table_5"
+     "fake_table_72"
+     "fake_table_136"
+     "fake_table_159"
+     "fake_table_45"
+     "fake_table_196"
+     "fake_table_98"
+     "fake_table_87"
+     "... (135 total)"],
+    :size 135,
+    :density 1.0,
+    :avg-sim 0.952903236765355,
+    :min-sim 0.850058598095388}
+   {:members
+    ["pokemon_v2_locationgameindex"
+     "pokemon_v2_moveeffectchange"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_itemattributemap"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_itemattributedescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_itemattributename"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_moveattribute"
+     "pokemon_v2_movelearnmethod"
+     "pokemon_v2_move"
+     "pokemon_v2_movetargetdescription"
+     "... (134 total)"],
+    :size 134,
+    :density 1.0,
+    :avg-sim 0.9097074640268958,
+    :min-sim 0.8506445331641279}
+   {:members
+    ["pokemon_v2_locationgameindex"
+     "pokemon_v2_moveeffectchange"
+     "pokedex_ver_sv1"
+     "pokemon_v2_characteristicdescription"
+     "pokemon_v2_moveflavortext"
+     "pokemon_v2_itemattributemap"
+     "pokemon_v2_pokemonformtype"
+     "pokemon_v2_encountermethodname"
+     "pokemon_v2_itemname"
+     "pokemon_v2_pokemontypepast"
+     "pokemon_v2_encounter"
+     "pokemon_v2_itemcategory"
+     "pokemon_v2_pokemonform"
+     "pokemon_v2_pokemonspeciesflavortext"
+     "pokemon_v2_contesteffectflavortext"
+     "pokemon_v2_movelearnmethoddescription"
+     "pokemon_v2_palpark"
+     "pokemon_v2_pokemonability"
+     "pokemon_v2_growthratedescription"
+     "pokemon_v2_pokemonegggroup"
+     "pokemon_v2_pokemonformname"
+     "pokemon_v2_pokemontype"
+     "pokemon_v2_pokemoncolor"
+     "pokemon_v2_movemetacategory"
+     "pokemon_v2_statname"
+     "pokemon_v2_pokemonspeciesname"
+     "pokemon_v2_movelearnmethod"
+     "pokemon_v2_move"
+     "pokemon_v2_movetargetdescription"
+     "pokemon_v2_growthrate"
+     "... (133 total)"],
+    :size 133,
+    :density 1.0,
+    :avg-sim 0.910803115516058,
+    :min-sim 0.8504667579738104}]},
+ :avg-linkage-hac nil}
