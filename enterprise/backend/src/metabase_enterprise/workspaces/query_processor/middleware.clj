@@ -1,8 +1,14 @@
 (ns metabase-enterprise.workspaces.query-processor.middleware
-  "QP preprocessing middleware that rewrites table references in native SQL queries for workspace transforms.
+  "QP preprocessing middleware for workspace table remapping. Two entry points:
 
-  When a query carries a `:workspace-remapping` key in its `:middleware` map (attached by workspace execute
-  code), this middleware rewrites table names in the native SQL using [[sql-tools/replace-names]]."
+  - `apply-workspace-remapping` (legacy, transforms-driven): triggered when a query carries a
+    `:workspace-remapping` key in its `:middleware` map. Rewrites identifiers in native SQL only,
+    using [[sql-tools/replace-names]].
+
+  - `apply-workspace-table-remapping` (app-DB-driven): reads `TableRemapping` rows for the query's
+    `:database` and redirects table references to their workspace copies. Handles both MBQL
+    (overrides `:schema`/`:name` on cached metadata so HoneySQL compilation emits the workspace
+    identifiers) and native queries (identifier rewrite via [[sql-tools/replace-names]])."
   (:require
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
