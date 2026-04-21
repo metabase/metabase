@@ -1,4 +1,4 @@
-import type { SdkBreadcrumbItem } from "embedding-sdk-bundle/types/breadcrumb";
+import type { SdkBreadcrumbItem } from "metabase/embed/sdk-bundle/types/breadcrumb";
 
 import { updateBreadcrumbsWithItem as update } from "./update-breadcrumbs";
 

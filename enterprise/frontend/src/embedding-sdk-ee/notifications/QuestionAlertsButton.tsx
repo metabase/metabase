@@ -4,10 +4,10 @@ import { t } from "ttag";
 import { SdkActionIcon } from "embedding-sdk-bundle/components/private/SdkQuestion/components/util/SdkActionIcon/SdkActionIcon";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
 import { useQuestionAlertModalContext } from "embedding-sdk-bundle/components/private/notifications/context/QuestionAlertModalProvider";
-import type { QuestionAlertsButtonProps } from "embedding-sdk-bundle/components/public/notifications";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import { useHasEmailSetup } from "metabase/common/hooks";
+import type { QuestionAlertsButtonProps } from "metabase/plugins";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { isInstanceAnalyticsCollection } from "metabase-enterprise/collections/utils";
 

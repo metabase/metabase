@@ -13,8 +13,10 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
+import { useEmbeddingEntityContext } from "metabase/embed/context";
 import { getTabHiddenParameterSlugs } from "metabase/embed/lib/tab-parameters";
-import { useEmbeddingEntityContext } from "metabase/embedding/context";
+import type { DashboardCardMenu } from "metabase/embed/sdk-bundle/types/dashcard-menu";
+import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,
   DashboardCard,
@@ -23,7 +25,6 @@ import type {
 } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
-import type { DashboardCardMenu } from "../components/DashCard/DashCardMenu/dashcard-menu";
 import type { NavigateToNewCardFromDashboardOpts } from "../components/DashCard/types";
 import type { DashboardActionKey } from "../components/DashboardHeader/DashboardHeaderButtonRow/types";
 import {
@@ -75,6 +76,15 @@ export type DashboardContextOwnProps = {
    * Forcing passing it isn't ideal since we only need to do this in a couple of places
    */
   onNewQuestion?: () => void;
+  /**
+   * Override for the "Edit question" action in dashcard menus. The SDK
+   * populates this to redirect editing into its own flow. When omitted,
+   * callers fall back to the default (dispatch(editQuestion(...))).
+   */
+  onEditQuestion?: (
+    question: Question,
+    mode?: "query" | "view" | "notebook",
+  ) => void;
   /**
    * When true, internal click behaviors (dashboard/question links) are preserved
    * instead of being filtered out. Used by the SDK for internal navigation.

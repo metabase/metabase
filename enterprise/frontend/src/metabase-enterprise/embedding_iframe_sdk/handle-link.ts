@@ -2,7 +2,7 @@ import { MODULAR_EMBEDDING_HANDLE_LINK_PLUGIN } from "embedding-sdk-shared/lib/s
 import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedTagMessage,
-} from "metabase/embedding/embedding-iframe-sdk/types/embed";
+} from "metabase/embed/iframe-sdk/types/embed";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 export const initializeHandleLinkPlugin = () => {

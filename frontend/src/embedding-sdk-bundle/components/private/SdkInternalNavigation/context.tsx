@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react";
 
-import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
-import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
+import type { SdkDashboardId } from "metabase/embed/sdk-bundle/types/dashboard";
+import type { SdkQuestionId } from "metabase/embed/sdk-bundle/types/question";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 
 // This type exists only to have a global place where to put the JSDoc for virtual

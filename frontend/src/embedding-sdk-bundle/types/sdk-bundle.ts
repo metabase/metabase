@@ -11,13 +11,16 @@ import type { StaticQuestion } from "embedding-sdk-bundle/components/public/Stat
 import type { EditableDashboard } from "embedding-sdk-bundle/components/public/dashboard/EditableDashboard";
 import type { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard";
 import type { StaticDashboard } from "embedding-sdk-bundle/components/public/dashboard/StaticDashboard";
-import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
+import type { FunctionSchemaValidationResult } from "embedding-sdk-shared/types/validation";
+import type {
+  SdkStore,
+  SdkStoreState,
+} from "metabase/embed/sdk-bundle/store-types";
 import type {
   CreateDashboardValues,
   MetabaseDashboard,
-} from "embedding-sdk-bundle/types";
-import type { LoginStatus } from "embedding-sdk-bundle/types/user";
-import type { FunctionSchemaValidationResult } from "embedding-sdk-shared/types/validation";
+} from "metabase/embed/sdk-bundle/types";
+import type { LoginStatus } from "metabase/embed/sdk-bundle/types/user";
 import type { User } from "metabase-types/api";
 
 export type InternalComponent<TComponent extends JSXElementConstructor<any>> =

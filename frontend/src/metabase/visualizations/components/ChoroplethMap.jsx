@@ -7,11 +7,11 @@ import ss from "simple-statistics";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
-import { getMetabaseInstanceUrl } from "embedding-sdk-bundle/store/selectors";
 import { Link } from "metabase/common/components/Link";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { getSdkMetabaseInstanceUrl } from "metabase/selectors/embed";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Text } from "metabase/ui";
 import { formatValue } from "metabase/utils/formatting";
@@ -109,7 +109,7 @@ function shouldUseCompactFormatting(groups, formatMetric) {
 }
 
 const mapStateToProps = (state) => ({
-  sdkMetabaseInstanceUrl: getMetabaseInstanceUrl(state),
+  sdkMetabaseInstanceUrl: getSdkMetabaseInstanceUrl(state),
 });
 
 const connector = connect(mapStateToProps, null);

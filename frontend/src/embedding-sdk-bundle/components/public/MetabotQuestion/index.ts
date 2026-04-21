@@ -1,2 +1,2 @@
 export { MetabotQuestion } from "./MetabotQuestion";
-export type { MetabotQuestionProps } from "./types";
+export type { MetabotQuestionProps } from "metabase/embed/sdk-bundle/types/metabot-question";

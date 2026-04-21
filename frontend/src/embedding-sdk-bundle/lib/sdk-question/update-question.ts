@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import type { SdkQuestionState } from "embedding-sdk-bundle/types/question";
+import type { SdkQuestionState } from "metabase/embed/sdk-bundle/types/question";
 import { computeQuestionPivotTable } from "metabase/query_builder/actions/core/pivot-table";
 import { getAdHocQuestionWithVizSettings } from "metabase/query_builder/actions/core/utils";
 import { createRawSeries } from "metabase/query_builder/utils";

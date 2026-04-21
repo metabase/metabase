@@ -5,7 +5,7 @@ import {
   type UseDownloadDataParams,
   useDownloadData,
 } from "metabase/common/components/QuestionDownloadWidget";
-import { useEmbeddingEntityContext } from "metabase/embedding/context";
+import { useEmbeddingEntityContext } from "metabase/embed/context";
 import type { StackProps } from "metabase/ui";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 

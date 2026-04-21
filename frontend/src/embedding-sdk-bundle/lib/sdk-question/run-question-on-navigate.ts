@@ -2,7 +2,7 @@ import { runQuestionQuerySdk } from "embedding-sdk-bundle/lib/sdk-question/run-q
 import type {
   NavigateToNewCardParams,
   SdkQuestionState,
-} from "embedding-sdk-bundle/types/question";
+} from "metabase/embed/sdk-bundle/types/question";
 import { loadCard } from "metabase/query_builder/actions/core/card";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type { Dispatch, GetState } from "metabase/redux/store";

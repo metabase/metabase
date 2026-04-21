@@ -3,7 +3,7 @@ import {
   MOCK_API_KEY,
   MOCK_INSTANCE_URL,
 } from "embedding-sdk-bundle/test/mocks/sso";
-import { defineMetabaseAuthConfig } from "embedding-sdk-package/lib/public/define-metabase-auth-config";
+import { defineMetabaseAuthConfig } from "embedding-sdk-shared/lib/define-metabase-auth-config";
 
 import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 

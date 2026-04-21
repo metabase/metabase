@@ -25,7 +25,7 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type {
   LoginStatusError,
   MetabaseAuthConfig,
-} from "embedding-sdk-bundle/types";
+} from "metabase/embed/sdk-bundle/types";
 
 import { setupEmbeddingSdkEnterprisePlugins } from "../support";
 

@@ -4,11 +4,14 @@ import _ from "underscore";
 import { getStore } from "__support__/entities-store";
 import { ComponentProviderInternal } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { sdkReducers } from "embedding-sdk-bundle/store";
-import type { SdkStore, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import { createMockSdkState } from "embedding-sdk-bundle/test/mocks/state";
-import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { Api } from "metabase/api";
+import type {
+  SdkStore,
+  SdkStoreState,
+} from "metabase/embed/sdk-bundle/store-types";
+import type { MetabaseProviderProps } from "metabase/embed/sdk-bundle/types/metabase-provider";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { MantineThemeOverride } from "metabase/ui";

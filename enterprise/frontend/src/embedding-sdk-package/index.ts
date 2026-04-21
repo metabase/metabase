@@ -69,12 +69,12 @@ export {
   type InteractiveQuestionComponents,
   type InteractiveQuestionProps,
 } from "embedding-sdk-bundle/components/public/InteractiveQuestion";
-export { type MetabotQuestionProps } from "embedding-sdk-bundle/components/public/MetabotQuestion";
+export type { MetabotQuestionProps } from "metabase/embed/sdk-bundle/types/metabot-question";
 export {
   type StaticQuestionProps,
   type StaticQuestionComponents,
 } from "embedding-sdk-bundle/components/public/StaticQuestion";
-export { type MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
+export { type MetabaseProviderProps } from "metabase/embed/sdk-bundle/types/metabase-provider";
 
 export type {
   CustomDashboardCardMenuItem,
@@ -82,7 +82,7 @@ export type {
   DashboardCardCustomMenuItem,
   DashboardCardMenuCustomElement,
   DashboardCardMenu,
-} from "metabase/dashboard/components/DashCard/DashCardMenu/dashcard-menu";
+} from "metabase/embed/sdk-bundle/types/dashcard-menu";
 
 export type {
   ButtonProps,
@@ -132,7 +132,7 @@ export type {
   SdkQuestionTitleProps,
   SdkUserId,
   SqlParameterValues,
-} from "embedding-sdk-bundle/types";
+} from "metabase/embed/sdk-bundle/types";
 
 export type {
   EmbeddingEntityType,

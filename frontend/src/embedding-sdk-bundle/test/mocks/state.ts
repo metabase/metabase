@@ -1,8 +1,8 @@
 import type {
   EmbeddingSessionTokenState,
   SdkState,
-} from "embedding-sdk-bundle/store/types";
-import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+} from "metabase/embed/sdk-bundle/store-types";
+import type { LoginStatus } from "metabase/embed/sdk-bundle/types/user";
 
 export const createMockTokenState = ({
   ...opts

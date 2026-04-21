@@ -5,16 +5,16 @@ import { push } from "react-router-redux";
 import { useLocation } from "react-use";
 
 import ActionCreator from "metabase/actions/containers/ActionCreator";
-import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
-import { Modal } from "metabase/common/components/Modal";
-import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
-import { CreateDashboardModal } from "metabase/dashboard/containers/CreateDashboardModal";
-import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import {
   LegacyStaticEmbeddingModal,
   type LegacyStaticEmbeddingModalProps,
-} from "metabase/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal";
-import { SdkIframeEmbedSetupModal } from "metabase/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal";
+} from "metabase/admin/embedding/embedding-iframe-sdk-setup/components/LegacyStaticEmbeddingModal";
+import { SdkIframeEmbedSetupModal } from "metabase/admin/embedding/embedding-iframe-sdk-setup/components/SdkIframeEmbedSetupModal";
+import CreateCollectionModal from "metabase/collections/containers/CreateCollectionModal";
+import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
+import { Modal } from "metabase/common/components/Modal";
+import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
+import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embed/constants";
 import { Collections } from "metabase/entities/collections/collections";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";

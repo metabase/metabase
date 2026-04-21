@@ -9,33 +9,33 @@ import {
   openSamlLoginPopup,
   validateSession,
 } from "embedding/auth-common";
-import * as MetabaseError from "embedding-sdk-bundle/errors";
-import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
-import {
-  PLUGIN_EMBEDDING_SDK_AUTH,
-  refreshTokenAsync as refreshTokenAsyncAction,
-} from "embedding-sdk-bundle/store/auth";
+import { refreshTokenAsync as refreshTokenAsyncAction } from "embedding-sdk-bundle/store/auth";
 import {
   getFetchRefreshTokenFn,
   getSessionTokenState,
 } from "embedding-sdk-bundle/store/selectors";
-import type {
-  SdkDispatch,
-  SdkStoreState,
-} from "embedding-sdk-bundle/store/types";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
+import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
-import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
+import { requestSessionTokenFromEmbedJs } from "metabase/embed/iframe-sdk/utils";
+import * as MetabaseError from "metabase/embed/sdk-bundle/errors";
+import type {
+  SdkDispatch,
+  SdkStoreState,
+} from "metabase/embed/sdk-bundle/store-types";
+import type { MetabaseAuthConfig } from "metabase/embed/sdk-bundle/types/auth-config";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
-import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import {
+  PLUGIN_EMBEDDING_SDK,
+  PLUGIN_EMBEDDING_SDK_AUTH,
+} from "metabase/plugins";
 import { loadSettings, refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 import api from "metabase/utils/api";

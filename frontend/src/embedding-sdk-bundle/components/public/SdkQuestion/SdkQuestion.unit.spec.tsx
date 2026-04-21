@@ -32,7 +32,7 @@ import {
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
+import type { SdkQuestionTitleProps } from "metabase/embed/sdk-bundle/types/question";
 import type { BaseEntityId, CardId } from "metabase-types/api";
 import {
   createMockCard,

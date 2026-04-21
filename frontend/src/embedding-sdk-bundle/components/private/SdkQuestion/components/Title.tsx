@@ -1,6 +1,6 @@
 import { QuestionTitle } from "embedding-sdk-bundle/components/private/QuestionTitle";
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
+import type { CommonStylingProps } from "metabase/embed/sdk-bundle/types/props";
 
 /**
  * @interface

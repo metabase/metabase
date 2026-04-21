@@ -1,22 +1,7 @@
-import type { Dispatch } from "@reduxjs/toolkit";
-
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import type { MetabaseAuthConfig } from "metabase/embed/sdk-bundle/types/auth-config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
+import { PLUGIN_EMBEDDING_SDK_AUTH } from "metabase/plugins";
 import { createAsyncThunk } from "metabase/utils/redux";
-
-// This is an SDK-only plugin and we co-locate it with its OSS usage for convenience and better three-shaking.
-export const PLUGIN_EMBEDDING_SDK_AUTH = {
-  initAuth: async (
-    _config: any, // should be `MetabaseAuthConfig & { isLocalHost?: boolean }` but we can't import it for now (it's EE code)
-    _dispatch: { dispatch: Dispatch },
-  ): Promise<void> => {},
-  refreshTokenAsync: async (
-    _config: any,
-    _getState: any,
-  ): Promise<any | null> => {
-    return null;
-  },
-};
 
 export const initAuth = createAsyncThunk(
   "sdk/token/INIT_AUTH",

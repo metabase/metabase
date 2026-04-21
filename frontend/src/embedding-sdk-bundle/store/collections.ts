@@ -1,13 +1,12 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { P, match } from "ts-pattern";
 
+import type { SdkCollectionId } from "metabase/embed/sdk-bundle/types/collection";
 import {
   getUserPersonalCollectionId,
   getUserTenantCollectionId,
 } from "metabase/selectors/user";
 import type { CollectionId, RegularCollectionId } from "metabase-types/api";
-
-import type { SdkCollectionId } from "../types/collection";
 
 /**
  * Converts "personal", "tenant", and "root" to the ids accepted by the api

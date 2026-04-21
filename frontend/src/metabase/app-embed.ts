@@ -3,7 +3,7 @@
  * file 'LICENSE-EMBEDDING.txt', which is part of this source code package.
  */
 
-import { setIsStaticEmbedding } from "metabase/embedding/config";
+import { setIsStaticEmbedding } from "metabase/embed/config";
 
 import { init } from "./app";
 import { publicReducers } from "./reducers-public";

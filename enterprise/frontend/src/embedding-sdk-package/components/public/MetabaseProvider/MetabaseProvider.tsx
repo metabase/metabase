@@ -1,7 +1,6 @@
 import { memo, useEffect, useId, useMemo } from "react";
 import useDeepCompareEffect from "react-use/lib/useDeepCompareEffect";
 
-import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { ClientSideOnlyWrapper } from "embedding-sdk-package/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
 import { useLoadSdkBundle } from "embedding-sdk-package/hooks/private/use-load-sdk-bundle";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
@@ -10,6 +9,7 @@ import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-s
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
+import type { MetabaseProviderProps } from "metabase/embed/sdk-bundle/types/metabase-provider";
 
 /**
  * We call `use-init-data` hook to initialize the SDK with the initial data.

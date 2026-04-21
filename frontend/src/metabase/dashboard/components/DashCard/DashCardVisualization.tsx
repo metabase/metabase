@@ -17,7 +17,7 @@ import {
   getDashcardData,
 } from "metabase/dashboard/selectors";
 import { getVirtualCardType } from "metabase/dashboard/utils";
-import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { EmbeddingEntityContextProvider } from "metabase/embed/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import {

@@ -2,9 +2,9 @@ import type { SetStateAction } from "react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { createEmptyTenantDraft } from "metabase/admin/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/utils";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
-import { createEmptyTenantDraft } from "metabase/embedding/embedding-hub/components/SetupPermissionsAndTenantsPage/utils";
 import type { CreatedTenantData } from "metabase/plugins/oss/tenants";
 import {
   Button,

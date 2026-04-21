@@ -2,12 +2,12 @@ import { useDisclosure } from "@mantine/hooks";
 import { type CSSProperties, type PropsWithChildren, useMemo } from "react";
 import { jt, t } from "ttag";
 
-import { ERROR_DOC_LINKS } from "embedding-sdk-bundle/errors";
-import type { MetabaseErrorCode } from "embedding-sdk-bundle/errors/error-code";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getErrorComponent } from "embedding-sdk-bundle/store/selectors";
-import type { SdkErrorComponentProps } from "embedding-sdk-bundle/types";
 import { Alert } from "metabase/common/components/Alert";
+import { ERROR_DOC_LINKS } from "metabase/embed/sdk-bundle/errors";
+import type { MetabaseErrorCode } from "metabase/embed/sdk-bundle/errors/error-code";
+import type { SdkErrorComponentProps } from "metabase/embed/sdk-bundle/types";
 import { EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID } from "metabase/embedding-sdk/config";
 import { Anchor, Box, Center, Code, Flex, Portal } from "metabase/ui";
 import { color } from "metabase/ui/colors";

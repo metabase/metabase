@@ -3,12 +3,12 @@ import {
   getCollectionIdSlugFromReference,
   getCollectionIdValueFromReference,
 } from "embedding-sdk-bundle/store/collections";
+import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/common/CreateDashboard/CreateDashboardModal";
+import { useCollectionQuery, useLocale } from "metabase/common/hooks";
 import type {
   MetabaseDashboard,
   SdkCollectionId,
-} from "embedding-sdk-bundle/types";
-import { useCollectionQuery, useLocale } from "metabase/common/hooks";
-import { CreateDashboardModal as CreateDashboardModalCore } from "metabase/dashboard/containers/CreateDashboardModal";
+} from "metabase/embed/sdk-bundle/types";
 import { useSelector } from "metabase/utils/redux";
 
 import { createDashboardModalSchema } from "./CreateDashboardModal.schema";

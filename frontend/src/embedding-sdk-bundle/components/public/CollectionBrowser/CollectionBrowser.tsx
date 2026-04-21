@@ -8,15 +8,16 @@ import {
 } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
-import type {
-  MetabaseCollectionItem,
-  SdkCollectionId,
-} from "embedding-sdk-bundle/types/collection";
-import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { COLLECTION_PAGE_SIZE } from "metabase/collections/components/CollectionContent";
 import { CollectionItemsTable } from "metabase/collections/components/CollectionContent/CollectionItemsTable";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import type {
+  MetabaseCollectionItem,
+  SdkCollectionId,
+} from "metabase/embed/sdk-bundle/types/collection";
+import type { CollectionBrowserListColumns } from "metabase/embed/sdk-bundle/types/collection-browser";
+import type { CommonStylingProps } from "metabase/embed/sdk-bundle/types/props";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs";
 import { Icon, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
@@ -24,6 +25,8 @@ import type { CollectionId, CollectionItemModel } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import { collectionBrowserPropsSchema } from "./CollectionBrowser.schema";
+
+export type { CollectionBrowserListColumns } from "metabase/embed/sdk-bundle/types/collection-browser";
 
 const USER_FACING_ENTITY_NAMES = [
   "collection",
@@ -33,14 +36,6 @@ const USER_FACING_ENTITY_NAMES = [
 ] as const;
 
 type UserFacingEntityName = (typeof USER_FACING_ENTITY_NAMES)[number];
-
-export type CollectionBrowserListColumns =
-  | "type"
-  | "name"
-  | "description"
-  | "lastEditedBy"
-  | "lastEditedAt"
-  | "archive";
 
 const COLLECTION_BROWSER_LIST_COLUMNS: CollectionBrowserListColumns[] = [
   "type",

@@ -7,13 +7,13 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Styles from "metabase/css/core/index.css";
-import { DashboardPublicLinkPopover } from "metabase/embedding/components/PublicLinkPopover";
 import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
 import { collection as collectionUrl } from "metabase/utils/urls";
 import { getUserName } from "metabase/utils/user";
 import type { Dashboard } from "metabase-types/api";
 
 import SidebarStyles from "./DashboardInfoSidebar.module.css";
+import { DashboardPublicLinkPopover } from "./DashboardPublicLinkPopover/DashboardPublicLinkPopover";
 
 export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
   const lastEditInfo = dashboard["last-edit-info"];

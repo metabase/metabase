@@ -7,7 +7,7 @@ import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
-import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+import type { LoginStatus } from "metabase/embed/sdk-bundle/types/user";
 import { createMockState } from "metabase/redux/store/mocks";
 
 import { PublicComponentWrapper } from "./PublicComponentWrapper";

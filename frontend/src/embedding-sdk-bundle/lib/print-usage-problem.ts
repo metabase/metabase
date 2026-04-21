@@ -2,7 +2,7 @@
 
 import { match } from "ts-pattern";
 
-import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
+import type { SdkUsageProblem } from "metabase/embed/sdk-bundle/types/usage-problem";
 
 const HEADER_STYLE = "color: #509ee3; font-size: 16px; font-weight: bold;";
 const TEXT_STYLE = "font-size: 14px;";

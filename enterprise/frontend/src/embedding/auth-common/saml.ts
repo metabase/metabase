@@ -1,4 +1,5 @@
-import * as MetabaseError from "embedding-sdk-bundle/errors";
+// eslint-disable-next-line no-restricted-imports -- shared sdk-bundle contract (moved from embedding-sdk-bundle/errors)
+import * as MetabaseError from "metabase/embed/sdk-bundle/errors";
 // eslint-disable-next-line no-restricted-imports -- import type
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 

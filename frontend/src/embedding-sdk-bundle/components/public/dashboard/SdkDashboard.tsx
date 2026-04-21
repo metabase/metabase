@@ -36,12 +36,6 @@ import {
   getIsGuestEmbed,
   getSessionTokenState,
 } from "embedding-sdk-bundle/store/selectors";
-import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
-import type {
-  DashboardEventHandlersProps,
-  SdkDashboardId,
-} from "embedding-sdk-bundle/types/dashboard";
-import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
 import { useConfirmation } from "metabase/common/hooks";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -60,7 +54,13 @@ import {
 } from "metabase/dashboard/context";
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
 import type { RefreshPeriod } from "metabase/dashboard/types";
-import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { EmbeddingEntityContextProvider } from "metabase/embed/context";
+import type { MetabaseQuestion } from "metabase/embed/sdk-bundle/types";
+import type {
+  DashboardEventHandlersProps,
+  SdkDashboardId,
+} from "metabase/embed/sdk-bundle/types/dashboard";
+import type { MetabasePluginsConfig } from "metabase/embed/sdk-bundle/types/plugins";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";
@@ -419,6 +419,7 @@ const SdkDashboardInner = ({
         dashboardId={dashboardId}
         isGuestEmbed={isGuestEmbed}
         parameterQueryParams={initialParameters}
+        onEditQuestion={onEditQuestion}
         navigateToNewCardFromDashboard={
           navigateToNewCardFromDashboard !== undefined
             ? navigateToNewCardFromDashboard
@@ -498,10 +499,7 @@ const SdkDashboardInner = ({
             </SdkDashboardStyledWrapperWithRef>
           ))
           .with({ finalRenderMode: "dashboard" }, () => (
-            <SdkDashboardProvider
-              plugins={plugins}
-              onEditQuestion={onEditQuestion}
-            >
+            <SdkDashboardProvider plugins={plugins}>
               {children ?? (
                 <SdkDashboardStyledWrapperWithRef
                   className={className}

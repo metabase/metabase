@@ -15,13 +15,14 @@ import {
   setPlugins,
   setPluginsReady,
 } from "embedding-sdk-bundle/store/reducer";
-import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { LocaleProvider } from "metabase/embed/LocaleProvider";
+import type { SdkStore } from "metabase/embed/sdk-bundle/store-types";
+import type { ComponentProviderProps } from "metabase/embed/sdk-bundle/types/metabase-provider";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
+import { METABOT_SDK_EE_PLUGIN } from "metabase/plugins";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { MetabaseReduxProvider, useSelector } from "metabase/utils/redux";
@@ -31,7 +32,6 @@ import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";
 import { SdkFontsGlobalStyles } from "../../private/SdkGlobalFontsStyles";
 import { PortalContainer } from "../../private/SdkPortalContainer";
 import { SdkUsageProblemDisplay } from "../../private/SdkUsageProblem";
-import { METABOT_SDK_EE_PLUGIN } from "../MetabotQuestion/MetabotQuestion";
 
 export type ComponentProviderInternalProps = ComponentProviderProps & {
   reduxStore: SdkStore;
@@ -172,10 +172,7 @@ export const ComponentProviderInternal = (
   );
 };
 
-export type ComponentProviderProps = MetabaseProviderProps & {
-  reduxStore?: SdkStore;
-  isLocalHost?: boolean;
-};
+export type { ComponentProviderProps } from "metabase/embed/sdk-bundle/types/metabase-provider";
 
 export const ComponentProvider = memo(function ComponentProvider({
   children,

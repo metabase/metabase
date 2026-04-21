@@ -2,11 +2,11 @@ import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
 import type {
   SdkDispatch,
   SdkStoreState,
-} from "embedding-sdk-bundle/store/types";
+} from "metabase/embed/sdk-bundle/store-types";
 import type {
   LoadSdkQuestionParams,
   SdkQuestionState,
-} from "embedding-sdk-bundle/types/question";
+} from "metabase/embed/sdk-bundle/types/question";
 import { resolveCards } from "metabase/query_builder/actions";
 import { getParameterValuesForQuestion } from "metabase/query_builder/actions/core/parameterUtils";
 import { loadMetadataForCard } from "metabase/questions/actions";

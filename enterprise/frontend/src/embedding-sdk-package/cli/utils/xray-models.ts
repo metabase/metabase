@@ -1,7 +1,7 @@
 import type {
   MetabaseDashboard,
   SdkDashboardId,
-} from "embedding-sdk-bundle/types/dashboard";
+} from "metabase/embed/sdk-bundle/types/dashboard";
 import { uuid } from "metabase/utils/uuid";
 
 import { propagateErrorResponse } from "./propagate-error-response";

@@ -1,6 +1,6 @@
 import type { CSSProperties, PropsWithChildren } from "react";
 
-import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
+import type { CommonStylingProps } from "metabase/embed/sdk-bundle/types/props";
 import { Box } from "metabase/ui";
 
 export const FLEXIBLE_SIZE_DEFAULT_HEIGHT = "600px";

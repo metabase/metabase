@@ -9,7 +9,7 @@ import {
   getInitStatus,
   getUsageProblem,
 } from "embedding-sdk-bundle/store/selectors";
-import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
+import type { CommonStylingProps } from "metabase/embed/sdk-bundle/types/props";
 
 export type PublicComponentWrapperProps = {
   children: ReactNode;

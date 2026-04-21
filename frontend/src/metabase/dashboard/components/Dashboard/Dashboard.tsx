@@ -2,7 +2,6 @@ import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { PLUGIN_NOTIFICATIONS_SDK } from "embedding-sdk-bundle/components/public/notifications";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import { useDashboardContext } from "metabase/dashboard/context";
@@ -10,6 +9,7 @@ import { getIsHeaderVisible } from "metabase/dashboard/selectors";
 import EmbedFrameS from "metabase/embed/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
+import { PLUGIN_NOTIFICATIONS_SDK } from "metabase/plugins";
 import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthContainer";
 import { Box, Flex, Loader } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";

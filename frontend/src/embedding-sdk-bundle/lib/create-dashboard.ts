@@ -1,10 +1,10 @@
 import { getCollectionIdValueFromReference } from "embedding-sdk-bundle/store/collections";
-import type { SdkStore } from "embedding-sdk-bundle/store/types";
+import { createDashboard as createDashboardMutation } from "metabase/api/dashboard";
+import type { SdkStore } from "metabase/embed/sdk-bundle/store-types";
 import type {
   CreateDashboardValues,
   MetabaseDashboard,
-} from "embedding-sdk-bundle/types";
-import { createDashboard as createDashboardMutation } from "metabase/api/dashboard";
+} from "metabase/embed/sdk-bundle/types";
 
 export const createDashboard =
   (reduxStore: SdkStore) =>

@@ -3,8 +3,8 @@ import { useMemo, useState } from "react";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getCollectionIdSlugFromReference } from "embedding-sdk-bundle/store/collections";
-import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
 import { useGetCollectionQuery } from "metabase/api";
+import type { SdkCollectionId } from "metabase/embed/sdk-bundle/types/collection";
 import type { CollectionId } from "metabase-types/api";
 
 export const useCollectionData = (

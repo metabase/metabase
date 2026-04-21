@@ -4,11 +4,14 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import type { SdkState, SdkStoreState } from "embedding-sdk-bundle/store/types";
 import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
+import type {
+  SdkState,
+  SdkStoreState,
+} from "metabase/embed/sdk-bundle/store-types";
 import {
   createMockEmbedState,
   createMockState,

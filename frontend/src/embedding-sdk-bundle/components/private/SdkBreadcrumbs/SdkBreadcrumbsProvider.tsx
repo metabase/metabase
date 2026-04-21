@@ -4,7 +4,7 @@ import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/component
 import type {
   SdkBreadcrumbItem,
   SdkBreadcrumbsContextType,
-} from "embedding-sdk-bundle/types/breadcrumb";
+} from "metabase/embed/sdk-bundle/types/breadcrumb";
 
 import {
   removeBreadcrumbsAfterItem,

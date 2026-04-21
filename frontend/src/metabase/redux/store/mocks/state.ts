@@ -1,4 +1,4 @@
-import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import type { SdkStoreState } from "metabase/embed/sdk-bundle/store-types";
 import type { State } from "metabase/redux/store";
 import { createMockUser } from "metabase-types/api/mocks";
 

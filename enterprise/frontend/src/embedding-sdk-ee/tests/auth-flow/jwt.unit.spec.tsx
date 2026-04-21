@@ -16,8 +16,8 @@ import {
   MOCK_VALID_JWT_RESPONSE,
   setupMockJwtEndpoints,
 } from "embedding-sdk-bundle/test/mocks/sso";
-import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { defineMetabaseAuthConfig } from "embedding-sdk-shared/lib/define-metabase-auth-config";
+import type { MetabaseProviderProps } from "metabase/embed/sdk-bundle/types/metabase-provider";
 import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import { setupEmbeddingSdkEnterprisePlugins } from "../support";

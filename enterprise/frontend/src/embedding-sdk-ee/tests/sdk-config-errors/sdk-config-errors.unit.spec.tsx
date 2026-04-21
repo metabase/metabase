@@ -14,8 +14,8 @@ import {
   setupMockJwtEndpoints,
 } from "embedding-sdk-bundle/test/mocks/sso";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import { defineMetabaseAuthConfig } from "embedding-sdk-shared/lib/define-metabase-auth-config";
+import type { MetabaseAuthConfig } from "metabase/embed/sdk-bundle/types";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { setupEmbeddingSdkEnterprisePlugins } from "../support";

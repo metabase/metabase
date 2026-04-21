@@ -1,7 +1,7 @@
 import { useContext } from "react";
 
 import { SdkBreadcrumbsContext } from "embedding-sdk-bundle/components/private/SdkBreadcrumbs";
-import type { SdkBreadcrumbsContextType } from "embedding-sdk-bundle/types/breadcrumb";
+import type { SdkBreadcrumbsContextType } from "metabase/embed/sdk-bundle/types/breadcrumb";
 
 export const useSdkBreadcrumbs = (): SdkBreadcrumbsContextType =>
   useContext(SdkBreadcrumbsContext) ?? EmptyBreadcrumbContext;

@@ -6,7 +6,7 @@ import { useDashboardLocationSync } from "metabase/dashboard/containers/Dashboar
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { LocaleProvider } from "metabase/embed/LocaleProvider";
-import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import { EmbeddingEntityContextProvider } from "metabase/embed/context";
 import { useEmbedFrameOptions, useSetEmbedFont } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";

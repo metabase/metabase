@@ -1,4 +1,4 @@
-import { setIsPublicEmbedding } from "metabase/embedding/config";
+import { setIsPublicEmbedding } from "metabase/embed/config";
 
 import { init } from "./app";
 import { publicReducers } from "./reducers-public";
