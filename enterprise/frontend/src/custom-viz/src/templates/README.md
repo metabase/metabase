@@ -17,7 +17,7 @@ npm run dev        # Watch mode — rebuilds and hot-reloads on changes
 npm run build
 ```
 
-The build output goes to `dist/`, ready to be loaded into Metabase. Those files needs be committed into the repo to be later by Metabase.
+The build output goes to `dist/`, ready to be loaded into Metabase. Those files need be committed into the repo to be later used by Metabase.
 
 ### Project structure
 
@@ -39,17 +39,17 @@ tsconfig.json
 
 To develop against a live Metabase instance with hot-reload:
 
-1. Start Metabase with dev mode enabled:
+1. Run `npm run dev` — changes hot-reload automatically in Metabase.
+
+2. Start Metabase with dev mode enabled:
 
    ```
    MB_CUSTOM_VIZ_PLUGIN_DEV_MODE_ENABLED=true
    ```
 
-2. In Metabase, go to **Admin → Custom visualizations → Development**.
+3. In Metabase, go to **Admin → Custom visualizations → Development**.
 
-3. Register your plugin and set the dev server URL to `http://localhost:5174`.
-
-4. Run `npm run dev` — changes hot-reload automatically in Metabase.
+4. Register your plugin and set the dev server URL to `http://localhost:5174`.
 
 ---
 
@@ -267,7 +267,7 @@ const StaticVisualizationComponent = ({
   return (
     <svg viewBox={`0 0 540 360`} xmlns="http://www.w3.org/2000/svg">
       {/* Pure rendering — no event handlers */}
-    </div>
+    </svg>
   );
 };
 ```
