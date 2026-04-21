@@ -718,11 +718,15 @@
 ;; Computed lazily so the registry has time to populate at app init before first search.
 (def ^:private collection-id-only-search-models
   (delay
-    (let [registered-t2-models (perms/collection-id-only-read-models)]
+    ;; Force `(search/specifications)` first: its `t2/resolve-model` calls load the namespaces
+    ;; whose `perms/define-collection-id-only-read-perms!` invocations populate the registry.
+    ;; Reading the registry before this would risk caching an empty set for the JVM lifetime.
+    (let [specs                (search/specifications)
+          registered-t2-models (perms/collection-id-only-read-models)]
       (into #{"indexed-entity"}
             (comp (filter (fn [[_ spec]] (contains? registered-t2-models (:model spec))))
                   (map key))
-            (search/specifications)))))
+            specs))))
 
 (defn- filter-read-permitted
   "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
