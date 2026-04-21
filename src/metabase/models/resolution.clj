@@ -122,6 +122,10 @@
     :model/TransformTag                      metabase.transforms.models.transform-tag
     :model/TransformTransformTag             metabase.transforms.models.transform-transform-tag
     :model/Undo                              metabase-enterprise.action-v2.models.undo
+    :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily
+    :model/SourceDimensionProfileDaily       metabase.usage-metadata.models.source-dimension-profile-daily
+    :model/SourceMetricDaily                 metabase.usage-metadata.models.source-metric-daily
+    :model/SourceSegmentDaily                metabase.usage-metadata.models.source-segment-daily
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value
     :model/UserParameterValue                metabase.users.models.user-parameter-value

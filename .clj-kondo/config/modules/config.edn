@@ -2333,6 +2333,23 @@
                     :model/Field
                     :model/Table}}
 
+  usage-metadata
+  {:team "UX West"
+   :api  #{metabase.usage-metadata.init}
+   :model-imports #{:model/Card
+                    :model/Field
+                    :model/Query
+                    :model/QueryExecution
+                    :model/Segment
+                    :model/Table}
+   :uses #{lib
+           lib-be
+           models
+           queries
+           settings
+           task
+           util}}
+
   user-key-value
   {:team "UX West"
    :api  #{metabase.user-key-value.api
