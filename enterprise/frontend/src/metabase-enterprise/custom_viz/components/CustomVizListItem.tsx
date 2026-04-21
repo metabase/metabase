@@ -19,6 +19,11 @@ import {
 } from "metabase-enterprise/api";
 import type { CustomVizPlugin, CustomVizPluginId } from "metabase-types/api";
 
+import {
+  trackCustomVizPluginRefreshed,
+  trackCustomVizPluginToggled,
+} from "../analytics";
+
 import { CustomVizIcon } from "./CustomVizIcon";
 import S from "./CustomVizListItem.module.css";
 
@@ -44,10 +49,12 @@ export function CustomVizListItem({ plugin, onDelete }: Props) {
 
   const handleToggleEnabled = useCallback(async () => {
     await updatePlugin({ id: plugin.id, enabled: !plugin.enabled });
+    trackCustomVizPluginToggled(plugin.enabled ? "disabled" : "enabled");
   }, [plugin.id, plugin.enabled, updatePlugin]);
 
   const handleRefresh = useCallback(async () => {
     await refreshPlugin(plugin.id);
+    trackCustomVizPluginRefreshed();
   }, [plugin.id, refreshPlugin]);
 
   return (
