@@ -56,6 +56,8 @@ cypress.env.json
 /lein-plugins/*/target
 /local
 /locales/metabase-*.pot
+# Pseudo-locale generated at build time
+/locales/en-ZZ.po
 /logs
 /modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
@@ -145,8 +147,6 @@ modules/drivers/*/.lsp/*
 
 .github/static-viz-sources.yaml
 
-# airgap
-/resources/airgap/
 
 # swc
 .swc/
@@ -177,3 +177,4 @@ CLAUDE.local.md
 /resources/python-sources/.lock
 __pycache__/
 .mcp.json
+.claude/worktrees

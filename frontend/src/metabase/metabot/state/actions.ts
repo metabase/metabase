@@ -9,11 +9,13 @@ import {
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
+import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { getIsWorkspace } from "metabase/selectors/routing";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
+import { createAsyncThunk } from "metabase/utils/redux";
 import type {
   JSONValue,
   MetabotAgentRequest,
@@ -21,7 +23,6 @@ import type {
   MetabotChatContext,
   MetabotTransformInfo,
 } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
 
 import { METABOT_ERR_MSG } from "../constants";
 
@@ -70,10 +71,15 @@ export const {
   removeSuggestedCodeEdit,
 } = metabot.actions;
 
-type PromptErrorOutcome = {
-  errorMessage: MetabotErrorMessage | false;
-  shouldRetry: boolean;
-};
+type PromptErrorOutcome =
+  | {
+      errorMessage: MetabotErrorMessage;
+      shouldRetry: boolean;
+    }
+  | {
+      errorMessage: false;
+      shouldRetry: boolean;
+    };
 
 const handleResponseError = (
   error: unknown,
@@ -95,6 +101,20 @@ const handleResponseError = (
         shouldRetry: true,
       }),
     )
+    .with({ status: 402, "error-code": "metabase_ai_managed_locked" }, () => ({
+      errorMessage: {
+        type: "locked" as const,
+        message: METABOT_ERR_MSG.locked,
+      },
+      shouldRetry: true,
+    }))
+    .with({ status: P.number, message: P.string }, ({ message }) => ({
+      errorMessage: {
+        type: "message" as const,
+        message: METABOT_ERR_MSG.format(message),
+      },
+      shouldRetry: true,
+    }))
     .with(P.string, (err) => ({
       errorMessage: {
         type: "message" as const,
@@ -171,8 +191,20 @@ export type MetabotPromptSubmissionResult =
       shouldRetry?: void;
       data?: SendAgentRequestResult;
     }
-  | { prompt: string; success: false; shouldRetry: false; data?: void }
-  | { prompt: string; success: false; shouldRetry: true; data?: void };
+  | {
+      prompt: string;
+      success: false;
+      shouldRetry: false;
+      errorMessage?: MetabotErrorMessage;
+      data?: void;
+    }
+  | {
+      prompt: string;
+      success: false;
+      shouldRetry: true;
+      errorMessage?: MetabotErrorMessage;
+      data?: void;
+    };
 
 export const submitInput = createAsyncThunk<
   MetabotPromptSubmissionResult,
@@ -269,7 +301,15 @@ export const submitInput = createAsyncThunk<
             "shouldRetry" in result.payload &&
             (result.payload?.shouldRetry ?? {})) ??
           false;
-        return { prompt: rawPrompt, success: false, shouldRetry };
+        return {
+          prompt: rawPrompt,
+          success: false,
+          shouldRetry,
+          errorMessage:
+            result.payload?.type === "error"
+              ? result.payload.errorMessage || undefined
+              : undefined,
+        };
       }
 
       return { prompt, success: true, data: result.payload };
@@ -277,7 +317,15 @@ export const submitInput = createAsyncThunk<
       // NOTE: all errors should be caught above, this is is a catch-all
       // to make sure that this async action always resolves to a value
       console.error(error);
-      return { prompt, success: false, shouldRetry: true };
+      return {
+        prompt,
+        success: false,
+        shouldRetry: true,
+        errorMessage: {
+          type: "message",
+          message: METABOT_ERR_MSG.default,
+        },
+      };
     }
   },
 );
@@ -337,6 +385,10 @@ export const sendAgentRequest = createAsyncThunk<
               })
               .with({ type: "code_edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
+
+                if (part.value.buffer_id === "qb") {
+                  dispatch(setIsNativeEditorOpen(true));
+                }
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));

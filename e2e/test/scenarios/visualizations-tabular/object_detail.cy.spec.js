@@ -584,7 +584,10 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
         .eq("7")
         .as("stateItem")
         .should("have.text", "State");
-      H.moveDnDKitElementByAlias("@stateItem", { vertical: -300 });
+      H.moveDnDKitElementByAlias("@stateItem", {
+        vertical: -300,
+        useMouseEvents: true,
+      });
     });
 
     H.openObjectDetail(0);

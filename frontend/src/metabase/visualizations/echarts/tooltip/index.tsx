@@ -7,8 +7,8 @@ import {
   EMBEDDING_SDK_PORTAL_ROOT_ELEMENT_ID,
   isEmbeddingSdk,
 } from "metabase/embedding-sdk/config";
-import { getObjectValues } from "metabase/lib/objects";
-import { isNotNull } from "metabase/lib/types";
+import { getCspNonce } from "metabase/utils/csp";
+import { isNotNull } from "metabase/utils/types";
 import TooltipStyles from "metabase/visualizations/components/ChartTooltip/EChartsTooltip/EChartsTooltip.module.css";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { ClickObject } from "metabase-lib";
@@ -134,7 +134,7 @@ export const useInjectSeriesColorsClasses = (hexColors: string[]) => {
   const style = useMemo(
     () =>
       cssString !== null ? (
-        <style nonce={window.MetabaseNonce}>{cssString}</style>
+        <style nonce={getCspNonce()}>{cssString}</style>
       ) : null,
     [cssString],
   );
@@ -178,7 +178,7 @@ export const useCartesianChartSeriesColorsClasses = (
 
 export const useSankeyChartColorsClasses = (chartModel: SankeyChartModel) => {
   const hexColors = useMemo(() => {
-    return getObjectValues(chartModel.nodeColors).filter(isNotNull);
+    return Object.values(chartModel.nodeColors).filter(isNotNull);
   }, [chartModel]);
 
   return useInjectSeriesColorsClasses(hexColors);

@@ -129,6 +129,14 @@
    :transform-rolling-advanced-runs        0
    :transform-rolling-usage-date (today)})
 
+(defenterprise transform-metered-as
+  "Return the meter bucket a new transform run of the given source-type counts toward,
+   based on the instance's current premium features. Returns nil when the run is not metered
+   (including all OSS runs, since premium features are never present there)."
+  metabase-enterprise.transforms.core
+  [_source-type]
+  nil)
+
 (defn metering-stats
   "Collect metering statistics for billing purposes. Used by both token check and metering task. "
   []
@@ -172,6 +180,7 @@
    [:company       {:optional true} [:string {:min 1}]]
    [:store-users   {:optional true} [:maybe [:sequential [:map
                                                           [:email :string]]]]]
+   [:meters        {:optional true} :map]
    [:quotas        {:optional true} [:sequential [:map]]]])
 
 (defn- http-fetch
@@ -192,8 +201,9 @@
       (http/success? resp) (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :success})
                                (some-> body json/decode+kw (assoc :canonical? true)))
       (<= 400 status 499) (or (some-> body json/decode+kw (assoc :canonical? true))
-                              {:valid false
-                               :status "Unable to validate token"
+                              {:valid         false
+                               :canonical?    false
+                               :status        "Unable to validate token"
                                :error-details "Token validation provided no response"})
       ;; exceptions are not cached.
       :else (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure})
@@ -210,13 +220,10 @@
   (when-let [token (premium-features.settings/premium-embedding-token)]
     (when (mr/validate [:re RemoteCheckedToken] token)
       (tracing/with-span :tasks "metering.send-events" {}
-        (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)
-              stats (-> (metering-stats)
-                        ;; for backwards compatibility, we send values as strings
-                        (update-vals str))]
+        (let [site-uuid (premium-features.settings/site-uuid-for-premium-features-token-checks)]
           (try
             (http/post (metering-url token token-check-url)
-                       {:body (json/encode (merge stats
+                       {:body (json/encode (merge (metering-stats)
                                                   {:site-uuid site-uuid
                                                    :mb-version (:tag config/mb-version-info)}))
                         :content-type :json
@@ -276,12 +283,13 @@
         (mr/validate [:re AirgapToken] token)
         (do
           (log/infof "Checking airgapped token '%s'..." (u.str/mask token))
-          (decode-airgap-token token))
+          (assoc (decode-airgap-token token) :canonical? true))
 
         :else
         (do
           (log/error (u/format-color 'red "Invalid token format!"))
           {:valid         false
+           :canonical?    true
            :status        "invalid"
            :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")})))
 
@@ -481,6 +489,7 @@
                (log/infof "Error checking token: %s" (ex-message e))
                (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure}))
              {:valid         false
+              :canonical?    false
               :status        (tru "Unable to validate token")
               :error-details (.getMessage e)})))
     (-clear-cache! [_] (-clear-cache! token-checker))))
@@ -621,6 +630,14 @@
           (check-token)
           :quotas))
 
+(mu/defn meters :- [:maybe :map]
+  "Returns a map of current metered usage for the subscription."
+  []
+  (clear-cache!)
+  (some-> (premium-features.settings/premium-embedding-token)
+          (check-token)
+          :meters))
+
 (defn has-any-features?
   "True if we have a valid premium features token with ANY features."
   []
@@ -633,6 +650,16 @@
     (has-feature? :toucan-management)  ; -> false"
   [feature]
   (contains? (*token-features*) (name feature)))
+
+(defn canonically-has-feature?
+  "Returns `true` if the token definitively has `feature`, `false` if it definitively does not, or `nil` if the token
+  status is indeterminate (e.g., network failure, timeout). Returns `false` (not `nil`) when no token is configured."
+  [feature]
+  (if-let [token (premium-features.settings/premium-embedding-token)]
+    (let [result (check-token token)]
+      (when (:canonical? result)
+        (boolean (contains? (set (:features result)) (name feature)))))
+    false))
 
 (defn ee-feature-error
   "Returns an error that can be used to throw when an enterprise feature check fails."
@@ -657,6 +684,12 @@
    feature-name :- [:or string? mu/localized-string-schema]]
   (when-not (some has-feature? feature-flag)
     (throw (ee-feature-error feature-name))))
+
+(defn is-trial?
+  "True if the current premium token is a trial subscription.
+   Returns false if there is no token or the status cannot be fetched."
+  []
+  (-> (-token-status) :trial boolean))
 
 (defn log-enabled?
   "Returns true when we should record audit data into the audit log."

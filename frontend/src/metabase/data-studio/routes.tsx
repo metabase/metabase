@@ -2,16 +2,16 @@ import type { Store } from "@reduxjs/toolkit";
 import type { ComponentType } from "react";
 import { IndexRoute, Route } from "react-router";
 
-import * as Urls from "metabase/lib/urls";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
   PLUGIN_WORKSPACES,
 } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
-import type { State } from "metabase-types/store";
+import * as Urls from "metabase/utils/urls";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";

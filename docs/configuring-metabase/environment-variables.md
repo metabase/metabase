@@ -900,7 +900,7 @@ Key to retrieve the JWT user's tenant attributes.
 - Default: `false`
 - [Configuration file name](./config-file.md): `jwt-enabled`
 
-Is JWT authentication configured and enabled?
+Is JWT authentication enabled?
 
 When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
         This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.
@@ -1948,6 +1948,13 @@ Client Secret for your Slack app.
 - [Configuration file name](./config-file.md): `slack-connect-enabled`
 
 Is Slack Connect authentication configured and enabled?
+
+### `MB_SLACK_CONNECT_SIGNING_SECRET_VERSION`
+
+- Type: integer
+- Default: `0`
+
+Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value. Legacy identities without a version are treated as version 0 for backwards compatibility.
 
 ### `MB_SLACK_CONNECT_USER_PROVISIONING_ENABLED`
 

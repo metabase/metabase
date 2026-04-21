@@ -1,16 +1,29 @@
-import fetchMock, { type UserRouteConfig } from "fetch-mock";
+import fetchMock, {
+  type RouteResponse,
+  type UserRouteConfig,
+} from "fetch-mock";
 
 import type {
+  MetabotGroupLimit,
   MetabotGroupPermission,
   MetabotId,
   MetabotInfo,
+  MetabotInstanceLimit,
   MetabotSettingsResponse,
+  MetabotTenantLimit,
+  PurchaseCloudAddOnRequest,
   SuggestedMetabotPrompt,
   SuggestedMetabotPromptsResponse,
   UpdateMetabotSettingsRequest,
   UserMetabotPermissionsResponse,
 } from "metabase-types/api";
 import { createMockUserMetabotPermissions } from "metabase-types/api/mocks/metabot";
+
+const METABASE_MANAGED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
+  "metabase-ai-managed";
+const METABASE_TIERED_AI_PRODUCT_TYPE: PurchaseCloudAddOnRequest["product_type"] =
+  "metabase-ai-tiered";
+const METABASE_MANAGED_AI_UNIT_MULTIPLIER = 1_000_000;
 
 export function setupMetabotsEndpoints(
   metabots: MetabotInfo[],
@@ -151,6 +164,76 @@ export function setupUpdateMetabotSettingsEndpointWithError(
   fetchMock.put("path:/api/metabot/settings", { status, body });
 }
 
+type SetupMetabaseManagedAiEndpointsOptions = {
+  billingPeriodMonths?: number;
+  metabasePricePerUnit?: number;
+  metabotUsageQuota?: {
+    is_locked?: boolean;
+    tokens: number | null;
+    free_tokens?: number | null;
+    updated_at: string | null;
+  } | null;
+  purchaseCloudAddOnResponse?: RouteResponse;
+  removeCloudAddOnResponse?: number | { status: number; body: unknown };
+};
+
+export function setupMetabaseManagedAiEndpoints({
+  billingPeriodMonths = 1,
+  metabasePricePerUnit = 3.75,
+  metabotUsageQuota = null,
+  purchaseCloudAddOnResponse = 200,
+  removeCloudAddOnResponse = 200,
+}: SetupMetabaseManagedAiEndpointsOptions = {}) {
+  fetchMock.get("path:/api/ee/metabot/usage", {
+    is_locked: metabotUsageQuota?.is_locked ?? false,
+    tokens: metabotUsageQuota?.tokens ?? null,
+    free_tokens: metabotUsageQuota?.free_tokens ?? null,
+    updated_at: metabotUsageQuota?.updated_at ?? null,
+  });
+
+  fetchMock.get("path:/api/ee/cloud-add-ons/addons", [
+    {
+      id: 1,
+      active: true,
+      self_service: true,
+      deployment: "cloud",
+      billing_period_months: billingPeriodMonths,
+      default_base_fee: 0,
+      default_included_units: 0,
+      default_prepaid_units: 1,
+      // The API returns a per-token price; tests pass a per-1M-tokens price.
+      default_price_per_unit:
+        metabasePricePerUnit / METABASE_MANAGED_AI_UNIT_MULTIPLIER,
+      default_total_units: 1,
+      description: null,
+      is_metered: true,
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used for fetch mock only
+      name: "Metabase AI",
+      product_tiers: [],
+      product_type: METABASE_MANAGED_AI_PRODUCT_TYPE,
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- Used for fetch mock only
+      short_name: "Metabase AI",
+      token_features: [],
+      trial_days: null,
+    },
+  ]);
+
+  fetchMock.post(
+    `path:/api/ee/cloud-add-ons/${METABASE_MANAGED_AI_PRODUCT_TYPE}`,
+    purchaseCloudAddOnResponse,
+  );
+
+  fetchMock.delete(
+    `path:/api/ee/cloud-add-ons/${METABASE_MANAGED_AI_PRODUCT_TYPE}`,
+    removeCloudAddOnResponse,
+  );
+
+  fetchMock.delete(
+    `path:/api/ee/cloud-add-ons/${METABASE_TIERED_AI_PRODUCT_TYPE}`,
+    removeCloudAddOnResponse,
+  );
+}
+
 const METABOT_GROUP_PERMISSIONS_ROUTE_NAME = "metabot-group-permissions";
 
 export function setupMetabotGroupPermissionsEndpoint(
@@ -177,6 +260,51 @@ export function setupUpdateMetabotGroupPermissionsEndpoint() {
   fetchMock.put("path:/api/ee/ai-controls/permissions", 200, {
     name: UPDATE_METABOT_GROUP_PERMISSIONS_ROUTE_NAME,
   });
+}
+
+const AI_CONTROLS_INSTANCE_LIMIT_ROUTE_NAME = "ai-controls-instance-limit";
+
+export function setupAIControlsInstanceLimitEndpoint(
+  response: MetabotInstanceLimit = { max_usage: null },
+) {
+  fetchMock.removeRoute(AI_CONTROLS_INSTANCE_LIMIT_ROUTE_NAME);
+  fetchMock.get("path:/api/ee/ai-controls/usage/instance", response, {
+    name: AI_CONTROLS_INSTANCE_LIMIT_ROUTE_NAME,
+  });
+}
+
+export function setupUpdateAIControlsInstanceLimitEndpoint() {
+  fetchMock.put("path:/api/ee/ai-controls/usage/instance", 200);
+}
+
+const AI_CONTROLS_GROUP_LIMITS_ROUTE_NAME = "ai-controls-group-limits";
+
+export function setupAIControlsGroupLimitsEndpoint(
+  response: MetabotGroupLimit[] = [],
+) {
+  fetchMock.removeRoute(AI_CONTROLS_GROUP_LIMITS_ROUTE_NAME);
+  fetchMock.get("path:/api/ee/ai-controls/usage/group", response, {
+    name: AI_CONTROLS_GROUP_LIMITS_ROUTE_NAME,
+  });
+}
+
+export function setupUpdateAIControlsGroupLimitEndpoint() {
+  fetchMock.put("express:/api/ee/ai-controls/usage/group/:id", 200);
+}
+
+const AI_CONTROLS_TENANT_LIMITS_ROUTE_NAME = "ai-controls-tenant-limits";
+
+export function setupAIControlsTenantLimitsEndpoint(
+  response: MetabotTenantLimit[] = [],
+) {
+  fetchMock.removeRoute(AI_CONTROLS_TENANT_LIMITS_ROUTE_NAME);
+  fetchMock.get("path:/api/ee/ai-controls/usage/tenant", response, {
+    name: AI_CONTROLS_TENANT_LIMITS_ROUTE_NAME,
+  });
+}
+
+export function setupUpdateAIControlsTenantLimitEndpoint() {
+  fetchMock.put("express:/api/ee/ai-controls/usage/tenant/:id", 200);
 }
 
 const USER_METABOT_PERMISSIONS_ROUTE_NAME = "metabot-user-permissions";

@@ -590,6 +590,7 @@
           field1s    (atom nil)
           field2s    (atom nil)
           field3s    (atom nil)
+          field4s    (atom nil)
           dash1s     (atom nil)
           dash2s     (atom nil)
           tab2s      (atom nil)
@@ -618,6 +619,7 @@
             (reset! field1s  (ts/create! :model/Field :name "subtotal" :table_id (:id @table1s)))
             (reset! field2s  (ts/create! :model/Field :name "invoice" :table_id (:id @table1s)))
             (reset! field3s  (ts/create! :model/Field :name "discount" :table_id (:id @table1s)))
+            (reset! field4s  (ts/create! :model/Field :name "quantity" :table_id (:id @table1s)))
             (reset! user1s   (ts/create! :model/User  :first_name "Tom" :last_name "Scholz" :email "tom@bost.on"))
             (reset! dash1s   (ts/create! :model/Dashboard :name "My Dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
             (reset! dash2s   (ts/create! :model/Dashboard :name "Linked dashboard" :collection_id (:id @coll1s) :creator_id (:id @user1s)))
@@ -674,7 +676,12 @@
                                                  :parameterMapping
                                                  {"qweqwe" {:id     "qweqwe"
                                                             :source {:id "DISCOUNT" :name "Discount" :type "column"}
-                                                            :target {:id "amount_between" :type "variable"}}}}}}
+                                                            :target {:id "amount_between" :type "variable"}}}}}
+                                               (json/encode [:ref [:field (:id @field4s) nil]])
+                                               {:click_behavior
+                                                {:type     "link"
+                                                 :linkType "url"
+                                                 :linkTemplate "https://example.com/order/{{QUANTITY}}"}}}
                                               :click_behavior     {:type     "link"
                                                                    :linkType "question"
                                                                    :targetId (:id @card1s)}}
@@ -747,7 +754,13 @@
                                                   :parameterMapping
                                                   {"qweqwe" {:id "qweqwe"
                                                              :source {:id "DISCOUNT" :name "Discount" :type "column"}
-                                                             :target {:id "amount_between" :type "variable"}}}}))]
+                                                             :target {:id "amount_between" :type "variable"}}}})
+                                       (assoc-in [:column_settings
+                                                  (json/encode [:ref [:field [:my-db nil :orders :quantity] nil]])
+                                                  :click_behavior]
+                                                 {:type     "link"
+                                                  :linkType "url"
+                                                  :linkTemplate "https://example.com/order/{{QUANTITY}}"}))]
                   (is (= exp-card
                          (:visualization_settings card)))
                   (is (= exp-dashcard
@@ -1510,6 +1523,23 @@
                          (serdes.load/load-metabase! (ingestion-in-memory @serialized))))
             (is (= (str "qwe_" (:name coll))
                    (t2/select-one-fn :name :model/Collection :id (:id coll))))))))))
+
+(deftest path-error-data-handles-lookup-failure-test
+  (testing "path-error-data returns a well-formed map even when serdes/load-find-local throws
+            (e.g. because the outer load transaction is already poisoned by the real failure).
+            This is what lets the caller's ex-info still chain the original cause instead of
+            being replaced by a `current transaction is aborted` error from the enrichment lookup."
+    (with-redefs [serdes/load-find-local (fn [_] (throw (ex-info "current transaction is aborted" {})))]
+      (let [path   [{:model "Card" :id "some-entity-id"}]
+            result (#'serdes.load/path-error-data
+                    :metabase-enterprise.serialization.v2.load/load-failure
+                    #{}
+                    path)]
+        (is (nil? (:local-id result))
+            "local-id is nil when the lookup fails")
+        (is (= "Card" (:model result)))
+        (is (= :metabase-enterprise.serialization.v2.load/load-failure (:error result)))
+        (is (= [{:model "Card" :id "some-entity-id"}] (:path result)))))))
 
 (deftest circular-links-test
   (ts/with-dbs [source-db dest-db]

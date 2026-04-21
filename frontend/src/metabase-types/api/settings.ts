@@ -1,12 +1,14 @@
 import type { ReactNode } from "react";
 
 import type { SdkIframeEmbedSetupSettings } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import type { CurrencyStyle } from "metabase/lib/formatting";
+import type { CurrencyStyle } from "metabase/utils/formatting";
 
 import type { InputSettingType } from "./actions";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { GroupId } from "./group";
+import type { MetabotLimitPeriod, MetabotLimitType } from "./metabot";
+import type { NotificationRecipient } from "./notification";
 import type { UserId } from "./user";
 
 export interface OidcAuthProvider {
@@ -263,7 +265,10 @@ const tokenStatusFeatures = [
   "embedding-simple",
   "embedding-hub",
   "hosting",
+  "offer-metabase-ai-managed",
+  "metabase-ai-managed",
   "metabase-store-managed",
+  "metabot-v3",
   "no-upsell",
   "official-collections",
   "query-reference-validation",
@@ -326,6 +331,9 @@ export const tokenFeatures = [
   "embedding_sdk",
   "embedding_simple",
   "hosting",
+  "offer-metabase-ai-managed",
+  "metabase-ai-managed",
+  "metabot-v3",
   "official_collections",
   "sandboxes",
   "scim",
@@ -363,6 +371,7 @@ export const tokenFeatures = [
   "tenants",
   "workspaces",
   "writable_connection",
+  "admin_security_center",
   "ai_controls",
 ] as const;
 
@@ -502,6 +511,8 @@ interface AdminSettings {
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
   "embedding-hub-sso-auth-manual-tested": boolean;
+  "security-center-email-recipients": NotificationRecipient[] | null;
+  "security-center-slack-channel": string | null;
   "store-url": string;
   gsheets: Partial<GdrivePayload>;
   "license-token-missing-banner-dismissal-timestamp"?: Array<string>;
@@ -510,6 +521,7 @@ interface SettingsManagerSettings {
   "bcc-enabled?": boolean;
   "llm-openai-api-key"?: string;
   "llm-anthropic-api-key"?: string | null;
+  "llm-anthropic-api-base-url"?: string | null;
   "llm-openrouter-api-key"?: string | null;
   "openai-api-key": string | null;
   "openai-available-models"?: OpenAiModel[];
@@ -525,6 +537,8 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  "ai-features-enabled?": boolean;
+  "agent-api-enabled?": boolean;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
@@ -579,6 +593,7 @@ interface PublicSettings {
   "ldap-user-provisioning-enabled?": boolean;
   "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
+  "mcp-enabled?": boolean;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!
@@ -594,6 +609,9 @@ interface PublicSettings {
   "metabot-name": string;
   "metabot-icon": string | null;
   "metabot-show-illustrations": boolean;
+  "metabot-limit-unit": MetabotLimitType;
+  "metabot-limit-reset-rate": MetabotLimitPeriod;
+  "metabot-quota-reached-message": string | null;
   "metabot-chat-system-prompt": string | null;
   "metabot-nlq-system-prompt": string | null;
   "metabot-sql-system-prompt": string | null;
@@ -728,6 +746,7 @@ export interface EnterpriseSettings extends Settings {
   "send-new-sso-user-admin-email?"?: boolean;
   "jwt-configured"?: boolean;
   "jwt-enabled"?: boolean;
+  "jwt-enabled-and-configured"?: boolean;
   "jwt-user-provisioning-enabled?": boolean;
   "jwt-identity-provider-uri": string | null;
   "jwt-shared-secret": string | null;
@@ -776,6 +795,7 @@ export interface EnterpriseSettings extends Settings {
   "llm-metabot-provider"?: string | null;
   "llm-anthropic-api-key"?: string | null;
   "llm-anthropic-model": string;
+  "llm-proxy-configured?"?: boolean | null;
   "metabot-slack-signing-secret"?: string | null;
   "slack-connect-enabled"?: boolean | null;
   "slack-connect-client-id"?: string | null;

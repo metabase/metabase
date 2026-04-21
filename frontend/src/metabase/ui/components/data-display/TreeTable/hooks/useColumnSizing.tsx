@@ -2,13 +2,13 @@ import { type Row, type Table, flexRender } from "@tanstack/react-table";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Root } from "react-dom/client";
 
+import { SortableHeaderPill } from "metabase/ui";
+import { MeasurementProviders } from "metabase/ui/components/theme/MeasurementProviders";
 import {
-  MeasurementProviders,
   createMeasurementContainer,
   removeMeasurementContainer,
-} from "metabase/data-grid/utils/measure-utils";
-import { renderRoot } from "metabase/lib/react-compat";
-import { SortableHeaderPill } from "metabase/ui";
+} from "metabase/utils/measure-container";
+import { renderRoot } from "metabase/utils/react-compat";
 
 import {
   CELL_HORIZONTAL_PADDING,

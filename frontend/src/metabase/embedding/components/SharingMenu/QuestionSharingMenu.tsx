@@ -3,7 +3,6 @@ import { t } from "ttag";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { setUIControls } from "metabase/redux/query-builder";
 import {
@@ -11,6 +10,7 @@ import {
   getUserIsAdmin,
 } from "metabase/selectors/user";
 import { Flex } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 
 import { useSharingModal } from "../../hooks/use-sharing-modal";

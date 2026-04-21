@@ -441,6 +441,39 @@
                #_{:clj-kondo/ignore [:deprecated-var]}
                (is (= #{} (driver/describe-table-fks :snowflake (mt/db) dynamic-table)))))))))))
 
+(deftest ^:sequential describe-table-fields-uuid-column-test
+  (mt/test-driver :snowflake
+    (testing "Snowflake tables with UUID columns should sync successfully (#71595)"
+      (let [db-name    (#'driver.snowflake/db-name (mt/db))
+            table-name (str "uuid_test_" (u.random/random-name))]
+        (sql-jdbc.execute/do-with-connection-with-options
+         :snowflake
+         (mt/db)
+         nil
+         (fn [^java.sql.Connection conn]
+           (try
+             (doseq [stmt [(format "CREATE OR REPLACE TABLE \"%s\".\"PUBLIC\".\"%s\" (\"uuid_col\" UUID, \"name\" VARCHAR, \"description\" VARCHAR);"
+                                   db-name table-name)
+                           (format "INSERT INTO \"%s\".\"PUBLIC\".\"%s\" VALUES ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'test', 'a row');"
+                                   db-name table-name)]]
+               (jdbc/execute! {:connection conn} [stmt] {:transaction? false}))
+             (let [table  {:name table-name :schema "PUBLIC"}
+                   fields (sql-jdbc.sync/describe-table-fields :snowflake conn table db-name)]
+               (testing "All columns including UUID should be synced"
+                 (is (= #{"uuid_col" "name" "description"}
+                        (into #{} (map :name) fields))))
+               (testing "UUID column should have a usable base type"
+                 (let [uuid-field (first (filter #(= "uuid_col" (:name %)) fields))]
+                   (is (some? uuid-field)
+                       "UUID column should exist as a synced field")
+                   (when uuid-field
+                     (is (isa? (:base-type uuid-field) :type/*)
+                         "UUID column should have a valid base type")))))
+             (finally
+               (jdbc/execute! {:connection conn}
+                              [(format "DROP TABLE IF EXISTS \"%s\".\"PUBLIC\".\"%s\";" db-name table-name)]
+                              {:transaction? false})))))))))
+
 (deftest ^:sequential describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"

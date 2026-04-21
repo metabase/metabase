@@ -24,18 +24,40 @@
    :fifo/threshold threshold))
 
 (defn context
-  "Create a new org.graalvm.polyglot.Context suitable to evaluate javascript"
+  "Create a sandboxed org.graalvm.polyglot.Context for evaluating untrusted javascript
+  (e.g. custom viz plugins). No host access, no class lookup, no filesystem I/O.
+  All data must be passed as JSON strings and parsed in JS."
   ^Context []
   (.. (Context/newBuilder (into-array String ["js"]))
       ;; https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md
       (option "engine.WarnInterpreterOnly" "false")
       (option "js.intl-402" "true")
-      (allowHostAccess HostAccess/ALL)
+      (allowHostAccess HostAccess/NONE)
       (allowHostClassLookup (reify java.util.function.Predicate
-                              (test [_ _] true)))
+                              (test [_ _] false)))
       (out System/out)
       (err System/err)
-      (allowIO true)
+      (allowIO false)
+      (build)))
+
+(defn trusted-context
+  "Create an org.graalvm.polyglot.Context for trusted first-party javascript only.
+  Allows reading Clojure collections from JS (list/array access) but still blocks
+  Java class lookup, method invocation, and filesystem I/O."
+  ^Context []
+  (.. (Context/newBuilder (into-array String ["js"]))
+      (option "engine.WarnInterpreterOnly" "false")
+      (option "js.intl-402" "true")
+      (allowHostAccess (.. (HostAccess/newBuilder)
+                           (allowListAccess true)
+                           (allowArrayAccess true)
+                           (allowIterableAccess true)
+                           (build)))
+      (allowHostClassLookup (reify java.util.function.Predicate
+                              (test [_ _] false)))
+      (out System/out)
+      (err System/err)
+      (allowIO false)
       (build)))
 
 (defn load-js-string

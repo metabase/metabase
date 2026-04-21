@@ -2,7 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
+   [metabase.mcp.api :as mcp.api]
+   [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
    [metabase.search.test-util :as search.tu]
@@ -11,6 +14,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
+   [throttle.core :as throttle]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -107,6 +111,21 @@
       (is (= 401 (:status response)))
       (is (= -32603 (get-in response [:body :error :code]))))))
 
+(deftest mcp-enabled-setting-test
+  (testing "external MCP requests return 403 when disabled"
+    (mt/with-temporary-setting-values [mcp.settings/mcp-enabled? false]
+      (let [response (mcp-request (jsonrpc-request "initialize"))]
+        (is (= 403 (:status response)))
+        (is (= "MCP server is not enabled." (:body response)))))))
+
+(deftest ai-features-enabled-setting-test
+  (testing "external MCP requests return 403 when AI features are globally disabled"
+    (mt/with-temporary-raw-setting-values [:ai-features-enabled? "false"
+                                           :mcp-enabled?         "true"]
+      (let [response (mcp-request (jsonrpc-request "initialize"))]
+        (is (= 403 (:status response)))
+        (is (= "AI features are not enabled." (:body response)))))))
+
 (deftest initialize-test
   (testing "initialize returns protocol version, capabilities, and server info"
     (let [[session-id response] (initialize!)]
@@ -162,7 +181,27 @@
       (testing "each tool has a description and inputSchema"
         (doseq [tool tools]
           (is (string? (:description tool)))
-          (is (map? (:inputSchema tool))))))))
+          (is (map? (:inputSchema tool)))))
+      (testing "search description guides clients toward the expected array shape"
+        (let [tools-by-name   (into {} (map (juxt :name identity)) tools)
+              search-tool     (get tools-by-name "search")
+              property-schema (fn [tool-name property-name]
+                                (or (get-in tools-by-name [tool-name :inputSchema :properties property-name])
+                                    (get-in tools-by-name [tool-name :inputSchema :properties (keyword property-name)])))
+              collect-leaves  (fn collect-leaves [schema]
+                                (cond
+                                  (nil? schema)         []
+                                  (:oneOf schema)       (mapcat collect-leaves (:oneOf schema))
+                                  (:anyOf schema)       (mapcat collect-leaves (:anyOf schema))
+                                  :else                 [schema]))
+              leaf-types      (fn [schema] (set (keep :type (collect-leaves schema))))
+              array-branch    (fn [schema]
+                                (some #(when (= "array" (:type %)) %) (collect-leaves schema)))]
+          (is (str/includes? (:description search-tool) "arrays of strings"))
+          (is (contains? (leaf-types (property-schema "search" "term_queries")) "array"))
+          (is (= "string" (get-in (array-branch (property-schema "search" "term_queries")) [:items :type])))
+          (is (contains? (leaf-types (property-schema "search" "semantic_queries")) "array"))
+          (is (= "string" (get-in (array-branch (property-schema "search" "semantic_queries")) [:items :type]))))))))
 
 (deftest ping-test
   (testing "ping returns empty result"
@@ -215,6 +254,33 @@
         (is (= 200 (:status response)))
         (is (nil? (:isError result)))
         (is (= "text" (:type (first (:content result)))))
+        (let [search-data (json/decode+kw (:text (first (:content result))))]
+          (is (contains? search-data :data))
+          (is (contains? search-data :total_count))))))
+
+  (testing "search accepts a singleton string as a one-element query list"
+    (search.tu/with-legacy-search
+      (let [[session-id _] (initialize!)
+            response       (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name      "search"
+                                                          :arguments {:term_queries "orders"}})
+                                        {"mcp-session-id" session-id})
+            result         (get-in response [:body :result])]
+        (is (= 200 (:status response)))
+        (is (nil? (:isError result)))
+        (let [search-data (json/decode+kw (:text (first (:content result))))]
+          (is (contains? search-data :data))))))
+
+  (testing "search coerces JSON-stringified arrays so clients that serialize args through a string layer still work"
+    (search.tu/with-legacy-search
+      (let [[session-id _] (initialize!)
+            response       (mcp-request (jsonrpc-request "tools/call"
+                                                         {:name      "search"
+                                                          :arguments {:term_queries "[\"orders\"]"}})
+                                        {"mcp-session-id" session-id})
+            result         (get-in response [:body :result])]
+        (is (= 200 (:status response)))
+        (is (nil? (:isError result)))
         (let [search-data (json/decode+kw (:text (first (:content result))))]
           (is (contains? search-data :data))
           (is (contains? search-data :total_count)))))))
@@ -386,8 +452,11 @@
                                     (reset! streamed? true)
                                     (original-fn response))]
         (let [[session-id _] (initialize!)
-              construct-data (call-tool session-id "construct_query" {:table_id (mt/id :orders) :limit 5})
-              execute-data   (call-tool session-id "execute_query"   {:query (:query construct-data)})]
+              construct-data (call-tool session-id "construct_query"
+                                        {:source     {:type "table" :id (mt/id :orders)}
+                                         :operations [["limit" 5]]})
+              execute-data   (call-tool session-id "execute_query"
+                                        {:query (:query construct-data)})]
           (is (true? @streamed?) "execute_query should use the streaming response path")
           (is (=? {:status    "completed"
                    :row_count 5
@@ -513,3 +582,29 @@
                      (#'mcp.tools/invoke-agent-api :get (str "/v1/table/" (mt/id :orders)) #{::scope/unrestricted} nil))]
         (is (not (:isError result))
             "Agent API should accept unrestricted scopes")))))
+
+(deftest mcp-does-not-depend-on-external-agent-api-setting-test
+  (testing "MCP tool calls still work when the external Agent API is disabled"
+    (mt/with-temporary-setting-values [agent-api.settings/agent-api-enabled? false]
+      (let [result (mt/with-current-user (mt/user->id :crowberto)
+                     (mcp.tools/call-tool #{::scope/unrestricted} "get_table" {:id (mt/id :orders)}))]
+        (is (not (:isError result)))))))
+
+;;; ------------------------------------------------- Throttling ---------------------------------------------------
+
+(deftest mcp-throttle-returns-429-test
+  (testing "MCP endpoint returns 429 with JSON-RPC error when rate-limited"
+    (let [[session-id _] (initialize!)]
+      ;; Replace throttler after initialization so the handshake doesn't consume attempts
+      (with-redefs [mcp.api/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)]
+        ;; First request succeeds (consumes the single attempt)
+        (is (= 200 (:status (mcp-request (jsonrpc-request "ping")
+                                         {"mcp-session-id" session-id}))))
+        ;; Second request should be throttled
+        (is (=? {:status  429
+                 :headers {"Retry-After" string?}
+                 :body    {:jsonrpc "2.0"
+                           :error   {:code    -32000
+                                     :message #(str/starts-with? % "Too many attempts!")}}}
+                (mcp-request (jsonrpc-request "ping")
+                             {"mcp-session-id" session-id})))))))

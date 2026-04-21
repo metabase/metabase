@@ -135,7 +135,7 @@
    query-string                              :- [:maybe ms/NonBlankString]]
   (let [card-id (:card_id config)
         card    (t2/select-one :model/Card :id card-id)]
-    (values-from-card card (lib/->pMBQL (:value_field config)) {:query-string query-string})))
+    (values-from-card card (lib/->mbql5 (:value_field config)) {:query-string query-string})))
 
 (defn- can-get-card-values?
   [card value-field]

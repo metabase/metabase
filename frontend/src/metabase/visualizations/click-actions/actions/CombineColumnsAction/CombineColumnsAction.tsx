@@ -1,14 +1,12 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCombineViaPlusModal } from "metabase/querying/analytics";
 import {
   CombineColumns,
   hasCombinations,
 } from "metabase/querying/components/expressions";
 import { setUIControls } from "metabase/redux/query-builder";
+import { useDispatch } from "metabase/utils/redux";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
@@ -34,12 +32,11 @@ export const CombineColumnsAction: LegacyDrill = ({ question, clicked }) => {
     onChangeCardAndRun,
     onClose,
   }: ClickActionPopoverProps) => {
-    const currentQuestion = useSelector(getQuestion);
     const dispatch = useDispatch();
 
     function handleSubmit(name: string, clause: Lib.ExpressionClause) {
       const newQuery = Lib.expression(query, stageIndex, name, clause);
-      const nextQuestion = checkNotNull(currentQuestion).setQuery(newQuery);
+      const nextQuestion = question.setQuery(newQuery);
       const nextCard = nextQuestion.card();
 
       trackColumnCombineViaPlusModal(newQuery, nextQuestion);

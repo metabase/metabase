@@ -5,8 +5,8 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { Input } from "metabase/common/components/Input";
 import { Subhead } from "metabase/common/components/type/Subhead";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import { Text } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import type {
   PermissionEditorBreadcrumb,

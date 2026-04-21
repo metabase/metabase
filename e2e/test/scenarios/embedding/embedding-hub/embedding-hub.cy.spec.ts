@@ -27,7 +27,7 @@ describe("scenarios - embedding hub", () => {
         .should("exist");
     });
 
-    it('"Create a dashboard" card should work correctly', () => {
+    it('"Create a dashboard" card should show return toast after saving x-ray', () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Create a dashboard' card");
@@ -43,11 +43,24 @@ describe("scenarios - embedding hub", () => {
         H.pickEntity({ path: ["Databases", "Sample Database", "Accounts"] });
       });
 
-      cy.log("Should navigate to auto dashboard creation");
+      cy.log("Should navigate to auto dashboard with from param");
       cy.url().should("include", "/auto/dashboard/table/");
+      cy.url().should("include", "returnToEmbeddingSetupGuide=");
+
+      cy.log("Wait for x-ray dashboard to load and save it");
+      cy.findByRole("button", { name: "Save this", timeout: 30_000 }).click();
+
+      cy.log("Should show modal prompting to return to setup guide");
+      H.modal().within(() => {
+        cy.findByText("Dashboard saved!").should("be.visible");
+        cy.findByText("Return to the setup guide").click();
+      });
+
+      cy.log("Should navigate back to the setup guide");
+      cy.url().should("include", "/admin/embedding/setup-guide");
     });
 
-    it('"Connect a database" card should work correctly', () => {
+    it('"Connect a database" card should pass from param in navigation URL', () => {
       cy.visit("/admin/embedding/setup-guide");
 
       cy.log("Find and click on 'Connect a database' card");
@@ -59,6 +72,13 @@ describe("scenarios - embedding hub", () => {
       cy.findByRole("dialog").within(() => {
         cy.findByRole("heading", { name: "Add data" }).should("be.visible");
       });
+
+      cy.log("Select a database engine");
+      cy.findByRole("dialog").findByText("PostgreSQL").click();
+
+      cy.log("Should navigate with from param");
+      cy.url().should("include", "/admin/databases/create");
+      cy.url().should("include", "returnToEmbeddingSetupGuide=");
     });
 
     it("Uploading CSVs to sample database should mark the 'Add Data' step as done", () => {
@@ -255,7 +275,7 @@ describe("scenarios - embedding hub", () => {
     it("should link to user strategy when tenants are disabled", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.visit("/admin/embedding/setup-guide");
 
@@ -270,7 +290,7 @@ describe("scenarios - embedding hub", () => {
     it("should link to tenants page when tenants are enabled", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       H.updateSetting("use-tenants", true);
       cy.visit("/admin/embedding/setup-guide");
@@ -301,7 +321,7 @@ describe("scenarios - embedding hub", () => {
     it("permissions setup page should mark steps as completed", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
@@ -361,7 +381,7 @@ describe("scenarios - embedding hub", () => {
     it('"Enable tenants and create shared collection" button should enable tenants and create a shared collection', () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.log("create an x-ray dashboard via the embedding setup guide");
       cy.visit("/admin/embedding/setup-guide");
@@ -481,7 +501,7 @@ describe("scenarios - embedding hub", () => {
     it("enable-tenants step should not be marked as completed when tenants are enabled but no shared collection exists", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.log("enable tenants via setting without creating a shared collection");
       H.updateSetting("use-tenants", true);
@@ -508,7 +528,7 @@ describe("scenarios - embedding hub", () => {
     it('"Enable tenants and create shared collection" button should be disabled when already set up', () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.log("enable tenants and create a shared collection");
       H.updateSetting("use-tenants", true);
@@ -536,7 +556,7 @@ describe("scenarios - embedding hub", () => {
     it("selecting database routing strategy should show documentation link in step 3", () => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
@@ -576,7 +596,7 @@ describe("scenarios - embedding hub", () => {
       beforeEach(() => {
         H.restore("setup");
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
 
         cy.log("enable tenants and create shared collection");
         H.updateSetting("use-tenants", true);
@@ -785,7 +805,7 @@ describe("scenarios - embedding hub", () => {
       it("shows autocomplete suggestions for organization_id based on selected field values", () => {
         H.restore("postgres-12");
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
 
         cy.visit("/admin/embedding/setup-guide/permissions");
 
@@ -848,7 +868,7 @@ describe("scenarios - embedding hub", () => {
     it("shows RLS data permissions description in summary", () => {
       H.restore("postgres-12");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
@@ -931,7 +951,7 @@ describe("scenarios - embedding hub", () => {
     it("should create sandboxes for multiple tables via row-level security setup", () => {
       H.restore("postgres-12");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.intercept("PUT", "/api/permissions/graph").as(
         "updatePermissionsGraph",
@@ -1097,7 +1117,7 @@ describe("scenarios - embedding hub", () => {
     it("should update existing sandboxes when changing column selection", () => {
       H.restore("postgres-12");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       cy.intercept("PUT", "/api/permissions/graph").as(
         "updatePermissionsGraph",
@@ -1241,7 +1261,7 @@ describe("scenarios - embedding hub", () => {
       () => {
         H.restore("postgres-writable");
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
 
         cy.log(
           'reset "multi_schema" fixture: creates Domestic and Wild schemas, each with tables',
@@ -1384,7 +1404,7 @@ describe("scenarios - embedding hub", () => {
     beforeEach(() => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       H.updateSetting("use-tenants", true);
 
@@ -1622,6 +1642,13 @@ describe("scenarios - embedding hub", () => {
 
       cy.visit("/admin/embedding/setup-guide/permissions");
 
+      cy.log(
+        "wait for checklist to load and page to settle on the summary step",
+      );
+      H.main()
+        .findByRole("listitem", { name: "Summary", timeout: 10_000 })
+        .should("have.attr", "aria-current", "step");
+
       cy.log("reopen the strategy step and switch to connection impersonation");
       H.main()
         .findByRole("listitem", {
@@ -1687,7 +1714,7 @@ describe("scenarios - embedding hub", () => {
     beforeEach(() => {
       H.restore("setup");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       H.updateSetting("use-tenants", true);
 

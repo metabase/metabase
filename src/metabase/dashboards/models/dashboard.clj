@@ -402,22 +402,21 @@
    :skip      [;; those stats are inherently local state
                :view_count :last_viewed_at
                ;; this is deprecated
-               :cache_ttl
-               :dependency_analysis_version]
+               :cache_ttl]
    :transform {:created_at             (serdes/date)
                :initially_published_at (serdes/date)
                :collection_id          (serdes/fk :model/Collection)
                :creator_id             (serdes/fk :model/User)
                :made_public_by_id      (serdes/fk :model/User)
                :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
-               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id opts)
-               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id opts)}
-   :coerce {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}
-   :defaults {:archived                false
-              :archived_directly       false
-              :auto_apply_filters      true
-              :enable_embedding        false
-              :show_in_getting_started false}})
+               :tabs                   (serdes/nested :model/DashboardTab :dashboard_id (merge {:sort-by (juxt :position :created_at)} opts))
+               :dashcards              (serdes/nested :model/DashboardCard :dashboard_id (merge {:sort-by (juxt :dashboard_tab_id :row :col)} opts))}
+   :coerce    {:parameters [:maybe [:sequential ::parameters.schema/parameter]]}
+   :defaults  {:archived                false
+               :archived_directly       false
+               :auto_apply_filters      true
+               :enable_embedding        false
+               :show_in_getting_started false}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]

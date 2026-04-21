@@ -3,8 +3,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Radio } from "metabase/common/components/Radio";
-import { getFullName } from "metabase/lib/user";
 import { PLUGIN_IS_PASSWORD_USER } from "metabase/plugins";
+import { getFullName } from "metabase/utils/user";
 import type { User } from "metabase-types/api";
 
 import {

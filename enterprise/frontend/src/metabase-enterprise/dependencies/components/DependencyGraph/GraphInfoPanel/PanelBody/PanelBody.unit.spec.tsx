@@ -1,7 +1,7 @@
 import { Route } from "react-router";
 
 import { renderWithProviders, screen } from "__support__/ui";
-import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/utils/urls";
 import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 import {
   createMockCardDependencyNode,

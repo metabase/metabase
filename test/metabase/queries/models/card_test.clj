@@ -1,5 +1,6 @@
 (ns metabase.queries.models.card-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.api.common :as api]
@@ -376,7 +377,7 @@
 
 (defn- native-query-card
   "Build a card map with a native query containing the given template tags.
-  Uses lib to construct a properly normalized pMBQL query."
+  Uses lib to construct a properly normalized MBQL 5 query."
   [sql template-tags]
   {:dataset_query (lib/with-template-tags
                     (lib/native-query meta/metadata-provider sql)
@@ -730,24 +731,70 @@
       (is (= {["Card" (:id card1)] {"Card" (:id card2)}}
              (serdes/descendants "Card" (:id card2) {}))))))
 
-(deftest ^:parallel extract-test
-  (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
-        query    (mt/mbql-query venues)]
-    (testing "every card retains result_metadata"
-      (mt/with-temp [:model/Card {card1-id :id} {:dataset_query   query
-                                                 :result_metadata metadata}
-                     :model/Card {card2-id :id} {:type            :model
-                                                 :dataset_query   query
-                                                 :result_metadata metadata}]
-        (doseq [card-id [card1-id card2-id]]
-          (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
-            ;; card2 is model, but card1 is not
-            (is (= (= card-id card2-id)
-                   (= :model (:type extracted))))
-            (is (string? (:display_name (first (:result_metadata extracted)))))
-            ;; this is a quick comparison, since the actual stored metadata is quite complex
-            (is (= (map :display_name metadata)
-                   (map :display_name (:result_metadata extracted))))))))))
+(deftest ^:parallel extract-result-metadata-non-model-test
+  (testing "non-model Card extraction drops :result_metadata entirely"
+    (let [metadata (qp.preprocess/query->expected-cols (mt/mbql-query venues))
+          query    (mt/mbql-query venues)]
+      (doseq [card-type [:question :metric]]
+        (testing (str "Card with :type " card-type)
+          (mt/with-temp [:model/Card {card-id :id} {:type            card-type
+                                                    :dataset_query   query
+                                                    :result_metadata metadata}]
+            (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))]
+              (is (not (contains? extracted :result_metadata))))))))))
+
+(deftest ^:parallel extract-result-metadata-model-test
+  (testing "model Card extraction keeps :name + snake-cased model-preserved-keys only"
+    (let [base     (qp.preprocess/query->expected-cols (mt/mbql-query venues))
+          metadata (mapv #(assoc %
+                                 :display_name             "Custom!"
+                                 :semantic_type            :type/Category
+                                 :visibility_type          :normal
+                                 :description              "desc"
+                                 :fingerprint              {:global {:distinct-count 100}}
+                                 :lib/desired-column-alias "bloat"
+                                 :qp/internal-flag         true)
+                         base)
+          query    (mt/mbql-query venues)]
+      (mt/with-temp [:model/Card {card-id :id} {:type            :model
+                                                :dataset_query   query
+                                                :result_metadata metadata}]
+        (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
+              cols      (:result_metadata extracted)
+              ;; mirror the export's transformation exactly so this test stays in sync with
+              ;; production if (lib/model-preserved-keys false) ever changes
+              allowed   (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys false))
+              leaked    (into #{} (mapcat #(remove allowed (keys %))) cols)]
+          (is (seq cols))
+          (is (= #{} leaked)
+              "no key outside the allowed set leaks through (including bloat keys deliberately seeded)")
+          (is (every? #(= "Custom!" (:display_name %)) cols)
+              "user-set :display_name survives"))))))
+
+(deftest ^:parallel extract-result-metadata-native-model-test
+  (testing "native model Card extraction also preserves :id (as a field FK)"
+    (mt/with-temp [:model/Card {card-id :id}
+                   {:type            :model
+                    :dataset_query   (mt/native-query {:query "SELECT ID FROM VENUES"})
+                    :result_metadata [{:name          "ID"
+                                       :id            (mt/id :venues :id)
+                                       :display_name  "Venue ID"
+                                       :semantic_type :type/PK
+                                       :base_type     :type/BigInteger}]}]
+      (let [extracted (serdes/extract-one "Card" nil (t2/select-one :model/Card :id card-id))
+            col      (first (:result_metadata extracted))]
+        (is (= #{:name :id :display_name :semantic_type}
+               (set (keys col)))
+            "exact set of keys preserved for this fixture (one col with these inputs)")
+        (is (= "Venue ID" (:display_name col)))
+        ;; :id should be portablized to a Field FK path: [db-name schema table-name field-name]
+        (is (=? [string? "PUBLIC" "VENUES" "ID"] (:id col)))
+        ;; cross-reference: nothing outside the snake-cased model-preserved-keys for native models.
+        ;; If `model-preserved-keys` ever changes, the exact-set assertion above stops matching;
+        ;; this guard catches unexpected drift (a new key sneaking in) on the way.
+        (let [allowed (into #{:name} (map u/->snake_case_en) (lib/model-preserved-keys true))
+              leaked  (set/difference (set (keys col)) allowed)]
+          (is (= #{} leaked) "no key outside the native-model preserved set"))))))
 
 (deftest ^:parallel upgrade-to-v2-db-test
   (testing ":visualization_settings v. 1 should be upgraded to v. 2 on select"
@@ -858,8 +905,8 @@
                  t/offset-date-time
                  (.withNano 0)))))))
 
-(deftest save-mlv2-card-test
-  (testing "App DB CRUD should work for a Card with an MLv2 query (#39024)"
+(deftest save-mbql5-card-test
+  (testing "App DB CRUD should work for a Card with an MBQL 5 query (#39024)"
     (let [metadata-provider (mt/metadata-provider)
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           query             (lib/query metadata-provider venues)]
@@ -872,7 +919,7 @@
                    :table_id      (mt/id :venues)
                    :database_id   (mt/id)}
                   card)))
-        (testing "Save to app DB: Check MLv2 query was serialized to app DB in a sane way. Metadata provider should be removed"
+        (testing "Save to app DB: Check MBQL 5 query was serialized to app DB in a sane way. Metadata provider should be removed"
           (is (= {"lib/type" "mbql/query"
                   "database" (mt/id)
                   "stages"   [{"lib/type"     "mbql.stage/mbql"

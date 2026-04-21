@@ -4,20 +4,13 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
-// eslint-disable-next-line no-restricted-imports
+/* eslint-disable no-restricted-imports */
+import { applyParameter } from "metabase/querying/parameters/utils/query";
 import {
   type SerializeCardOptions,
   serializeCardForUrl,
-} from "metabase/lib/card";
-import { equals } from "metabase/lib/utils";
-import { applyParameter } from "metabase/querying/parameters/utils/query";
+} from "metabase/utils/card";
 import * as Lib from "metabase-lib";
-import {
-  ALERT_TYPE_PROGRESS_BAR_GOAL,
-  ALERT_TYPE_ROWS,
-  ALERT_TYPE_TIMESERIES_GOAL,
-} from "metabase-lib/v1/Alert";
-import type { NotificationTriggerType } from "metabase-lib/v1/Alert/constants";
 import type Database from "metabase-lib/v1/metadata/Database";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -98,9 +91,9 @@ class Question {
    */
   _parameterValues: ParameterValuesMap;
 
-  private __mlv2Query: Lib.Query | undefined;
+  private __libQuery: Lib.Query | undefined;
 
-  private __mlv2MetadataProvider: Lib.MetadataProvider | undefined;
+  private __libMetadataProvider: Lib.MetadataProvider | undefined;
 
   /**
    * Question constructor
@@ -399,45 +392,6 @@ class Question {
   }
 
   /**
-   * Returns the type of alert that current question supports
-   *
-   * The `visualization_settings` in card object doesn't contain default settings,
-   * so you can provide the complete visualization settings object to `alertType`
-   * for taking those into account
-   */
-  alertType(visualizationSettings): NotificationTriggerType | null {
-    const display = this.display();
-
-    if (!this.canRun()) {
-      return null;
-    }
-
-    const isLineAreaBar =
-      display === "line" || display === "area" || display === "bar";
-
-    if (display === "progress") {
-      return ALERT_TYPE_PROGRESS_BAR_GOAL;
-    } else if (isLineAreaBar) {
-      const vizSettings = visualizationSettings
-        ? visualizationSettings
-        : this.card().visualization_settings;
-      const goalEnabled = vizSettings["graph.show_goal"];
-      const hasSingleYAxisColumn =
-        vizSettings["graph.metrics"] &&
-        vizSettings["graph.metrics"].length === 1;
-
-      // We don't currently support goal alerts for multiseries question
-      if (goalEnabled && hasSingleYAxisColumn) {
-        return ALERT_TYPE_TIMESERIES_GOAL;
-      } else {
-        return ALERT_TYPE_ROWS;
-      }
-    } else {
-      return ALERT_TYPE_ROWS;
-    }
-  }
-
-  /**
    * Visualization drill-through and action widget actions
    *
    * Although most of these are essentially a way to modify the current query, having them as a part
@@ -685,7 +639,7 @@ class Question {
       const originalCard = originalQuestion?._getValueForComparison();
       const currentCard = this._getValueForComparison();
 
-      if (!equals(originalCard, currentCard)) {
+      if (!_.isEqual(originalCard, currentCard)) {
         return true;
       }
 
@@ -807,30 +761,30 @@ class Question {
 
   query(): Query {
     if (InternalQuery.isDatasetQueryType(this.datasetQuery())) {
-      throw new Error("Internal query is not supported by MLv2");
+      throw new Error("Internal query is not supported by Lib");
     }
 
-    this.__mlv2Query ??= Lib.fromJsQuery(
+    this.__libQuery ??= Lib.fromJsQuery(
       this.metadataProvider(),
       this.datasetQuery(),
     );
 
     // Helpers for working with the current query from CLJS REPLs.
     if (process.env.NODE_ENV === "development") {
-      window.__MLv2_metadata = this.__mlv2MetadataProvider;
-      window.__MLv2_query = this.__mlv2Query;
+      window.__lib_metadata = this.__libMetadataProvider;
+      window.__lib_query = this.__libQuery;
       window.Lib = Lib;
     }
 
-    return this.__mlv2Query;
+    return this.__libQuery;
   }
 
   private metadataProvider(): Lib.MetadataProvider {
-    this.__mlv2MetadataProvider ??= Lib.metadataProvider(
+    this.__libMetadataProvider ??= Lib.metadataProvider(
       this.datasetQuery()?.database,
       this.metadata(),
     );
-    return this.__mlv2MetadataProvider;
+    return this.__libMetadataProvider;
   }
 
   setQuery(query: Query): Question {

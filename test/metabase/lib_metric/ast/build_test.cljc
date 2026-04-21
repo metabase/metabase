@@ -137,24 +137,33 @@
 
     (testing "has correct root structure"
       (is (= :ast/root (:node/type ast)))
-      (is (nil? (:filter ast)))
-      (is (= [] (:group-by ast)))
+      (is (some? (:expression ast)))
       (is (some? (:metadata-provider ast))))
 
-    (testing "has correct source"
-      (let [source (:source ast)]
-        (is (= :source/metric (:node/type source)))
-        (is (= 42 (:id source)))
-        (is (= "Total Revenue" (:name source)))))
+    (testing "expression is a single leaf"
+      (is (= :expression/leaf (get-in ast [:expression :node/type])))
+      (is (string? (get-in ast [:expression :uuid]))))
 
-    (testing "has dimensions as nodes"
-      (is (= 2 (count (:dimensions ast))))
-      (is (every? #(= :ast/dimension (:node/type %)) (:dimensions ast)))
-      (is (= uuid-1 (get-in ast [:dimensions 0 :id]))))
+    (let [source-query (get-in ast [:expression :ast])]
+      (testing "leaf wraps a source-query"
+        (is (= :ast/source-query (:node/type source-query)))
+        (is (nil? (:filter source-query)))
+        (is (= [] (:group-by source-query))))
 
-    (testing "has mappings as nodes"
-      (is (= 2 (count (:mappings ast))))
-      (is (every? #(= :ast/dimension-mapping (:node/type %)) (:mappings ast))))))
+      (testing "has correct source"
+        (let [source (:source source-query)]
+          (is (= :source/metric (:node/type source)))
+          (is (= 42 (:id source)))
+          (is (= "Total Revenue" (:name source)))))
+
+      (testing "has dimensions as nodes"
+        (is (= 2 (count (:dimensions source-query))))
+        (is (every? #(= :ast/dimension (:node/type %)) (:dimensions source-query)))
+        (is (= uuid-1 (get-in source-query [:dimensions 0 :id]))))
+
+      (testing "has mappings as nodes"
+        (is (= 2 (count (:mappings source-query))))
+        (is (every? #(= :ast/dimension-mapping (:node/type %)) (:mappings source-query)))))))
 
 (deftest ^:parallel from-definition-measure-test
   (let [measure-def {:lib/type          :metric/definition
@@ -168,10 +177,10 @@
       (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
 
     (testing "has measure source type"
-      (is (= :source/measure (get-in ast [:source :node/type]))))
+      (is (= :source/measure (get-in ast [:expression :ast :source :node/type]))))
 
     (testing "extracts sum aggregation"
-      (is (= :aggregation/sum (get-in ast [:source :aggregation :node/type]))))))
+      (is (= :aggregation/sum (get-in ast [:expression :ast :source :aggregation :node/type]))))))
 
 ;;; -------------------------------------------------- Dimension Reference Conversion --------------------------------------------------
 
@@ -314,7 +323,7 @@
 
 (deftest ^:parallel mbql-filter->ast-filter-exclude-day-of-week-test
   (let [;; Exclude Monday (1) and Sunday (7) using ISO day-of-week
-        ;; This is the pMBQL shape produced by lib/fe_util/exclude-date-filter-clause
+        ;; This is the MBQL 5 shape produced by lib/fe_util/exclude-date-filter-clause
         result (ast.build/mbql-filter->ast-filter
                 [:!= {} [:get-day-of-week {} [:dimension {} uuid-2] :iso] 1 7])]
     (is (some? result) "should produce an AST filter node")
@@ -377,15 +386,16 @@
   (let [definition-with-filters (assoc (sample-definition)
                                        :filters [{:lib/uuid expr-uuid
                                                   :filter [:= {} [:dimension {} uuid-1] 42]}])
-        ast (ast.build/from-definition definition-with-filters)]
+        ast (ast.build/from-definition definition-with-filters)
+        source-query (get-in ast [:expression :ast])]
 
     (testing "creates valid AST structure with filter"
       (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
 
     (testing "has filter node"
-      (is (some? (:filter ast)))
-      (is (= :filter/comparison (get-in ast [:filter :node/type])))
-      (is (= := (get-in ast [:filter :operator]))))))
+      (is (some? (:filter source-query)))
+      (is (= :filter/comparison (get-in source-query [:filter :node/type])))
+      (is (= := (get-in source-query [:filter :operator]))))))
 
 (deftest ^:parallel from-definition-with-projections-test
   (let [definition-with-projections (assoc (sample-definition)
@@ -394,24 +404,26 @@
                                                           :lib/uuid expr-uuid
                                                           :projection [[:dimension {} uuid-1]
                                                                        [:dimension {"temporal-unit" "year"} uuid-2]]}])
-        ast (ast.build/from-definition definition-with-projections)]
+        ast (ast.build/from-definition definition-with-projections)
+        source-query (get-in ast [:expression :ast])]
 
     (testing "creates valid AST structure with group-by"
       (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
 
     (testing "has group-by dimension refs"
-      (is (= 2 (count (:group-by ast))))
-      (is (every? #(= :ast/dimension-ref (:node/type %)) (:group-by ast)))
-      (is (= uuid-1 (get-in ast [:group-by 0 :dimension-id])))
-      (is (= {:temporal-unit :year} (get-in ast [:group-by 1 :options]))))))
+      (is (= 2 (count (:group-by source-query))))
+      (is (every? #(= :ast/dimension-ref (:node/type %)) (:group-by source-query)))
+      (is (= uuid-1 (get-in source-query [:group-by 0 :dimension-id])))
+      (is (= {:temporal-unit :year} (get-in source-query [:group-by 1 :options]))))))
 
 (deftest ^:parallel from-definition-loads-dimensions-from-provider-test
   (testing "dimensions are loaded from metadata fetched via provider"
     (let [definition (sample-definition)
-          ast (ast.build/from-definition definition)]
+          ast (ast.build/from-definition definition)
+          source-query (get-in ast [:expression :ast])]
       ;; Dimensions are loaded from provider -> sample-metric-metadata
-      (is (= 2 (count (:dimensions ast))))
-      (is (= 2 (count (:mappings ast)))))))
+      (is (= 2 (count (:dimensions source-query))))
+      (is (= 2 (count (:mappings source-query)))))))
 
 ;;; -------------------------------------------------- Multi-Stage Source Queries --------------------------------------------------
 
@@ -441,6 +453,101 @@
                       :metadata-provider provider}
           ast        (ast.build/from-definition definition)]
       (testing "has joins extracted from stage 0"
-        (is (seq (get-in ast [:source :joins]))))
+        (is (seq (get-in ast [:expression :ast :source :joins]))))
       (testing "has aggregation extracted from stage 0"
-        (is (some? (get-in ast [:source :aggregation])))))))
+        (is (some? (get-in ast [:expression :ast :source :aggregation])))))))
+
+;;; -------------------------------------------------- Arithmetic Expression Building --------------------------------------------------
+
+(def ^:private arith-uuid-a "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+(def ^:private arith-uuid-b "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+
+(defn- arithmetic-definition []
+  {:lib/type          :metric/definition
+   :expression        [:+ {}
+                       [:metric {:lib/uuid arith-uuid-a} 42]
+                       [:metric {:lib/uuid arith-uuid-b} 42]]
+   :filters           []
+   :projections       []
+   :metadata-provider (make-test-provider (sample-metric-metadata) (sample-measure-metadata))})
+
+(deftest ^:parallel from-definition-arithmetic-test
+  (let [ast (ast.build/from-definition (arithmetic-definition))]
+
+    (testing "arithmetic expression builds AST with :expression key"
+      (is (= :ast/root (:node/type ast)))
+      (is (some? (:expression ast)))
+      (is (nil? (:source ast))))
+
+    (testing "expression root is arithmetic node"
+      (is (= :expression/arithmetic (get-in ast [:expression :node/type])))
+      (is (= :+ (get-in ast [:expression :operator]))))
+
+    (testing "arithmetic has two children"
+      (is (= 2 (count (get-in ast [:expression :children])))))
+
+    (testing "each child is an expression leaf with complete sub-AST"
+      (doseq [child (get-in ast [:expression :children])]
+        (is (= :expression/leaf (:node/type child)))
+        (is (string? (:uuid child)))
+        (let [sub-ast (:ast child)]
+          (is (= :ast/source-query (:node/type sub-ast)))
+          (is (some? (:source sub-ast)))
+          (is (seq (:dimensions sub-ast)))
+          (is (seq (:mappings sub-ast))))))
+
+    (testing "leaf UUIDs match expression"
+      (let [uuids (set (map :uuid (get-in ast [:expression :children])))]
+        (is (contains? uuids arith-uuid-a))
+        (is (contains? uuids arith-uuid-b))))))
+
+(deftest ^:parallel from-definition-arithmetic-with-filters-test
+  (let [definition (assoc (arithmetic-definition)
+                          :filters [{:lib/uuid arith-uuid-a
+                                     :filter [:= {} [:dimension {} uuid-1] 42]}])
+        ast (ast.build/from-definition definition)]
+
+    (testing "instance filters are partitioned to matching leaf sub-ASTs"
+      (let [children (get-in ast [:expression :children])
+            child-a  (first (filter #(= arith-uuid-a (:uuid %)) children))
+            child-b  (first (filter #(= arith-uuid-b (:uuid %)) children))]
+        (is (some? (get-in child-a [:ast :filter])))
+        (is (nil? (get-in child-b [:ast :filter])))))))
+
+(deftest ^:parallel from-definition-arithmetic-with-constant-test
+  (let [definition {:lib/type          :metric/definition
+                    :expression        [:* {} [:metric {:lib/uuid arith-uuid-a} 42] 100]
+                    :filters           []
+                    :projections       []
+                    :metadata-provider (make-test-provider (sample-metric-metadata) (sample-measure-metadata))}
+        ast (ast.build/from-definition definition)]
+
+    (testing "creates valid AST with constant child"
+      (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
+
+    (testing "expression root is arithmetic"
+      (is (= :expression/arithmetic (get-in ast [:expression :node/type])))
+      (is (= :* (get-in ast [:expression :operator]))))
+
+    (testing "has one leaf and one constant child"
+      (let [children (get-in ast [:expression :children])]
+        (is (= 2 (count children)))
+        (is (= :expression/leaf (get-in children [0 :node/type])))
+        (is (= :expression/constant (get-in children [1 :node/type])))
+        (is (= 100 (get-in children [1 :value])))))))
+
+(deftest ^:parallel from-definition-arithmetic-with-projections-test
+  (let [definition (assoc (arithmetic-definition)
+                          :projections [{:type :metric
+                                         :id 42
+                                         :lib/uuid arith-uuid-a
+                                         :projection [[:dimension {} uuid-1]]}
+                                        {:type :metric
+                                         :id 42
+                                         :lib/uuid arith-uuid-b
+                                         :projection [[:dimension {} uuid-1]]}])
+        ast (ast.build/from-definition definition)]
+
+    (testing "projections are assigned to matching leaf sub-ASTs"
+      (doseq [child (get-in ast [:expression :children])]
+        (is (= 1 (count (get-in child [:ast :group-by]))))))))

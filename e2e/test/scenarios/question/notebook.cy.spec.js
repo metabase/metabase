@@ -622,6 +622,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       H.moveDnDKitElementByAlias("@dragElement", {
         horizontal,
         vertical,
+        useMouseEvents: true,
       });
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
       cy.findAllByTestId("notebook-cell-item")
@@ -662,6 +663,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         H.moveDnDKitElementByAlias("@dragElement", {
           horizontal,
           vertical,
+          useMouseEvents: true,
         });
       });
       // eslint-disable-next-line metabase/no-unsafe-element-filtering
@@ -1067,7 +1069,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
   it("Correctly translates aggregations", () => {
     cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {
-      locale: "de",
+      locale: "en-ZZ",
     });
 
     H.openTable({
@@ -1075,13 +1077,13 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       mode: "notebook",
     });
 
-    cy.findByRole("button", { name: "Zusammenfassen" }).click();
+    cy.findByRole("button", { name: "[zz] Summarize" }).click();
     H.popover().within(() => {
-      cy.findByText("Durchschnitt von...").click();
+      cy.findByText("[zz] Average of ...").click();
       cy.findByText("Subtotal").click();
     });
 
-    cy.findAllByText("Durchschnitt von Subtotal").should("exist");
+    cy.findAllByText("[zz] Average of Subtotal").should("exist");
     cy.findAllByText("Average of Subtotal").should("not.exist");
 
     cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, {

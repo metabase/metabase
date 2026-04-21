@@ -13,6 +13,8 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen, within } from "__support__/ui";
+import type { SettingsState } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import { Input } from "metabase/ui";
 import registerVisualizations from "metabase/visualizations/register";
 import { type RecentItem, isRecentTableItem } from "metabase-types/api";
@@ -25,8 +27,6 @@ import {
   createMockUserMetabotPermissions,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
-import type { SettingsState } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import {
   CommandSuggestion,

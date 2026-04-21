@@ -2,9 +2,9 @@ import type { FormEvent } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { isNotNull } from "metabase/lib/types";
 import { BigIntNumberInput } from "metabase/querying/common/components/BigIntNumberInput";
 import { Box, Flex, Stack, Text } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
 import * as LibMetric from "metabase-lib/metric";
 

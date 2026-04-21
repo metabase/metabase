@@ -3,9 +3,9 @@ import { useEffect } from "react";
 import { replace } from "react-router-redux";
 
 import { useGetCollectionQuery } from "metabase/api";
-import { useDispatch } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
-import { extractCollectionId } from "metabase/lib/urls";
+import { useDispatch } from "metabase/utils/redux";
+import { isNotNull } from "metabase/utils/types";
+import { extractCollectionId } from "metabase/utils/urls";
 
 import { CollectionContent } from "../CollectionContent";
 

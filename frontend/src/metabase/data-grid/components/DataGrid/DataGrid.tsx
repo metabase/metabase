@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import _ from "underscore";
 
 import { useForceUpdate } from "metabase/common/hooks/use-force-update";
-import { getScrollBarSize } from "metabase/lib/dom";
+import { getScrollBarSize } from "metabase/utils/dom";
 
 import {
   ADD_COLUMN_BUTTON_WIDTH,
@@ -35,8 +35,7 @@ import S from "./DataGrid.module.css";
 import type { DataGridStylesProps } from "./types";
 
 export interface DataGridProps<TData>
-  extends DataGridInstance<TData>,
-    DataGridStylesProps {
+  extends DataGridInstance<TData>, DataGridStylesProps {
   emptyState?: React.ReactNode;
   showRowsCount?: boolean;
   rowsTruncated?: number;
