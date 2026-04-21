@@ -10,6 +10,7 @@ import {
   getDefinitionSourceIcon,
   getDefinitionSourceName,
 } from "metabase/metrics-viewer/utils/definition-sources";
+import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 
 type NamedItem = { name: string };
@@ -63,7 +64,7 @@ export function getMetricGroups(
 ): MetricGroup[] {
   return definitionSources.map((definitionSource, definitionIndex) => {
     const definition = definitionSource.definition;
-    const segmentItems = buildSegmentItems(definitionSource, definitionIndex);
+    const segmentItems = buildSegmentItems(definition, definitionIndex);
     const dimensions = LibMetric.filterableDimensions(definition);
 
     const byGroupId = new Map<string, DimensionBucket>();
@@ -151,10 +152,9 @@ function buildSections(
 }
 
 function buildSegmentItems(
-  definitionSource: DefinitionSource,
+  definition: MetricDefinition,
   definitionIndex: number,
 ): SegmentListItem[] {
-  const definition = definitionSource.definition;
   const segments = LibMetric.availableSegments(definition);
   return segments.map((segment) => {
     const info = LibMetric.displayInfo(definition, segment);

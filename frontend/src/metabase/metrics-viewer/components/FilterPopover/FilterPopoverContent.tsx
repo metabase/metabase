@@ -4,11 +4,6 @@ import { t } from "ttag";
 
 import { SourceColorIndicator } from "metabase/common/components/SourceColorIndicator";
 import { FilterPickerBody } from "metabase/metrics/components/FilterPicker/FilterPickerBody";
-import type {
-  DimensionListItem,
-  MetricGroup,
-  SegmentListItem,
-} from "metabase/metrics-viewer/components/FilterPopover/types";
 import {
   Badge,
   Box,
@@ -30,6 +25,7 @@ import type { DefinitionSource } from "../../utils/definition-sources";
 
 import S from "./FilterPopover.module.css";
 import { MetricGroupFilterSectionList } from "./MetricGroupFilterSectionList";
+import type { DimensionListItem, MetricGroup, SegmentListItem } from "./types";
 import { filterDisplayGroupsBySearch, getMetricGroups } from "./utils";
 
 const LIST_WIDTH = "20rem";

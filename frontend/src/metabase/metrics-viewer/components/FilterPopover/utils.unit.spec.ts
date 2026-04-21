@@ -1,5 +1,9 @@
 import type { DefinitionSource } from "metabase/metrics-viewer/utils/definition-sources";
 import type * as LibMetric from "metabase-lib/metric";
+import type {
+  DimensionDisplayInfo,
+  SegmentDisplayInfo,
+} from "metabase-lib/metric";
 import * as LibMetricModule from "metabase-lib/metric";
 
 import { filterDisplayGroupsBySearch, getMetricGroups } from "./utils";
@@ -53,24 +57,28 @@ function makeDefinitionSource(
   };
 }
 
-type DimInfo = ReturnType<typeof LibMetric.displayInfo>;
-
-function mainDim(displayName: string, id = "main"): DimInfo {
+function getSourceTableDimensionInfo(
+  displayName: string,
+  id = "main",
+): DimensionDisplayInfo {
   return {
     displayName,
     group: { id, displayName: "Orders", type: "main" },
-  } as DimInfo;
+  } as DimensionDisplayInfo;
 }
 
-function connectionDim(displayName: string, id = "conn"): DimInfo {
+function getJoinedTabledDimensionInfo(
+  displayName: string,
+  id = "conn",
+): DimensionDisplayInfo {
   return {
     displayName,
     group: { id, displayName: "Products", type: "connection" },
-  } as DimInfo;
+  } as DimensionDisplayInfo;
 }
 
-function segInfo(displayName: string): DimInfo {
-  return { displayName } as DimInfo;
+function getSegmentInfo(displayName: string): SegmentDisplayInfo {
+  return { displayName } as SegmentDisplayInfo;
 }
 
 beforeEach(() => {
@@ -193,10 +201,10 @@ describe("getMetricGroups", () => {
     mockLibMetric.displayInfo.mockImplementation(
       (_def: unknown, target: unknown) => {
         if (target === dim) {
-          return mainDim("Created At");
+          return getSourceTableDimensionInfo("Created At");
         }
         if (target === seg) {
-          return segInfo("Active customers");
+          return getSegmentInfo("Active customers");
         }
         throw new Error("unexpected displayInfo target");
       },
@@ -229,7 +237,7 @@ describe("getMetricGroups", () => {
 
     mockLibMetric.filterableDimensions.mockReturnValue([]);
     mockLibMetric.availableSegments.mockReturnValue([seg]);
-    mockLibMetric.displayInfo.mockReturnValue(segInfo("Big orders"));
+    mockLibMetric.displayInfo.mockReturnValue(getSegmentInfo("Big orders"));
 
     const [group] = getMetricGroups([source], {});
     expect(group.hasSegments).toBe(true);
@@ -260,13 +268,13 @@ describe("getMetricGroups", () => {
     mockLibMetric.displayInfo.mockImplementation(
       (_def: unknown, target: unknown) => {
         if (target === mainDimMeta) {
-          return mainDim("Created At");
+          return getSourceTableDimensionInfo("Created At");
         }
         if (target === connDimMeta) {
-          return connectionDim("Category");
+          return getJoinedTabledDimensionInfo("Category");
         }
         if (target === seg) {
-          return segInfo("Active customers");
+          return getSegmentInfo("Active customers");
         }
         throw new Error("unexpected displayInfo target");
       },
@@ -311,13 +319,13 @@ describe("getMetricGroups", () => {
     mockLibMetric.displayInfo.mockImplementation(
       (_def: unknown, target: unknown) => {
         if (target === connDimMeta) {
-          return connectionDim("Category", "conn1");
+          return getJoinedTabledDimensionInfo("Category", "conn1");
         }
         if (target === otherDimMeta) {
-          return connectionDim("Other", "conn2");
+          return getJoinedTabledDimensionInfo("Other", "conn2");
         }
         if (target === seg) {
-          return segInfo("Seg A");
+          return getSegmentInfo("Seg A");
         }
         throw new Error("unexpected displayInfo target");
       },
@@ -351,10 +359,10 @@ describe("getMetricGroups", () => {
     mockLibMetric.displayInfo.mockImplementation(
       (_def: unknown, target: unknown) => {
         if (target === segA) {
-          return segInfo("Seg A");
+          return getSegmentInfo("Seg A");
         }
         if (target === segB) {
-          return segInfo("Seg B");
+          return getSegmentInfo("Seg B");
         }
         throw new Error("unexpected displayInfo target");
       },

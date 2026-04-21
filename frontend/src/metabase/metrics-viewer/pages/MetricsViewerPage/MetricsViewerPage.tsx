@@ -1,7 +1,6 @@
 import type { Location } from "history";
 import { useCallback } from "react";
 
-import { useListSegmentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { Box, Center, Flex, Stack } from "metabase/ui";
 
@@ -29,11 +28,6 @@ export type MetricsViewerPageProps = {
 };
 
 export function MetricsViewerPage(props: MetricsViewerPageProps) {
-  // Keep segment metadata in sync so LibMetric.availableSegments can see
-  // segments created (or edited) in the admin UI after the viewer mounted.
-  // RTK Query's list-tag invalidation handles refetch on creation/update.
-  useListSegmentsQuery();
-
   const useMetricsViewerResult = useMetricsViewer(props);
 
   const {
