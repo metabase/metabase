@@ -8,6 +8,7 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:refer-clojure :exclude [ref every? some select-keys empty? get-in])
   (:require
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.actions :as actions]
@@ -546,9 +547,6 @@
      :source-table ":source-table is not allowed in the top level of a query, only in MBQL stages"
      :type         ":type is not allowed in MBQL 5, use :lib/type instead."})])
 
-(defn- remove-lib-uuid [options]
-  (update options 2 (fn [m] (vec (remove #{[:lib/uuid ::common/uuid]} m)))))
-
 (mr/def ::external-query
   "Schema for \"External MBQL\" 5 query."
   [:schema {:registry {::id/database :string
@@ -558,8 +556,12 @@
                        ::id/snippet :string
                        ::id/schema [:or nil? :string]
                        ::id/table [:cat ::id/database ::id/schema :string]
-                       ::id/field [:cat ::id/database ::id/schema :string :string]
-                       ::common/options (remove-lib-uuid (mr/schema ::common/options))}}
+                       ::id/field [:cat ::id/database ::id/schema :string [:+ :string]]
+                       :mbql.clause/field (update (mr/schema :mbql.clause/field) 3
+                                                  conj [:dispatch-type/sequential
+                                                        ::ref/field.id])
+                       ::common/options (update (mr/schema ::common/options) 2
+                                                mut/dissoc :lib/uuid)}}
    [:ref ::query]])
 
 (defn native-only-query?
