@@ -139,7 +139,9 @@ const RecipientEmailInput = ({ value, onChange }: RecipientEmailInputProps) => {
     <TextInput
       placeholder={t`Filter by recipient email`}
       value={email}
-      onChange={(event) => setEmail(event.currentTarget.value)}
+      onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+        setEmail(event.currentTarget.value)
+      }
       w={220}
     />
   );

@@ -2,7 +2,6 @@ import dayjs from "dayjs";
 import { useCallback, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { Link } from "react-router";
-import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import {
@@ -76,10 +75,6 @@ export const NotificationDetailPage = ({
 
   const [bulkAction, { isLoading: isBulkLoading }] =
     useBulkNotificationActionMutation();
-
-  const goBack = useCallback(() => {
-    dispatch(push(Urls.adminToolsNotifications()));
-  }, [dispatch]);
 
   const handleArchive = useCallback(() => {
     if (!notification) {
@@ -165,7 +160,7 @@ export const NotificationDetailPage = ({
     return (
       <SettingsPageWrapper>
         <SettingsSection>
-          <BackLink onClick={goBack} />
+          <BackLink />
           <LoadingAndErrorWrapper loading={isLoading} error={error} />
         </SettingsSection>
       </SettingsPageWrapper>
@@ -179,7 +174,7 @@ export const NotificationDetailPage = ({
   return (
     <SettingsPageWrapper>
       <SettingsSection>
-        <BackLink onClick={goBack} />
+        <BackLink />
 
         <DetailHeader
           notification={notification}
@@ -218,11 +213,10 @@ export const NotificationDetailPage = ({
   );
 };
 
-const BackLink = ({ onClick }: { onClick: () => void }) => (
+const BackLink = () => (
   <Anchor
-    component="button"
-    type="button"
-    onClick={onClick}
+    component={Link}
+    to={Urls.adminToolsNotifications()}
     c="text-secondary"
     underline="never"
   >

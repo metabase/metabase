@@ -184,7 +184,7 @@ const NotificationRow = memo(function NotificationRow({
         <CreatorCell notification={notification} />
       </td>
       <td>
-        <Ellipsified style={{ maxWidth: 220 }} tooltip={scheduleText}>
+        <Ellipsified maw={220} tooltip={scheduleText}>
           {scheduleText}
         </Ellipsified>
       </td>
@@ -223,7 +223,7 @@ const CardCell = ({ notification, isOrphaned }: CardCellProps) => {
 
   if (cardId != null && !isOrphaned) {
     return (
-      <Ellipsified style={{ maxWidth: 260 }} tooltip={name}>
+      <Ellipsified maw={260} tooltip={name}>
         <Link
           variant="brand"
           to={Urls.question({ id: cardId, name })}
@@ -235,7 +235,7 @@ const CardCell = ({ notification, isOrphaned }: CardCellProps) => {
     );
   }
   return (
-    <Ellipsified style={{ maxWidth: 260 }} tooltip={name}>
+    <Ellipsified maw={260} tooltip={name}>
       <span>{name}</span>
     </Ellipsified>
   );
@@ -249,7 +249,7 @@ const CreatorCell = ({ notification }: CreatorCellProps) => {
   const creator = notification.creator;
   const name = creator?.common_name ?? creator?.email ?? t`Unknown`;
   return (
-    <Ellipsified style={{ maxWidth: 180 }} tooltip={name}>
+    <Ellipsified maw={180} tooltip={name}>
       {name}
     </Ellipsified>
   );
