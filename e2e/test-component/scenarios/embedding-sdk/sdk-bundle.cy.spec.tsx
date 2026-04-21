@@ -165,25 +165,25 @@ describe(
             rerender(
               <MetabaseProvider
                 authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
-                locale="es"
+                locale="en-ZZ"
               >
                 <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />
               </MetabaseProvider>,
             );
 
             getSdkRoot().within(() => {
-              cy.findByText("Filtro").should("exist");
+              cy.findByText("[zz] Filter").should("exist");
             });
 
-            // Update props via the imperative API (via window)
+            // Update props via the imperative API (via window).
             cy.window().then((win) => {
               win.METABASE_PROVIDER_PROPS_STORE.setProps({
                 authConfig: DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
-                locale: "fr",
+                locale: "en",
               });
 
               getSdkRoot().within(() => {
-                cy.findByText("Filtre").should("exist");
+                cy.findByText("Filter").should("exist");
               });
             });
           });

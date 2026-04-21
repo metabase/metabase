@@ -37,18 +37,17 @@ interface DimensionEntry {
   tabType: MetricsViewerTabType;
   group?: DimensionGroup;
   sourceId: MetricSourceId;
-  slotIndex: number;
 }
 
 function collectAllDimensionEntries(
-  metricSlots: MetricSlot[],
+  sourceOrder: MetricSourceId[],
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
   existingTabDimensionIds: Set<string>,
 ): DimensionEntry[] {
   const entries: DimensionEntry[] = [];
 
-  for (const slot of metricSlots) {
-    const def = definitionsBySourceId[slot.sourceId];
+  for (const sourceId of sourceOrder) {
+    const def = definitionsBySourceId[sourceId];
     if (!def) {
       continue;
     }
@@ -65,8 +64,7 @@ function collectAllDimensionEntries(
         icon: getDimensionIcon(info.dimensionMetadata),
         tabType: info.dimensionType,
         group: info.group,
-        sourceId: slot.sourceId,
-        slotIndex: slot.slotIndex,
+        sourceId,
       });
     }
   }
@@ -95,17 +93,18 @@ function groupBySource(entries: DimensionEntry[]): DimensionEntry[][] {
 
 export function getAvailableDimensionsForPicker(
   definitionsBySourceId: Record<MetricSourceId, MetricDefinition | null>,
+  sourceOrder: MetricSourceId[],
   metricSlots: MetricSlot[],
   existingTabDimensionIds: Set<string>,
 ): AvailableDimensionsResult {
   const result: AvailableDimensionsResult = { shared: [], bySource: {} };
 
-  if (metricSlots.length === 0) {
+  if (sourceOrder.length === 0) {
     return result;
   }
 
   const entries = collectAllDimensionEntries(
-    metricSlots,
+    sourceOrder,
     definitionsBySourceId,
     existingTabDimensionIds,
   );
@@ -113,6 +112,18 @@ export function getAvailableDimensionsForPicker(
   const loadedSourceCount = new Set(entries.map((entry) => entry.sourceId))
     .size;
   const hasMultipleSources = loadedSourceCount > 1;
+
+  const sourceIdToSlotIndices = metricSlots.reduce(
+    (acc, slot) => {
+      if (acc[slot.sourceId]) {
+        acc[slot.sourceId].push(slot.slotIndex);
+      } else {
+        acc[slot.sourceId] = [slot.slotIndex];
+      }
+      return acc;
+    },
+    {} as Record<MetricSourceId, number[]>,
+  );
 
   for (const group of groups) {
     const uniqueSources = [...new Set(group.map((entry) => entry.sourceId))];
@@ -126,7 +137,12 @@ export function getAvailableDimensionsForPicker(
           type: first.tabType,
           label: first.label,
           dimensionMapping: Object.fromEntries(
-            group.map((entry) => [entry.slotIndex, entry.id]),
+            group.flatMap((entry) =>
+              (sourceIdToSlotIndices[entry.sourceId] ?? []).map((slotIndex) => [
+                slotIndex,
+                entry.id,
+              ]),
+            ),
           ),
         },
       });
@@ -139,7 +155,12 @@ export function getAvailableDimensionsForPicker(
           tabInfo: {
             type: entry.tabType,
             label: entry.label,
-            dimensionMapping: { [entry.slotIndex]: entry.id },
+            dimensionMapping: Object.fromEntries(
+              (sourceIdToSlotIndices[entry.sourceId] ?? []).map((slotIndex) => [
+                slotIndex,
+                entry.id,
+              ]),
+            ),
           },
         });
       }
@@ -149,8 +170,8 @@ export function getAvailableDimensionsForPicker(
   result.shared.sort((first, second) =>
     first.tabInfo.label.localeCompare(second.tabInfo.label),
   );
-  for (const slot of metricSlots) {
-    result.bySource[slot.sourceId]?.sort((first, second) =>
+  for (const sourceId of sourceOrder) {
+    result.bySource[sourceId]?.sort((first, second) =>
       first.tabInfo.label.localeCompare(second.tabInfo.label),
     );
   }

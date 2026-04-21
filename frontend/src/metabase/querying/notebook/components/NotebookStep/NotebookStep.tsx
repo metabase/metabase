@@ -10,7 +10,6 @@ import type * as Lib from "metabase-lib";
 
 import type {
   NotebookStep as INotebookStep,
-  NotebookDataPickerOptions,
   NotebookStepAction,
 } from "../../types";
 
@@ -31,7 +30,6 @@ interface NotebookStepProps {
   readOnly?: boolean;
   openStep: (id: string) => void;
   updateQuery: (query: Lib.Query) => Promise<void>;
-  dataPickerOptions?: NotebookDataPickerOptions;
 }
 
 export function NotebookStep({
@@ -42,7 +40,6 @@ export function NotebookStep({
   openStep,
   updateQuery,
   readOnly = false,
-  dataPickerOptions,
 }: NotebookStepProps) {
   const [isPreviewOpen, { turnOn: openPreview, turnOff: closePreview }] =
     useToggle(false);
@@ -122,7 +119,6 @@ export function NotebookStep({
               isLastOpened={isLastOpened}
               reportTimezone={reportTimezone}
               readOnly={readOnly}
-              dataPickerOptions={dataPickerOptions}
             />
           </Box>
           {!readOnly && (

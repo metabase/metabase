@@ -6,6 +6,7 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.events.core :as events]
@@ -723,18 +724,11 @@
   (when-let [table-name (:name table)]
     (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
 
-(defn db-routing-enabled?
-  "Returns whether or not the given database is either a router or destination database"
-  [db-or-id]
-  (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
-      (some->> (:router-database-id db-or-id)
-               (t2/exists? :model/DatabaseRouter :database_id))))
-
 (defn throw-if-db-routing-enabled!
   "Throws if the database has routing enabled. Call before any driver operations to get a
    clear error message rather than a confusing driver-level failure."
   [transform database]
-  (when (db-routing-enabled? database)
+  (when (database-routing/db-routing-enabled? database)
     (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
                               (:name transform)
                               (:name database))

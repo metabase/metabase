@@ -12,6 +12,7 @@
    [malli.json-schema :as mjs]
    [metabase.llm.settings :as llm]
    [metabase.metabot.self.core :as core]
+   [metabase.metabot.self.debug :as debug]
    [metabase.metabot.self.schema :as schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -298,7 +299,11 @@
                                                 "HTTP-Referer" "https://metabase.com"
                                                 "X-Title"      "Metabase"}
                                       :body    (json/encode req)})]
-          (core/sse-reducible (:body response)))
+          (-> (core/sse-reducible (:body response))
+              (debug/capture-stream {:provider "openrouter"
+                                     :model    model
+                                     :url      "/v1/chat/completions"
+                                     :request  req})))
         (catch Exception e
           (core/rethrow-api-error! "openrouter" openrouter-errors e))))))
 

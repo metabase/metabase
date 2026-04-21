@@ -337,7 +337,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Disabled").should("be.visible");
-        cy.findByText("Disabled").click();
+        cy.findByLabelText("Disabled").click();
         cy.findByText("Enabled").should("be.visible");
       });
 
@@ -361,7 +361,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Enabled").should("exist");
-        cy.findByText("Enabled").click();
+        cy.findByLabelText("Enabled").click();
         cy.findByText("Disabled").should("exist");
       });
 
@@ -369,7 +369,7 @@ describe("scenarios > home > custom homepage", () => {
 
       cy.findByTestId("custom-homepage-setting").within(() => {
         cy.findByText("Disabled").should("exist");
-        cy.findByText("Disabled").click();
+        cy.findByLabelText("Disabled").click();
         cy.findByText("Enabled").should("exist");
       });
 
@@ -643,7 +643,9 @@ describe("scenarios > setup", () => {
 
   it("should send snowplow events through admin settings", () => {
     cy.visit("/admin/settings/general");
-    cy.findByTestId("custom-homepage-setting").findByText("Disabled").click();
+    cy.findByTestId("custom-homepage-setting")
+      .findByLabelText("Disabled")
+      .click();
 
     cy.findByTestId("custom-homepage-dashboard-setting")
       .findByRole("button")

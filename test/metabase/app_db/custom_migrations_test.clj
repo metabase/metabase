@@ -2253,6 +2253,14 @@
       (migrate!)
       (is (false? (sample-content-created?))))))
 
+(deftest ^:mb/old-migrations-test create-sample-content-effective-type-test
+  (testing "Every sample-database field has a non-null effective_type after migration (GHY-3367)"
+    (impl/test-migrations "v52.2024-12-03T15:55:22" [migrate!]
+      (migrate!)
+      (let [fields (t2/query "SELECT name, base_type, effective_type FROM metabase_field")]
+        (is (seq fields))
+        (is (empty? (filter #(nil? (:effective_type %)) fields)))))))
+
 (defn- insert-returning-pk!
   [table record]
   (first (t2/insert-returning-pks! table record)))

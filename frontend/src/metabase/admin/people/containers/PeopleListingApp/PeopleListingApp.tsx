@@ -82,11 +82,14 @@ export function PeopleListingApp({
     }
   };
 
+  // Only reset status if it actually needs changing. Calling `updateStatus`
+  // unconditionally triggers `setPage(0)`, which races any in-flight
+  // pagination clicks when this effect re-fires on query resolution.
   useEffect(() => {
-    if (!hasDeactivatedUsers) {
-      updateStatus("active");
+    if (!hasDeactivatedUsers && status !== ACTIVE_STATUS.active) {
+      updateStatus(ACTIVE_STATUS.active);
     }
-  }, [hasDeactivatedUsers, updateStatus]);
+  }, [hasDeactivatedUsers, status, updateStatus]);
 
   const pageTitle = useMemo(() => {
     if (!isUsingTenants) {

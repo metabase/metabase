@@ -129,7 +129,7 @@ export function CreateDashboardForm({
               entityType="dashboard"
             />
           )}
-          <FormFooter>
+          <FormFooter mt="md">
             <FormErrorMessage inline />
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>

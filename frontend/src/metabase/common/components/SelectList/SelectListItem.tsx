@@ -8,8 +8,10 @@ import type { BaseSelectListItemProps } from "./BaseSelectListItem";
 import { BaseSelectListItem } from "./BaseSelectListItem";
 import { ItemIcon, ItemRoot, ItemTitle } from "./SelectListItem.styled";
 
-export interface SelectListItemProps
-  extends Omit<BaseSelectListItemProps, "children"> {
+export interface SelectListItemProps extends Omit<
+  BaseSelectListItemProps,
+  "children"
+> {
   name: string;
   icon?: string | IconProps;
   rightIcon?: string | IconProps;
@@ -45,9 +47,7 @@ export function SelectListItem({
       hasLeftIcon={!!icon}
       hasRightIcon={!!rightIcon}
     >
-      {icon && (
-        <ItemIcon className={classNames.icon} c="brand" {...iconProps} />
-      )}
+      {icon && <ItemIcon className={classNames.icon} {...iconProps} />}
       <ItemTitle
         className={classNames.label}
         fw="bold"
