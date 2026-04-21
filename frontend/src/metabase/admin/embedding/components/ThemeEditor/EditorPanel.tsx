@@ -29,9 +29,15 @@ interface EditorPanelProps {
   editor: EmbeddingThemeEditorResult;
   onSave: () => void;
   onCancel: () => void;
+  onDelete?: () => void;
 }
 
-export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
+export function EditorPanel({
+  editor,
+  onSave,
+  onCancel,
+  onDelete,
+}: EditorPanelProps) {
   const [moreColorsOpen, setMoreColorsOpen] = useState(false);
 
   const { currentTheme } = editor;
@@ -213,6 +219,19 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
             </Stack>
           </Card>
         </Stack>
+
+        {onDelete && (
+          <Button
+            mt="lg"
+            variant="subtle"
+            color="error"
+            px={0}
+            leftSection={<Icon name="trash" size={16} />}
+            onClick={onDelete}
+          >
+            {t`Delete theme`}
+          </Button>
+        )}
       </Box>
 
       {/* Bottom action bar */}

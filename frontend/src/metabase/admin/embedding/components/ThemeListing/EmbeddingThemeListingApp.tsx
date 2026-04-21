@@ -1,18 +1,16 @@
-import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useDeleteThemeFlow } from "metabase/admin/embedding/hooks";
 import { UpsellEmbeddingTheme } from "metabase/admin/upsells";
 import {
   useCopyEmbeddingThemeMutation,
-  useDeleteEmbeddingThemeMutation,
   useListEmbeddingThemesQuery,
 } from "metabase/api/embedding-theme";
 import { useHasTokenFeature, useToast } from "metabase/common/hooks";
 import { Loader, SimpleGrid, Stack, Text, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 
-import { DeleteThemeModal } from "./DeleteThemeModal";
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
 import { NewThemeCard } from "./NewThemeCard";
 
@@ -30,10 +28,8 @@ function EmbeddingThemeListingAppInner() {
   const dispatch = useDispatch();
   const { data: themes, isLoading } = useListEmbeddingThemesQuery();
   const [duplicateTheme] = useCopyEmbeddingThemeMutation();
-  const [deleteTheme] = useDeleteEmbeddingThemeMutation();
   const [sendToast] = useToast();
-
-  const [themeToDelete, setThemeToDelete] = useState<number | null>(null);
+  const { requestDelete, modal: deleteModal } = useDeleteThemeFlow();
 
   const handleCreateTheme = () => {
     dispatch(push(`/admin/embedding/themes/new`));
@@ -46,21 +42,6 @@ function EmbeddingThemeListingAppInner() {
     } catch (error) {
       console.error("Failed to duplicate theme:", error);
       sendToast({ message: t`Failed to duplicate theme`, icon: "warning" });
-    }
-  };
-
-  const handleDeleteTheme = async () => {
-    if (!themeToDelete) {
-      return;
-    }
-
-    try {
-      await deleteTheme(themeToDelete);
-      sendToast({ message: t`Theme deleted successfully`, icon: "check" });
-      setThemeToDelete(null);
-    } catch (error) {
-      console.error("Failed to delete theme:", error);
-      sendToast({ message: t`Failed to delete theme`, icon: "warning" });
     }
   };
 
@@ -88,17 +69,13 @@ function EmbeddingThemeListingAppInner() {
             theme={theme}
             onEdit={() => dispatch(push(`/admin/embedding/themes/${theme.id}`))}
             onDuplicate={() => handleDuplicateTheme(theme.id)}
-            onDelete={() => setThemeToDelete(theme.id)}
+            onDelete={() => requestDelete(theme.id)}
           />
         ))}
         <NewThemeCard onClick={handleCreateTheme} />
       </SimpleGrid>
 
-      <DeleteThemeModal
-        isOpen={themeToDelete !== null}
-        onCancel={() => setThemeToDelete(null)}
-        onDelete={handleDeleteTheme}
-      />
+      {deleteModal}
     </Stack>
   );
 }
