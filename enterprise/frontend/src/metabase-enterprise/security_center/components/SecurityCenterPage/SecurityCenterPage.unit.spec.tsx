@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import type { Location } from "history";
 
 import { setupRecentViewsAndSelectionsEndpoints } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
@@ -24,7 +25,13 @@ const mockAcknowledgeAll = jest.fn();
 
 function setup(
   advisories: Advisory[] = [],
-  { lastCheckedAt = null }: { lastCheckedAt?: string | null } = {},
+  {
+    lastCheckedAt = null,
+    location,
+  }: {
+    lastCheckedAt?: string | null;
+    location?: Location<{ open?: string }>;
+  } = {},
 ) {
   jest.spyOn(advisoriesHook, "useSecurityAdvisories").mockReturnValue({
     data: advisories,
@@ -57,7 +64,7 @@ function setup(
     resetConfig: jest.fn(),
   });
 
-  renderWithProviders(<SecurityCenterPage />, {
+  renderWithProviders(<SecurityCenterPage location={location} />, {
     storeInitialState: {
       settings: createMockSettingsState({
         version: createMockVersion({ tag: "v0.59.3" }),
@@ -344,6 +351,28 @@ describe("SecurityCenterPage", () => {
       setup([]);
 
       expect(screen.queryByTestId("upgrade-banner")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("notification settings modal", () => {
+    it("opens the modal when the 'open=notifications' query param is set", async () => {
+      setup([], {
+        location: {
+          query: { open: "notifications" },
+        } as Location<{ open?: string }>,
+      });
+
+      expect(
+        await screen.findByRole("dialog", { name: "Notification settings" }),
+      ).toBeInTheDocument();
+    });
+
+    it("does not open the modal when the query param is not set", async () => {
+      setup();
+
+      expect(
+        screen.queryByRole("dialog", { name: "Notification settings" }),
+      ).not.toBeInTheDocument();
     });
   });
 
