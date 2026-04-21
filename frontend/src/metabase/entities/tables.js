@@ -32,18 +32,19 @@ import {
 } from "metabase/selectors/metadata";
 import { color } from "metabase/ui/colors";
 import {
-  createEntity,
-  entityCompatibleQuery,
-  notify,
-  withCachedDataAndRequestState,
-  withNormalize,
-} from "metabase/utils/entities";
-import {
   convertSavedQuestionToVirtualTable,
   getCollectionVirtualSchemaId,
   getCollectionVirtualSchemaName,
   getQuestionVirtualTableId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
+
+import {
+  createEntity,
+  entityCompatibleQuery,
+  notify,
+  withCachedDataAndRequestState,
+  withNormalize,
+} from "./utils";
 
 // OBJECT ACTIONS
 export const TABLES_BULK_UPDATE = "metabase/entities/TABLES_BULK_UPDATE";

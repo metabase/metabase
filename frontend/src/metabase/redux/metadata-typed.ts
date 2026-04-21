@@ -1,7 +1,7 @@
 import { type Schema, normalize } from "normalizr";
 
 // this action is handled by entity reducers in `handleEntities` in
-// `frontend/src/metabase/utils/entities.js`
+// `frontend/src/metabase/entities/utils.js`
 const UPDATE = "metabase/entities/UPDATE";
 
 export function updateMetadata(data: unknown, schema: Schema) {

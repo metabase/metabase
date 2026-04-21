@@ -23,6 +23,7 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
+import { entityCompatibleQuery } from "metabase/entities";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
@@ -42,7 +43,6 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import { entityCompatibleQuery } from "metabase/utils/entities";
 import type { Deferred } from "metabase/utils/promise";
 import { defer } from "metabase/utils/promise";
 import { uuid } from "metabase/utils/uuid";

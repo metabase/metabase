@@ -8,11 +8,6 @@ import {
 import type { Dispatch } from "metabase/redux/store";
 import { DocumentSchema } from "metabase/schema";
 import { color } from "metabase/ui/utils/colors";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/utils/entities";
 import type {
   Collection,
   CopyDocumentRequest,
@@ -23,6 +18,7 @@ import type {
   UpdateDocumentRequest,
 } from "metabase-types/api";
 
+import { createEntity, entityCompatibleQuery, undo } from "./utils";
 /**
  * @deprecated use "metabase/api" instead
  */

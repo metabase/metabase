@@ -9,11 +9,6 @@ import {
 import { createThunkAction } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
 import { ActionSchema } from "metabase/schema";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/utils/entities";
 import type {
   CreateActionRequest,
   GetActionRequest,
@@ -24,6 +19,8 @@ import type {
   WritebackImplicitQueryAction,
   WritebackQueryAction,
 } from "metabase-types/api";
+
+import { createEntity, entityCompatibleQuery, undo } from "../utils";
 
 type BaseCreateActionParams = Pick<
   WritebackAction,

@@ -17,12 +17,13 @@ import { compose } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { withAction } from "metabase/redux/utils";
 import { color } from "metabase/ui/colors";
+
 import {
   createEntity,
   entityCompatibleQuery,
   undo,
   withRequestState,
-} from "metabase/utils/entities";
+} from "./utils";
 
 const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 

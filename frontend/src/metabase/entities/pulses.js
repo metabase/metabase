@@ -7,11 +7,9 @@ import {
 } from "metabase/api";
 import { getCollectionType } from "metabase/entities/collections/utils";
 import { color } from "metabase/ui/colors";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/utils/entities";
+
+import { createEntity, entityCompatibleQuery, undo } from "./utils";
+
 /**
  * @deprecated use "metabase/api" instead
  */

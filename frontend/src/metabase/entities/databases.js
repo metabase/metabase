@@ -15,12 +15,9 @@ import {
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 import { color } from "metabase/ui/colors";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  fetchData,
-} from "metabase/utils/entities";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+
+import { createEntity, entityCompatibleQuery, fetchData } from "./utils";
 
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =

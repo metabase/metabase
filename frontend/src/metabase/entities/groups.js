@@ -6,7 +6,8 @@ import {
   useGetPermissionsGroupQuery,
   useListPermissionsGroupsQuery,
 } from "metabase/api";
-import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead

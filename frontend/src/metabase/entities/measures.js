@@ -6,7 +6,8 @@ import {
 import { MeasureSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { color } from "metabase/ui/colors";
-import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead

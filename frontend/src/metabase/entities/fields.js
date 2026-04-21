@@ -15,22 +15,23 @@ import {
   createThunkAction,
   handleActions,
 } from "metabase/redux";
-import { withAction } from "metabase/redux/utils";
 import { FieldSchema } from "metabase/schema";
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
+import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
+import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
+
 import {
   createEntity,
   entityCompatibleQuery,
   notify,
   updateData,
+  withAction,
   withCachedDataAndRequestState,
   withNormalize,
-} from "metabase/utils/entities";
-import { getUniqueFieldId } from "metabase-lib/v1/metadata/utils/fields";
-import { getFieldValues } from "metabase-lib/v1/queries/utils/field";
+} from "./utils";
 
 // ADDITIONAL OBJECT ACTIONS
 

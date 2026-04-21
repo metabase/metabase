@@ -9,9 +9,12 @@ import {
   useSearchQuery,
 } from "metabase/api";
 import { canonicalCollectionId } from "metabase/collections/utils";
-import { entityForObject } from "metabase/entities/utils";
+import {
+  createEntity,
+  entityCompatibleQuery,
+  entityForObject,
+} from "metabase/entities/utils";
 import { ObjectUnionSchema } from "metabase/schema";
-import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 
 import { Actions } from "./actions";
 import { Bookmarks } from "./bookmarks";

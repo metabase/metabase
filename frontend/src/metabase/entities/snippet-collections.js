@@ -10,7 +10,8 @@ import {
   useListQuery as useListCollectionsQuery,
 } from "metabase/entities/collections";
 import { SnippetCollectionSchema } from "metabase/schema";
-import { createEntity, undo } from "metabase/utils/entities";
+
+import { createEntity, undo } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
