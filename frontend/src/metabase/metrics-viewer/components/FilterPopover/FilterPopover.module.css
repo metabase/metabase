@@ -48,6 +48,6 @@
   cursor: pointer;
 
   &:hover {
-    background-color: var(--mb-color-brand-lighter);
+    background-color: var(--mb-color-filter);
   }
 }

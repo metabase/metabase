@@ -1368,7 +1368,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.getAllFilterPills().should("have.length", 0);
     });
 
-    it("Should allow me to apply filters to each metric individually", () => {
+    it("should allow me to apply filters to each metric individually", () => {
       addMetric("Count of products");
       switchToTab("Category");
       H.MetricsViewer.changeVizType("line");
@@ -1469,57 +1469,6 @@ describe("scenarios > metrics > explorer", () => {
       });
     });
 
-    it("should apply a segment as a filter to a metric", () => {
-      const SEGMENT_NAME = "Big orders";
-
-      H.createSegment({
-        name: SEGMENT_NAME,
-        description: "Orders with a total over $100",
-        table_id: ORDERS_ID,
-        definition: {
-          "source-table": ORDERS_ID,
-          filter: [">", ["field", ORDERS.TOTAL, null], 100],
-        },
-      });
-
-      H.MetricsViewer.getFilterButton().click();
-
-      cy.log(
-        "segment should appear alongside dimensions in the filter popover",
-      );
-      H.popover().findByText(SEGMENT_NAME).should("be.visible");
-
-      cy.log("search should match segment names");
-      H.popover().findByPlaceholderText("Search dimensions...").type("big");
-      H.popover().findByText(SEGMENT_NAME).should("be.visible");
-      H.popover().findByPlaceholderText("Search dimensions...").clear();
-
-      cy.log("clicking a segment applies it directly as a filter");
-      H.popover().findByText(SEGMENT_NAME).click();
-
-      H.MetricsViewer.getAllFilterPills()
-        .should("have.length", 1)
-        .should("contain.text", SEGMENT_NAME);
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "metrics_viewer_filter_added",
-        triggered_from: "metric_filter",
-      });
-
-      cy.log("removing the segment pill removes the filter");
-      H.MetricsViewer.getAllFilterPills()
-        .eq(0)
-        .findByLabelText("Remove")
-        .click();
-
-      H.MetricsViewer.getAllFilterPills().should("have.length", 0);
-
-      H.expectUnstructuredSnowplowEvent({
-        event: "metrics_viewer_filter_removed",
-        triggered_from: "metric_filter",
-      });
-    });
-
     it("should preserve breakout colors when a dimension filter hides some values", () => {
       selectBreakout("Count of orders", "Quantity");
       cy.wait("@dataset");
@@ -1591,6 +1540,67 @@ describe("scenarios > metrics > explorer", () => {
             .children()
             .should("have.length", legendHexColors.length);
         });
+    });
+  });
+
+  describe("Segments", () => {
+    beforeEach(() => {
+      interceptDatasetQuery();
+      H.MetricsViewer.goToViewer();
+    });
+
+    it("should apply a segment as a filter to a metric", () => {
+      const SEGMENT_NAME = "Big orders";
+
+      H.createSegment({
+        name: SEGMENT_NAME,
+        description: "Orders with a total over $100",
+        table_id: ORDERS_ID,
+        definition: {
+          "source-table": ORDERS_ID,
+          filter: [">", ["field", ORDERS.TOTAL, null], 100],
+        },
+      });
+
+      addMetric("Count of orders");
+      cy.wait("@dataset");
+
+      H.MetricsViewer.getFilterButton().click();
+
+      cy.log(
+        "segment should appear alongside dimensions in the filter popover",
+      );
+      H.popover().findByText(SEGMENT_NAME).should("be.visible");
+
+      cy.log("search should match segment names");
+      H.popover().findByPlaceholderText("Search dimensions...").type("big");
+      H.popover().findByText(SEGMENT_NAME).should("be.visible");
+      H.popover().findByPlaceholderText("Search dimensions...").clear();
+
+      cy.log("clicking a segment applies it directly as a filter");
+      H.popover().findByText(SEGMENT_NAME).click();
+
+      H.MetricsViewer.getAllFilterPills()
+        .should("have.length", 1)
+        .should("contain.text", SEGMENT_NAME);
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_filter_added",
+        triggered_from: "metric_filter",
+      });
+
+      cy.log("removing the segment pill removes the filter");
+      H.MetricsViewer.getAllFilterPills()
+        .eq(0)
+        .findByLabelText("Remove")
+        .click();
+
+      H.MetricsViewer.getAllFilterPills().should("have.length", 0);
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "metrics_viewer_filter_removed",
+        triggered_from: "metric_filter",
+      });
     });
   });
 
