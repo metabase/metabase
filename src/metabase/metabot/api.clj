@@ -342,7 +342,7 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/feedback"
-  "Persist Metabot feedback locally. Harbormaster proxying is disabled."
+  "Persist Metabot feedback locally and proxy it to Harbormaster."
   [_route-params
    _query-params
    body :- [:map
@@ -352,18 +352,14 @@
             [:issue_type        {:optional true} [:maybe :string]]
             [:freeform_feedback {:optional true} [:maybe :string]]]]
   (metabot.config/check-metabot-enabled!)
-  ;; Let DB write exceptions propagate as 500 — we want to see local persist failures.
-  ;; Authz / missing-message cases return nil from persist-feedback! and still 204.
-  (let [_message (metabot.feedback/persist-feedback! body)]
-    (comment
-      (when _message
-        (try
-          (api/check-400 (metabot.feedback/submit-to-harbormaster!
-                          (metabot.feedback/harbormaster-payload body _message))
-                         "Cannot submit feedback. The license token and/or Store API URL are missing!")
-          (catch Exception e
-            (log/errorf "Failed to submit feedback to Harbormaster: %s" (ex-message e))
-            (throw e))))))
+  (when-let [message (metabot.feedback/persist-feedback! body)]
+    (try
+      (api/check-400 (metabot.feedback/submit-to-harbormaster!
+                      (metabot.feedback/harbormaster-payload body message))
+                     "Cannot submit feedback. The license token and/or Store API URL are missing!")
+      (catch Exception e
+        (log/errorf "Failed to submit feedback to Harbormaster: %s" (ex-message e))
+        (throw e))))
   api/generic-204-no-content)
 
 (def ^:private metabot-provider-schema

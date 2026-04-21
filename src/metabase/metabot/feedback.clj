@@ -1,6 +1,5 @@
 (ns metabase.metabot.feedback
-  "Local persistence of Metabot feedback, plus a Harbormaster submission path that
-   is currently disabled at the call site (see `metabase.metabot.api`)."
+  "Local persistence of Metabot feedback, plus a Harbormaster submission path."
   (:require
    [clj-http.client :as http]
    [clojure.string :as str]
@@ -27,10 +26,8 @@
                   :body         (json/encode feedback)}))))
 
 (defn harbormaster-payload
-  "Reassemble the historical Harbormaster feedback payload from the slim wire
-   body plus DB-derived conversation context. The FE no longer sends
-   `conversation_data`, `version`, `submission_time`, or `is_admin` — those are
-   reconstructed here so re-enabling the proxy call is a one-line revert."
+  "Build the Harbormaster feedback payload from the request body and the
+   resolved `metabot_message` row."
   [{:keys [metabot_id message_id positive issue_type freeform_feedback]}
    {:keys [conversation_id]}]
   {:metabot_id        metabot_id
