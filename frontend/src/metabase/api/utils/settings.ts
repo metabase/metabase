@@ -28,10 +28,14 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
   const {
     data: settings,
     isLoading: settingsLoading,
+    isFetching: settingsFetching,
     ...apiProps
   } = useGetSettingsQuery();
-  const { data: settingsDetails, isLoading: detailsLoading } =
-    useGetAdminSettingsDetailsQuery();
+  const {
+    data: settingsDetails,
+    isLoading: detailsLoading,
+    isFetching: detailsFetching,
+  } = useGetAdminSettingsDetailsQuery();
   const [updateSetting, updateSettingResult] = useUpdateSettingMutation();
   const [updateSettings, updateSettingsResult] = useUpdateSettingsMutation();
 
@@ -105,6 +109,7 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
     updateSettingResult,
     updateSettingsResult,
     isLoading: settingsLoading || detailsLoading,
+    isFetching: settingsFetching || detailsFetching,
     ...apiProps,
   };
 };

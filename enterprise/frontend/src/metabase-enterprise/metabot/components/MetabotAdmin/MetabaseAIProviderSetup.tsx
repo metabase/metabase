@@ -92,10 +92,11 @@ export function MetabaseAIProviderSetup() {
       await metabaseManagedAiPurchase.purchaseMetabaseManagedAi(
         hasAcceptedTerms,
       );
+      await handleConnect();
     } catch {
       setIsSettingUpModalOpen(false);
     }
-  }, [hasAcceptedTerms, metabaseManagedAiPurchase]);
+  }, [handleConnect, hasAcceptedTerms, metabaseManagedAiPurchase]);
 
   const onConnect = match({
     hasAcceptedTerms,
@@ -287,9 +288,10 @@ export function MetabaseAIProviderSetup() {
 
       <MetabotSettingUpModal
         isSavingConfiguration={
-          isSettingUpModalOpen && updateMetabotSettingsResult.isLoading
+          isSettingUpModalOpen &&
+          (updateMetabotSettingsResult.isLoading ||
+            metabaseManagedAiPurchase.isLoading)
         }
-        onActivated={handleConnect}
         opened={isSettingUpModalOpen}
         onClose={() => setIsSettingUpModalOpen(false)}
       />
