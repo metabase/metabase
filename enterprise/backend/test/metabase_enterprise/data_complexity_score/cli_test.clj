@@ -1,8 +1,10 @@
 (ns metabase-enterprise.data-complexity-score.cli-test
   (:require
    [clojure.edn :as edn]
+   [clojure.java.io :as io]
    [clojure.test :refer :all]
    [metabase-enterprise.data-complexity-score.cli :as cli]
+   [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.representation :as representation]
    [metabase.audit-app.core :as audit]
@@ -39,8 +41,8 @@
                              :repeated-measures {:count 2 :score 4}}}
                (:universe result))))
       (testing "meta has formula-version + threshold but no :embedding-model (offline mode)"
-        (is (= {:formula-version   1
-                :synonym-threshold 0.3}
+        (is (= {:formula-version   2
+                :synonym-threshold 0.9}
                (:meta result)))))))
 
 (deftest ^:parallel run-cli-writes-readable-edn-to-output-file-test
@@ -83,9 +85,9 @@
         (write "tables"
                [{:id 10 :db_id 1 :name "Alpha" :active true :is_published true :collection_id 1}
                 {:id 11 :db_id 1 :name "Beta"  :active true :is_published true :collection_id 1}])
-        ;; Cosine(Alpha, Beta) ≈ 0.898, well above the 0.3 threshold.
+        ;; Cosine(Alpha, Beta) ≈ 0.995, well above the 0.90 threshold.
         (write "embeddings" {"ALPHA"  [1.0 0.0 0.0]
-                             " Beta " [0.9 0.44 0.0]})
+                             " Beta " [0.99 0.1 0.0]})
         (let [result (#'cli/run-cli {:representation-dir (.getAbsolutePath tmp-dir)})]
           (testing ":library synonym-pairs reflects the normalized match"
             (is (= {:pairs 1 :score 50}
@@ -93,6 +95,114 @@
           (testing ":universe mirrors it (same two tables)"
             (is (= {:pairs 1 :score 50}
                    (get-in result [:universe :components :synonym-pairs])))))))))
+
+(deftest ^:parallel synonym-threshold-test
+  (testing "synonym detection requires cosine ≥ 0.90 — a regression to the old 0.30 cutoff would"
+    (testing "flag mid-similarity pairs that the current formula correctly rejects."
+      (let [score-pairs (fn [embeddings]
+                          (get-in (complexity/score-from-entities
+                                   [{:id 10 :name "Alpha" :kind :table :field-count 0 :measure-names []}
+                                    {:id 11 :name "Beta"  :kind :table :field-count 0 :measure-names []}]
+                                   []
+                                   (embedders/file-embedder embeddings)
+                                   {})
+                                  [:library :components :synonym-pairs :pairs]))]
+        (testing "cosine ≈ 0.50 — above the old 0.30 cutoff, below 0.90: NOT a synonym"
+          (is (= 0 (score-pairs {"alpha" [1.0 0.0]
+                                 "beta"  [0.5 0.866]}))))
+        (testing "cosine ≈ 0.89 — just below the new threshold: NOT a synonym"
+          (is (= 0 (score-pairs {"alpha" [1.0 0.0]
+                                 "beta"  [0.89 0.456]}))))
+        (testing "cosine ≈ 0.91 — just above the new threshold: IS a synonym"
+          (is (= 1 (score-pairs {"alpha" [1.0 0.0]
+                                 "beta"  [0.91 0.415]}))))))))
+
+(deftest ^:parallel embeddings-path-override-test
+  (testing "explicit :embeddings-path resolves relative to the representation dir, not cwd,"
+    (testing "and a missing file fails fast instead of silently scoring with no embeddings"
+      (let [tmp-dir (doto (java.io.File/createTempFile "emb-override-rep-" "")
+                      (.delete) (.mkdirs) .deleteOnExit)
+            write   (fn [rel-path data]
+                      (let [f (java.io.File. ^java.io.File tmp-dir ^String rel-path)]
+                        (io/make-parents f)
+                        (spit f (json/encode data))))]
+        ;; Minimal fixture: two tables with high-cosine embeddings so a synonym pair is detected
+        ;; when the override resolves, and would be zero if it silently fell back to {}.
+        (write "collections.json"                  [{:id 1 :type "library" :location "/"}])
+        (write "tables.json"
+               [{:id 10 :db_id 1 :name "Alpha" :active true :is_published true :collection_id 1}
+                {:id 11 :db_id 1 :name "Beta"  :active true :is_published true :collection_id 1}])
+        ;; embeddings.json at the dir root is deliberately orthogonal — if the loader falls back
+        ;; to it (or to `{}`), the synonym-pair count would be 0, not 1.
+        (write "embeddings.json"                   {"alpha" [1.0 0.0 0.0] "beta" [0.0 1.0 0.0]})
+        (write "embeddings/variant.json"           {"alpha" [1.0 0.0 0.0] "beta" [0.99 0.1 0.0]})
+        (let [dir-path (.getAbsolutePath tmp-dir)]
+          (testing "relative override picks the subdirectory file (1 synonym pair, not 0)"
+            (let [{:keys [embedder]} (representation/load-dir dir-path :embeddings-path "embeddings/variant.json")
+                  result             (complexity/score-from-entities
+                                      [{:id 10 :name "Alpha" :kind :table :field-count 0 :measure-names []}
+                                       {:id 11 :name "Beta"  :kind :table :field-count 0 :measure-names []}]
+                                      []
+                                      embedder
+                                      {})]
+              (is (= 1 (get-in result [:library :components :synonym-pairs :pairs])))))
+          (testing "absolute override is used as-is"
+            (let [abs-path (.getAbsolutePath (java.io.File. ^java.io.File tmp-dir "embeddings/variant.json"))
+                  {:keys [embedder]} (representation/load-dir dir-path :embeddings-path abs-path)
+                  result             (complexity/score-from-entities
+                                      [{:id 10 :name "Alpha" :kind :table :field-count 0 :measure-names []}
+                                       {:id 11 :name "Beta"  :kind :table :field-count 0 :measure-names []}]
+                                      []
+                                      embedder
+                                      {})]
+              (is (= 1 (get-in result [:library :components :synonym-pairs :pairs])))))
+          (testing "missing override file throws ex-info with the resolved path"
+            (let [ex (try (representation/load-dir dir-path :embeddings-path "embeddings/does-not-exist.json")
+                          nil
+                          (catch clojure.lang.ExceptionInfo e e))]
+              (is (some? ex) "expected an exception, got a silent fallback")
+              (is (re-find #"does-not-exist\.json" (ex-message ex)))
+              (is (= "embeddings/does-not-exist.json" (:embeddings-path (ex-data ex))))
+              (is (re-find #"embeddings/does-not-exist\.json" (:resolved-path (ex-data ex))))))
+          (testing "run-cli propagates the ex-info instead of swallowing it with a silent fallback"
+            ;; `run-cli` is documented as the pure core — it must not call `System/exit` on a
+            ;; missing --embeddings file. The CLI-layer handling lives in `-main`.
+            (let [ex (try (#'cli/run-cli {:representation-dir  dir-path
+                                          :embeddings          "embeddings/does-not-exist.json"})
+                          nil
+                          (catch clojure.lang.ExceptionInfo e e))]
+              (is (some? ex) "run-cli should throw, not exit the JVM")
+              (is (re-find #"does-not-exist\.json" (ex-message ex)))
+              (is (re-find #"embeddings/does-not-exist\.json" (:resolved-path (ex-data ex)))))))))))
+
+(deftest main-converts-missing-embeddings-to-fail-test
+  ;; Not ^:parallel: uses `with-redefs` on the CLI's private `fail!` to assert on the user-facing
+  ;; failure path without terminating the JVM.
+  (testing "-main translates a missing --embeddings override into a one-line fail! + exit 1"
+    (let [tmp-dir    (doto (java.io.File/createTempFile "main-missing-emb-" "")
+                       (.delete) (.mkdirs) .deleteOnExit)
+          write      (fn [rel-path data]
+                       (let [f (java.io.File. ^java.io.File tmp-dir ^String rel-path)]
+                         (io/make-parents f)
+                         (spit f (json/encode data))))
+          _          (write "collections.json" [{:id 1 :type "library" :location "/"}])
+          _          (write "tables.json"      [])
+          dir-path   (.getAbsolutePath tmp-dir)
+          fail-calls (atom [])]
+      (with-redefs [cli/fail! (fn [& msgs]
+                                (swap! fail-calls conj (vec msgs))
+                                (throw (ex-info "mocked-exit" {::mock :exit})))]
+        (let [thrown (try (#'cli/-main "--representation-dir" dir-path
+                                       "--embeddings" "embeddings/does-not-exist.json")
+                          nil
+                          (catch clojure.lang.ExceptionInfo e e))]
+          (is (= {::mock :exit} (ex-data thrown))
+              "expected -main to hit the mocked fail! path, not exit cleanly or throw something else")))
+      (is (= 1 (count @fail-calls)) "fail! should be invoked exactly once")
+      (let [[msg & extra] (first @fail-calls)]
+        (is (empty? extra) "fail! should be called with a single message")
+        (is (re-find #"does-not-exist\.json" msg)
+            "the user-facing message must mention the missing file")))))
 
 (deftest ^:parallel representation-missing-section-test
   (testing "missing JSON files default to empty — loader doesn't throw, scoring reads an empty library"
