@@ -205,12 +205,34 @@
                         (-> (disj "indexed-entity") (concat ["indexed-entity"])))]
     (reduce u/rconcat [] (map spec-index-reducible sorted-models))))
 
+(def ^:private max-document-error-logs 10)
+
 (defn- query->documents [query-reducible]
-  (->> query-reducible
-       (eduction
-        (comp
-         (map t2.realize/realize)
-         (map ->document)))))
+  (let [failures (volatile! 0)]
+    (->> query-reducible
+         (eduction
+          (comp
+           (map t2.realize/realize)
+           (fn [rf]
+             (fn
+               ([] (rf))
+               ([result]
+                (when (pos? @failures)
+                  (log/warnf "Failed to build %d search documents; they were skipped" @failures))
+                (rf result))
+               ([result m]
+                (if-let [doc (try
+                               (->document m)
+                               (catch Throwable t
+                                 (let [n (vswap! failures inc)]
+                                   (cond
+                                     (<= n max-document-error-logs)
+                                     (log/warnf t "Error building search document for %s %s; skipping" (:model m) (:id m))
+                                     (= n (inc max-document-error-logs))
+                                     (log/warnf "Suppressing further per-document error logs after %d failures" max-document-error-logs)))
+                                 nil))]
+                  (rf result doc)
+                  result)))))))))
 
 (defn searchable-documents
   "Return all existing searchable documents from the database."
