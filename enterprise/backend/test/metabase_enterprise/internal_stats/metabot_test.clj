@@ -77,27 +77,28 @@
       (t/with-clock clock
         (try
           ;; -- AI proxy conversations (metabase/ prefix) --
-          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "metabase/anthropic/claude-sonnet-4-6"]
-            ;; conv-1: yesterday, one model
-            (send-message! conv-1 "What is 2+2?" model 100 50)
-            (backdate-messages! conv-1 yesterday)
+          (mt/with-premium-features #{:metabase-ai-managed}
+            (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                               "metabase/anthropic/claude-sonnet-4-6"]
+              ;; conv-1: yesterday, one model
+              (send-message! conv-1 "What is 2+2?" model 100 50)
+              (backdate-messages! conv-1 yesterday)
 
-            ;; conv-2: yesterday, same model different usage
-            (send-message! conv-2 "Tell me a joke" model 200 80)
-            (backdate-messages! conv-2 yesterday)
+              ;; conv-2: yesterday, same model different usage
+              (send-message! conv-2 "Tell me a joke" model 200 80)
+              (backdate-messages! conv-2 yesterday)
 
-            ;; conv-3: two days ago — out of window
-            (send-message! conv-3 "Old question" model 999 999)
-            (backdate-messages! conv-3 two-days-ago)
+              ;; conv-3: two days ago — out of window
+              (send-message! conv-3 "Old question" model 999 999)
+              (backdate-messages! conv-3 two-days-ago)
 
-            ;; conv-4: today — in rolling window
-            (send-message! conv-4 "Today's question" model 888 888)
-            (backdate-messages! conv-4 today)
+              ;; conv-4: today — in rolling window
+              (send-message! conv-4 "Today's question" model 888 888)
+              (backdate-messages! conv-4 today)
 
-            ;; conv-6: today, same model — exercises rolling aggregation
-            (send-message! conv-6 "Another today question" model 100 100)
-            (backdate-messages! conv-6 today))
+              ;; conv-6: today, same model — exercises rolling aggregation
+              (send-message! conv-6 "Another today question" model 100 100)
+              (backdate-messages! conv-6 today)))
 
           ;; -- BYOK conversation (no metabase/ prefix) --
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
@@ -177,10 +178,11 @@
           conv-id (str (random-uuid))]
       (t/with-clock clock
         (try
-          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "metabase/anthropic/claude-sonnet-4-6"]
-            (send-message! conv-id "Hello" "claude-sonnet-4-6" 500 100)
-            (backdate-messages! conv-id today))
+          (mt/with-premium-features #{:metabase-ai-managed}
+            (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                               "metabase/anthropic/claude-sonnet-4-6"]
+              (send-message! conv-id "Hello" "claude-sonnet-4-6" 500 100)
+              (backdate-messages! conv-id today)))
           (let [stats (sut/metabot-stats)]
             (testing "returns rolling keys when only today has data"
               (is (= {"anthropic:claude-sonnet-4-6:tokens" 600}
@@ -200,10 +202,11 @@
           conv-id   (str (random-uuid))]
       (t/with-clock clock
         (try
-          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "metabase/anthropic/claude-sonnet-4-6"]
-            (send-message! conv-id "Hello" "claude-sonnet-4-6" 1000 250)
-            (backdate-messages! conv-id yesterday))
+          (mt/with-premium-features #{:metabase-ai-managed}
+            (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                               "metabase/anthropic/claude-sonnet-4-6"]
+              (send-message! conv-id "Hello" "claude-sonnet-4-6" 1000 250)
+              (backdate-messages! conv-id yesterday)))
           (let [stats (sut/metabot-stats)]
             (is (= {"anthropic:claude-sonnet-4-6:tokens" 1250}
                    (:metabot-usage stats))))
@@ -245,10 +248,11 @@
                         (constantly "metabase/openrouter/anthropic/claude-haiku-4-5")]
             (send-message! conv-1 "Q1" "anthropic/claude-haiku-4-5" 100 50)
             (backdate-messages! conv-1 yesterday))
-          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "metabase/anthropic/claude-sonnet-4-6"]
-            (send-message! conv-2 "Q2" "claude-sonnet-4-6" 200 80)
-            (backdate-messages! conv-2 yesterday))
+          (mt/with-premium-features #{:metabase-ai-managed}
+            (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                               "metabase/anthropic/claude-sonnet-4-6"]
+              (send-message! conv-2 "Q2" "claude-sonnet-4-6" 200 80)
+              (backdate-messages! conv-2 yesterday)))
           (with-redefs [metabot.settings/llm-metabot-provider
                         (constantly "metabase/openai/gpt-4o")]
             (send-message! conv-3 "Q3" "gpt-4o" 300 120)
@@ -307,25 +311,26 @@
           tables    [{:name "Orders" :fields [{:name "id"} {:name "total"}]}]]
       (t/with-clock clock
         (try
-          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "metabase/anthropic/claude-sonnet-4-6"]
-            ;; Yesterday's generation
-            (generate-example-questions! tables model 400 100)
+          (mt/with-premium-features #{:metabase-ai-managed}
+            (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                               "metabase/anthropic/claude-sonnet-4-6"]
+              ;; Yesterday's generation
+              (generate-example-questions! tables model 400 100)
 
-            (testing "ai_usage_log row is created with ai_proxied = true"
-              (is (=? [{:ai_proxied true
-                        :total_tokens 500}]
-                      (t2/select :model/AiUsageLog :id [:> baseline]))))
+              (testing "ai_usage_log row is created with ai_proxied = true"
+                (is (=? [{:ai_proxied true
+                          :total_tokens 500}]
+                        (t2/select :model/AiUsageLog :id [:> baseline]))))
 
-            ;; backdate so it lands in yesterday's window
-            (t2/update! :model/AiUsageLog {:id [:> baseline]}
-                        {:created_at yesterday})
+              ;; backdate so it lands in yesterday's window
+              (t2/update! :model/AiUsageLog {:id [:> baseline]}
+                          {:created_at yesterday})
 
-            ;; Today's generation — exercises rolling usage
-            (let [before-today (max-usage-log-id)]
-              (generate-example-questions! tables model 200 60)
-              (t2/update! :model/AiUsageLog {:id [:> before-today]}
-                          {:created_at today})))
+              ;; Today's generation — exercises rolling usage
+              (let [before-today (max-usage-log-id)]
+                (generate-example-questions! tables model 200 60)
+                (t2/update! :model/AiUsageLog {:id [:> before-today]}
+                            {:created_at today}))))
 
           (testing "metabot-stats includes yesterday totals and today's rolling usage"
             (is (=? {:metabot-tokens             500
@@ -371,17 +376,18 @@
           conv-id   (str (random-uuid))]
       (t/with-clock clock
         (try
-          (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
-                                             "metabase/anthropic/claude-sonnet-4-6"]
-            ;; Chat conversation
-            (send-message! conv-id "What is 2+2?" model 200 50)
-            (backdate-messages! conv-id yesterday)
+          (mt/with-premium-features #{:metabase-ai-managed}
+            (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                               "metabase/anthropic/claude-sonnet-4-6"]
+              ;; Chat conversation
+              (send-message! conv-id "What is 2+2?" model 200 50)
+              (backdate-messages! conv-id yesterday)
 
-            ;; Example question generation (no conversation)
-            (generate-example-questions! tables model 300 100)
-            (t2/update! :model/AiUsageLog {:id [:> baseline]
-                                           :source "example-question-generation"}
-                        {:created_at yesterday}))
+              ;; Example question generation (no conversation)
+              (generate-example-questions! tables model 300 100)
+              (t2/update! :model/AiUsageLog {:id [:> baseline]
+                                             :source "example-question-generation"}
+                          {:created_at yesterday})))
 
           (testing "metabot-stats includes both chat and example question generation"
             ;; chat: 250, eqg: 400 → total 650

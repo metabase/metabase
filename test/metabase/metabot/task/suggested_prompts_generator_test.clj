@@ -80,7 +80,7 @@
               (t2/update! :model/Metabot (:id original-metabot) {:use_verified_content false}))))))))
 
 (deftest suggested-prompts-generator-skips-generation-when-managed-provider-is-locked-test
-  (mt/with-premium-features #{:content-verification}
+  (mt/with-premium-features #{:content-verification :metabase-ai-managed}
     (mt/with-empty-h2-app-db!
       (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
                                          "metabase/anthropic/claude-sonnet-4-6"]
