@@ -1,11 +1,10 @@
-import type { EnhancedStore } from "@reduxjs/toolkit";
 import * as Snowplow from "@snowplow/browser-tracker";
 
-import type { State } from "metabase/redux/store";
-import { getUserId } from "metabase/selectors/user";
 import Settings from "metabase/utils/settings";
 
-export const createSnowplowTracker = (store: EnhancedStore<State>): void => {
+type GetUserId = () => number | undefined;
+
+export const createSnowplowTracker = (getUserId: GetUserId): void => {
   if (!Settings.snowplowEnabled()) {
     return;
   }
@@ -18,14 +17,14 @@ export const createSnowplowTracker = (store: EnhancedStore<State>): void => {
     contexts: { webPage: true },
     anonymousTracking: { withServerAnonymisation: true },
     stateStorageStrategy: "none",
-    plugins: [createSnowplowPlugin(store)],
+    plugins: [createSnowplowPlugin(getUserId)],
   });
 };
 
-const createSnowplowPlugin = (store: EnhancedStore<State>) => {
+const createSnowplowPlugin = (getUserId: GetUserId) => {
   return {
     beforeTrack: () => {
-      const userId = getUserId(store.getState());
+      const userId = getUserId();
       if (userId) {
         Snowplow.setUserId(String(userId));
       }
