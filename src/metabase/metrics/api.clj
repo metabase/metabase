@@ -91,38 +91,13 @@
   (-> (t2/select-one :model/Card :id id :type "metric")
       metrics.perms/filter-dimensions-for-user))
 
-(defn- score-dimensions
-  "Sort dimensions by interestingness and optionally filter by cutoff and/or
-   limit to top N.
-
-   Uses persisted `:dimension_interestingness` hydrated from the source Field.
-   Dimensions without a persisted score default to `1.0` so they remain visible."
-  [entity cutoff limit]
-  (let [dims (:dimensions entity)]
-    (assoc entity :dimensions
-           (cond->> dims
-             true   (mapv #(assoc % :interestingness-score (or (:dimension_interestingness %) 1.0)))
-             true   (sort-by :interestingness-score >)
-             true   vec
-             cutoff (filterv #(>= (:interestingness-score %) cutoff))
-             limit  (into [] (take limit))))))
-
 (api.macros/defendpoint :get "/:id" :- ::MetricWithDimensions
   "Fetch a `Metric` with ID.
 
-  Returns the metric with hydrated dimensions and dimension mappings.
-  Dimensions are scored by interestingness and sorted highest-first.
-  Pass `interestingness-cutoff` (0.0-1.0) to filter out low-scoring dimensions.
-  Pass `dimension-limit` to return only the top N most interesting dimensions."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
-   {:keys [interestingness-cutoff dimension-limit]}
-   :- [:map
-       [:interestingness-cutoff {:optional true} [:maybe :double]]
-       [:dimension-limit        {:optional true} [:maybe ms/PositiveInt]]]]
+  Returns the metric with hydrated dimensions and dimension mappings."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [metric (hydrated-metric id)]
-    (-> metric
-        (score-dimensions interestingness-cutoff dimension-limit)
-        (assoc :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric))))))
+    (assoc metric :result_column_name (metrics/aggregation-column-name (:database_id metric) (:dataset_query metric)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          POST /api/metric/dataset                                              |
