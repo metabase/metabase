@@ -31,6 +31,7 @@
        :output     \"...\"})"
   (:require
    [clojure.pprint :as pprint]
+   [clojure.set :as set]
    [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
    [metabase-enterprise.semantic-layer.representation :as rep]
    [metabase.util.json :as json]))
@@ -48,7 +49,9 @@
 
 (defn- above-threshold? [^floats a ^floats b ^double norms-product ^double thresh-sq]
   (let [d (dot a b)]
-    (and (>= d 0.0) (>= (* d d) (* thresh-sq norms-product)))))
+    (and (pos? norms-product)
+         (>= d 0.0)
+         (>= (* d d) (* thresh-sq norms-product)))))
 
 ;;; ----------------------------- adjacency ------------------------------
 
@@ -112,7 +115,7 @@
           (doseq [c (sort-by #(- (count (aget adj %))) @candidates)]
             (when (every? #(contains? (aget adj c) %) @clique)
               (swap! clique conj c)
-              (swap! candidates #(clojure.set/intersection % (aget adj c)))))
+              (swap! candidates #(set/intersection % (aget adj c)))))
           ;; Mark all clique members as assigned
           (doseq [m @clique] (aset assigned m true))
           (swap! cliques conj (vec @clique)))))
@@ -149,7 +152,7 @@
               (let [{:keys [a b]} @best]
                 (swap! clusters (fn [m]
                                   (-> m
-                                      (assoc a (clojure.set/union (get m a) (get m b)))
+                                      (assoc a (set/union (get m a) (get m b)))
                                       (dissoc b)))))
               (recur))))))
     (->> (vals @clusters)
