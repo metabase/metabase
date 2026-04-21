@@ -1,1 +1,2 @@
-export { createTracker, trackPageView } from "metabase/utils/analytics";
+export { trackPageView } from "metabase/utils/analytics";
+export { createTracker } from "./snowplow";
