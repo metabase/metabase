@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { Center, Flex, Stack } from "metabase/ui";
+import { Box, Flex, Stack } from "metabase/ui";
 import { getObjectKeys, getObjectValues } from "metabase/utils/objects";
 import { isNotNull } from "metabase/utils/types";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
@@ -27,6 +26,7 @@ import type { DimensionFilterValue } from "../../../utils/dimension-filters";
 import type { MetricSlot } from "../../../utils/metric-slots";
 import { buildDimensionItemsFromDefinitions } from "../../../utils/series";
 import { DISPLAY_TYPE_REGISTRY, getTabConfig } from "../../../utils/tab-config";
+import { DimensionPillBar } from "../../DimensionPillBar";
 import { MetricControls } from "../../MetricControls";
 import { MetricsViewerVisualization } from "../../MetricsViewerVisualization";
 
@@ -185,34 +185,25 @@ export function MetricsViewerTabContent({
     DISPLAY_TYPE_REGISTRY[tab.display].supportsStacking && rawSeries.length > 1;
 
   const isTimeTab = tab.type === "time";
+
+  const tabConfig = getTabConfig(tab.type);
+  const hasAnyOptions = dimensionItems.some((item) =>
+    item.type === "expression"
+      ? item.metricSources.some((s) => s.availableOptions.length > 0)
+      : item.availableOptions.length > 0,
+  );
+  const hideDimensionPill = tabConfig.minDimensions === 0 && !hasAnyOptions;
+
   const mappedDimensionCount = getObjectValues(tab.dimensionMapping).filter(
     isNotNull,
   ).length;
   const dimensionRemoveHandler =
     mappedDimensionCount > 1 ? onDimensionRemove : undefined;
 
-  if (queriesAreLoading || queriesError) {
-    return (
-      <Center h="100%">
-        <LoadingAndErrorWrapper
-          loading={queriesAreLoading}
-          error={queriesError}
-        />
-      </Center>
-    );
-  }
-
-  if (rawSeries.length === 0) {
-    return null;
-  }
-
   return (
-    <Stack flex="1 0 auto" gap="md">
+    <Stack flex="1 0 auto" gap={0}>
       <MetricsViewerVisualization
         rawSeries={rawSeries}
-        dimensionItems={dimensionItems}
-        onDimensionChange={onDimensionChange}
-        onDimensionRemove={dimensionRemoveHandler}
         onBrush={isTimeTab ? handleBrush : undefined}
         definitions={definitions}
         formulaEntities={formulaEntities}
@@ -220,9 +211,20 @@ export function MetricsViewerTabContent({
         tab={tab}
         onTabUpdate={onTabUpdate}
         cardIdToEntityIndex={cardIdToEntityIndex}
+        queriesAreLoading={queriesAreLoading}
+        queriesError={queriesError}
       />
+      {!hideDimensionPill && (
+        <Box mt="sm">
+          <DimensionPillBar
+            items={dimensionItems}
+            onDimensionChange={onDimensionChange}
+            onDimensionRemove={dimensionRemoveHandler}
+          />
+        </Box>
+      )}
       {definitionForControls && (
-        <Flex justify="center" align="center">
+        <Flex mt="md" justify="center" align="center">
           <MetricControls
             definition={definitionForControls}
             displayType={tab.display}

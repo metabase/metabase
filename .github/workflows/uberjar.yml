@@ -13,6 +13,7 @@ on:
       - master
       - internal-tools
       - ai-service-port
+      - metabot-mbql-improvements
     paths-ignore:
       # config files
       - ".**"

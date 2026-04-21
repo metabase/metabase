@@ -234,6 +234,11 @@
     {:type :or
      :clauses (rest pattern)}
 
+    ;; (:and ...) pattern
+    (and (seq? pattern) (= (first pattern) :and) (>= (count pattern) 2))
+    {:type :and
+     :clauses (rest pattern)}
+
     ;; Vector pattern
     (vector? pattern)
     (let [[main-parts rest-parts] (vec (split-with (complement #{'&}) pattern))
@@ -278,16 +283,21 @@
                                                              `metabase.lib.util.match.impl/count=) s cnt)
                                                      {:depends-on s})))
                 (when rest-part
-                  (process-pattern rest-part (list `drop cnt s) bindings conditions false)))
+                  (process-pattern rest-part `(into [] (drop ~cnt) ~s) bindings conditions false)))
       :map (let [s (if (symbol? value) value (gensym "map"))]
              (vswap! bindings conj [s `(metabase.lib.util.match.impl/map! ~value)])
              (run! (fn [[k v]]
-                     (vswap! conditions conj (with-meta (list `contains? s k) {:depends-on s}))
-                     (process-pattern v (list `get s k) bindings conditions false))
+                     (condp = v
+                       '&truthy (vswap! conditions conj (with-meta (list `get s k) {:depends-on s}))
+                       '_ (vswap! conditions conj (with-meta (list `contains? s k) {:depends-on s}))
+                       (do (vswap! conditions conj (with-meta (list `contains? s k) {:depends-on s}))
+                           (process-pattern v (list `get s k) bindings conditions false))))
                    (:map parsed)))
       :or (let [or-clauses (:clauses parsed)
                 new-body (process-clauses (mapv vector (:clauses parsed) (repeat (count or-clauses) @return)) value nil)]
             (vreset! return (with-meta new-body {:nil-wrapped true})))
+      :and (let [and-clauses (:clauses parsed)]
+             (run! (fn [and-clause] (process-pattern and-clause value bindings conditions return)) and-clauses))
       :guard (let [s (:symbol parsed)
                    s (if (= s '_) (gensym "_") s)
                    ;; Treat symbol, keyword, or set predicates as functions to be called, and thus transform them
@@ -473,9 +483,15 @@
                                   function, keyword, set, or an invocation snippet (but not a lambda). Can optionally
                                   check for collection length.
   - vector - binds positional values inside a sequence against other patterns. Can have & to bind remaining elements.
-  - map - binds associative values inside a map against other patterns.
+  - map - binds associative values inside a map against other patterns. Special symbols can be used as patterns:
+          `&truthy` - matches if the map contains any truthy value for the key
+          `_` - matches if the map contains any value (including `nil`) for the key, but not if key is missing
+          In all other cases, the pattern will attempt to match only if the map contains the key.
   - (:or clause1 clause2 ...) - special syntax for grouping several alternative conditions that share the same
                                 return expression.
+  - (:and pattern1 pattern2 ...) - special syntax for providing multiple restictions on the same match. E.g., you can
+                                   describe the structure with one pattern, and provide a guard predicate for the whole
+                                   match as the second pattern.
   - `_` - matches anything. One usecase for this is to curtail recursive search, thus making the match non-recursive
           (because `_` will always match and its return expression will be returned).
 

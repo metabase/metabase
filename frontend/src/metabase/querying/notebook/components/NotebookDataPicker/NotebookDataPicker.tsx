@@ -175,6 +175,7 @@ function ModernDataPicker({
   shouldShowLibrary,
 }: ModernDataPickerProps) {
   const context = useNotebookContext();
+  const getItemTooltip = context.dataPickerOptions?.getItemTooltip;
   const modelList = getModelFilterList(context, hasMetrics);
 
   const databaseId = Lib.databaseID(query) ?? undefined;
@@ -198,10 +199,10 @@ function ModernDataPicker({
       return Boolean(
         // @ts-expect-error - Please fix 🥺
         shouldDisableBasedOnDb({ ...item, database_id: dbId }) ||
-          shouldDisableItem?.(item as OmniPickerItem) ||
-          (isObjectWithModel(item) &&
-            item.model === "database" &&
-            shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
+        shouldDisableItem?.(item as OmniPickerItem) ||
+        (isObjectWithModel(item) &&
+          item.model === "database" &&
+          shouldDisableDatabase?.(item as QueryEditorDatabasePickerItem)),
       );
     };
   }, [databaseId, canChangeDatabase, shouldDisableItem, shouldDisableDatabase]);
@@ -257,11 +258,12 @@ function ModernDataPicker({
           shouldDisableItem={(i) => {
             return Boolean(
               shouldDisableItem?.(i) ||
-                ("model" in i &&
-                  i.model === "database" &&
-                  shouldDisableDatabase?.(i)),
+              ("model" in i &&
+                i.model === "database" &&
+                shouldDisableDatabase?.(i)),
             );
           }}
+          options={getItemTooltip ? { getItemTooltip } : undefined}
           // searchQuery={dataSourceSearchQuery} ?
         />
       )}
