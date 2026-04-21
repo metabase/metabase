@@ -111,6 +111,10 @@
     :model/TableRemapping
     :model/Secret
     :model/Session
+    :model/SourceDimensionDaily
+    :model/SourceDimensionProfileDaily
+    :model/SourceMetricDaily
+    :model/SourceSegmentDaily
     :model/SupportAccessGrantLog
     :model/TaskHistory
     :model/TaskRun
