@@ -60,3 +60,35 @@
           (testing "old schema and name do not appear in the compiled SQL"
             (is (not (str/includes? sql from-schema)))
             (is (not (str/includes? sql from-name)))))))))
+
+(deftest remaps-joined-table-test
+  (testing "explicit joins to a remapped table resolve to the workspace schema/name in compiled SQL"
+    (let [mp        (mt/metadata-provider)
+          db-id     (mt/id)
+          orders    (lib.metadata/table mp (mt/id :orders))
+          products  (lib.metadata/table mp (mt/id :products))
+          ord-pid   (lib.metadata/field mp (mt/id :orders :product_id))
+          prd-id    (lib.metadata/field mp (mt/id :products :id))
+          {from-schema :schema
+           from-name   :name} products
+          to-schema "ws_bryan_apr21"
+          to-name   "products_copy"
+          query     (-> (lib/query mp orders)
+                        (lib/join (-> (lib/join-clause products [(lib/= ord-pid prd-id)])
+                                      (lib/with-join-alias "Products"))))]
+      (mt/with-temp [:model/TableRemapping _ {:database_id     db-id
+                                              :from_schema     from-schema
+                                              :from_table_name from-name
+                                              :to_schema       to-schema
+                                              :to_table_name   to-name}]
+        (let [remapped (ws.qp.middleware/apply-workspace-table-remapping query)
+              sql      (:query (qp.compile/compile remapped))]
+          (testing "joined table resolves to workspace schema/name"
+            (is (str/includes? sql to-schema))
+            (is (str/includes? sql to-name)))
+          (testing "original joined table no longer appears in compiled SQL"
+            (is (not (str/includes? sql from-name))))
+          (testing "unmapped source table is untouched"
+            (is (str/includes? sql (:name orders))))
+          (testing "join alias is preserved (aliases live on the join clause, not on table metadata)"
+            (is (str/includes? sql "\"Products\""))))))))

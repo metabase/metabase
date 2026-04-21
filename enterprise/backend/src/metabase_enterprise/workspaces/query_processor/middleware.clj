@@ -4,6 +4,7 @@
   When a query carries a `:workspace-remapping` key in its `:middleware` map (attached by workspace execute
   code), this middleware rewrites table names in the native SQL using [[sql-tools/replace-names]]."
   (:require
+   [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -11,9 +12,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.table-remapping.model]
-   [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,18 +56,12 @@
    schema before the final table reference resolves to the workspace copy."
   :feature :workspaces
   [{db-id :database, mp :lib/metadata, :as query}]
-  (let [rows (when db-id
-               (t2/select :model/TableRemapping :database_id db-id))]
-    (when (seq rows)
-      (let [by-source (into {} (map (fn [{:keys [from_schema from_table_name] :as row}]
-                                      [[from_schema from_table_name] row])
-                                    rows))]
-        (doseq [table (lib.metadata/tables mp)
-                :let [row (get by-source [(:schema table) (:name table)])]
-                :when row]
-          (lib.metadata.protocols/store-metadata!
-           mp
-           (assoc table
-                  :schema (:to_schema row)
-                  :name   (:to_table_name row))))))
+  (let [mappings (when db-id
+                   (ws.table-remapping/all-mappings-for-db db-id))]
+    (doseq [table (lib.metadata/tables mp)
+            :let [[to-schema to-name] (get mappings [(:schema table) (:name table)])]
+            :when to-schema]
+      (lib.metadata.protocols/store-metadata!
+       mp
+       (assoc table :schema to-schema :name to-name)))
     query))
