@@ -32,7 +32,8 @@ export const isTableEntityId = (
 
 export const isSchemaEntityId = (
   entityId: Partial<EntityId>,
-): entityId is SchemaEntityId & { schemaName: string } => // not sure why schemaName can be undefined on SchemaEntityId
+): entityId is SchemaEntityId & { schemaName: string } =>
+  // not sure why schemaName can be undefined on SchemaEntityId
   entityId.schemaName != null &&
   entityId.schemaName !== "" &&
   !isTableEntityId(entityId);

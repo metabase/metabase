@@ -19,6 +19,7 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
+   [metabase.premium-features.core :as premium-features]
    [metabase.search.test-util :as search.tu]
    [metabase.server.instance :as server.instance]
    [metabase.server.streaming-response :as sr]
@@ -316,14 +317,14 @@
                                               {:models [{:id "claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
                                                         {:id "claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
                                                         {:id "claude-opus-4-1" :display_name "Claude Opus 4.1"}]}))]
-      (is (= {:value  "metabase/anthropic/claude-opus-4-1"
+      (is (= {:value  "metabase/anthropic/claude-sonnet-4-6"
               :models [{:id "anthropic/claude-haiku-4-5" :display_name "Claude Haiku 4.5"}
                        {:id "anthropic/claude-sonnet-4-6" :display_name "Claude Sonnet 4.6"}
                        {:id "anthropic/claude-opus-4-1" :display_name "Claude Opus 4.1"}]}
              (mt/user-http-request :crowberto :put 200 "metabot/settings"
                                    {:provider "metabase"
-                                    :model    "anthropic/claude-opus-4-1"})))
-      (is (= "metabase/anthropic/claude-opus-4-1"
+                                    :model    "anthropic/claude-sonnet-4-6"})))
+      (is (= "metabase/anthropic/claude-sonnet-4-6"
              (metabot.settings/llm-metabot-provider))))))
 
 (deftest settings-put-defaults-empty-metabase-model-test
@@ -370,6 +371,94 @@
               "should verify before saving and reuse the verified response")
           (is (= "sk-ant-valid"
                  (llm.settings/llm-anthropic-api-key))))))))
+
+(deftest settings-put-api-key-rotation-does-not-reset-non-default-model-test
+  (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-opus-4-1"
+                                       llm.settings/llm-anthropic-api-key nil]
+      (let [calls (atom 0)]
+        (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+                                                 (swap! calls inc)
+                                                 (is (= "anthropic" provider))
+                                                 (is (= "sk-ant-valid" api-key))
+                                                 (is (nil? (llm.settings/llm-anthropic-api-key))
+                                                     "verification should happen before saving the key")
+                                                 {:models [{:id "claude-opus-4-1"
+                                                            :display_name "Claude Opus 4.1"
+                                                            :group "Opus"}]})]
+          (is (= {:value  "anthropic/claude-opus-4-1"
+                  :models [{:id "claude-opus-4-1"
+                            :display_name "Claude Opus 4.1"
+                            :group "Opus"}]}
+                 (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                       {:provider "anthropic"
+                                        :api-key  "sk-ant-valid"})))
+          (is (= 1 @calls)
+              "should verify before saving and reuse the verified response")
+          (is (= "anthropic/claude-opus-4-1"
+                 (metabot.settings/llm-metabot-provider))
+              "rotating an API key should not reset the selected model")
+          (is (= "sk-ant-valid"
+                 (llm.settings/llm-anthropic-api-key))))))))
+
+(deftest settings-put-api-key-switches-from-metabase-to-provider-default-model-test
+  (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
+    (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"
+                                       llm.settings/llm-anthropic-api-key nil]
+      (let [calls (atom 0)]
+        (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+                                                 (swap! calls inc)
+                                                 (is (= "anthropic" provider))
+                                                 (is (= "sk-ant-valid" api-key))
+                                                 (is (nil? (llm.settings/llm-anthropic-api-key))
+                                                     "verification should happen before saving the key")
+                                                 {:models [{:id "claude-sonnet-4-6"
+                                                            :display_name "Claude Sonnet 4.6"
+                                                            :group "Sonnet"}
+                                                           {:id "claude-opus-4-1"
+                                                            :display_name "Claude Opus 4.1"
+                                                            :group "Opus"}]})]
+          (is (= {:value  "anthropic/claude-sonnet-4-6"
+                  :models [{:id "claude-opus-4-1"
+                            :display_name "Claude Opus 4.1"
+                            :group "Opus"}
+                           {:id "claude-sonnet-4-6"
+                            :display_name "Claude Sonnet 4.6"
+                            :group "Sonnet"}]}
+                 (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                       {:provider "anthropic"
+                                        :api-key  "sk-ant-valid"})))
+          (is (= 1 @calls)
+              "should verify before saving and reuse the verified response")
+          (is (= "anthropic/claude-sonnet-4-6"
+                 (metabot.settings/llm-metabot-provider))
+              "switching away from the managed provider should pick the anthropic default model")
+          (is (= "sk-ant-valid"
+                 (llm.settings/llm-anthropic-api-key))))))))
+
+(deftest settings-put-blank-model-does-not-reset-when-provider-is-unchanged-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-opus-4-1"
+                                     llm.settings/llm-anthropic-api-key "sk-ant-valid"]
+    (with-redefs [metabot.self/list-models (fn [provider {:keys [api-key]}]
+                                             (is (= "anthropic" provider))
+                                             (is (= "sk-ant-valid" api-key))
+                                             {:models [{:id "claude-sonnet-4-6"
+                                                        :display_name "Claude Sonnet 4.6"}
+                                                       {:id "claude-opus-4-1"
+                                                        :display_name "Claude Opus 4.1"}]})]
+      (is (= {:value  "anthropic/claude-opus-4-1"
+              :models [{:id "claude-opus-4-1"
+                        :display_name "Claude Opus 4.1"
+                        :group "Opus"}
+                       {:id "claude-sonnet-4-6"
+                        :display_name "Claude Sonnet 4.6"
+                        :group "Sonnet"}]}
+             (mt/user-http-request :crowberto :put 200 "metabot/settings"
+                                   {:provider "anthropic"
+                                    :model    ""})))
+      (is (= "anthropic/claude-opus-4-1"
+             (metabot.settings/llm-metabot-provider))
+          "blank model should not reset the selection when the provider is unchanged"))))
 
 (deftest settings-put-rejects-invalid-api-key-test
   (mt/with-temporary-setting-values [llm.settings/llm-openai-api-key nil]
@@ -731,3 +820,20 @@
               "metabot-id should not be nil")
           (is (= test-metabot-id (:metabot-id @captured-args))
               "metabot-id should match the input metabot_id"))))))
+
+(deftest agent-streaming-returns-free-trial-limit-error-when-managed-provider-is-locked-test
+  (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
+                                     "metabase/anthropic/claude-sonnet-4-6"]
+    (with-redefs [premium-features/token-status             (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
+                                                                                                                       :is-locked   true}}})
+                  metabot.config/check-metabot-enabled!     (constantly nil)
+                  api/store-aiservice-messages!             (fn [& _]
+                                                              (throw (ex-info "should not store messages" {})))
+                  api/native-agent-streaming-request        (fn [& _]
+                                                              (throw (ex-info "should not call agent" {})))]
+      (mt/user-http-request :rasta :post 402 "metabot/agent-streaming"
+                            {:message         "test message"
+                             :context         {}
+                             :conversation_id (str (random-uuid))
+                             :history         []
+                             :state           {}}))))
