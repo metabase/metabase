@@ -2,8 +2,6 @@ import type {
   AdminNotificationDetail,
   AdminNotificationListParams,
   AdminNotificationListResponse,
-  AdminNotificationSendHistoryParams,
-  AdminNotificationSendHistoryResponse,
   BulkNotificationPayload,
   CreateNotificationRequest,
   ListNotificationsRequest,
@@ -140,17 +138,6 @@ export const notificationApi = Api.injectEndpoints({
       providesTags: (result) =>
         result ? [idTag("notification", result.id)] : [],
     }),
-    adminNotificationSendHistory: builder.query<
-      AdminNotificationSendHistoryResponse,
-      AdminNotificationSendHistoryParams
-    >({
-      query: ({ id, limit, offset }) => ({
-        method: "GET",
-        url: `/api/ee/admin/notifications/${id}/send-history`,
-        params: { limit, offset },
-      }),
-      providesTags: (_result, _error, { id }) => [idTag("notification", id)],
-    }),
   }),
 });
 
@@ -168,5 +155,4 @@ export const {
   useAdminListNotificationsQuery,
   useBulkNotificationActionMutation,
   useAdminNotificationDetailQuery,
-  useAdminNotificationSendHistoryQuery,
 } = notificationApi;

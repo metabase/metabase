@@ -137,6 +137,8 @@ export function getHealthLabel(health: NotificationHealth): string {
       return t`Deactivated creator`;
     case "failing":
       return t`Failing`;
+    case "abandoned":
+      return t`Abandoned`;
   }
 }
 
@@ -145,6 +147,7 @@ export function getHealthColor(health: NotificationHealth): HealthBadgeColor {
     case "healthy":
       return "success";
     case "failing":
+    case "abandoned":
       return "error";
     case "orphaned_card":
     case "orphaned_creator":

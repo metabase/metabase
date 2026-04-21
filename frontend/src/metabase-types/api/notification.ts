@@ -173,7 +173,8 @@ export type NotificationHealth =
   | "healthy"
   | "orphaned_card"
   | "orphaned_creator"
-  | "failing";
+  | "failing"
+  | "abandoned";
 
 export type AdminNotificationListItem = Notification & {
   health: NotificationHealth;
@@ -204,29 +205,5 @@ export type BulkNotificationPayload = {
   owner_id?: UserId;
 };
 
-export type NotificationSendHistoryStatus =
-  | "success"
-  | "failed"
-  | "started"
-  | "unknown";
-
-export type NotificationSendHistoryEntry = {
-  timestamp: string | null;
-  status: NotificationSendHistoryStatus;
-  duration_ms: number | null;
-  error_message?: string;
-};
-
 export type AdminNotificationDetail = AdminNotificationListItem;
-
-export type AdminNotificationSendHistoryParams = {
-  id: NotificationId;
-  limit?: number;
-  offset?: number;
-};
-
-export type AdminNotificationSendHistoryResponse = {
-  data: NotificationSendHistoryEntry[];
-  total: number;
-};
 //#endregion

@@ -38,6 +38,7 @@ const getHealthOptions = (): { value: NotificationHealth; label: string }[] => [
   { value: "orphaned_card", label: getHealthLabel("orphaned_card") },
   { value: "orphaned_creator", label: getHealthLabel("orphaned_creator") },
   { value: "failing", label: getHealthLabel("failing") },
+  { value: "abandoned", label: getHealthLabel("abandoned") },
 ];
 
 const getChannelOptions = (): {

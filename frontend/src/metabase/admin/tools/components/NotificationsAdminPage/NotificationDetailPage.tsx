@@ -6,17 +6,14 @@ import { t } from "ttag";
 
 import {
   useAdminNotificationDetailQuery,
-  useAdminNotificationSendHistoryQuery,
   useBulkNotificationActionMutation,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import AdminS from "metabase/css/admin.module.css";
 import { formatNotificationSchedule } from "metabase/notifications/utils";
-import { formatDuration } from "metabase/query_builder/components/view/ExecutionTime/utils";
 import { addUndo } from "metabase/redux/undo";
 import {
   Badge,
@@ -36,9 +33,7 @@ import * as Urls from "metabase/utils/urls";
 import type {
   AdminNotificationDetail,
   NotificationHandler,
-  NotificationId,
   NotificationRecipient,
-  NotificationSendHistoryEntry,
 } from "metabase-types/api";
 
 import {
@@ -203,7 +198,7 @@ export const NotificationDetailPage = ({
 
         <Divider />
 
-        <SendHistorySection notificationId={notification.id} />
+        <SendHistorySection notification={notification} />
 
         <ChangeOwnerModal
           opened={isChangeOwnerOpen}
@@ -551,123 +546,30 @@ const RecipientRow = ({ recipient }: { recipient: NotificationRecipient }) => {
   );
 };
 
-const SEND_HISTORY_PAGE_SIZE = 20;
-
 const SendHistorySection = ({
-  notificationId,
+  notification,
 }: {
-  notificationId: NotificationId;
+  notification: AdminNotificationDetail;
 }) => {
-  const [page, setPage] = useState(0);
-  const { data, isFetching, error } = useAdminNotificationSendHistoryQuery({
-    id: notificationId,
-    limit: SEND_HISTORY_PAGE_SIZE,
-    offset: page * SEND_HISTORY_PAGE_SIZE,
-  });
-
-  const entries = data?.data ?? [];
-  const total = data?.total ?? 0;
-
+  const cardId = notification.payload?.card_id;
+  if (cardId == null) {
+    return null;
+  }
+  const runsUrl = `${Urls.adminToolsTasksRuns()}?run-type=alert&entity-type=card&entity-id=${cardId}`;
   return (
-    <Stack gap="sm">
+    <Stack gap="xs" align="flex-start">
       <Title order={4}>{t`Send history`}</Title>
-      {isFetching || error ? (
-        <LoadingAndErrorWrapper loading={isFetching} error={error} />
-      ) : entries.length === 0 ? (
-        <Text c="text-secondary">{t`No send history available`}</Text>
-      ) : (
-        <>
-          <table className={AdminS.ContentTable}>
-            <thead>
-              <tr>
-                <th>{t`Timestamp`}</th>
-                <th>{t`Status`}</th>
-                <th>{t`Duration`}</th>
-                <th>{t`Error`}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry, index) => (
-                <SendHistoryRow key={index} entry={entry} />
-              ))}
-            </tbody>
-          </table>
-          <Flex justify="flex-end">
-            <PaginationControls
-              page={page}
-              pageSize={SEND_HISTORY_PAGE_SIZE}
-              itemsLength={entries.length}
-              total={total}
-              onPreviousPage={() => setPage(Math.max(0, page - 1))}
-              onNextPage={() => setPage(page + 1)}
-            />
-          </Flex>
-        </>
-      )}
+      <Text c="text-secondary">
+        {t`Send runs for this alert (and every other alert on the same card) live on the Tasks > Runs page.`}
+      </Text>
+      <Button
+        component={Link}
+        to={runsUrl}
+        variant="subtle"
+        rightSection={<Icon name="external" size={12} />}
+      >
+        {t`View runs for this card`}
+      </Button>
     </Stack>
   );
-};
-
-const SendHistoryRow = ({ entry }: { entry: NotificationSendHistoryEntry }) => {
-  const [expanded, setExpanded] = useState(false);
-  return (
-    <tr>
-      <td>
-        {entry.timestamp ? (
-          <Tooltip label={<DateTime value={entry.timestamp} unit="minute" />}>
-            <span>{dayjs(entry.timestamp).fromNow()}</span>
-          </Tooltip>
-        ) : (
-          "—"
-        )}
-      </td>
-      <td>
-        <StatusBadge status={entry.status} />
-      </td>
-      <td>
-        {entry.duration_ms == null ? "—" : formatDuration(entry.duration_ms)}
-      </td>
-      <td>
-        {entry.error_message ? (
-          <Box
-            onClick={() => setExpanded((v) => !v)}
-            style={{ cursor: "pointer" }}
-          >
-            {expanded ? (
-              <Text>{entry.error_message}</Text>
-            ) : (
-              <Text truncate="end">{entry.error_message}</Text>
-            )}
-          </Box>
-        ) : (
-          "—"
-        )}
-      </td>
-    </tr>
-  );
-};
-
-const StatusBadge = ({ status }: { status: string }) => {
-  switch (status) {
-    case "success":
-      return (
-        <Badge color="success" variant="light">
-          {t`Success`}
-        </Badge>
-      );
-    case "failed":
-      return (
-        <Badge color="error" variant="light">
-          {t`Failed`}
-        </Badge>
-      );
-    case "started":
-      return (
-        <Badge color="warning" variant="light">
-          {t`In progress`}
-        </Badge>
-      );
-    default:
-      return <Badge variant="light">{status}</Badge>;
-  }
 };

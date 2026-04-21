@@ -1,10 +1,17 @@
 (ns metabase-enterprise.notification-admin.health
   "Compute `:health` and `:last_sent_at` for notification-admin rows.
 
-  `task_history.notification_id` is nested inside a JSON text column; the column type differs
-  per backend and we don't want to paper over the JSON-operator differences for one path, so we
-  fetch recent rows and group them in memory. The fetch is bounded by time window + row limit —
-  see [[task-history-lookback-days]] and [[task-history-row-limit]]."
+  The real send outcome lives on `:model/TaskRun` (status `:success|:failed|:abandoned`). We locate
+  TaskRuns for a notification by walking recent `notification-send` `task_history` rows and
+  following their `:run_id` to the corresponding TaskRun — a notification's id lives inside
+  `task_details` (JSON), so we scan a bounded, time-windowed slice in memory. See
+  [[task-history-lookback-days]] and [[task-history-row-limit]].
+
+  Why TaskRun instead of task_history: a `notification-send` task_history row marks the parent
+  fire as `:success` even when an individual channel-send child fails (exceptions are caught per
+  handler in `metabase.notification.send/send-notification-sync!`). `task_run.complete-task-run!`
+  correctly rolls the run status up from ALL child task_history rows, so a failing channel send
+  properly flips the run's status to `:failed`."
   (:require
    [java-time.api :as t]
    [metabase.util :as u]
@@ -63,36 +70,48 @@
          (map first)
          set)))
 
-(defn- latest-task-history-by-notification
-  "Return `{notification-id {:latest {:status :ended_at} :last-sent <instant>}}` for the most
-  recent `notification-send` row in the lookback window. Bounded by time + row cap — see ns docs."
+(defn- latest-task-run-by-notification
+  "Return `{notification-id {:latest {:status :ended_at} :last-sent <instant>}}` for each
+  notification, where `:latest` is the most recent TaskRun and `:last-sent` is the ended_at of the
+  most recent `:success` TaskRun. Bounded by time + row cap — see ns docs."
   [nids]
   (when (seq nids)
-    (let [nid-set (set nids)
-          cutoff  (t/minus (t/offset-date-time) (t/days task-history-lookback-days))
-          rows    (t2/select [:model/TaskHistory :status :ended_at :task_details]
-                             :task "notification-send"
-                             {:where    [:> :ended_at cutoff]
-                              :order-by [[:ended_at :desc]]
-                              :limit    task-history-row-limit})]
-      (reduce
-       (fn [acc {:keys [status ended_at task_details]}]
-         ;; `do-with-task-history` rewrites task_details on failure into
-         ;; `{:status :failed :message ... :original-info <caller's task_details>}`,
-         ;; so notification_id can live at either level.
-         (let [nid (or (:notification_id task_details)
-                       (get-in task_details [:original-info :notification_id]))]
-           (if (and nid (contains? nid-set nid))
-             (cond-> acc
-               (not (get-in acc [nid :latest]))
-               (assoc-in [nid :latest] {:status status :ended_at ended_at})
-
-               (and (= :success status)
-                    (not (get-in acc [nid :last-sent])))
-               (assoc-in [nid :last-sent] ended_at))
-             acc)))
-       {}
-       rows))))
+    (let [nid-set  (set nids)
+          cutoff   (t/minus (t/offset-date-time) (t/days task-history-lookback-days))
+          ;; Pull the `notification-send` task_history rows that link to a run, newest first, so
+          ;; the per-notification run_id list comes out ordered.
+          th-rows  (t2/select [:model/TaskHistory :run_id :task_details]
+                              :task "notification-send"
+                              {:where    [:and [:> :ended_at cutoff] [:not= :run_id nil]]
+                               :order-by [[:ended_at :desc]]
+                               :limit    task-history-row-limit})
+          nid->run-ids (reduce
+                        (fn [acc {:keys [run_id task_details]}]
+                          ;; `do-with-task-history` rewrites task_details on failure into
+                          ;; `{:status :failed :message ... :original-info <caller's task_details>}`,
+                          ;; so notification_id can live at either level.
+                          (let [nid (or (:notification_id task_details)
+                                        (get-in task_details [:original-info :notification_id]))]
+                            (if (and nid run_id (contains? nid-set nid))
+                              (update acc nid (fnil conj []) run_id)
+                              acc)))
+                        {}
+                        th-rows)
+          all-run-ids (into #{} cat (vals nid->run-ids))
+          runs        (if (seq all-run-ids)
+                        (u/index-by :id (t2/select [:model/TaskRun :id :status :ended_at]
+                                                   :id [:in all-run-ids]))
+                        {})]
+      (into {}
+            (keep (fn [[nid run-ids]]
+                    (let [ordered   (keep runs run-ids)
+                          latest    (first ordered)
+                          last-sent (some #(when (= :success (:status %)) %) ordered)]
+                      (when latest
+                        [nid {:latest    {:status   (:status latest)
+                                          :ended_at (:ended_at latest)}
+                              :last-sent (:ended_at last-sent)}]))))
+            nid->run-ids))))
 
 (defn compute-for-rows
   "Given a seq of notification rows (at minimum `:id` and `:creator_id`), return them assoc'd with
@@ -104,16 +123,17 @@
         nid+creator-pairs (map (juxt :id :creator_id) rows)
         orphan-cards      (orphaned-card-ids nids)
         orphan-creators   (inactive-creator-ids nid+creator-pairs)
-        task-info         (latest-task-history-by-notification nids)]
+        run-info          (latest-task-run-by-notification nids)]
     (mapv
      (fn [row]
        (let [nid     (:id row)
-             latest  (get-in task-info [nid :latest])
-             sent-at (get-in task-info [nid :last-sent])
+             latest  (get-in run-info [nid :latest])
+             sent-at (get-in run-info [nid :last-sent])
              health  (cond
-                       (contains? orphan-cards nid)    :orphaned_card
-                       (contains? orphan-creators nid) :orphaned_creator
-                       (= :failed (:status latest))    :failing
-                       :else                            :healthy)]
+                       (contains? orphan-cards nid)      :orphaned_card
+                       (contains? orphan-creators nid)   :orphaned_creator
+                       (= :failed    (:status latest))   :failing
+                       (= :abandoned (:status latest))   :abandoned
+                       :else                              :healthy)]
          (assoc row :health health :last_sent_at sent-at)))
      rows)))

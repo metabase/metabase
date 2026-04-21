@@ -258,16 +258,23 @@
           (is (= "orphaned_creator" (:health row))))))))
 
 (deftest health-failing-test
-  (testing "health=:failing when the latest notification-send task_history row has status=:failed"
+  (testing "health=:failing when the latest TaskRun for the notification has status=:failed"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id}    {:archived false}
                      :model/NotificationCard {nc :id}         {:card_id card-id}
                      :model/Notification     {nid :id :as _n} {:payload_type :notification/card
                                                                :payload_id   nc
                                                                :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-id :id}     {:run_type    :alert
+                                                               :entity_type :card
+                                                               :entity_id   card-id
+                                                               :status      :failed
+                                                               :started_at  (t/instant)
+                                                               :ended_at    (t/instant)}
                      :model/TaskHistory      _th              {:task         "notification-send"
+                                                               :run_id       run-id
                                                                :task_details {:notification_id nid}
-                                                               :status       :failed
+                                                               :status       :success
                                                                :started_at   (t/instant)
                                                                :ended_at     (t/instant)}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")
@@ -275,8 +282,60 @@
           (is (some? row))
           (is (= "failing" (:health row))))))))
 
+(deftest health-abandoned-test
+  (testing "health=:abandoned when the latest TaskRun has status=:abandoned (orphaned run)"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id}    {:archived false}
+                     :model/NotificationCard {nc :id}         {:card_id card-id}
+                     :model/Notification     {nid :id}        {:payload_type :notification/card
+                                                               :payload_id   nc
+                                                               :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-id :id}     {:run_type    :alert
+                                                               :entity_type :card
+                                                               :entity_id   card-id
+                                                               :status      :abandoned
+                                                               :started_at  (t/instant)
+                                                               :ended_at    (t/instant)}
+                     :model/TaskHistory      _th              {:task         "notification-send"
+                                                               :run_id       run-id
+                                                               :task_details {:notification_id nid}
+                                                               :status       :success
+                                                               :started_at   (t/instant)
+                                                               :ended_at     (t/instant)}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")
+              row            (find-row-by-id data nid)]
+          (is (some? row))
+          (is (= "abandoned" (:health row))))))))
+
+(deftest health-uses-task-run-not-parent-task-history-test
+  (testing "health=:failing even when parent notification-send row is :success, if the TaskRun rolled up a child failure"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/Card             {card-id :id}    {:archived false}
+                     :model/NotificationCard {nc :id}         {:card_id card-id}
+                     :model/Notification     {nid :id}        {:payload_type :notification/card
+                                                               :payload_id   nc
+                                                               :creator_id   (mt/user->id :crowberto)}
+                     ;; TaskRun rolled up to :failed because a child channel-send failed,
+                     ;; but the parent notification-send row completed :success (swallowed exceptions).
+                     :model/TaskRun          {run-id :id}     {:run_type    :alert
+                                                               :entity_type :card
+                                                               :entity_id   card-id
+                                                               :status      :failed
+                                                               :started_at  (t/instant)
+                                                               :ended_at    (t/instant)}
+                     :model/TaskHistory      _th-parent       {:task         "notification-send"
+                                                               :run_id       run-id
+                                                               :task_details {:notification_id nid}
+                                                               :status       :success
+                                                               :started_at   (t/instant)
+                                                               :ended_at     (t/instant)}]
+        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/admin/notifications")
+              row            (find-row-by-id data nid)]
+          (is (= "failing" (:health row))
+              "the run-level status should win, not the task-history-level parent status"))))))
+
 (deftest last-sent-at-test
-  (testing "last_sent_at is populated from the latest successful task_history, and sort is desc"
+  (testing "last_sent_at is populated from the latest successful TaskRun, and sort is desc"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card             {card-id :id}   {:archived false}
                      :model/NotificationCard {nc1 :id}       {:card_id card-id}
@@ -291,12 +350,26 @@
                      :model/Notification     {n-unsent :id}  {:payload_type :notification/card
                                                               :payload_id   nc3
                                                               :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-early :id} {:run_type    :alert
+                                                              :entity_type :card
+                                                              :entity_id   card-id
+                                                              :status      :success
+                                                              :started_at  (t/instant "2020-01-01T00:00:00Z")
+                                                              :ended_at    (t/instant "2020-01-01T00:00:01Z")}
+                     :model/TaskRun          {run-recent :id} {:run_type    :alert
+                                                               :entity_type :card
+                                                               :entity_id   card-id
+                                                               :status      :success
+                                                               :started_at  (t/instant "2024-01-01T00:00:00Z")
+                                                               :ended_at    (t/instant "2024-01-01T00:00:01Z")}
                      :model/TaskHistory      _th-early       {:task         "notification-send"
+                                                              :run_id       run-early
                                                               :task_details {:notification_id n-early}
                                                               :status       :success
                                                               :started_at   (t/instant "2020-01-01T00:00:00Z")
                                                               :ended_at     (t/instant "2020-01-01T00:00:01Z")}
                      :model/TaskHistory      _th-recent      {:task         "notification-send"
+                                                              :run_id       run-recent
                                                               :task_details {:notification_id n-recent}
                                                               :status       :success
                                                               :started_at   (t/instant "2024-01-01T00:00:00Z")
@@ -334,9 +407,16 @@
                      :model/Notification     failing-n      {:payload_type :notification/card
                                                              :payload_id   nc-fail
                                                              :creator_id   (mt/user->id :crowberto)}
+                     :model/TaskRun          {run-id :id}   {:run_type    :alert
+                                                             :entity_type :card
+                                                             :entity_id   ok-card
+                                                             :status      :failed
+                                                             :started_at  (t/instant)
+                                                             :ended_at    (t/instant)}
                      :model/TaskHistory      _th            {:task         "notification-send"
+                                                             :run_id       run-id
                                                              :task_details {:notification_id (:id failing-n)}
-                                                             :status       :failed
+                                                             :status       :success
                                                              :started_at   (t/instant)
                                                              :ended_at     (t/instant)}]
         (testing "health=healthy"
@@ -522,49 +602,7 @@
         (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/admin/notifications/" nid))]
           (is (= nid (:id resp)))
           (is (contains? resp :health))
-          (is (contains? resp :last_sent_at))
-          (testing "send history is loaded separately and is not on the detail response"
-            (is (not (contains? resp :send_history)))))))))
-
-(deftest send-history-endpoint-paginates-test
-  (testing "GET /:id/send-history returns {:data :total} ordered newest-first and respects limit/offset"
-    (mt/with-premium-features #{:audit-app}
-      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
-                     :model/NotificationCard {nc :id}      {:card_id card-id}
-                     :model/Notification     {nid :id}     {:payload_type :notification/card
-                                                            :payload_id   nc
-                                                            :creator_id   (mt/user->id :crowberto)}
-                     :model/TaskHistory      _older        {:task         "notification-send"
-                                                            :task_details {:notification_id nid}
-                                                            :status       :success
-                                                            :started_at   (t/instant "2026-04-19T10:00:00Z")
-                                                            :ended_at     (t/instant "2026-04-19T10:00:01Z")
-                                                            :duration     1000}
-                     :model/TaskHistory      _newer        {:task         "notification-send"
-                                                            :task_details {:notification_id nid}
-                                                            :status       :failed
-                                                            :started_at   (t/instant "2026-04-20T10:00:00Z")
-                                                            :ended_at     (t/instant "2026-04-20T10:00:02Z")
-                                                            :duration     2000}]
-        (testing "first page returns both rows newest-first"
-          (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/admin/notifications/" nid "/send-history"))]
-            (is (= 2 (:total resp)))
-            (is (= 2 (count (:data resp))))
-            (is (= "failed" (:status (first (:data resp)))))
-            (is (= "success" (:status (second (:data resp)))))))
-        (testing "limit + offset paginate correctly"
-          (let [page-1 (mt/user-http-request :crowberto :get 200
-                                             (str "ee/admin/notifications/" nid "/send-history")
-                                             :limit 1 :offset 0)
-                page-2 (mt/user-http-request :crowberto :get 200
-                                             (str "ee/admin/notifications/" nid "/send-history")
-                                             :limit 1 :offset 1)]
-            (is (= 2 (:total page-1)))
-            (is (= 2 (:total page-2)))
-            (is (= 1 (count (:data page-1))))
-            (is (= 1 (count (:data page-2))))
-            (is (= "failed" (:status (first (:data page-1)))))
-            (is (= "success" (:status (first (:data page-2)))))))))))
+          (is (contains? resp :last_sent_at)))))))
 
 (deftest detail-404-for-missing-id-test
   (testing "GET /:id returns 404 for a non-existent notification id"
@@ -597,32 +635,3 @@
                                                             :creator_id   (mt/user->id :crowberto)}]
         (mt/user-http-request :rasta :get 403 (str "ee/admin/notifications/" nid))))))
 
-(deftest send-history-defaults-to-20-per-page-test
-  (testing "GET /:id/send-history defaults to 20 entries per page, newest first"
-    (mt/with-premium-features #{:audit-app}
-      (mt/with-temp [:model/Card             {card-id :id} {:archived false}
-                     :model/NotificationCard {nc :id}      {:card_id card-id}
-                     :model/Notification     {nid :id}     {:payload_type :notification/card
-                                                            :payload_id   nc
-                                                            :creator_id   (mt/user->id :crowberto)}]
-        (let [inserted-ids (doall
-                            (for [i (range 25)]
-                              (let [started (t/plus (t/instant "2026-04-01T00:00:00Z") (t/minutes i))
-                                    ended   (t/plus started (t/seconds 1))]
-                                (first
-                                 (t2/insert-returning-pks! :model/TaskHistory
-                                                           {:task         "notification-send"
-                                                            :task_details {:notification_id nid :idx i}
-                                                            :status       :success
-                                                            :started_at   started
-                                                            :ended_at     ended
-                                                            :duration     1000})))))]
-          (try
-            (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/admin/notifications/" nid "/send-history"))]
-              (is (= 25 (:total resp)))
-              (is (= 20 (count (:data resp))))
-              (testing "sorted newest-first"
-                (let [timestamps (map :timestamp (:data resp))]
-                  (is (= timestamps (reverse (sort timestamps)))))))
-            (finally
-              (t2/delete! :model/TaskHistory :id [:in inserted-ids]))))))))
