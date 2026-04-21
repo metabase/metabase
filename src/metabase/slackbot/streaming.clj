@@ -173,11 +173,14 @@
   (let [message         (metabot.envelope/user-message prompt)
         ai-proxy?       (metabot/metabase-provider? (metabot.settings/llm-metabot-provider))
         ;; Persist the user message before setup so failed conversations are captured.
+        ;; `:user-id` stamps the author on the message row so participation-based
+        ;; conversation read permissions work for multi-user Slack threads.
         _               (metabot.persistence/store-message! conversation-id "slackbot" [message]
                                                             :channel-id      channel-id
                                                             :slack-team-id   team-id
                                                             :slack-thread-ts thread-ts
                                                             :slack-msg-id    req-slack-msg-id
+                                                            :user-id         api/*current-user-id*
                                                             :ai-proxy?       ai-proxy?)
         data-idx        (volatile! -1)
         request-message (metabot.envelope/user-message (or request-prompt prompt))

@@ -8,7 +8,7 @@ SELECT
     m.role,
     m.profile_id,
     m.total_tokens,
-    c.user_id,
+    COALESCE(m.user_id, c.user_id) AS user_id,
     m.slack_msg_id,
     m.channel_id
 FROM metabot_message m

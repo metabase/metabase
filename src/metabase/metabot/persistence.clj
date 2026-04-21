@@ -126,7 +126,10 @@
       ;; only updated when we actually have a fresh state part to record.
       (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
                                 (fn [existing]
-                                  (cond-> {:user_id api/*current-user-id*}
+                                  ;; `:user_id` is the originator — set on insert, never overwritten.
+                                  (cond-> {}
+                                    (nil? existing)
+                                    (assoc :user_id api/*current-user-id*)
                                     state-part
                                     (assoc :state (:data state-part))
                                     (and ip-address (nil? (:ip_address existing)))
@@ -166,11 +169,14 @@
         messages (-> (remove #(or (= % state) (= % finish)) messages)
                      vec)]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                              (constantly (cond-> {:user_id api/*current-user-id*}
-                                            state           (assoc :state state)
-                                            slack-team-id   (assoc :slack_team_id slack-team-id)
-                                            channel-id      (assoc :slack_channel_id channel-id)
-                                            slack-thread-ts (assoc :slack_thread_ts slack-thread-ts))))
+                              (fn [existing]
+                                ;; `:user_id` is the originator — set on insert, never overwritten.
+                                (cond-> {}
+                                  (nil? existing)      (assoc :user_id api/*current-user-id*)
+                                  state                (assoc :state state)
+                                  slack-team-id        (assoc :slack_team_id slack-team-id)
+                                  channel-id           (assoc :slack_channel_id channel-id)
+                                  slack-thread-ts      (assoc :slack_thread_ts slack-thread-ts))))
     ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert-returning-pk! :model/MetabotMessage
                              (cond-> {:conversation_id conversation-id

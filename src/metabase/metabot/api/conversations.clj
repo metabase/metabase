@@ -2,10 +2,10 @@
   "`/api/metabot/conversations` routes.
 
   Generic conversation endpoints — not the EE analytics endpoints under
-  `/api/ee/metabot-analytics/`. These are scoped to the current user (or to a
-  specific conversation the user owns) and are intended for things like
-  listing a user's chat history and loading a historical conversation to
-  continue it."
+  `/api/ee/metabot-analytics/`. These are scoped to conversations the current
+  user *participates in* (has at least one message authored by them), which
+  covers both solo web-UI chats and shared Slack threads where multiple
+  Metabase users @-mention Metabot in the same conversation."
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -21,12 +21,15 @@
 
 (def ^:private ConversationSummary
   [:map
-   [:conversation_id ms/UUIDString]
-   [:created_at      ms/TemporalInstant]
-   [:summary         [:maybe :string]]
-   [:user_id         [:maybe ms/PositiveInt]]
-   [:message_count   ms/IntGreaterThanOrEqualToZero]
-   [:last_message_at [:maybe ms/TemporalInstant]]])
+   [:conversation_id    ms/UUIDString]
+   [:created_at         ms/TemporalInstant]
+   [:summary            [:maybe :string]]
+   ;; `originator_user_id` is the user who sent the first message; set once on
+   ;; insert, never updated. Distinct from the set of participants — any user
+   ;; who has sent a message in the conversation can read it.
+   [:originator_user_id [:maybe ms/PositiveInt]]
+   [:message_count      ms/IntGreaterThanOrEqualToZero]
+   [:last_message_at    [:maybe ms/TemporalInstant]]])
 
 (def ^:private ListConversationsResponse
   [:map
@@ -37,11 +40,11 @@
 
 (def ^:private ConversationDetail
   [:map
-   [:conversation_id ms/UUIDString]
-   [:created_at      ms/TemporalInstant]
-   [:summary         [:maybe :string]]
-   [:user_id         [:maybe ms/PositiveInt]]
-   [:chat_messages   [:sequential :map]]])
+   [:conversation_id    ms/UUIDString]
+   [:created_at         ms/TemporalInstant]
+   [:summary            [:maybe :string]]
+   [:originator_user_id [:maybe ms/PositiveInt]]
+   [:chat_messages      [:sequential :map]]])
 
 (def ^:private ConversationIdParams
   [:map [:id ms/UUIDString]])
@@ -61,8 +64,16 @@
         offset  (or (request/offset) default-offset)
         ;; Aggregates are per-row correlated subqueries so pagination stays on the
         ;; outer `metabot_conversation` scan and only runs the subquery 50× per page.
+        ;; Participation is defined by message authorship, not deletion state —
+        ;; soft-deleted messages still count (consistent with `participant?`),
+        ;; so a user doesn't lose their own history to moderation.
+        participation-exists [:exists {:select [[[:inline 1]]]
+                                       :from   [:metabot_message]
+                                       :where  [:and
+                                                [:= :conversation_id :metabot_conversation.id]
+                                                [:= :user_id user-id]]}]
         rows    (t2/select :model/MetabotConversation
-                           {:select   [:id :created_at :summary :user_id
+                           {:select   [:id :created_at :summary [:user_id :originator_user_id]
                                        [{:select [[[:count :*]]]
                                          :from   [:metabot_message]
                                          :where  [:and
@@ -75,25 +86,28 @@
                                                   [:= :conversation_id :metabot_conversation.id]
                                                   [:= :deleted_at nil]]}
                                         :last_message_at]]
-                            :where    [:= :user_id user-id]
+                            :where    participation-exists
                             :order-by [[:created_at :desc] [:id :asc]]
                             :limit    limit
                             :offset   offset})]
     {:data   (mapv #(-> %
-                        (select-keys [:created_at :summary :user_id :message_count :last_message_at])
+                        (select-keys [:created_at :summary :originator_user_id :message_count :last_message_at])
                         (assoc :conversation_id (:id %)))
                    rows)
-     :total  (t2/count :model/MetabotConversation :user_id user-id)
+     :total  (t2/count :model/MetabotConversation {:where participation-exists})
      :limit  limit
      :offset offset}))
 
 (api.macros/defendpoint :get "/:id" :- ConversationDetail
   "Return a single conversation with its flattened chat messages.
 
-  Accessible to the user who created the conversation or to any superuser."
+  Accessible to any participant in the conversation or to any superuser."
   [{:keys [id]} :- ConversationIdParams]
   (api/read-check :model/MetabotConversation id)
-  (metabot.persistence/conversation-detail id))
+  (let [{:keys [user_id] :as detail} (metabot.persistence/conversation-detail id)]
+    (-> detail
+        (dissoc :user_id)
+        (assoc :originator_user_id user_id))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/conversations` routes."

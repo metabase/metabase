@@ -45,11 +45,15 @@
                                                       {:where [:and
                                                                :ai_proxied
                                                                [:= [:cast :created_at :date] [:cast yesterday-utc :date]]]})
-                :metabot-users      (:cnt (t2/query-one {:select [[[:count [:distinct :c.user_id]] :cnt]]
+                ;; Count distinct users from `metabot_message.user_id` rather than
+                ;; `metabot_conversation.user_id` — a single Slack-thread conversation
+                ;; can have multiple participating users, and each bot reply carries
+                ;; the requester's id.
+                :metabot-users      (:cnt (t2/query-one {:select [[[:count [:distinct :m.user_id]] :cnt]]
                                                          :from   [[:metabot_message :m]]
-                                                         :join   [[:metabot_conversation :c] [:= :c.id :m.conversation_id]]
                                                          :where  [:and
                                                                   :ai_proxied
+                                                                  [:not= :m.user_id nil]
                                                                   [:= [:cast :m.created_at :date] [:cast yesterday-utc :date]]]}))
                 :metabot-usage-date (str (t/local-date yesterday-utc))})
         (seq rolling-usage)

@@ -104,7 +104,15 @@
   [{:keys [limit offset user-id sort-by sort-dir]}]
   (let [limit     (or limit default-limit)
         offset    (or offset default-offset)
-        where     (when user-id [:= :c.user_id user-id])
+        ;; user-id filter is participation-based: returns conversations where the
+        ;; given user has authored at least one message (covers multi-user Slack
+        ;; threads), not only conversations where they happen to be the originator.
+        where     (when user-id
+                    [:exists {:select [[[:inline 1]]]
+                              :from   [[:metabot_message :mu]]
+                              :where  [:and
+                                       [:= :mu.conversation_id :c.id]
+                                       [:= :mu.user_id user-id]]}])
         sort-col  (get sort-columns sort-by :c.created_at)
         direction (if (= sort-dir "asc") :asc :desc)
         total     (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]

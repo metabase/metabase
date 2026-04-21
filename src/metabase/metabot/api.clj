@@ -44,10 +44,12 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- check-conversation-owner!
+(defn- check-conversation-access!
   "Throw a 403 if a `MetabotConversation` with `conversation-id` already exists and
-  the current user cannot read it. New conversations (no row yet) are allowed so
-  the first store-messages! call can claim them for the current user."
+  the current user is not a participant (has not sent at least one message in it).
+  New conversations (no row yet) are allowed so the first store-messages! call
+  can originate one. Permissions are participation-based — a conversation can
+  have multiple participants (e.g. multiple users in a shared Slack thread)."
   [conversation-id]
   (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
     (api/check-403 (mi/can-read? conversation))))
@@ -66,13 +68,15 @@
         ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
                               (fn [existing]
-                                (cond-> {:user_id api/*current-user-id*}
+                                (cond-> {}
+                                  (nil? existing)               (assoc :user_id api/*current-user-id*)
                                   state                         (assoc :state state)
                                   (nil? (:ip_address existing)) (assoc :ip_address ip-address)
                                   (nil? (:embed_url existing))  (assoc :embed_url embed-url))))
     ;; NOTE: this will need to be constrained at some point, see BOT-386
     (t2/insert! :model/MetabotMessage
                 {:conversation_id conversation-id
+                 :user_id         api/*current-user-id*
                  :data            messages
                  :usage           (:usage finish)
                  :role            (:role (first messages))
@@ -165,7 +169,7 @@
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
-    (check-conversation-owner! conversation_id)
+    (check-conversation-access! conversation_id)
     (store-aiservice-messages! conversation_id profile-id ip-address embed-url [message])
 
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})

@@ -21,7 +21,9 @@
                 ip-address (assoc :ip_address ip-address))))
 
 (defn- insert-message!
-  [{:keys [conversation-id created-at role profile-id total-tokens data deleted-at]}]
+  [{:keys [conversation-id user-id created-at role profile-id total-tokens data deleted-at]}]
+  ;; `:user-id` is optional so tests can cover both new rows (stamped message
+  ;; authors) and legacy rows that only have `metabot_conversation.user_id`.
   (first (t2/insert-returning-pks!
           :model/MetabotMessage
           (cond-> {:conversation_id conversation-id
@@ -30,6 +32,7 @@
                    :total_tokens    total-tokens
                    :data            data
                    :external_id     (str (random-uuid))}
+            user-id    (assoc :user_id user-id)
             created-at (assoc :created_at created-at)
             deleted-at (assoc :deleted_at deleted-at)))))
 
@@ -568,6 +571,12 @@
                                  :user-id         test-user-id
                                  :created-at      jan-3
                                  :summary         "legacy conversation with no ip"})
+          ;; Seed a participation row per conversation so the participation-
+          ;; based `user-id` filter matches — these convos don't otherwise have
+          ;; messages.
+          (seed-participation! convo-web)
+          (seed-participation! convo-slack)
+          (seed-participation! convo-null)
           (thunk {:test-user-id test-user-id
                   :convo-web    convo-web
                   :convo-slack  convo-slack
