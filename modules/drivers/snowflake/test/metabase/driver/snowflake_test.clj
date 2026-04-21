@@ -474,6 +474,86 @@
                               [(format "DROP TABLE IF EXISTS \"%s\".\"PUBLIC\".\"%s\";" db-name table-name)]
                               {:transaction? false})))))))))
 
+(deftest ^:sequential ^:synchronized create-or-replace-table-updates-effective-type-test
+  (mt/test-driver :snowflake
+    (testing "GHY-3388: when a column's database type changes via CREATE OR REPLACE TABLE
+             (e.g. TEXT -> NUMBER via TRY_TO_NUMBER), sync should update effective_type to match
+             the new base_type and clear stale coercion_strategy/semantic_type. Reproduces the
+             in-place update path (repro v1 from the Linear issue) where Metabase's Field row is
+             preserved across the schema change."
+      (let [db-name    (#'driver.snowflake/db-name (mt/db))
+            table-name (str "ghy_3388_" (u.random/random-name))
+            run-sql!   (fn [stmts]
+                         (sql-jdbc.execute/do-with-connection-with-options
+                          :snowflake
+                          (mt/db)
+                          nil
+                          (fn [^java.sql.Connection conn]
+                            (doseq [stmt stmts]
+                              (jdbc/execute! {:connection conn} [stmt] {:transaction? false})))))
+            qualified  (format "\"%s\".\"PUBLIC\".\"%s\"" db-name table-name)]
+        (try
+          ;; step 1: create the table with a TEXT column and insert rows. Quote identifiers so they
+          ;; are preserved lowercase (Snowflake upper-cases unquoted identifiers).
+          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
+                     (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
+          ;; step 2: sync — Metabase creates Table + Field rows for our new table
+          (sync/sync-database! (mt/db))
+          (let [original-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+                _              (is (some? original-table) "table should be synced")
+                original-field (t2/select-one :model/Field :table_id (:id original-table) :name "text_column")]
+            (testing "sanity check: text_column is text"
+              (is (=? {:base_type      :type/Text
+                       :effective_type :type/Text}
+                      original-field)))
+            ;; step 3: CREATE OR REPLACE the table, converting text_column to a number via TRY_TO_NUMBER
+            (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
+                                    "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
+                               qualified qualified)])
+            ;; step 4: sync again
+            (sync/sync-database! (mt/db))
+            (let [new-field (t2/select-one :model/Field :id (:id original-field))]
+              (testing "after sync, base_type and effective_type both reflect the new numeric column,
+                       and stale coercion/semantic type are cleared"
+                ;; TRY_TO_NUMBER with no precision returns NUMBER(38,0) -> :type/BigInteger
+                (is (=? {:base_type         :type/BigInteger
+                         :effective_type    :type/BigInteger
+                         :coercion_strategy nil
+                         :semantic_type     nil}
+                        new-field))))
+            ;; ----- repro v2 (clean state baseline): drop the table, wipe Metabase metadata for it,
+            ;; recreate fresh as TEXT, sync, then CREATE OR REPLACE to numeric and sync again. The
+            ;; field should end up with effective_type matching base_type. (In the Linear repro the
+            ;; user observes the cast feature does not appear here — i.e. effective_type vs base_type
+            ;; should be consistent and not stuck as text.)
+            (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)])
+            (t2/delete! :model/Field :table_id (:id original-table))
+            (t2/delete! :model/Table :id (:id original-table)))
+          (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
+                     (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
+          (sync/sync-database! (mt/db))
+          (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
+                                  "SELECT \"id\", TRY_TO_NUMBER(\"text_column\", 38, 2) AS \"text_column\" FROM %s;")
+                             qualified qualified)])
+          (sync/sync-database! (mt/db))
+          (let [fresh-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
+                fresh-field (t2/select-one :model/Field :table_id (:id fresh-table) :name "text_column")]
+            (testing "after fresh-state CREATE OR REPLACE to numeric, base_type and effective_type
+                     both reflect the new numeric column"
+              ;; TRY_TO_NUMBER(x, 38, 2) returns NUMBER(38,2) -> :type/Decimal
+              (is (=? {:base_type         :type/Decimal
+                       :effective_type    :type/Decimal
+                       :coercion_strategy nil
+                       :semantic_type     nil}
+                      fresh-field))))
+          (finally
+            (let [t (t2/select-one :model/Table :db_id (mt/id) :name table-name)]
+              (when t
+                (u/ignore-exceptions (t2/delete! :model/Field :table_id (:id t)))
+                (u/ignore-exceptions (t2/delete! :model/Table :id (:id t)))))
+            (u/ignore-exceptions
+              (run-sql! [(format "DROP TABLE IF EXISTS %s;" qualified)]))))))))
+
 (deftest ^:sequential describe-table-test
   (mt/test-driver :snowflake
     (testing "make sure describe-table uses the NAME FROM DETAILS too"
