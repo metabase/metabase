@@ -162,7 +162,7 @@
        (do (t2/update! :model/CustomVizPlugin id columns)
            (swap! local-snapshots assoc id snapshot)
            (t2/select-one :model/CustomVizPlugin :id id))
-       (let [row (first (t2/insert-returning-instances!
+       (let [row (t2/insert-returning-instance!
                          :model/CustomVizPlugin
                          (merge (select-keys plugin [:repo_url :access_token :identifier :pinned_version])
                                 columns)))]

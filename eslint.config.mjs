@@ -80,6 +80,7 @@ const configs = [
       "e2e/support/cypress_sample_instance_data.js",
       "e2e/support/assets/**",
       "e2e/embedding-sdk-host-apps/**",
+      "frontend/test/__support__/custom-viz-fixtures/**/*.js",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",
