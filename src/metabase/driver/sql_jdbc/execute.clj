@@ -799,12 +799,13 @@
                   ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
                   ;;       It should be removed afterwards!
                                                                                       (when-not (= :vertica driver)
-                                                                                        (try (.cancel stmt)
+                                                                                        (try (when-not (.isClosed stmt)
+                                                                                               (.cancel stmt))
                                                                                              (catch SQLFeatureNotSupportedException _
                                                                                                (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
                                                                                                           (name driver)))
-                                                                                             (catch Throwable _
-                                                                                               (log/warn "Statement cancelation failed."))))))))))))
+                                                                                             (catch Throwable e
+                                                                                               (log/info e "Statement cancelation failed."))))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
