@@ -408,7 +408,7 @@
                          (lib/aggregate
                           (lib/case [[(lib/> (lib/sum total) 10) (lib/sum total)]]
                             (lib/sum subtotal)))
-                         (lib/breakout (lib/with-binning total {:strategy :default})))]
+                         (lib/breakout (lib/with-binning total {:strategy :bin-width :bin-width 20})))]
         (is (= [[-60 26.96]
                 [0 851.99]
                 [20 71843.32]
