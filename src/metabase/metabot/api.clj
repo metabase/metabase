@@ -27,6 +27,7 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.request.core :as request]
@@ -253,6 +254,7 @@
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
+        _          (metabot.usage/check-metabase-managed-free-limit!)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
@@ -374,10 +376,9 @@
 
 (defn- effective-provider-model
   [provider model]
-  (cond
-    (nil? model) nil
-    (and (= provider provider-util/metabase-provider-prefix) (str/blank? model)) metabot.settings/default-llm-metabot-provider
-    :else (non-blank-string model)))
+  (when (some? model)
+    (or (non-blank-string model)
+        (metabot.settings/default-model-for-provider provider))))
 
 (def ^:private invalid-api-key-statuses
   #{401 403})
@@ -484,6 +485,10 @@
   []
   (provider-util/provider-and-model->provider (metabot.settings/llm-metabot-provider)))
 
+(defn- current-setting-provider
+  []
+  (provider-util/provider-and-model->outer-provider (metabot.settings/llm-metabot-provider)))
+
 (defn- throw-api-key-error!
   [response]
   (when-let [api-key-error (:api-key-error response)]
@@ -508,8 +513,19 @@
    _query-params
    body :- metabot-settings-request-schema]
   (perms/check-has-application-permission :setting)
-  (let [{:keys [provider model api-key]} body
-        model (effective-provider-model provider model)
+  (let [{:keys [provider api-key] request-model :model} body
+        current-provider (current-setting-provider)
+        provider-changed? (not= current-provider provider)
+        model (cond
+                (non-blank-string request-model)
+                (effective-provider-model provider request-model)
+
+                provider-changed?
+                (or (effective-provider-model provider request-model)
+                    (metabot.settings/default-model-for-provider provider))
+
+                :else
+                nil)
         response (-> (settings-response provider api-key)
                      throw-api-key-error!)]
     (when (contains? body :api-key)

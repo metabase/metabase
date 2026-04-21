@@ -4,16 +4,16 @@ module.exports = {
   ],
   "+(frontend|enterprise/frontend|e2e)/**/*.css": [
     "stylelint --fix",
-    "prettier --write",
+    "oxfmt --write",
   ],
   "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [
     "cross-env LINT_CSS_MODULES=true eslint --max-warnings 0 --fix",
-    "prettier --write",
+    "oxfmt --write",
     "node ./bin/verify-doc-links",
   ],
   "e2e/**/!(cypress_sample_instance_data).{js,jsx,ts,jsx}": [
     "eslint --max-warnings 0 --fix",
-    "prettier --write",
+    "oxfmt --write",
   ],
   "**/*.{clj,cljc,cljs,bb}": [
     "./bin/mage cljfmt-files",
@@ -23,10 +23,10 @@ module.exports = {
     "node e2e/validate-e2e-test-files.js",
   ],
   "enterprise/frontend/src/embedding-sdk-package/README.md": [
-    "prettier --write",
+    "oxfmt --write",
   ],
   "+(.storybook|enterprise/frontend/src/embedding-sdk-shared/.storybook)/**/*.{js,jsx,ts,tsx,css}":
-    ["prettier --write"],
+    ["oxfmt --write"],
   "**/*": [
     /**
      * Run mage token-scan for each staged file individually.

@@ -5,6 +5,7 @@ import querystring from "querystring";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
+import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { delay } from "metabase/utils/promise";
@@ -15,13 +16,35 @@ const MAX_RETRIES = 10;
 const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
 const METABASE_VERSION_HEADER = "X-Metabase-Version";
 
-let ANTI_CSRF_TOKEN = null;
+let ANTI_CSRF_TOKEN: string | null = null;
 
-const DEFAULT_OPTIONS = {
+type RequestOptions = {
+  json: boolean;
+  hasBody: boolean;
+  noEvent: boolean;
+  transformResponse: (opts: {
+    body: object;
+    data?: Record<string, unknown>;
+    response?: Response;
+  }) => Response | undefined;
+  raw: Record<string, boolean>;
+  headers: Record<string, string>;
+  retry: boolean;
+  retryCount: number;
+  retryDelayIntervals: number[];
+  formData?: boolean;
+  fetch?: boolean;
+  bodyParamName?: string | null;
+  cancelled?: Promise<unknown>;
+  controller?: AbortController;
+  signal?: AbortSignal;
+};
+
+const DEFAULT_OPTIONS: RequestOptions = {
   json: true,
   hasBody: false,
   noEvent: false,
-  transformResponse: ({ body }) => body,
+  transformResponse: ({ body }) => body as Response,
   raw: {},
   headers: {},
   retry: false,
@@ -33,21 +56,46 @@ const DEFAULT_OPTIONS = {
     .map((_, i) => ONE_SECOND * Math.pow(2, i)),
 };
 
+type RequestClientInfo = string | { name: string; version: string | null };
+
+/**
+ * Legacy API method. Consumers across the codebase pass concrete request shapes
+ * (e.g. `CreateDashboardRequest`) and rely on destructuring a concrete response,
+ * so we use broad `any` types here to match the JS version's behaviour.
+ */
+type ApiMethod = (
+  rawData?: any,
+  invocationOptions?: Partial<RequestOptions>,
+) => Promise<any>;
+
+type MethodCreator = (
+  urlTemplate: string,
+  methodOptions?:
+    | Partial<RequestOptions>
+    | ((opts: {
+        body: object;
+        data?: Record<string, unknown>;
+        response?: Response;
+      }) => Response | undefined),
+) => ApiMethod;
+
+type ResponseErrorInfo = {
+  body: unknown;
+  status: number;
+  metabaseVersion: string | null;
+};
+
 export class Api extends EventEmitter {
   basename = "";
   apiKey = "";
-  sessionToken;
-  onResponseError;
+  sessionToken: string | undefined;
+  onResponseError: ((info: ResponseErrorInfo) => void) | undefined;
+  requestClient: RequestClientInfo | undefined;
 
-  /**
-   * @type {string|{name: string, version: string | null}}
-   */
-  requestClient;
-
-  GET;
-  POST;
-  PUT;
-  DELETE;
+  GET: MethodCreator;
+  POST: MethodCreator;
+  PUT: MethodCreator;
+  DELETE: MethodCreator;
 
   constructor() {
     super();
@@ -57,16 +105,16 @@ export class Api extends EventEmitter {
     this.PUT = this._makeMethod("PUT", { hasBody: true });
   }
 
-  getClientHeaders() {
+  getClientHeaders(): Record<string, string> {
     const self = this;
-    const headers = {};
+    const headers: Record<string, string> = {};
 
     if (this.apiKey) {
       headers["X-Api-Key"] = self.apiKey;
     }
 
     if (this.sessionToken) {
-      headers["X-Metabase-Session"] = self.sessionToken;
+      headers["X-Metabase-Session"] = self.sessionToken!;
     }
 
     if (isWithinIframe() && !self.requestClient) {
@@ -111,28 +159,41 @@ export class Api extends EventEmitter {
     return headers;
   }
 
-  _makeMethod(methodTemplate, creatorOptions = {}) {
+  _makeMethod(
+    methodTemplate: string,
+    creatorOptions: Partial<RequestOptions> = {},
+  ): MethodCreator {
     return (urlTemplate, methodOptions = {}) => {
       if (typeof methodOptions === "function") {
         methodOptions = { transformResponse: methodOptions };
       }
 
-      const defaultOptions = {
+      const defaultOptions: RequestOptions = {
         ...DEFAULT_OPTIONS,
         ...creatorOptions,
         ...methodOptions,
       };
 
-      return async (rawData, invocationOptions = {}) => {
-        let { url, method, options, data } =
-          await this.apiRequestManipulationMiddleware({
-            url: urlTemplate,
-            method: methodTemplate,
-            options: { ...defaultOptions, ...invocationOptions },
-            // this will transform arrays to objects with numeric keys
-            // we shouldn't be using top level-arrays in the API
-            data: { ...rawData },
-          });
+      return async (rawData = {}, invocationOptions = {}) => {
+        const middlewareResult = await this.apiRequestManipulationMiddleware({
+          url: urlTemplate,
+          method: methodTemplate as "GET" | "POST",
+          options: {
+            ...defaultOptions,
+            ...invocationOptions,
+          } as OnBeforeRequestHandlerConfig["options"],
+          // this will transform arrays to objects with numeric keys
+          // we shouldn't be using top level-arrays in the API
+          data: { ...rawData },
+        });
+        let { url, method } = middlewareResult;
+        // Re-merge to preserve all RequestOptions fields after middleware (middleware can only extend options)
+        const options: RequestOptions = {
+          ...defaultOptions,
+          ...invocationOptions,
+          ...middlewareResult.options,
+        } as RequestOptions;
+        const { data } = middlewareResult;
         for (const tag of url.match(/:\w+/g) || []) {
           const paramName = tag.slice(1);
           let value = data[paramName];
@@ -142,9 +203,9 @@ export class Api extends EventEmitter {
             value = "";
           }
           if (!options.raw || !options.raw[paramName]) {
-            value = encodeURIComponent(value);
+            value = encodeURIComponent(value as string);
           }
-          url = url.replace(tag, value);
+          url = url.replace(tag, value as string);
         }
         // remove undefined
         for (const name in data) {
@@ -153,23 +214,23 @@ export class Api extends EventEmitter {
           }
         }
 
-        let body;
+        let body: string | FormData | undefined;
         if (options.hasBody) {
           body = options.formData
-            ? rawData.formData
+            ? (rawData["formData"] as FormData)
             : JSON.stringify(
                 options.bodyParamName != null
-                  ? data[options.bodyParamName]
+                  ? data[options.bodyParamName!]
                   : data,
               );
         } else {
-          const qs = querystring.stringify(data);
+          const qs = querystring.stringify(data as Record<string, string>);
           if (qs) {
             url += (url.indexOf("?") >= 0 ? "&" : "?") + qs;
           }
         }
 
-        const headers = {
+        const headers: Record<string, string> = {
           ...this.getClientHeaders(),
           ...(options.json
             ? { Accept: "application/json", "Content-Type": "application/json" }
@@ -197,7 +258,14 @@ export class Api extends EventEmitter {
     };
   }
 
-  async _makeRequestWithRetries(method, url, headers, body, data, options) {
+  async _makeRequestWithRetries(
+    method: string,
+    url: string,
+    headers: Record<string, string>,
+    body: string | FormData | undefined,
+    data: Record<string, unknown>,
+    options: RequestOptions,
+  ): Promise<unknown> {
     // Get a copy of the delay intervals that we can pop items from as we retry
     const retryDelays = options.retryDelayIntervals.slice().reverse();
     let retryCount = 0;
@@ -214,12 +282,15 @@ export class Api extends EventEmitter {
           data,
           options,
         );
-      } catch (e) {
+      } catch (e: unknown) {
         retryCount++;
         // If the response is 503 and the next retry won't put us over the maxAttempts,
         // wait a bit and try again
-        if (e.status === 503 && retryCount < maxAttempts) {
-          await delay(retryDelays.pop());
+        if (
+          (e as { status?: number }).status === 503 &&
+          retryCount < maxAttempts
+        ) {
+          await delay(retryDelays.pop() ?? 0);
         } else {
           throw e;
         }
@@ -227,18 +298,45 @@ export class Api extends EventEmitter {
     } while (retryCount < maxAttempts);
   }
 
-  _makeRequest(...args) {
-    const options = args[5];
+  _makeRequest(
+    method: string,
+    url: string,
+    headers: Record<string, string>,
+    body: string | FormData | undefined,
+    data: Record<string, unknown>,
+    options: RequestOptions,
+  ): Promise<unknown> {
     // this is temporary to not deal with failed cypress tests
     // we should switch to using fetch in all cases (metabase#28489)
     if (isTest || options.fetch) {
-      return this._makeRequestWithFetch(...args);
+      return this._makeRequestWithFetch(
+        method,
+        url,
+        headers,
+        body,
+        data,
+        options,
+      );
     } else {
-      return this._makeRequestWithXhr(...args);
+      return this._makeRequestWithXhr(
+        method,
+        url,
+        headers,
+        body,
+        data,
+        options,
+      );
     }
   }
 
-  _makeRequestWithXhr(method, url, headers, body, data, options) {
+  _makeRequestWithXhr(
+    method: string,
+    url: string,
+    headers: Record<string, string>,
+    body: string | FormData | undefined,
+    data: Record<string, unknown>,
+    options: RequestOptions,
+  ): Promise<unknown> {
     return new Promise((resolve, reject) => {
       let isCancelled = false;
       const xhr = new XMLHttpRequest();
@@ -258,35 +356,50 @@ export class Api extends EventEmitter {
             ANTI_CSRF_TOKEN = antiCsrfToken;
           }
 
-          let body = xhr.responseText;
+          let responseBody: Response | string | undefined = xhr.responseText;
+
           if (options.json) {
             try {
-              body = JSON.parse(body);
+              responseBody = JSON.parse(xhr.responseText);
             } catch (e) {}
           }
+
           let status = xhr.status;
-          if (status === 202 && body && body._status > 0) {
-            status = body._status;
+          if (
+            status === 202 &&
+            responseBody &&
+            typeof responseBody === "object" &&
+            "_status" in responseBody &&
+            (responseBody._status as number) > 0
+          ) {
+            status = responseBody._status as number;
           }
 
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
-              body = options.transformResponse({ body, data });
+              responseBody = options.transformResponse({
+                body: responseBody as Response,
+                data,
+              });
             }
-            resolve(body);
+            resolve(responseBody);
           } else {
             if (this.onResponseError) {
-              this.onResponseError({ body, status, metabaseVersion });
+              this.onResponseError({
+                body: responseBody,
+                status,
+                metabaseVersion,
+              });
             }
 
             reject({
               status: status,
-              data: body,
+              data: responseBody,
               isCancelled: isCancelled,
             });
           }
           if (!options.noEvent) {
-            this.emit(status, url);
+            this.emit(String(status), url);
           }
         }
       };
@@ -302,13 +415,13 @@ export class Api extends EventEmitter {
   }
 
   async _makeRequestWithFetch(
-    method,
-    url,
-    headers,
-    requestBody,
-    data,
-    options,
-  ) {
+    method: string,
+    url: string,
+    headers: Record<string, string>,
+    requestBody: string | FormData | undefined,
+    data: Record<string, unknown>,
+    options: RequestOptions,
+  ): Promise<unknown> {
     const controller = options.controller || new AbortController();
     const signal = options.signal ?? controller.signal;
     options.cancelled?.then(() => controller.abort());
@@ -324,16 +437,25 @@ export class Api extends EventEmitter {
     return fetch(request)
       .then((response) => {
         const unreadResponse = response.clone();
-        return response.text().then((body) => {
+        return response.text().then((bodyText) => {
+          let body: string | Response | undefined = bodyText;
+
           if (options.json) {
             try {
-              body = JSON.parse(body);
+              body = JSON.parse(bodyText);
             } catch (e) {}
           }
 
           let status = response.status;
-          if (status === 202 && body && body._status > 0) {
-            status = body._status;
+          if (
+            status === 202 &&
+            body &&
+            typeof body === "object" &&
+            "_status" in body &&
+            body._status &&
+            (body._status as number) > 0
+          ) {
+            status = (body as Record<string, number>)._status;
           }
 
           const token = response.headers.get(ANTI_CSRF_HEADER);
@@ -344,13 +466,13 @@ export class Api extends EventEmitter {
           }
 
           if (!options.noEvent) {
-            this.emit(status, url);
+            this.emit(String(status), url);
           }
 
           if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
               body = options.transformResponse({
-                body,
+                body: body as Response,
                 data,
                 response: unreadResponse,
               });
@@ -365,7 +487,7 @@ export class Api extends EventEmitter {
           }
         });
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         if (signal.aborted) {
           throw { isCancelled: true };
         } else {
@@ -374,19 +496,20 @@ export class Api extends EventEmitter {
       });
   }
 
-  /**
-   * @param {import('metabase/plugins/oss/api').OnBeforeRequestHandlerConfig} data
-   * @return {Promise<import('metabase/plugins/oss/api').OnBeforeRequestHandlerConfig>}
-   */
-  async apiRequestManipulationMiddleware(requestConfig) {
+  async apiRequestManipulationMiddleware(
+    requestConfig: OnBeforeRequestHandlerConfig,
+  ): Promise<OnBeforeRequestHandlerConfig> {
     let { method, url, options, data } = requestConfig;
 
     /**
      * Handlers order is important.
      * Handlers are executed in order and each handler uses the data returned by a previous handler.
-     * @type {import('metabase/plugins/oss/api').OnBeforeRequestHandler[]}
      */
-    const handlers = [];
+    const handlers: Array<
+      (
+        data: OnBeforeRequestHandlerConfig,
+      ) => Promise<void | OnBeforeRequestHandlerConfig>
+    > = [];
 
     if (isEmbeddingSdk()) {
       handlers.push(
@@ -453,10 +576,10 @@ const instance = new Api();
 export default instance;
 export const { GET, POST, PUT, DELETE } = instance;
 
-export const setLocaleHeader = (locale) => {
+export const setLocaleHeader = (locale: string | null | undefined): void => {
   /* `X-Metabase-Locale` is a header that the BE stores as *user* locale for the scope of the request.
    * We need it to localize downloads. It *currently* only work if there is a user, so it won't work
    * for public/static embedding.
    */
-  DEFAULT_OPTIONS.headers["X-Metabase-Locale"] = locale ?? undefined;
+  DEFAULT_OPTIONS.headers["X-Metabase-Locale"] = locale ?? undefined!;
 };
