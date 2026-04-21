@@ -356,6 +356,8 @@ export const sendAgentRequest = createAsyncThunk<
     try {
       let state = {};
       let error: unknown = undefined;
+      // Last navigate_to wins, matching setNavigateToPath/CurrentChart semantics.
+      // In practice we don't expect more than one navigate_to in a single stream.
       let pendingChartMessage:
         | { type: "chart"; navigateTo: string }
         | undefined = undefined;
