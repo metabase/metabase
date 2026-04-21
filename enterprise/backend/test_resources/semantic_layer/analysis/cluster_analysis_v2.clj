@@ -248,9 +248,9 @@
 
          :degree-distribution
          {:min    (first sorted-deg)
-          :p25    (nth sorted-deg (/ n 4))
-          :median (nth sorted-deg (/ n 2))
-          :p75    (nth sorted-deg (* 3 (/ n 4)))
+          :p25    (nth sorted-deg (quot n 4))
+          :median (nth sorted-deg (quot n 2))
+          :p75    (nth sorted-deg (quot (* 3 n) 4))
           :max    (last sorted-deg)
           :mean   (double (/ (reduce + 0 degrees) n))}
 
