@@ -430,9 +430,12 @@
 (def ^:private jgit (atom {}))
 
 (defn- stale-cache-error?
-  "Returns true if the exception indicates a stale git cache (e.g., after a force-push on the remote)."
+  "Returns true if the exception indicates a stale git cache, e.g. 'Missing commit' after a force-push, or
+  'Cannot resolve ref' when the cached Git instance's HEAD points at a ref no longer present locally."
   [^Exception e]
-  (some-> (ex-message e) (str/includes? "Missing commit")))
+  (when-let [msg (ex-message e)]
+    (or (str/includes? msg "Missing commit")
+        (str/includes? msg "Cannot resolve ref"))))
 
 (defn- clear-cached-repo!
   "Clears a cached git repository from memory and disk."
@@ -460,18 +463,22 @@
 
 (defn- snapshot*
   "Internal snapshot implementation. Returns a GitSnapshot or throws."
-  [source]
+  [source ref]
   (fetch! source)
-  (let [version (commit-sha source (:branch source))]
-    (if version
-      (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source) (:managed-dirs source))
-      (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
+  (if-let [version (commit-sha source ref)]
+    (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source) (:managed-dirs source))
+    (throw (ex-info (str "Cannot resolve ref: " (:branch source)) {}))))
 
-(defn- snapshot
-  "Creates a snapshot, recovering from stale cache errors by re-cloning."
-  [{:keys [remote-url token] :as source}]
+(defn snapshot-at-ref
+  "Creates a snapshot at a specific ref (branch, tag, commit SHA, or \"HEAD\").
+
+  Fetches latest refs from remote, then resolves the given ref-str to a commit SHA
+  and returns a GitSnapshot. Recovers from stale cache errors by clearing the cached
+  repository and retrying once. Throws if the ref cannot be resolved after retry."
+
+  [{:keys [remote-url token] :as source} ref]
   (try
-    (snapshot* source)
+    (snapshot* source ref)
     (catch Exception e
       (if (stale-cache-error? e)
         (let [path (repo-path {:remote-url remote-url :token token})]
@@ -479,7 +486,7 @@
           (let [fresh-git (get-jgit path {:remote-url remote-url :token token})
                 fresh-source (assoc source :git fresh-git)]
             (log/info "Retrying snapshot after clearing stale cache")
-            (snapshot* fresh-source)))
+            (snapshot* fresh-source ref)))
         (throw e)))))
 
 (defrecord GitSource [git remote-url branch token managed-dirs]
@@ -493,7 +500,7 @@
     (default-branch this))
 
   (snapshot [this]
-    (snapshot this)))
+    (snapshot-at-ref this (:branch this))))
 
 (defn git-source
   "Creates a new GitSource instance for a git repository.
@@ -507,15 +514,3 @@
   [url branch token managed-dirs]
   (->GitSource (get-jgit (repo-path {:remote-url url :token token}) {:remote-url url :token token})
                url branch token managed-dirs))
-
-(defn snapshot-at-ref
-  "Creates a snapshot at a specific ref (branch, tag, commit SHA, or \"HEAD\").
-
-  Fetches latest refs from remote, then resolves the given ref-str to a commit SHA
-  and returns a GitSnapshot. Throws if the ref cannot be resolved."
-  [source ^String ref-str]
-  (fetch! source)
-  (let [version (commit-sha source ref-str)]
-    (when-not version
-      (throw (ex-info (str "Cannot resolve ref: " ref-str) {:ref ref-str})))
-    (assoc source :version version)))
