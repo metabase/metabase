@@ -180,35 +180,7 @@ describe("useMetabot", () => {
       });
     });
 
-    it("passes through agent.todo_list payload", async () => {
-      const todo = {
-        id: "t1",
-        content: "work",
-        status: "pending" as const,
-        priority: "high" as const,
-      };
-      const { store } = setup({ ui: <TestMessages /> });
-
-      act(() => {
-        store.dispatch(
-          metabotActions.addAgentMessage({
-            agentId: "omnibot",
-            type: "todo_list",
-            payload: [todo],
-          } as any),
-        );
-      });
-
-      const [message] = await readMessages();
-      expect(message).toEqual({
-        id: expect.any(String),
-        role: "agent",
-        type: "todo_list",
-        payload: [todo],
-      });
-    });
-
-    it("filters out internal-only variants (tool_call, edit_suggestion, user action)", async () => {
+    it("filters out internal-only variants (tool_call, edit_suggestion, user action, todo_list)", async () => {
       const { store } = setup({ ui: <TestMessages /> });
 
       act(() => {
@@ -246,6 +218,20 @@ describe("useMetabot", () => {
                 suggestionId: "s1",
               },
             },
+          } as any),
+        );
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "todo_list",
+            payload: [
+              {
+                id: "t1",
+                content: "work",
+                status: "pending",
+                priority: "high",
+              },
+            ],
           } as any),
         );
         store.dispatch(

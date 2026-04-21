@@ -99,7 +99,7 @@ function getCachedChartComponent(
 // for the full rationale.
 type PublicChatMessage = Exclude<
   MetabotChatMessage,
-  { type: "tool_call" | "edit_suggestion" | "action" }
+  { type: "tool_call" | "edit_suggestion" | "action" | "todo_list" }
 >;
 
 const isPublicMessage = (
@@ -107,7 +107,8 @@ const isPublicMessage = (
 ): message is PublicChatMessage =>
   message.type !== "tool_call" &&
   message.type !== "edit_suggestion" &&
-  message.type !== "action";
+  message.type !== "action" &&
+  message.type !== "todo_list";
 
 const mapMessage = (message: PublicChatMessage): MetabotMessage =>
   match(message)
@@ -120,21 +121,5 @@ const mapMessage = (message: PublicChatMessage): MetabotMessage =>
       { role: "agent", type: "text" },
       ({ id, message }) =>
         ({ id, role: "agent", type: "text", message }) as const,
-    )
-    .with(
-      { role: "agent", type: "todo_list" },
-      ({ id, payload }) =>
-        ({
-          id,
-          role: "agent",
-          type: "todo_list",
-          // Copy fields explicitly so internal type changes don't leak into the public API.
-          payload: payload.map((todo) => ({
-            id: todo.id,
-            content: todo.content,
-            status: todo.status,
-            priority: todo.priority,
-          })),
-        }) as const,
     )
     .exhaustive();

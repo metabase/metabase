@@ -21,29 +21,12 @@ type MetabotAgentTextMessage = {
   message: string;
 };
 
-// Mirrors the internal `MetabotTodoItem` wire type intentionally — re-exporting
-// the API type would couple the SDK contract to backend/LLM shape changes.
-type MetabotTodoItem = {
-  id: string;
-  content: string;
-  status: "pending" | "in_progress" | "completed" | "cancelled";
-  priority: "high" | "medium" | "low";
-};
-
-type MetabotAgentTodoListMessage = {
-  id: string;
-  role: "agent";
-  type: "todo_list";
-  payload: MetabotTodoItem[];
-};
-
 // Internal variants intentionally omitted. `use-metabot.tsx` filters these out before mapping:
 // - `tool_call`: debug-only, gated on metabot's `debugMode`.
 // - `edit_suggestion`: targets the in-app Transform editor, which the SDK does not render.
 // - `action`: unused in shipped code.
-type MetabotAgentMessage =
-  | MetabotAgentTextMessage
-  | MetabotAgentTodoListMessage;
+// - `todo_list`: only reachable via the `codegen/transforms` profile, not the SDK.
+type MetabotAgentMessage = MetabotAgentTextMessage;
 
 export type MetabotMessage = MetabotUserTextMessage | MetabotAgentMessage;
 
