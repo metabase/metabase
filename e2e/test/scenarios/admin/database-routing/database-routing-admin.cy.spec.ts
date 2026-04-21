@@ -455,8 +455,6 @@ describe("admin > database > database routing", () => {
 
     describe("feature compatibility", () => {
       beforeEach(() => {
-        H.activateToken("bleeding-edge");
-
         // disable model actions since it is enabled by default for this db
         disableModelActionsViaApi(WRITABLE_DB_ID);
       });

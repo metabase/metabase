@@ -480,7 +480,7 @@ describe("scenarios > question > read-only snippets", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.createSnippet({
       name: "stuff-snippet",
       content: "select 'snippet 1'",

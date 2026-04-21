@@ -24,7 +24,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     H.restore();
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     cy.intercept("POST", "/api/data-studio/table/sync-schema").as("syncSchema");
     cy.intercept("POST", "/api/data-studio/table/rescan-values").as(
       "rescanValues",
@@ -46,7 +46,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
 
   it("syncing multiple tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
     cy.wait("@getSchema").then(({ response }) => {
@@ -119,7 +119,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     { tags: ["@external"] },
     () => {
       H.restore("postgres-writable");
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       cy.signInAsAdmin();
       H.DataModel.visitDataStudio();
 
@@ -163,7 +163,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
 
   it("allows to edit attributes for tables", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
     TablePicker.getDatabase("Writable Postgres12").click();
@@ -216,7 +216,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
     () => {
       beforeEach(() => {
         H.restore("postgres-writable");
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
         H.createLibrary();
         cy.signInAsAdmin();
         H.resetTestTable({ type: "postgres", table: "multi_schema" });
@@ -291,7 +291,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
 
   it("allows to edit attributes for db", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.createLibrary();
     cy.signInAsAdmin();
     H.DataModel.visitDataStudio();
@@ -332,7 +332,7 @@ describe("bulk table operations", { viewportWidth: 1600 }, () => {
 
   it("allows to edit attributes for schema", { tags: ["@external"] }, () => {
     H.restore("postgres-writable");
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
     H.resetTestTable({ type: "postgres", table: "many_schemas" });
     cy.signInAsAdmin();
     H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "Animals" });
