@@ -1,13 +1,11 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
 import type { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 
-import type {
-  MetabotAgentChartMessage,
-  MetabotMessage,
-} from "../../types/metabot";
+import type { MetabotMessage } from "../../types/metabot";
+
+type ChartComponent = Extract<MetabotMessage, { type: "chart" }>["Component"];
 
 // ============================================================================
 // Shared keyframes
@@ -93,11 +91,7 @@ const formatTime = () => {
 // InlineChart
 // ============================================================================
 
-export const InlineChart = ({
-  Component,
-}: {
-  Component: MetabotAgentChartMessage["Component"];
-}) => (
+export const InlineChart = ({ Component }: { Component: ChartComponent }) => (
   <div
     style={{
       height: 500,
@@ -137,58 +131,26 @@ export const MessageList = ({
   isProcessing,
   scrollRef,
   palette,
+  onRetry,
 }: {
   messages: MetabotMessage[];
   isProcessing: boolean;
   scrollRef: React.RefObject<HTMLDivElement>;
   palette: MessageListPalette;
+  onRetry?: (messageId: string) => void;
 }) => (
   <>
     {messages.map((msg) => {
       const isUser = msg.role === "user";
-
-      if (msg.type === "tool_call") {
-        return (
-          <div
-            key={msg.id}
-            style={{ padding: "3px 0", animation: "metabotFadeUp 0.2s ease" }}
-          >
-            <span
-              style={{
-                fontSize: 11,
-                fontFamily: "monospace",
-                color: palette.accentLight,
-                background: palette.accentDim,
-                padding: "2px 8px",
-                borderRadius: 4,
-              }}
-            >
-              {msg.status === "started" ? "Running" : "Ran"} {msg.name}
-            </span>
-          </div>
-        );
-      }
 
       if (msg.type === "chart") {
         return <InlineChart key={msg.id} Component={msg.Component} />;
       }
 
       const content: ReactNode =
-        "message" in msg && msg.message ? (
-          stripMarkdownLinks(msg.message)
-        ) : "payload" in msg && msg.payload ? (
-          <pre
-            style={{
-              margin: 0,
-              whiteSpace: "pre-wrap",
-              fontSize: 12,
-              fontFamily: "monospace",
-              color: palette.textSecondary,
-            }}
-          >
-            {JSON.stringify(msg.payload, null, 2)}
-          </pre>
-        ) : null;
+        msg.type === "text" && msg.message
+          ? stripMarkdownLinks(msg.message)
+          : null;
 
       if (!content) {
         return null;
@@ -256,13 +218,35 @@ export const MessageList = ({
             </div>
             <div
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
                 fontSize: 10,
                 color: palette.textMuted,
                 marginTop: 2,
-                ...(isUser ? { paddingRight: 2 } : { paddingLeft: 2 }),
+                ...(isUser
+                  ? { justifyContent: "flex-end", paddingRight: 2 }
+                  : { paddingLeft: 2 }),
               }}
             >
-              {formatTime()}
+              <span>{formatTime()}</span>
+              {!isUser && onRetry && !isProcessing && (
+                <button
+                  onClick={() => onRetry(msg.id)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: palette.textMuted,
+                    cursor: "pointer",
+                    fontSize: 10,
+                    fontFamily: "inherit",
+                    padding: 0,
+                    textDecoration: "underline",
+                  }}
+                >
+                  Retry
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -404,124 +388,6 @@ export const Composer = ({
     </button>
   </div>
 );
-
-// ============================================================================
-// InstructionsDrawer
-// ============================================================================
-
-export const InstructionsDrawer = ({
-  customInstructions,
-  setCustomInstructions,
-  palette,
-}: {
-  customInstructions: string | undefined;
-  setCustomInstructions: (v: string | undefined) => void;
-  palette: MessageListPalette;
-}) => {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(customInstructions ?? "");
-
-  return (
-    <div
-      style={{
-        borderTop: `1px solid ${palette.border}`,
-        background: palette.surface,
-      }}
-    >
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "6px 12px",
-          background: "none",
-          border: "none",
-          color: customInstructions ? palette.accentLight : palette.textMuted,
-          fontSize: 11,
-          fontWeight: 600,
-          cursor: "pointer",
-          fontFamily: "inherit",
-        }}
-      >
-        <SparkleIcon size={10} />
-        {customInstructions ? "Custom instructions active" : "Add instructions"}
-        <span style={{ marginLeft: "auto", fontSize: 10 }}>
-          {open ? "Hide" : "Edit"}
-        </span>
-      </button>
-      {open && (
-        <div
-          style={{
-            padding: "0 12px 8px",
-            display: "flex",
-            flexDirection: "column",
-            gap: 6,
-          }}
-        >
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="e.g. Always respond in bullet points."
-            rows={2}
-            style={{
-              background: palette.surfaceRaised,
-              border: `1px solid ${palette.border}`,
-              borderRadius: 6,
-              padding: "6px 10px",
-              fontSize: 12,
-              color: palette.text,
-              outline: "none",
-              resize: "vertical",
-              fontFamily: "inherit",
-              lineHeight: 1.4,
-            }}
-          />
-          <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-            {customInstructions && (
-              <button
-                onClick={() => {
-                  setCustomInstructions(undefined);
-                  setDraft("");
-                }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: palette.textMuted,
-                  fontSize: 11,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                Clear
-              </button>
-            )}
-            <button
-              onClick={() => {
-                setCustomInstructions(draft.trim() || undefined);
-                setOpen(false);
-              }}
-              style={{
-                background: palette.accent,
-                border: "none",
-                borderRadius: 4,
-                padding: "3px 12px",
-                color: "#fff",
-                fontSize: 11,
-                fontWeight: 600,
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              Apply
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ============================================================================
 // SDK Wrapper factory

@@ -6,7 +6,6 @@ import {
   BotIcon,
   CloseIcon,
   Composer,
-  InstructionsDrawer,
   MessageList,
   SharedKeyframes,
   SparkleIcon,
@@ -380,6 +379,24 @@ const HrDemo = () => {
             </div>
           ))}
 
+          {/* Pinned latest chart */}
+          {metabot.CurrentChart && (
+            <div
+              style={{
+                height: 240,
+                borderBottom: `1px solid ${hr.border}`,
+                background: hr.surfaceRaised,
+                flexShrink: 0,
+              }}
+            >
+              <metabot.CurrentChart
+                drills
+                isSaveEnabled={false}
+                height="100%"
+              />
+            </div>
+          )}
+
           {/* Messages */}
           <div style={{ flex: 1, overflowY: "auto", padding: "8px 16px" }}>
             {metabot.messages.length === 0 && !metabot.isProcessing && (
@@ -414,18 +431,15 @@ const HrDemo = () => {
               </div>
             )}
             <MessageList
-              messages={metabot.messages}
+              messages={metabot.messages.filter(
+                (message) => message.type !== "chart",
+              )}
               isProcessing={metabot.isProcessing}
               scrollRef={scrollRef}
               palette={hr}
             />
           </div>
 
-          <InstructionsDrawer
-            customInstructions={metabot.customInstructions}
-            setCustomInstructions={metabot.setCustomInstructions}
-            palette={hr}
-          />
           <Composer
             value={inputValue}
             onChange={setInputValue}

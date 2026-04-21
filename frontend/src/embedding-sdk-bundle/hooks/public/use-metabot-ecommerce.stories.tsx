@@ -6,7 +6,6 @@ import {
   BotIcon,
   CloseIcon,
   Composer,
-  InstructionsDrawer,
   MessageList,
   SharedKeyframes,
   makeSdkWrapper,
@@ -359,6 +358,24 @@ const EcommerceDemo = () => {
             </div>
           ))}
 
+          {/* Pinned latest chart */}
+          {metabot.CurrentChart && (
+            <div
+              style={{
+                height: 260,
+                borderBottom: `1px solid ${ec.border}`,
+                background: ec.surfaceRaised,
+                flexShrink: 0,
+              }}
+            >
+              <metabot.CurrentChart
+                drills
+                isSaveEnabled={false}
+                height="100%"
+              />
+            </div>
+          )}
+
           {/* Messages */}
           <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }}>
             {metabot.messages.length === 0 && !metabot.isProcessing && (
@@ -442,18 +459,15 @@ const EcommerceDemo = () => {
               </div>
             )}
             <MessageList
-              messages={metabot.messages}
+              messages={metabot.messages.filter(
+                (message) => message.type !== "chart",
+              )}
               isProcessing={metabot.isProcessing}
               scrollRef={scrollRef}
               palette={ec}
             />
           </div>
 
-          <InstructionsDrawer
-            customInstructions={metabot.customInstructions}
-            setCustomInstructions={metabot.setCustomInstructions}
-            palette={ec}
-          />
           <Composer
             value={inputValue}
             onChange={setInputValue}

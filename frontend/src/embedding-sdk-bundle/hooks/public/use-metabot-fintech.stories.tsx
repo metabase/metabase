@@ -5,7 +5,6 @@ import { useMetabot } from "./use-metabot";
 import {
   BotIcon,
   Composer,
-  InstructionsDrawer,
   MessageList,
   SharedKeyframes,
   makeSdkWrapper,
@@ -210,7 +209,19 @@ const FintechDemo = () => {
     >
       <SharedKeyframes />
       <div style={{ flex: 1, position: "relative" }}>
-        <PayFlowBg />
+        {metabot.CurrentChart ? (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: ft.bg,
+            }}
+          >
+            <metabot.CurrentChart drills isSaveEnabled={false} height="100%" />
+          </div>
+        ) : (
+          <PayFlowBg />
+        )}
       </div>
 
       {/* Inline side panel — always visible on the right */}
@@ -336,18 +347,15 @@ const FintechDemo = () => {
             </div>
           )}
           <MessageList
-            messages={metabot.messages}
+            messages={metabot.messages.filter(
+              (message) => message.type !== "chart",
+            )}
             isProcessing={metabot.isProcessing}
             scrollRef={scrollRef}
             palette={ft}
           />
         </div>
 
-        <InstructionsDrawer
-          customInstructions={metabot.customInstructions}
-          setCustomInstructions={metabot.setCustomInstructions}
-          palette={ft}
-        />
         <Composer
           value={inputValue}
           onChange={setInputValue}

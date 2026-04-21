@@ -5,7 +5,6 @@ import { useMetabot } from "./use-metabot";
 import {
   BotIcon,
   Composer,
-  InstructionsDrawer,
   MessageList,
   SharedKeyframes,
   makeSdkWrapper,
@@ -354,14 +353,10 @@ const CrmDemo = () => {
             isProcessing={metabot.isProcessing}
             scrollRef={scrollRef}
             palette={crm}
+            onRetry={metabot.retryMessage}
           />
         </div>
 
-        <InstructionsDrawer
-          customInstructions={metabot.customInstructions}
-          setCustomInstructions={metabot.setCustomInstructions}
-          palette={crm}
-        />
         <Composer
           value={inputValue}
           onChange={setInputValue}
