@@ -83,6 +83,16 @@ databaseChangeLog:
   - changeSet:
       id: v60.2026-04-21T12:00:03
       author: bcm
+      comment: Add unique constraint on (database_id, to_schema, to_table_name) to prevent two source tables mapping to the same target
+      changes:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_target
+            columnNames: database_id, to_schema, to_table_name
+
+  - changeSet:
+      id: v60.2026-04-21T12:00:04
+      author: bcm
       comment: Add index on database_id for fast lookup
       changes:
         - createIndex:
