@@ -32,11 +32,7 @@ export function EmbeddingThemeListingApp() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
 
   if (!hasSimpleEmbedding) {
-    return (
-      <Stack mx="auto" maw={1200}>
-        <UpsellEmbeddingTheme source="embedding-themes" />
-      </Stack>
-    );
+    return <UpsellEmbeddingTheme source="embedding-themes" />;
   }
 
   return <EmbeddingThemeListingAppInner />;

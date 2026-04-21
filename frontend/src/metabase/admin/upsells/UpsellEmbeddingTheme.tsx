@@ -1,21 +1,14 @@
-import { useMount } from "react-use";
 import { t } from "ttag";
 
+import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
+import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
 import { useUpgradeAction } from "metabase/common/components/upsells/components/UpgradeModal";
-import { UpsellCta } from "metabase/common/components/upsells/components/UpsellCta";
-import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
-import { UpsellWrapper } from "metabase/common/components/upsells/components/UpsellWrapper";
-import {
-  trackUpsellClicked,
-  trackUpsellViewed,
-} from "metabase/common/components/upsells/components/analytics";
+import { UpsellCardContent } from "metabase/common/components/upsells/components/UpsellCardContent";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { Box, Card, Flex, Stack, Text, Title } from "metabase/ui";
+import { Stack } from "metabase/ui";
 
-type Props = { source: string };
-
-const UpsellEmbeddingThemeInner = ({ source }: Props) => {
+export const UpsellEmbeddingTheme = ({ source }: { source: string }) => {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
   const campaign = "embedding-themes";
 
@@ -25,43 +18,25 @@ const UpsellEmbeddingThemeInner = ({ source }: Props) => {
     location: source,
   });
 
-  useMount(() => {
-    trackUpsellViewed({ location: source, campaign });
-  });
-
   if (hasSimpleEmbedding) {
     return null;
   }
 
   return (
-    <Card data-testid="upsell-embedding-theme" p="xl" withBorder>
-      <Stack gap="md">
-        <Flex align="center" gap="xs">
-          <UpsellGem.New size={16} />
-          <Text c="text-brand">{t`Metabase Pro`}</Text>
-        </Flex>
-        <Title order={3}>{t`Create custom themes`}</Title>
-        <Text lh={1.4}>
-          {t`Fine-tune the appearance of your embedded content with colors and fonts.`}
-        </Text>
-        <Text lh={1.4}>
-          {t`Get a 14 day trial of this and other Pro features.`}
-        </Text>
-        <Box mt="sm">
-          <UpsellCta
-            onClick={upgradeOnClick}
-            url={upgradeUrl}
-            internalLink={undefined}
-            buttonText={t`Upgrade to Pro`}
-            onClickCapture={() =>
-              trackUpsellClicked({ location: source, campaign })
-            }
-            size="large"
+    <DottedBackground px="3.5rem" pb="2rem">
+      <Stack align="center" p={40}>
+        <LineDecorator>
+          <UpsellCardContent
+            campaign={campaign}
+            location={source}
+            title={t`Create custom themes`}
+            description={t`Fine-tune the appearance of your embedded content with colors and fonts.`}
+            upgradeOnClick={upgradeOnClick}
+            upgradeUrl={upgradeUrl}
+            // variant="image-full-height"
           />
-        </Box>
+        </LineDecorator>
       </Stack>
-    </Card>
+    </DottedBackground>
   );
 };
-
-export const UpsellEmbeddingTheme = UpsellWrapper(UpsellEmbeddingThemeInner);
