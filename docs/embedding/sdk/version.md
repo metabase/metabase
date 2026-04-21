@@ -29,7 +29,7 @@ To grab the latest version of the SDK that works with Metabase nightly builds, u
 
 ## Metabase 56 and earlier
 
-For Metabase 56 and earlier, the SDK did not yet use the Package/Bundle split, so the SDK major version must match the Metabase major version. Use the matching `@{major}-stable` dist-tag — for example, for Metabase 55:
+For Metabase 56 and earlier, the SDK major version must match the Metabase major version. Use the matching `@{major}-stable` dist-tag. For example, for Metabase 55:
 
 ```sh
 npm install @metabase/embedding-sdk-react@55-stable
