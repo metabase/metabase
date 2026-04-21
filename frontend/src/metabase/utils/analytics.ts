@@ -5,8 +5,6 @@ import Settings from "metabase/utils/settings";
 import type { SchemaEventMap, SchemaType } from "metabase-types/analytics";
 import type { SimpleEventSchema } from "metabase-types/analytics/event";
 
-export * from "./analytics-untyped";
-
 type SchemaVersion = `${number}-${number}-${number}`;
 
 const VERSIONS: Record<SchemaType, SchemaVersion> = {
