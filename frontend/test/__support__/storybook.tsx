@@ -77,7 +77,11 @@ export const SdkVisualizationWrapper = ({
 }) => (
   <Box fz="0.875rem">
     <VisualizationWrapper initialStore={initialStore}>
-      <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
+      <SdkThemeProvider theme={theme}>
+        <div className="mb-wrapper" data-mantine-color-scheme="light">
+          {children}
+        </div>
+      </SdkThemeProvider>
     </VisualizationWrapper>
   </Box>
 );
@@ -120,7 +124,9 @@ export const SdkVisualizationStory = ({
     <Box w={1000} h={600} bg={theme?.colors?.background}>
       <VisualizationWrapper>
         <SdkThemeProvider theme={theme}>
-          <Visualization rawSeries={rawSeries} width={500} />
+          <div className="mb-wrapper" data-mantine-color-scheme="light">
+            <Visualization rawSeries={rawSeries} width={500} />
+          </div>
         </SdkThemeProvider>
       </VisualizationWrapper>
     </Box>
