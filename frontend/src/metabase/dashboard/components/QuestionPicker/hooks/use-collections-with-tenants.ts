@@ -159,7 +159,9 @@ export function mergeSharedCollections(
         ? [
             COLLECTIONS_TOP_LEVEL_ID,
             SHARED_TENANT_COLLECTIONS_ROOT_ID,
-            ...collection.path.filter((s) => s !== ROOT_COLLECTION.id),
+            ...collection.path.filter(
+              (pathId) => pathId !== ROOT_COLLECTION.id,
+            ),
           ]
         : null,
 
