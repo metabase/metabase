@@ -3295,7 +3295,8 @@
   enterprise/transforms-inspector
   {:team "Gadget"
    :api  #{metabase-enterprise.transforms-inspector.api}
-   :uses #{api
+   :uses #{analytics
+           api
            driver
            events
            lib
@@ -3303,6 +3304,7 @@
            query-processor
            server
            sql-tools
+           tracing
            transforms
            transforms-base
            util}
