@@ -4049,13 +4049,13 @@ function checkSortingOrder(transformNames: string[]) {
 
 describe("scenarios > data studio > transforms > permissions > oss", () => {
   beforeEach(() => {
-    H.restore();
+    H.restore("postgres-writable");
     cy.signInAsAdmin();
   });
 
   it(
     "should be able to enable transforms in OSS without upsell gem icon",
-    { tags: "@OSS" },
+    { tags: ["@OSS", "@external"] },
     () => {
       cy.log("ensure that transform permissions are not shown");
       cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP_ID}`);
