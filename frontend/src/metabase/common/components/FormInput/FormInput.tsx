@@ -7,11 +7,10 @@ import type { InputProps } from "metabase/common/components/Input";
 import Input from "metabase/common/components/Input";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 
-export interface FormInputProps
-  extends Omit<
-    InputProps,
-    "value" | "error" | "fullWidth" | "onChange" | "onBlur"
-  > {
+export interface FormInputProps extends Omit<
+  InputProps,
+  "value" | "error" | "fullWidth" | "onChange" | "onBlur"
+> {
   name: string;
   title?: string;
   actions?: ReactNode;

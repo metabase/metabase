@@ -42,6 +42,7 @@ export * from "./remote-sync";
 export * from "./revision";
 export * from "./schema";
 export * from "./search";
+export * from "./security-center";
 export * from "./segment";
 export * from "./session";
 export * from "./settings";

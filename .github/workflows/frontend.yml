@@ -16,7 +16,7 @@ on:
         type: boolean
         default: false
       skip-lint:
-        description: "Skip linting jobs (prettier, eslint, css variables check)"
+        description: "Skip linting jobs (oxfmt, eslint, css variables check)"
         type: boolean
         default: false
 
@@ -49,8 +49,8 @@ jobs:
         run: yarn build-pure:cljs
       - name: Find CSS variables that are used but never defined
         run: yarn find-never-defined-css-variables
-      - name: Run Prettier formatting linter
-        run: yarn run lint-prettier-pure
+      - name: Run oxfmt formatting linter
+        run: yarn run lint-format-pure
       - name: Run ESLint linter
         run: yarn run lint-eslint-pure
       - name: Run CSS linter
