@@ -1,7 +1,7 @@
 import type {
   DisplayTheme,
   EmbedResourceDownloadOptions,
-} from "metabase/embed/types";
+} from "metabase/embedding/types";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
 
 type EmbedBackground = boolean;

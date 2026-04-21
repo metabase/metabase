@@ -8,7 +8,7 @@ import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { Modal } from "metabase/common/components/Modal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
-import { QuestionEmbedWidget } from "metabase/embed/components/QuestionEmbedWidget";
+import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
 import { setArchivedQuestion } from "metabase/query_builder/actions";

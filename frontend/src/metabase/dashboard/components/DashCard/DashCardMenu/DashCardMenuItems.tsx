@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { canDownloadResults } from "metabase/common/utils/dataset";
 import { editQuestion } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
-import type { DashCardMenuItem } from "metabase/embed/sdk-bundle/types/dashcard-menu";
+import type { DashCardMenuItem } from "metabase/embedding/sdk-bundle/types/dashcard-menu";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { DashboardCardCustomMenuItem } from "metabase/embedding-sdk/types/plugins";
 import { Icon, Menu } from "metabase/ui";

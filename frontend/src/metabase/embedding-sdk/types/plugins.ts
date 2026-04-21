@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import type { DashCardMenuItem } from "metabase/embed/sdk-bundle/types/dashcard-menu";
+import type { DashCardMenuItem } from "metabase/embedding/sdk-bundle/types/dashcard-menu";
 import type { ClickAction } from "metabase/visualizations/types";
 
 import type { MetabaseQuestion } from "./question";

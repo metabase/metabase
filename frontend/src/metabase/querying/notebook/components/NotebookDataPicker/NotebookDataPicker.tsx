@@ -13,7 +13,7 @@ import type {
   MiniPickerItem,
   MiniPickerPickableItem,
 } from "metabase/common/components/Pickers/MiniPicker/types";
-import { isEmbedding } from "metabase/embed/config";
+import { isEmbedding } from "metabase/embedding/config";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getIsTenantUser } from "metabase/selectors/user";

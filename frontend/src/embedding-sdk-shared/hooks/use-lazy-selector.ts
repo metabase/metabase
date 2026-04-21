@@ -1,6 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-import type { SdkStoreState } from "metabase/embed/sdk-bundle/store-types";
+import type { SdkStoreState } from "metabase/embedding/sdk-bundle/store-types";
 
 import { useMetabaseProviderPropsStore } from "./use-metabase-provider-props-store";
 

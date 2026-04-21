@@ -5,7 +5,7 @@ import type {
   FunctionSchemaValidationResult,
   SchemaValidationErrorMetadata,
 } from "embedding-sdk-shared/types/validation";
-import type { FunctionSchema } from "metabase/embed/sdk-bundle/types/schema";
+import type { FunctionSchema } from "metabase/embedding/sdk-bundle/types/schema";
 
 const getErrorMetadata = <
   TMetadata extends

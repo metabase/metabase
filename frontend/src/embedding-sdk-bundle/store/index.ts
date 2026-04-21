@@ -4,7 +4,7 @@ import { useContext } from "react";
 import type {
   SdkDispatch,
   SdkStore,
-} from "metabase/embed/sdk-bundle/store-types";
+} from "metabase/embedding/sdk-bundle/store-types";
 import * as pulse from "metabase/notifications/pulse/reducers";
 import * as qb from "metabase/query_builder/reducers";
 import { commonReducers } from "metabase/reducers-common";

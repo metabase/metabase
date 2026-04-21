@@ -1,6 +1,6 @@
 import { match } from "ts-pattern";
 
-import type { EmbeddingParameterVisibility } from "metabase/embed/types";
+import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
 import { AIQuestionAnalysisSidebar } from "metabase/metabot/components/AIQuestionAnalysisSidebar";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
 import { QuestionInfoSidebar } from "metabase/query_builder/components/view/sidebars/QuestionInfoSidebar";

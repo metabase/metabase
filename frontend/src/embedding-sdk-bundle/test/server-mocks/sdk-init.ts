@@ -11,7 +11,7 @@ import {
 import type {
   SdkState,
   SdkStoreState,
-} from "metabase/embed/sdk-bundle/store-types";
+} from "metabase/embedding/sdk-bundle/store-types";
 import {
   createMockEmbedState,
   createMockState,

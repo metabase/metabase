@@ -8,7 +8,7 @@ import {
 import { addDefaultDashboardPluginValues } from "embedding-sdk-bundle/lib/plugins/dashboard";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getPlugins } from "embedding-sdk-bundle/store/selectors";
-import type { MetabasePluginsConfig } from "metabase/embed/sdk-bundle/types/plugins";
+import type { MetabasePluginsConfig } from "metabase/embedding/sdk-bundle/types/plugins";
 
 export type SdkDashboardContextType = Partial<{
   plugins: MetabasePluginsConfig;

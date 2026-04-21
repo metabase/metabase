@@ -1,6 +1,6 @@
 import { isValidElement } from "react";
 
-import { useEmbeddingEntityContext } from "metabase/embed/context";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { formatValue } from "metabase/utils/formatting";
 import type { OptionsType } from "metabase/utils/formatting/types";

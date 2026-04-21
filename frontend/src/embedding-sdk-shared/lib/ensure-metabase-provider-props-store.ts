@@ -1,4 +1,4 @@
-import type { ComponentProviderProps } from "metabase/embed/sdk-bundle/types/metabase-provider";
+import type { ComponentProviderProps } from "metabase/embedding/sdk-bundle/types/metabase-provider";
 
 import { type SdkLoadingError, SdkLoadingState } from "../types/sdk-loading";
 

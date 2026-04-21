@@ -24,8 +24,8 @@ import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import { useLocale } from "metabase/common/hooks/use-locale";
-import type { SdkCollectionId } from "metabase/embed/sdk-bundle/types";
-import type { SdkBreadcrumbItemType } from "metabase/embed/sdk-bundle/types/breadcrumb";
+import type { SdkCollectionId } from "metabase/embedding/sdk-bundle/types";
+import type { SdkBreadcrumbItemType } from "metabase/embedding/sdk-bundle/types/breadcrumb";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 import { Stack } from "metabase/ui";
 import {

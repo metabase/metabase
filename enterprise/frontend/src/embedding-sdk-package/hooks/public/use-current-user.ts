@@ -1,6 +1,6 @@
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
-import type { MetabaseUser } from "metabase/embed/sdk-bundle/types/user";
+import type { MetabaseUser } from "metabase/embedding/sdk-bundle/types/user";
 
 /**
  * Returns the current user.

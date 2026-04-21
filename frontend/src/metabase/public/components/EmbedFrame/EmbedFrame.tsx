@@ -18,9 +18,9 @@ import type { DashboardUrlHashOptions } from "metabase/dashboard/types";
 import {
   ActionButtonsContainer,
   type FooterVariant,
-} from "metabase/embed/components/EmbedFooter.styled";
-import { EmbeddingFooter } from "metabase/embed/components/EmbeddingFooter/EmbeddingFooter";
-import EmbedThemeS from "metabase/embed/theme.module.css";
+} from "metabase/embedding/components/EmbedFooter.styled";
+import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
+import EmbedThemeS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import { ParametersList } from "metabase/parameters/components/ParametersList";

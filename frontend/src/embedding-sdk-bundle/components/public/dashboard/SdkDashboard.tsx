@@ -54,13 +54,13 @@ import {
 } from "metabase/dashboard/context";
 import { getDashboardComplete, getIsDirty } from "metabase/dashboard/selectors";
 import type { RefreshPeriod } from "metabase/dashboard/types";
-import { EmbeddingEntityContextProvider } from "metabase/embed/context";
-import type { MetabaseQuestion } from "metabase/embed/sdk-bundle/types";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import type { MetabaseQuestion } from "metabase/embedding/sdk-bundle/types";
 import type {
   DashboardEventHandlersProps,
   SdkDashboardId,
-} from "metabase/embed/sdk-bundle/types/dashboard";
-import type { MetabasePluginsConfig } from "metabase/embed/sdk-bundle/types/plugins";
+} from "metabase/embedding/sdk-bundle/types/dashboard";
+import type { MetabasePluginsConfig } from "metabase/embedding/sdk-bundle/types/plugins";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { resetErrorPage, setErrorPage } from "metabase/redux/app";

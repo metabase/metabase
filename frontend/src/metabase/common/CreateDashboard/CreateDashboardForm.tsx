@@ -9,7 +9,7 @@ import {
   DASHBOARD_DESCRIPTION_MAX_LENGTH,
   DASHBOARD_NAME_MAX_LENGTH,
 } from "metabase/common/utils/dashboard";
-import type { SdkCollectionId } from "metabase/embed/sdk-bundle/types";
+import type { SdkCollectionId } from "metabase/embedding/sdk-bundle/types";
 import { Collections } from "metabase/entities/collections";
 import {
   Form,

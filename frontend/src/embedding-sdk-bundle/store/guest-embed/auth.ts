@@ -2,9 +2,9 @@
 import type { AsyncThunkAction, SerializedError } from "@reduxjs/toolkit";
 import { createAction } from "@reduxjs/toolkit";
 
-import { requestSessionTokenFromEmbedJs } from "metabase/embed/iframe-sdk/utils/request-session-token";
-import type { SdkStoreState } from "metabase/embed/sdk-bundle/store-types";
-import type { MetabaseAuthConfig } from "metabase/embed/sdk-bundle/types/auth-config";
+import { requestSessionTokenFromEmbedJs } from "metabase/embedding/iframe-sdk/utils/request-session-token";
+import type { SdkStoreState } from "metabase/embedding/sdk-bundle/store-types";
+import type { MetabaseAuthConfig } from "metabase/embedding/sdk-bundle/types/auth-config";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { decodeJwt } from "metabase/utils/jwt";
 import { createAsyncThunk } from "metabase/utils/redux";

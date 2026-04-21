@@ -8,7 +8,7 @@ import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { DefaultLogoIcon } from "metabase/common/components/LogoIcon";
-import type { SdkUsageProblem } from "metabase/embed/sdk-bundle/types/usage-problem";
+import type { SdkUsageProblem } from "metabase/embedding/sdk-bundle/types/usage-problem";
 import { Button, Card, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 import { originalColors } from "metabase/ui/colors";
 

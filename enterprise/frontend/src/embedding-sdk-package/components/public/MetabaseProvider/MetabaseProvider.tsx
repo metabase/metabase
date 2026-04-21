@@ -9,7 +9,7 @@ import { useSdkLoadingState } from "embedding-sdk-shared/hooks/use-sdk-loading-s
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
-import type { MetabaseProviderProps } from "metabase/embed/sdk-bundle/types/metabase-provider";
+import type { MetabaseProviderProps } from "metabase/embedding/sdk-bundle/types/metabase-provider";
 
 /**
  * We call `use-init-data` hook to initialize the SDK with the initial data.

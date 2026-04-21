@@ -6,7 +6,7 @@ import { Badge } from "metabase/common/components/Badge";
 import type {
   SdkBreadcrumbItem,
   SdkBreadcrumbItemType,
-} from "metabase/embed/sdk-bundle/types/breadcrumb";
+} from "metabase/embedding/sdk-bundle/types/breadcrumb";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Flex, type IconName } from "metabase/ui";
 

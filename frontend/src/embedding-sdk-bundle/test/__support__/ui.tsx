@@ -10,8 +10,8 @@ import { Api } from "metabase/api";
 import type {
   SdkStore,
   SdkStoreState,
-} from "metabase/embed/sdk-bundle/store-types";
-import type { MetabaseProviderProps } from "metabase/embed/sdk-bundle/types/metabase-provider";
+} from "metabase/embedding/sdk-bundle/store-types";
+import type { MetabaseProviderProps } from "metabase/embedding/sdk-bundle/types/metabase-provider";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { MantineThemeOverride } from "metabase/ui";

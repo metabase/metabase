@@ -1,7 +1,7 @@
 import type { StoryFn } from "@storybook/react";
 
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
-import type { SdkErrorComponentProps } from "metabase/embed/sdk-bundle/types";
+import type { SdkErrorComponentProps } from "metabase/embedding/sdk-bundle/types";
 
 import {
   DashboardNotFoundError,

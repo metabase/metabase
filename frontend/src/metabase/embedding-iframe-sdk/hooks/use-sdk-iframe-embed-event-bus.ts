@@ -6,8 +6,8 @@ import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
-} from "metabase/embed/iframe-sdk/types/embed";
-import type { SdkStore } from "metabase/embed/sdk-bundle/store-types";
+} from "metabase/embedding/iframe-sdk/types/embed";
+import type { SdkStore } from "metabase/embedding/sdk-bundle/store-types";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { EmbeddedAnalyticsJsEventSchema } from "metabase-types/analytics/embedded-analytics-js";
 

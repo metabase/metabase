@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
-import { getPublicEmbedHTMLWithResizer } from "metabase/embed/lib/code-templates";
+import { getPublicEmbedHTMLWithResizer } from "metabase/embedding/lib/code-templates";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Anchor,

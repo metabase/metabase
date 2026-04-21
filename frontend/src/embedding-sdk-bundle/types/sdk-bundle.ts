@@ -15,12 +15,12 @@ import type { FunctionSchemaValidationResult } from "embedding-sdk-shared/types/
 import type {
   SdkStore,
   SdkStoreState,
-} from "metabase/embed/sdk-bundle/store-types";
+} from "metabase/embedding/sdk-bundle/store-types";
 import type {
   CreateDashboardValues,
   MetabaseDashboard,
-} from "metabase/embed/sdk-bundle/types";
-import type { LoginStatus } from "metabase/embed/sdk-bundle/types/user";
+} from "metabase/embedding/sdk-bundle/types";
+import type { LoginStatus } from "metabase/embedding/sdk-bundle/types/user";
 import type { User } from "metabase-types/api";
 
 export type InternalComponent<TComponent extends JSXElementConstructor<any>> =

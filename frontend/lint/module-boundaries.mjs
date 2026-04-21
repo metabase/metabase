@@ -43,7 +43,7 @@ const elements = [
   createElement({ type: "shared", name: "api" }),
   // shared
   createElement({ type: "shared", name: "common", enforceOutgoing: true }),
-  createElement({ type: "shared", name: "embed" }),
+  createElement({ type: "shared", name: "embedding" }),
   createElement({
     type: "shared",
     name: "embedding-sdk-shared",
@@ -186,7 +186,13 @@ const rules = [
   },
   {
     from: ["app/embedding-sdk-ee"],
-    allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/embedding-sdk-bundle"],
+    allow: [
+      "lib/*",
+      "basic/*",
+      "shared/*",
+      "feature/*",
+      "app/embedding-sdk-bundle",
+    ],
     message: "EE extends the bundle; don't reach into peer variants",
   },
   {
@@ -204,7 +210,13 @@ const rules = [
   },
   {
     from: ["app/embedding-iframe-sdk"],
-    allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/embedding-sdk-bundle"],
+    allow: [
+      "lib/*",
+      "basic/*",
+      "shared/*",
+      "feature/*",
+      "app/embedding-sdk-bundle",
+    ],
     message: "Iframe SDK composes the bundle; don't reach into peer variants",
   },
 ];

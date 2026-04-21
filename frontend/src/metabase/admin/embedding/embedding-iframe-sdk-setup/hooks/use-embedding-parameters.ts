@@ -3,8 +3,8 @@ import { usePrevious } from "react-use";
 
 import type { SdkIframeEmbedSetupContextType } from "metabase/admin/embedding/embedding-iframe-sdk-setup/context";
 import { useEmbeddingParametersConversion } from "metabase/admin/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters-conversion";
-import { getDefaultEmbeddingParams } from "metabase/embed/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params";
-import type { EmbeddingParameters } from "metabase/embed/types";
+import { getDefaultEmbeddingParams } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params";
+import type { EmbeddingParameters } from "metabase/embedding/types";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 
 export const useEmbeddingParameters = ({

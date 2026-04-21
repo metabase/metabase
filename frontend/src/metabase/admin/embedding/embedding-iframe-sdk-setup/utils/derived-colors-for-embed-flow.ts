@@ -1,7 +1,7 @@
 import type {
   MetabaseColors,
   MetabaseTheme,
-} from "metabase/embed/sdk-bundle/types/ui";
+} from "metabase/embedding/sdk-bundle/types/ui";
 import type { MetabaseColor } from "metabase/embedding-sdk/theme";
 import { applyColorOperation } from "metabase/embedding-sdk/theme/dynamic-css-vars";
 import { SDK_TO_MAIN_APP_COLORS_MAPPING } from "metabase/embedding-sdk/theme/embedding-color-palette";

@@ -2,7 +2,7 @@ import cx from "classnames";
 
 import { getQuestionTitle } from "embedding-sdk-bundle/lib/sdk-question/get-question-title";
 import CS from "metabase/css/core/index.css";
-import type { CommonStylingProps } from "metabase/embed/sdk-bundle/types/props";
+import type { CommonStylingProps } from "metabase/embedding/sdk-bundle/types/props";
 import { useTranslateContent } from "metabase/i18n/hooks";
 
 type QuestionTitleProps = {

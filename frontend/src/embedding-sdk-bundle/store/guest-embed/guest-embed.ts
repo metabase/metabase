@@ -1,7 +1,7 @@
 import { merge } from "icepick";
 
-import { overrideRequestsForGuestEmbeds } from "metabase/embed/lib/override-requests-for-embeds";
-import type { MetabaseAuthConfig } from "metabase/embed/sdk-bundle/types/auth-config";
+import { overrideRequestsForGuestEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
+import type { MetabaseAuthConfig } from "metabase/embedding/sdk-bundle/types/auth-config";
 import { PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
 import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
 import { refreshSiteSettings } from "metabase/redux/settings";

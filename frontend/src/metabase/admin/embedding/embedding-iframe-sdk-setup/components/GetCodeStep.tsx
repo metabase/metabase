@@ -6,8 +6,8 @@ import { PublishQuestionEmptyState } from "metabase/admin/embedding/embedding-if
 import { useSdkIframeEmbedServerSnippet } from "metabase/admin/embedding/embedding-iframe-sdk-setup/hooks/use-sdk-iframe-embed-server-snippet";
 import { useUpdateSettingsMutation } from "metabase/api";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
-import { EmbedServerSnippetLanguageSelect } from "metabase/embed/components/EmbedServerSnippetLanguageSelect/EmbedServerSnippetLanguageSelect";
-import { MoreServerSnippetExamplesLink } from "metabase/embed/components/MoreServerSnippetExamplesLink/MoreServerSnippetExamplesLink";
+import { EmbedServerSnippetLanguageSelect } from "metabase/embedding/components/EmbedServerSnippetLanguageSelect/EmbedServerSnippetLanguageSelect";
+import { MoreServerSnippetExamplesLink } from "metabase/embedding/components/MoreServerSnippetExamplesLink/MoreServerSnippetExamplesLink";
 import { Card, Flex, Stack, Text } from "metabase/ui";
 import type { SettingKey } from "metabase-types/api";
 

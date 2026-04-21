@@ -15,9 +15,9 @@ import {
 } from "embedding-sdk-bundle/components/public/dashboard";
 import { useCollectionData } from "embedding-sdk-bundle/hooks/private/use-collection-data";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
-import type { SdkIframeEmbedSettings } from "metabase/embed/iframe-sdk/types/embed";
-import type { SdkCollectionId } from "metabase/embed/sdk-bundle/types";
-import type { SdkBreadcrumbItemType } from "metabase/embed/sdk-bundle/types/breadcrumb";
+import type { SdkIframeEmbedSettings } from "metabase/embedding/iframe-sdk/types/embed";
+import type { SdkCollectionId } from "metabase/embedding/sdk-bundle/types";
+import type { SdkBreadcrumbItemType } from "metabase/embedding/sdk-bundle/types/breadcrumb";
 import { Box, Button, Group, Stack } from "metabase/ui";
 
 interface MetabaseBrowserProps {

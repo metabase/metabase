@@ -13,9 +13,9 @@ import {
 import { usePrevious, useUnmount } from "react-use";
 import { isEqual, isObject, noop } from "underscore";
 
-import { useEmbeddingEntityContext } from "metabase/embed/context";
-import { getTabHiddenParameterSlugs } from "metabase/embed/lib/tab-parameters";
-import type { DashboardCardMenu } from "metabase/embed/sdk-bundle/types/dashcard-menu";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
+import { getTabHiddenParameterSlugs } from "metabase/embedding/lib/tab-parameters";
+import type { DashboardCardMenu } from "metabase/embedding/sdk-bundle/types/dashcard-menu";
 import type Question from "metabase-lib/v1/Question";
 import type {
   Dashboard,

@@ -23,8 +23,8 @@ import {
   getPlugins,
   getSessionTokenState,
 } from "embedding-sdk-bundle/store/selectors";
-import { EmbeddingEntityContextProvider } from "metabase/embed/context";
-import type { MetabasePluginsConfig } from "metabase/embed/sdk-bundle/types/plugins";
+import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
+import type { MetabasePluginsConfig } from "metabase/embedding/sdk-bundle/types/plugins";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
 import type { MetabasePluginsConfig as InternalMetabasePluginsConfig } from "metabase/embedding-sdk/types/plugins";
 import {

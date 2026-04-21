@@ -1,6 +1,6 @@
 import { P, match } from "ts-pattern";
 
-import type { EmbedResourceDownloadOptions } from "metabase/embed/types";
+import type { EmbedResourceDownloadOptions } from "metabase/embedding/types";
 import { PLUGIN_RESOURCE_DOWNLOADS } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 

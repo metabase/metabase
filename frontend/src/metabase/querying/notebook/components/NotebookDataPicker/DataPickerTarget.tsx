@@ -2,7 +2,7 @@ import type React from "react";
 import { type MouseEvent, type Ref, forwardRef } from "react";
 import { t } from "ttag";
 
-import { isEmbedding } from "metabase/embed/config";
+import { isEmbedding } from "metabase/embedding/config";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";

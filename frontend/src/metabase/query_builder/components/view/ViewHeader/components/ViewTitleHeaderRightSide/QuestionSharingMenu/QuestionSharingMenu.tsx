@@ -2,15 +2,15 @@ import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
-import { EmbedMenuItem } from "metabase/embed/components/SharingMenu/MenuItems/EmbedMenuItem";
-import { PublicLinkMenuItem } from "metabase/embed/components/SharingMenu/MenuItems/PublicLinkMenuItem";
+import { EmbedMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/EmbedMenuItem";
+import { PublicLinkMenuItem } from "metabase/embedding/components/SharingMenu/MenuItems/PublicLinkMenuItem";
 import {
   SharingButton,
   SharingMenu,
-} from "metabase/embed/components/SharingMenu/SharingMenu";
-import type { QuestionSharingModalType } from "metabase/embed/components/SharingMenu/types";
-import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embed/constants";
-import { useSharingModal } from "metabase/embed/hooks/use-sharing-modal";
+} from "metabase/embedding/components/SharingMenu/SharingMenu";
+import type { QuestionSharingModalType } from "metabase/embedding/components/SharingMenu/types";
+import { GUEST_EMBED_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import { useSharingModal } from "metabase/embedding/hooks/use-sharing-modal";
 import { MODAL_TYPES } from "metabase/querying/constants";
 import { setUIControls } from "metabase/redux/query-builder";
 import {

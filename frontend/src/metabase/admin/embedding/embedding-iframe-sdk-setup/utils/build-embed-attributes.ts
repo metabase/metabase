@@ -11,13 +11,13 @@ import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP,
   type AllowedEmbedSettingKey,
-} from "metabase/embed/iframe-sdk/constants";
+} from "metabase/embedding/iframe-sdk/constants";
 import type {
   DashboardEmbedOptions,
   ExplorationEmbedOptions,
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
-} from "metabase/embed/iframe-sdk/types/embed";
+} from "metabase/embedding/iframe-sdk/types/embed";
 import type { EntityToken } from "metabase-types/api/entity";
 
 export const buildEmbedAttributes = ({

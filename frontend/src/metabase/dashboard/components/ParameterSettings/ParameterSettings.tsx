@@ -7,7 +7,7 @@ import {
 } from "react";
 import { t } from "ttag";
 
-import type { EmbeddingParameterVisibility } from "metabase/embed/types";
+import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
 import { ParameterValueWidget } from "metabase/parameters/components/ParameterValueWidget";
 import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
 import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";

@@ -1,4 +1,4 @@
-import type { EmbedResourceDownloadOptions } from "metabase/embed/types";
+import type { EmbedResourceDownloadOptions } from "metabase/embedding/types";
 
 export type DashboardFullscreenControls = {
   isFullscreen: boolean;

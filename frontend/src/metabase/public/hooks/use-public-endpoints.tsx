@@ -1,6 +1,6 @@
 import { useMount } from "react-use";
 
-import { overrideRequestsForPublicOrStaticEmbeds } from "metabase/embed/lib/override-requests-for-embeds";
+import { overrideRequestsForPublicOrStaticEmbeds } from "metabase/embedding/lib/override-requests-for-embeds";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 

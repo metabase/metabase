@@ -7,7 +7,7 @@ import { getHostedBundleStoryDecorator } from "embedding-sdk-package/test/getHos
 import type {
   CreateDashboardValues,
   MetabaseDashboard,
-} from "metabase/embed/sdk-bundle/types/dashboard";
+} from "metabase/embedding/sdk-bundle/types/dashboard";
 import { Box, Button } from "metabase/ui";
 
 import { useCreateDashboardApi } from "./use-create-dashboard-api";

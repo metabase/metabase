@@ -7,11 +7,11 @@ import type {
   MetabotEmbedOptions,
   QuestionEmbedOptions,
   SdkIframeEmbedBaseSettings,
-} from "metabase/embed/iframe-sdk/types/embed";
+} from "metabase/embedding/iframe-sdk/types/embed";
 import type {
   SdkDashboardId,
   SdkQuestionId,
-} from "metabase/embed/sdk-bundle/types";
+} from "metabase/embedding/sdk-bundle/types";
 
 import type {
   SdkIframeEmbedSetupExperience,

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import type { DisplayTheme } from "metabase/embed/types";
+import type { DisplayTheme } from "metabase/embedding/types";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 
 export function useGlobalTheme(theme: DisplayTheme | undefined) {

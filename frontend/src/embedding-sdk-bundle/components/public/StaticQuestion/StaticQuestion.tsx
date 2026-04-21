@@ -32,7 +32,7 @@ import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/not
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
-import type { SdkQuestionEntityPublicProps } from "metabase/embed/sdk-bundle/types/question";
+import type { SdkQuestionEntityPublicProps } from "metabase/embedding/sdk-bundle/types/question";
 import { Box, Group, Stack } from "metabase/ui";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";

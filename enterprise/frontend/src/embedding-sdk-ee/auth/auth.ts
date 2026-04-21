@@ -19,13 +19,13 @@ import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
-import { requestSessionTokenFromEmbedJs } from "metabase/embed/iframe-sdk/utils";
-import * as MetabaseError from "metabase/embed/sdk-bundle/errors";
+import { requestSessionTokenFromEmbedJs } from "metabase/embedding/iframe-sdk/utils";
+import * as MetabaseError from "metabase/embedding/sdk-bundle/errors";
 import type {
   SdkDispatch,
   SdkStoreState,
-} from "metabase/embed/sdk-bundle/store-types";
-import type { MetabaseAuthConfig } from "metabase/embed/sdk-bundle/types/auth-config";
+} from "metabase/embedding/sdk-bundle/store-types";
+import type { MetabaseAuthConfig } from "metabase/embedding/sdk-bundle/types/auth-config";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,

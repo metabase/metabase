@@ -1,7 +1,10 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 
-import { isPublicEmbedding, isStaticEmbedding } from "metabase/embed/config";
-import type { DisplayTheme } from "metabase/embed/types";
+import {
+  isPublicEmbedding,
+  isStaticEmbedding,
+} from "metabase/embedding/config";
+import type { DisplayTheme } from "metabase/embedding/types";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { MantineThemeOverride } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";

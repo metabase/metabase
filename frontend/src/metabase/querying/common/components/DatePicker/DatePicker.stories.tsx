@@ -16,7 +16,7 @@ import { MetabaseReduxProvider } from "metabase/utils/redux";
 
 import { DatePicker } from "./DatePicker";
 
-import "metabase/embed/theme.module.css";
+import "metabase/embedding/theme.module.css";
 
 const storeInitialState = createMockState({
   settings: mockSettings(),

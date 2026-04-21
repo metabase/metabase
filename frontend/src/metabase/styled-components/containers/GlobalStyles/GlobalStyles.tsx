@@ -5,7 +5,10 @@ import { useMemo } from "react";
 import { useSetting } from "metabase/common/hooks";
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
-import { isPublicEmbedding, isStaticEmbedding } from "metabase/embed/config";
+import {
+  isPublicEmbedding,
+  isStaticEmbedding,
+} from "metabase/embedding/config";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
 import { getSitePath } from "metabase/utils/dom";

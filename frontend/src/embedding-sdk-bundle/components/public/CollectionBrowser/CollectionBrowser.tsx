@@ -15,9 +15,9 @@ import { useLocale } from "metabase/common/hooks/use-locale";
 import type {
   MetabaseCollectionItem,
   SdkCollectionId,
-} from "metabase/embed/sdk-bundle/types/collection";
-import type { CollectionBrowserListColumns } from "metabase/embed/sdk-bundle/types/collection-browser";
-import type { CommonStylingProps } from "metabase/embed/sdk-bundle/types/props";
+} from "metabase/embedding/sdk-bundle/types/collection";
+import type { CollectionBrowserListColumns } from "metabase/embedding/sdk-bundle/types/collection-browser";
+import type { CommonStylingProps } from "metabase/embedding/sdk-bundle/types/props";
 import CollectionBreadcrumbs from "metabase/nav/containers/CollectionBreadcrumbs";
 import { Icon, Stack } from "metabase/ui";
 import { isNotNull } from "metabase/utils/types";
@@ -26,7 +26,7 @@ import { isObject } from "metabase-types/guards";
 
 import { collectionBrowserPropsSchema } from "./CollectionBrowser.schema";
 
-export type { CollectionBrowserListColumns } from "metabase/embed/sdk-bundle/types/collection-browser";
+export type { CollectionBrowserListColumns } from "metabase/embedding/sdk-bundle/types/collection-browser";
 
 const USER_FACING_ENTITY_NAMES = [
   "collection",

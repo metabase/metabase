@@ -5,7 +5,7 @@ import type { SdkIframeEmbedSetupContextType } from "metabase/admin/embedding/em
 import { getResourceTypeFromExperience } from "metabase/admin/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import { isQuestionOrDashboardSettings } from "metabase/admin/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { useSetting } from "metabase/common/hooks";
-import { getSignedToken } from "metabase/embed/lib/embed";
+import { getSignedToken } from "metabase/embedding/lib/embed";
 
 const SIGNED_TOKEN_FOR_SNIPPET_EXPIRATION_MINUTES = 10;
 const SIGNED_TOKEN_FOR_PREVIEW_EXPIRATION_MINUTES = 60;

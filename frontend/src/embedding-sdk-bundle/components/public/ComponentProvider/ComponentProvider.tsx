@@ -17,9 +17,9 @@ import {
 } from "embedding-sdk-bundle/store/reducer";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
-import { LocaleProvider } from "metabase/embed/LocaleProvider";
-import type { SdkStore } from "metabase/embed/sdk-bundle/store-types";
-import type { ComponentProviderProps } from "metabase/embed/sdk-bundle/types/metabase-provider";
+import { LocaleProvider } from "metabase/embedding/LocaleProvider";
+import type { SdkStore } from "metabase/embedding/sdk-bundle/store-types";
+import type { ComponentProviderProps } from "metabase/embedding/sdk-bundle/types/metabase-provider";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
 import { METABOT_SDK_EE_PLUGIN } from "metabase/plugins";
@@ -172,7 +172,7 @@ export const ComponentProviderInternal = (
   );
 };
 
-export type { ComponentProviderProps } from "metabase/embed/sdk-bundle/types/metabase-provider";
+export type { ComponentProviderProps } from "metabase/embedding/sdk-bundle/types/metabase-provider";
 
 export const ComponentProvider = memo(function ComponentProvider({
   children,

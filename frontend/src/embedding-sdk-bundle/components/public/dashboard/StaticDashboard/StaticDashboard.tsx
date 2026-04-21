@@ -2,7 +2,7 @@ import { withPublicComponentWrapper } from "embedding-sdk-bundle/components/priv
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import { PublicOrEmbeddedDashCardMenu } from "metabase/dashboard/components/DashCard/PublicOrEmbeddedDashCardMenu";
 import { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/dashboard-action-keys";
-import type { SdkDashboardEntityPublicProps } from "metabase/embed/sdk-bundle/types/dashboard";
+import type { SdkDashboardEntityPublicProps } from "metabase/embedding/sdk-bundle/types/dashboard";
 import { isQuestionCard } from "metabase/utils/dashboard";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";

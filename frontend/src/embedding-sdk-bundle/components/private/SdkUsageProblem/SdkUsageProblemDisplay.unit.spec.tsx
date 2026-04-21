@@ -16,7 +16,7 @@ import {
   createMockTokenState,
 } from "embedding-sdk-bundle/test/mocks/state";
 import * as IsLocalhostModule from "embedding-sdk-shared/lib/get-is-localhost";
-import type { MetabaseAuthConfig } from "metabase/embed/sdk-bundle/types";
+import type { MetabaseAuthConfig } from "metabase/embedding/sdk-bundle/types";
 import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockSettings,

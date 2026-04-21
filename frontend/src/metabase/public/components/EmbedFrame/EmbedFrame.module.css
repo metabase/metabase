@@ -2,7 +2,7 @@
  * EmbedFrame-specific styles.
  *
  * Shared theme class names (EmbedFrame, DashCard, Card, WithThemeBackground,
- * etc.) are in metabase/embed/theme.module.css — EmbedFrame.tsx imports both.
+ * etc.) are in metabase/embedding/theme.module.css — EmbedFrame.tsx imports both.
  */
 
 body:where(:global(.mb-wrapper)) {

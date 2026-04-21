@@ -3,7 +3,7 @@ import { createContext, useContext } from "react";
 import type {
   EmbeddingParameters,
   EmbeddingParametersValues,
-} from "metabase/embed/types";
+} from "metabase/embedding/types";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 

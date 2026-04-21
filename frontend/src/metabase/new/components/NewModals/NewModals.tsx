@@ -14,7 +14,7 @@ import CreateCollectionModal from "metabase/collections/containers/CreateCollect
 import { CreateDashboardModal } from "metabase/common/CreateDashboard/CreateDashboardModal";
 import { Modal } from "metabase/common/components/Modal";
 import { UpgradeModal } from "metabase/common/components/upsells/components/UpgradeModal";
-import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embed/constants";
+import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
 import { Collections } from "metabase/entities/collections/collections";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";

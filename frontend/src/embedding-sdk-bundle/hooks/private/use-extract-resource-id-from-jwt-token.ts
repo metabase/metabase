@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { SdkEntityToken } from "metabase/embed/sdk-bundle/types";
+import type { SdkEntityToken } from "metabase/embedding/sdk-bundle/types";
 import { extractResourceIdFromJwtToken, isJWT } from "metabase/utils/jwt";
 
 export const useExtractResourceIdFromJwtToken = <TEntityId>({

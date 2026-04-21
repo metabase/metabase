@@ -2,7 +2,7 @@ import { renderHook } from "@testing-library/react";
 
 import { useEmbeddingParameters } from "metabase/admin/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters";
 import type { SdkIframeEmbedSetupSettings } from "metabase/admin/embedding/embedding-iframe-sdk-setup/types";
-import type { EmbeddingParameters } from "metabase/embed/types";
+import type { EmbeddingParameters } from "metabase/embedding/types";
 import type { Card, Dashboard, Parameter } from "metabase-types/api";
 import {
   createMockCard,
@@ -14,7 +14,7 @@ jest.mock(
   "metabase/admin/embedding/embedding-iframe-sdk-setup/hooks/use-embedding-parameters-conversion",
 );
 jest.mock(
-  "metabase/embed/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params",
+  "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params",
 );
 
 const mockUseEmbeddingParametersConversion = jest.requireMock(
@@ -22,7 +22,7 @@ const mockUseEmbeddingParametersConversion = jest.requireMock(
 ).useEmbeddingParametersConversion;
 
 const mockGetDefaultEmbeddingParams = jest.requireMock(
-  "metabase/embed/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params",
+  "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-default-embedding-params",
 ).getDefaultEmbeddingParams;
 
 const mockUpdateSettings = jest.fn();

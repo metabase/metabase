@@ -1,4 +1,4 @@
-import type { CommonStylingProps } from "metabase/embed/sdk-bundle/types/props";
+import type { CommonStylingProps } from "metabase/embedding/sdk-bundle/types/props";
 import type { UpdateQueryHookProps } from "metabase/query_builder/hooks";
 import {
   FilterPicker as InnerFilterPicker,

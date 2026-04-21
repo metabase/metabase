@@ -1,8 +1,8 @@
 import { useSdkIframeEmbedSetupContext } from "metabase/admin/embedding/embedding-iframe-sdk-setup/context";
 import { useToggleResourceEmbedding } from "metabase/admin/embedding/embedding-iframe-sdk-setup/hooks/use-toggle-resource-embedding";
 import { isStepWithResource } from "metabase/admin/embedding/embedding-iframe-sdk-setup/utils/is-step-with-resource";
-import { EmbedModalContentStatusBar } from "metabase/embed/components/EmbedModal/StaticEmbedSetupPane/EmbedModalContentStatusBar";
-import { getHasParamsChanged } from "metabase/embed/components/EmbedModal/StaticEmbedSetupPane/lib/get-has-params-changed";
+import { EmbedModalContentStatusBar } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/EmbedModalContentStatusBar";
+import { getHasParamsChanged } from "metabase/embedding/components/EmbedModal/StaticEmbedSetupPane/lib/get-has-params-changed";
 import { Card } from "metabase/ui";
 
 export const SdkIframeGuestEmbedStatusBar = () => {

@@ -11,8 +11,8 @@ import { match } from "ts-pattern";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { buildEmbedAttributes } from "metabase/admin/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
 import { useSetting } from "metabase/common/hooks";
-import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embed/iframe-sdk/constants";
-import type { SdkIframeEmbedBaseSettings } from "metabase/embed/iframe-sdk/types/embed";
+import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/iframe-sdk/constants";
+import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/iframe-sdk/types/embed";
 // We import the equivalent of embed.js so we don't add extra loading time
 // by appending the script. This is the one runtime→setup bridge — the
 // preview needs to re-initialize the window.metabaseConfig Proxy when the

@@ -8,7 +8,7 @@ import type { SdkIframeEmbedSetupExperience } from "metabase/admin/embedding/emb
 import { determineDashboardId } from "metabase/admin/embedding/embedding-iframe-sdk-setup/utils/determine-dashboard-id";
 import { getDefaultSdkIframeEmbedSettings } from "metabase/admin/embedding/embedding-iframe-sdk-setup/utils/get-default-sdk-iframe-embed-setting";
 import { useSetting } from "metabase/common/hooks";
-import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase/embed/iframe-sdk/constants";
+import { ALLOWED_EMBED_SETTING_KEYS_MAP } from "metabase/embedding/iframe-sdk/constants";
 
 export const DEFAULT_EXPERIENCE = "dashboard";
 

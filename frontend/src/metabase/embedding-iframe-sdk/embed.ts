@@ -3,12 +3,12 @@ import {
   DISABLE_UPDATE_FOR_KEYS,
   EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME,
   METABASE_CONFIG_IS_PROXY_FIELD_NAME,
-} from "metabase/embed/iframe-sdk/constants";
-import { PLUGIN_EMBED_JS_EE } from "metabase/embed/iframe-sdk/plugin";
+} from "metabase/embedding/iframe-sdk/constants";
+import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/iframe-sdk/plugin";
 import type {
   EmbedAuthManager,
   EmbedAuthManagerContext,
-} from "metabase/embed/iframe-sdk/types/auth-manager";
+} from "metabase/embedding/iframe-sdk/types/auth-manager";
 import type {
   SdkIframeEmbedElementSettings,
   SdkIframeEmbedEvent,
@@ -16,12 +16,12 @@ import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
-} from "metabase/embed/iframe-sdk/types/embed";
-import * as MetabaseErrors from "metabase/embed/sdk-bundle/errors";
+} from "metabase/embedding/iframe-sdk/types/embed";
+import * as MetabaseErrors from "metabase/embedding/sdk-bundle/errors";
 import {
   MetabaseError,
   SSO_NOT_ALLOWED,
-} from "metabase/embed/sdk-bundle/errors";
+} from "metabase/embedding/sdk-bundle/errors";
 import type { ComponentToAttributes } from "metabase/embedding-iframe-sdk/types/modular-embedding";
 import { decodeJwt } from "metabase/utils/jwt";
 

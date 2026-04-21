@@ -8,7 +8,7 @@ import { useCollectionQuery, useLocale } from "metabase/common/hooks";
 import type {
   MetabaseDashboard,
   SdkCollectionId,
-} from "metabase/embed/sdk-bundle/types";
+} from "metabase/embedding/sdk-bundle/types";
 import { useSelector } from "metabase/utils/redux";
 
 import { createDashboardModalSchema } from "./CreateDashboardModal.schema";

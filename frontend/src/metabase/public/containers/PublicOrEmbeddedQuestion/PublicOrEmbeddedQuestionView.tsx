@@ -7,7 +7,7 @@ import CS from "metabase/css/core/index.css";
 import type {
   DisplayTheme,
   EmbedResourceDownloadOptions,
-} from "metabase/embed/types";
+} from "metabase/embedding/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover/QuestionDownloadPopover";

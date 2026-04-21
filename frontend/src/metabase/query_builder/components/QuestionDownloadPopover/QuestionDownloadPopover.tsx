@@ -9,7 +9,7 @@ import {
   useDownloadData,
 } from "metabase/common/components/QuestionDownloadWidget";
 import { canDownloadResults } from "metabase/common/utils/dataset";
-import { useEmbeddingEntityContext } from "metabase/embed/context";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import {
   ActionIcon,
   type ActionIconProps,

@@ -1,5 +1,5 @@
 import type { SdkIframeEmbedSetupExperience } from "metabase/admin/embedding/embedding-iframe-sdk-setup/types";
-import type { GuestEmbedResourceType } from "metabase/embed/types";
+import type { GuestEmbedResourceType } from "metabase/embedding/types";
 
 export const getResourceTypeFromExperience = (
   experience: SdkIframeEmbedSetupExperience,

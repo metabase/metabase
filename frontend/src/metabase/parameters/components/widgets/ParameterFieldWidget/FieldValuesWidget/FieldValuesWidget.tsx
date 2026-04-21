@@ -26,7 +26,7 @@ import {
 } from "metabase/common/components/TokenField";
 import type { LayoutRendererArgs } from "metabase/common/components/TokenField/TokenField";
 import CS from "metabase/css/core/index.css";
-import { useEmbeddingEntityContext } from "metabase/embed/context";
+import { useEmbeddingEntityContext } from "metabase/embedding/context";
 import { Fields } from "metabase/entities/fields";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { ContentTranslationFunction } from "metabase/i18n/types";

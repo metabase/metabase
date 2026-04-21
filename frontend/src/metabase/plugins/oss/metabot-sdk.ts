@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import type { MetabotQuestionProps } from "metabase/embed/sdk-bundle/types/metabot-question";
-import type { FunctionSchema } from "metabase/embed/sdk-bundle/types/schema";
+import type { MetabotQuestionProps } from "metabase/embedding/sdk-bundle/types/metabot-question";
+import type { FunctionSchema } from "metabase/embedding/sdk-bundle/types/schema";
 
 type MetabotQuestionComponent = ((props: MetabotQuestionProps) => ReactNode) & {
   schema?: FunctionSchema;

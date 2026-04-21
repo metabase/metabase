@@ -1,4 +1,4 @@
-import { EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME } from "metabase/embed/iframe-sdk/constants";
+import { EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME } from "metabase/embedding/iframe-sdk/constants";
 
 export const stripInternalIframeQueryParameters = () => {
   const url = new URL(window.location.href);

@@ -3,7 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useEscapeToCloseModal } from "metabase/common/hooks/use-escape-to-close-modal";
-import type { SdkCollectionId } from "metabase/embed/sdk-bundle/types";
+import type { SdkCollectionId } from "metabase/embedding/sdk-bundle/types";
 import { Modal, type ModalProps } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";

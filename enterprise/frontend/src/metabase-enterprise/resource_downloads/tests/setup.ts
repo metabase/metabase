@@ -1,6 +1,6 @@
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import type { EmbedResourceDownloadOptions } from "metabase/embed/types";
+import type { EmbedResourceDownloadOptions } from "metabase/embedding/types";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 

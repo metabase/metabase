@@ -50,7 +50,7 @@ const DEFAULT_VALUES: DefaultValues = {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
     isSaveEnabled: false,
     /**
-     * @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/metabase/embed/iframe-sdk/types/embed.ts#L170-L171}
+     * @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/metabase/embedding/iframe-sdk/types/embed.ts#L170-L171}
      * Since this is optional, the default value is undefined.
      *
      * Unused, but documented for completeness.
@@ -60,7 +60,7 @@ const DEFAULT_VALUES: DefaultValues = {
   browser: {
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding-iframe-sdk/components/MetabaseBrowser.tsx#L39} */
     readOnly: true,
-    /** @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/metabase/embed/iframe-sdk/types/embed.ts#L166} */
+    /** @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/metabase/embedding/iframe-sdk/types/embed.ts#L166} */
     enableEntityNavigation: false,
   },
   // NEW: EMB-1334 - new component

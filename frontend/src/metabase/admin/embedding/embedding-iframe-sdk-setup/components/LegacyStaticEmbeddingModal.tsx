@@ -3,9 +3,9 @@ import { t } from "ttag";
 import { useGetCurrentResource } from "metabase/admin/embedding/embedding-iframe-sdk-setup/hooks";
 import type { SdkIframeEmbedSetupExperience } from "metabase/admin/embedding/embedding-iframe-sdk-setup/types";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DashboardSharingEmbeddingModal } from "metabase/embed/components/DashboardSharingEmbeddingModal";
-import { QuestionEmbedWidget } from "metabase/embed/components/QuestionEmbedWidget";
-import { useOpenEmbedJsWizard } from "metabase/embed/hooks/use-open-embed-js-wizard";
+import { DashboardSharingEmbeddingModal } from "metabase/embedding/components/DashboardSharingEmbeddingModal";
+import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
+import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import type { Card, Dashboard, DashboardId } from "metabase-types/api";
 

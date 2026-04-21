@@ -1,4 +1,4 @@
-import type { SqlParameterValues } from "metabase/embed/sdk-bundle/types";
+import type { SqlParameterValues } from "metabase/embedding/sdk-bundle/types";
 import type { ParameterValues } from "metabase-types/api";
 
 const getNormalizedParameters = <

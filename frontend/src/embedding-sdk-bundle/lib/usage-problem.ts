@@ -1,11 +1,11 @@
 import { P, match } from "ts-pattern";
 
 import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
-import type { MetabaseAuthConfig } from "metabase/embed/sdk-bundle/types";
+import type { MetabaseAuthConfig } from "metabase/embedding/sdk-bundle/types";
 import type {
   SdkUsageProblem,
   SdkUsageProblemKey,
-} from "metabase/embed/sdk-bundle/types/usage-problem";
+} from "metabase/embedding/sdk-bundle/types/usage-problem";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 

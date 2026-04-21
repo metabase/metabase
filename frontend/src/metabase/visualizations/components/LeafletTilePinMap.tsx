@@ -1,7 +1,7 @@
 import L from "leaflet";
 import type { ContextType } from "react";
 
-import { EmbeddingEntityContext } from "metabase/embed/context";
+import { EmbeddingEntityContext } from "metabase/embedding/context";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { GET } from "metabase/utils/api";
 import { isWithinIframe } from "metabase/utils/iframe";

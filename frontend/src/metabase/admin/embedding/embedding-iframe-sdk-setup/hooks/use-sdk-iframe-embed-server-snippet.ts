@@ -4,11 +4,16 @@ import { useSdkIframeEmbedSetupContext } from "metabase/admin/embedding/embeddin
 import { getResourceTypeFromExperience } from "metabase/admin/embedding/embedding-iframe-sdk-setup/utils/get-resource-type-from-experience";
 import { isQuestionOrDashboardSettings } from "metabase/admin/embedding/embedding-iframe-sdk-setup/utils/is-question-or-dashboard-settings";
 import { useSetting } from "metabase/common/hooks";
-import { clojure, node, python, ruby } from "metabase/embed/lib/code-templates";
+import {
+  clojure,
+  node,
+  python,
+  ruby,
+} from "metabase/embedding/lib/code-templates";
 import type {
   CodeSampleParameters,
   ServerCodeSampleConfig,
-} from "metabase/embed/types";
+} from "metabase/embedding/types";
 
 const getEmbedServerCodeExampleOptions = (
   codeSampleParameters: Omit<CodeSampleParameters, "displayOptions">,

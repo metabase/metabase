@@ -4,11 +4,11 @@ import {
   openSamlLoginPopup,
   validateSession,
 } from "embedding/auth-common";
-import type { EmbedAuthManagerContext } from "metabase/embed/iframe-sdk/types/auth-manager";
+import type { EmbedAuthManagerContext } from "metabase/embedding/iframe-sdk/types/auth-manager";
 import {
   INVALID_AUTH_METHOD,
   MetabaseError,
-} from "metabase/embed/sdk-bundle/errors";
+} from "metabase/embedding/sdk-bundle/errors";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 
 /**

@@ -16,11 +16,11 @@ import {
 import { getSdkStore, useSdkSelector } from "embedding-sdk-bundle/store";
 import { getLoginStatus } from "embedding-sdk-bundle/store/selectors";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
-import { EmbeddingFooter } from "metabase/embed/components/EmbeddingFooter/EmbeddingFooter";
-import type { SdkIframeEmbedSettings } from "metabase/embed/iframe-sdk/types/embed";
-import type { MetabaseAuthConfig } from "metabase/embed/sdk-bundle/types/auth-config";
-import type { SdkDashboardEntityPublicProps } from "metabase/embed/sdk-bundle/types/dashboard";
-import type { SdkQuestionEntityPublicProps } from "metabase/embed/sdk-bundle/types/question";
+import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
+import type { SdkIframeEmbedSettings } from "metabase/embedding/iframe-sdk/types/embed";
+import type { MetabaseAuthConfig } from "metabase/embedding/sdk-bundle/types/auth-config";
+import type { SdkDashboardEntityPublicProps } from "metabase/embedding/sdk-bundle/types/dashboard";
+import type { SdkQuestionEntityPublicProps } from "metabase/embedding/sdk-bundle/types/question";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";

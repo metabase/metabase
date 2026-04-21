@@ -2,7 +2,7 @@ import { useContext } from "react";
 import type { TypedUseSelectorHook } from "react-redux";
 import { createSelectorHook } from "react-redux";
 
-import type { SdkStoreState } from "metabase/embed/sdk-bundle/store-types";
+import type { SdkStoreState } from "metabase/embedding/sdk-bundle/store-types";
 import { MetabaseReduxContext } from "metabase/utils/redux";
 
 // eslint-disable-next-line metabase/no-literal-metabase-strings -- this string only shows in the console.

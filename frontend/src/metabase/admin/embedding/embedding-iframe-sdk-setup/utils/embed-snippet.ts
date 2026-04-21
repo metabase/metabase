@@ -5,7 +5,7 @@ import { buildEmbedAttributes } from "metabase/admin/embedding/embedding-iframe-
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP,
-} from "metabase/embed/iframe-sdk/constants";
+} from "metabase/embedding/iframe-sdk/constants";
 
 import type {
   SdkIframeEmbedSetupExperience,

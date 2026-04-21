@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { P, match } from "ts-pattern";
 
-import type { SdkCollectionId } from "metabase/embed/sdk-bundle/types/collection";
+import type { SdkCollectionId } from "metabase/embedding/sdk-bundle/types/collection";
 import {
   getUserPersonalCollectionId,
   getUserTenantCollectionId,

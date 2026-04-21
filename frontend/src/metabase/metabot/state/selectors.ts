@@ -2,7 +2,7 @@ import { createSelector } from "@reduxjs/toolkit";
 import { match } from "ts-pattern";
 import _ from "underscore";
 
-import { isEmbedding } from "metabase/embed/config";
+import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
 import { getLocation } from "metabase/selectors/routing";
 import * as Urls from "metabase/utils/urls";
