@@ -8,10 +8,6 @@ import type {
   TableEntityId,
 } from "metabase/admin/permissions/types";
 import {
-  DataPermission,
-  DataPermissionValue,
-} from "metabase/admin/permissions/types";
-import {
   isSchemaEntityId,
   isTableEntityId,
 } from "metabase/admin/permissions/utils/data-entity-id";
@@ -22,7 +18,11 @@ import {
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Table from "metabase-lib/v1/metadata/Table";
-import type { GroupsPermissions } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type GroupsPermissions,
+} from "metabase-types/api";
 
 import {
   getFieldsPermission,
