@@ -52,6 +52,14 @@
       (catch Throwable t
         (log/warnf t "Failed to provision WorkspaceDatabase %s" id)))))
 
+(defn run-async!
+  "Test seam. Dispatches `f` on a background thread. Rebind in tests
+  (`with-redefs [provisioning/run-async! (fn [f] (f))]`) to run the body
+  synchronously so assertions can observe its effects without racing the
+  background thread."
+  [f]
+  (future (f)))
+
 (defn initialize-workspace!
   "Kick off async provisioning for every `:uninitialized` WorkspaceDatabase under
   `workspace-id`. Returns the number of rows that were scheduled."
@@ -59,7 +67,7 @@
   (let [pending-count (t2/count :model/WorkspaceDatabase
                                 :workspace_id workspace-id
                                 :status       :uninitialized)]
-    (future (initialize-workspace-databases! workspace-id))
+    (run-async! (fn [] (initialize-workspace-databases! workspace-id)))
     pending-count))
 
 (defn deprovision-workspace-database!
@@ -109,5 +117,5 @@
   (let [pending-count (t2/count :model/WorkspaceDatabase
                                 :workspace_id workspace-id
                                 :status       :initialized)]
-    (future (deprovision-workspace-databases! workspace-id))
+    (run-async! (fn [] (deprovision-workspace-databases! workspace-id)))
     pending-count))

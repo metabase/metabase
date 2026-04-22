@@ -143,16 +143,12 @@
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                {:name "To Init" :databases [(ws-db-payload)]})
-            called       (atom [])
-            done         (promise)]
-        (with-redefs [provisioning/provision-workspace-database!
-                      (fn [wsd-id]
-                        (swap! called conj wsd-id)
-                        (deliver done :ok)
-                        nil)]
+            called       (atom [])]
+        (with-redefs [provisioning/run-async!                  (fn [f] (f))
+                      provisioning/provision-workspace-database!
+                      (fn [wsd-id] (swap! called conj wsd-id) nil)]
           (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/initialize") {})]
             (is (= {:workspace_id id :triggered 1} resp))
-            (is (not= :timeout (deref done 2000 :timeout)))
             (is (= 1 (count @called)))))))))
 
 (deftest post-initialize-skips-already-initialized-test
@@ -165,15 +161,12 @@
                     :output_schema    "done"
                     :input_schemas    ["public"]
                     :status           :initialized}]
-      (let [called     (atom [])
-            batch-done (promise)]
-        (with-redefs [provisioning/initialize-workspace-databases!
-                      (fn [ws-id] (deliver batch-done ws-id))
+      (let [called (atom [])]
+        (with-redefs [provisioning/run-async!                  (fn [f] (f))
                       provisioning/provision-workspace-database!
                       (fn [wsd-id] (swap! called conj wsd-id) nil)]
           (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/initialize") {})]
             (is (= {:workspace_id id :triggered 0} resp))
-            (is (not= :timeout (deref batch-done 2000 :timeout)))
             (is (empty? @called))))))))
 
 (deftest post-initialize-requires-superuser-test
@@ -240,32 +233,25 @@
                     :output_schema    "mb_isolation"
                     :input_schemas    ["public"]
                     :status           :initialized}]
-      (let [called (atom [])
-            done   (promise)]
-        (with-redefs [provisioning/deprovision-workspace-database!
-                      (fn [wsd-id]
-                        (swap! called conj wsd-id)
-                        (deliver done :ok)
-                        nil)]
+      (let [called (atom [])]
+        (with-redefs [provisioning/run-async!                   (fn [f] (f))
+                      provisioning/deprovision-workspace-database!
+                      (fn [wsd-id] (swap! called conj wsd-id) nil)]
           (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/deprovision") {})]
             (is (= {:workspace_id id :triggered 1} resp))
-            (is (not= :timeout (deref done 2000 :timeout)))
             (is (= 1 (count @called)))))))))
 
 (deftest post-deprovision-skips-uninitialized-test
   (testing "POST /ee/workspace/:id/deprovision with no :initialized rows returns triggered=0 and calls nothing"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [{id :id}   (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                             {:name "Fresh" :databases [(ws-db-payload)]})
-            called     (atom [])
-            batch-done (promise)]
-        (with-redefs [provisioning/deprovision-workspace-databases!
-                      (fn [ws-id] (deliver batch-done ws-id))
+      (let [{id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                           {:name "Fresh" :databases [(ws-db-payload)]})
+            called   (atom [])]
+        (with-redefs [provisioning/run-async!                   (fn [f] (f))
                       provisioning/deprovision-workspace-database!
                       (fn [wsd-id] (swap! called conj wsd-id) nil)]
           (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/deprovision") {})]
             (is (= {:workspace_id id :triggered 0} resp))
-            (is (not= :timeout (deref batch-done 2000 :timeout)))
             (is (empty? @called))))))))
 
 (deftest post-deprovision-requires-superuser-test
