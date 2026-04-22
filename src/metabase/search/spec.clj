@@ -15,12 +15,8 @@
    [toucan2.tools.transformed :as t2.transformed]))
 
 (def search-models
-  "Search model string names, ordered by indexing priority: more important / cheaper models come first so
-  the partial index is usable as early as possible during a full reindex.
-
-  - metric/card/dataset are near the end because they take a long time (computing has_temporal_dim etc.).
-  - table and indexed-entity are near the end because there can be a large number of them.
-  - indexed-entity is last so the rest of the index is available before we start on it."
+  "Search model string names, ordered by indexing priority.
+   Important / cheaper models come first so partial index is usable as soon as possible during a full index."
   ["collection"
    "dashboard"
    "segment"
@@ -29,10 +25,14 @@
    "action"
    "document"
    "transform"
+   ;; The following come last as they can be slow to index due to:
+   ;; - cardinality (table, indexed-entity),
+   ;; - cost (e.g. computing has_temporal dim for cards)
    "table"
    "metric"
    "card"
    "dataset"
+   ;; These can easily dwarf the cardinality of other entities, hence being dead last.
    "indexed-entity"])
 
 (def raw-spec-forms
