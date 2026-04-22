@@ -543,12 +543,33 @@
       (when idx
         (keyword (subs (name col) 0 idx))))))
 
+(defn- qualify-this
+  "Ensure `kw` is a dotted column-reference keyword. Bare column keywords are treated as belonging to
+  `:this`, mirroring `find-fields-kw` in `metabase.search.spec`."
+  [kw]
+  (if (column-alias kw)
+    kw
+    (keyword (str "this." (name kw)))))
+
+(defn- attr-seed-columns
+  "Return the set of dotted column-reference keywords to seed a trace from, given an `:attrs` attr
+  value. Handles the three shorthand forms accepted by the search spec:
+  - `true`: column with the attr's name in snake_case, qualified to `:this`
+  - keyword (bare or dotted): the referenced column
+  - vector expression: every column keyword referenced in its arguments"
+  [attr-key attr-val]
+  (cond
+    (true? attr-val)    #{(keyword (str "this." (u/->snake_case_en (name attr-key))))}
+    (keyword? attr-val) #{(qualify-this attr-val)}
+    (vector? attr-val)  (into #{} (comp (filter keyword?) (map qualify-this)) (rest attr-val))
+    :else               #{}))
+
 (defn- trace-collection-id-source-models
   "Return t2-model keywords reachable from the spec's `:collection-id` attribute via join equalities.
   `:this` resolves to the spec's own base model; other aliases resolve via `:joins`. A claim of
   `:denormalized-from X` is structurally sound iff `X` is in the returned set."
   [spec]
-  (let [attr-col     (get-in spec [:attrs :collection-id])
+  (let [seed-cols    (attr-seed-columns :collection-id (get-in spec [:attrs :collection-id]))
         joins        (:joins spec)
         alias->model (-> (into {} (map (fn [[alias [model _]]] [alias model])) joins)
                          (assoc :this (:model spec)))
@@ -560,7 +581,7 @@
                              {}
                              edges)
         reachable    (loop [visited #{}
-                            queue   [attr-col]]
+                            queue   (vec seed-cols)]
                        (if-let [col (first queue)]
                          (if (visited col)
                            (recur visited (rest queue))
@@ -596,7 +617,23 @@
              :attrs {:collection-id :collection.id}
              :joins {:collection [:model/Collection
                                   [:and [:= :this.is_published true]
-                                   [:= :collection.id :this.collection_id]]]}})))))
+                                   [:= :collection.id :this.collection_id]]]}}))))
+  (testing "normalizes shorthand `true` to `:this.<attr-name-in-snake-case>`"
+    ;; Mirrors the card/dashboard spec shape where `:collection-id true` means the direct column on
+    ;; the base model. Without this normalization the walk would start from `true` and reach nothing.
+    (is (= #{:model/Base :model/Collection}
+           (trace-collection-id-source-models
+            {:model :model/Base
+             :attrs {:collection-id true}
+             :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}}))))
+  (testing "extracts referenced columns from a vector attr expression"
+    ;; A computed `:collection-id` — e.g. `[:coalesce :collection.id :this.collection_id]` — seeds
+    ;; the walk from every column keyword in the expression.
+    (is (= #{:model/Base :model/Collection}
+           (trace-collection-id-source-models
+            {:model :model/Base
+             :attrs {:collection-id [:coalesce :collection.id :this.collection_id]}
+             :joins {:collection [:model/Collection [:= :collection.id :this.some_other_field]]}})))))
 
 (deftest collection-based-visibility-search-model-claims-verified-test
   (testing "every search-model registered with :denormalized-from traces to that model from :collection-id"
