@@ -746,10 +746,31 @@ export const fetchDashboardCardData =
           dispatch(loadingComplete());
         },
       }).catch((err) => {
-        if (err?.name !== "AbortError") {
-          console.error("Batch card query failed:", err);
+        if (err?.name === "AbortError") {
+          batchFetchAbortController = null;
+          return;
+        }
+        console.error("Batch card query failed:", err);
+        // Entire batch failed before any card-begin (e.g. locked parameter
+        // without JWT value). Mark every card we asked for as errored so the
+        // dashcard renders an error state instead of an infinite spinner.
+        const status =
+          (err && typeof err === "object" && "status" in err
+            ? (err as { status?: number }).status
+            : undefined) ?? 500;
+        const message =
+          err instanceof Error ? err.message : "Batch card query failed";
+        for (const { card, dashcard } of cardsNeedingFetch) {
+          dispatch(
+            receiveBatchCardResult({
+              dashcard_id: dashcard.id,
+              card_id: (card as Card).id,
+              result: { error: { status, message } },
+            }),
+          );
         }
         batchFetchAbortController = null;
+        dispatch(loadingComplete());
       });
     }
 

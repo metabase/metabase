@@ -1,3 +1,4 @@
+import api from "metabase/utils/api";
 import type {
   CardId,
   DashCardId,
@@ -90,6 +91,26 @@ type PartialCard = {
 const keyOf = (dashcardId: DashCardId, cardId: CardId) =>
   `${dashcardId}:${cardId}`;
 
+// Mirrors the `:word` substitution loop inside Api._makeMethod so that embed
+// token refresh (which swaps a JWT in the URL for a `:entityIdentifier`
+// placeholder) lands the refreshed value in the fetch URL.
+function substituteUrlParams(
+  url: string,
+  data: Record<string, unknown>,
+): string {
+  const tags = url.match(/:\w+/g);
+  if (!tags) {
+    return url;
+  }
+  return tags.reduce((acc, tag) => {
+    const value = data[tag.slice(1)];
+    if (value === undefined) {
+      return acc;
+    }
+    return acc.replace(tag, encodeURIComponent(String(value)));
+  }, url);
+}
+
 function assembleDataset(partial: PartialCard, end: BatchCardEnd): Dataset {
   // End-side `data` fields win over begin-side (they represent the final state), and rows are
   // the concatenated row chunks.
@@ -164,16 +185,47 @@ export async function streamBatchCardQuery(
   config: BatchRequestConfig,
   callbacks: BatchCallbacks,
 ): Promise<void> {
-  const { url, method = "POST", body, signal } = config;
-  const fetchInit: RequestInit = { method, signal };
+  const { method = "POST", body, signal } = config;
+  // Route the request through the same middleware the standard Api class uses
+  // so embed token refresh, session headers, CSRF, X-Metabase-Client, etc. all
+  // apply. We fetch() directly afterwards because the Api class can't yield a
+  // streaming response.
+  const { url: transformedUrl, data: transformedData } =
+    await api.apiRequestManipulationMiddleware({
+      url: config.url,
+      method,
+      options: {},
+      data: {},
+    });
+  const url = substituteUrlParams(transformedUrl, transformedData);
+  const headers: Record<string, string> = { ...api.getClientHeaders() };
+  const fetchInit: RequestInit = { method, signal, headers };
   if (body) {
-    fetchInit.headers = { "Content-Type": "application/json" };
+    headers["Content-Type"] = "application/json";
     fetchInit.body = JSON.stringify(body);
   }
   const response = await fetch(url, fetchInit);
 
   if (!response.ok) {
-    throw new Error(`Batch card query failed: ${response.status}`);
+    // Surface the server-side message (e.g. "You must specify a value for :source
+    // in the JWT.") so callers can render it on every card in the batch.
+    let message = `Batch card query failed: ${response.status}`;
+    try {
+      const text = await response.text();
+      if (text) {
+        try {
+          const json = JSON.parse(text);
+          message = json.message ?? json.error ?? text;
+        } catch {
+          message = text;
+        }
+      }
+    } catch {
+      // ignore body-read errors
+    }
+    const err = new Error(message) as Error & { status?: number };
+    err.status = response.status;
+    throw err;
   }
 
   const reader = response.body?.getReader();
