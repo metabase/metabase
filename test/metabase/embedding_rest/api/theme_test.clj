@@ -2,6 +2,7 @@
   "Tests for /api/embed-theme endpoints."
   (:require
    [clojure.test :refer :all]
+   [metabase.embedding.settings :as embedding.settings]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -168,3 +169,40 @@
                                                            :settings {}}]
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :post 403 (format "embed-theme/%s/copy" theme-id))))))))
+
+(def ^:private example-seed-body
+  {:themes [{:name     "Light"
+             :settings {:colors {:brand "#509EE3"}}}
+            {:name     "Dark"
+             :settings {:colors {:brand "#88BF4D"}}}]})
+
+(deftest seed-defaults-theme-test
+  (testing "POST /api/embed-theme/seed-defaults"
+    (testing "seeds the provided themes and flips the setting on first call"
+      (mt/with-empty-h2-app-db!
+        (is (false? (embedding.settings/default-embedding-themes-seeded)))
+        (is (nil? (mt/user-http-request :crowberto :post 204 "embed-theme/seed-defaults" example-seed-body)))
+        (is (= ["Light" "Dark"]
+               (map :name (t2/select :model/EmbeddingTheme {:order-by [[:created_at :asc]]}))))
+        (is (true? (embedding.settings/default-embedding-themes-seeded)))))
+    (testing "subsequent calls are a no-op once the setting is flipped — even if themes were deleted"
+      (mt/with-empty-h2-app-db!
+        (mt/user-http-request :crowberto :post 204 "embed-theme/seed-defaults" example-seed-body)
+        (t2/delete! :model/EmbeddingTheme)
+        (mt/user-http-request :crowberto :post 204 "embed-theme/seed-defaults" example-seed-body)
+        (is (zero? (t2/count :model/EmbeddingTheme))
+            "Admin deletion should be preserved — no re-seed")))
+    (testing "rolls back atomically when an insert fails"
+      (mt/with-empty-h2-app-db!
+        (with-redefs [t2/insert! (fn [& _args]
+                                   (throw (ex-info "boom" {})))]
+          (mt/user-http-request :crowberto :post 500 "embed-theme/seed-defaults" example-seed-body))
+        (is (zero? (t2/count :model/EmbeddingTheme)))
+        (is (false? (embedding.settings/default-embedding-themes-seeded))
+            "Setting flag must not flip when the insert fails")))
+    (testing "requires superuser permissions"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :post 403 "embed-theme/seed-defaults" example-seed-body))))
+    (testing "requires a themes array of non-blank names and map settings"
+      (is (=? {:errors {:themes string?}}
+              (mt/user-http-request :crowberto :post 400 "embed-theme/seed-defaults" {:themes "nope"}))))))

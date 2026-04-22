@@ -18,3 +18,7 @@ export interface UpdateEmbeddingThemeRequest {
   name?: string;
   settings?: MetabaseTheme;
 }
+
+export interface SeedDefaultEmbeddingThemesRequest {
+  themes: CreateEmbeddingThemeRequest[];
+}

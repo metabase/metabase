@@ -897,7 +897,6 @@
   {:team "Embedding"
    :api  #{metabase.embedding.init
            metabase.embedding.jwt
-           metabase.embedding.seed
            metabase.embedding.settings
            metabase.embedding.util
            metabase.embedding.validation}

@@ -511,6 +511,7 @@ interface AdminSettings {
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
   "embedding-hub-sso-auth-manual-tested": boolean;
+  "default-embedding-themes-seeded": boolean;
   "security-center-email-recipients": NotificationRecipient[] | null;
   "security-center-slack-channel": string | null;
   "store-url": string;
@@ -780,6 +781,7 @@ export interface EnterpriseSettings extends Settings {
   "embedding-hub-test-embed-snippet-created": boolean;
   "embedding-hub-production-embed-snippet-created": boolean;
   "embedding-hub-sso-auth-manual-tested": boolean;
+  "default-embedding-themes-seeded": boolean;
   "python-runner-url"?: string | null;
   "python-runner-api-token"?: string | null;
   "python-storage-s-3-endpoint"?: string | null;

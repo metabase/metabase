@@ -19,7 +19,7 @@ describe(
       H.activateToken("pro-self-hosted");
     });
 
-    it("shows default themes and the new theme card, and allows creating a new theme", () => {
+    it("lazily seeds Light and Dark on first visit, and preserves admin deletions across reloads", () => {
       cy.visit("/admin/embedding/themes");
 
       cy.log("theme is visible in embedding sidebar");
@@ -28,17 +28,32 @@ describe(
         .should("be.visible");
 
       H.main().within(() => {
-        cy.log("default Light and Dark themes are seeded");
+        cy.log(
+          "default Light and Dark themes are seeded lazily on first visit",
+        );
         cy.findByText("Light").should("be.visible");
         cy.findByText("Dark").should("be.visible");
 
         cy.log("new theme card is visible");
-        cy.findByRole("button", { name: /New theme/ })
-          .should("be.visible")
-          .click();
+        cy.findByRole("button", { name: /New theme/ }).should("be.visible");
       });
 
-      cy.log("navigates to the draft theme editor page");
+      cy.log("admin deletes the seeded defaults");
+      deleteAllThemes();
+      cy.reload();
+
+      H.main().within(() => {
+        cy.log("empty state is shown; defaults are not re-created");
+        cy.findByText("Light").should("not.exist");
+        cy.findByText("Dark").should("not.exist");
+        cy.findByText("Create your first theme to get started").should(
+          "be.visible",
+        );
+
+        cy.log("clicking New theme navigates to the draft editor");
+        cy.findByRole("button", { name: /New theme/ }).click();
+      });
+
       cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
     });
 
@@ -64,17 +79,6 @@ describe(
 
       cy.log("no POST was issued");
       cy.get("@createTheme.all").should("have.length", 0);
-    });
-
-    it("shows empty state when all themes are deleted", () => {
-      deleteAllThemes();
-      cy.visit("/admin/embedding/themes");
-
-      H.main().within(() => {
-        cy.findByText("Create your first theme to get started").should(
-          "be.visible",
-        );
-      });
     });
 
     it("navigates to theme editor when clicking an existing theme card", () => {

@@ -324,7 +324,7 @@
   (deferred-tru "Whether the default Light and Dark embedding themes have been seeded into the database.")
   :type       :boolean
   :default    false
-  :visibility :internal
+  :visibility :admin
   :export?    false
   :can-read-from-env? false
   :doc        false)
