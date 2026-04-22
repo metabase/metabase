@@ -41,7 +41,6 @@ export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   uploads_enabled: false,
   uploads_schema_name: null,
   uploads_table_prefix: null,
-  workspace_permissions_status: null,
   ...opts,
 });
 

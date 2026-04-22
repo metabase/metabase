@@ -359,11 +359,11 @@ function performTableEdit() {
 
 function enableGlobalModelPersistence() {
   cy.visit("/admin/performance/models");
-  cy.findByText("Disabled").click();
+  cy.findByLabelText("Disabled").click({ force: true });
 }
 
 function enableModelPersistence() {
-  cy.findByText("Model persistence").click();
+  cy.findByLabelText("Model persistence").click({ force: true });
 }
 
 function enablePersistenceForModel(modelId: CardId) {

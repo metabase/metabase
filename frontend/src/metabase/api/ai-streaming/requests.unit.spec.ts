@@ -95,6 +95,24 @@ describe("ai requests", () => {
       ).rejects.toThrow(/Response status: 500/);
     });
 
+    it("preserves structured JSON error responses", async () => {
+      fetchMock.post(`path:${endpoint}`, {
+        status: 402,
+        body: {
+          message: "You've used all of your included AI service tokens.",
+          "error-code": "metabase_ai_managed_locked",
+        },
+      });
+
+      await expect(
+        aiStreamingQuery({ url: endpoint, body: {} }),
+      ).rejects.toMatchObject({
+        status: 402,
+        message: "You've used all of your included AI service tokens.",
+        "error-code": "metabase_ai_managed_locked",
+      });
+    });
+
     it("throw error if no response", async () => {
       mockStreamedEndpoint(endpoint, {
         textChunks: undefined,
