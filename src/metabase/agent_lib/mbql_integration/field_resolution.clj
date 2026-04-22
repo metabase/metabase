@@ -2,6 +2,7 @@
   "Field-resolution helpers for the agent-lib MBQL bridge."
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.agent-lib.mbql-integration.common :as common]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]))
@@ -268,6 +269,52 @@
   [strategies]
   (some (fn [{:keys [resolve-fn]}] (resolve-fn)) strategies))
 
+(defn- summarize-candidate
+  "Compact shape of a candidate column for inclusion in field-resolution errors."
+  [candidate]
+  (let [field-name (source-column-field-name candidate)
+        join-alias (source-column-field-join-alias candidate)]
+    (cond-> {}
+      (:id candidate)       (assoc :id (:id candidate))
+      field-name            (assoc :name field-name)
+      (:table-id candidate) (assoc :table-id (:table-id candidate))
+      join-alias            (assoc :join-alias join-alias))))
+
+(defn- format-candidate-line
+  [{:keys [id name table-id join-alias]}]
+  (str "- " (or name "?")
+       " (id=" (or id "?")
+       (when table-id (str ", table-id=" table-id))
+       (when join-alias (str ", join-alias=" (pr-str join-alias)))
+       ")"))
+
+(def ^:private max-candidates-in-error 20)
+
+(defn- unavailable-field-error
+  [raw-field query candidates]
+  (let [summaries       (mapv summarize-candidate candidates)
+        has-join-alias? (boolean (some :join-alias summaries))
+        shown           (take max-candidates-in-error summaries)
+        extra           (max 0 (- (count summaries) max-candidates-in-error))
+        ref-hint        (if has-join-alias?
+                          "To reference a field from a joined table, include its join alias: [\"field\", <id>, {\"join-alias\": \"<alias>\"}]."
+                          "Reference fields with [\"field\", <id>] using one of the ids below.")
+        fields-block    (if (seq shown)
+                          (str/join "\n" (mapv format-candidate-line shown))
+                          "(no fields are visible in this stage)")
+        extra-line      (when (pos? extra) (str "\n... and " extra " more"))]
+    (ex-info (str "Field " (pr-str (:name raw-field))
+                  " (id " (pr-str (:id raw-field))
+                  ") is not available in the current query stage.\n"
+                  ref-hint "\n"
+                  "Fields available in this stage:\n"
+                  fields-block
+                  extra-line)
+             {:field raw-field
+              :query query
+              :available-fields summaries
+              :suggested-ref-shape ref-hint})))
+
 (defn resolve-field-in-query
   "Resolve a metadata field against what the current query stage actually
   exposes.
@@ -307,8 +354,4 @@
             :resolve-fn #(common/unique-query-candidate (by-id+tbl))}
            {:name :exact-id
             :resolve-fn #(common/unique-query-candidate (by-id))}])
-         (throw (ex-info (str "Field " (pr-str (:name raw-field))
-                              " (id " (pr-str (:id raw-field))
-                              ") is not available in the current query stage.")
-                         {:field raw-field
-                          :query query}))))))
+         (throw (unavailable-field-error raw-field query candidates))))))
