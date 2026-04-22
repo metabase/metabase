@@ -64,6 +64,21 @@
         (finally
           (cleanup! [rasta-convo lucky-convo]))))))
 
+(deftest list-conversations-includes-legacy-originator-conversations-test
+  (testing "GET /api/metabot/conversations keeps legacy originator conversations visible"
+    (let [user-id  (mt/user->id :rasta)
+          convo-id (str (random-uuid))]
+      (try
+        (insert-conversation! {:id convo-id :user-id user-id :summary "legacy"})
+        (insert-message! {:conversation-id convo-id
+                          :role            "assistant"
+                          :data            [{:role "assistant" :content "hello from before user_id stamping"}]})
+        (let [ids (set (map :conversation_id
+                            (:data (mt/user-http-request :rasta :get 200 "metabot/conversations"))))]
+          (is (contains? ids convo-id)))
+        (finally
+          (cleanup! [convo-id]))))))
+
 (deftest list-conversations-includes-shared-multi-user-conversations-test
   (testing "GET /api/metabot/conversations includes conversations with multiple participants for each participant"
     (let [rasta-id (mt/user->id :rasta)
@@ -172,8 +187,7 @@
           check!   @#'metabot.api/check-conversation-access!]
       (try
         (insert-conversation! {:id convo-id :user-id owner-id})
-        (seed-participation! convo-id owner-id)
-        (testing "allows a participant to continue the conversation"
+        (testing "allows the originator to continue a legacy conversation with no stamped message authors"
           (binding [api/*current-user-id* owner-id]
             (is (some? (check! convo-id)))))
         (testing "throws 403 when a non-participant tries to continue the conversation"

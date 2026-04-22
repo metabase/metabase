@@ -207,6 +207,46 @@
       (is (some? (:errors (mt/user-http-request :crowberto :get 400
                                                 (format "%s&sort-by=drop_table" response-path))))))))
 
+(deftest list-conversations-user-filter-supports-legacy-originators-and-new-participants-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User {filtered-user-id :id} {:email      "metabot-analytics-filter@metabase.com"
+                                                       :first_name "Filter"
+                                                       :last_name  "User"}]
+      (let [legacy-convo (str (random-uuid))
+            shared-convo (str (random-uuid))
+            other-user-id (mt/user->id :rasta)
+            jan-1       (offset-date-time "2026-02-01T00:00:00Z")
+            jan-2       (offset-date-time "2026-02-02T00:00:00Z")]
+        (try
+          (insert-conversation! {:conversation-id legacy-convo
+                                 :user-id         filtered-user-id
+                                 :created-at      jan-1
+                                 :summary         "legacy"})
+          (insert-message! {:conversation-id legacy-convo
+                            :created-at      jan-1
+                            :role            "assistant"
+                            :profile-id      "legacy-model"
+                            :total-tokens    5
+                            :data            [{:role "assistant" :content "legacy"}]})
+          (insert-conversation! {:conversation-id shared-convo
+                                 :user-id         other-user-id
+                                 :created-at      jan-2
+                                 :summary         "shared"})
+          (insert-message! {:conversation-id shared-convo
+                            :user-id         filtered-user-id
+                            :created-at      jan-2
+                            :role            "assistant"
+                            :profile-id      "participant-model"
+                            :total-tokens    7
+                            :data            [{:role "assistant" :content "shared"}]})
+          (let [response (mt/user-http-request :crowberto :get 200
+                                               (format "ee/metabot-analytics/conversations?user-id=%s"
+                                                       filtered-user-id))
+                ids      (set (map :conversation_id (:data response)))]
+            (is (= #{legacy-convo shared-convo} ids)))
+          (finally
+            (delete-conversations! [legacy-convo shared-convo])))))))
+
 (deftest get-conversation-detail-test
   (mt/with-premium-features #{:audit-app}
     (testing "GET /api/ee/metabot-analytics/conversations/:id"
@@ -571,12 +611,6 @@
                                  :user-id         test-user-id
                                  :created-at      jan-3
                                  :summary         "legacy conversation with no ip"})
-          ;; Seed a participation row per conversation so the participation-
-          ;; based `user-id` filter matches — these convos don't otherwise have
-          ;; messages.
-          (seed-participation! convo-web)
-          (seed-participation! convo-slack)
-          (seed-participation! convo-null)
           (thunk {:test-user-id test-user-id
                   :convo-web    convo-web
                   :convo-slack  convo-slack

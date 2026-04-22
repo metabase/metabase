@@ -151,6 +151,11 @@
             (testing ":metabot-users counts distinct users for yesterday"
               (is (= 1 (:metabot-users stats))))
 
+            (testing ":metabot-users falls back to conversation.user_id for legacy rows"
+              (t2/update! :model/MetabotMessage {:conversation_id [:in [conv-1 conv-2]]}
+                          {:user_id nil})
+              (is (= 1 (:metabot-users (sut/metabot-stats)))))
+
             (testing ":metabot-usage-date is yesterday's date"
               (is (= "2026-03-31" (:metabot-usage-date stats))))
 
@@ -192,6 +197,53 @@
               (is (nil? (:metabot-usage-date stats)))))
           (finally
             (cleanup! conv-id)))))))
+
+(deftest metabot-stats-falls-back-to-conversation-user-for-legacy-rows-test
+  (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+        yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+        conv-1    (str (random-uuid))
+        conv-2    (str (random-uuid))
+        rasta-id  (mt/user->id :rasta)
+        lucky-id  (mt/user->id :lucky)]
+    (t/with-clock clock
+      (try
+        (t2/insert! :model/MetabotConversation {:id conv-1 :user_id rasta-id})
+        (t2/insert! :model/MetabotConversation {:id conv-2 :user_id lucky-id})
+        (t2/insert! :model/MetabotMessage {:conversation_id conv-1
+                                           :created_at      yesterday
+                                           :role            "user"
+                                           :profile_id      "legacy"
+                                           :total_tokens    100
+                                           :data            []
+                                           :ai_proxied      true})
+        (t2/insert! :model/MetabotMessage {:conversation_id conv-2
+                                           :created_at      yesterday
+                                           :role            "user"
+                                           :profile_id      "legacy"
+                                           :total_tokens    200
+                                           :data            []
+                                           :ai_proxied      true})
+        (t2/insert! :model/AiUsageLog {:conversation_id   conv-1
+                                       :created_at        yesterday
+                                       :source            "legacy-test"
+                                       :model             "test/model"
+                                       :prompt_tokens     100
+                                       :completion_tokens 0
+                                       :total_tokens      100
+                                       :user_id           rasta-id
+                                       :ai_proxied        true})
+        (t2/insert! :model/AiUsageLog {:conversation_id   conv-2
+                                       :created_at        yesterday
+                                       :source            "legacy-test"
+                                       :model             "test/model"
+                                       :prompt_tokens     200
+                                       :completion_tokens 0
+                                       :total_tokens      200
+                                       :user_id           lucky-id
+                                       :ai_proxied        true})
+        (is (= 2 (:metabot-users (sut/metabot-stats))))
+        (finally
+          (cleanup! conv-1 conv-2))))))
 
 (deftest metabot-usage-anthropic-provider-test
   (search.tu/with-index-disabled

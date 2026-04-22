@@ -27,6 +27,7 @@
   []
   (let [today-utc     (t/offset-date-time (t/zone-offset "+00"))
         yesterday-utc (t/minus today-utc (t/days 1))
+        user-id-expr  [:coalesce :m.user_id :c.user_id]
         tokens        (or (t2/select-one-fn :sum
                                             [:model/AiUsageLog [:%sum.total_tokens :sum]]
                                             {:where [:and
@@ -45,15 +46,14 @@
                                                       {:where [:and
                                                                :ai_proxied
                                                                [:= [:cast :created_at :date] [:cast yesterday-utc :date]]]})
-                ;; Count distinct users from `metabot_message.user_id` rather than
-                ;; `metabot_conversation.user_id` — a single Slack-thread conversation
-                ;; can have multiple participating users, and each bot reply carries
-                ;; the requester's id.
-                :metabot-users      (:cnt (t2/query-one {:select [[[:count [:distinct :m.user_id]] :cnt]]
+                ;; New rows stamp `metabot_message.user_id`; legacy rows fall back
+                ;; to `metabot_conversation.user_id` so historical usage doesn't
+                ;; disappear until old messages are backfilled.
+                :metabot-users      (:cnt (t2/query-one {:select [[[:count [:distinct user-id-expr]] :cnt]]
                                                          :from   [[:metabot_message :m]]
+                                                         :join   [[:metabot_conversation :c] [:= :c.id :m.conversation_id]]
                                                          :where  [:and
                                                                   :ai_proxied
-                                                                  [:not= :m.user_id nil]
                                                                   [:= [:cast :m.created_at :date] [:cast yesterday-utc :date]]]}))
                 :metabot-usage-date (str (t/local-date yesterday-utc))})
         (seq rolling-usage)

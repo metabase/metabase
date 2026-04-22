@@ -54,26 +54,39 @@
 (def ^:private default-limit  50)
 (def ^:private default-offset 0)
 
+(defn- participation-clause
+  "Match conversations visible in history for `user-id`.
+
+  New rows participate via `metabot_message.user_id`; legacy rows created before
+  message authors were stamped fall back to the conversation originator."
+  [user-id]
+  (let [participation-exists [:exists {:select [[[:inline 1]]]
+                                       :from   [:metabot_message]
+                                       :where  [:and
+                                                [:= :conversation_id :metabot_conversation.id]
+                                                [:= :user_id user-id]]}]]
+    [:or
+     [:= :user_id user-id]
+     participation-exists]))
+
 ;;; ---------------------------------------- Endpoints ----------------------------------------
 
 (api.macros/defendpoint :get "/" :- ListConversationsResponse
-  "List conversations the current user participates in (has authored at least
-  one message in), most-recent first. Covers both solo web-UI chats and shared
-  Slack threads where the user is one of several participants."
+  "List conversations visible in the current user's history, most-recent first.
+
+  New conversations are participation-based (the user authored at least one
+  message); legacy conversations created before message authors were stamped
+  fall back to the conversation originator."
   []
   (let [user-id (api/check-404 api/*current-user-id*)
         limit   (or (request/limit) default-limit)
         offset  (or (request/offset) default-offset)
+        visible-to-user (participation-clause user-id)
         ;; Aggregates are per-row correlated subqueries so pagination stays on the
         ;; outer `metabot_conversation` scan and only runs the subquery 50× per page.
-        ;; Participation is defined by message authorship, not deletion state —
-        ;; soft-deleted messages still count (consistent with `participant?`),
-        ;; so a user doesn't lose their own history to moderation.
-        participation-exists [:exists {:select [[[:inline 1]]]
-                                       :from   [:metabot_message]
-                                       :where  [:and
-                                                [:= :conversation_id :metabot_conversation.id]
-                                                [:= :user_id user-id]]}]
+        ;; Participation is defined by message authorship, not deletion state, so
+        ;; soft-deleted messages still count. Legacy rows fall back to
+        ;; `metabot_conversation.user_id`.
         rows    (t2/select :model/MetabotConversation
                            {:select   [:id :created_at :summary [:user_id :originator_user_id]
                                        [{:select [[[:count :*]]]
@@ -88,7 +101,7 @@
                                                   [:= :conversation_id :metabot_conversation.id]
                                                   [:= :deleted_at nil]]}
                                         :last_message_at]]
-                            :where    participation-exists
+                            :where    visible-to-user
                             :order-by [[:created_at :desc] [:id :asc]]
                             :limit    limit
                             :offset   offset})]
@@ -96,7 +109,7 @@
                         (select-keys [:created_at :summary :originator_user_id :message_count :last_message_at])
                         (assoc :conversation_id (:id %)))
                    rows)
-     :total  (t2/count :model/MetabotConversation {:where participation-exists})
+     :total  (t2/count :model/MetabotConversation {:where visible-to-user})
      :limit  limit
      :offset offset}))
 

@@ -97,6 +97,21 @@
                                    msgs analytics.queries/new-query-tool-names))))
          rows)))
 
+(defn- user-filter-clause
+  "Match conversations relevant to `user-id`.
+
+  New rows match via `metabot_message.user_id`; legacy rows created before that
+  field was stamped fall back to the conversation originator."
+  [user-id]
+  (let [participation-exists [:exists {:select [[[:inline 1]]]
+                                       :from   [[:metabot_message :mu]]
+                                       :where  [:and
+                                                [:= :mu.conversation_id :c.id]
+                                                [:= :mu.user_id user-id]]}]]
+    [:or
+     [:= :c.user_id user-id]
+     participation-exists]))
+
 (defn list-conversations
   "Return a paginated `{:data :total :limit :offset}` map of conversation
    summaries. Supports optional filtering by `user-id` and sorting by an
@@ -104,15 +119,10 @@
   [{:keys [limit offset user-id sort-by sort-dir]}]
   (let [limit     (or limit default-limit)
         offset    (or offset default-offset)
-        ;; user-id filter is participation-based: returns conversations where the
-        ;; given user has authored at least one message (covers multi-user Slack
-        ;; threads), not only conversations where they happen to be the originator.
+        ;; Prefer message authorship for new rows, but keep legacy originator rows
+        ;; visible until older `metabot_message.user_id` values are backfilled.
         where     (when user-id
-                    [:exists {:select [[[:inline 1]]]
-                              :from   [[:metabot_message :mu]]
-                              :where  [:and
-                                       [:= :mu.conversation_id :c.id]
-                                       [:= :mu.user_id user-id]]}])
+                    (user-filter-clause user-id))
         sort-col  (get sort-columns sort-by :c.created_at)
         direction (if (= sort-dir "asc") :asc :desc)
         total     (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]
