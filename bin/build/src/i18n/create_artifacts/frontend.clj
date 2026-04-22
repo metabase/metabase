@@ -39,21 +39,11 @@
 
 (defn- ->i18n-map
   "Convert the contents of a `.po` file to map format used in the frontend client."
-  ([po-contents]
-   (->i18n-map po-contents #{}))
-  ([po-contents drop-msgids]
-   {:charset      "utf-8"
-    :headers      (into {} (for [[k v] (:headers po-contents)]
-                             [(str/lower-case k) v]))
-    :translations (->translations-map (:messages po-contents) drop-msgids)}))
-
-(defn- i18n-map
-  ([locale]
-   (i18n-map locale #{} (i18n/po-contents locale)))
-  ([locale drop-msgids]
-   (i18n-map locale drop-msgids (i18n/po-contents locale)))
-  ([_locale drop-msgids po-contents]
-   (->i18n-map po-contents drop-msgids)))
+  [po-contents drop-msgids]
+  {:charset      "utf-8"
+   :headers      (into {} (for [[k v] (:headers po-contents)]
+                            [(str/lower-case k) v]))
+   :translations (->translations-map (:messages po-contents) drop-msgids)})
 
 (def target-directory
   "Target directory for frontend i18n resources."
@@ -64,22 +54,20 @@
 
 (defn create-artifact-for-locale!
   "Create an artifact with translated strings for `locale` for frontend (JS) usage.
-  `drop-msgids` is a set of English source strings to exclude (their translations had violations).
-  Defaults to `#{}` when omitted which results in no filtering.
 
-  `po-contents` may be provided by callers that have already parsed the `.po` file and applied
-  `i18n.autofix/autofix-po-contents`. If omitted, the `.po` is read fresh (without autofixes)."
-  ([locale]
-   (create-artifact-for-locale! locale #{} (i18n/po-contents locale)))
-  ([locale drop-msgids]
-   (create-artifact-for-locale! locale drop-msgids (i18n/po-contents locale)))
-  ([locale drop-msgids po-contents]
-   (let [target-file (target-filename locale)]
-     (u/step (format "Create frontend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
-       (u/create-directory-unless-exists! target-directory)
-       (u/delete-file-if-exists! target-file)
-       (u/step "Write JSON"
-         (with-open [os (FileOutputStream. (io/file target-file))
-                     w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
-           (json/generate-stream (i18n-map locale drop-msgids po-contents) w)))
-       (u/assert-file-exists target-file)))))
+  `drop-msgids` is a set of English source strings to exclude from the output (typically those
+  whose translations had fatal validation errors).
+
+  `po-contents` is the parsed + autofixed `.po` content from
+  `(i18n.autofix/autofix-po-contents (i18n.common/po-contents locale))`. Passed by the caller
+  rather than re-parsed here so scanner and writer stay in sync."
+  [locale drop-msgids po-contents]
+  (let [target-file (target-filename locale)]
+    (u/step (format "Create frontend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
+      (u/create-directory-unless-exists! target-directory)
+      (u/delete-file-if-exists! target-file)
+      (u/step "Write JSON"
+        (with-open [os (FileOutputStream. (io/file target-file))
+                    w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
+          (json/generate-stream (->i18n-map po-contents drop-msgids) w)))
+      (u/assert-file-exists target-file))))

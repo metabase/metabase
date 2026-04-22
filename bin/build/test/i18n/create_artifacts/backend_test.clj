@@ -7,7 +7,7 @@
    [i18n.create-artifacts.test-common :as test-common]))
 
 (deftest edn-test
-  (#'backend/write-edn-file! test-common/po-contents "/tmp/out.edn")
+  (#'backend/write-edn-file! test-common/po-contents #{} "/tmp/out.edn")
   (is (= {:headers
           {"MIME-Version"              "1.0"
            "Content-Type"              "text/plain; charset=UTF-8"
