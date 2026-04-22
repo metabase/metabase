@@ -16,6 +16,7 @@ import {
   generateIndexTsx,
   generateManifest,
   generatePackageJson,
+  generateReadme,
   generateTsConfig,
   generateViteConfig,
   readBinaryTemplate,
@@ -74,6 +75,7 @@ program
         readBinaryTemplate("thumbs-down.png"),
       ),
       writeFile(join(name, ".gitignore"), generateGitignore()),
+      writeFile(join(name, "README.md"), generateReadme(name, displayName)),
     ]);
 
     console.log("Created files:");
@@ -86,6 +88,7 @@ program
     console.log(`  ${name}/public/assets/thumbs-up.png`);
     console.log(`  ${name}/public/assets/thumbs-down.png`);
     console.log(`  ${name}/.gitignore`);
+    console.log(`  ${name}/README.md`);
     console.log();
     console.log("Next steps:");
     console.log(`  cd ${name}`);
