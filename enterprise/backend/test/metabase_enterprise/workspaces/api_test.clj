@@ -179,3 +179,46 @@
 (deftest post-initialize-404-on-unknown-workspace-test
   (testing "POST to /initialize with an unknown id returns 404"
     (mt/user-http-request :crowberto :post 404 (str "ee/workspace/" Integer/MAX_VALUE "/initialize") {})))
+
+(deftest put-rejects-drop-of-initialized-test
+  (testing "PUT returns 409 when it would drop an :initialized workspace_database"
+    (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}
+                   :model/Workspace {id :id} {:name "Locked"}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id id :database_id (mt/id)
+                    :database_details {:user "u"} :output_schema "s"
+                    :input_schemas ["public"] :status :initialized}]
+      (mt/user-http-request :crowberto :put 409 (str "ee/workspace/" id)
+                            {:name      "Locked"
+                             :databases [{:database_id db2-id :input_schemas ["public"]}]}))))
+
+(deftest put-rejects-input-schemas-change-on-initialized-test
+  (testing "PUT returns 409 when it would change :input_schemas of an :initialized row"
+    (mt/with-temp [:model/Workspace {id :id} {:name "Locked"}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id id :database_id (mt/id)
+                    :database_details {:user "u"} :output_schema "s"
+                    :input_schemas ["public"] :status :initialized}]
+      (mt/user-http-request :crowberto :put 409 (str "ee/workspace/" id)
+                            {:name      "Locked"
+                             :databases [{:database_id (mt/id) :input_schemas ["something_else"]}]}))))
+
+(deftest put-preserves-initialized-row-test
+  (testing "PUT that preserves (database_id, input_schemas) of an :initialized row succeeds and leaves the row untouched"
+    (mt/with-temp [:model/Workspace {id :id} {:name "Locked"}
+                   :model/WorkspaceDatabase {init-id :id}
+                   {:workspace_id     id
+                    :database_id      (mt/id)
+                    :database_details {:user "keep" :password "pw"}
+                    :output_schema    "kept_schema"
+                    :input_schemas    ["public"]
+                    :status           :initialized}]
+      (let [resp (mt/user-http-request :crowberto :put 200 (str "ee/workspace/" id)
+                                       {:name      "Renamed"
+                                        :databases [{:database_id (mt/id) :input_schemas ["public"]}]})]
+        (is (= "Renamed" (:name resp)))
+        (is (= "initialized" (-> resp :databases first :status)))
+        (is (= {:user "keep" :password "pw"} (-> resp :databases first :database_details)))
+        (is (= "kept_schema" (-> resp :databases first :output_schema)))
+        (testing "the row's database-side id is unchanged"
+          (is (= init-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id id))))))))

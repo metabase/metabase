@@ -54,14 +54,36 @@
                     (map #(with-workspace-database-defaults % ws-id) databases)))
       (get-workspace ws-id))))
 
+(defn- reject-initialized-modification!
+  "Throw a 409 if any `:initialized` row in `existing` is missing from the incoming
+  `:databases` list or would have its `:input_schemas` changed. Initialized rows
+  are immutable via the API-facing update path."
+  [existing-initialized incoming-by-db-id]
+  (doseq [{:keys [database_id input_schemas]} existing-initialized]
+    (let [incoming (get incoming-by-db-id database_id)]
+      (when (or (nil? incoming)
+                (not= (vec input_schemas) (vec (:input_schemas incoming))))
+        (throw (ex-info "Cannot modify an initialized workspace_database"
+                        {:status-code 409
+                         :database_id database_id}))))))
+
 (defn update-workspace!
-  "Update a Workspace and fully replace its WorkspaceDatabase rows with the provided ones.
-  Returns the updated Workspace with `:databases` hydrated."
+  "Update a Workspace and reconcile its `WorkspaceDatabase` rows with the provided
+  list. `:initialized` rows are immutable: the incoming list must preserve each
+  one by `database_id` with matching `:input_schemas`, or a 409 is raised.
+  Uninitialized rows are fully replaced by the incoming list."
   [id {:keys [name databases]}]
   (t2/with-transaction [_conn]
-    (t2/update! :model/Workspace :id id {:name name})
-    (t2/delete! :model/WorkspaceDatabase :workspace_id id)
-    (when (seq databases)
-      (t2/insert! :model/WorkspaceDatabase
-                  (map #(with-workspace-database-defaults % id) databases)))
-    (get-workspace id)))
+    (let [existing         (t2/select :model/WorkspaceDatabase :workspace_id id)
+          initialized      (filter #(= :initialized (:status %)) existing)
+          uninitialized    (remove #(= :initialized (:status %)) existing)
+          incoming-by-db-id (into {} (map (juxt :database_id identity)) databases)
+          preserved-db-ids (set (map :database_id initialized))]
+      (reject-initialized-modification! initialized incoming-by-db-id)
+      (t2/update! :model/Workspace :id id {:name name})
+      (when-let [to-delete-ids (seq (map :id uninitialized))]
+        (t2/delete! :model/WorkspaceDatabase :id [:in to-delete-ids]))
+      (when-let [to-insert (seq (remove #(contains? preserved-db-ids (:database_id %)) databases))]
+        (t2/insert! :model/WorkspaceDatabase
+                    (map #(with-workspace-database-defaults % id) to-insert)))
+      (get-workspace id))))
