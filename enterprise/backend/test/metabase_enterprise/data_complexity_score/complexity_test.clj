@@ -628,17 +628,16 @@
         (snowplow-test/pop-event-data-and-user-id!)
         (let [{:keys [library universe metabot]} (complexity/complexity-scores :embedder nil)
               events   (complexity-events!)
-              expected (into #{}
-                             (for [[catalog result] {"library"  library
-                                                     "universe" universe
-                                                     "metabot"  metabot}
-                                   [k score]        (expected-keys-for-catalog result)]
-                               [catalog k score]))
-              actual   (into #{}
-                             (map (fn [e] [(get e "catalog") (get e "key") (get e "score")]) events))]
-          (is (= (count expected) (count events))
+              expected (vec
+                        (for [[catalog result] {"library"  library
+                                                "universe" universe
+                                                "metabot"  metabot}
+                              [k score]        (expected-keys-for-catalog result)]
+                          [catalog k score]))
+              actual   (mapv (fn [e] [(get e "catalog") (get e "key") (get e "score")]) events)]
+          (is (= (count expected) (count actual))
               "every (catalog, key) is emitted exactly once — no duplicates")
-          (is (= expected actual)
+          (is (= (frequencies expected) (frequencies actual))
               "every (catalog, key) pair carries the matching score from the result")
           (testing "every event carries the event name, formula version, and parameters map"
             (is (every? (fn [e]
