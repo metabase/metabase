@@ -9,6 +9,8 @@ import * as Urls from "metabase/utils/urls";
 import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
+import { isWorkspaceDatabaseProvisioned } from "../../utils";
+
 type WorkspaceMoreMenuProps = {
   workspace: Workspace;
 };
@@ -18,7 +20,7 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const dispatch = useDispatch();
-  const canDelete = workspace.status === "uninitialized";
+  const canDelete = !workspace.databases.some(isWorkspaceDatabaseProvisioned);
 
   const handleDelete = () => {
     show({

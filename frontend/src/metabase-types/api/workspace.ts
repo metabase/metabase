@@ -2,12 +2,11 @@ import type { DatabaseId } from "./database";
 
 export type WorkspaceId = number;
 
-export type WorkspaceStatus = "uninitialized" | "initialized";
+export type WorkspaceDatabaseStatus = "provisioned" | "deprovisioned";
 
 export type Workspace = {
   id: WorkspaceId;
   name: string;
-  status: WorkspaceStatus;
   databases: WorkspaceDatabase[];
   created_at: string;
   updated_at: string;
@@ -17,12 +16,14 @@ export type WorkspaceDatabase = {
   database_id: DatabaseId;
   input_schemas: string[];
   output_schema: string;
+  status: WorkspaceDatabaseStatus;
 };
 
 export type WorkspaceDatabaseDraft = {
   database_id: DatabaseId;
   input_schemas: string[];
   output_schema?: string;
+  status?: WorkspaceDatabaseStatus;
 };
 
 export type CreateWorkspaceRequest = {

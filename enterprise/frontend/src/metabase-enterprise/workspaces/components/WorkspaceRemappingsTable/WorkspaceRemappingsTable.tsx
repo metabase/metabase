@@ -94,7 +94,7 @@ function SchemaTableCell({
       <FixedSizeIcon name="table2" />
       <Ellipsified tooltipProps={{ openDelay: 300 }}>
         <MaybeLink href={schemaHref}>{schema}</MaybeLink>
-        <Text component="span" c="text-dark" mx={2}>
+        <Text component="span" c="text-primary" mx={2}>
           /
         </Text>
         <MaybeLink href={tableHref}>{tableName}</MaybeLink>

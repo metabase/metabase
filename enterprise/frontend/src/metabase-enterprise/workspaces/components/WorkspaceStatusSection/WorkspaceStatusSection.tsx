@@ -9,6 +9,7 @@ import {
 } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
+import { isWorkspaceProvisioned } from "../../utils";
 import { TitleSection } from "../TitleSection";
 
 type WorkspaceStatusSectionProps = {
@@ -23,7 +24,7 @@ export function WorkspaceStatusSection({
   const [deprovisionWorkspace] = useDeprovisionWorkspaceMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const isInitialized = workspace.status === "initialized";
+  const isProvisioned = isWorkspaceProvisioned(workspace);
 
   const handleProvision = () => {
     show({
@@ -66,18 +67,18 @@ export function WorkspaceStatusSection({
     >
       <Group px="xl" py="md" justify="space-between" wrap="nowrap">
         <Group gap="sm" wrap="nowrap">
-          {isInitialized ? (
+          {isProvisioned ? (
             <Icon name="check_filled" c="success" />
           ) : (
             <Icon name="warning" c="warning" />
           )}
           <Text>
-            {isInitialized
+            {isProvisioned
               ? t`This workspace is provisioned and ready to use.`
               : t`This workspace has not been provisioned yet.`}
           </Text>
         </Group>
-        {isInitialized ? (
+        {isProvisioned ? (
           <Button
             variant="filled"
             color="error"

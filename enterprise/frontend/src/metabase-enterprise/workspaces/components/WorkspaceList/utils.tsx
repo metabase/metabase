@@ -11,7 +11,8 @@ export function getNameColumn(): TreeTableColumnDef<Workspace> {
     header: t`Name`,
     width: "auto",
     minWidth: 200,
-    cell: ({ row }) => <Ellipsified>{row.original.name}</Ellipsified>,
+    accessorFn: (workspace) => workspace.name,
+    cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
   };
 }
 
@@ -22,7 +23,8 @@ export function getCreatedAtColumn(): TreeTableColumnDef<Workspace> {
     header: t`Created at`,
     width: "auto",
     minWidth: 160,
-    cell: ({ row }) => <DateTime value={row.original.created_at} />,
+    accessorFn: (workspace) => workspace.created_at,
+    cell: ({ getValue }) => <DateTime value={String(getValue())} />,
   };
 }
 
