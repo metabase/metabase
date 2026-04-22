@@ -47,17 +47,21 @@ Still in the Admin console, go to **Settings > Authentication** and click on the
 
 ## 3. Install the SDK in your app
 
+Install the `@{major}-stable` dist-tag matching your Metabase major, so the package's types and exported components in your client match your SDK bundle served from your Metabase. For Metabase 60:
+
 Via npm:
 
 ```
-npm install @metabase/embedding-sdk-react
+npm install @metabase/embedding-sdk-react@60-stable
 ```
 
 Via Yarn:
 
 ```
-yarn add @metabase/embedding-sdk-react
+yarn add @metabase/embedding-sdk-react@60-stable
 ```
+
+See [SDK versions](./version.md) for other install options.
 
 ## 4. Embed SDK components in your app
 

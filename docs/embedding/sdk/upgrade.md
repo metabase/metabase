@@ -19,11 +19,6 @@ Check for any relevant changes, especially deprecations or breaking changes that
 
 ## 2. Test the upgrade
 
-How you upgrade depends on which Metabase version you're on:
-
-- **Metabase 57 and later.** The full SDK bundle is served from your Metabase, so you can upgrade Metabase and the SDK Package independently, in any order. We recommend keeping the versions aligned (you'll pick up bug fixes and new features sooner).
-- **Metabase 56 and earlier.** The SDK major version must match your Metabase major version, so upgrade Metabase and the SDK Package in parallel.
-
 ### Spin up the new version of Metabase for testing
 
 You can do this locally or in a dev instance. If your testing setup involves a lot of test user accounts, getting a [development instance](../../installation-and-operation/development-instance.md) could be more cost-effective.
@@ -36,41 +31,25 @@ You'll want to test the changes locally first, as there may be breaking changes 
 
 Check out a new branch in your application and install the SDK.
 
-**Metabase 57 and later.** Install the latest SDK Package with no dist-tag:
-
-```bash
-npm install @metabase/embedding-sdk-react
-```
-
-or with Yarn:
-
-```bash
-yarn add @metabase/embedding-sdk-react
-```
-
-If you'd rather pin the SDK Package to a specific Metabase major (for example, to hold a version while you test), use the matching `@{major}-stable` dist-tag — for example, `@60-stable` for Metabase 60:
+**Metabase 57 and later.** Install the `@{major}-stable` dist-tag matching your new Metabase major — for Metabase 60:
 
 ```bash
 npm install @metabase/embedding-sdk-react@60-stable
 ```
 
-**Metabase 56 and earlier.** The SDK major must match the Metabase major, so install the matching `@{major}-stable` dist-tag — for example, upgrading to Metabase 55:
-
-```bash
-npm install @metabase/embedding-sdk-react@55-stable
-```
-
 or with Yarn:
 
 ```bash
-yarn add @metabase/embedding-sdk-react@55-stable
+yarn add @metabase/embedding-sdk-react@60-stable
 ```
+
+To track the latest published SDK major instead, install without a dist-tag (`npm install @metabase/embedding-sdk-react`).
 
 See more on [SDK versions](./version.md).
 
 ### If there are deprecations or breaking changes, make the necessary changes to your application code
 
-Deprecations or breaking changes are rare, but if you do need to make changes, we'll mention it in the release notes for the new major version and have docs that walk you through the changes.
+Deprecations or breaking changes are rare, but if you do need to make changes to your application code, we'll mention it in the [release notes](https://www.metabase.com/releases) for the new major version and have docs that walk you through the changes.
 
 Update or add tests for any application code changes that you make.
 

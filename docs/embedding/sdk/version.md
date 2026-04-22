@@ -11,21 +11,13 @@ summary: Learn about Modular embedding SDK versioning and compatibility with Met
 
 Starting with Metabase 57, the `@metabase/embedding-sdk-react` npm package loads the SDK Bundle from your Metabase.
 
-To install the latest SDK Package:
-
-```sh
-npm install @metabase/embedding-sdk-react
-```
-
-Keeping the SDK Package version aligned with your Metabase version is **recommended** (you'll pick up bug fixes and new features as they ship), but it is not required.
-
-If you'd rather pin to a specific Metabase major, we publish `@{major}-stable` dist-tags — for example, `@60-stable` for the latest SDK release built against Metabase 60:
+Install the SDK Package matching your Metabase major with the `@{major}-stable` dist-tag, so the package's TypeScript types and exported components stay in sync with your instance's SDK Bundle:
 
 ```sh
 npm install @metabase/embedding-sdk-react@60-stable
 ```
 
-To grab the latest version of the SDK that works with Metabase nightly builds, use the `canary` dist-tag.
+Installing without a dist-tag (`npm install @metabase/embedding-sdk-react`) still works. The bundle loads from your Metabase, but the package's types and exports will track the latest published SDK major, which may drift from your Metabase version.
 
 ## Metabase 56 and earlier
 
