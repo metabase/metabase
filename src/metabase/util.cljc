@@ -543,7 +543,7 @@
                                               [:map
                                                {:closed true}
                                                [:max-length {:optional true} pos-int?]
-                                               [:unicode?   {:optional true} any?]]]]
+                                               [:unicode?   {:optional true} [:maybe boolean?]]]]]
    (when (seq s)
      (cond->> (remove-diacritical-marks (lower-case-en s))
        true (map #(slugify-char % (not unicode?)))
