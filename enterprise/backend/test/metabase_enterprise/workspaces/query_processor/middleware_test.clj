@@ -12,6 +12,8 @@
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.test :as mt]))
@@ -176,6 +178,47 @@
             (is (str/includes? sql (:name orders))))
           (testing "join alias is preserved (aliases live on the join clause, not on table metadata)"
             (is (str/includes? sql "\"Products\""))))))))
+
+(deftest remaps-without-eager-table-enumeration-test
+  (testing "override fires even when the provider's `tables` list is empty"
+    ;; Regression guard for the post-transform fingerprint failure mode: the fingerprint sub-QP
+    ;; builds a fresh cached MP inside `table-rows-sample`. If the middleware drove the override
+    ;; off `(lib.metadata/tables mp)`, any case where that enumeration missed the just-created
+    ;; transform-output table (stale cache, filtered listing, race against the insert) skipped the
+    ;; override and the compiled SQL leaked the logical schema/table. Iterating the `mappings` and
+    ;; using `metadatas` with a `:name` spec makes the override robust to enumeration behavior.
+    (let [mp       (mt/metadata-provider)
+          db-id    (mt/id)
+          orders   (lib.metadata/table mp (mt/id :orders))
+          {from-schema :schema
+           from-name   :name} orders
+          to-schema "ws_enumeration_miss"
+          to-name   "orders_copy"
+          ;; Wrap `mp` with a provider that reports *no* tables on enumeration but passes every
+          ;; other call through. This simulates the enumeration-miss case structurally.
+          blind-tables-mp (reify
+                            lib.metadata.protocols/MetadataProvider
+                            (database [_] (lib.metadata.protocols/database mp))
+                            (metadatas [_ spec]
+                              (if (and (= (:lib/type spec) :metadata/table)
+                                       (not (or (:id spec) (:name spec))))
+                                []
+                                (lib.metadata.protocols/metadatas mp spec)))
+                            (setting [_ s] (lib.metadata.protocols/setting mp s)))
+          cached-mp       (lib.metadata.cached-provider/cached-metadata-provider
+                           blind-tables-mp)
+          query           (-> (lib/query mp orders)
+                              (assoc :lib/metadata cached-mp))]
+      (mt/with-temp [:model/TableRemapping _ {:database_id     db-id
+                                              :from_schema     from-schema
+                                              :from_table_name from-name
+                                              :to_schema       to-schema
+                                              :to_table_name   to-name}]
+        (let [remapped (ws.qp.middleware/apply-workspace-table-remapping query)
+              sql      (:query (qp.compile/compile remapped))]
+          (is (str/includes? sql to-schema))
+          (is (str/includes? sql to-name))
+          (is (not (str/includes? sql from-name))))))))
 
 (deftest no-op-when-workspaces-feature-disabled-test
   (testing "dispatching var returns query unchanged when :workspaces premium feature is off"
