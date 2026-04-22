@@ -298,3 +298,53 @@
 (deftest delete-workspace-404-on-unknown-test
   (testing "DELETE /:id with an unknown id returns 404"
     (mt/user-http-request :crowberto :delete 404 (str "ee/workspace/" Integer/MAX_VALUE))))
+
+(deftest get-workspace-config-happy-path-test
+  (testing "GET /ee/workspace/:id/config returns the config shape as JSON"
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name    "Analytics Data Warehouse"
+                    :engine  :postgres
+                    :details {:host "mbdata.metabase.com" :port 5432 :user "admin" :dbname "stitchdata_incoming"}}
+                   :model/Workspace {id :id} {:name "github"}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     id
+                    :database_id      db-id
+                    :database_details {:user "mb_isolation_github" :password "secret"}
+                    :output_schema    "mb_isolation_github"
+                    :input_schemas    ["raw_github"]
+                    :status           :initialized}]
+      (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" id "/config"))]
+        (is (= {:databases [{:name    "Analytics Data Warehouse"
+                             :engine  "postgres"
+                             :details {:host                    "mbdata.metabase.com"
+                                       :port                    5432
+                                       :user                    "mb_isolation_github"
+                                       :password                "secret"
+                                       :dbname                  "stitchdata_incoming"
+                                       :schema-filters-type     "inclusion"
+                                       :schema-filters-patterns "raw_github"}}]
+                :workspace {:name      "github"
+                            :databases {(keyword "Analytics Data Warehouse")
+                                        {:input_schemas ["raw_github"]
+                                         :output_schema "mb_isolation_github"}}}}
+               resp))))))
+
+(deftest get-workspace-config-409-on-uninitialized-test
+  (testing "GET /:id/config returns 409 if any WorkspaceDatabase is :uninitialized"
+    (mt/with-temp [:model/Workspace {id :id} {:name "Partial"}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id id :database_id (mt/id)
+                    :database_details {} :output_schema "" :input_schemas ["public"]
+                    :status :uninitialized}]
+      (mt/user-http-request :crowberto :get 409 (str "ee/workspace/" id "/config")))))
+
+(deftest get-workspace-config-requires-superuser-test
+  (testing "Non-superusers get 403 from GET /:id/config"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                               {:name "Guarded" :databases []})]
+        (mt/user-http-request :rasta :get 403 (str "ee/workspace/" id "/config"))))))
+
+(deftest get-workspace-config-404-on-unknown-test
+  (testing "GET /:id/config with an unknown id returns 404"
+    (mt/user-http-request :crowberto :get 404 (str "ee/workspace/" Integer/MAX_VALUE "/config"))))

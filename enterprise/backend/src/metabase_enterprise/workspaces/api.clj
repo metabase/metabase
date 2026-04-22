@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.api
   (:require
+   [metabase-enterprise.workspaces.config :as config]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.api.common :as api]
@@ -110,6 +111,13 @@
   (api/check-404 (workspace/get-workspace id))
   (workspace/delete-workspace! id)
   {:id id :deleted true})
+
+(api.macros/defendpoint :get "/:id/config"
+  "Return a downloadable JSON config fragment for this Workspace. Returns 409 if
+  any of the Workspace's databases is still uninitialized."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (config/build-workspace-config id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace` routes"
