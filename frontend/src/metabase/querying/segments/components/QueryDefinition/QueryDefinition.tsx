@@ -1,5 +1,5 @@
-import { getSegmentQuery } from "metabase/admin/datamodel/utils/segments";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
+import { getSegmentQuery } from "metabase/querying/segments/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Flex } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
