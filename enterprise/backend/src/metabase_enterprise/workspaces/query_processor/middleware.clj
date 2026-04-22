@@ -14,7 +14,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sql-tools.core :as sql-tools]))
@@ -88,10 +87,18 @@
         (lib/with-native-query query rewritten))
 
       :else
+      ;; Drive the override from `mappings` rather than `(lib.metadata/tables mp)`. Iterating the
+      ;; provider's enumeration silently misses tables it hasn't surfaced — e.g., a freshly-created
+      ;; transform-output table whose row was inserted moments ago by a caller in the same stack.
+      ;; Fetching by (schema, name) per-mapping is robust to that race and to any visibility
+      ;; filtering on the enumeration path.
       (do
-        (doseq [table (lib.metadata/tables mp)
-                :let [[to-schema to-name] (get mappings [(:schema table) (:name table)])]
-                :when to-schema]
+        (doseq [[[from-schema from-name] [to-schema to-name]] mappings
+                :let [candidates (lib.metadata.protocols/metadatas
+                                  mp
+                                  {:lib/type :metadata/table, :name #{from-name}})
+                      table      (some #(when (= (:schema %) from-schema) %) candidates)]
+                :when table]
           (lib.metadata.protocols/store-metadata!
            mp
            (assoc table :schema to-schema :name to-name)))
