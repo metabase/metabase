@@ -37,14 +37,17 @@
                                                            :db/engine             (name driver)}
            (let [conn-spec         (driver/connection-spec driver db)
                  transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
+                 ;; Resolve workspace remapping up front so complete-execution! below
+                 ;; can sync the physical (remapped) warehouse table while the persisted
+                 ;; metabase_table row stays at the declared target identity.
+                 remap             (transforms-base.query/resolve-transform-remapping!
+                                    (:id db) (:schema target) (:name target))
                  _exec-result
                  (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
                    (transforms.u/run-cancelable-transform!
                     run-id transform driver transform-details
                     (fn [cancel-chan source-range-params]
-                      (let [remap (transforms-base.query/resolve-transform-remapping!
-                                   (:id db) (:schema target) (:name target))
-                            result (transforms-base.i/execute-base!
+                      (let [result (transforms-base.i/execute-base!
                                     transform
                                     (cond-> {:cancelled?           #(boolean (a/poll! cancel-chan))
                                              :run-id               run-id
@@ -58,7 +61,9 @@
                           (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))
                         result))))]
              ;; Post-processing: sync, transform_id, events
-             (transforms-base.u/complete-execution! transform {})))))
+             (transforms-base.u/complete-execution!
+              transform
+              (cond-> {} remap (assoc :table-remapping remap)))))))
      (catch Throwable t
        (if (= :already-running (:error (ex-data t)))
          (log/warnf "Transform %d is already running" id)

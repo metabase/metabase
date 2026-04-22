@@ -381,8 +381,11 @@
               ;; so complete-execution! can set transform_id on it.
               (mt/with-dynamic-fn-redefs
                 [transforms-base.i/execute-base!        (constantly {:status :succeeded})
-                 transforms-base.u/sync-target!         (fn [_target _database]
-                                                          (t2/select-one :model/Table table-id))
+                 transforms-base.u/sync-target!         (fn
+                                                          ([_target _database]
+                                                           (t2/select-one :model/Table table-id))
+                                                          ([_target _database _physical-target]
+                                                           (t2/select-one :model/Table table-id)))
                  transforms.u/run-cancelable-transform! (fn [_run-id _transform _driver _details run-fn & _opts]
                                                           (run-fn (a/promise-chan) nil))]
                 (transforms.execute/execute! transform {:run-method :manual})
