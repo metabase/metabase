@@ -1193,6 +1193,7 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
+              metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.self
@@ -1238,7 +1239,7 @@
               transforms-base
               util
               warehouses}
-   :model-exports #{:model/AiUsageLog :model/MetabotMessage}
+   :model-exports #{:model/AiUsageLog :model/Metabot :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3186,6 +3187,7 @@
            config
            connection-pool
            llm
+           metabot
            models
            permissions
            premium-features
