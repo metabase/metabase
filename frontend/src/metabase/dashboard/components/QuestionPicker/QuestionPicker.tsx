@@ -27,6 +27,11 @@ import type { Collection, CollectionId } from "metabase-types/api";
 import { QuestionList } from "./QuestionList";
 import S from "./QuestionPicker.module.css";
 import { addDashboardQuestion } from "./actions";
+import {
+  COLLECTIONS_TOP_LEVEL_ID,
+  SHARED_TENANT_COLLECTIONS_ROOT_ID,
+  useCollectionsWithTenants,
+} from "./hooks/use-collections-with-tenants";
 
 interface QuestionPickerInnerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
@@ -35,7 +40,7 @@ interface QuestionPickerInnerProps {
 
 function QuestionPickerInner({
   onSelect,
-  collectionsById,
+  collectionsById: baseCollectionsById,
 }: QuestionPickerInnerProps) {
   const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
@@ -49,6 +54,11 @@ function QuestionPickerInner({
     SEARCH_DEBOUNCE_DURATION,
   );
 
+  const collectionsById = useCollectionsWithTenants(baseCollectionsById);
+
+  const isAtTopLevel = currentCollectionId === COLLECTIONS_TOP_LEVEL_ID;
+  const isAtSharedTenantRoot =
+    currentCollectionId === SHARED_TENANT_COLLECTIONS_ROOT_ID;
   const collection = collectionsById[currentCollectionId];
   const crumbs = getCollectionBreadCrumbs(
     collection,
@@ -143,13 +153,18 @@ function QuestionPickerInner({
         </>
       )}
 
-      <QuestionList
-        hasCollections={collections.length > 0}
-        searchText={debouncedSearchText}
-        collectionId={currentCollectionId}
-        onSelect={onSelect}
-        showOnlyPublicCollections={showOnlyPublicCollections}
-      />
+      {/* Hide the question list at top-level "Collections"
+          and "Shared collections" root. These have fake IDs that don't map to
+          real collections, so querying questions against them would fail. */}
+      {((!isAtSharedTenantRoot && !isAtTopLevel) || debouncedSearchText) && (
+        <QuestionList
+          hasCollections={collections.length > 0}
+          searchText={debouncedSearchText}
+          collectionId={currentCollectionId}
+          onSelect={onSelect}
+          showOnlyPublicCollections={showOnlyPublicCollections}
+        />
+      )}
     </div>
   );
 }

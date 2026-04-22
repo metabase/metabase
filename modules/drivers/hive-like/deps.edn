@@ -245,11 +245,11 @@
 
   ;; Netty — pinned explicitly at safe versions for security scanning.
   ;; Driver JARs are scanned individually so these must be declared directly.
-  io.netty/netty-common                              {:mvn/version "4.2.9.Final"}
-  io.netty/netty-handler                             {:mvn/version "4.2.9.Final"}
-  io.netty/netty-transport                           {:mvn/version "4.2.9.Final"}
-  io.netty/netty-buffer                              {:mvn/version "4.2.9.Final"}
-  io.netty/netty-codec                               {:mvn/version "4.2.9.Final"}
-  io.netty/netty-resolver                            {:mvn/version "4.2.9.Final"}
-  io.netty/netty-transport-native-unix-common        {:mvn/version "4.2.9.Final"}
-  io.netty/netty-transport-native-epoll              {:mvn/version "4.2.9.Final"}}}
+  io.netty/netty-common                              {:mvn/version "4.2.12.Final"}
+  io.netty/netty-handler                             {:mvn/version "4.2.12.Final"}
+  io.netty/netty-transport                           {:mvn/version "4.2.12.Final"}
+  io.netty/netty-buffer                              {:mvn/version "4.2.12.Final"}
+  io.netty/netty-codec                               {:mvn/version "4.2.12.Final"}
+  io.netty/netty-resolver                            {:mvn/version "4.2.12.Final"}
+  io.netty/netty-transport-native-unix-common        {:mvn/version "4.2.12.Final"}
+  io.netty/netty-transport-native-epoll              {:mvn/version "4.2.12.Final"}}}

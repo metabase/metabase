@@ -110,6 +110,10 @@ export function buildFullTextWithIdentities(
     }
 
     if (isExpressionEntry(entity)) {
+      const defaultText = buildExpressionText(entity.tokens, metricNames);
+      const customName =
+        entity.name && entity.name !== defaultText ? entity.name : undefined;
+
       for (
         let tokenIndex = 0;
         tokenIndex < entity.tokens.length;
@@ -134,6 +138,7 @@ export function buildFullTextWithIdentities(
             to: offset + fragment.length,
             definition: token.definition ?? null,
             slotIndex: slotIndex++,
+            customName,
           });
         }
         parts.push(fragment);
@@ -1001,6 +1006,7 @@ export type MetricIdentityEntry = {
   to: number;
   definition: MetricDefinition | null;
   slotIndex?: number;
+  customName?: string;
 };
 
 export function stripDefinitionProjections(
@@ -1032,12 +1038,17 @@ export function applyTrackedDefinitions(
 ): ApplyTrackedDefinitionsResult {
   const identityByPosition = new Map<
     string,
-    { definition: MetricDefinition | null; slotIndex: number | undefined }
+    {
+      definition: MetricDefinition | null;
+      slotIndex: number | undefined;
+      customName: string | undefined;
+    }
   >();
   for (const identity of trackedIdentities) {
     identityByPosition.set(getPositionKey(identity.from, identity.to), {
       definition: identity.definition,
       slotIndex: identity.slotIndex,
+      customName: identity.customName,
     });
   }
 
@@ -1049,6 +1060,7 @@ export function applyTrackedDefinitions(
     MetricsViewerFormulaEntity,
     Map<number, MetricDefinition | undefined>
   >();
+  const exprCustomNamesMap = new Map<MetricsViewerFormulaEntity, string>();
   const slotMapping = new Map<number, number>();
   let newSlotCounter = 0;
 
@@ -1084,6 +1096,13 @@ export function applyTrackedDefinitions(
           ? stripDefinitionProjections(tracked.definition)
           : undefined;
       tokenMap.set(visit.exprTokenIndex, definition);
+
+      // First surviving identity with a custom name wins. If identities
+      // from two named expressions merge into one, the earliest (by token
+      // order) name is kept — acceptable per the design.
+      if (tracked.customName && !exprCustomNamesMap.has(visit.entity)) {
+        exprCustomNamesMap.set(visit.entity, tracked.customName);
+      }
     },
     trackedIdentities,
   );
@@ -1093,18 +1112,30 @@ export function applyTrackedDefinitions(
       return { ...entity, definition: metricOverrides.get(entity) ?? null };
     }
 
-    const tokenMap = exprTokenOverrides.get(entity);
-    if (tokenMap && isExpressionEntry(entity)) {
-      const newTokens = entity.tokens.map((token, index) => {
-        if (!tokenMap.has(index)) {
-          return token;
-        }
-        return { ...token, definition: tokenMap.get(index) };
-      });
-      const hasChanges = newTokens.some(
+    if (isExpressionEntry(entity)) {
+      const tokenMap = exprTokenOverrides.get(entity);
+      const newTokens = tokenMap
+        ? entity.tokens.map((token, index) => {
+            if (!tokenMap.has(index)) {
+              return token;
+            }
+            return { ...token, definition: tokenMap.get(index) };
+          })
+        : entity.tokens;
+      const tokensChanged = newTokens.some(
         (token, index) => token !== entity.tokens[index],
       );
-      return hasChanges ? { ...entity, tokens: newTokens } : entity;
+      const inheritedName = exprCustomNamesMap.get(entity);
+      const nameChanged =
+        inheritedName != null && inheritedName !== entity.name;
+      if (!tokensChanged && !nameChanged) {
+        return entity;
+      }
+      return {
+        ...entity,
+        tokens: newTokens,
+        ...(nameChanged ? { name: inheritedName } : {}),
+      };
     }
 
     return entity;
