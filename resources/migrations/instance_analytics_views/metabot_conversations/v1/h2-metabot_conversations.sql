@@ -5,7 +5,6 @@ SELECT
     c.id                                                              AS conversation_id,
     c.created_at,
     c.user_id,
-    'user_' || c.user_id                                              AS user_qualified_id,
     c.summary,
     COALESCE(u.first_name || ' ' || u.last_name, u.email)            AS user_display_name,
     COUNT(m.id)                                                       AS message_count,

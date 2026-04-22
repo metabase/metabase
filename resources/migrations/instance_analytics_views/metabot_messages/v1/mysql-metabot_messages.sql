@@ -9,7 +9,6 @@ SELECT
     m.profile_id,
     m.total_tokens,
     c.user_id,
-    CONCAT('user_', c.user_id)     AS user_qualified_id,
     m.slack_msg_id,
     m.channel_id
 FROM metabot_message m
