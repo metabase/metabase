@@ -1335,7 +1335,7 @@
             buffer  (java.util.ArrayList.)
             calls   (t2/with-call-count [call-count]
                       (t2/with-transaction [_conn]
-                        (#'metabase.warehouses-rest.api/process-field-values-batch! batch buffer))
+                        (#'metabase.warehouses-rest.api.metadata-import/process-field-values-batch! batch buffer))
                       (call-count))]
         (testing "field-values batch processor should issue a bounded number of statements independent of batch size"
           (is (< calls 10)
@@ -1668,7 +1668,7 @@
             buffer (java.util.ArrayList.)
             calls  (t2/with-call-count [call-count]
                      (t2/with-transaction [_conn]
-                       (#'metabase.warehouses-rest.api/process-finalize-batch! batch buffer))
+                       (#'metabase.warehouses-rest.api.metadata-import/process-finalize-batch! batch buffer))
                      (call-count))]
         (testing "finalize batch processor should issue a bounded number of statements independent of batch size"
           (is (< calls 10)
