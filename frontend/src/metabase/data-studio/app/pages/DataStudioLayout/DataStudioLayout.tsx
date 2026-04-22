@@ -11,6 +11,7 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
+  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
@@ -194,6 +195,15 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               isSelected={currentTab === "git-sync"}
               showLabel={isNavbarOpened}
               isGated
+            />
+          )}
+          {PLUGIN_WORKSPACES.isEnabled && (
+            <DataStudioTab
+              label={t`Workspaces`}
+              icon="folder_database"
+              to={Urls.dataStudioWorkspaces()}
+              isSelected={currentTab === "workspaces"}
+              showLabel={isNavbarOpened}
             />
           )}
           {canAccessTransforms && (

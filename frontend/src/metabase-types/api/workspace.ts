@@ -6,6 +6,8 @@ export type Workspace = {
   id: WorkspaceId;
   name: string;
   databases: WorkspaceDatabase[];
+  created_at: string;
+  updated_at: string;
 };
 
 export type WorkspaceDatabase = {
