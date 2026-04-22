@@ -115,6 +115,7 @@
      events
      formatter
      initialization-status
+     interestingness
      internal-stats
      llm
      login-history
