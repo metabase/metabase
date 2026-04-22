@@ -52,11 +52,6 @@
       (catch Throwable t
         (log/warnf t "Failed to provision WorkspaceDatabase %s" id)))))
 
-(defn run-async!
-  "Invoke `f` on a background thread. Tests rebind this to run `f` synchronously."
-  [f]
-  (future (f)))
-
 (defn initialize-workspace!
   "Kick off async provisioning for every `:uninitialized` WorkspaceDatabase under
   `workspace-id`. Returns the number of rows that were scheduled."
@@ -64,5 +59,5 @@
   (let [pending-count (t2/count :model/WorkspaceDatabase
                                 :workspace_id workspace-id
                                 :status       :uninitialized)]
-    (run-async! (fn [] (initialize-workspace-databases! workspace-id)))
+    (future (initialize-workspace-databases! workspace-id))
     pending-count))
