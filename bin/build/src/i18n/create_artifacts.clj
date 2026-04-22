@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.pprint :as pprint]
    [clojure.string :as str]
+   [i18n.autofix :as i18n.autofix]
    [i18n.common :as i18n]
    [i18n.create-artifacts.backend :as backend]
    [i18n.create-artifacts.frontend :as frontend]
@@ -39,15 +40,16 @@
         violations))
 
 (defn- create-artifacts-for-locale!
-  "Generate frontend + backend artifacts for one `locale`. Parses the `.po` once and threads the
-  result through the scanner and both builders. Returns the full seq of violations for the report."
+  "Generate frontend + backend artifacts for one `locale`. Parses the `.po` once, runs the autofix
+  pass, then threads the cleaned contents through the scanner and both builders. Returns the
+  violations the scanner flagged (post-autofix) for the aggregate report."
   [locale]
   (u/step (format "Create artifacts for locale %s" (pr-str locale))
-    (let [po-contents (i18n/po-contents locale)
+    (let [po-contents (i18n.autofix/autofix-po-contents (i18n/po-contents locale))
           violations  (i18n.validation/invalid-messages-in-po locale po-contents)
           drop-msgids (msgids-to-drop violations)]
-      (frontend/create-artifact-for-locale! locale drop-msgids)
-      (backend/create-artifact-for-locale! locale drop-msgids)
+      (frontend/create-artifact-for-locale! locale drop-msgids po-contents)
+      (backend/create-artifact-for-locale! locale drop-msgids po-contents)
       (when (seq drop-msgids)
         (u/announce "Filtered %d invalid translations from %s" (count drop-msgids) locale))
       (u/announce "Artifacts for locale %s created successfully." (pr-str locale))

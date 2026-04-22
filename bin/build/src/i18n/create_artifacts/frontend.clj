@@ -49,9 +49,11 @@
 
 (defn- i18n-map
   ([locale]
-   (i18n-map locale #{}))
+   (i18n-map locale #{} (i18n/po-contents locale)))
   ([locale drop-msgids]
-   (->i18n-map (i18n/po-contents locale) drop-msgids)))
+   (i18n-map locale drop-msgids (i18n/po-contents locale)))
+  ([_locale drop-msgids po-contents]
+   (->i18n-map po-contents drop-msgids)))
 
 (def target-directory
   "Target directory for frontend i18n resources."
@@ -61,12 +63,17 @@
   (u/filename target-directory (format "%s.json" (str/replace locale #"-" "_"))))
 
 (defn create-artifact-for-locale!
-  "Create an artifact with translated strings for `locale` for frontend (JS) usage. `drop-msgids`
-  is a set of English source strings to exclude (their translations had violations). Defaults
-  to `#{}` — no filtering — when omitted."
+  "Create an artifact with translated strings for `locale` for frontend (JS) usage.
+  `drop-msgids` is a set of English source strings to exclude (their translations had violations).
+  Defaults to `#{}` when omitted which results in no filtering.
+
+  `po-contents` may be provided by callers that have already parsed the `.po` file and applied
+  `i18n.autofix/autofix-po-contents`. If omitted, the `.po` is read fresh (without autofixes)."
   ([locale]
-   (create-artifact-for-locale! locale #{}))
+   (create-artifact-for-locale! locale #{} (i18n/po-contents locale)))
   ([locale drop-msgids]
+   (create-artifact-for-locale! locale drop-msgids (i18n/po-contents locale)))
+  ([locale drop-msgids po-contents]
    (let [target-file (target-filename locale)]
      (u/step (format "Create frontend artifact %s from %s" target-file (i18n/locale-source-po-filename locale))
        (u/create-directory-unless-exists! target-directory)
@@ -74,5 +81,5 @@
        (u/step "Write JSON"
          (with-open [os (FileOutputStream. (io/file target-file))
                      w  (OutputStreamWriter. os StandardCharsets/UTF_8)]
-           (json/generate-stream (i18n-map locale drop-msgids) w)))
+           (json/generate-stream (i18n-map locale drop-msgids po-contents) w)))
        (u/assert-file-exists target-file)))))
