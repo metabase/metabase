@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import type { DateFilterValue } from "metabase/querying/common/types";
@@ -12,6 +13,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { VIEW_CONVERSATIONS } from "../../constants";
 import { useAuditTable } from "../../hooks/useAuditTable";
 
+import S from "./BreakoutChart.module.css";
 import {
   type UsageStatsMetric,
   applyDateFilter,
@@ -28,6 +30,9 @@ type Props = {
   metric: UsageStatsMetric;
   viewName?: string;
   onDimensionClick?: (value: unknown) => void;
+  h?: number;
+  nullLabel?: string;
+  maxCategories?: number;
 };
 
 // When a custom click handler is provided, we need visualizationIsClickable
@@ -45,7 +50,11 @@ export function BreakoutChart({
   metric,
   viewName = VIEW_CONVERSATIONS,
   onDimensionClick,
+  h = 350,
+  nullLabel,
+  maxCategories = 8,
 }: Props) {
+  const otherLabel = t`Other`;
   const { provider, table } = useAuditTable(viewName);
 
   const query = useMemo(() => {
@@ -84,6 +93,41 @@ export function BreakoutChart({
     if (!data?.data || !jsQuery) {
       return null;
     }
+    const cols = data.data.cols as Array<{ source?: string }>;
+    const dimensionIndex = cols.findIndex((c) => c.source === "breakout");
+    const metricIndex = cols.findIndex((c) => c.source === "aggregation");
+
+    let rows = data.data.rows;
+
+    if (nullLabel != null && dimensionIndex >= 0) {
+      rows = rows.map((row) => {
+        if (row[dimensionIndex] == null) {
+          const copy = [...row];
+          copy[dimensionIndex] = nullLabel;
+          return copy;
+        }
+        return row;
+      });
+    }
+
+    if (
+      maxCategories != null &&
+      dimensionIndex >= 0 &&
+      metricIndex >= 0 &&
+      rows.length > maxCategories
+    ) {
+      const keep = rows.slice(0, maxCategories - 1);
+      const overflow = rows.slice(maxCategories - 1);
+      const otherTotal = overflow.reduce(
+        (sum, row) => sum + (Number(row[metricIndex]) || 0),
+        0,
+      );
+      const otherRow: unknown[] = new Array(cols.length).fill(null);
+      otherRow[dimensionIndex] = otherLabel;
+      otherRow[metricIndex] = otherTotal;
+      rows = [...keep, otherRow as (typeof rows)[number]];
+    }
+
     return [
       {
         card: createMockCard({
@@ -92,21 +136,32 @@ export function BreakoutChart({
           visualization_settings: {
             "graph.x_axis.title_text": "",
             "graph.y_axis.title_text": "",
+            ...(display === "bar" && {
+              "graph.x_axis.axis_enabled": "compact",
+            }),
             ...getMetricSeriesSettings(metric),
           },
         }),
-        data: data.data,
+        data: { ...data.data, rows },
       },
     ];
-  }, [data, jsQuery, display, metric]);
+  }, [data, jsQuery, display, metric, nullLabel, maxCategories, otherLabel]);
 
   if (isFetching || !rawSeries) {
-    return <Skeleton h={350} />;
+    return <Skeleton h={h} />;
   }
 
   return (
-    <Card withBorder shadow="none" p="md" h={350}>
-      <Text fw="bold" mb="sm">
+    <Card
+      className={S.visualization}
+      withBorder
+      shadow="none"
+      px="lg"
+      pt="md"
+      pb={display === "row" ? "md" : "0"}
+      h={h}
+    >
+      <Text fw="bold" mb="md">
         {title}
       </Text>
       <Visualization
@@ -115,7 +170,7 @@ export function BreakoutChart({
         mode={onDimensionClick ? CLICKABLE_MODE : undefined}
         handleVisualizationClick={(clicked: any) => {
           const value = clicked?.dimensions?.[0]?.value;
-          if (value != null && onDimensionClick) {
+          if (value != null && value !== otherLabel && onDimensionClick) {
             onDimensionClick(value);
           }
         }}

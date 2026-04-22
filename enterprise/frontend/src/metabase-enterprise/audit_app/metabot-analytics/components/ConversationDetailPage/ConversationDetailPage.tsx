@@ -2,14 +2,26 @@ import { useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
-import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetAdhocQueryMetadataQuery,
+  useListPermissionsGroupsQuery,
+  useListUserMembershipsQuery,
+} from "metabase/api";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
-import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
+import {
+  AgentMessage,
+  Messages,
+} from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
+import type {
+  MetabotAgentTextChatMessage,
+  MetabotChatMessage,
+} from "metabase/metabot/state/types";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -27,6 +39,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { isDefaultGroup } from "metabase/utils/groups";
 import { useSelector } from "metabase/utils/redux";
 import { getUserName } from "metabase/utils/user";
 import Question from "metabase-lib/v1/Question";
@@ -62,6 +75,8 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     isLoading,
     error,
   } = useGetMetabotConversationQuery(convoId);
+
+  const userGroupNames = useUserGroupNames(conversation?.user?.id);
 
   if (isLoading || error) {
     return (
@@ -116,12 +131,14 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                   </Text>
                 </Flex>
               )}
-              <Flex gap="xs" align="center">
-                <Icon name="group" size={16} c="text-tertiary" />
-                <Text size="md" c="text-secondary">
-                  TODO
-                </Text>
-              </Flex>
+              {userGroupNames.length > 0 && (
+                <Flex gap="xs" align="center">
+                  <Icon name="group" size={16} c="text-tertiary" />
+                  <Text size="md" c="text-secondary">
+                    {userGroupNames.join(", ")}
+                  </Text>
+                </Flex>
+              )}
               {conversation.slack_permalink && (
                 <Anchor
                   href={conversation.slack_permalink}
@@ -147,84 +164,96 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
         </SimpleGrid>
 
         {feedback.length > 0 && (
-          <Box>
-            <Title order={4}>{t`Feedback`}</Title>
-            <Stack mt="sm" gap="sm">
+          <Stack gap="md">
+            <Title order={3}>{t`Feedback`}</Title>
+            <Stack gap="sm">
               {feedback.map((item) => (
-                <FeedbackCard key={item.message_id} feedback={item} />
+                <FeedbackCard
+                  key={item.message_id}
+                  feedback={item}
+                  chatMessages={conversation.chat_messages ?? []}
+                />
               ))}
             </Stack>
-          </Box>
+          </Stack>
         )}
 
-        <Box>
-          <Title order={4}>{t`Conversation`}</Title>
-          <Card withBorder shadow="none" p="xl" mt="sm">
+        <Stack gap="md">
+          <Title order={3}>{t`Conversation`}</Title>
+          <Card withBorder shadow="none" p="xl">
             <Messages
               messages={conversation.chat_messages ?? []}
               errorMessages={[]}
               isDoingScience={false}
             />
           </Card>
-        </Box>
+        </Stack>
 
         {queries.length > 0 && (
-          <Box>
+          <Stack gap="md">
             <Title order={3}>{t`Queries generated`}</Title>
-            <Stack mt="sm" gap="md">
-              {queries.map((query) => (
-                <GeneratedQueryCard
-                  key={query.call_id ?? `${query.message_id}-${query.query_id}`}
-                  query={query}
-                />
-              ))}
-            </Stack>
-          </Box>
+            {queries.map((query) => (
+              <GeneratedQueryCard
+                key={query.call_id ?? `${query.message_id}-${query.query_id}`}
+                query={query}
+              />
+            ))}
+          </Stack>
         )}
       </Stack>
     </MetabotAdminLayout>
   );
 }
 
-function FeedbackCard({ feedback }: { feedback: ConversationFeedback }) {
-  const jumpToMessage = () => {
-    const el =
-      feedback.external_id && document.getElementById(feedback.external_id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  };
+function FeedbackCard({
+  feedback,
+  chatMessages,
+}: {
+  feedback: ConversationFeedback;
+  chatMessages: MetabotChatMessage[];
+}) {
+  const agentResponse = useMemo(
+    () =>
+      feedback.external_id
+        ? (chatMessages.find(
+            (m) =>
+              m.role === "agent" &&
+              m.type === "text" &&
+              m.externalId === feedback.external_id,
+          ) as MetabotAgentTextChatMessage | undefined)
+        : undefined,
+    [feedback.external_id, chatMessages],
+  );
 
   return (
     <Card withBorder shadow="none" p="md">
       <Stack gap="sm">
-        <Flex justify="space-between" align="center" gap="sm" wrap="wrap">
-          <Flex gap="xs" align="center">
-            <Icon
-              name={feedback.positive ? "thumbs_up" : "thumbs_down"}
-              size={20}
-              c="text-secondary"
-            />
-            <Text fw={700}>
-              {feedback.positive ? t`Positive` : t`Negative`}
-            </Text>
-            {!feedback.positive && feedback.issue_type && (
-              <Badge variant="light" bg="background-error" c="error" ml="xs">
-                {getIssueTypeLabel(feedback.issue_type)}
-              </Badge>
-            )}
-          </Flex>
-          {feedback.external_id && (
-            <Anchor
-              component="button"
-              type="button"
-              size="sm"
-              onClick={jumpToMessage}
-            >
-              {t`Jump to message`}
-            </Anchor>
+        <Flex gap="xs" align="center">
+          <Icon
+            name={feedback.positive ? "thumbs_up" : "thumbs_down"}
+            size={20}
+            c="text-secondary"
+          />
+          <Text fw={700}>{feedback.positive ? t`Positive` : t`Negative`}</Text>
+          {!feedback.positive && feedback.issue_type && (
+            <Badge variant="light" bg="background-error" c="error" ml="xs">
+              {getIssueTypeLabel(feedback.issue_type)}
+            </Badge>
           )}
         </Flex>
+        {agentResponse && (
+          <AgentMessage
+            message={agentResponse}
+            hideActions
+            onCopy={noopCopy}
+            showFeedbackButtons={false}
+            submittedFeedback={undefined}
+            bg="background-secondary"
+            p="md"
+            bd="1px solid var(--mb-color-border)"
+            bdrs="1rem"
+          />
+        )}
         {feedback.freeform_feedback && (
           <Text>{feedback.freeform_feedback}</Text>
         )}
@@ -384,4 +413,24 @@ function NotebookGeneratedQueryCard({ mbql }: { mbql: DatasetQuery }) {
 
 function noopUpdateQuestion(): Promise<void> {
   return Promise.resolve();
+}
+
+function noopCopy() {}
+
+function useUserGroupNames(userId: number | undefined): string[] {
+  const { data: membershipsByUser } = useListUserMembershipsQuery();
+  const { data: groups } = useListPermissionsGroupsQuery({});
+
+  return useMemo(() => {
+    if (userId == null || !membershipsByUser || !groups) {
+      return [];
+    }
+    const memberships = membershipsByUser[userId] ?? [];
+    const groupsById = new Map(
+      groups.filter((g) => !isDefaultGroup(g)).map((g) => [g.id, g.name]),
+    );
+    return memberships
+      .map((m) => groupsById.get(m.group_id))
+      .filter((name): name is string => Boolean(name));
+  }, [userId, membershipsByUser, groups]);
 }

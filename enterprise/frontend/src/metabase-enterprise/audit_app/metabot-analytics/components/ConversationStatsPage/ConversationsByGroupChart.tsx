@@ -8,6 +8,7 @@ type Props = {
   metric: UsageStatsMetric;
   viewName?: string;
   onDimensionClick?: (value: unknown) => void;
+  h?: number;
 };
 
 export function ConversationsByGroupChart({
@@ -15,6 +16,7 @@ export function ConversationsByGroupChart({
   metric,
   viewName,
   onDimensionClick,
+  h,
 }: Props) {
   return (
     <BreakoutChart
@@ -24,6 +26,7 @@ export function ConversationsByGroupChart({
       metric={metric}
       viewName={viewName}
       onDimensionClick={onDimensionClick}
+      h={h}
     />
   );
 }
