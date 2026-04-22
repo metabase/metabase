@@ -18,7 +18,7 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "glossary";
     case pathname.startsWith(Urls.dataStudioGitSync()):
       return "git-sync";
-    case pathname.startsWith(Urls.dataStudioWorkspaces()):
+    case pathname.startsWith(Urls.workspaceList()):
       return "workspaces";
     case pathname.startsWith(Urls.transformJobList()):
       return "jobs";

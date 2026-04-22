@@ -201,7 +201,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
             <DataStudioTab
               label={t`Workspaces`}
               icon="folder_database"
-              to={Urls.dataStudioWorkspaces()}
+              to={Urls.workspaceList()}
               isSelected={currentTab === "workspaces"}
               showLabel={isNavbarOpened}
             />
