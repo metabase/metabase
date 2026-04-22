@@ -43,13 +43,15 @@ export function SourceColorIndicator({
     );
   }
   return (
-    <Box
-      className={S.colorDot}
-      w={size}
-      h={size}
-      style={{
-        backgroundColor: color,
-      }}
-    />
+    <Flex align="center" data-testid="color-indicator-container">
+      <Box
+        className={S.colorDot}
+        w={size}
+        h={size}
+        style={{
+          backgroundColor: color,
+        }}
+      />
+    </Flex>
   );
 }

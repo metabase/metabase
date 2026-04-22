@@ -14040,6 +14040,13 @@
           "databases" : {
             "type" : "object",
             "properties" : {
+              "failed" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : { }
+                }
+              },
               "matched" : {
                 "type" : "integer"
               },
@@ -14854,22 +14861,32 @@
                 "properties" : {
                   "semantic_queries" : {
                     "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
+                      "anyOf" : [ {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      }, {
                         "type" : "string",
                         "minLength" : 1
-                      }
+                      } ]
                     }, {
                       "type" : "null"
                     } ]
                   },
                   "term_queries" : {
                     "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
+                      "anyOf" : [ {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      }, {
                         "type" : "string",
                         "minLength" : 1
-                      }
+                      } ]
                     }, {
                       "type" : "null"
                     } ]
@@ -21226,7 +21243,7 @@
       "post" : {
         "operationId" : "post-api-database-metadata",
         "summary" : "POST /api/database/metadata",
-        "description" : "Import database/table/field metadata previously exported from `GET /api/database/metadata`.\n\n  Entities are matched by natural key — databases by `(name, engine)`, tables by\n  `(database, schema, name)`, fields by `(table, parent-path, name)` — so the numeric ids\n  in the payload are only used to link fields to their tables within the request.\n\n  Tables and fields that don't exist on the target are created when their parent\n  (database for tables; table for fields) is present on the target. Databases are\n  not auto-created — missing databases are reported instead. Field `fk_target_field_id`\n  is re-resolved through the natural-key lookup after all fields exist.\n\n  For matched entities, only user-editable metadata is written: table `description`;\n  field `description`, `semantic_type`, `coercion_strategy`, `effective_type`, and\n  `fk_target_field_id`. For newly-created fields, `base_type` and `database_type` are\n  also populated from the payload. Keys absent from the payload (including null values)\n  are left untouched on matched entities.\n\n  Returns counts of matched + created entities per type plus a list of entities in the\n  payload that could not be placed (their parent was missing on the target).",
+        "description" : "Import database/table/field metadata previously exported from `GET /api/database/metadata`.\n\n  Entities are matched by natural key — databases by `(name, engine)`, tables by\n  `(database, schema, name)`, fields by `(table, parent-path, name)` — so the numeric ids\n  in the payload are only used to link fields to their tables within the request.\n\n  Tables and fields that don't exist on the target are created when their parent\n  (database for tables; table for fields) is present on the target. Databases are\n  not auto-created — missing databases are reported instead. Field `fk_target_field_id`\n  is re-resolved through the natural-key lookup after all fields exist.\n\n  For matched entities, only user-editable metadata is written: table `description`;\n  field `description`, `semantic_type`, `coercion_strategy`, `effective_type`, and\n  `fk_target_field_id`. For newly-created fields, `base_type` and `database_type` are\n  also populated from the payload. Keys absent from the payload (including null values)\n  are left untouched on matched entities.\n\n  Processing is isolated per target database: each matched DB imports in its own\n  transaction so a failure on one DB does not roll back the others. DBs whose\n  transaction failed appear under `databases.failed` in the response along with\n  the error message; every other DB's tables, fields, and same-DB `fk_target_field_id`\n  references still commit. Cross-database `fk_target_field_id` references are\n  resolved in a final pass after all per-DB transactions have committed.\n\n  Returns counts of matched + created entities per type, a list of entities in the\n  payload that could not be placed (their parent was missing on the target), and,\n  when any DB failed, a `databases.failed` list naming each failed DB.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -26116,6 +26133,13 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "is_locked" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "tokens" : {
                       "oneOf" : [ {
                         "type" : "integer"
@@ -26123,7 +26147,7 @@
                         "type" : "null"
                       } ]
                     },
-                    "updated-at" : {
+                    "updated_at" : {
                       "oneOf" : [ {
                         "type" : "string"
                       }, {
@@ -26131,7 +26155,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "tokens", "updated-at" ]
+                  "required" : [ "is_locked", "tokens", "updated_at" ]
                 }
               }
             }
