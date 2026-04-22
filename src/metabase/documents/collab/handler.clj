@@ -25,7 +25,11 @@
   (update ws-listener :on-open
           (fn [orig] (fn [sock] (orig sock) (f sock)))))
 
-(defn- initial-context ^HashMap [conn-id remote]
+(defn- make-context
+  "Build the `Map<String,Object>` context yhocuspocus surfaces to extension
+   hooks. Phase 4 will add `\"userId\"`; keep the keys co-located here so the
+   addition is a one-line change."
+  ^HashMap [conn-id remote]
   (doto (HashMap.)
     (.put "connectionId"  conn-id)
     (.put "remoteAddress" (or remote "unknown"))))
@@ -38,7 +42,7 @@
         listener (if server
                    (wrap-on-open ws-listener
                                  (fn on-server-ready [_sock]
-                                   (.handleConnection server transport (initial-context conn-id remote))))
+                                   (.handleConnection server transport (make-context conn-id remote))))
                    (wrap-on-open ws-listener
                                  (fn on-no-server [sock]
                                    (log/warn "collab: rejecting connection — server unavailable")

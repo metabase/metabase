@@ -108,6 +108,8 @@
   (queue/stop-listeners!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
+  ;; Stop Jetty first so per-WS-connection `:on-close` fires; then drain
+  ;; yhocuspocus (flushes any debounced saves before closing).
   (collab.server/stop!)
   (tracing/shutdown!)
   (analytics/shutdown!)

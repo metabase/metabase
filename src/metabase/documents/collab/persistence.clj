@@ -29,7 +29,11 @@
                     {:doc-name s}))
 
     (str/starts-with? s document-prefix)
-    {:type :document, :entity-id (subs s (count document-prefix))}
+    (let [entity-id (subs s (count document-prefix))]
+      (if (str/blank? entity-id)
+        (throw (ex-info "document name missing entity-id"
+                        {:doc-name s}))
+        {:type :document :entity-id entity-id}))
 
     :else
     (throw (ex-info "unsupported document name prefix"
@@ -38,13 +42,22 @@
 (defn- load-snapshot [entity-id]
   (t2/select-one-fn :ydoc :model/Document :entity_id entity-id))
 
-(defn- save-snapshot! [entity-id ^bytes state-bytes]
-  (t2/query-one {:update :document
-                 :set    {:ydoc       state-bytes
-                          :updated_at :%now}
-                 :where  [:= :entity_id entity-id]})
-  (when-let [doc (t2/select-one :model/Document :entity_id entity-id)]
-    (events/publish-event! :event/document-update {:object doc})))
+(defn- save-snapshot!
+  "UPDATE + SELECT wrapped in a transaction so the event payload is guaranteed
+   to reflect the post-update state (or absent if the row doesn't exist).
+
+   Don't use the UPDATE row-count to decide whether to emit the event — on
+   MySQL with default driver settings, an UPDATE that sets identical bytes
+   reports 0 affected rows. The SELECT inside the transaction is the
+   authoritative existence check."
+  [entity-id ^bytes state-bytes]
+  (t2/with-transaction [_conn]
+    (t2/query-one {:update :document
+                   :set    {:ydoc       state-bytes
+                            :updated_at :%now}
+                   :where  [:= :entity_id entity-id]})
+    (when-let [doc (t2/select-one :model/Document :entity_id entity-id)]
+      (events/publish-event! :event/document-update {:object doc}))))
 
 (defn create-persistence-extension
   "Build a `DatabaseExtension` proxy that yhocuspocus calls to load and save

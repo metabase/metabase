@@ -30,6 +30,12 @@
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unsupported document name prefix"
                         (collab.persistence/parse-doc-name "random-string"))))
 
+(deftest ^:parallel parse-doc-name-rejects-empty-entity-id-test
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"document name missing entity-id"
+                        (collab.persistence/parse-doc-name "document:")))
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"document name missing entity-id"
+                        (collab.persistence/parse-doc-name "document:   "))))
+
 (deftest extension-round-trips-bytes-test
   (testing "saveToDatabase followed by loadFromDatabase returns the exact bytes"
     (mt/with-temp [:model/Document {entity-id :entity_id}
