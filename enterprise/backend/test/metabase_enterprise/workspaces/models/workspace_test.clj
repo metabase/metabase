@@ -148,6 +148,66 @@
                        :databases [(ws-db-attrs {:status :initialized})]})]
         (is (= :initialized (:status (first (:databases updated)))))))))
 
+(deftest update-preserves-initialized-rows-test
+  (testing "update-workspace! leaves :initialized rows untouched when the PUT keeps their database_id + input_schemas"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
+                   :model/WorkspaceDatabase {init-id :id}
+                   {:workspace_id     ws-id
+                    :database_id      (mt/id)
+                    :database_details {:user "keep-me" :password "keep-pw"}
+                    :output_schema    "keep_schema"
+                    :input_schemas    ["public"]
+                    :status           :initialized}]
+      (let [updated (workspace/update-workspace!
+                     ws-id
+                     {:name      "Renamed"
+                      :databases [{:database_id (mt/id) :input_schemas ["public"]}]})
+            row     (t2/select-one :model/WorkspaceDatabase :id init-id)]
+        (testing "name update takes effect"
+          (is (= "Renamed" (:name updated))))
+        (testing "the initialized row was not deleted + reinserted (its id is the same)"
+          (is (some? row))
+          (is (= :initialized (:status row))))
+        (testing "credentials and output_schema are preserved verbatim"
+          (is (= {:user "keep-me" :password "keep-pw"} (:database_details row)))
+          (is (= "keep_schema" (:output_schema row))))))))
+
+(deftest update-rejects-dropping-initialized-test
+  (testing "update-workspace! refuses to drop an :initialized row"
+    (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}
+                   :model/Workspace {ws-id :id} {:name "WS"}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      (mt/id)
+                    :database_details {:user "u"}
+                    :output_schema    "sch"
+                    :input_schemas    ["public"]
+                    :status           :initialized}]
+      (is (thrown-with-msg?
+           Exception
+           #"initialized"
+           (workspace/update-workspace!
+            ws-id
+            {:name "WS" :databases [{:database_id db2-id :input_schemas ["public"]}]}))))))
+
+(deftest update-rejects-changing-initialized-input-schemas-test
+  (testing "update-workspace! refuses to change :input_schemas of an :initialized row"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      (mt/id)
+                    :database_details {:user "u"}
+                    :output_schema    "sch"
+                    :input_schemas    ["public"]
+                    :status           :initialized}]
+      (is (thrown-with-msg?
+           Exception
+           #"initialized"
+           (workspace/update-workspace!
+            ws-id
+            {:name      "WS"
+             :databases [{:database_id (mt/id) :input_schemas ["analytics"]}]}))))))
+
 (deftest cascade-delete-database-test
   (testing "Deleting an underlying Database cascades to workspace_database rows"
     (mt/with-model-cleanup [:model/Workspace]

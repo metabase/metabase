@@ -91,6 +91,26 @@
   {:workspace_id id
    :triggered    (provisioning/initialize-workspace! id)})
 
+(api.macros/defendpoint :post "/:id/deprovision"
+  :- [:map [:workspace_id ms/PositiveInt] [:triggered ms/IntGreaterThanOrEqualToZero]]
+  "Kick off asynchronous deprovisioning for every initialized WorkspaceDatabase under
+  this Workspace. Returns immediately with the number of rows that were scheduled."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (workspace/get-workspace id))
+  {:workspace_id id
+   :triggered    (provisioning/deprovision-workspace! id)})
+
+(api.macros/defendpoint :delete "/:id"
+  :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
+  "Delete a Workspace. Returns 409 if any of its databases is still :initialized —
+  deprovision first."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (workspace/get-workspace id))
+  (workspace/delete-workspace! id)
+  {:id id :deleted true})
+
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace` routes"
   (api.macros/ns-handler *ns* +auth))

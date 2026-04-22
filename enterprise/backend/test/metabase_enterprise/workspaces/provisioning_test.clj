@@ -129,3 +129,83 @@
                         nil)]
           (provisioning/initialize-workspace-databases! ws-id)
           (is (= #{wsd-a wsd-b} (set @attempted))))))))
+
+(deftest deprovision-happy-path-test
+  (testing "deprovision-workspace-database! calls destroy-workspace-isolation! and resets the row"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
+                   :model/WorkspaceDatabase {wsd-id :id}
+                   {:workspace_id     ws-id
+                    :database_id      (mt/id)
+                    :database_details {:user "wsd_u" :password "wsd_p"}
+                    :output_schema    "mb_isolation_xyz"
+                    :input_schemas    ["public"]
+                    :status           :initialized}]
+      (let [destroy-calls (atom [])]
+        (with-redefs [driver/destroy-workspace-isolation! (record-call destroy-calls)]
+          (let [returned (provisioning/deprovision-workspace-database! wsd-id)
+                row     (t2/select-one :model/WorkspaceDatabase :id wsd-id)]
+            (testing "destroy was invoked once with the reconstructed workspace-with-details"
+              (is (= 1 (count @destroy-calls)))
+              (let [[_driver _db ws] (first @destroy-calls)]
+                (is (= "mb_isolation_xyz" (:schema ws)))
+                (is (= {:user "wsd_u" :password "wsd_p"} (:database_details ws)))))
+            (testing "row was reset to :uninitialized with empty credentials + schema"
+              (is (= :uninitialized (:status row)))
+              (is (= "" (:output_schema row)))
+              (is (= {} (:database_details row))))
+            (testing "returned row mirrors the updated state"
+              (is (= :uninitialized (:status returned)))
+              (is (= "" (:output_schema returned)))
+              (is (= {} (:database_details returned))))))))))
+
+(deftest deprovision-refuses-if-uninitialized-test
+  (testing "deprovision-workspace-database! throws on a row that is not :initialized, and doesn't invoke the driver"
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
+                   :model/WorkspaceDatabase {wsd-id :id}
+                   {:workspace_id ws-id :database_id (mt/id)
+                    :database_details {} :output_schema "" :input_schemas ["public"]
+                    :status :uninitialized}]
+      (let [destroy-calls (atom [])]
+        (with-redefs [driver/destroy-workspace-isolation! (record-call destroy-calls)]
+          (is (thrown? Exception (provisioning/deprovision-workspace-database! wsd-id)))
+          (is (empty? @destroy-calls)))))))
+
+(deftest deprovision-workspace-databases-skips-uninitialized-test
+  (testing "deprovision-workspace-databases! calls the per-row fn only for :initialized rows"
+    (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}
+                   :model/Workspace {ws-id :id} {:name "WS"}
+                   :model/WorkspaceDatabase {init-id :id}
+                   {:workspace_id ws-id :database_id (mt/id)
+                    :database_details {:user "x"} :output_schema "done" :input_schemas ["a"]
+                    :status :initialized}
+                   :model/WorkspaceDatabase {uninit-id :id}
+                   {:workspace_id ws-id :database_id db2-id
+                    :database_details {} :output_schema "" :input_schemas ["b"]
+                    :status :uninitialized}]
+      (let [calls (atom [])]
+        (with-redefs [provisioning/deprovision-workspace-database!
+                      (fn [id] (swap! calls conj id) nil)]
+          (provisioning/deprovision-workspace-databases! ws-id)
+          (is (= [init-id] @calls))
+          (is (not (some #{uninit-id} @calls))))))))
+
+(deftest deprovision-workspace-databases-isolates-failures-test
+  (testing "A failing deprovision does not block subsequent rows"
+    (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}
+                   :model/Workspace {ws-id :id} {:name "WS"}
+                   :model/WorkspaceDatabase {wsd-a :id}
+                   {:workspace_id ws-id :database_id (mt/id)
+                    :database_details {:user "a"} :output_schema "sa" :input_schemas ["a"]
+                    :status :initialized}
+                   :model/WorkspaceDatabase {wsd-b :id}
+                   {:workspace_id ws-id :database_id db2-id
+                    :database_details {:user "b"} :output_schema "sb" :input_schemas ["b"]
+                    :status :initialized}]
+      (let [attempted (atom [])]
+        (with-redefs [provisioning/deprovision-workspace-database!
+                      (fn [id]
+                        (swap! attempted conj id)
+                        (when (= id wsd-a) (throw (ex-info "boom" {:id id})))
+                        nil)]
+          (provisioning/deprovision-workspace-databases! ws-id)
+          (is (= #{wsd-a wsd-b} (set @attempted))))))))
