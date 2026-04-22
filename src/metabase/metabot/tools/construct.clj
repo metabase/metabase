@@ -2,6 +2,9 @@
   "Notebook query construction tool wrappers."
   (:require
    [metabase.agent-lib.core :as agent-lib]
+   [metabase.agent-lib.representations :as repr]
+   [metabase.agent-lib.representations.repair :as repr.repair]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -28,8 +31,11 @@
    [:id :int]])
 
 (def construct-program-schema
-  "Schema for the program parameter of construct_notebook_query.
-  Intentionally loose — agent-lib validates and repairs internally."
+  "Schema for the program parameter of construct_notebook_query (legacy sexp-in-array format).
+  Intentionally loose — agent-lib validates and repairs internally.
+
+  Still consumed by `slackbot-construct-notebook-query-tool` during the migration; will be
+  removed in Phase 3 once slackbot is moved to representations."
   [:map
    [:source [:map
              [:type :string]
@@ -42,17 +48,24 @@
    [:chart_type :string]])
 
 (def ^:private construct-notebook-query-args-schema
+  "Args schema for `construct_notebook_query` in representations mode.
+
+  The `query` parameter is a **YAML string** in the canonical MBQL 5 representations format
+  (see `resources/metabot/prompts/tools/construct_notebook_query.md`). We keep it at the plain
+  `:string` type rather than parsing the shape here — parsing and structural validation happen
+  inside `execute-representations-query`. Keeping the schema flat (just `:string`) also
+  sidesteps the MCP `flatten-root-schema` pitfalls hit by more elaborate `:and`/`:fn` wrappers."
   [:map {:closed true}
    [:reasoning {:optional true} :string]
    [:source_entity source-entity-schema]
    [:referenced_entities {:optional true} [:maybe [:sequential source-entity-schema]]]
-   [:program construct-program-schema]
+   [:query :string]
    [:visualization {:optional true} construct-visualization-schema]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
-(defn- resolve-source-database-id
-  "Resolve the database ID for a source_entity."
+(defn resolve-source-database-id
+  "Resolve the database ID for a source_entity. Public only so tests can stub it."
   [{:keys [type id]}]
   (case type
     "table"                (:db_id (tools.u/get-table id :db_id))
@@ -147,14 +160,50 @@
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
 (defn execute-program
-  "Execute a structured program via agent-lib.
-  Returns the raw result map with :structured-output.
-  Shared between construct-notebook-query-tool and slackbot-construct-notebook-query-tool."
+  "Execute a legacy sexp-in-array structured program via agent-lib.
+
+  Still used by `slackbot-construct-notebook-query-tool` during the migration.
+  `construct-notebook-query-tool` now uses [[execute-representations-query]] instead."
   [source-entity referenced-entities program]
   (let [database-id (resolve-source-database-id source-entity)
         mp          (lib-be/application-database-metadata-provider database-id)
         context     (build-evaluation-context source-entity referenced-entities mp)
         pmbql-query (agent-lib/evaluate-program program mp context)
+        query-id    (u/generate-nano-id)]
+    {:structured-output {:query-id       query-id
+                         :query          pmbql-query
+                         :result-columns (result-columns-for-query pmbql-query mp)}
+     :instructions      (instructions/query-created-instructions-for query-id)}))
+
+(defn execute-representations-query
+  "Execute a notebook query in the canonical MBQL 5 YAML representations format.
+
+  Pipeline:
+    1. Resolve the source entity's database-id and build an application-DB-backed
+       `MetadataProvider`.
+    2. Parse the YAML string, run the repair pass (fill in `{}` options, missing `lib/type`
+       markers), structurally validate against the repr schema.
+    3. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
+       metadata-provider.
+
+  Returns the same shape as [[execute-program]]: a map with `:structured-output` and
+  `:instructions` keys. Throws with an `:agent-error?` ex-data flag when the LLM input is
+  invalid, so the outer tool wrapper can surface a helpful message to the LLM without a stack
+  trace."
+  [source-entity _referenced-entities yaml-string]
+  (let [database-id (resolve-source-database-id source-entity)
+        mp          (lib-be/application-database-metadata-provider database-id)
+        pmbql-query (try
+                      (->> yaml-string
+                           repr/parse-yaml
+                           repr.repair/repair
+                           repr/validate-query
+                           (repr.resolve/resolve-query mp))
+                      (catch clojure.lang.ExceptionInfo e
+                        (let [d (ex-data e)]
+                          (throw (ex-info (ex-message e)
+                                          (assoc d :agent-error? true)
+                                          e)))))
         query-id    (u/generate-nano-id)]
     {:structured-output {:query-id       query-id
                          :query          pmbql-query
@@ -197,15 +246,16 @@
 (mu/defn ^{:tool-name "construct_notebook_query"
            :scope     scope/agent-notebook-create}
   construct-notebook-query-tool
-  "Construct and visualize a notebook query from a metric, model, or table."
-  [{:keys [_reasoning source_entity referenced_entities program visualization]} :- construct-notebook-query-args-schema]
+  "Construct and visualize a notebook query from a metric, model, or table.
+
+  Accepts an MBQL 5 query in the canonical representations YAML format. See
+  `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
+  [{:keys [_reasoning source_entity referenced_entities query visualization]} :- construct-notebook-query-args-schema]
   (try
-    (let [;; LLM sometimes nests visualization inside program — pull it out
-          effective-viz            (or visualization (:visualization program))
-          normalized-visualization (some-> effective-viz (update-keys (comp keyword u/->kebab-case-en name)))
+    (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
                                       :table)
-          query-result            (execute-program source_entity referenced_entities (dissoc program :visualization))
+          query-result            (execute-representations-query source_entity referenced_entities query)
           structured              (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [chart-result (create-chart-tools/create-chart
