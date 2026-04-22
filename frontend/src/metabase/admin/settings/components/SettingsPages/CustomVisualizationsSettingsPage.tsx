@@ -6,9 +6,9 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 
 export function CustomVisualizationsManagePage() {
-  const hasCustomViz = useHasTokenFeature("custom-viz");
+  const customVizIsAvailable = useHasTokenFeature("custom-viz-available");
 
-  if (!hasCustomViz) {
+  if (!customVizIsAvailable) {
     return (
       <SettingsPageWrapper title={t`Custom visualizations`}>
         <UpsellCustomViz location="settings-custom-viz" />
@@ -24,9 +24,9 @@ export function CustomVisualizationsFormPage({
 }: {
   params?: { id?: string };
 }) {
-  const hasCustomViz = useHasTokenFeature("custom-viz");
+  const hasCustomVizAvailable = useHasTokenFeature("custom-viz-available");
 
-  if (!hasCustomViz) {
+  if (!hasCustomVizAvailable) {
     return (
       <SettingsPageWrapper title={t`Custom visualizations`}>
         <UpsellCustomViz location="settings-custom-viz" />
@@ -38,9 +38,9 @@ export function CustomVisualizationsFormPage({
 }
 
 export function CustomVisualizationsDevelopmentPage() {
-  const hasCustomViz = useHasTokenFeature("custom-viz");
+  const hasCustomVizAvailable = useHasTokenFeature("custom-viz-available");
 
-  if (!hasCustomViz) {
+  if (!hasCustomVizAvailable) {
     return (
       <SettingsPageWrapper title={t`Custom visualizations`}>
         <UpsellCustomViz location="settings-custom-viz" />

@@ -7,12 +7,12 @@ import { Flex } from "metabase/ui";
 import { SettingsNavItem } from "./SettingsNavItem";
 
 export const CustomVisualizationsNav = () => {
-  const hasCustomViz = useHasTokenFeature("custom-viz");
+  const hasCustomVizAvailable = useHasTokenFeature("custom-viz-available");
   const customVizDevModeEnabled = useSetting(
     "custom-viz-plugin-dev-mode-enabled",
   );
 
-  const isFull = hasCustomViz && customVizDevModeEnabled;
+  const isFull = hasCustomVizAvailable && customVizDevModeEnabled;
 
   return (
     <SettingsNavItem
@@ -21,7 +21,7 @@ export const CustomVisualizationsNav = () => {
       label={
         <Flex gap="sm" align="center">
           <span>{t`Custom visualizations`}</span>
-          {!hasCustomViz && <UpsellGem />}
+          {!hasCustomVizAvailable && <UpsellGem />}
         </Flex>
       }
       icon="bar"
