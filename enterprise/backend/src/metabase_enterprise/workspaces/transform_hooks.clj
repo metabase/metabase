@@ -20,10 +20,11 @@
   :feature :workspaces
   :fallback :oss
   [db-id from-schema from-table]
-  (when-let [to-schema (ws/db-workspace-schema db-id)]
-    (let [[to-schema* to-table]
-          (or (ws.remap/remap-table db-id from-schema from-table)
-              (let [to-table (tb.query/remapped-table-name from-schema from-table)]
-                (ws.remap/record-remapping! db-id from-schema from-table to-table)
-                [to-schema to-table]))]
-      {:schema to-schema* :name to-table})))
+  (let [to-schema (ws/db-workspace-schema db-id)]
+    (when to-schema
+      (let [existing              (ws.remap/remap-table db-id from-schema from-table)
+            [to-schema* to-table] (or existing
+                                      (let [to-table (tb.query/remapped-table-name from-schema from-table)]
+                                        (ws.remap/record-remapping! db-id from-schema from-table to-table)
+                                        [to-schema to-table]))]
+        {:schema to-schema* :name to-table}))))

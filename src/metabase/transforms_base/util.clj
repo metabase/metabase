@@ -378,6 +378,14 @@
                              (t2/hydrate :db)))
                      table)
                    table)
+           ;; Activate before sync's fingerprint queries run. Those go through the QP,
+           ;; which rejects references to inactive tables in
+           ;; metabase.query-processor.middleware.permissions/check-query-does-not-access-inactive-tables.
+           ;; Gated on `create?` so `deactivate-table!` doesn't re-activate rows it is tearing down.
+           table (if (and create? (not (:active table)))
+                   (do (t2/update! :model/Table (:id table) {:active true})
+                       (assoc table :active true))
+                   table)
            ;; Under workspace remapping, the physical warehouse table lives at a different
            ;; (schema, name) than the persisted row. We override those on the in-memory
            ;; table instance so sync's describe-* calls hit the right warehouse location;
@@ -392,15 +400,12 @@
   "Activate table for `target` in `database` in the app db."
   ([database target] (activate-table-and-mark-computed! database target nil))
   ([database target physical-target]
-   (when-let [table (sync-table! database (assoc target
-                                                 :data_authority :computed
-                                                 :data_source :metabase-transform
-                                                 :is_writable false)
-                                 {:create? true
-                                  :physical-target physical-target})]
-     (when-not (:active table)
-       (t2/update! :model/Table (:id table) {:active true}))
-     table)))
+   (sync-table! database (assoc target
+                                :data_authority :computed
+                                :data_source :metabase-transform
+                                :is_writable false)
+                {:create? true
+                 :physical-target physical-target})))
 
 (defn sync-target!
   "Sync target of a transform. `physical-target`, when non-nil, overrides the warehouse
