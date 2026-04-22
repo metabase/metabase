@@ -3,7 +3,17 @@ import { t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { Link } from "metabase/common/components/Link";
-import { Box, Button, Flex, Group, Icon, Loader, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Loader,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import {
   useDeleteCustomVizPluginMutation,
@@ -34,20 +44,26 @@ export function ManageCustomVizPage() {
   );
 
   return (
-    <SettingsPageWrapper
-      title={t`Manage custom visualizations`}
-      description={t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
-    >
-      <Flex justify="flex-end">
-        <Button
-          component={Link}
-          to={Urls.customVizAdd()}
-          leftSection={<Icon name="add" />}
-          variant="filled"
-        >
-          {t`Add`}
-        </Button>
-      </Flex>
+    <SettingsPageWrapper>
+      <Stack gap="0">
+        <Flex justify="space-between">
+          <Title order={1} style={{ height: "2.5rem" }}>
+            {t`Custom visualizations`}
+          </Title>
+          <Button
+            component={Link}
+            to={Urls.customVizAdd()}
+            leftSection={<Icon name="add" />}
+            variant="filled"
+          >
+            {t`Add`}
+          </Button>
+        </Flex>
+
+        <Text c="text-secondary" maw="40rem">
+          {t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
+        </Text>
+      </Stack>
 
       {isLoading && (
         <Flex justify="center" p="xl">

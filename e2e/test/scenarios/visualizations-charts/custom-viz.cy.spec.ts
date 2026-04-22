@@ -64,7 +64,7 @@ describe("admin > custom visualizations", () => {
         H.visitCustomVizSettings();
 
         H.main()
-          .findByText("Manage custom visualizations")
+          .findByRole("heading", { name: "Custom visualizations" })
           .should("be.visible");
         H.getAddVisualizationLink().should("be.visible");
       });
@@ -114,14 +114,31 @@ describe("admin > custom visualizations", () => {
 
       H.getAddVisualizationLink().click();
 
-      cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
-      cy.log(
-        "It should not be possible to add the plugin until the user understands the risks",
+      cy.log("Submit is disabled until the form is dirty");
+      cy.findByRole("button", { name: "Add visualization" }).should(
+        "be.disabled",
       );
-      cy.findByRole("button", { name: /Save/ }).should("be.disabled");
-      cy.findByLabelText(/I understand/).click();
+
+      cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
+      cy.findByRole("button", { name: "Add visualization" }).should(
+        "be.enabled",
+      );
+
+      cy.log("Clicking submit opens the confirmation modal");
+      cy.findByRole("button", { name: "Add visualization" }).click();
+
       H.interceptPluginCreate();
-      cy.findByRole("button", { name: /Save/ }).click();
+      H.modal().within(() => {
+        cy.findByRole("heading", { name: "Add this visualization?" }).should(
+          "be.visible",
+        );
+        // Body text has a <strong> inside so findByText's default leaf
+        // matcher misses it — cy.contains matches across children.
+        cy.contains(
+          /Be aware that custom visualizations.*can execute arbitrary code.*should only be added from trusted sources/,
+        ).should("be.visible");
+        cy.findByRole("button", { name: "Add this visualization" }).click();
+      });
       cy.wait("@pluginCreate");
 
       // Should redirect to list and show the plugin
@@ -161,20 +178,27 @@ describe("admin > custom visualizations", () => {
       H.visitCustomVizNewForm();
 
       cy.findByLabelText(/Repository URL/).type(invalidRepoUrl);
-      cy.findByLabelText(/I understand/).click();
 
       cy.intercept("POST", "/api/ee/custom-viz-plugin").as(
         "pluginCreateInvalid",
       );
-      cy.findByRole("button", { name: /Save/ }).click();
+      cy.findByRole("button", { name: "Add visualization" }).click();
+      H.modal()
+        .findByRole("button", { name: "Add this visualization" })
+        .click();
 
       cy.wait("@pluginCreateInvalid")
         .its("response.statusCode")
         .should("eq", 400);
 
-      cy.findByTestId("custom-viz-settings-form").within(() => {
-        cy.findByText(/Failed to clone git repository/).should("be.visible");
-      });
+      cy.log("Error is surfaced inside the confirmation modal");
+      H.modal()
+        .findByText(/Failed to clone git repository/)
+        .should("be.visible");
+
+      H.modal()
+        .findByRole("button", { name: /Cancel/ })
+        .click();
 
       cy.location("pathname").should(
         "eq",
@@ -225,15 +249,141 @@ describe("admin > custom visualizations", () => {
       H.getAddVisualizationLink().click();
 
       cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
-      cy.findByLabelText(/Repository access token/).type("test-token-123");
-      cy.findByLabelText(/I understand/).click();
+
+      cy.log(
+        "Access token field is hidden until the private repo checkbox is checked",
+      );
+      cy.findByLabelText(/Repository personal access token/).should(
+        "not.exist",
+      );
+      cy.findByLabelText(/This is a private repository/).click();
+      cy.findByLabelText(/Repository personal access token/).type(
+        "test-token-123",
+      );
 
       cy.intercept("POST", "/api/ee/custom-viz-plugin", (req) => {
         expect(req.body.access_token).to.equal("test-token-123");
       }).as("pluginCreateWithToken");
 
-      cy.findByRole("button", { name: /Save/ }).click();
+      cy.findByRole("button", { name: "Add visualization" }).click();
+      H.modal()
+        .findByRole("button", { name: "Add this visualization" })
+        .click();
       cy.wait("@pluginCreateWithToken");
+    });
+
+    it("should gate access-token and pinned-version fields behind their toggles and require them when enabled", () => {
+      H.setupCustomVizRepo();
+      H.visitCustomVizNewForm();
+
+      cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
+
+      cy.log("Access-token field is hidden until the private-repo box is on");
+      cy.findByLabelText(/Repository personal access token/).should(
+        "not.exist",
+      );
+      cy.findByLabelText(/This is a private repository/).click();
+      cy.findByLabelText(/Repository personal access token/).should(
+        "be.visible",
+      );
+      cy.findByLabelText(/This is a private repository/).click();
+      cy.findByLabelText(/Repository personal access token/).should(
+        "not.exist",
+      );
+
+      cy.log(
+        "Pinned-version field is hidden until the pin-version switch is on",
+      );
+      cy.findByLabelText(/Pinned version/).should("not.exist");
+      cy.findByLabelText(/Pin to a specific version/).click({ force: true });
+      cy.findByLabelText(/Pinned version/).should("be.visible");
+      cy.findByLabelText(/Pin to a specific version/).click({ force: true });
+      cy.findByLabelText(/Pinned version/).should("not.exist");
+
+      cy.log(
+        "With both toggles enabled, empty access-token and pinned-version are required",
+      );
+      cy.findByLabelText(/This is a private repository/).click();
+      cy.findByLabelText(/Pin to a specific version/).click({ force: true });
+      // Both inputs auto-focus on mount; the last one (pinnedVersion) keeps
+      // focus. Formik only renders field errors once `touched` flips on blur,
+      // so we have to blur before asserting — otherwise no "required" text.
+      cy.focused().blur();
+
+      cy.findByRole("button", { name: "Add visualization" }).should(
+        "be.disabled",
+      );
+      cy.findByTestId("custom-viz-settings-form").within(() => {
+        cy.findAllByText(/required/i).should("have.length.at.least", 2);
+      });
+    });
+
+    it("should show a confirmation modal before adding a plugin and skip it after 'Don't warn me about this again' is selected", () => {
+      H.setupCustomVizRepo();
+      H.setupCustomVizRepo2();
+
+      H.visitCustomVizNewForm();
+      cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL);
+      cy.findByRole("button", { name: "Add visualization" }).click();
+
+      cy.log("Modal shows the warning, ack checkbox, and both buttons");
+      H.modal().within(() => {
+        cy.findByRole("heading", { name: "Add this visualization?" }).should(
+          "be.visible",
+        );
+        cy.contains(
+          /Be aware that custom visualizations.*can execute arbitrary code.*should only be added from trusted sources/,
+        ).should("be.visible");
+        cy.findByLabelText(/Don't warn me about this again/).should(
+          "be.visible",
+        );
+        cy.findByRole("button", { name: /Cancel/ }).should("be.visible");
+        cy.findByRole("button", {
+          name: "Add this visualization",
+        }).should("be.visible");
+      });
+
+      cy.log(
+        "Cancel closes the modal without submitting and keeps the URL in the form",
+      );
+      H.modal()
+        .findByRole("button", { name: /Cancel/ })
+        .click();
+      cy.findByRole("dialog").should("not.exist");
+      cy.findByLabelText(/Repository URL/).should(
+        "have.value",
+        H.CUSTOM_VIZ_REPO_URL,
+      );
+
+      cy.log("Re-open the modal, check 'Don't warn me again', and confirm");
+      cy.findByRole("button", { name: "Add visualization" }).click();
+
+      cy.intercept(
+        "PUT",
+        "/api/user-key-value/namespace/user_acknowledgement/key/*",
+      ).as("ackWarning");
+      H.interceptPluginCreate();
+
+      H.modal().within(() => {
+        cy.findByLabelText(/Don't warn me about this again/).click();
+        cy.findByRole("button", { name: "Add this visualization" }).click();
+      });
+      cy.wait("@ackWarning");
+      cy.wait("@pluginCreate");
+
+      H.main().findByText("demo-viz").should("be.visible");
+
+      cy.log("Next add: modal should be skipped and the POST fires directly");
+      H.getAddVisualizationLink().click();
+      cy.findByLabelText(/Repository URL/).type(H.CUSTOM_VIZ_REPO_URL_2);
+      cy.findByRole("button", { name: "Add visualization" }).click();
+
+      // If the modal had opened, no POST would fire until the user clicks
+      // "Add this visualization" inside it — waiting on the intercept without
+      // any further interaction asserts the modal was skipped.
+      cy.wait("@pluginCreate");
+      cy.findByRole("dialog").should("not.exist");
+      H.main().findByText("demo-viz-2").should("be.visible");
     });
 
     describe("updating a plugin", () => {
@@ -298,30 +448,49 @@ describe("admin > custom visualizations", () => {
         H.setupCustomVizPlugin().then((plugin: CustomVizPlugin) => {
           H.visitCustomVizEditForm(plugin.id);
 
-          cy.findByLabelText(/Pinned version/)
-            .clear()
-            .type("main");
+          // Wait for the plugin data to populate the form before interacting
+          // — enableReinitialize would reset any user input if the plugin
+          // query resolves after a click.
+          cy.findByLabelText(/Repository URL/).should(
+            "have.value",
+            plugin.repo_url,
+          );
+
+          cy.log("Pinned version field is hidden until the switch is enabled");
+          cy.findByLabelText(/Pinned version/).should("not.exist");
+          cy.findByLabelText(/Pin to a specific version/)
+            .check({ force: true })
+            .should("be.checked");
+          // Mantine's TextInput with only `aria-label` (no visible label) is
+          // not consistently picked up by testing-library's findByLabelText
+          // across modes, so match the unique placeholder instead.
+          cy.findByPlaceholderText("main").type("main");
 
           cy.intercept("PUT", `/api/ee/custom-viz-plugin/${plugin.id}`).as(
             "pluginUpdate",
           );
           cy.findByRole("button", { name: /Save/ }).click();
 
-          cy.wait("@pluginUpdate").then(({ request }) => {
+          cy.wait("@pluginUpdate").then(({ request, response }) => {
             expect(request.body.pinned_version).to.equal("main");
+            expect(response?.statusCode).to.eq(200);
           });
           H.expectUnstructuredSnowplowEvent({
             event: "custom_viz_plugin_updated",
             result: "success",
           });
 
+          cy.log("Re-visit and submit an invalid ref — should show form error");
           const invalidPinnedVersion = "definitely-not-a-real-ref-zzz";
-
           H.visitCustomVizEditForm(plugin.id);
-
-          cy.findByLabelText(/Pinned version/)
-            .clear()
-            .type(invalidPinnedVersion);
+          cy.findByLabelText(/Repository URL/).should(
+            "have.value",
+            plugin.repo_url,
+          );
+          cy.findByLabelText(/Pin to a specific version/).check({
+            force: true,
+          });
+          cy.findByPlaceholderText("main").clear().type(invalidPinnedVersion);
 
           cy.intercept("PUT", `/api/ee/custom-viz-plugin/${plugin.id}`).as(
             "pluginUpdateInvalid",
@@ -343,7 +512,7 @@ describe("admin > custom visualizations", () => {
             `/admin/settings/custom-visualizations/edit/${plugin.id}`,
           );
 
-          cy.findByLabelText(/Pinned version/).should(
+          cy.findByPlaceholderText("main").should(
             "have.value",
             invalidPinnedVersion,
           );
