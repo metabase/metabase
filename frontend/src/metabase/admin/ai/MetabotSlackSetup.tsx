@@ -167,7 +167,6 @@ export function MetabotSlackSetup() {
     setShouldPollAppInfo(notification === "scopes");
   }, [notification]);
 
-  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- admin only page
   const { url: encryptionDocsUrl } = useDocsUrl(
     "operations-guide/encrypting-database-details-at-rest",
   );

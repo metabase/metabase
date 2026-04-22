@@ -58,7 +58,6 @@ type MetabotModelOption = ComboboxItem & {
 
 function getModelDescription(provider: MetabotProvider | undefined) {
   if (provider === "metabase") {
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- Metabase AI service
     return t`Available models are provided by Metabase.`;
   }
 

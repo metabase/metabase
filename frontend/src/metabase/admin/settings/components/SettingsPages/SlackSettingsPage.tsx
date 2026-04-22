@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import { MetabotSlackSetup } from "metabase/admin/ai/MetabotSlackSetup";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { MetabotSlackSetup } from "metabase/metabot/components/MetabotAdmin/MetabotSlackSetup";
 import { Icon } from "metabase/ui";
 
 import { SlackSetup } from "../../slack/SlackSetup";

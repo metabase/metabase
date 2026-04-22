@@ -3,10 +3,10 @@ import { useState } from "react";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
+import { AdminContentTable } from "metabase/admin/components/AdminContentTable";
+import { AdminPaneLayout } from "metabase/admin/components/AdminPaneLayout";
 import { useListApiKeysQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { AdminContentTable } from "metabase/common/components/AdminContentTable";
-import { AdminPaneLayout } from "metabase/common/components/AdminPaneLayout";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";

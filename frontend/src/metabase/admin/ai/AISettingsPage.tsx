@@ -72,7 +72,6 @@ export function AISettingsPage() {
   } = useAdminSetting("agent-api-enabled?");
   const isAgentApiEnabled = agentApiEnabledValue !== false;
 
-  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
   const { url: agentApiDocsUrl } = useDocsUrl("ai/agent-api");
 
   const selectedTab = getSelectedMetabotTab(params.metabotId, pathname, {
