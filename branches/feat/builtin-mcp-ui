@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "master",
-    "hash": "cc30d8331cb508b468c38bd0e5f0fc6fb8e3e1ba"
+    "hash": "12d2583cfa8cb2af519508aec9df23e959dc1c55"
   },
   "upstream": {
     "branch": "feat/builtin-mcp-ui"
