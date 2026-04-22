@@ -57,9 +57,9 @@
   [email]
   [:exists
    {:select [[1]]
-    :from   [[:notification_handler :nh]]
-    :join   [[:notification_recipient :nr] [:= :nr.notification_handler_id :nh.id]
-             [:core_user :cu]              [:= :cu.id :nr.user_id]]
+    :from   [[(t2/table-name :model/NotificationHandler) :nh]]
+    :join   [[(t2/table-name :model/NotificationRecipient) :nr] [:= :nr.notification_handler_id :nh.id]
+             [:core_user :cu]                                   [:= :cu.id :nr.user_id]]
     :where  [:and
              [:= :nh.notification_id :notification.id]
              [:= :cu.email email]]}])
