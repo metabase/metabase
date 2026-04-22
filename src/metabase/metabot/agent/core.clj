@@ -230,8 +230,10 @@
         system-msg   (messages/build-system-message context profile tools)
         input-parts  (-> (messages/build-message-history context memory)
                          (invert-links @link-registry-atom))
+        ;; Only enforce tool-choice "required" on the first iteration
         llm-opts     (cond-> {}
-                       (:required-tool-call? profile) (assoc :tool-choice "required"))]
+                       (and (:required-tool-call? profile) (zero? iteration))
+                       (assoc :tool-choice "required"))]
     (when *debug-log*
       (debug-log! {:iteration iteration
                    :phase     :request
