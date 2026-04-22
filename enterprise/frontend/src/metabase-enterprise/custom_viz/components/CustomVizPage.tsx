@@ -73,7 +73,7 @@ const validationSchema: Yup.SchemaOf<FormState> = Yup.object({
     .required(Errors.required)
     .test(
       "valid-repo-url",
-      () => t`Enter a valid URL (http://, https://, git://, or file://).`,
+      () => t`Enter a valid URL (http://, https://, or git://).`,
       (value) => {
         const protocol = value ? getUrlProtocol(value) : undefined;
         return (
