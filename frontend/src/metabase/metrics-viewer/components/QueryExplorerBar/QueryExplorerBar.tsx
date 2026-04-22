@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import type { IconName } from "metabase/ui";
 import { Divider, Flex } from "metabase/ui";
 
+import type { MetricsViewerDisplayType } from "../../types/viewer-state";
+import type { ChartTypeOption } from "../../utils/tab-config";
 import { ChartLayoutPicker } from "../MetricControls/ChartLayoutPicker";
 import { ChartTypePicker } from "../MetricControls/ChartTypePicker";
 
@@ -63,8 +65,8 @@ export function QueryExplorerBar({
       data-testid="query-explorer-bar"
     >
       <ChartTypePicker
-        chartTypes={chartTypes}
-        value={currentChartType}
+        chartTypes={chartTypes as ChartTypeOption[]}
+        value={currentChartType as MetricsViewerDisplayType}
         onChange={onChartTypeChange}
       />
 
