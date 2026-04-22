@@ -178,7 +178,6 @@ function useInitialEditorHeight(
   }
 
   if (!showResizeHandle) {
-    // No preview panel (e.g. workspace) – height is not used; container uses 100%
     return availableHeight;
   }
 

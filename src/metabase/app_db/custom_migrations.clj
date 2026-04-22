@@ -2174,13 +2174,7 @@
                   (upsert-table! db-id schema table-name)))))
           (t2/reducible-query {:select [:target :target_db_id]
                                :from   [:transform]
-                               :where  [:not= :target_db_id nil]})))
-  ;; Invalidate workspace caches so the app re-analyzes and backfills workspace_ table FKs lazily
-  (t2/query {:update :workspace_transform
-             :set    {:analysis_version [:+ :analysis_version 1]
-                      :definition_changed true}})
-  (t2/query {:update :workspace
-             :set    {:graph_version [:+ :graph_version 1]}}))
+                               :where  [:not= :target_db_id nil]}))))
 
 (define-migration BackfillTransformTargetTableId
   ;; For each transform with a non-null target_db_id, extract the table_id from the target JSON column.
@@ -2199,10 +2193,4 @@
                              :from   [:transform]
                              :where  [:and
                                       [:not= :target_db_id nil]
-                                      [:= :target_table_id nil]]}))
-  ;; Invalidate workspace caches so they recalculate with target_table_id
-  (t2/query {:update :workspace_transform
-             :set    {:analysis_version [:+ :analysis_version 1]
-                      :definition_changed true}})
-  (t2/query {:update :workspace
-             :set    {:graph_version [:+ :graph_version 1]}}))
+                                      [:= :target_table_id nil]]})))
