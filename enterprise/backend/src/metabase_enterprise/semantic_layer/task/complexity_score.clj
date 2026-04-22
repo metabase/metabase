@@ -29,11 +29,11 @@
   "String capturing everything that changes the meaning of an emitted score — mirror of the Snowplow
   `formula_version` + `parameters` fields."
   []
-  (pr-str (into (sorted-map)
-                (cond-> {:formula-version   complexity/formula-version
-                         :synonym-threshold complexity/synonym-similarity-threshold}
-                  (semantic-search/active-embedding-model)
-                  (assoc :embedding-model (semantic-search/active-embedding-model))))))
+  (let [embedding-model (semantic-search/active-embedding-model)]
+    (pr-str (into (sorted-map)
+                  (cond-> {:formula-version   complexity/formula-version
+                           :synonym-threshold complexity/synonym-similarity-threshold}
+                    embedding-model (assoc :embedding-model embedding-model))))))
 
 (defn- run-scoring!
   "One scoring pass. Gated by [[settings/data-complexity-scoring-enabled]] so admins can silence it

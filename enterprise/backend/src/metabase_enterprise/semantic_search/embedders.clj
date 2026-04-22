@@ -29,6 +29,10 @@
   plans that choke on large installs."
   500)
 
+(def ^:private float-array-class
+  "Cached `[F` class so [[parse-pgvector]] doesn't pay a `Class/forName` lookup per row."
+  (Class/forName "[F"))
+
 (defn- normalize-name [s]
   (some-> s str/trim u/lower-case-en))
 
@@ -65,7 +69,7 @@
   [v]
   (cond
     (nil? v) nil
-    (instance? (Class/forName "[F") v) v
+    (instance? float-array-class v) v
     :else
     (let [s    (if (string? v) v (str v))
           nums (->> (-> s
@@ -135,6 +139,10 @@
   pgvector SQL, or switch to HNSW approximate-neighbor)."
   [entities]
   (if-let [{:keys [pgvector table-name]} (try-active-index-state)]
+    ;; No explicit `distinct` on `pairs`: callers pass entities from per-catalog SQL queries where
+    ;; each `(kind, id)` maps to a unique primary key, so duplicates don't arise in practice. The
+    ;; downstream `prefer-new-row?` fold already collapses any that slip through, so the only cost
+    ;; of a hypothetical duplicate would be a slightly wider SQL `OR` clause.
     (let [pairs (for [{:keys [id kind]} entities
                       :let [m (metabot/entity-type->search-model kind)]
                       :when m]
