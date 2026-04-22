@@ -662,6 +662,11 @@ export const fetchDashboardCardData =
               if (!lastResult) {
                 return true; // No cache, need to fetch
               }
+              // If the last result was an error, always retry — the user may
+              // have fixed what was wrong (e.g. a bad parameter mapping).
+              if ("error" in lastResult) {
+                return true;
+              }
               // Apply parameters to get the query that would be executed
               // (matches per-card code at lines 270-275)
               const datasetQuery = applyParameters(
@@ -679,6 +684,13 @@ export const fetchDashboardCardData =
       if (cardsNeedingFetch.length === 0) {
         dispatch(loadingComplete());
         return;
+      }
+
+      // Mirror per-card behavior at fetchCardDataAction line ~306: clear
+      // cached dashcard data so the card renders the loading skeleton instead
+      // of stale results while the batch is in flight.
+      for (const { card, dashcard } of cardsNeedingFetch) {
+        dispatch(clearCardData((card as Card).id, dashcard.id));
       }
 
       // Include cleared params too (value: null) so the server can delete
@@ -868,17 +880,22 @@ export const cancelFetchCardData = createAction(
       deferred.resolve();
       cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = null;
     }
-    // Per-card XHR cancellation isn't possible on the batch endpoint — a
-    // batch carries every loading card on one fetch. Abort it so removing /
-    // navigating away from a card during load doesn't leave a slow stream
-    // running; the remaining cards refetch on the next fetchDashboardCardData.
-    if (batchFetchAbortController) {
-      batchFetchAbortController.abort();
-      batchFetchAbortController = null;
-    }
     return { payload: { dashcard_id, card_id } };
   },
 );
+
+/**
+ * Abort the in-flight batch card-query request, if any. Per-card cancellation
+ * isn't possible on the batch endpoint — one fetch carries every loading card.
+ * Callers that need to stop a mid-stream batch (e.g. dashcard removal) invoke
+ * this directly.
+ */
+export function abortBatchCardQuery() {
+  if (batchFetchAbortController) {
+    batchFetchAbortController.abort();
+    batchFetchAbortController = null;
+  }
+}
 
 export const clearCardData = createAction(
   CLEAR_CARD_DATA,

@@ -69,7 +69,11 @@ import {
   setDashCardAttributes,
   setDashboardAttributes,
 } from "./core";
-import { cancelFetchCardData, fetchCardData } from "./data-fetching";
+import {
+  abortBatchCardQuery,
+  cancelFetchCardData,
+  fetchCardData,
+} from "./data-fetching";
 import {
   duplicateParameters,
   removeParameterAndReferences,
@@ -484,6 +488,10 @@ export const removeCardFromDashboard = createThunkAction(
 
       dispatch(closeAddCardAutoWireToasts());
       dispatch(cancelFetchCardData(cardId, dashcardId));
+      // Batch endpoint can't cancel a single card mid-stream; abort the whole
+      // batch so removing a card during a slow load doesn't keep the stream
+      // running. The next fetchDashboardCardData refetches what's left.
+      abortBatchCardQuery();
       if (hasInlineParameters(dashcard)) {
         dashcard.inline_parameters.forEach((parameterId) => {
           removeParameterAndReferences(dispatch, getState, parameterId);
