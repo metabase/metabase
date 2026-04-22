@@ -23,22 +23,17 @@ export function canPlaceEntityInCollection(
     return true;
   }
 
-  // Can't create subcollections in any of special collections
-  if (entityType === "collection") {
-    return false;
-  }
-
   // Can't create anything in the root Library collection
   if (collectionType === "library") {
     return false;
   }
 
   if (collectionType === "library-data") {
-    return entityType === "table";
+    return entityType === "table" || entityType === "collection";
   }
 
   if (collectionType === "library-metrics") {
-    return entityType === "metric";
+    return entityType === "metric" || entityType === "collection";
   }
 
   return false;
