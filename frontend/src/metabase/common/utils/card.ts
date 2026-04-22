@@ -218,12 +218,10 @@ export function applyParameters(
           },
     );
 
-    const queryParameter: UiParameter = {
+    const queryParameter: Partial<UiParameter> = {
       type: parameter.type,
       value: normalizeParameterValue(parameter.type, value),
       id: parameter.id,
-      name: parameter.name,
-      slug: parameter.slug,
     };
 
     const options =
@@ -236,15 +234,14 @@ export function applyParameters(
     if (mapping) {
       // mapped target, e.x. on a dashboard
       queryParameter.target = mapping.target;
-      datasetQuery.parameters.push(queryParameter);
+      datasetQuery.parameters.push(queryParameter as UiParameter);
     } else if (parameter.target) {
       // inline target, e.x. on a card
       queryParameter.target = parameter.target;
-      datasetQuery.parameters.push(queryParameter);
+      datasetQuery.parameters.push(queryParameter as UiParameter);
     }
 
     if (sparse) {
-      // @ts-expect-error: These items will be backfilled by the API
       delete queryParameter.type;
       delete queryParameter.target;
     }
