@@ -90,13 +90,15 @@
       (is (<= (count out) 20)))))
 
 (deftest workspace-stub-test
-  (testing "OSS stubs are off by default"
-    (is (false? (transforms-base.query/workspaces-active?)))
-    (is (nil? (transforms-base.query/db-workspace-schema 1)))
-    (is (nil? (transforms-base.query/db-workspace-schema 999)))))
+  (testing "OSS stubs are off by default (when the EE impl is not configured)"
+    (with-redefs [transforms-base.query/active?              (constantly false)
+                  transforms-base.query/db-workspace-schema  (constantly nil)]
+      (is (false? (transforms-base.query/active?)))
+      (is (nil? (transforms-base.query/db-workspace-schema 1)))
+      (is (nil? (transforms-base.query/db-workspace-schema 999))))))
 
 (deftest workspaces-active-without-remapping-aborts-test
-  (testing "when workspaces-active? is true and no :table-remapping is provided, the run aborts before touching the warehouse"
+  (testing "when active? is true and no :table-remapping is provided, the run aborts before touching the warehouse"
     (let [ran-driver? (atom false)
           created?    (atom false)]
       (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
@@ -108,7 +110,7 @@
                          :target {:type   "table"
                                   :schema "from_schema"
                                   :name   "orders"}}]
-          (with-redefs [transforms-base.query/workspaces-active?        (constantly true)
+          (with-redefs [transforms-base.query/active?        (constantly true)
                         transforms-base.u/throw-if-db-routing-enabled!  (fn [& _] nil)
                         transforms-base.u/compile-source                (fn [& _] {:query "SELECT 1"})
                         transforms-base.u/required-database-features    (fn [& _] [])
@@ -124,7 +126,7 @@
               (is (not= true @created?) "schema creation must not happen"))))))))
 
 (deftest workspaces-active-with-remapping-runs-test
-  (testing "when workspaces-active? is true AND :table-remapping is provided, the run proceeds normally"
+  (testing "when active? is true AND :table-remapping is provided, the run proceeds normally"
     (let [ran-driver? (atom false)]
       (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
         (let [transform {:id     1
@@ -135,7 +137,7 @@
                          :target {:type   "table"
                                   :schema "from_schema"
                                   :name   "orders"}}]
-          (with-redefs [transforms-base.query/workspaces-active?        (constantly true)
+          (with-redefs [transforms-base.query/active?        (constantly true)
                         transforms-base.u/throw-if-db-routing-enabled!  (fn [& _] nil)
                         transforms-base.u/compile-source                (fn [& _] {:query "SELECT 1"})
                         transforms-base.u/required-database-features    (fn [& _] [])

@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as schema.common]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
@@ -53,19 +54,19 @@
     ;; once we have more than just append, dispatch on :target-incremental-strategy
     :table-incremental {}))
 
-(defn workspaces-active?
+(defenterprise active?
   "Returns true if this instance is running in workspace mode - i.e. a
    dev/workspace child instance that is only allowed to write into remapped
-   target schemas. OSS stub - always false. Enterprise
-   `metabase-enterprise.workspaces.core/active?` replaces this at wire time."
+   target schemas. OSS implementation - always false."
+  metabase-enterprise.workspaces.core
   []
   false)
 
-(defn db-workspace-schema
+(defenterprise db-workspace-schema
   "Return the workspace-isolated schema name configured for `db-id`, or nil
-   when no workspace is configured for that database. OSS stub - always nil.
-   Enterprise `metabase-enterprise.workspaces.core/db-workspace-schema`
-   replaces this at wire time."
+   when no workspace is configured for that database. OSS implementation -
+   always nil."
+  metabase-enterprise.workspaces.core
   [_db-id]
   nil)
 
@@ -135,7 +136,7 @@
           ;; write into an unremapped target schema. If workspace mode is active
           ;; for this process and no :table-remapping was provided for this db,
           ;; abort before touching the warehouse.
-          _ (when (and (workspaces-active?)
+          _ (when (and (active?)
                        (nil? table-remapping))
               (throw (ex-info "Refusing to run transform: workspace mode is active but no target remapping was provided for this database"
                               {:status :failed
