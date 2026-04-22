@@ -13,8 +13,15 @@ import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
-import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
+import {
+  AgentMessage,
+  Messages,
+} from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
+import type {
+  MetabotAgentTextChatMessage,
+  MetabotChatMessage,
+} from "metabase/metabot/state/types";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -161,7 +168,11 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
             <Title order={3}>{t`Feedback`}</Title>
             <Stack gap="sm">
               {feedback.map((item) => (
-                <FeedbackCard key={item.message_id} feedback={item} />
+                <FeedbackCard
+                  key={item.message_id}
+                  feedback={item}
+                  chatMessages={conversation.chat_messages ?? []}
+                />
               ))}
             </Stack>
           </Stack>
@@ -194,45 +205,55 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   );
 }
 
-function FeedbackCard({ feedback }: { feedback: ConversationFeedback }) {
-  const jumpToMessage = () => {
-    const el =
-      feedback.external_id && document.getElementById(feedback.external_id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  };
+function FeedbackCard({
+  feedback,
+  chatMessages,
+}: {
+  feedback: ConversationFeedback;
+  chatMessages: MetabotChatMessage[];
+}) {
+  const agentResponse = useMemo(
+    () =>
+      feedback.external_id
+        ? (chatMessages.find(
+            (m) =>
+              m.role === "agent" &&
+              m.type === "text" &&
+              m.externalId === feedback.external_id,
+          ) as MetabotAgentTextChatMessage | undefined)
+        : undefined,
+    [feedback.external_id, chatMessages],
+  );
 
   return (
     <Card withBorder shadow="none" p="md">
       <Stack gap="sm">
-        <Flex justify="space-between" align="center" gap="sm" wrap="wrap">
-          <Flex gap="xs" align="center">
-            <Icon
-              name={feedback.positive ? "thumbs_up" : "thumbs_down"}
-              size={20}
-              c="text-secondary"
-            />
-            <Text fw={700}>
-              {feedback.positive ? t`Positive` : t`Negative`}
-            </Text>
-            {!feedback.positive && feedback.issue_type && (
-              <Badge variant="light" bg="background-error" c="error" ml="xs">
-                {getIssueTypeLabel(feedback.issue_type)}
-              </Badge>
-            )}
-          </Flex>
-          {feedback.external_id && (
-            <Anchor
-              component="button"
-              type="button"
-              size="sm"
-              onClick={jumpToMessage}
-            >
-              {t`Jump to message`}
-            </Anchor>
+        <Flex gap="xs" align="center">
+          <Icon
+            name={feedback.positive ? "thumbs_up" : "thumbs_down"}
+            size={20}
+            c="text-secondary"
+          />
+          <Text fw={700}>{feedback.positive ? t`Positive` : t`Negative`}</Text>
+          {!feedback.positive && feedback.issue_type && (
+            <Badge variant="light" bg="background-error" c="error" ml="xs">
+              {getIssueTypeLabel(feedback.issue_type)}
+            </Badge>
           )}
         </Flex>
+        {agentResponse && (
+          <AgentMessage
+            message={agentResponse}
+            hideActions
+            onCopy={noopCopy}
+            showFeedbackButtons={false}
+            submittedFeedback={undefined}
+            bg="background-secondary"
+            p="md"
+            bd="1px solid var(--mb-color-border)"
+            bdrs="1rem"
+          />
+        )}
         {feedback.freeform_feedback && (
           <Text>{feedback.freeform_feedback}</Text>
         )}
@@ -393,6 +414,8 @@ function NotebookGeneratedQueryCard({ mbql }: { mbql: DatasetQuery }) {
 function noopUpdateQuestion(): Promise<void> {
   return Promise.resolve();
 }
+
+function noopCopy() {}
 
 function useUserGroupNames(userId: number | undefined): string[] {
   const { data: membershipsByUser } = useListUserMembershipsQuery();
