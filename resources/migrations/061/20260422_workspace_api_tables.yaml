@@ -199,3 +199,31 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_workspace_database_database_id
             onDelete: RESTRICT
+
+  - changeSet:
+      id: v61.2026-04-22T18:00:00
+      author: eric
+      comment: Add creator_id to workspace table (nullable, set null on user delete)
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The user who created this Workspace; null if that user was deleted
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-04-22T18:00:01
+      author: eric
+      comment: FK workspace.creator_id -> core_user.id (set null on delete so deleting a user doesn't cascade)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_workspace_creator_id
+            onDelete: SET NULL

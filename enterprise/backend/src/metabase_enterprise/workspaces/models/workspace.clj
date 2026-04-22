@@ -24,16 +24,29 @@
    :id
    {:default []}))
 
+(methodical/defmethod t2/batched-hydrate [:model/Workspace :creator]
+  [_model k workspaces]
+  (mi/instances-with-hydrated-data
+   workspaces k
+   (fn []
+     (when-let [ids (seq (distinct (keep :creator_id workspaces)))]
+       (into {}
+             (map (juxt :id identity))
+             (t2/select [:model/User :id :first_name :last_name :email :common_name]
+                        :id [:in ids]))))
+   :creator_id))
+
 (defn list-workspaces
-  "Return every Workspace with its `:databases` hydrated."
+  "Return every Workspace with its `:databases` and `:creator` hydrated."
   []
-  (t2/hydrate (t2/select :model/Workspace {:order-by [[:id :asc]]}) :databases))
+  (t2/hydrate (t2/select :model/Workspace {:order-by [[:id :asc]]}) :creator :databases))
 
 (defn get-workspace
-  "Return the Workspace with the given id and its `:databases` hydrated, or nil if none exists."
+  "Return the Workspace with the given id and its `:databases` + `:creator` hydrated,
+  or nil if none exists."
   [id]
   (when-let [ws (t2/select-one :model/Workspace :id id)]
-    (t2/hydrate ws :databases)))
+    (t2/hydrate ws :creator :databases)))
 
 (defn- with-workspace-database-defaults
   "Fill server-managed columns that are NOT NULL in the DB with their defaults when callers omit them."
@@ -45,10 +58,13 @@
 
 (defn create-workspace!
   "Create a Workspace and its nested WorkspaceDatabase rows in a single transaction.
-  Returns the created Workspace with `:databases` hydrated."
-  [{:keys [name databases]}]
+  The param map must supply `:creator_id`. Returns the created Workspace with
+  `:databases` and `:creator` hydrated."
+  [{:keys [name creator_id databases]}]
   (t2/with-transaction [_conn]
-    (let [ws-id (t2/insert-returning-pk! :model/Workspace {:name name})]
+    (let [ws-id (t2/insert-returning-pk! :model/Workspace
+                                         {:name       name
+                                          :creator_id creator_id})]
       (when (seq databases)
         (t2/insert! :model/WorkspaceDatabase
                     (map #(with-workspace-database-defaults % ws-id) databases)))

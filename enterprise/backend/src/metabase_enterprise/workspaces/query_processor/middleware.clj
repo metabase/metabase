@@ -16,15 +16,16 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
-   [metabase.lib.schema :as lib.schema]
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.sql-tools.core :as sql-tools]
-   [metabase.util :as u]))
+   [metabase.sql-tools.core :as sql-tools]))
 
 (set! *warn-on-reflection* true)
 
 (defenterprise apply-workspace-remapping
-  "Pre-processing middleware. Rewrites table references in native SQL queries for workspace transforms."
+  "Pre-processing middleware. Rewrites table references in native SQL queries for workspace transforms.
+
+  Fires whenever stage 0 is native, including the `[native, mbql+]` shape produced when a native
+  source card is resolved into a flat pipeline."
   :feature :workspaces
   [{{remapping :workspace-remapping} :middleware :as query}]
   (cond
@@ -32,8 +33,8 @@
     (or (not remapping) (empty? (:tables remapping)))
     query
 
-    (not (lib.schema/native-only-query? query))
-    (throw (ex-info "Workspace remapping is currently only supported for native queries"
+    (not (lib/native-stage? query 0))
+    (throw (ex-info "Workspace remapping is only supported for queries whose first stage is native"
                     {:query query, :remapping remapping}))
 
     :else
@@ -43,12 +44,10 @@
     ;; and re-quotes using its own dialect convention. Consider adding a :force-quote? flag to
     ;; replace-names so it can handle quoting internally without this round-trip.
     (let [quote-id  (fn [s] (if s (sql.u/quote-name driver/*driver* :table s) s))
-          remapping (update remapping :tables update-vals #(update-vals % quote-id))]
-      (u/update-in-if-exists query [:stages 0 :native]
-                             (fn [sql] (sql-tools/replace-names driver/*driver*
-                                                                sql
-                                                                remapping
-                                                                {:allow-unused? true}))))))
+          remapping (update remapping :tables update-vals #(update-vals % quote-id))
+          sql       (lib/raw-native-query query)
+          rewritten (sql-tools/replace-names driver/*driver* sql remapping {:allow-unused? true})]
+      (lib/with-native-query query rewritten))))
 
 (defenterprise apply-workspace-table-remapping
   "Pre-processing middleware. Redirects table references to workspace copies using the
@@ -71,7 +70,7 @@
       (empty? mappings)
       query
 
-      (lib.schema/native-only-query? query)
+      (lib/native-stage? query 0)
       ;; Pre-quote target identifiers so case survives dialects like Snowflake (matches the
       ;; legacy `apply-workspace-remapping` idiom above — only the *to* side is quoted; keys
       ;; stay raw so `replace-names` can match them against parsed SQL identifiers).
