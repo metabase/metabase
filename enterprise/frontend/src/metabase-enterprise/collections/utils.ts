@@ -4,6 +4,7 @@ import type {
 } from "metabase/collections/types";
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import type { ItemWithCollection } from "metabase/plugins";
+import type { ColorName } from "metabase/ui/colors/types";
 import type { IconData, ObjectWithModel } from "metabase/utils/icon";
 import { getIconBase } from "metabase/utils/icon";
 import type {
@@ -92,7 +93,8 @@ export const getIcon = (
     ) {
       return {
         name: OFFICIAL_COLLECTION.icon,
-        color: OFFICIAL_COLLECTION.color,
+        color: `var(--mb-color-${OFFICIAL_COLLECTION.color})` as ColorName,
+        tooltip: OFFICIAL_COLLECTION.tooltips?.default,
       };
     }
   }
