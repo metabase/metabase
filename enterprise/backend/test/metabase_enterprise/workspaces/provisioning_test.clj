@@ -4,7 +4,9 @@
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.driver :as driver]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent CountDownLatch TimeUnit)))
 
 (defn- stub-init [schema details]
   (fn [_driver _db _workspace]
@@ -209,3 +211,72 @@
                         nil)]
           (provisioning/deprovision-workspace-databases! ws-id)
           (is (= #{wsd-a wsd-b} (set @attempted))))))))
+
+(deftest provision-serializes-concurrent-callers-test
+  (testing "two callers racing to provision the same row serialize — the second sees :initialized and refuses"
+    ;; Without serialization, both callers read `:status :uninitialized`, both enter the
+    ;; warehouse-side work, and the app-db ends up with whichever `t2/update!` commits
+    ;; last — while the warehouse has whatever state the last caller's ops left behind.
+    ;; On Postgres specifically, the winner's password is silently overwritten by the
+    ;; loser's ALTER USER (TOCTOU on `user-exists?`), and if the winner's
+    ;; `grant-workspace-read-access!` fails and it calls `destroy-workspace-isolation!`,
+    ;; the loser's in-flight schema/user disappears out from under it. We close all of
+    ;; those by making provisioning hold a cluster-lock keyed on the workspace-database id.
+    (mt/with-temp [:model/Workspace {ws-id :id} {:name "concurrency-ws"}
+                   :model/WorkspaceDatabase {wsd-id :id}
+                   {:workspace_id     ws-id
+                    :database_id      (mt/id)
+                    :database_details {}
+                    :output_schema    ""
+                    :input_schemas    ["public"]}]
+      (let [first-call-in-flight (CountDownLatch. 1)
+            first-call-release   (CountDownLatch. 1)
+            init-count           (atom 0)]
+        (with-redefs [driver/init-workspace-isolation!
+                      (fn [_driver _db _workspace]
+                        (let [n (swap! init-count inc)]
+                          (when (= n 1)
+                            ;; First caller: signal that we've entered the critical section
+                            ;; and wait for the test to release us. This lets the second
+                            ;; caller attempt to acquire the lock while we still hold it.
+                            (.countDown first-call-in-flight)
+                            (.await first-call-release))
+                          {:schema (str "ws_race_" n)
+                           :database_details {:user (str "u" n) :password (str "p" n)}}))
+                      driver/grant-workspace-read-access! (fn [& _] nil)
+                      driver/destroy-workspace-isolation! (fn [& _] nil)]
+          (let [t1 (future (try (provisioning/provision-workspace-database! wsd-id)
+                                (catch Throwable t t)))
+                ;; Wait until t1 has entered init-workspace-isolation! (past the lock, past the status check).
+                _  (is (.await first-call-in-flight 5 TimeUnit/SECONDS)
+                       "t1 should have entered init within 5s; if it didn't, something deadlocked earlier")
+                ;; Launch the second caller — it must block trying to acquire the same lock.
+                t2 (future (try (provisioning/provision-workspace-database! wsd-id)
+                                (catch Throwable t t)))
+                ;; Give t2 a moment to hit the lock-acquire path. 200ms is a
+                ;; compromise: long enough that t2 has definitely tried to acquire,
+                ;; short enough that the test doesn't drag.
+                _  (Thread/sleep 200)
+                ;; t1 should still be blocked in init, and init should have run once.
+                _  (is (= 1 @init-count)
+                       "before releasing t1, init must have been called exactly once — t2 should be blocked on the lock")
+                ;; Release t1. It'll finish, commit, release the lock, and t2 will proceed.
+                _  (.countDown first-call-release)
+                r1 (deref t1 10000 ::timeout)
+                r2 (deref t2 10000 ::timeout)]
+            (is (not= ::timeout r1) "t1 must complete within 10s of being released")
+            (is (not= ::timeout r2) "t2 must complete within 10s of t1 releasing the lock")
+            (let [successes (filter map? [r1 r2])
+                  failures  (filter #(instance? Throwable %) [r1 r2])]
+              (is (= 1 (count successes))
+                  "exactly one caller must succeed")
+              (is (= 1 (count failures))
+                  "exactly one caller must fail")
+              (when-let [s (first successes)]
+                (is (= :initialized (:status s))
+                    "the winner's returned row must reflect the :initialized state"))
+              (when-let [f (first failures)]
+                (is (re-find #"already initialized" (str (ex-message f)))
+                    "the loser's error must specifically cite :initialized — not a lock timeout or unrelated failure")))
+            (is (= 1 @init-count)
+                "init-workspace-isolation! ran exactly once — the loser's status check (re-done under the lock) caught the state change and aborted before touching the warehouse")))))))
