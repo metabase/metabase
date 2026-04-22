@@ -117,7 +117,12 @@
   "Embedder that reads vectors from the active semantic-search pgvector index.
   Returns `{}` when the index isn't available (premium feature off, not yet initialized, datasource
   unreachable).
-  Never throws.
+
+  Pgvector read failures (e.g. the index table exists but the query errors out) propagate so the
+  caller can annotate its own error state — silently returning `{}` would look indistinguishable
+  from \"no synonym matches\", which would let transient failures underreport complexity with no
+  machine-readable signal. See [[metabase-enterprise.semantic-layer.complexity/score-synonym-pairs]]
+  for the wrapping `catch` that converts this into a `:error` field on the sub-score.
 
   When multiple entities share a normalized name but have different indexed embeddings the row
   chosen by [[prefer-new-row?]] wins, so the result is deterministic across runs regardless of
@@ -130,34 +135,30 @@
   pgvector SQL, or switch to HNSW approximate-neighbor)."
   [entities]
   (if-let [{:keys [pgvector table-name]} (try-active-index-state)]
-    (try
-      (let [pairs (for [{:keys [id kind]} entities
-                        :let [m (metabot/entity-type->search-model kind)]
-                        :when m]
-                    [m (str id)])
-            ;; Fold fetch → parse → dedup in one pass. `prefer-new-row?` keeps the winner globally
-            ;; (lowest numeric model_id, then model as tie-break) so the result is stable across
-            ;; runs regardless of which 500-row batch boundary a duplicate lands on.
-            keyed (when (seq pairs)
-                    (reduce-batched-rows
-                     pgvector table-name pairs
-                     (fn [acc {:keys [name model_id model embedding]}]
-                       (if-let [vec (parse-pgvector embedding)]
-                         (let [k     (normalize-name name)
-                               entry {:mid      (parse-long model_id)
-                                      :model    model
-                                      :model_id model_id
-                                      :vec      vec}
-                               prior (get acc k)]
-                           (if (or (nil? prior) (prefer-new-row? entry prior))
-                             (assoc acc k entry)
-                             acc))
-                         acc))
-                     {}))]
-        (update-vals (or keyed {}) :vec))
-      (catch Throwable t
-        (log/warn t "search-index-embedder: failed to read from search index; returning {}")
-        {}))
+    (let [pairs (for [{:keys [id kind]} entities
+                      :let [m (metabot/entity-type->search-model kind)]
+                      :when m]
+                  [m (str id)])
+          ;; Fold fetch → parse → dedup in one pass. `prefer-new-row?` keeps the winner globally
+          ;; (lowest numeric model_id, then model as tie-break) so the result is stable across
+          ;; runs regardless of which 500-row batch boundary a duplicate lands on.
+          keyed (when (seq pairs)
+                  (reduce-batched-rows
+                   pgvector table-name pairs
+                   (fn [acc {:keys [name model_id model embedding]}]
+                     (if-let [vec (parse-pgvector embedding)]
+                       (let [k     (normalize-name name)
+                             entry {:mid      (parse-long model_id)
+                                    :model    model
+                                    :model_id model_id
+                                    :vec      vec}
+                             prior (get acc k)]
+                         (if (or (nil? prior) (prefer-new-row? entry prior))
+                           (assoc acc k entry)
+                           acc))
+                       acc))
+                   {}))]
+      (update-vals (or keyed {}) :vec))
     {}))
 
 (defn active-embedding-model

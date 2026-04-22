@@ -35,15 +35,25 @@
 
 (defn- run-scoring!
   "One scoring pass. Gated by [[settings/data-complexity-scoring-enabled]] so admins can silence it
-  without unscheduling the job."
+  without unscheduling the job.
+
+  Returns the score result (with `::complexity/snowplow-published?` metadata) when scoring ran, or
+  nil when skipped / threw. The caller uses the metadata to gate fingerprint advancement: we only
+  consider this run \"done\" when Snowplow actually accepted the event. Otherwise the next boot
+  (or cron) needs to retry so telemetry doesn't silently stall behind a transient publish failure."
   []
   (if (settings/data-complexity-scoring-enabled)
     (try
-      (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))
-      (settings/data-complexity-scoring-last-fingerprint! (current-fingerprint))
+      (let [result (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))]
+        (if (::complexity/snowplow-published? (meta result))
+          (settings/data-complexity-scoring-last-fingerprint! (current-fingerprint))
+          (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries"))
+        result)
       (catch Throwable t
-        (log/warn t "Data Complexity Score job failed")))
-    (log/debug "Data Complexity Score job skipped — data-complexity-scoring-enabled is off")))
+        (log/warn t "Data Complexity Score job failed")
+        nil))
+    (do (log/debug "Data Complexity Score job skipped — data-complexity-scoring-enabled is off")
+        nil)))
 
 (task/defjob ^{DisallowConcurrentExecution true
                :doc "Compute and publish the Data Complexity Score."}
@@ -51,31 +61,38 @@
   (run-scoring!))
 
 (defn- claim-boot-emission!
-  "Cluster-safe claim: returns true when this node wins the right to emit a boot-time score for the
-  current config fingerprint. Under a short app-db lock we re-check the persisted fingerprint and
-  pre-update it to the current value, so sibling nodes acquiring the lock next see the updated
-  value and skip. Pre-claiming means scoring failures aren't retried on the same node, but the
-  daily cron will catch up, which is preferable to the duplicate-burst behaviour of per-node
-  `trigger-now!`."
+  "Cluster-safe claim: returns `{:prior-fingerprint <string>}` when this node wins the right to emit
+  a boot-time score for the current config fingerprint, or nil when no claim is taken. Under a
+  short app-db lock we re-check the persisted fingerprint and pre-update it to the current value,
+  so sibling nodes acquiring the lock next see the updated value and skip. The prior fingerprint
+  is returned so the caller can revert the claim if scoring or Snowplow publish fails, leaving the
+  next boot free to retry instead of silently skipping on a stale telemetry fingerprint."
   []
   (cluster-lock/with-cluster-lock {:lock ::complexity-score-boot-emission
                                    :timeout-seconds 10}
     (when (and (settings/data-complexity-scoring-enabled)
                (not= (current-fingerprint)
                      (settings/data-complexity-scoring-last-fingerprint)))
-      (settings/data-complexity-scoring-last-fingerprint! (current-fingerprint))
-      true)))
+      (let [prior (settings/data-complexity-scoring-last-fingerprint)]
+        (settings/data-complexity-scoring-last-fingerprint! (current-fingerprint))
+        {:prior-fingerprint prior}))))
 
 (defn maybe-emit-boot-score!
   "Emit a Data Complexity Score at boot if the persisted fingerprint lags the live config. Cluster-
   safe via [[claim-boot-emission!]]; runs regardless of Quartz state so operators still get a score
   on nodes with `MB_DISABLE_SCHEDULER=true` or a failed scheduler init. Intended to be called from
-  a startup hook on a background thread — see `metabase-enterprise.semantic-layer.init`."
+  a startup hook on a background thread — see `metabase-enterprise.semantic-layer.init`.
+
+  If scoring threw or Snowplow didn't accept the event, revert the pre-claimed fingerprint so the
+  next boot (or daily cron) can retry instead of treating the stale fingerprint as up-to-date."
   []
   (try
-    (when (claim-boot-emission!)
+    (when-let [{:keys [prior-fingerprint]} (claim-boot-emission!)]
       (log/info "Data Complexity Score: fingerprint changed, emitting boot-time score")
-      (run-scoring!))
+      (let [result (run-scoring!)]
+        (when-not (and result (::complexity/snowplow-published? (meta result)))
+          (log/warn "Data Complexity Score: boot-time emission did not publish; reverting claimed fingerprint so the next boot retries")
+          (settings/data-complexity-scoring-last-fingerprint! prior-fingerprint))))
     (catch Throwable t
       (log/warn t "Data Complexity Score: boot-time emission failed"))))
 

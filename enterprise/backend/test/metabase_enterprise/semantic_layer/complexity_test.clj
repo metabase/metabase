@@ -7,6 +7,8 @@
    ;; Load init for side-effect: exercises the transitive require of the task ns so
    ;; `scoring-task-registered-test` verifies init.clj's actual wiring path.
    [metabase-enterprise.semantic-layer.init]
+   [metabase-enterprise.semantic-layer.metabot-scope :as metabot-scope]
+   [metabase-enterprise.semantic-layer.settings :as semantic-layer.settings]
    [metabase-enterprise.semantic-layer.task.complexity-score :as task.complexity-score]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.semantic-search.embedders :as ss.embedders]
@@ -230,6 +232,26 @@
   (testing "returns {} when semantic-search index isn't available (no throw)"
     (is (= {} (semantic-search/search-index-embedder
                [(entity :name "orders" :kind :table)])))))
+
+(deftest ^:sequential search-index-embedder-propagates-read-failures-test
+  (testing "pgvector read failures propagate so the caller can flag a degraded synonym axis"
+    ;; Regression guard: before this, the embedder swallowed read exceptions and returned {}, which
+    ;; looked indistinguishable from \"no synonym matches.\" A transient search-index failure
+    ;; silently underreported complexity with no `:error` on the Snowplow payload.
+    (with-redefs [ss.embedders/try-active-index-state
+                  (constantly {:pgvector :mock :table-name "t" :model nil})
+                  ss.embedders/fetch-batch
+                  (fn [& _] (throw (ex-info "pgvector read failed" {})))]
+      (testing "the embedder itself throws rather than swallowing the failure"
+        (is (thrown-with-msg? Throwable #"pgvector read failed"
+                              (semantic-search/search-index-embedder
+                               [{:id 1 :name "orders" :kind :table}]))))
+      (testing "score-synonym-pairs converts the propagated failure into :error on the sub-score"
+        (let [es [(entity :name "customers") (entity :name "clients")]]
+          (is (=? {:components {:synonym-pairs {:measurement 0.0
+                                                :score       0
+                                                :error       string?}}}
+                  (#'complexity/score-catalog es semantic-search/search-index-embedder))))))))
 
 (defn- stub-fetch-batch
   "Build a `fetch-batch` stub backed by a map of expected pair-sets -> rows. Each
@@ -684,3 +706,64 @@
                         component k uni-v component k lib-v))))
         (testing "universe total is strictly higher than library total"
           (is (> (:total universe) (:total library))))))))
+
+(defn- stub-result
+  "Build a `complexity/complexity-scores` stand-in whose metadata records whether publishing worked."
+  [published?]
+  (with-meta
+   {:library {:total 0 :components {}} :universe {:total 0 :components {}}
+    :metabot {:total 0 :components {}} :meta {}}
+   {:metabase-enterprise.semantic-layer.complexity/snowplow-published? published?}))
+
+(deftest ^:sequential run-scoring-persists-fingerprint-only-on-successful-publish-test
+  (testing "fingerprint advances only when Snowplow accepted the event — failed publish must leave
+           the stale fingerprint in place so the next boot / cron retries"
+    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
+      (testing "successful publish → fingerprint advances off the stale value"
+        (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
+                                           data-complexity-scoring-last-fingerprint "stale"]
+          (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result true))]
+            (#'task.complexity-score/run-scoring!)
+            (is (not= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
+                "fingerprint updated after a successful publish"))))
+      (testing "failed publish → fingerprint stays at the stale value for the next retry"
+        (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
+                                           data-complexity-scoring-last-fingerprint "stale"]
+          (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result false))]
+            (#'task.complexity-score/run-scoring!)
+            (is (= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
+                "fingerprint preserved — next boot / cron will retry the emission")))))))
+
+(deftest ^:sequential maybe-emit-boot-score-reverts-fingerprint-on-publish-failure-test
+  (testing "boot-time emission must revert its pre-claimed fingerprint when Snowplow didn't accept
+           the event — otherwise the stale-fingerprint check on the next boot would skip retry"
+    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
+      (testing "publish failure → the claimed fingerprint is reverted to the stale value"
+        (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
+                                           data-complexity-scoring-last-fingerprint "stale"]
+          (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result false))]
+            (task.complexity-score/maybe-emit-boot-score!)
+            (is (= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
+                "pre-claimed fingerprint was reverted so the next boot retries"))))
+      (testing "publish success → the claimed fingerprint stays at the new value"
+        (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
+                                           data-complexity-scoring-last-fingerprint "stale"]
+          (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result true))]
+            (task.complexity-score/maybe-emit-boot-score!)
+            (is (not= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
+                "fingerprint advanced to reflect the confirmed publish")))))))
+
+(deftest ^:sequential complexity-scores-tags-publish-success-on-result-test
+  (testing "complexity-scores stamps publish success/failure via metadata for schedule/boot callers"
+    (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [])
+                                complexity/universe-entities (constantly [])]
+      (testing "successful publish → ::snowplow-published? true"
+        (snowplow-test/with-fake-snowplow-collector
+          (let [result (complexity/complexity-scores :embedder nil)]
+            (is (true? (:metabase-enterprise.semantic-layer.complexity/snowplow-published?
+                        (meta result)))))))
+      (testing "publish throw → ::snowplow-published? false (and the result is still returned)"
+        (mt/with-dynamic-fn-redefs [analytics/track-event! (fn [& _] (throw (RuntimeException. "snowplow down")))]
+          (let [result (complexity/complexity-scores :embedder nil)]
+            (is (false? (:metabase-enterprise.semantic-layer.complexity/snowplow-published?
+                         (meta result))))))))))

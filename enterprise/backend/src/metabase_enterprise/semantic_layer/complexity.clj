@@ -483,11 +483,15 @@
                                                :synonym-threshold synonym-similarity-threshold}
                                         model-meta (assoc :embedding-model model-meta))}]
         (log-scores! result)
-        (try
-          (emit-snowplow! result)
-          (catch Throwable t
-            (log/warn t "Failed to publish complexity score to Snowplow")))
-        result)
+        (let [published? (try
+                           (emit-snowplow! result)
+                           true
+                           (catch Throwable t
+                             (log/warn t "Failed to publish complexity score to Snowplow")
+                             false))]
+          ;; Tag publish success via metadata so scheduler/boot callers can gate durable side-effects
+          ;; (fingerprint advance) without leaking into the JSON API response shape.
+          (with-meta result {::snowplow-published? published?})))
       (finally
         (prometheus/observe! :metabase-semantic-layer/complexity-score-duration-ms
                              {:phase "total"}
