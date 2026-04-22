@@ -58,4 +58,3 @@ export * from "./transform";
 export * from "./user";
 export * from "./user-key-value";
 export * from "./util";
-export * from "./workspace";

@@ -65,7 +65,6 @@
                               :database-routing
                               :tenants
                               :cloud-custom-smtp
-                              :workspaces
                               :writable-connection}
     (is (= {:admin_security_center          false ;; requires self-hosted (non-cloud)
             :advanced_permissions           true
@@ -119,7 +118,6 @@
             :etl_connections                false
             :etl_connections_pg             false
             :dependencies                   false
-            :workspaces                     true
             :writable_connection            true}
            (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
 

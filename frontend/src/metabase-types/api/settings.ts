@@ -370,7 +370,6 @@ export const tokenFeatures = [
   "library",
   "support-users",
   "tenants",
-  "workspaces",
   "writable_connection",
   "admin_security_center",
   "ai_controls",

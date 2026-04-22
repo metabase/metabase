@@ -309,10 +309,6 @@
   "Should the multi-tenant feature be enabled?"
   :tenants)
 
-(define-premium-feature ^{:added "0.59.0"} enable-workspaces?
-  "Should we allow users to use workspaces?"
-  :workspaces)
-
 (define-premium-feature enable-metabot-v3?
   "Should we allow users to use the Metabase-managed tiered AI provider?"
   :metabot-v3)
@@ -396,7 +392,6 @@
    :transforms-python              (enable-python-transforms?)
    :upload_management              (enable-upload-management?)
    :whitelabel                     (enable-whitelabeling?)
-   :workspaces                     (enable-workspaces?)
    :writable_connection            (enable-writable-connection?)
    :ai_controls                    (enable-ai-controls?)})
 

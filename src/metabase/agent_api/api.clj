@@ -728,5 +728,5 @@
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/agent/` routes. Workspace routes are mounted separately via the EE routes file."
+  "`/api/agent/` routes."
   (api.macros/ns-handler *ns* +auth))
