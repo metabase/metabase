@@ -374,7 +374,35 @@
           (let [row (first ours)]
             (is (every? #(contains? row %)
                         [:id :database_id :from_schema :from_table_name
-                         :to_schema :to_table_name :created_at]))))))))
+                         :to_schema :to_table_name :created_at
+                         :from_table_id :to_table_id]))))))))
+
+(deftest get-table-remappings-enriches-with-table-ids-test
+  (testing "Each remapping row carries :from_table_id / :to_table_id — nil when no metabase_table row matches, id when it does"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details {}}
+                   :model/Table {from-tid :id} {:db_id db-id :schema "raw" :name "events"}
+                   :model/Table {to-tid :id}   {:db_id db-id :schema "mb_iso_ws" :name "events"}
+                   :model/TableRemapping _
+                   {:database_id     db-id
+                    :from_schema     "raw"
+                    :from_table_name "events"
+                    :to_schema       "mb_iso_ws"
+                    :to_table_name   "events"}
+                   :model/TableRemapping _
+                   {:database_id     db-id
+                    :from_schema     "raw"
+                    :from_table_name "unknown_from"
+                    :to_schema       "mb_iso_ws"
+                    :to_table_name   "unknown_to"}]
+      (let [resp    (mt/user-http-request :crowberto :get 200 "ee/workspace/remappings")
+            by-from (into {} (map (juxt :from_table_name identity))
+                          (filter #(= db-id (:database_id %)) resp))]
+        (testing "row with matching Tables gets both ids"
+          (is (= from-tid (get-in by-from ["events" :from_table_id])))
+          (is (= to-tid   (get-in by-from ["events" :to_table_id]))))
+        (testing "row without matching Tables gets nils"
+          (is (nil? (get-in by-from ["unknown_from" :from_table_id])))
+          (is (nil? (get-in by-from ["unknown_from" :to_table_id]))))))))
 
 (deftest get-table-remappings-requires-superuser-test
   (testing "Non-superusers get 403 from GET /ee/workspace/remappings"
