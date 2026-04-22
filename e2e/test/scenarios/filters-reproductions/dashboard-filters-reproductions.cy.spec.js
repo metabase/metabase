@@ -327,9 +327,7 @@ describe("issue 12720, issue 47172", () => {
       "not.have.text",
       "Showing 0 rows",
     );
-    cy.findByTestId("question-row-count").should(
-     "not.be.empty"
-    );
+    cy.findByTestId("question-row-count").should("not.be.empty");
   });
 });
 
