@@ -14,6 +14,7 @@
    [metabase-enterprise.semantic-search.embedders :as ss.embedders]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.task.core :as task]
@@ -126,7 +127,20 @@
     (let [es       [(entity :name "customers") (entity :name "clients")]
           embedder (fn [_] (throw (ex-info "boom" {})))]
       (is (=? {:components {:synonym-pairs {:measurement 0.0 :score 0 :error "boom"}}}
-              (#'complexity/score-catalog es embedder))))))
+              (#'complexity/score-catalog es embedder)))))
+
+  (testing "throwable with a nil/blank message omits :error entirely (response schema requires string)"
+    ;; Regression: we used to unconditionally assoc :error (.getMessage t); many throwables have a
+    ;; nil message, which would send {:error nil} through the API and fail schema validation.
+    (let [es         [(entity :name "customers") (entity :name "clients")]
+          synonym-of #(get-in (#'complexity/score-catalog es %) [:components :synonym-pairs])]
+      (doseq [[label embedder] [["nil message"   (fn [_] (throw (NullPointerException.)))]
+                                ["blank message" (fn [_] (throw (RuntimeException. "   ")))]]]
+        (testing label
+          (let [sub (synonym-of embedder)]
+            (is (= 0 (:score sub)))
+            (is (not (contains? sub :error))
+                (format ":error must be absent when the throwable's message is %s" label))))))))
 
 (deftest ^:sequential complexity-scores-metabot-scope-opt-test
   (testing ":verified-only? true routes the :metabot catalog through metabot-entities"
@@ -209,7 +223,7 @@
     (collections.tu/without-library
      (mt/with-temp [:model/Database {db-id :id} {:name "No-library Test DB"}
                     :model/Table    _           {:db_id db-id :name "contributes_to_universe" :active true}]
-       (let [{:keys [library universe]} (complexity/complexity-scores {:embedder nil})]
+       (let [{:keys [library universe]} (complexity/complexity-scores :embedder nil)]
          (testing "library is empty (no collection tree)"
            (is (= {:total 0
                    :components {:entity-count      {:measurement 0.0 :score 0}
@@ -220,6 +234,41 @@
                   library)))
          (testing "universe still enumerates appdb content (our temp table + whatever else is there)"
            (is (pos? (:total universe)))))))))
+
+(deftest ^:sequential library-excludes-audit-content-test
+  (testing "published audit-db content in the Library tree is excluded so :library stays a subset of :universe"
+    ;; Regression: library-entities previously didn't filter on audit/audit-db-id while universe/metabot did.
+    ;; An audit card/table placed in the Library could push :library past :universe and break the new
+    ;; subset invariant (the hermetic tests below assume library ⊆ universe on every component).
+    (mt/with-temp [:model/Collection {lib-id :id}   {:type     collections/library-collection-type
+                                                     :name     "Library"
+                                                     :location "/"}
+                   :model/Collection {data-id :id}  {:type     collections/library-data-collection-type
+                                                     :name     "Data"
+                                                     :location (format "/%d/" lib-id)}
+                   :model/Collection {mets-id :id}  {:type     collections/library-metrics-collection-type
+                                                     :name     "Metrics"
+                                                     :location (format "/%d/" lib-id)}
+                   :model/Database   {audit-db :id} {:name "Fake Audit DB"}
+                   :model/Database   {real-db :id}  {:name "Non-audit DB"}
+                   ;; Audit-db tables published into the Library tree — MUST be excluded.
+                   :model/Table      _              {:db_id        audit-db :name "audit_events"
+                                                     :active       true     :is_published true
+                                                     :collection_id data-id}
+                   ;; Audit-db metric card in the Library — MUST be excluded.
+                   :model/Card       _              {:database_id  audit-db :type :metric :name "Audit Revenue"
+                                                     :archived     false    :collection_id mets-id}
+                   ;; Non-audit table in the Library — must still count.
+                   :model/Table      _              {:db_id        real-db  :name "orders"
+                                                     :active       true     :is_published true
+                                                     :collection_id data-id}
+                   ;; Non-audit metric card in the Library — must still count.
+                   :model/Card       _              {:database_id  real-db  :type :metric :name "Real Revenue"
+                                                     :archived     false    :collection_id mets-id}]
+      (with-redefs [audit/audit-db-id audit-db]
+        (let [{:keys [library]} (complexity/complexity-scores :embedder nil)]
+          (is (= 2.0 (get-in library [:components :entity-count :measurement]))
+              "only the two non-audit entities count (audit table + audit metric card excluded)"))))))
 
 ;; We're only reading the method table via `methods`, not calling the impure `!` fn — safe in parallel.
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
@@ -675,7 +724,7 @@
                                      "revenue"       [0.0  0.0  0.0  0.0 1.0 0.0 0.0]   ; "Revenue" cards normalize here
                                      "audit_events"  [0.0  0.0  0.0  0.0 0.0 1.0 0.0]
                                      "audit_log"     [0.0  0.0  0.0  0.0 0.0 0.99 0.1]}) ; ≈ audit_events (universe-only)
-            {:keys [library universe]} (complexity/complexity-scores {:embedder embedder})]
+            {:keys [library universe]} (complexity/complexity-scores :embedder embedder)]
         (testing "library reflects exactly what we put in the Library collection tree"
           ;; Library: 4 tables + 2 metric cards = 6 entities.
           ;;  entity-count       6 × 10 = 60

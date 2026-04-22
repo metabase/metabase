@@ -144,18 +144,21 @@
 
 (defn- library-entities
   "Entities in the `:library` catalog — non-archived model/metric Cards and published Tables that
-   live anywhere in the Library collection tree. Returns an empty vector when no Library exists."
+   live anywhere in the Library collection tree (excluding audit content, so `:library` stays a
+   subset of `:universe`)."
   []
   (let [collection-ids (library-collection-ids)]
     (if (empty? collection-ids)
       []
       (let [card-entities (collect-card-entities [:type          [:in ["metric" "model"]]
                                                   :archived      false
-                                                  :collection_id [:in collection-ids]])
+                                                  :collection_id [:in collection-ids]
+                                                  :database_id   [:not= audit/audit-db-id]])
             tables        (t2/select [:model/Table :id :name]
                                      :active        true
                                      :is_published  true
-                                     :collection_id [:in collection-ids])]
+                                     :collection_id [:in collection-ids]
+                                     :db_id         [:not= audit/audit-db-id])]
         (into card-entities (assemble-table-entities tables))))))
 
 (defn- universe-entities
@@ -318,8 +321,9 @@
       (component-score :synonym-pair pairs))
     (catch Throwable t
       (log/warn t "Complexity score: synonym detection failed; falling back to 0")
-      (assoc (component-score :synonym-pair 0)
-             :error (.getMessage t)))))
+      (let [msg (.getMessage t)]
+        (cond-> (component-score :synonym-pair 0)
+          (not (str/blank? msg)) (assoc :error msg))))))
 
 (defn score-catalog
   "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`."
