@@ -1,16 +1,24 @@
 import type { ReactNode } from "react";
 
 import type { IconName } from "metabase/ui";
-import { ActionIcon, Divider, Flex, Icon } from "metabase/ui";
+import { Divider, Flex } from "metabase/ui";
+
+import { ChartLayoutPicker } from "../MetricControls/ChartLayoutPicker";
+import { ChartTypePicker } from "../MetricControls/ChartTypePicker";
 
 import S from "./QueryExplorerBar.module.css";
 
 export type QueryExplorerBarChartType = {
-  /** The identifier for this chart type (e.g. "line", "bar", "area") */
+  /** The identifier for this chart type (e.g. line, bar, area) */
   type: string;
 
   /** Icon to display for this chart type */
   icon: IconName;
+};
+
+export type QueryExplorerBarLayout = {
+  isStacked: boolean;
+  onToggle: (stacked: boolean) => void;
 };
 
 export type QueryExplorerBarProps = {
@@ -23,8 +31,8 @@ export type QueryExplorerBarProps = {
   /** Called when a chart type button is clicked */
   onChartTypeChange: (type: string) => void;
 
-  /** Optional slot for a layout/stack toggle control, rendered after chart types */
-  layoutControl?: ReactNode;
+  /** Optional stack/split layout toggle, shown after chart types */
+  layout?: QueryExplorerBarLayout;
 
   /** Optional slot for a filter control (e.g. date range picker) */
   filterControl?: ReactNode;
@@ -37,7 +45,7 @@ export function QueryExplorerBar({
   chartTypes,
   currentChartType,
   onChartTypeChange,
-  layoutControl,
+  layout,
   filterControl,
   granularityControl,
 }: QueryExplorerBarProps) {
@@ -54,29 +62,19 @@ export function QueryExplorerBar({
       gap="xs"
       data-testid="query-explorer-bar"
     >
-      <Flex gap="xs" bg="background-secondary" p="xs" bdrs="md">
-        {chartTypes.map(({ type, icon }) => (
-          <ActionIcon
-            w="2rem"
-            key={type}
-            variant={currentChartType === type ? "filled" : "subtle"}
-            bg={currentChartType === type ? "background-primary" : undefined}
-            onClick={() => onChartTypeChange(type)}
-            aria-label={type}
-            className={currentChartType === type ? S.selected : undefined}
-          >
-            <Icon
-              name={icon}
-              c={currentChartType === type ? "brand" : "text-primary"}
-            />
-          </ActionIcon>
-        ))}
-      </Flex>
+      <ChartTypePicker
+        chartTypes={chartTypes}
+        value={currentChartType}
+        onChange={onChartTypeChange}
+      />
 
-      {layoutControl && (
+      {layout && (
         <>
           <Divider orientation="vertical" className={S.divider} mx="xs" />
-          {layoutControl}
+          <ChartLayoutPicker
+            isStacked={layout.isStacked}
+            onToggle={layout.onToggle}
+          />
         </>
       )}
 

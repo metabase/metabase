@@ -14,7 +14,6 @@ import { QueryExplorerBar } from "../QueryExplorerBar";
 
 import { BinningButton } from "./BinningButton";
 import { BucketButton } from "./BucketButton";
-import { ChartLayoutPicker } from "./ChartLayoutPicker";
 import { DimensionFilterButton } from "./DimensionFilterButton";
 
 function isValidDisplayTypeForTab(
@@ -86,15 +85,16 @@ export function MetricControls({
       onChartTypeChange={(type) =>
         onDisplayTypeChange(type as MetricsViewerDisplayType)
       }
-      layoutControl={
-        showStackSeries && onVisualizationSettingsChange ? (
-          <ChartLayoutPicker
-            isStacked={!!visualizationSettings?.["graph.split_panels"]}
-            onToggle={(stacked) =>
-              onVisualizationSettingsChange({ "graph.split_panels": stacked })
+      layout={
+        showStackSeries && onVisualizationSettingsChange
+          ? {
+              isStacked: !!visualizationSettings?.["graph.split_panels"],
+              onToggle: (stacked) =>
+                onVisualizationSettingsChange({
+                  "graph.split_panels": stacked,
+                }),
             }
-          />
-        ) : undefined
+          : undefined
       }
       filterControl={
         hasFilterControls && projectionInfo.filterDimension ? (
