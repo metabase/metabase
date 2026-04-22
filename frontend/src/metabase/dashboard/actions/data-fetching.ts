@@ -26,6 +26,7 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
+import { getIsEmbedPreview } from "metabase/get-is-embed-preview";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
@@ -553,6 +554,10 @@ function canUseBatchEndpoint(
   dashboardType: string,
   isEditing: boolean,
 ): boolean {
+  // preview_embed has no batch endpoint; fall back to per-card there
+  if (dashboardType === "embed" && getIsEmbedPreview()) {
+    return false;
+  }
   return (
     !isEditing &&
     (dashboardType === "normal" ||
@@ -843,6 +848,14 @@ export const cancelFetchCardData = createAction(
     if (deferred) {
       deferred.resolve();
       cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = null;
+    }
+    // Per-card XHR cancellation isn't possible on the batch endpoint — a
+    // batch carries every loading card on one fetch. Abort it so removing /
+    // navigating away from a card during load doesn't leave a slow stream
+    // running; the remaining cards refetch on the next fetchDashboardCardData.
+    if (batchFetchAbortController) {
+      batchFetchAbortController.abort();
+      batchFetchAbortController = null;
     }
     return { payload: { dashcard_id, card_id } };
   },

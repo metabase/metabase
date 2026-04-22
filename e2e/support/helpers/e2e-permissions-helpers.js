@@ -135,11 +135,20 @@ export function assertSameBeforeAndAfterSave(assertionCallback) {
 }
 
 export function assertDatasetReqIsSandboxed(options = {}) {
-  const { requestAlias = "@dataset", columnId, columnAssertion } = options;
+  const {
+    requestAlias = "@dataset",
+    columnId,
+    columnAssertion,
+    dashcardId,
+  } = options;
 
   cy.get(requestAlias).should(({ response }) => {
+    const data =
+      dashcardId !== undefined
+        ? extractBatchCardData(response.body, dashcardId)
+        : response.body.data;
+
     // check if data is reporting itself as sandboxed
-    const { data } = response.body;
     expect(data.is_sandboxed).to.equal(true);
 
     // if options to make assertions on a column's data
@@ -156,6 +165,37 @@ export function assertDatasetReqIsSandboxed(options = {}) {
       expect(values.every(assertionFn)).to.equal(true, errMsg);
     }
   });
+}
+
+// Parse the NDJSON body of a batch-card-query response and reconstruct the
+// dataset for a specific dashcard by merging its card-begin/rows/end envelopes.
+function extractBatchCardData(body, dashcardId) {
+  const text = typeof body === "string" ? body : JSON.stringify(body);
+  const messages = text
+    .split("\n")
+    .filter((line) => line.trim().length > 0)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+
+  const beginMsg = messages.find(
+    (m) => m.type === "card-begin" && m.dashcard_id === dashcardId,
+  );
+  const endMsg = messages.find(
+    (m) => m.type === "card-end" && m.dashcard_id === dashcardId,
+  );
+  expect(endMsg, `no card-end for dashcard ${dashcardId}`).to.not.be.undefined;
+
+  const rows = messages
+    .filter((m) => m.type === "card-rows" && m.dashcard_id === dashcardId)
+    .flatMap((m) => m.rows);
+
+  return { ...(beginMsg?.data ?? {}), ...endMsg.data, rows };
 }
 
 export function blockUserGroupPermissions(groupId, databaseId = SAMPLE_DB_ID) {
