@@ -16,6 +16,8 @@
 
 (set! *warn-on-reflection* true)
 
+(def ^:private unknown-remote-address "unknown")
+
 (defn- ->bytes
   "Normalize an inbound WebSocket message body to a `byte[]`."
   ^bytes [msg]
@@ -55,13 +57,17 @@
           (getConnectionId [_]
             connection-id)
           (close [_ code reason]
+            ;; CAS guards against double-close from YHocuspocus. `:on-close`
+            ;; separately uses `.set closed? true` (not CAS) so that a client-
+            ;; initiated close observed by Ring marks the transport closed even
+            ;; if `close(int,String)` was never called on this side.
             (when (.compareAndSet closed? false true)
               (when-let [sock (.get socket-ref)]
                 (ring.ws/close sock code reason))))
           (isOpen [_]
             (and (not (.get closed?)) (some? (.get socket-ref))))
           (getRemoteAddress [_]
-            (or remote-address "unknown")))
+            (or remote-address unknown-remote-address)))
         ws-listener
         {:on-open    (fn on-open [sock]
                        (.set socket-ref sock)

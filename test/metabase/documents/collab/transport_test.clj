@@ -45,7 +45,7 @@
 
 (deftest ^:parallel remote-address-defaults-when-nil-test
   (let [[^Transport transport _] (collab.transport/create-ring-transport "c" nil)]
-    (is (= "unknown" (.getRemoteAddress transport)))))
+    (is (= @#'collab.transport/unknown-remote-address (.getRemoteAddress transport)))))
 
 (deftest ^:parallel send-before-open-fails-future-test
   (testing "send with no socket captured returns a failed CompletableFuture (no NPE)"

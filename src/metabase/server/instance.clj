@@ -92,6 +92,10 @@
            request-map
            (fn [response-map]
              (if (ring.ws/websocket-response? response-map)
+               ;; `upgrade-to-websocket` is a private fn in ring-jetty-adapter; mirrors
+               ;; the pattern used by ring-jetty's own `async-jetty-respond`. Safe to
+               ;; `.complete` the async context here because upgrade-to-websocket does
+               ;; not complete it itself. Revisit if ring-jetty-adapter is bumped.
                (do (#'ring-jetty/upgrade-to-websocket request response response-map {})
                    (.complete context))
                (server.protocols/respond (:body response-map) {:request       request
@@ -118,6 +122,11 @@
         handler         (async-proxy-handler handler timeout)
         servlet-handler (doto (ServletContextHandler.)
                           (.setAllowNullPathInfo true)
+                          ;; Registers the Jetty WebSocket SCI on the context so
+                          ;; `ring-jetty/upgrade-to-websocket` can find the container
+                          ;; via `JettyWebSocketServerContainer/getContainer`. Must
+                          ;; run before the context starts (i.e. before `.start` on
+                          ;; the Server); placement inside this `doto` is sufficient.
                           (JettyWebSocketServletContainerInitializer/configure nil)
                           (.insertHandler (statistics-handler/new-handler))
                           (.setServletHandler handler))]

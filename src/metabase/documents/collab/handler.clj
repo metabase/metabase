@@ -31,10 +31,10 @@
     (respond nil)
 
     (not (config/config-bool :mb-enable-document-collab))
-    (respond {:status 404 :body "Not found"})
+    (respond {:status 404 :headers {"content-type" "text/plain"} :body "Not found"})
 
     (not (ring.ws/upgrade-request? request))
-    (respond {:status 426 :body "Upgrade required"})
+    (respond {:status 426 :headers {"content-type" "text/plain"} :body "Upgrade required"})
 
     :else
     (respond (ws-response request))))
