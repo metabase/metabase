@@ -34,7 +34,6 @@ export const UpsellEmbeddingTheme = ({ source }: { source: string }) => {
             upgradeOnClick={upgradeOnClick}
             upgradeUrl={upgradeUrl}
             image="app/assets/img/upsell-themes.png"
-            variant="image-full-height"
           />
         </LineDecorator>
       </Stack>
