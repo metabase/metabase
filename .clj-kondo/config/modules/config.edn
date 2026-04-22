@@ -902,7 +902,6 @@
            metabase.embedding.validation}
    :uses #{analytics
            api
-           appearance
            models
            premium-features
            server
