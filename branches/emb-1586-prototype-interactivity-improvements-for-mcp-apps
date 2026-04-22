@@ -1,7 +1,7 @@
 {
   "base": {
-    "name": "feat/builtin-mcp-ui",
-    "hash": "ddd74074b6628bad5ce19e4b733f1326e9d9c460"
+    "name": "emb-1599-extract-the-metric-explorer-bar-from-explore-page-as-a",
+    "hash": "b421f0be69bc4518d0657c8281b662b47cc6b391"
   },
   "upstream": {
     "branch": "emb-1586-prototype-interactivity-improvements-for-mcp-apps"
