@@ -139,9 +139,7 @@ Rules for joins:
 
 ### Implicit joins
 
-If a referenced field lives on a table that has a clear, single foreign-key path from the source table, you can simply reference it by its portable FK **without** writing an explicit `joins:` section. Metabase will fill in the implicit `source-field` option for you during the repair pass.
-
-Only do this when the FK path is unambiguous. If there are multiple FK columns on the source table pointing to the target table, the tool will return an ambiguity error and ask you to either write an explicit join or specify `source-field` explicitly — in that case, use `entity_details` on the source table to see the outbound FK edges, then pick one.
+Not yet supported in this tool version. Every field you reference must either live on the `source-table` or be reached via an explicit entry in the stage's `joins:` list. If you reference a field on another table without joining it, you'll get an error.
 
 ## Rules and common mistakes
 
@@ -158,6 +156,7 @@ Only do this when the FK path is unambiguous. If there are multiple FK columns o
 These are not yet available in this tool version; ignore them for now:
 - `source-card` (querying a saved question / model as a source)
 - Multi-stage queries (post-aggregation filtering/grouping)
+- Implicit joins (fields referenced via FK without an explicit `joins:` entry)
 - Custom expressions (`expressions:` clause) and `expression-ref` references
 - Aggregation references with UUIDs
 
