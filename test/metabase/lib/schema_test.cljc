@@ -412,6 +412,8 @@
   ;; this one is not valid according to the internal schema because it
   ;; uses a string tuple for the field instead of an integer.
   (is (mr/explain ::lib.schema/query basic-external-query))
+  ;; if these fail, it's likely because the :mbql.clause/field or ::common/options
+  ;; schemas changed; see the comment in ::lib.schema/external-query for details.
   (is (not (me/humanize (mr/explain ::lib.schema/external-query
                                     basic-external-query))))
   (is (not (me/humanize (mr/explain ::lib.schema/external-query
