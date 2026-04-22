@@ -24,7 +24,7 @@
 (def ^:private WorkspaceParams
   [:map {:closed true}
    [:name      ms/NonBlankString]
-   [:databases [:sequential WorkspaceDatabaseParams]]])
+   [:databases [:sequential {:min 1} WorkspaceDatabaseParams]]])
 
 (defn- sanitize-workspace-database-params
   "Strip server-controlled fields the client is not allowed to set."
