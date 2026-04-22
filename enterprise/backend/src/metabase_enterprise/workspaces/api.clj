@@ -64,11 +64,28 @@
   (api/check-superuser)
   (mapv present-workspace (workspace/list-workspaces)))
 
+(defn- enrich-remappings-with-table-ids [rows]
+  (let [db-ids (into #{} (map :database_id) rows)
+        tables (when (seq db-ids)
+                 (t2/select [:model/Table :id :db_id :schema :name]
+                            :db_id [:in db-ids]))
+        lookup (into {}
+                     (map (fn [t] [[(:db_id t) (:schema t) (:name t)] (:id t)]))
+                     tables)]
+    (mapv (fn [r]
+            (assoc r
+                   :from_table_id (get lookup [(:database_id r) (:from_schema r) (:from_table_name r)])
+                   :to_table_id   (get lookup [(:database_id r) (:to_schema r) (:to_table_name r)])))
+          rows)))
+
 (api.macros/defendpoint :get "/remappings"
-  "Return every row in the `table_remapping` table."
+  "Return every row in the `table_remapping` table, each enriched with
+  `:from_table_id` and `:to_table_id` — the corresponding metabase_table ids,
+  or nil when no matching Table row exists."
   []
   (api/check-superuser)
-  (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
+  (enrich-remappings-with-table-ids
+   (t2/select :model/TableRemapping {:order-by [[:id :asc]]})))
 
 (api.macros/defendpoint :get "/current"
   "Return the currently active workspace config (or null if no workspace is active)."

@@ -165,3 +165,37 @@ databaseChangeLog:
                   remarks: Initialization state of this workspace database (uninitialized/initialized)
                   constraints:
                     nullable: false
+
+  ## Tighten workspace_database.database_id FK: cascade → restrict.
+  ##
+  ## The original FK above (v61.2026-04-22T12:00:03) used deleteCascade: true — deleting
+  ## a metabase_database silently cascade-deleted its workspace_database rows, bypassing
+  ## the 409 guard in `delete-workspace!` and orphaning any isolated warehouse
+  ## schemas/users for :initialized rows.
+  ##
+  ## RESTRICT forces the deletion to fail at the DB level unless the workspace_database
+  ## rows have been cleaned up first. An enterprise pre-delete hook on :model/Database
+  ## does that cleanup (refuse with 409 for :initialized rows, delete :uninitialized rows
+  ## explicitly) — the FK is the last-line-of-defense for paths that skip the hook.
+
+  - changeSet:
+      id: v61.2026-04-22T15:00:00
+      author: timothy
+      comment: Drop fk_workspace_database_database_id (previously cascade on delete)
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_database
+            constraintName: fk_workspace_database_database_id
+
+  - changeSet:
+      id: v61.2026-04-22T15:00:01
+      author: timothy
+      comment: Re-add fk_workspace_database_database_id with ON DELETE RESTRICT
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_database
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_workspace_database_database_id
+            onDelete: RESTRICT

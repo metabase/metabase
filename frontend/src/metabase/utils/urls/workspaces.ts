@@ -1,6 +1,7 @@
 import type { WorkspaceId } from "metabase-types/api";
 
 const WORKSPACES_ROOT_URL = `/data-studio/workspaces`;
+const WORKSPACE_INSTANCE_URL = `/data-studio/workspace`;
 
 export function workspaceList() {
   return WORKSPACES_ROOT_URL;
@@ -12,4 +13,12 @@ export function newWorkspace() {
 
 export function workspace(workspaceId: WorkspaceId) {
   return `${WORKSPACES_ROOT_URL}/${workspaceId}`;
+}
+
+export function workspaceInstance() {
+  return WORKSPACE_INSTANCE_URL;
+}
+
+export function workspaceInstanceRemappings() {
+  return `${WORKSPACE_INSTANCE_URL}/remappings`;
 }

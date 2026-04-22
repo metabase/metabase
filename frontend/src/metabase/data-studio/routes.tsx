@@ -82,6 +82,11 @@ export function getDataStudioRoutes(
             {PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes()}
           </Route>
         )}
+        {PLUGIN_WORKSPACES.isEnabled && (
+          <Route path="workspace" component={WorkspacesSectionLayout}>
+            {PLUGIN_WORKSPACES.getDataStudioWorkspaceInstanceRoutes()}
+          </Route>
+        )}
       </Route>
     </Route>
   );

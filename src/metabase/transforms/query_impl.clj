@@ -26,7 +26,14 @@
            run-user-id (if (and (= run-method :manual) user-id)
                          user-id
                          (or owner_user_id creator_id))
-           {run-id :id} (transforms.u/try-start-unless-already-running id run-method run-user-id)]
+           remap       (transforms-base.query/resolve-transform-remapping!
+                        (:id db) (:schema target) (:name target))
+           {run-id :id} (transforms.u/try-start-unless-already-running
+                         id run-method run-user-id
+                         {:target_schema    (:schema target)
+                          :target_table     (:name target)
+                          :workspace_schema (:schema remap)
+                          :workspace_table  (:name remap)})]
        (when start-promise (deliver start-promise [:started run-id]))
        (driver.conn/with-write-connection
          (log/info "Executing transform" id "with target" (pr-str target)
