@@ -196,7 +196,7 @@
         pmbql-query (try
                       (->> yaml-string
                            repr/parse-yaml
-                           repr.repair/repair
+                           (repr.repair/repair mp)
                            repr/validate-query
                            (repr.resolve/resolve-query mp))
                       (catch clojure.lang.ExceptionInfo e

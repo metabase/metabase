@@ -113,6 +113,29 @@
                                           :candidates  (mapv :id candidates)})))))]
     (walk nil field-path)))
 
+(defn outbound-fks-from-table
+  "Return a sequence of FK edges leaving `source-table-id` in `metadata-provider`.
+
+  Each entry is a map with:
+    * `:source-field-id`           numeric id of the FK field on the source table;
+    * `:source-field`              the full column metadata (convenient for portable-FK export);
+    * `:target-field-id`           numeric id of the target field pointed to;
+    * `:target-table-id`           numeric id of the target table.
+
+  Uses `lib.metadata.protocols/metadatas-for-table` and `lib.metadata.protocols/field` directly
+  (not the `mu/defn`-wrapped accessors) so that missing target-field lookups degrade to `nil`
+  rather than throwing Malli errors."
+  [metadata-provider source-table-id]
+  (->> (lib.metadata.protocols/metadatas-for-table metadata-provider :metadata/column source-table-id)
+       (keep (fn [col]
+               (when-let [tgt-id (:fk-target-field-id col)]
+                 (when-let [tgt (lib.metadata.protocols/field metadata-provider tgt-id)]
+                   {:source-field-id  (:id col)
+                    :source-field     col
+                    :target-field-id  tgt-id
+                    :target-table-id  (:table-id tgt)}))))
+       vec))
+
 (defn- export-field-path
   "Build the portable FK path for a field, including any JSON-unfolded parent chain."
   [metadata-provider field]

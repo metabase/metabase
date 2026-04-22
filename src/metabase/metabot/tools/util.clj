@@ -62,6 +62,15 @@
       (when (and (:name db) (:name table))
         (into [(:name db) (:schema table) (:name table)] chain)))))
 
+(defn- fk-target-portable-fk
+  "If `column` is an FK (has a non-nil `:fk-target-field-id`), return the portable FK path of
+  the target field, walking the parent-id chain for JSON-unfolded targets. Returns nil for
+  non-FK columns or when the target can't be resolved."
+  [query column]
+  (when-let [tgt-id (:fk-target-field-id column)]
+    (when-let [tgt (lib.metadata/field query tgt-id)]
+      (column-portable-fk query tgt))))
+
 (defn ->result-column
   "Return tool result column for `column` of `query`.
   Uses the real field `:id` when available, falling back to column name for
@@ -80,6 +89,8 @@
                               (:lib/desired-column-alias column)
                               (:lib/source-column-alias column))
         portable-fk       (try (column-portable-fk query column)
+                               (catch Exception _ nil))
+        fk-target-fk      (try (fk-target-portable-fk query column)
                                (catch Exception _ nil))]
     (-> {:field_id field-id
          :name (or (:lib/desired-column-alias column)
@@ -94,6 +105,7 @@
                       :coercion_strategy coercion-strategy
                       :field_values (:field-values column)
                       :portable_fk portable-fk
+                      :fk_target_portable_fk fk-target-fk
                       :table_reference (:table-reference column)))))
 
 (defn find-column-by-field-id

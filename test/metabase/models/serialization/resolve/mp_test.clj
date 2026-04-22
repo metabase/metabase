@@ -198,3 +198,40 @@
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
           (is (= :not-implemented-yet (:error (ex-data e)))))))))
+
+;;; ============================================================
+;;; outbound-fks-from-table
+;;; ============================================================
+
+(def ^:private mp-fks-3
+  "3-table MP: ORDERS \u2192 PRODUCTS and ORDERS \u2192 USERS."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
+               {:id 20 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}
+               {:id 30 :name "USERS"    :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer :fk-target-field-id 200}
+               {:id 102 :name "USER_ID"    :table-id 10 :base-type :type/Integer :fk-target-field-id 300}
+               {:id 200 :name "ID"         :table-id 20 :base-type :type/Integer}
+               {:id 201 :name "CATEGORY"   :table-id 20 :base-type :type/Text}
+               {:id 300 :name "ID"         :table-id 30 :base-type :type/Integer}
+               {:id 301 :name "NAME"       :table-id 30 :base-type :type/Text}]}))
+
+(deftest outbound-fks-from-table-happy-path-test
+  (testing "returns one entry per outbound FK, with target-table-id resolved"
+    (let [edges (resolve.mp/outbound-fks-from-table mp-fks-3 10)]
+      (is (= 2 (count edges)))
+      (is (= #{[101 20] [102 30]}
+             (set (map (juxt :source-field-id :target-table-id) edges))))
+      (is (every? :target-field-id edges))
+      (is (every? :source-field edges)))))
+
+(deftest outbound-fks-from-table-no-fks-test
+  (testing "table with no outbound FKs returns empty seq"
+    (is (= [] (resolve.mp/outbound-fks-from-table mp-fks-3 20)))
+    (is (= [] (resolve.mp/outbound-fks-from-table mp-fks-3 30)))))
+
+(deftest outbound-fks-from-table-simple-mp-test
+  (testing "works on the existing simple MP too (no FKs configured)"
+    (is (= [] (resolve.mp/outbound-fks-from-table mp-simple 10)))))
