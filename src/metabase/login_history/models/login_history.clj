@@ -76,16 +76,18 @@
           (= 1)))
 
 (def ^:private new-device-email-rate-limit-window (t/hours 1))
-(def ^:private new-device-email-rate-limit-cap 20)
+(def ^:private new-device-email-rate-limit-cap 5)
 
 (defn too-many-new-device-emails-recently?
-  "Circuit breaker — true if the instance has exceeded `new-device-email-rate-limit-cap` in the
-   last window. Counts first-time `(user_id, device_id)` events, which over-counts
-   first-login-ever rows (those never email) — safe direction for a breaker."
-  []
+  "Per-user circuit breaker — true if this user has already triggered
+   `new-device-email-rate-limit-cap` first-time `(user_id, device_id)` events in the last
+   window. Over-counts first-login-ever rows (those never email) — safe direction for a
+   breaker."
+  [user-id]
   (let [cutoff (t/minus (t/offset-date-time) new-device-email-rate-limit-window)]
     (> (t2/count :model/LoginHistory
                  {:where [:and
+                          [:= :user_id user-id]
                           [:> :timestamp cutoff]
                           [:not [:exists
                                  {:select [1]
@@ -93,7 +95,7 @@
                                   :where  [:and
                                            [:= :lh2.user_id   :login_history.user_id]
                                            [:= :lh2.device_id :login_history.device_id]
-                                           [:< :lh2.timestamp :login_history.timestamp]]}]]]})
+                                           [:< :lh2.id        :login_history.id]]}]]]})
        new-device-email-rate-limit-cap)))
 
 (t2/define-before-update :model/LoginHistory [_login-history]
