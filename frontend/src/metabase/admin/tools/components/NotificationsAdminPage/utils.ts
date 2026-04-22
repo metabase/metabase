@@ -30,24 +30,25 @@ export type NotificationsUrlState = {
   channel: NotificationChannelType | null;
 };
 
-const HEALTH_VALUES: readonly NotificationHealth[] = [
+const HEALTH_VALUES = [
   "healthy",
   "orphaned_card",
   "orphaned_creator",
   "failing",
-];
+  "abandoned",
+] as const satisfies readonly NotificationHealth[];
 
-const CHANNEL_VALUES: readonly NotificationChannelType[] = [
+const CHANNEL_VALUES = [
   "channel/email",
   "channel/slack",
   "channel/http",
-];
+] as const satisfies readonly NotificationChannelType[];
 
-const STATUS_VALUES: readonly NotificationStatusFilter[] = [
+const STATUS_VALUES = [
   "active",
   "archived",
   "all",
-];
+] as const satisfies readonly NotificationStatusFilter[];
 
 function parsePage(param: QueryParam): number {
   const value = getFirstParamValue(param);

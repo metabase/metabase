@@ -23,7 +23,7 @@ export const ChangeOwnerModal = ({
   const [selectedOwnerId, setSelectedOwnerId] = useState<UserId | null>(null);
 
   const { data, isLoading } = useListUsersQuery(
-    opened ? { limit: 500 } : undefined,
+    { limit: 500 },
     { skip: !opened },
   );
 

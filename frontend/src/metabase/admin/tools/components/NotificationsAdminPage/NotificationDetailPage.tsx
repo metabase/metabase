@@ -402,10 +402,10 @@ const InfoRow = ({
   children: React.ReactNode;
 }) => (
   <Flex gap="md" align="flex-start">
-    <Text fw="bold" w={120} style={{ flexShrink: 0 }}>
+    <Text fw="bold" w={120} flex="0 0 auto">
       {label}
     </Text>
-    <Box style={{ flex: 1 }}>{children}</Box>
+    <Box flex={1}>{children}</Box>
   </Flex>
 );
 
