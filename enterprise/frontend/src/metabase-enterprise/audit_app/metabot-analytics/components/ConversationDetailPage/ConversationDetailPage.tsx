@@ -2,7 +2,12 @@ import { useMemo } from "react";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
-import { skipToken, useGetAdhocQueryMetadataQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetAdhocQueryMetadataQuery,
+  useListPermissionsGroupsQuery,
+  useListUserMembershipsQuery,
+} from "metabase/api";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { DateTime } from "metabase/common/components/DateTime";
@@ -27,6 +32,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { isDefaultGroup } from "metabase/utils/groups";
 import { useSelector } from "metabase/utils/redux";
 import { getUserName } from "metabase/utils/user";
 import Question from "metabase-lib/v1/Question";
@@ -62,6 +68,8 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     isLoading,
     error,
   } = useGetMetabotConversationQuery(convoId);
+
+  const userGroupNames = useUserGroupNames(conversation?.user?.id);
 
   if (isLoading || error) {
     return (
@@ -116,12 +124,14 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                   </Text>
                 </Flex>
               )}
-              <Flex gap="xs" align="center">
-                <Icon name="group" size={16} c="text-tertiary" />
-                <Text size="md" c="text-secondary">
-                  TODO
-                </Text>
-              </Flex>
+              {userGroupNames.length > 0 && (
+                <Flex gap="xs" align="center">
+                  <Icon name="group" size={16} c="text-tertiary" />
+                  <Text size="md" c="text-secondary">
+                    {userGroupNames.join(", ")}
+                  </Text>
+                </Flex>
+              )}
               {conversation.slack_permalink && (
                 <Anchor
                   href={conversation.slack_permalink}
@@ -382,4 +392,22 @@ function NotebookGeneratedQueryCard({ mbql }: { mbql: DatasetQuery }) {
 
 function noopUpdateQuestion(): Promise<void> {
   return Promise.resolve();
+}
+
+function useUserGroupNames(userId: number | undefined): string[] {
+  const { data: membershipsByUser } = useListUserMembershipsQuery();
+  const { data: groups } = useListPermissionsGroupsQuery({});
+
+  return useMemo(() => {
+    if (userId == null || !membershipsByUser || !groups) {
+      return [];
+    }
+    const memberships = membershipsByUser[userId] ?? [];
+    const groupsById = new Map(
+      groups.filter((g) => !isDefaultGroup(g)).map((g) => [g.id, g.name]),
+    );
+    return memberships
+      .map((m) => groupsById.get(m.group_id))
+      .filter((name): name is string => Boolean(name));
+  }, [userId, membershipsByUser, groups]);
 }
