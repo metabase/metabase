@@ -145,22 +145,35 @@
   (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
       false))
 
+;; Registry of zero-arg fns returning a timeout in seconds. Features like transforms that legitimately run longer
+;; than a single query register here so the c3p0 pool's leak-detector timeout (the computed default of
+;; `jdbc-data-warehouse-unreturned-connection-timeout-seconds`) stays above their runtime — without this namespace
+;; needing a compile-time dependency on downstream modules.
+(defonce ^:private long-running-timeout-providers-seconds (atom {}))
+
+(defn register-long-running-timeout-provider!
+  "Register `getter`, a zero-arg fn returning a timeout in seconds, under `k`. The computed default of
+  `jdbc-data-warehouse-unreturned-connection-timeout-seconds` will be at least as large as the max over all registered
+  providers, so long-running features (transforms) do not have their pool connections pre-emptively killed."
+  [k getter]
+  (swap! long-running-timeout-providers-seconds assoc k getter))
+
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
-      ;; Query-timeout enforcement lives per-statement via `Statement.setQueryTimeout`; this setting only acts as a
-      ;; leak-detector upper bound, so it must be at least as large as the longest legitimate query we expect —
-      ;; which, for transforms, is `transform-timeout`. `transform-timeout` lives downstream of this namespace;
-      ;; resolve it lazily to avoid a module-layering cycle.
-      (let [query-timeout-s     (long (/ *query-timeout-ms* 1000))
-            transform-timeout-s (when-let [get-transform-timeout (requiring-resolve 'metabase.transforms.settings/transform-timeout)]
-                                  (* 60 (long (get-transform-timeout))))]
-        (max query-timeout-s (or transform-timeout-s 0)))))
+      ;; Per-query timeouts are enforced via `Statement.setQueryTimeout`; this pool setting only acts as a
+      ;; leak-detector upper bound, so it must be at least as large as the longest legitimate query we expect.
+      (apply max
+             (long (/ *query-timeout-ms* 1000))
+             (keep (fn [getter]
+                     (try (long (getter)) (catch Throwable _ 0)))
+                   (vals @long-running-timeout-providers-seconds)))))
 
 (defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
   "Kill data-warehouse connections that have been checked out but not returned to the pool after this many seconds.
   Acts as a leak-detector safety net — per-query timeouts are enforced separately via `Statement.setQueryTimeout`, so
-  this value should be at least as long as the longest legitimate query (including transforms). Defaults to
-  max(MB_DB_QUERY_TIMEOUT_MINUTES, MB_TRANSFORM_TIMEOUT)."
+  this value should be at least as long as the longest legitimate query (including transforms). Defaults to the max of
+  `MB_DB_QUERY_TIMEOUT_MINUTES` and any long-running timeouts registered via
+  `register-long-running-timeout-provider!` (e.g. `MB_TRANSFORM_TIMEOUT`)."
   :visibility :internal
   :type       :integer
   :getter     #'-jdbc-data-warehouse-unreturned-connection-timeout-seconds

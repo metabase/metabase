@@ -420,7 +420,10 @@
                                              transform-timeout                                         240]
             (is (= 15 (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)))))))))
 
-(deftest ^:parallel set-statement-query-timeout!-test
+;; Not ^:parallel: the kondo linter flags `set-statement-query-timeout!` (`!`-suffixed, so classified "destructive")
+;; when used inside a parallel test. The call site here only mutates a local proxy Statement and is safe, but marking
+;; synchronous avoids growing the whitelist.
+(deftest set-statement-query-timeout!-test
   (testing "the helper that populates Statement.setQueryTimeout reads *query-timeout-ms* and converts to seconds.
             Proved via a mock Statement so the test is deterministic and independent of any driver's enforcement
             semantics."
