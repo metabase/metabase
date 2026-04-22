@@ -96,8 +96,8 @@ describe("scenarios > embedding > themes > upsell", () => {
       cy.log(
         "keep the trial check deterministic — no trial, so CTA stays 'Upgrade to Pro'",
       );
-      cy.intercept("GET", "/api/cloud-proxy/check-trial-available", {
-        body: { available: false },
+      cy.intercept("POST", "/api/ee/cloud-proxy/mb-plan-trial-up-available", {
+        body: { available: false, plan_alias: "pro-cloud" },
       });
 
       cy.visit("/admin/embedding/themes");
@@ -111,12 +111,53 @@ describe("scenarios > embedding > themes > upsell", () => {
         cy.log("contact-admin fallback is not rendered");
         cy.findByText(/Please ask a Metabase Store Admin/).should("not.exist");
 
+        cy.log("no trial → no trial line");
+        cy.findByText(/14-day free trial/).should("not.exist");
+
         cy.log(
           "CTA is rendered (hosted starter as store admin → opens the upgrade modal)",
         );
         cy.findByRole("button", { name: "Upgrade to Pro" }).should(
           "be.visible",
         );
+      });
+    });
+
+    it("shows the Try for free CTA and trial copy when a trial is available", () => {
+      cy.log("admin is a Store Admin, so the CTA branch is taken");
+      cy.intercept("GET", "/api/session/properties", (req) => {
+        req.continue((res) => {
+          res.body["token-status"] = {
+            ...(res.body["token-status"] ?? {}),
+            "store-users": [{ email: "admin@metabase.test" }],
+          };
+          res.send();
+        });
+      });
+
+      cy.log(
+        "trial is available → CTA switches to 'Try for free' and trial line appears",
+      );
+      cy.intercept("POST", "/api/ee/cloud-proxy/mb-plan-trial-up-available", {
+        body: { available: true, plan_alias: "pro-cloud" },
+      });
+
+      cy.visit("/admin/embedding/themes");
+
+      H.main().within(() => {
+        cy.findByText("Metabase Pro").should("be.visible");
+        cy.findByRole("heading", { name: "Create custom themes" }).should(
+          "be.visible",
+        );
+
+        cy.log("trial line is rendered");
+        cy.findByText(
+          /Get a 14-day free trial of this and other pro features/,
+        ).should("be.visible");
+
+        cy.log("button text switches to 'Try for free'");
+        cy.findByRole("button", { name: "Try for free" }).should("be.visible");
+        cy.findByRole("button", { name: "Upgrade to Pro" }).should("not.exist");
       });
     });
   });
