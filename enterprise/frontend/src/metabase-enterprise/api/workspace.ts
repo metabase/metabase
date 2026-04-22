@@ -65,10 +65,10 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
     }),
-    deprovisionWorkspace: builder.mutation<Workspace, WorkspaceId>({
+    unprovisionWorkspace: builder.mutation<Workspace, WorkspaceId>({
       query: (id) => ({
         method: "POST",
-        url: `/api/ee/workspace/${id}/deprovision`,
+        url: `/api/ee/workspace/${id}/unprovision`,
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
@@ -83,5 +83,5 @@ export const {
   useUpdateWorkspaceMutation,
   useDeleteWorkspaceMutation,
   useProvisionWorkspaceMutation,
-  useDeprovisionWorkspaceMutation,
+  useUnprovisionWorkspaceMutation,
 } = workspaceApi;

@@ -5,15 +5,15 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Group, Icon, type IconName, Text } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
 import {
-  useDeprovisionWorkspaceMutation,
   useProvisionWorkspaceMutation,
+  useUnprovisionWorkspaceMutation,
 } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
 import {
-  isWorkspaceDeprovisioning,
   isWorkspaceProvisioned,
   isWorkspaceProvisioning,
+  isWorkspaceUnprovisioning,
 } from "../../utils";
 import { TitleSection } from "../TitleSection";
 
@@ -26,13 +26,13 @@ export function WorkspaceStatusSection({
 }: WorkspaceStatusSectionProps) {
   const { modalContent, show } = useConfirmation();
   const [provisionWorkspace] = useProvisionWorkspaceMutation();
-  const [deprovisionWorkspace] = useDeprovisionWorkspaceMutation();
+  const [unprovisionWorkspace] = useUnprovisionWorkspaceMutation();
   const { sendErrorToast } = useMetadataToasts();
 
   const isProvisioning = isWorkspaceProvisioning(workspace);
-  const isDeprovisioning = isWorkspaceDeprovisioning(workspace);
+  const isUnprovisioning = isWorkspaceUnprovisioning(workspace);
   const isProvisioned = isWorkspaceProvisioned(workspace);
-  const isInProgress = isProvisioning || isDeprovisioning;
+  const isInProgress = isProvisioning || isUnprovisioning;
 
   const { name: iconName, color: iconColor } = getStatusIcon(workspace);
   const message = getStatusMessage(workspace);
@@ -52,16 +52,16 @@ export function WorkspaceStatusSection({
     });
   };
 
-  const handleDeprovision = () => {
+  const handleUnprovision = () => {
     show({
-      title: t`Deprovision this workspace?`,
-      message: t`Deprovisioning deletes the workspace user and the temporary schema from each database.`,
-      confirmButtonText: t`Deprovision workspace`,
+      title: t`Unprovision this workspace?`,
+      message: t`Unprovisioning deletes the workspace user and the temporary schema from each database.`,
+      confirmButtonText: t`Unprovision workspace`,
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
-        const { error } = await deprovisionWorkspace(workspace.id);
+        const { error } = await unprovisionWorkspace(workspace.id);
         if (error) {
-          sendErrorToast(t`Failed to deprovision workspace`);
+          sendErrorToast(t`Failed to unprovision workspace`);
         }
       },
     });
@@ -70,7 +70,7 @@ export function WorkspaceStatusSection({
   const buttonLabel = getButtonLabel(workspace);
   const buttonColor = getButtonColor(workspace);
 
-  const handleClick = isProvisioned ? handleDeprovision : handleProvision;
+  const handleClick = isProvisioned ? handleUnprovision : handleProvision;
 
   return (
     <TitleSection
@@ -105,7 +105,7 @@ function getStatusIcon(workspace: Workspace): StatusIconProps {
   if (isWorkspaceProvisioning(workspace)) {
     return { name: "hourglass", color: "text-secondary" };
   }
-  if (isWorkspaceDeprovisioning(workspace)) {
+  if (isWorkspaceUnprovisioning(workspace)) {
     return { name: "hourglass", color: "text-secondary" };
   }
   if (isWorkspaceProvisioned(workspace)) {
@@ -118,8 +118,8 @@ function getStatusMessage(workspace: Workspace): string {
   if (isWorkspaceProvisioning(workspace)) {
     return t`Provisioning this workspace…`;
   }
-  if (isWorkspaceDeprovisioning(workspace)) {
-    return t`Deprovisioning this workspace…`;
+  if (isWorkspaceUnprovisioning(workspace)) {
+    return t`Unprovisioning this workspace…`;
   }
   if (isWorkspaceProvisioned(workspace)) {
     return t`This workspace is provisioned and ready to use.`;
@@ -131,17 +131,17 @@ function getButtonLabel(workspace: Workspace): string {
   if (isWorkspaceProvisioning(workspace)) {
     return t`Provisioning…`;
   }
-  if (isWorkspaceDeprovisioning(workspace)) {
-    return t`Deprovisioning…`;
+  if (isWorkspaceUnprovisioning(workspace)) {
+    return t`Unprovisioning…`;
   }
   if (isWorkspaceProvisioned(workspace)) {
-    return t`Deprovision workspace`;
+    return t`Unprovision workspace`;
   }
   return t`Provision workspace`;
 }
 
 function getButtonColor(workspace: Workspace): ColorName {
-  if (isWorkspaceDeprovisioning(workspace)) {
+  if (isWorkspaceUnprovisioning(workspace)) {
     return "error";
   }
   if (isWorkspaceProvisioned(workspace)) {

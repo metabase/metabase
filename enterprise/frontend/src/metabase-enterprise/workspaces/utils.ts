@@ -17,14 +17,14 @@ export function isWorkspaceProvisioning(workspace: Workspace): boolean {
   );
 }
 
-export function isWorkspaceDeprovisioning(workspace: Workspace): boolean {
+export function isWorkspaceUnprovisioning(workspace: Workspace): boolean {
   return workspace.databases.some(
-    (database) => database.status === "deprovisioning",
+    (database) => database.status === "unprovisioning",
   );
 }
 
-export function isWorkspaceDeprovisioned(workspace: Workspace): boolean {
+export function isWorkspaceUnprovisioned(workspace: Workspace): boolean {
   return workspace.databases.every(
-    (database) => database.status === "deprovisioned",
+    (database) => database.status === "unprovisioned",
   );
 }
