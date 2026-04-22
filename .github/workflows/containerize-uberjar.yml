@@ -15,7 +15,7 @@ jobs:
       oss: ${{ toJson(fromJson(steps.build-matrix.outputs.result).oss) }}
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Get EE Docker info
         id: ee-info
         uses: ./.github/actions/get-docker-info
@@ -72,7 +72,7 @@ jobs:
     name: Run Trivy vulnerability scanner
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.commit || github.event.pull_request.head.sha || github.sha }}
       - name: Run Trivy vulnerability scanner
@@ -97,7 +97,7 @@ jobs:
     name: Post PR comment
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Get Docker info for comment
         id: docker-info
         uses: ./.github/actions/get-docker-info

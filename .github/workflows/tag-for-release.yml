@@ -28,7 +28,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -69,7 +69,7 @@ jobs:
         echo "It must start with either 'v0.' or 'v1.'."
         echo "Please, try again."
         exit 1
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: |
           release
@@ -112,7 +112,7 @@ jobs:
     timeout-minutes: 10
     steps:
     - name: Check out the code to verify the release branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0  # IMPORTANT! to get all the branches
         sparse-checkout: |
@@ -149,7 +149,7 @@ jobs:
     env:
       INTERACTIVE: false
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: .github
     - name: Get correct version number
@@ -209,7 +209,7 @@ jobs:
       with:
         role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
         aws-region: ${{ vars.AWS_REGION }}
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
         sparse-checkout: .github
     - name: Retrieve release ee uberjar artifact

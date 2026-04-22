@@ -53,7 +53,7 @@ jobs:
             core.setOutput('base_ref', pr.base.ref);
 
       - name: Checkout PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ steps.pr.outputs.head_ref }}
           fetch-depth: 0

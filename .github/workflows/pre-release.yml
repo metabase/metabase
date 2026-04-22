@@ -32,7 +32,7 @@ jobs:
       dev_server: ${{ fromJson(steps.config.outputs.result).metastoreDevServer }}
       package_manager: ${{ fromJson(steps.config.outputs.result).packageManager }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release
@@ -75,7 +75,7 @@ jobs:
       oss_version: ${{ steps.version-properties.outputs.oss_version }}
       commit: ${{ steps.version-properties.outputs.commit }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: .github
       - name: Retrieve release uberjar artifact for ${{ matrix.edition }}
@@ -163,7 +163,7 @@ jobs:
       TERM: xterm
     steps:
       - name: Check out the code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.release-artifact.outputs.commit }}
       - name: Prepare Docker containers
@@ -262,7 +262,7 @@ jobs:
     needs: [run-sanity-check, check-uberjar-health, containerize-ee, containerize-oss]
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           sparse-checkout: |
             release

@@ -11,7 +11,7 @@ runs:
   steps:
     ## First we deploy the base branch
     - name: Check out base branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ inputs.base-ref }}
 
@@ -42,7 +42,7 @@ runs:
 
     ## Then we deploy the PR branch to ensure it migrates up successfully
     - name: Check out pull request branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ inputs.head-ref }}
 
@@ -81,7 +81,7 @@ runs:
       shell: bash
 
     - name: Re-check out base branch
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ inputs.base-ref }}
 

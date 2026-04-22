@@ -35,7 +35,7 @@ jobs:
       MB_GENTEST_LIMIT_SECONDS: ${{ inputs.seconds }}
       MB_GENTEST_RUN: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ inputs.ref }}
       - name: Prepare back-end environment

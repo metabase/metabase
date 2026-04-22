@@ -92,7 +92,7 @@ jobs:
       MB_EDITION: ${{ inputs.mb_edition }}
       CYPRESS_ENABLE_NETWORK_THROTTLING: ${{ inputs.enable_network_throttling }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Important because we need previous commits hashes to find and download the uberjar!
           fetch-depth: 20

@@ -53,7 +53,7 @@ runs:
           "frontend_client/app/embedding-sdk/chunks/*" \
           -d temp/current-chunks 2>/dev/null || true
     - name: Checkout base ref
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         ref: ${{ inputs.base-ref-commit }}
         path: temp/base-ref-src

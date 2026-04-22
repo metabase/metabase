@@ -13,7 +13,7 @@ jobs:
     outputs:
       frontend_embedding_sources: ${{ steps.changes.outputs.frontend_embedding_sources }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Test which files changed
         uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0.0
         id: changes
@@ -31,7 +31,7 @@ jobs:
       !cancelled() &&
       needs.files-changed.outputs.frontend_embedding_sources == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ github.head_ref }}
 

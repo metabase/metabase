@@ -42,7 +42,7 @@ jobs:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Get cache keys
         uses: ./.github/actions/get-cache-keys
         id: get-cache-keys
@@ -62,7 +62,7 @@ jobs:
       CYPRESS_CACHE_KEY: ${{ needs.get-cache-keys.outputs.cypress-cache-key }}
       ESLINT_CACHE_KEY: ${{ needs.get-cache-keys.outputs.eslint-cache-key }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Backend preparation and cache
       - name: Prepare backend

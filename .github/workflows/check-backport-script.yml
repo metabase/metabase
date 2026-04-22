@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Check for backport.sh file
         run: |
           if [ -f "./backport.sh" ]; then

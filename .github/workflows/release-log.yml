@@ -37,7 +37,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: master # this only works on master
           fetch-depth: 0 # we want all branches and tags

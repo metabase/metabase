@@ -20,7 +20,7 @@ jobs:
     name: Generate pom.xml files
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
       - name: Generate all pom.xml
@@ -50,7 +50,7 @@ jobs:
             package-manager: yarn
             category: release-helper
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: "1.3.7"
@@ -147,7 +147,7 @@ jobs:
             file: modules/drivers/vertica/pom.xml
             category: driver-vertica
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: snyk/actions/setup@b98d498629f1c368650224d6d212bf7dfa89e4bf # 0.4.0
       - name: Download pom files
         uses: actions/download-artifact@v4
