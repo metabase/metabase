@@ -264,7 +264,6 @@ The `msgstr` isn't a valid `java.text.MessageFormat` pattern — the constructor
 
 - Unmatched braces (`{0` or `{{...}}` without proper escaping).
 - Named placeholders like `{login}` that Java MessageFormat can't parse (it expects numeric indices).
-- Unbalanced apostrophe escapes.
 
 These rows always have `dropped=true`. At runtime, `MessageFormat`'s constructor would throw,
 triggering the runtime's try/catch and falling back to English anyway — so the build pre-empts

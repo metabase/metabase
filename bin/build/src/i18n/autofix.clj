@@ -19,7 +19,7 @@
   "Matches a single apostrophe surrounded by word-like characters (letters, digits, spaces,
   diacritics). Preserves apostrophes adjacent to non-word characters like `{` / `}` since those
   are typically intentional MessageFormat escapes (e.g. `'{0}'` meaning literal `{0}`)."
-  #"(?<![^a-zA-Z0-9\sÀ-ſ])'(?![^a-zA-Z0-9\sÀ-ſ])")
+  #"(?<![^a-zA-Z0-9\s\u00C0-\u017F])'(?![^a-zA-Z0-9\s\u00C0-\u017F])")
 
 (defn- escape-apostrophes [^String s]
   (when (some? s) (str/replace s apostrophe-regex "''")))

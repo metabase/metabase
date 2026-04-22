@@ -65,18 +65,20 @@
 (defn- violation->row [{:keys [locale types backend? plural-index msgid msgid-plural msgstr
                                error expected-arg-counts actual-arg-count source-refs]
                         :as   violation}]
-  [locale
-   (str/join "+" (sort (map name types)))
-   (str (boolean (i18n.validation/drop-from-build? violation)))
-   (str (boolean backend?))
-   (if plural-index (str plural-index) "")
-   (or msgid "")
-   (or msgid-plural "")
-   (or msgstr "")
-   (or error "")
-   (if expected-arg-counts (str/join "," expected-arg-counts) "")
-   (if actual-arg-count (str actual-arg-count) "")
-   (str/join " " source-refs)])
+  (->>
+   [locale
+    (str/join "+" (sort (map name types)))
+    (boolean (i18n.validation/drop-from-build? violation))
+    (boolean backend?)
+    plural-index
+    msgid
+    msgid-plural
+    msgstr
+    error
+    (some->> expected-arg-counts (str/join ","))
+    actual-arg-count
+    (str/join " " source-refs)]
+   (mapv (fnil str ""))))
 
 (defn- write-violations-report! [violations]
   (u/step "Write i18n violations report"
