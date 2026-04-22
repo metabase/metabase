@@ -29,9 +29,7 @@ See [upgrading Metabase](../../installation-and-operation/upgrading-metabase.md)
 
 You'll want to test the changes locally first, as there may be breaking changes that require you to upgrade your application code.
 
-Check out a new branch in your application and install the SDK.
-
-**Metabase 57 and later.** Install the `@{major}-stable` dist-tag matching your new Metabase major — for Metabase 60:
+Check out a new branch in your application and install the SDK that matches your Metabase major version. For Metabase 60.x:
 
 ```bash
 npm install @metabase/embedding-sdk-react@60-stable
