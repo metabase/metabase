@@ -2,8 +2,14 @@
   "Quartz wiring for [[metabase-enterprise.workspaces.remapping-poll/poll-once!]].
 
    Schedules a recurring 30s job that keeps the app-db `table_remapping` cache in sync
-   with the per-workspace `_mb_remappings` ledgers on the warehouses. Only registers
-   when workspaces are active — non-workspaced instances see no job at all.
+   with the per-workspace `_mb_remappings` ledgers on the warehouses. The trigger is
+   always registered — the job body re-checks `(ws/active?)` on every tick so
+   non-workspaced instances do no real work. The trigger MUST be registered
+   unconditionally because `task/init-scheduler!` runs before
+   `config-from-file/init-from-file-if-code-available!` in `metabase.core.core/init!*`,
+   meaning a config.yml-driven workspace instance sees `(ws/active?)` return false at
+   init time. Gating the registration on `(ws/active?)` would leave such instances
+   without a recurring tick.
 
    Startup bootstrap (the *eager* first tick that runs synchronously before the
    scheduler even starts) lives in
@@ -38,18 +44,17 @@
         (log/warn t "remapping-poll: unhandled error in scheduled tick")))))
 
 (defmethod task/init! ::RemappingPoll [_]
-  (when (ws/active?)
-    (let [job     (jobs/build
-                   (jobs/of-type RemappingPoll)
-                   (jobs/store-durably)
-                   (jobs/with-identity job-key))
-          trigger (triggers/build
-                   (triggers/with-identity trigger-key)
-                   (triggers/for-job job-key)
-                   (triggers/start-now)
-                   (triggers/with-schedule
-                    (simple/schedule
-                     (simple/with-interval-in-milliseconds (.toMillis poll-interval))
-                     (simple/repeat-forever))))]
-      (log/info "Scheduling workspace remapping poller")
-      (task/schedule-task! job trigger))))
+  (let [job     (jobs/build
+                 (jobs/of-type RemappingPoll)
+                 (jobs/store-durably)
+                 (jobs/with-identity job-key))
+        trigger (triggers/build
+                 (triggers/with-identity trigger-key)
+                 (triggers/for-job job-key)
+                 (triggers/start-now)
+                 (triggers/with-schedule
+                  (simple/schedule
+                   (simple/with-interval-in-milliseconds (.toMillis poll-interval))
+                   (simple/repeat-forever))))]
+    (log/info "Scheduling workspace remapping poller")
+    (task/schedule-task! job trigger)))

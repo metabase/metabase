@@ -35,13 +35,22 @@
                                                            :transform/target-type (name (keyword (:type target)))
                                                            :db/id                 (:id db)
                                                            :db/engine             (name driver)}
-           (let [conn-spec         (driver/connection-spec driver db)
-                 transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema target)}
-                 ;; Resolve workspace remapping up front so complete-execution! below
-                 ;; can sync the physical (remapped) warehouse table while the persisted
-                 ;; metabase_table row stays at the declared target identity.
-                 remap             (transforms-base.query/resolve-transform-remapping!
+           ;; Resolve the workspace remap up-front for two reasons:
+           ;;  1. `run-cancelable-transform!` calls `driver/create-schema-if-needed!`
+           ;;     on `(:schema effective-target)`, so that schema must be the
+           ;;     redirected workspace schema — otherwise we'd attempt to create the
+           ;;     declared production schema (erroring without CREATE, or silently
+           ;;     polluting production with it).
+           ;;  2. `complete-execution!` below needs the remap to sync the physical
+           ;;     (remapped) warehouse table while the persisted metabase_table row
+           ;;     stays at the declared (logical) target identity.
+           ;; In OSS / non-workspace mode `remap` is nil and the effective target is
+           ;; identical to the declared target.
+           (let [remap             (transforms-base.query/resolve-transform-remapping!
                                     (:id db) (:schema target) (:name target))
+                 effective-target  (if remap (merge target remap) target)
+                 conn-spec         (driver/connection-spec driver db)
+                 transform-details {:db-id (:id db) :conn-spec conn-spec :output-schema (:schema effective-target)}
                  _exec-result
                  (transforms.instrumentation/with-stage-timing [run-id [:computation :mbql-query]]
                    (transforms.u/run-cancelable-transform!
