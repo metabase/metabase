@@ -2,13 +2,14 @@ import dayjs from "dayjs";
 import type { LocaleData } from "ttag";
 import { addLocale, useLocale } from "ttag";
 
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import api from "metabase/utils/api";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/utils/date-time";
 import MetabaseSettings from "metabase/utils/settings";
 import type { DayOfWeekId } from "metabase-types/api";
 
-type LocaleDataWithLanguage = LocaleData & { headers: { language: string } };
+export type LocaleDataWithLanguage = LocaleData & {
+  headers: { language: string };
+};
 
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(
@@ -189,20 +190,4 @@ if (window.MetabaseSiteLocalization) {
 // set the initial localization to user locale
 if (window.MetabaseUserLocalization) {
   setLocalization(window.MetabaseUserLocalization);
-}
-
-/**
- * In static embeddings/public links, there is no user locale, since there is no user in static embeddings/public links.
- * But we reset the locale to the site locale when `withInstanceLanguage` is called. This breaks static embeddings/public links
- * since they don't have a user locale. So this function is for them to set the locale from a URL hash as the user locale,
- * then the translation on some part of FE still works even after `withInstanceLanguage` is called.
- *
- * @param translationsObject A translated object with the same structure as the one produced in `loadLocalization` function.
- */
-export function setUserLocale(
-  translationsObject: LocaleDataWithLanguage,
-): void {
-  if (!isEmbeddingSdk()) {
-    window.MetabaseUserLocalization = translationsObject;
-  }
 }

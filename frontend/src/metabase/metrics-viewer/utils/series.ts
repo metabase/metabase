@@ -149,16 +149,28 @@ export function buildSeries({
 
       const seriesKey = isFirstSeries ? result.data.cols[1]?.name : name;
 
+      const vizSettingsOverride: Partial<VisualizationSettings> = nativeBreakout
+        ? {}
+        : computeColorVizSettings({
+            displayType: display,
+            seriesKey,
+            color,
+          });
+
+      if (isFirstSeries && isExpressionEntry(entity) && seriesKey && name) {
+        vizSettingsOverride.series_settings = {
+          ...vizSettingsOverride.series_settings,
+          [seriesKey]: {
+            ...vizSettingsOverride.series_settings?.[seriesKey],
+            title: name,
+          },
+        };
+      }
+
       const singleSeries: SingleSeries = {
         card: createSeriesCard(cardId, name, display, {
           ...vizSettings,
-          ...(nativeBreakout
-            ? {}
-            : computeColorVizSettings({
-                displayType: display,
-                seriesKey,
-                color,
-              })),
+          ...vizSettingsOverride,
           ...extraVizSettings,
         }),
         data: result.data,
@@ -344,7 +356,13 @@ export function computeSourceBreakoutColors(
     }
 
     if (isExpressionEntry(entity)) {
-      entries.push({ entityIndex, keys: [uniqueName], keyToBreakoutValue: {} });
+      // Use entity.id (which encodes the formula text) as the color key so
+      // that renaming the expression doesn't change its assigned color.
+      entries.push({
+        entityIndex,
+        keys: [entity.id],
+        keyToBreakoutValue: {},
+      });
     }
   }
 

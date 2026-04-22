@@ -1228,8 +1228,16 @@ function identity(
   to: number,
   definition: MetricDefinitionEntry["definition"] = null,
   slotIndex: number = nextSlotIndex++,
+  customName?: string,
 ): MetricIdentityEntry {
-  return { sourceId: metricSourceId, from, to, definition, slotIndex };
+  return {
+    sourceId: metricSourceId,
+    from,
+    to,
+    definition,
+    slotIndex,
+    customName,
+  };
 }
 
 describe("applyTrackedDefinitions", () => {
@@ -1457,6 +1465,113 @@ describe("applyTrackedDefinitions", () => {
       revenueBreakoutDef,
     );
     expect((entities[1] as MetricDefinitionEntry).definition).toBe(revenueDef);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Custom-name propagation through tracked MetricIdentity.customName.
+  //
+  // Custom expression names ride on the MetricIdentity range value — at
+  // edit-session start, buildFullTextWithIdentities stamps the name onto
+  // every metric-token identity that belongs to a renamed expression.
+  // Here we skip the stamping step and inject `customName` directly into
+  // the tracked identities to drive applyTrackedDefinitions in isolation.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  it("preserves a custom expression name when every identity survives", () => {
+    // "Revenue+Geo Revenue" — expression with two metric tokens.
+    const text = "Revenue+Geo Revenue";
+    const parsed = parseFullText(text, metricNames, []);
+    const tracked = [
+      identity(sourceId(1), 0, 7, null, 0, "My sum"),
+      identity(sourceId(2), 8, 19, null, 1, "My sum"),
+    ];
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      metricNames,
+    );
+    const expr = entities[0] as ExpressionDefinitionEntry;
+    expect(isExpressionEntry(expr)).toBe(true);
+    expect(expr.name).toBe("My sum");
+  });
+
+  it("preserves a custom expression name when at least one identity survives", () => {
+    // Same text as above, but only the first token's identity survives
+    // (e.g. the user deleted and retyped the second metric).
+    const text = "Revenue+Geo Revenue";
+    const parsed = parseFullText(text, metricNames, []);
+    const tracked = [identity(sourceId(1), 0, 7, null, 0, "My sum")];
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      metricNames,
+    );
+    expect((entities[0] as ExpressionDefinitionEntry).name).toBe("My sum");
+  });
+
+  it("drops the custom name when every identity of the old expression is deleted", () => {
+    // All tokens retyped from scratch → no tracked identities match.
+    const text = "Revenue+Geo Revenue";
+    const parsed = parseFullText(text, metricNames, []);
+    const { entities } = applyTrackedDefinitions(parsed, [], text, metricNames);
+    const expr = entities[0] as ExpressionDefinitionEntry;
+    // Default name is the auto-derived expression text.
+    expect(expr.name).toBe(buildExpressionText(expr.tokens, metricNames));
+    expect(expr.name).not.toBe("My sum");
+  });
+
+  it("takes the first non-empty custom name when two named expressions merge", () => {
+    // Two previously-separate expressions — "Revenue+5" named "A" and
+    // "Geo Revenue+5" named "B" — collapse into one combined expression.
+    const text = "Revenue+5+Geo Revenue+5";
+    const parsed = parseFullText(text, metricNames, []);
+    const tracked = [
+      identity(sourceId(1), 0, 7, null, 0, "A"),
+      identity(sourceId(2), 10, 21, null, 1, "B"),
+    ];
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      metricNames,
+    );
+    // "First wins" — the earliest token by traversal order decides.
+    expect((entities[0] as ExpressionDefinitionEntry).name).toBe("A");
+  });
+
+  it("does not bleed a custom name across unrelated expression entities", () => {
+    // Before edit: [Expr("Revenue+5", "A"), Metric(Geo Revenue), Expr("Revenue+5", "B")]
+    // User edited the middle Geo Revenue into a brand-new "Revenue+5".
+    // After edit: "Revenue+5, Revenue+5, Revenue+5".
+    //   - First Revenue at [0,7) survived → customName "A".
+    //   - Middle Revenue at [11,18) is brand new → no tracked identity.
+    //   - Third Revenue at [22,29) survived → customName "B".
+    // Expected: entities[0].name === "A", entities[1].name === default,
+    //           entities[2].name === "B".
+    const text = "Revenue+5, Revenue+5, Revenue+5";
+    const parsed = parseFullText(text, metricNames, []);
+    const tracked = [
+      identity(sourceId(1), 0, 7, null, 0, "A"),
+      identity(sourceId(1), 22, 29, null, 2, "B"),
+    ];
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      metricNames,
+    );
+    expect(entities).toHaveLength(3);
+    const [first, middle, last] = entities as ExpressionDefinitionEntry[];
+    expect(isExpressionEntry(first)).toBe(true);
+    expect(isExpressionEntry(middle)).toBe(true);
+    expect(isExpressionEntry(last)).toBe(true);
+    expect(first.name).toBe("A");
+    expect(last.name).toBe("B");
+    // The middle one must NOT pick up "B" — the whole point of the fix.
+    expect(middle.name).not.toBe("B");
+    expect(middle.name).toBe(buildExpressionText(middle.tokens, metricNames));
   });
 });
 

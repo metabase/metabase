@@ -2,7 +2,8 @@ import { Flex } from "metabase/ui";
 
 import S from "../components/BrowseContainer.module.css";
 import { BrowseDataHeader } from "../components/BrowseDataHeader";
-import TableBrowser from "../containers/TableBrowser";
+
+import { TableBrowser } from "./TableBrowser";
 
 export const BrowseTables = ({
   params: { dbId, schemaName },
