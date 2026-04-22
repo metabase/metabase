@@ -3,6 +3,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useDefaultEmbeddingThemeSettings } from "metabase/admin/embedding/hooks";
+import { UpsellEmbeddingTheme } from "metabase/admin/upsells";
 import {
   useCopyEmbeddingThemeMutation,
   useCreateEmbeddingThemeMutation,
@@ -11,7 +12,7 @@ import {
 } from "metabase/api/embedding-theme";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { useToast } from "metabase/common/hooks";
+import { useHasTokenFeature, useToast } from "metabase/common/hooks";
 import {
   Button,
   Flex,
@@ -28,6 +29,16 @@ import { DeleteThemeModal } from "./DeleteThemeModal";
 import { EmbeddingThemeCard } from "./EmbeddingThemeCard";
 
 export function EmbeddingThemeListingApp() {
+  const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");
+
+  if (!hasSimpleEmbedding) {
+    return <UpsellEmbeddingTheme source="embedding-themes" />;
+  }
+
+  return <EmbeddingThemeListingAppInner />;
+}
+
+function EmbeddingThemeListingAppInner() {
   const dispatch = useDispatch();
   const { data: themes, isLoading } = useListEmbeddingThemesQuery();
   const [createTheme] = useCreateEmbeddingThemeMutation();
