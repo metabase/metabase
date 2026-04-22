@@ -804,6 +804,16 @@
         (is (= {:databases [] :tables [] :fields []}
                (mt/user-http-request :rasta :get 202 "database/metadata")))))))
 
+(deftest databases-metadata-excludes-audit-db-test
+  (testing "GET /api/database/metadata — audit (internal) database, its tables, and its fields are excluded"
+    (mt/with-temp [:model/Database {db-id :id} {:name "audit-db" :engine :h2 :is_audit true}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "audit_table" :schema "PUBLIC"}
+                   :model/Field    {f-id :id}  {:table_id t-id :name "audit_col" :base_type :type/Integer}]
+      (let [{:keys [databases tables fields]} (mt/user-http-request :crowberto :get 202 "database/metadata")]
+        (is (nil? (m/find-first (comp #{db-id} :id) databases)))
+        (is (nil? (m/find-first (comp #{t-id}  :id) tables)))
+        (is (nil? (m/find-first (comp #{f-id}  :id) fields)))))))
+
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
     (is (= (merge (dissoc (db-details) :details :write_data_details :router_user_attribute)
