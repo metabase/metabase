@@ -609,6 +609,8 @@
    (prometheus/counter :metabase-frontend/errors
                        {:description "Number of frontend errors reported by the browser."
                         :labels [:type]})
+   (prometheus/counter :metabase-frontend/analytics-events-dropped
+                       {:description "Number of frontend analytics events dropped before being POSTed to the backend, because the client-side buffer was full."})
    (prometheus/counter :metabase-export/errors
                        {:description "Number of errors during data export."
                         :labels [:format]})])
