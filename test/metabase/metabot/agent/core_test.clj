@@ -12,7 +12,9 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.search :as metabot-search]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util.yaml :as yaml]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -265,6 +267,17 @@
     ;; We use a simple "raw" query type that doesn't require field IDs.
         (mt/with-current-user (mt/user->id :crowberto)
           (let [orders-table-id (mt/id :orders)
+            ;; Look up database + schema + table name so we can write the portable FK
+            ;; that the representations-format construct_notebook_query expects.
+                orders-table    (t2/select-one :model/Table :id orders-table-id)
+                db-name         (t2/select-one-fn :name :model/Database :id (mt/id))
+                orders-fk        [db-name (:schema orders-table) (:name orders-table)]
+                query-yaml      (yaml/generate-string
+                                 {"lib/type" "mbql/query"
+                                  "database" db-name
+                                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                               "source-table" orders-fk
+                                               "limit"        10}]})
             ;; Track LLM calls
                 llm-call-count  (atom 0)
             ;; Scripted LLM responses - uses real table ID from test DB
@@ -278,15 +291,14 @@
                                :keyword_queries  ["orders"]
                                :entity_types     ["table"]}}
                   {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "test" :id "msg-1"}]
-             ;; Iteration 2: Construct a simple query via agent-lib program
+             ;; Iteration 2: Construct a simple query via the representations YAML format
                  [{:type :start :id "msg-2"}
                   {:type      :tool-input
                    :id        "call-construct-1"
                    :function  "construct_notebook_query"
                    :arguments {:reasoning     "User wants to see orders"
                                :source_entity {:type "table" :id orders-table-id}
-                               :program       {:source     {:type "table" :id orders-table-id}
-                                               :operations [["limit" 10]]}
+                               :query         query-yaml
                                :visualization {:chart_type "table"}}}
                   {:type :usage :usage {:promptTokens 200 :completionTokens 30} :model "test" :id "msg-2"}]
              ;; Iteration 3: Final text response
