@@ -428,7 +428,7 @@
     (with-redefs [ss.embedders/try-active-index-state (constantly nil)]
       (is (nil? (semantic-search/active-embedding-model))))))
 
-(defn- complexity-events
+(defn- complexity-events!
   "Drain the fake Snowplow collector and return only complexity events."
   []
   (->> (snowplow-test/pop-event-data-and-user-id!)
@@ -469,7 +469,7 @@
         ;; Drain any startup/setting events so we only assert on emissions from the call below.
         (snowplow-test/pop-event-data-and-user-id!)
         (let [{:keys [library universe metabot]} (complexity/complexity-scores :embedder nil)
-              events   (complexity-events)
+              events   (complexity-events!)
               expected (into #{}
                              (for [[catalog result] {"library"  library
                                                      "universe" universe
@@ -500,7 +500,7 @@
                                   complexity/universe-entities (constantly [])]
         (snowplow-test/pop-event-data-and-user-id!)
         (complexity/complexity-scores :embedder nil)
-        (let [by-key (->> (complexity-events)
+        (let [by-key (->> (complexity-events!)
                           (filter #(= "library" (get % "catalog")))
                           (into {} (map (juxt #(get % "key") identity))))]
           (testing "aggregate totals (grand and per-group) have no measurement key"
@@ -523,7 +523,7 @@
                                   complexity/universe-entities (constantly [])]
         (snowplow-test/pop-event-data-and-user-id!)
         (complexity/complexity-scores :embedder (fn [_] (throw (ex-info "embedder boom" {}))))
-        (let [by-key (->> (complexity-events)
+        (let [by-key (->> (complexity-events!)
                           (filter #(= "library" (get % "catalog")))
                           (into {} (map (juxt #(get % "key") identity))))]
           (is (= "embedder boom" (get-in by-key ["ambiguity.synonym_pairs" "error"]))
@@ -544,7 +544,7 @@
                                     complexity/universe-entities (constantly [(entity :name "orders")])]
           (snowplow-test/pop-event-data-and-user-id!)
           (complexity/complexity-scores :embedder semantic-search/search-index-embedder)
-          (let [events (complexity-events)]
+          (let [events (complexity-events!)]
             (is (seq events) "sanity: events were emitted")
             (is (every? #(= "openai" (get-in % ["parameters" "embedding_model_provider"])) events))
             (is (every? #(= "text-embedding-3-small" (get-in % ["parameters" "embedding_model_name"])) events))))))))

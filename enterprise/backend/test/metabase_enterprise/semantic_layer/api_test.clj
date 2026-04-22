@@ -151,7 +151,7 @@
           (testing "scope=sibling counts only the in-scope Card (out-of-subtree Card is excluded)"
             ;; If the collection-id filter were dropped entirely, `sibling-count` would jump to
             ;; `empty-count + 3` (all three fixture Cards visible), failing this assertion.
-            (is (= (+ empty-count 1) sibling-count)
+            (is (= (inc empty-count) sibling-count)
                 "scope=sibling :metabot must include only sibling-card — collection filter must apply"))
           (testing ":universe entity-count is unaffected by Metabot collection scope"
             ;; Guards against a regression where the subtree filter leaks into `:universe`

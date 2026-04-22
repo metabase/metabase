@@ -3175,7 +3175,8 @@
            collections
            metabot
            premium-features
-           startup
+           settings
+           task
            util
            enterprise/semantic-search}
    :model-imports #{:model/Card :model/Collection :model/Measure :model/Metabot :model/Table}}
