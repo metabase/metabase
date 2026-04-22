@@ -327,6 +327,7 @@ export const tokenFeatures = [
   "content_translation",
   "content_verification",
   "custom-viz",
+  "custom-viz-available",
   "disable_password_login",
   "embedding",
   "embedding_sdk",
@@ -630,6 +631,7 @@ interface PublicSettings {
   version: Version;
   "version-info-last-checked": string | null;
   "airgap-enabled": boolean;
+  "custom-viz-enabled": boolean;
   "custom-viz-plugin-dev-mode-enabled": boolean;
   "non-table-chart-generated": boolean;
   "use-tenants": boolean;

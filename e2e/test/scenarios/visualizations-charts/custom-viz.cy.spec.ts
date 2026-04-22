@@ -61,12 +61,35 @@ describe("admin > custom visualizations", () => {
 
       it("should show manage page with valid token", () => {
         H.activateToken("bleeding-edge");
+
         H.visitCustomVizSettings();
+
+        H.main()
+          .findByText(
+            "Should custom visualizations be enabled for this instance? Enabling this will reload the page.",
+          )
+          .should("be.visible");
+        H.main()
+          .findByRole("switch", { name: /Enable Custom Visualizations/ })
+          .click();
 
         H.main()
           .findByRole("heading", { name: "Custom visualizations" })
           .should("be.visible");
         H.getAddVisualizationLink().should("be.visible");
+
+        H.main()
+          .findByText(
+            "Should custom visualizations be enabled for this instance? Disabling this will reload the page.",
+          )
+          .should("be.visible");
+        H.main()
+          .findByRole("switch", { name: /Enable Custom Visualizations/ })
+          .click();
+
+        H.main()
+          .findByRole("heading", { name: "Custom visualizations" })
+          .should("not.exist");
       });
 
       it('should not show custom visualizations page to non-admins with "Settings access" permission', () => {
@@ -104,6 +127,7 @@ describe("admin > custom visualizations", () => {
   describe("admin settings page", () => {
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("custom-viz-enabled", true);
     });
 
     it("should add a plugin via the form and show it in the list", () => {
@@ -631,6 +655,7 @@ describe("admin > custom visualizations", () => {
 
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
 
       // Default-view (table) Count-of-Orders card — demo-viz requires
@@ -890,6 +915,7 @@ describe("admin > custom visualizations", () => {
 
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
     });
 
@@ -1168,6 +1194,7 @@ describe("admin > custom visualizations", () => {
 
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
 
       H.createQuestion(
@@ -1316,6 +1343,7 @@ describe("admin > custom visualizations", () => {
 
     beforeEach(() => {
       H.activateToken("bleeding-edge");
+      H.updateSetting("custom-viz-enabled", true);
       H.addCustomVizPlugin(H.CUSTOM_VIZ_REPO_URL);
 
       // Main question: pinned with preview hidden so the pinned card shows
@@ -1537,6 +1565,7 @@ describe("admin > custom visualizations", () => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
+      H.updateSetting("custom-viz-enabled", true);
     });
 
     before(() => {
