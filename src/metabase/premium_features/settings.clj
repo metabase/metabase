@@ -354,6 +354,7 @@
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
    :custom-viz                     (enable-custom-viz?)
+   :custom-viz-available           (has-feature? :custom-viz)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)

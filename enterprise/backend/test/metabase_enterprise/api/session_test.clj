@@ -113,6 +113,7 @@
             :whitelabel                     true
             :collection_cleanup             true
             :custom-viz                     true
+            :custom-viz-available           true
             :database_routing               true
             :tenants                        true
             :cloud_custom_smtp              true
