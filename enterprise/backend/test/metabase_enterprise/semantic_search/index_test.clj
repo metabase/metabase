@@ -521,21 +521,100 @@
     (is (= #{"card" "metric" "dataset" "dashboard" "indexed-entity"}
            @@#'semantic.index/collection-id-only-search-models))))
 
+(defn- join-equality-pairs
+  "Return `[col-a col-b]` for every `[:= col-a col-b]` subform of `condition` where both sides are
+  column-reference keywords. Walks through compound conditions like `[:and ...]`."
+  [condition]
+  (->> (tree-seq sequential? seq condition)
+       (filter (fn [node]
+                 (and (vector? node)
+                      (= := (first node))
+                      (= 3 (count node))
+                      (keyword? (nth node 1))
+                      (keyword? (nth node 2)))))
+       (map (fn [[_ a b]] [a b]))))
+
+(defn- column-alias
+  "Extract the `:alias` from a dotted column-reference keyword like `:alias.col`. Returns nil if the
+  keyword is not in `alias.col` form."
+  [col]
+  (when (keyword? col)
+    (let [idx (str/index-of (name col) \.)]
+      (when idx
+        (keyword (subs (name col) 0 idx))))))
+
+(defn- trace-collection-id-source-models
+  "Return t2-model keywords reachable from the spec's `:collection-id` attribute via join equalities.
+  `:this` resolves to the spec's own base model; other aliases resolve via `:joins`. A claim of
+  `:denormalized-from X` is structurally sound iff `X` is in the returned set."
+  [spec]
+  (let [attr-col     (get-in spec [:attrs :collection-id])
+        joins        (:joins spec)
+        alias->model (-> (into {} (map (fn [[alias [model _]]] [alias model])) joins)
+                         (assoc :this (:model spec)))
+        edges        (mapcat (fn [[_ [_ jcond]]] (join-equality-pairs jcond)) joins)
+        eq-map       (reduce (fn [m [a b]]
+                               (-> m
+                                   (update a (fnil conj #{}) b)
+                                   (update b (fnil conj #{}) a)))
+                             {}
+                             edges)
+        reachable    (loop [visited #{}
+                            queue   [attr-col]]
+                       (if-let [col (first queue)]
+                         (if (visited col)
+                           (recur visited (rest queue))
+                           (recur (conj visited col)
+                                  (into (vec (rest queue)) (eq-map col))))
+                         visited))]
+    (into #{} (keep (comp alias->model column-alias)) reachable)))
+
+(deftest trace-collection-id-source-models-test
+  (testing "traces `:collection-id` through `[:= a b]` equalities to every equivalent model"
+    ;; Mirrors the `indexed-entity` spec shape: `:collection-id` → `:collection.id`, which joins to
+    ;; `:model.collection_id`, so both :model/Collection and :model/Card are valid claims.
+    (is (= #{:model/Collection :model/Card}
+           (trace-collection-id-source-models
+            {:model :model/ModelIndexValue
+             :attrs {:collection-id :collection.id}
+             :joins {:model_index [:model/ModelIndex [:= :model_index.id :this.model_index_id]]
+                     :model       [:model/Card [:= :model.id :model_index.model_id]]
+                     :collection  [:model/Collection [:= :collection.id :model.collection_id]]}}))))
+  (testing "unrelated joins do not pollute the source set"
+    ;; A join for some other field must not count: `:table` is joined for display but `:collection.id`
+    ;; only resolves through `:this.collection_id`.
+    (is (= #{:model/Collection :model/Base}
+           (trace-collection-id-source-models
+            {:model :model/Base
+             :attrs {:collection-id :collection.id}
+             :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]
+                     :table      [:model/Table [:= :table.id :this.table_id]]}}))))
+  (testing "handles compound `:and` conditions"
+    (is (= #{:model/Collection :model/Base}
+           (trace-collection-id-source-models
+            {:model :model/Base
+             :attrs {:collection-id :collection.id}
+             :joins {:collection [:model/Collection
+                                  [:and [:= :this.is_published true]
+                                   [:= :collection.id :this.collection_id]]]}})))))
+
 (deftest collection-based-visibility-search-model-claims-verified-test
-  (testing "every search-model registered with :denormalized-from actually joins to that model in its spec"
-    ;; Guards the `:denormalized-from` claim made at `define-collection-based-visibility!` call sites
-    ;; against drift: if someone removes the Card join from the `indexed-entity` spec (or typoes the
-    ;; claim), this test fails. Without this, the claim is documentation-only.
+  (testing "every search-model registered with :denormalized-from traces to that model from :collection-id"
+    ;; Guards the `:denormalized-from` claim at `define-collection-based-visibility!` call sites against
+    ;; drift. We walk the join equality graph from `:collection-id` and require the claim to be a
+    ;; structural source — not merely any model mentioned in `:joins`. Without this, a stale claim can
+    ;; still pass if the model stays joined for an unrelated field.
     (let [specs (search/specifications)]
       (doseq [[search-model denormalized-from] (perms/collection-based-visibility-search-models)]
-        (testing (str search-model " denormalizes from " denormalized-from)
-          (let [spec          (get specs search-model)
-                joined-models (set (map first (vals (:joins spec))))]
+        (testing (str search-model " traces :collection-id to " denormalized-from)
+          (let [spec    (get specs search-model)
+                reached (trace-collection-id-source-models spec)]
             (is (some? spec)
                 (str "no search spec registered for " (pr-str search-model)))
-            (is (contains? joined-models denormalized-from)
+            (is (contains? reached denormalized-from)
                 (str (pr-str search-model) " claims :denormalized-from " (pr-str denormalized-from)
-                     " but its spec joins are " joined-models))))))))
+                     " but tracing :collection-id through its join equalities only reaches "
+                     reached))))))))
 
 (deftest collection-id-only-search-models-cold-start-regression-test
   (testing "derivation populates correctly even if registry is empty at first access"
