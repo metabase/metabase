@@ -180,10 +180,14 @@
                      (metabot.tools.u/get-table id :db_id :description :name :schema))]
      (let [query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
            db-id (if metadata-provider (:db-id base) (:db_id base))
-           db-engine (some-> (if metadata-provider
-                               (lib.metadata/database metadata-provider)
-                               (metabot.tools.u/get-database db-id :engine))
-                             :engine name)
+           ;; Database metadata including :name so LLM can build portable FK paths
+           ;; [db-name, schema, table] / [db-name, schema, table, field] that the
+           ;; representations-format construct_notebook_query expects.
+           db (if metadata-provider
+                (lib.metadata/database metadata-provider)
+                (metabot.tools.u/get-database db-id :engine :name))
+           db-engine (some-> db :engine name)
+           db-name (:name db)
            mp (when query-needed?
                 (or metadata-provider
                     (lib-be/application-database-metadata-provider db-id)))
@@ -203,8 +207,12 @@
             :display_name (some->> (:name base)
                                    (u.humanization/name->human-readable-name :simple))
             :database_id db-id
+            :database_name db-name
             :database_engine db-engine
-            :database_schema (:schema base)}
+            :database_schema (:schema base)
+            ;; Portable table FK path matching the representations-format expectation:
+            ;; [db-name, schema-or-null, table-name]. LLM uses this as `source-table`.
+            :portable_fk (when db-name [db-name (:schema base) (:name base)])}
            (m/assoc-some :description (:description base)
                          :related_tables related-tables
                          :metrics (when with-metrics?
