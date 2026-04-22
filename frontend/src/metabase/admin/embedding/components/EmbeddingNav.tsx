@@ -6,9 +6,9 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex, Stack } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 export function EmbeddingNav() {
   const hasSimpleEmbedding = useHasTokenFeature("embedding_simple");

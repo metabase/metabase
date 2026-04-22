@@ -76,7 +76,6 @@ export interface ICloudAddOnProduct {
   default_total_units: number;
   deployment: string;
   description: string | null;
-  free_units?: number | null;
   id: number;
   is_metered: boolean | null;
   name: string;
@@ -86,6 +85,7 @@ export interface ICloudAddOnProduct {
   short_name: string;
   token_features: TokenFeature[];
   trial_days: number | null;
+  free_units: number | null;
 }
 
 export type GetCloudAddOnsResponse = ICloudAddOnProduct[];

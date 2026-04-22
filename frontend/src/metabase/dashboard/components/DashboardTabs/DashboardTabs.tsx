@@ -10,10 +10,10 @@ import { TabRow } from "metabase/common/components/TabRow";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
-import { isVirtualDashCard } from "metabase/lib/dashboard";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import type { SelectedTabId } from "metabase/redux/store";
 import { Flex, List } from "metabase/ui";
-import type { SelectedTabId } from "metabase-types/store";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
 
 import S from "./DashboardTabs.module.css";
 import { useDashboardTabs } from "./use-dashboard-tabs";

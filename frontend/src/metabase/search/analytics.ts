@@ -1,5 +1,5 @@
-import { trackSchemaEvent } from "metabase/lib/analytics";
-import { hashSearchTerm, shouldReportSearchTerm } from "metabase/lib/search";
+import { trackSchemaEvent } from "metabase/utils/analytics";
+import { hashSearchTerm, shouldReportSearchTerm } from "metabase/utils/search";
 import type { SearchRequest } from "metabase-types/api";
 
 type TrackSearchClickParams = {

@@ -14,7 +14,8 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import * as domUtils from "metabase/lib/dom";
+import { createMockDashboardState } from "metabase/redux/store/mocks";
+import * as iframeUtils from "metabase/utils/iframe";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   LinkCardSettings,
@@ -31,7 +32,6 @@ import {
   createMockRecentTableItem,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import type { LinkVizProps } from "./LinkViz";
 import { LinkViz } from "./LinkViz";
@@ -317,7 +317,7 @@ describe("LinkViz", () => {
 
     it("sets embedded entity links to not open in new tabs", () => {
       // here, we're mocking this appearing in an iframe
-      jest.spyOn(domUtils, "isWithinIframe").mockReturnValue(true);
+      jest.spyOn(iframeUtils, "isWithinIframe").mockReturnValue(true);
 
       setup({
         isEditing: false,

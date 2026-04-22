@@ -1,10 +1,10 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import MetabaseSettings from "metabase/lib/settings";
+import type { Locale } from "metabase/redux/store";
 import { UtilApi } from "metabase/services";
+import { passwordComplexityDescription } from "metabase/utils/password";
 import type { LocaleData } from "metabase-types/api";
-import type { Locale } from "metabase-types/store";
 
 import { SUBSCRIBE_TOKEN, SUBSCRIBE_URL } from "./constants";
 
@@ -31,7 +31,7 @@ export const getDefaultLocale = (
 };
 
 export const validatePassword = async (password: string) => {
-  const error = MetabaseSettings.passwordComplexityDescription(password);
+  const error = passwordComplexityDescription(password);
   if (error) {
     return error;
   }

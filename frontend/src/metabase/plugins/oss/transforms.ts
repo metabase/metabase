@@ -35,7 +35,6 @@ export type PythonTransformEditorProps = {
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
   onRunTransform?: (result: any) => void;
-  /** Custom run handler that overrides internal test-run. Used in workspace context for dry-run. */
   onRun?: () => void;
 };
 
@@ -73,7 +72,13 @@ export const PLUGIN_TRANSFORMS = getDefaultPluginTransforms();
 const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
   isEnabled: false,
   getPythonTransformsRoutes: () => null,
-  getInspectorRoutes: () => null,
+  getInspectorRoutes: () => {
+    const {
+      getDefaultInspectorRoutes,
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+    } = require("metabase/transforms/pages/TransformInspectorUpsellPage/routes");
+    return getDefaultInspectorRoutes();
+  },
   getPythonSourceValidationResult: () => ({ isValid: true }),
   TransformEditor: PluginPlaceholder,
   SourceSection: PluginPlaceholder,

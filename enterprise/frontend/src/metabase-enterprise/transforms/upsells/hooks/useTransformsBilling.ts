@@ -1,6 +1,6 @@
 import { getIsHosted } from "metabase/databases/selectors";
-import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useSelector } from "metabase/utils/redux";
 import {
   useGetBillingInfoQuery,
   useListAddOnsQuery,

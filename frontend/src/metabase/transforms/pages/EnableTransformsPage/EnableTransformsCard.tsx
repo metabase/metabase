@@ -2,6 +2,8 @@ import { jt, t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api/database";
 import { Link } from "metabase/common/components/Link";
+import { getPlan } from "metabase/common/utils/plan";
+import { getSetting } from "metabase/selectors/settings";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import {
   Alert,
@@ -15,6 +17,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 export function EnableTransformsCard({
   onEnableClick,
@@ -32,6 +35,13 @@ export function EnableTransformsCard({
   const { data: databases } = useListDatabasesQuery();
   const hasDbThatSupportsTransforms =
     databases?.data.some(doesDatabaseSupportTransforms) ?? false;
+  const plan = useSelector((state) =>
+    getPlan(getSetting(state, "token-features")),
+  );
+  const permissionsDescription =
+    plan === "pro-self-hosted"
+      ? t`Only Analysts and Admins can create and run transforms`
+      : t`Only Admins can create and run transforms`;
 
   return (
     <Card withBorder maw="60rem" p={0} w="100%" style={{ overflow: "auto" }}>
@@ -104,7 +114,7 @@ export function EnableTransformsCard({
           <SimpleCard
             icon="lock"
             title={t`Permissioned`}
-            description={t`Control who can create and run transforms`}
+            description={permissionsDescription}
           />
         </Stack>
       </Flex>

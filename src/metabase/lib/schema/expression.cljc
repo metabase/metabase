@@ -102,7 +102,7 @@
     (is-type? expr-type base-type)))
 
 (def ^:dynamic *suppress-expression-type-check?*
-  "Set this `true` to skip any type checks for expressions. This is useful while constructing expressions in MLv2 with
+  "Set this `true` to skip any type checks for expressions. This is useful while constructing expressions in Lib with
   full metadata, but it breaks during legacy conversion in some cases.
 
   In particular, if you override the metadata for a column to eg. treat a `:type/Integer` columns as a `:type/Instant`

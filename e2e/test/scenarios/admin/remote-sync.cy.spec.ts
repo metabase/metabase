@@ -16,7 +16,8 @@ describe("Remote Sync", () => {
     H.restore("postgres-writable");
     H.resetSnowplow();
     cy.signInAsAdmin();
-    H.activateToken("bleeding-edge");
+    H.activateToken("pro-self-hosted");
+    H.updateSetting("transforms-enabled", true);
     H.setupGitSync();
     H.interceptTask();
   });
@@ -441,7 +442,7 @@ describe("Remote Sync", () => {
   describe("remote sync admin settings page", () => {
     beforeEach(() => {
       H.restore();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       H.setupGitSync();
       cy.signInAsAdmin();
     });
@@ -591,7 +592,7 @@ describe("Remote Sync", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       H.setupGitSync();
     });
 
@@ -645,7 +646,7 @@ describe("Remote Sync", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
       H.setupGitSync();
       H.interceptTask();
 
@@ -909,7 +910,7 @@ describe("Remote Sync", () => {
         cy.findByText("Batman's Existing Transform").should("be.visible");
       });
 
-      H.getPullOption().click();
+      H.getPullOption().should("not.be.disabled").click();
 
       cy.log("make sure conflict modal is displayed");
       H.modal().within(() => {
@@ -942,7 +943,7 @@ describe("Remote Sync", () => {
     it("can push to a new branch", () => {
       cy.intercept("POST", "/api/ee/remote-sync/export").as("exportChanges");
       H.DataStudio.Transforms.visit();
-      H.getPullOption().click();
+      H.getPullOption().should("not.be.disabled").click();
 
       cy.log("choose the new branch option and push");
       cy.findByLabelText(/Create a new branch and push changes there/)

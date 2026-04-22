@@ -2,6 +2,7 @@ import { createAction } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { denormalize, normalize, schema } from "normalizr";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { automagicDashboardsApi, dashboardApi } from "metabase/api";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
@@ -22,19 +23,9 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
-import {
-  getDashboardType,
-  isQuestionDashCard,
-  isVirtualDashCard,
-} from "metabase/lib/dashboard";
-import { entityCompatibleQuery } from "metabase/lib/entities";
-import type { Deferred } from "metabase/lib/promise";
-import { defer } from "metabase/lib/promise";
-import { createAsyncThunk, createThunkAction } from "metabase/lib/redux";
-import { equals } from "metabase/lib/utils";
-import { uuid } from "metabase/lib/uuid";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
@@ -45,6 +36,16 @@ import {
   PublicApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
+import {
+  getDashboardType,
+  isQuestionDashCard,
+  isVirtualDashCard,
+} from "metabase/utils/dashboard";
+import { entityCompatibleQuery } from "metabase/utils/entities";
+import type { Deferred } from "metabase/utils/promise";
+import { defer } from "metabase/utils/promise";
+import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
+import { uuid } from "metabase/utils/uuid";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
@@ -61,7 +62,6 @@ import type {
   ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -269,7 +269,7 @@ export const fetchCardDataAction = createAsyncThunk<
       // if reload not set, check to see if the last result has the same query dict and return that
       if (
         lastResult &&
-        equals(
+        _.isEqual(
           getDatasetQueryParams(lastResult.json_query),
           getDatasetQueryParams(datasetQuery),
         )
@@ -288,7 +288,7 @@ export const fetchCardDataAction = createAsyncThunk<
     // state so that the loader spinner shows as expected (#33767)
     const hasParametersChanged =
       !lastResult ||
-      !equals(
+      !_.isEqual(
         getDatasetQueryParams(lastResult.json_query),
         getDatasetQueryParams(datasetQuery),
       );

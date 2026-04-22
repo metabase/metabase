@@ -31,8 +31,10 @@ const ALLOWED_CHARS = new Set([
 
 // Note: there are more props than these that are provided by the viz settings
 // code, we just don't have types for them here.
-interface ChartSettingInputProps
-  extends Omit<ChartSettingWidgetProps<number>, "onChangeSettings"> {
+interface ChartSettingInputProps extends Omit<
+  ChartSettingWidgetProps<number>,
+  "onChangeSettings"
+> {
   options?: {
     isInteger?: boolean;
     isNonNegative?: boolean;

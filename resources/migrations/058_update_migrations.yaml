@@ -1218,6 +1218,21 @@ databaseChangeLog:
             tableName: pulse
             columnName: disable_links
 
+  - changeSet:
+      id: v58.2026-04-01T10:00:00
+      author: epaget
+      comment: Add last_active_at to core_session for server-side session timeout enforcement
+      changes:
+        - addColumn:
+            tableName: core_session
+            columns:
+              - column:
+                  name: last_active_at
+                  type: ${timestamp_type}
+                  remarks: Tracks when the session was last used, for inactivity timeout enforcement
+                  constraints:
+                    nullable: true
+
 # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

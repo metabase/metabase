@@ -1,12 +1,10 @@
-import { updateMetadata } from "metabase/lib/redux/metadata";
 import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
+import { updateMetadata } from "metabase/utils/redux/metadata";
 import type {
   AutocompleteRequest,
   AutocompleteSuggestion,
   CardAutocompleteRequest,
   CardAutocompleteSuggestion,
-  CheckWorkspacePermissionsRequest,
-  CheckWorkspacePermissionsResponse,
   CreateDatabaseRequest,
   Database,
   DatabaseId,
@@ -184,7 +182,10 @@ export const databaseApi = Api.injectEndpoints({
         body,
       }),
       invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("database")]),
+        invalidateTags(error, [
+          listTag("database"),
+          listTag("embedding-hub-checklist"),
+        ]),
     }),
     updateDatabase: builder.mutation<Database, UpdateDatabaseRequest>({
       query: ({ id, ...body }) => ({
@@ -274,18 +275,6 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    checkWorkspacePermissions: builder.mutation<
-      CheckWorkspacePermissionsResponse,
-      CheckWorkspacePermissionsRequest
-    >({
-      query: ({ id, cached = true }) => ({
-        method: "POST",
-        url: `/api/database/${id}/permission/workspace/check`,
-        body: { cached },
-      }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("database", id)]),
-    }),
     addSampleDatabase: builder.mutation<Database, void>({
       query: () => ({
         method: "POST",
@@ -343,7 +332,6 @@ export const {
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
-  useCheckWorkspacePermissionsMutation,
   useListAutocompleteSuggestionsQuery,
   useLazyListAutocompleteSuggestionsQuery,
   useAddSampleDatabaseMutation,

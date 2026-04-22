@@ -4,7 +4,7 @@ import { scaleLinear } from "@visx/scale";
 import { useMemo } from "react";
 import { c } from "ttag";
 
-import { formatValue } from "metabase/lib/formatting";
+import { formatValue } from "metabase/utils/formatting";
 import {
   calculateProgressMetrics,
   extractProgressValue,

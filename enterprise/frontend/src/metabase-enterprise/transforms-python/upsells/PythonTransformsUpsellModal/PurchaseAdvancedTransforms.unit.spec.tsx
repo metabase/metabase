@@ -4,14 +4,14 @@ import fetchMock from "fetch-mock";
 import { setupPropertiesEndpoints } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
+import {
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 import { mockAdvancedTransformsAddOn } from "metabase-types/api/mocks/add-ons";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { PurchaseAdvancedTransforms } from "./PurchaseAdvancedTransforms";
 

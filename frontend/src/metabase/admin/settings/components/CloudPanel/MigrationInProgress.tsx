@@ -6,7 +6,6 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import type { Plan } from "metabase/common/utils/plan";
-import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import {
   Box,
@@ -18,6 +17,7 @@ import {
   Progress,
   Text,
 } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 import { MigrationCard } from "./CloudPanel.styled";
 import type { InProgressCloudMigration, InProgressStates } from "./utils";

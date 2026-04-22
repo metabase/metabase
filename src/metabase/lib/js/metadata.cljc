@@ -635,5 +635,5 @@
      :clj  (metadata-provider* database-id unparsed-metadata)))
 
 (def parse-column
-  "Parses a JS column provided by the FE into a :metadata/column value for use in MLv2."
+  "Parses a JS column provided by the FE into a :metadata/column value for use in Lib."
   (parse-object-fn :field))

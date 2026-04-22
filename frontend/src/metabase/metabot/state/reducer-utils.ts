@@ -3,7 +3,7 @@ import { merge } from "icepick";
 import type { WritableDraft } from "immer";
 import { match } from "ts-pattern";
 
-import { uuid } from "metabase/lib/uuid";
+import { uuid } from "metabase/utils/uuid";
 
 import type {
   MetabotAgentId,

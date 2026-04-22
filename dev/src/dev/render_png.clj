@@ -118,7 +118,7 @@
   [part]
   (-> part
       (assoc-in [:card :include_csv] true)
-      result-attachment
+      (result-attachment (mt/user->id :crowberto))
       first
       :content
       slurp

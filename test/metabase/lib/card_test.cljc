@@ -308,16 +308,16 @@
   [{:keys [result-metadata-style result-metadata-fn]}]
   (let [result-metadata-fn (or result-metadata-fn
                                (case result-metadata-style
-                                 ::mlv2-returned-columns lib.metadata.calculation/returned-columns
-                                 ::mlv2-expected-columns lib.metadata.result-metadata/returned-columns
-                                 ::legacy-snake-case-qp  (mu/fn :- [:sequential :map]
-                                                           [query]
-                                                           (for [col (lib.metadata.result-metadata/returned-columns query)]
-                                                             (-> col
-                                                                 (update-keys (fn [k]
-                                                                                (cond-> k
-                                                                                  (simple-keyword? k) u/->snake_case_en)))
-                                                                 (dissoc :lib/type))))))]
+                                 ::lib-returned-columns lib.metadata.calculation/returned-columns
+                                 ::lib-expected-columns lib.metadata.result-metadata/returned-columns
+                                 ::legacy-snake-case-qp (mu/fn :- [:sequential :map]
+                                                          [query]
+                                                          (for [col (lib.metadata.result-metadata/returned-columns query)]
+                                                            (-> col
+                                                                (update-keys (fn [k]
+                                                                               (cond-> k
+                                                                                 (simple-keyword? k) u/->snake_case_en)))
+                                                                (dissoc :lib/type))))))]
     (as-> meta/metadata-provider mp
       (lib.tu/mock-metadata-provider
        mp
@@ -361,7 +361,7 @@
 ;;; adapted from [[metabase.queries-rest.api.card-test/model-card-test-2]]
 (deftest ^:parallel preserve-edited-metadata-test
   (testing "Cards preserve their edited metadata"
-    (doseq [result-metadata-style [::mlv2-returned-columns ::mlv2-expected-columns ::legacy-snake-case-qp]]
+    (doseq [result-metadata-style [::lib-returned-columns ::lib-expected-columns ::legacy-snake-case-qp]]
       (testing (str "result metadata style = " (name result-metadata-style))
         (let [mp (preserve-edited-metadata-test-mock-metadata-provider {:result-metadata-style result-metadata-style})]
           (letfn [(only-user-edits [col]

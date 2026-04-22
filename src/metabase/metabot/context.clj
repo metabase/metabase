@@ -160,8 +160,8 @@
       [])))
 
 (defn- mbql-source-table-ids
-  "Given a context item with an MBQL query, return [database-id [table-id ...]] if it has
-  source-table references, or nil otherwise. Handles both MLv2/MBQL 5 and legacy formats."
+  "Given a context item with an MBQL query, return [database-id [table-id ...]] if it has source-table references, or
+  nil otherwise. Handles both MBQL 4 (legacy) and MBQL 5 formats."
   [item]
   (when (= "adhoc" (:type item))
     (let [query       (:query item)

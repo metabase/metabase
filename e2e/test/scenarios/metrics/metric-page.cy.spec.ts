@@ -326,7 +326,7 @@ describe("scenarios > metrics > metric page", () => {
 
   describe("ee features", () => {
     beforeEach(() => {
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should show and hide 'Open in Data Studio' based on context", () => {
@@ -376,6 +376,7 @@ describe("scenarios > metrics > metric page", () => {
 
     it("should show the Dependencies tab with dependency graph in EE", () => {
       H.createQuestion(ORDERS_SCALAR_METRIC).then(({ body: metric }) => {
+        H.waitForBackfillComplete();
         H.visitMetric(metric.id);
       });
 

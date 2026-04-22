@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { moveElement } from "metabase/lib/arrays";
+import { moveElement } from "metabase/utils/arrays";
 import type { FieldSettingsMap, InputSettingType } from "metabase-types/api";
 
 const inputTypeMap: Record<InputSettingType, string> = {

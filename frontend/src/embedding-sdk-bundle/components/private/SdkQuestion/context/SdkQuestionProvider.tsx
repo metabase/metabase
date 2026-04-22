@@ -264,15 +264,10 @@ export const SdkQuestionProvider = ({
   // Push the question name to the stack if the stack is empty (ie: this is the root question)
   // We need to wait for the question to load to have the name
   useEffect(() => {
-    if (
-      question &&
-      !!questionId &&
-      navigation &&
-      navigation.stack.length === 0
-    ) {
+    if (question && navigation && navigation.stack.length === 0) {
       navigation.push({
         type: "question",
-        id: questionId,
+        id: questionId ?? null,
         name: question.displayName() || t`Question`,
       });
     }
