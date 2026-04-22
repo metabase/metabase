@@ -52,7 +52,7 @@ const elements = [
     name: "query_builder",
     enforceOutgoing: true,
   }),
-  createElement({ type: "feature", name: "admin" }),
+  createElement({ type: "feature", name: "admin", enforceOutgoing: true }),
   createElement({ type: "feature", name: "reference", enforceOutgoing: true }),
   createElement({
     type: "feature",
