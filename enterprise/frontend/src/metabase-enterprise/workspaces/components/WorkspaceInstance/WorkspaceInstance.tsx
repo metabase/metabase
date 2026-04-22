@@ -49,7 +49,7 @@ export function WorkspaceInstance() {
   return (
     <Flex h="100%" wrap="nowrap" data-testid="workspace-instance">
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
-        <WorkspaceInstanceHeader />
+        <WorkspaceInstanceHeader workspaceName={workspace?.name} />
         {isLoading || error != null || workspace == null ? (
           <Center h="100%">
             <LoadingAndErrorWrapper loading={isLoading} error={error} />

@@ -9,7 +9,13 @@ import {
 } from "metabase/data-studio/common/components/PaneHeader";
 import * as Urls from "metabase/utils/urls";
 
-export const WorkspaceInstanceHeader = memo(function WorkspaceInstanceHeader() {
+type WorkspaceInstanceHeaderProps = {
+  workspaceName?: string;
+};
+
+export const WorkspaceInstanceHeader = memo(function WorkspaceInstanceHeader({
+  workspaceName,
+}: WorkspaceInstanceHeaderProps) {
   const tabs: PaneHeaderTab[] = [
     {
       label: t`Table Remappings`,
@@ -21,7 +27,10 @@ export const WorkspaceInstanceHeader = memo(function WorkspaceInstanceHeader() {
   return (
     <PaneHeader
       breadcrumbs={
-        <DataStudioBreadcrumbs>{t`Workspace`}</DataStudioBreadcrumbs>
+        <DataStudioBreadcrumbs>
+          {t`Workspace`}
+          {workspaceName}
+        </DataStudioBreadcrumbs>
       }
       tabs={<PaneHeaderTabs tabs={tabs} />}
       py={0}
