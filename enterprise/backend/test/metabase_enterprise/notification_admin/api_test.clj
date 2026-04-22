@@ -186,33 +186,23 @@
           (is (contains? ids (:id target-notif)))
           (is (not (contains? ids (:id other-notif)))))))))
 
-(deftest filter-by-recipient-email-raw-value-test
-  (testing "recipient_email also matches a raw-value recipient's details.value"
+(deftest filter-by-recipient-email-ignores-raw-value-test
+  (testing "recipient_email only matches user recipients; raw-value (external) recipients are not searched"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Card                  {card-id :id}        {}
-                     :model/NotificationCard      {nc1 :id}            {:card_id card-id}
-                     :model/NotificationCard      {nc2 :id}            {:card_id card-id}
-                     :model/Notification          target-notif         {:payload_type :notification/card
-                                                                        :payload_id   nc1
+                     :model/NotificationCard      {nc :id}             {:card_id card-id}
+                     :model/Notification          raw-notif            {:payload_type :notification/card
+                                                                        :payload_id   nc
                                                                         :creator_id   (mt/user->id :crowberto)}
-                     :model/Notification          other-notif          {:payload_type :notification/card
-                                                                        :payload_id   nc2
-                                                                        :creator_id   (mt/user->id :crowberto)}
-                     :model/NotificationHandler   {target-handler :id} {:notification_id (:id target-notif)
+                     :model/NotificationHandler   {raw-handler :id}    {:notification_id (:id raw-notif)
                                                                         :channel_type    :channel/email}
-                     :model/NotificationHandler   {other-handler :id}  {:notification_id (:id other-notif)
-                                                                        :channel_type    :channel/email}
-                     :model/NotificationRecipient _target-r            {:notification_handler_id target-handler
+                     :model/NotificationRecipient _raw-r               {:notification_handler_id raw-handler
                                                                         :type                    :notification-recipient/raw-value
-                                                                        :details                 {:value "external@example.com"}}
-                     :model/NotificationRecipient _other-r             {:notification_handler_id other-handler
-                                                                        :type                    :notification-recipient/raw-value
-                                                                        :details                 {:value "someone-else@example.com"}}]
+                                                                        :details                 {:value "external@example.com"}}]
         (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/notifications"
                                                    :recipient_email "external@example.com")
               ids            (set (map :id data))]
-          (is (contains? ids (:id target-notif)))
-          (is (not (contains? ids (:id other-notif)))))))))
+          (is (not (contains? ids (:id raw-notif)))))))))
 
 (defn- find-row-by-id [data id]
   (some #(when (= id (:id %)) %) data))

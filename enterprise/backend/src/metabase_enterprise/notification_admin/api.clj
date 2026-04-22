@@ -48,33 +48,21 @@
   [:map
    [:updated ms/IntGreaterThanOrEqualToZero]])
 
-(defn- notification-ids-matching-recipient-email
-  "Return the set of notification ids whose handlers include a recipient whose effective email
-  matches `email`. Matches either `core_user.email` (when recipient has a `user_id`) or the
-  `details.value` of a raw-value recipient. We do both halves in SQL for the user case and in
-  Clojure for raw-value — `notification_recipient.details` is stored as JSON text and portable
-  JSON querying across H2 / Postgres / MySQL is not worth its own abstraction for one filter."
+(defn- recipient-email-exists
+  "Honey `EXISTS` correlated with `:notification.id`: TRUE when the notification has a handler
+  whose recipient is a user with this email. Raw-value recipients are intentionally not matched
+  — their email lives inside the `:details` JSON column and narrowing it in SQL would require
+  either a cross-DB LIKE on the serialized text or a JSON-operator abstraction. If that coverage
+  becomes important, revisit it separately."
   [email]
-  (let [user-side (t2/select-fn-set
-                   :notification_id
-                   [:model/NotificationHandler :notification_handler.notification_id]
-                   {:select-distinct [:notification_handler.notification_id]
-                    :from            [:notification_handler]
-                    :join            [:notification_recipient
-                                      [:= :notification_recipient.notification_handler_id :notification_handler.id]
-                                      :core_user
-                                      [:= :core_user.id :notification_recipient.user_id]]
-                    :where           [:= :core_user.email email]})
-        ;; realize raw-value recipients so the JSON :details is deserialized, then filter in memory
-        raw-side  (->> (t2/select :model/NotificationRecipient
-                                  :type :notification-recipient/raw-value)
-                       (filter (fn [r] (= email (get-in r [:details :value]))))
-                       (map :notification_handler_id)
-                       seq)
-        raw-nids  (when (seq raw-side)
-                    (t2/select-fn-set :notification_id :model/NotificationHandler
-                                      :id [:in raw-side]))]
-    (into (or user-side #{}) (or raw-nids #{}))))
+  [:exists
+   {:select [[1]]
+    :from   [[:notification_handler :nh]]
+    :join   [[:notification_recipient :nr] [:= :nr.notification_handler_id :nh.id]
+             [:core_user :cu]              [:= :cu.id :nr.user_id]]
+    :where  [:and
+             [:= :nh.notification_id :notification.id]
+             [:= :cu.email email]]}])
 
 (def ^:private health-lookback-days
   "How far back to consider alert-type TaskRuns when computing `failing`/`abandoned`/`healthy`."
@@ -157,11 +145,7 @@
         (sql.helpers/where [:= :notification_handler.channel_type channel]))
 
     recipient_email
-    (sql.helpers/where
-     (let [matching-ids (notification-ids-matching-recipient-email recipient_email)]
-       (if (seq matching-ids)
-         [:in :notification.id matching-ids]
-         [:= 1 0])))))
+    (sql.helpers/where (recipient-email-exists recipient_email))))
 
 (defn- health-where
   "WHERE clause filtering to rows where [[health-expr]] equals `health`. Comparing against the
