@@ -171,20 +171,55 @@
                                  :metabot-scope {:verified-only? false :collection-id 42})]
           (is (= {:verified-only? false :collection-id 42} @captured-scope))
           (is (= 1.0 (get-in metabot [:components :entity-count :measurement])))))))
-  (testing "empty scope (or no :metabot-scope opt) reuses the :universe score without recomputing"
+  (testing "empty scope (or no :metabot-scope opt) still runs metabot-entities so hidden/routed tables are excluded"
+    ;; Regression: we used to reuse the :universe score verbatim when scope was empty. That hid the
+    ;; fact that Metabot's table visibility (`:visibility_type nil`, non-routed DB) already narrows
+    ;; the catalog even before Card scoping kicks in.
     (doseq [scope [nil {} {:verified-only? false :collection-id nil}]]
-      (let [metabot-called? (atom false)]
+      (let [captured-scope (atom ::not-called)]
         (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [])
-                                    complexity/universe-entities (constantly [(entity :name "orders")])
-                                    complexity/metabot-entities  (fn [_scope]
-                                                                   (reset! metabot-called? true)
-                                                                   [])]
+                                    complexity/universe-entities (constantly [(entity :name "orders")
+                                                                              (entity :name "widgets")])
+                                    complexity/metabot-entities  (fn [s]
+                                                                   (reset! captured-scope s)
+                                                                   [(entity :name "orders")])]
           (let [{:keys [universe metabot]} (complexity/complexity-scores
                                             :embedder nil
                                             :metabot-scope scope)]
-            (is (not @metabot-called?)
-                (format "metabot-entities was not invoked for scope=%s" (pr-str scope)))
-            (is (identical? universe metabot))))))))
+            (is (= scope @captured-scope)
+                (format "metabot-entities was invoked with the caller's (possibly empty) scope=%s"
+                        (pr-str scope)))
+            (is (= 1.0 (get-in metabot  [:components :entity-count :measurement])))
+            (is (= 2.0 (get-in universe [:components :entity-count :measurement])))))))))
+
+(deftest ^:sequential metabot-catalog-excludes-hidden-tables-test
+  (testing ":metabot tables filter out hidden (`visibility_type` non-nil) and routed-DB tables so the
+           catalog matches what Metabot/search can actually surface"
+    ;; Regression: `:metabot` used to count every active non-audit table, which overcounted on
+    ;; instances with hidden tables or routed-database tables — Metabot never surfaces those.
+    (mt/with-temp
+      [:model/Database {router-db :id} {:name "Router DB"}
+       :model/Database {routed-db :id} {:name "Routed DB" :router_database_id router-db}
+       :model/Database {plain-db :id}  {:name "Plain DB"}
+       :model/Table    {visible :id}   {:db_id plain-db  :name "visible_table"
+                                        :active true :visibility_type nil}
+       :model/Table    {hidden :id}    {:db_id plain-db  :name "hidden_table"
+                                        :active true :visibility_type "hidden"}
+       :model/Table    {technical :id} {:db_id plain-db  :name "technical_table"
+                                        :active true :visibility_type "technical"}
+       :model/Table    {routed :id}    {:db_id routed-db :name "routed_table"
+                                        :active true :visibility_type nil}]
+      (let [ids (into #{} (map :id) (#'complexity/metabot-table-entities))]
+        (testing "visible non-routed table is included"
+          (is (contains? ids visible)))
+        (testing "hidden and technical tables are excluded"
+          (is (not (contains? ids hidden))
+              "tables with visibility_type=hidden are filtered out")
+          (is (not (contains? ids technical))
+              "tables with visibility_type=technical are filtered out"))
+        (testing "tables on a routed database are excluded"
+          (is (not (contains? ids routed))
+              "tables whose db has router_database_id are filtered out"))))))
 
 (deftest ^:sequential metabot-collection-scope-ids-test
   (testing "nil collection-id returns nil (no Metabot collection scope configured)"

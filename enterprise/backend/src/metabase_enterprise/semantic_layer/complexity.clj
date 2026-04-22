@@ -5,15 +5,15 @@
 
     :library  — the curated subset (Cards of type :model and :metric)
     :universe — everything (library entities + all active physical tables)
-    :metabot  — what the internal Metabot can actually surface. Identical to :universe unless the
-                caller passes `:metabot-scope {:verified-only? <bool> :collection-id <nil|Long>}`
-                describing how the internal Metabot filters retrieval — restricting Cards to a
-                `collection_id` subtree, to verified-moderation Cards, or both. When the scope is
-                empty we reuse the universe score verbatim so we don't pay for a redundant pass.
-                Tables pass through unfiltered (no table-level verification concept, and Metabot
-                doesn't scope Tables by `collection_id` either). The caller owns the decision —
-                this namespace does not read settings, premium-feature gates, or Metabot rows
-                directly.
+    :metabot  — what the internal Metabot can actually surface. Tables are always filtered to
+                Metabot-visible tables (active, `:visibility_type IS NULL`, non-routed database,
+                non-audit) so hidden/routed tables don't inflate the score; this matches the
+                search/table filters Metabot actually applies. Cards optionally narrow further
+                when the caller passes `:metabot-scope {:verified-only? <bool> :collection-id
+                <nil|Long>}` describing how the internal Metabot filters retrieval — restricting
+                Cards to a `collection_id` subtree, to verified-moderation Cards, or both. The
+                caller owns the scope decision — this namespace does not read settings,
+                premium-feature gates, or Metabot rows directly.
 
   The score and its sub-scores are intentionally additive and close to the original back-of-envelope
   proposal so v1 output is easy to reason about.
@@ -212,16 +212,30 @@
           (map ->card-entity)
           (t2/reducible-select :model/Card query))))
 
+(defn- metabot-table-entities
+  "Tables the internal Metabot would actually surface. Mirrors the search/table filters applied by
+   `metabase.warehouse_schema.models.table` and `metabase.metabot.table-utils` — active, not hidden
+   (`:visibility_type IS NULL`), not a routed-database table (`db.router_database_id IS NULL`),
+   not the audit DB — so hidden/routed tables don't inflate the `:metabot` catalog."
+  []
+  (t2/select [:model/Table :id :name]
+             {:select    [:metabase_table.id :metabase_table.name]
+              :from      [:metabase_table]
+              :left-join [[:metabase_database :db] [:= :db.id :metabase_table.db_id]]
+              :where     [:and
+                          [:= :metabase_table.active true]
+                          [:= :metabase_table.visibility_type nil]
+                          [:= :db.router_database_id nil]
+                          [:not= :metabase_table.db_id audit/audit-db-id]]}))
+
 (defn- metabot-entities
-  "Entities in the `:metabot` catalog when any Metabot retrieval scope is in effect —
-   verified-moderation filtering, a `collection_id` subtree, or both. Cards are filtered to match
-   Metabot's retrieval; Tables pass through unfiltered because Metabot doesn't scope Tables by
-   `collection_id` and there's no table-level verification concept."
+  "Entities in the `:metabot` catalog. Cards match Metabot's retrieval (metric/model, non-archived,
+   non-audit, optionally narrowed by `collection_id` subtree and/or verified-moderation). Tables are
+   filtered through [[metabot-table-entities]] so hidden and routed-DB tables are excluded, matching
+   what Metabot/search can actually surface."
   [scope]
   (let [card-entities (metabot-card-entities scope)
-        tables        (t2/select [:model/Table :id :name]
-                                 :active true
-                                 :db_id  [:not= audit/audit-db-id])]
+        tables        (metabot-table-entities)]
     (into card-entities (assemble-table-entities tables))))
 
 ;;; ------------------------------------- scoring -------------------------------------
@@ -407,7 +421,9 @@
         pass it so benchmark consumers can pin to it.
      `:metabot-entities` — when non-nil, scored separately as the `:metabot` catalog. When nil
         (default), `:metabot` reuses the `:universe` score so the response shape is stable without
-        paying for a redundant pass."
+        paying for a redundant pass — callers loading entities from a representation file have no
+        way to reconstruct Metabot's visibility filters and should either pass a pre-filtered
+        vector here or accept the universe approximation."
   [library-entities universe-entities embedder {:keys [embedding-model-meta metabot-entities]}]
   (let [universe-score (score-catalog universe-entities embedder)]
     {:library  (score-catalog library-entities embedder)
@@ -418,12 +434,6 @@
      :meta     (cond-> {:formula-version   formula-version
                         :synonym-threshold synonym-similarity-threshold}
                  embedding-model-meta (assoc :embedding-model embedding-model-meta))}))
-
-(defn- metabot-scope-applies?
-  "True when the supplied `:metabot-scope` actually narrows retrieval vs. `:universe`. Used to
-   decide whether we need a separate `:metabot` pass or can cheaply reuse `:universe`."
-  [{:keys [verified-only? collection-id]}]
-  (or (boolean verified-only?) (some? collection-id)))
 
 (defn- time-phase!
   "Run `f`, record duration under `phase` on the timing histogram, return its value."
@@ -452,10 +462,10 @@
         [[metabase-enterprise.semantic-search.core/search-index-embedder]]); pass `nil` to disable
         synonym scoring.
      `:metabot-scope` — a `{:verified-only? <bool> :collection-id <nil|Long>}` map describing how
-        the internal Metabot filters retrieval. When either key is active, `:metabot` is scored
-        against Cards matching the scope (Tables pass through); when neither is active (or the
-        option is omitted), `:metabot` reuses the `:universe` score. The caller owns this decision
-        (premium-feature gate + Metabot row lookup) so this namespace stays free of
+        the internal Metabot filters Cards. `:metabot` is always scored separately from `:universe`
+        because Metabot/search table visibility (hidden tables, routed databases) already diverges
+        from the raw `:universe` set; the scope only narrows Cards further. The caller owns the
+        scope decision (premium-feature gate + Metabot row lookup) so this namespace stays free of
         settings/feature/Metabot-row reads."
   [& {:keys [embedder metabot-scope] :as opts}]
   ;;; NOTE: we fully materialize a vector off all entities, along with one of those in the library, rather than
@@ -473,13 +483,10 @@
                              (semantic-search/active-embedding-model))
             library-ents   (time-phase! "enumerate-library" library-entities)
             universe-ents  (time-phase! "enumerate-universe" universe-entities)
-            metabot-ents   (when (metabot-scope-applies? metabot-scope)
-                             (time-phase! "enumerate-metabot" #(metabot-entities metabot-scope)))
+            metabot-ents   (time-phase! "enumerate-metabot" #(metabot-entities metabot-scope))
             universe-score (time-phase! "score-universe" #(score-catalog universe-ents embedder))
             library-score  (time-phase! "score-library"  #(score-catalog library-ents embedder))
-            metabot-score  (if metabot-ents
-                             (time-phase! "score-metabot" #(score-catalog metabot-ents embedder))
-                             universe-score)
+            metabot-score  (time-phase! "score-metabot"  #(score-catalog metabot-ents embedder))
             result         {:library  library-score
                             :universe universe-score
                             :metabot  metabot-score
