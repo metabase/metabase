@@ -20,7 +20,7 @@
                     :database_details {:user "mb_isolation_github" :password "secret"}
                     :output_schema    "mb_isolation_github"
                     :input_schemas    ["raw_github"]
-                    :status           :initialized}]
+                    :status           :provisioned}]
       (let [cfg (config/build-workspace-config ws-id)]
         (testing "databases entry"
           (is (= 1 (count (:databases cfg))))
@@ -54,21 +54,21 @@
                     :database_details {:user "u" :password "p"}
                     :output_schema    "out"
                     :input_schemas    ["schema_a" "schema_b" "schema_c"]
-                    :status           :initialized}]
+                    :status           :provisioned}]
       (let [cfg (config/build-workspace-config ws-id)]
         (is (= "schema_a,schema_b,schema_c"
                (-> cfg :databases first :details :schema-filters-patterns)))))))
 
-(deftest build-workspace-config-rejects-uninitialized-test
-  (testing "Any :uninitialized WorkspaceDatabase causes a 409"
+(deftest build-workspace-config-rejects-non-provisioned-test
+  (testing "Any non-:provisioned WorkspaceDatabase causes a 409"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "Mixed"}
                    :model/WorkspaceDatabase _
                    {:workspace_id ws-id :database_id (mt/id)
                     :database_details {} :output_schema "" :input_schemas ["public"]
-                    :status :uninitialized}]
+                    :status :unprovisioned}]
       (is (thrown-with-msg?
            Exception
-           #"uninitialized"
+           #"not :provisioned"
            (config/build-workspace-config ws-id))))))
 
 (deftest build-workspace-config-empty-workspace-test

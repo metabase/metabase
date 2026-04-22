@@ -122,21 +122,21 @@
           (is (zero? (t2/count :model/WorkspaceDatabase :workspace_id id))))))))
 
 (deftest status-defaults-to-uninitialized-test
-  (testing "When :status is omitted, workspace_database defaults to :uninitialized"
+  (testing "When :status is omitted, workspace_database defaults to :unprovisioned"
     (mt/with-model-cleanup [:model/Workspace]
       (let [created (create-ws!
                      {:name "Status Default" :databases [(ws-db-attrs)]})]
-        (is (= :uninitialized (:status (first (:databases created)))))))))
+        (is (= :unprovisioned (:status (first (:databases created)))))))))
 
 (deftest status-round-trip-test
   (testing "Caller-supplied :status round-trips as a keyword"
     (mt/with-model-cleanup [:model/Workspace]
       (let [created (create-ws!
                      {:name      "Status Set"
-                      :databases [(ws-db-attrs {:status :initialized})]})]
-        (is (= :initialized (:status (first (:databases created)))))
+                      :databases [(ws-db-attrs {:status :provisioned})]})]
+        (is (= :provisioned (:status (first (:databases created)))))
         (testing "and the column persists as a string in the database"
-          (is (= "initialized"
+          (is (= "provisioned"
                  (:status (t2/query-one {:select [:status]
                                          :from   [:workspace_database]
                                          :where  [:= :workspace_id (:id created)]})))))))))
@@ -146,15 +146,15 @@
     (mt/with-model-cleanup [:model/Workspace]
       (let [{id :id} (create-ws!
                       {:name      "Evolving"
-                       :databases [(ws-db-attrs {:status :uninitialized})]})
+                       :databases [(ws-db-attrs {:status :unprovisioned})]})
             updated  (workspace/update-workspace!
                       id
                       {:name      "Evolving"
-                       :databases [(ws-db-attrs {:status :initialized})]})]
-        (is (= :initialized (:status (first (:databases updated)))))))))
+                       :databases [(ws-db-attrs {:status :provisioned})]})]
+        (is (= :provisioned (:status (first (:databases updated)))))))))
 
 (deftest update-preserves-initialized-rows-test
-  (testing "update-workspace! leaves :initialized rows untouched when the PUT keeps their database_id + input_schemas"
+  (testing "update-workspace! leaves :provisioned rows untouched when the PUT keeps their database_id + input_schemas"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase {init-id :id}
                    {:workspace_id     ws-id
@@ -162,7 +162,7 @@
                     :database_details {:user "keep-me" :password "keep-pw"}
                     :output_schema    "keep_schema"
                     :input_schemas    ["public"]
-                    :status           :initialized}]
+                    :status           :provisioned}]
       (let [updated (workspace/update-workspace!
                      ws-id
                      {:name      "Renamed"
@@ -172,13 +172,13 @@
           (is (= "Renamed" (:name updated))))
         (testing "the initialized row was not deleted + reinserted (its id is the same)"
           (is (some? row))
-          (is (= :initialized (:status row))))
+          (is (= :provisioned (:status row))))
         (testing "credentials and output_schema are preserved verbatim"
           (is (= {:user "keep-me" :password "keep-pw"} (:database_details row)))
           (is (= "keep_schema" (:output_schema row))))))))
 
 (deftest update-rejects-dropping-initialized-test
-  (testing "update-workspace! refuses to drop an :initialized row"
+  (testing "update-workspace! refuses to drop an :provisioned row"
     (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}
                    :model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase _
@@ -187,16 +187,16 @@
                     :database_details {:user "u"}
                     :output_schema    "sch"
                     :input_schemas    ["public"]
-                    :status           :initialized}]
+                    :status           :provisioned}]
       (is (thrown-with-msg?
            Exception
-           #"initialized"
+           #"provisioned"
            (workspace/update-workspace!
             ws-id
             {:name "WS" :databases [{:database_id db2-id :input_schemas ["public"]}]}))))))
 
 (deftest update-rejects-changing-initialized-input-schemas-test
-  (testing "update-workspace! refuses to change :input_schemas of an :initialized row"
+  (testing "update-workspace! refuses to change :input_schemas of an :provisioned row"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase _
                    {:workspace_id     ws-id
@@ -204,10 +204,10 @@
                     :database_details {:user "u"}
                     :output_schema    "sch"
                     :input_schemas    ["public"]
-                    :status           :initialized}]
+                    :status           :provisioned}]
       (is (thrown-with-msg?
            Exception
-           #"initialized"
+           #"provisioned"
            (workspace/update-workspace!
             ws-id
             {:name      "WS"

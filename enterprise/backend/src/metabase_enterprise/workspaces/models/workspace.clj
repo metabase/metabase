@@ -70,45 +70,49 @@
                     (map #(with-workspace-database-defaults % ws-id) databases)))
       (get-workspace ws-id))))
 
-(defn- reject-initialized-modification!
-  "Throw a 409 if any `:initialized` row in `existing` is missing from the incoming
-  `:databases` list or would have its `:input_schemas` changed. Initialized rows
-  are immutable via the API-facing update path."
-  [existing-initialized incoming-by-db-id]
-  (doseq [{:keys [database_id input_schemas]} existing-initialized]
+(defn- reject-active-modification!
+  "Throw a 409 if any row in `existing-active` (everything other than `:unprovisioned`)
+  is missing from the incoming `:databases` list or would have its `:input_schemas`
+  changed. Only `:unprovisioned` rows are freely mutable; `:provisioning`,
+  `:provisioned`, and `:unprovisioning` rows must be preserved verbatim."
+  [existing-active incoming-by-db-id]
+  (doseq [{:keys [database_id input_schemas]} existing-active]
     (let [incoming (get incoming-by-db-id database_id)]
       (when (or (nil? incoming)
                 (not= (vec input_schemas) (vec (:input_schemas incoming))))
-        (throw (ex-info "Cannot modify an initialized workspace_database"
+        (throw (ex-info "Cannot modify a workspace_database that is not :unprovisioned"
                         {:status-code 409
                          :database_id database_id}))))))
 
 (defn delete-workspace!
-  "Delete a Workspace. Refuses with a 409 if any of its WorkspaceDatabase rows are
-  `:initialized` (they must be deprovisioned first to avoid leaking isolated
-  schemas/users). Cascade-deletes uninitialized children via the FK."
+  "Delete a Workspace. Refuses with a 409 if any of its WorkspaceDatabase rows is in
+  a non-`:unprovisioned` state (`:provisioning`, `:provisioned`, or `:unprovisioning`)
+  — those point at live warehouse resources and must be unprovisioned explicitly
+  first. Cascade-deletes `:unprovisioned` children via the FK."
   [id]
-  (when (t2/exists? :model/WorkspaceDatabase :workspace_id id :status :initialized)
-    (throw (ex-info "Cannot delete a workspace with initialized databases; deprovision them first"
+  (when (t2/exists? :model/WorkspaceDatabase
+                    :workspace_id id
+                    :status [:not= :unprovisioned])
+    (throw (ex-info "Cannot delete a workspace with databases that are not :unprovisioned; unprovision them first"
                     {:status-code 409
                      :workspace_id id})))
   (t2/delete! :model/Workspace :id id))
 
 (defn update-workspace!
   "Update a Workspace and reconcile its `WorkspaceDatabase` rows with the provided
-  list. `:initialized` rows are immutable: the incoming list must preserve each
-  one by `database_id` with matching `:input_schemas`, or a 409 is raised.
-  Uninitialized rows are fully replaced by the incoming list."
+  list. Only `:unprovisioned` rows are freely mutable. Rows in any other state
+  (`:provisioning`, `:provisioned`, `:unprovisioning`) must be preserved by
+  `database_id` with matching `:input_schemas`, or a 409 is raised."
   [id {:keys [name databases]}]
   (t2/with-transaction [_conn]
     (let [existing         (t2/select :model/WorkspaceDatabase :workspace_id id)
-          initialized      (filter #(= :initialized (:status %)) existing)
-          uninitialized    (remove #(= :initialized (:status %)) existing)
+          active           (remove #(= :unprovisioned (:status %)) existing)
+          unprovisioned    (filter #(= :unprovisioned (:status %)) existing)
           incoming-by-db-id (into {} (map (juxt :database_id identity)) databases)
-          preserved-db-ids (set (map :database_id initialized))]
-      (reject-initialized-modification! initialized incoming-by-db-id)
+          preserved-db-ids (set (map :database_id active))]
+      (reject-active-modification! active incoming-by-db-id)
       (t2/update! :model/Workspace :id id {:name name})
-      (when-let [to-delete-ids (seq (map :id uninitialized))]
+      (when-let [to-delete-ids (seq (map :id unprovisioned))]
         (t2/delete! :model/WorkspaceDatabase :id [:in to-delete-ids]))
       (when-let [to-insert (seq (remove #(contains? preserved-db-ids (:database_id %)) databases))]
         (t2/insert! :model/WorkspaceDatabase

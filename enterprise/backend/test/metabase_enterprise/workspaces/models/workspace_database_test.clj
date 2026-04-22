@@ -4,10 +4,10 @@
 
    Background: `workspace_database.database_id -> metabase_database.id` used to be
    ON DELETE CASCADE, which silently removed the row when the parent Database was
-   deleted — orphaning any `:initialized` warehouse schemas/users because the 409
+   deleted — orphaning any `:provisioned` warehouse schemas/users because the 409
    guard in `delete-workspace!` was never consulted. We switched the FK to
    RESTRICT, which requires the app-side to reconcile rows explicitly: refuse the
-   delete if any row is `:initialized`, otherwise delete the `:uninitialized`
+   delete if any row is `:provisioned`, otherwise delete the `:unprovisioned`
    rows so the FK is satisfied."
   (:require
    [clojure.test :refer :all]
@@ -35,7 +35,7 @@
           (try (t2/delete! :metabase_database :id [:in db-ids]) (catch Throwable _ nil)))))))
 
 (deftest pre-delete-refuses-database-with-initialized-workspace-databases-test
-  (testing "deleting a Database with an :initialized WorkspaceDatabase child raises 409 and leaves state untouched"
+  (testing "deleting a Database with an :provisioned WorkspaceDatabase child raises 409 and leaves state untouched"
     (mt/with-premium-features #{:workspaces}
       (with-tracked-ids
         (fn [track-db! track-ws! track-wsd!]
@@ -53,7 +53,7 @@
                                                  :database_details {}
                                                  :output_schema ""
                                                  :input_schemas []
-                                                 :status :initialized})]
+                                                 :status :provisioned})]
             (track-wsd! wsd-id)
             (let [thrown (try (t2/delete! :model/Database :id db-id) nil
                               (catch Throwable t t))]
@@ -67,7 +67,7 @@
                   "WorkspaceDatabase row must still exist after the refused delete"))))))))
 
 (deftest pre-delete-cleans-up-uninitialized-workspace-databases-test
-  (testing "deleting a Database whose only workspace_database children are :uninitialized succeeds"
+  (testing "deleting a Database whose only workspace_database children are :unprovisioned succeeds"
     ;; The FK is RESTRICT; the pre-delete hook must remove those rows so the delete
     ;; can proceed. Semantically this preserves the old CASCADE-like ergonomics for the
     ;; safe case (nothing provisioned on the warehouse side).
@@ -88,7 +88,7 @@
                                                  :database_details {}
                                                  :output_schema ""
                                                  :input_schemas []
-                                                 :status :uninitialized})]
+                                                 :status :unprovisioned})]
             (track-wsd! wsd-id)
             (t2/delete! :model/Database :id db-id)
             (is (false? (t2/exists? :model/Database :id db-id))
@@ -97,7 +97,7 @@
                 "pre-delete hook must have removed the uninitialized workspace_database row first")))))))
 
 (deftest fk-restrict-is-defense-in-depth-test
-  (testing "FK constraint blocks cascade-delete of an :initialized workspace_database even if the app-level hook is bypassed"
+  (testing "FK constraint blocks cascade-delete of an :provisioned workspace_database even if the app-level hook is bypassed"
     ;; `(t2/delete! :metabase_database ...)` against the raw table name bypasses the
     ;; `before-delete` hook (per toucan2 docs). The FK must still refuse the delete so
     ;; the warehouse schema isn't silently orphaned by a path that doesn't know about
@@ -119,7 +119,7 @@
                                                  :database_details {}
                                                  :output_schema ""
                                                  :input_schemas []
-                                                 :status :initialized})]
+                                                 :status :provisioned})]
             (track-wsd! wsd-id)
             (let [thrown (try (t2/delete! :metabase_database :id db-id) nil
                               (catch Throwable t t))]

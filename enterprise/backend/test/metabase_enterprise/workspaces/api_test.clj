@@ -25,7 +25,7 @@
                               :database_details {}
                               :output_schema    ""
                               :input_schemas    ["public"]
-                              :status           "uninitialized"}]}
+                              :status           "unprovisioned"}]}
                 resp))
         (is (t2/exists? :model/Workspace :id (:id resp)))))))
 
@@ -37,11 +37,11 @@
                                         :databases [(assoc (ws-db-payload)
                                                            :output_schema    "evil"
                                                            :database_details {:user "hacker" :password "pwned"}
-                                                           :status           "initialized")]})
+                                                           :status           "provisioned")]})
             db   (first (:databases resp))]
         (is (= ""  (:output_schema db)))
         (is (= {}  (:database_details db)))
-        (is (= "uninitialized" (:status db)))))))
+        (is (= "unprovisioned" (:status db)))))))
 
 (deftest put-workspace-strips-server-controlled-fields-test
   (testing "PUT ignores output_schema / database_details / status from the client"
@@ -53,11 +53,11 @@
                                                 :databases [(assoc (ws-db-payload)
                                                                    :output_schema    "evil"
                                                                    :database_details {:user "hacker"}
-                                                                   :status           "initialized")]})
+                                                                   :status           "provisioned")]})
             db           (first (:databases resp))]
         (is (= ""  (:output_schema db)))
         (is (= {}  (:database_details db)))
-        (is (= "uninitialized" (:status db)))))))
+        (is (= "unprovisioned" (:status db)))))))
 
 (deftest post-workspace-requires-superuser-test
   (testing "Non-superusers get 403 from POST /ee/workspace"
@@ -97,7 +97,7 @@
                               :database_details {}
                               :output_schema    ""
                               :input_schemas    ["public"]
-                              :status           "uninitialized"}]}
+                              :status           "unprovisioned"}]}
                 resp)))))
 
   (testing "GET /ee/workspace/:id with unknown id returns 404"
@@ -153,7 +153,7 @@
             (is (= 1 (count @called)))))))))
 
 (deftest post-provision-skips-already-initialized-test
-  (testing "POST /ee/workspace/:id/provision skips WorkspaceDatabases that are already :initialized"
+  (testing "POST /ee/workspace/:id/provision skips WorkspaceDatabases that are already :provisioned"
     (mt/with-temp [:model/Workspace {id :id} {:name "Mixed"}
                    :model/WorkspaceDatabase _
                    {:workspace_id     id
@@ -161,7 +161,7 @@
                     :database_details {:user "x"}
                     :output_schema    "done"
                     :input_schemas    ["public"]
-                    :status           :initialized}]
+                    :status           :provisioned}]
       (let [called (atom [])]
         (with-redefs [provisioning/run-async!                  (fn [f] (f))
                       provisioning/provision-workspace-database!
@@ -182,30 +182,30 @@
     (mt/user-http-request :crowberto :post 404 (str "ee/workspace/" Integer/MAX_VALUE "/provision") {})))
 
 (deftest put-rejects-drop-of-initialized-test
-  (testing "PUT returns 409 when it would drop an :initialized workspace_database"
+  (testing "PUT returns 409 when it would drop an :provisioned workspace_database"
     (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}
                    :model/Workspace {id :id} {:name "Locked"}
                    :model/WorkspaceDatabase _
                    {:workspace_id id :database_id (mt/id)
                     :database_details {:user "u"} :output_schema "s"
-                    :input_schemas ["public"] :status :initialized}]
+                    :input_schemas ["public"] :status :provisioned}]
       (mt/user-http-request :crowberto :put 409 (str "ee/workspace/" id)
                             {:name      "Locked"
                              :databases [{:database_id db2-id :input_schemas ["public"]}]}))))
 
 (deftest put-rejects-input-schemas-change-on-initialized-test
-  (testing "PUT returns 409 when it would change :input_schemas of an :initialized row"
+  (testing "PUT returns 409 when it would change :input_schemas of an :provisioned row"
     (mt/with-temp [:model/Workspace {id :id} {:name "Locked"}
                    :model/WorkspaceDatabase _
                    {:workspace_id id :database_id (mt/id)
                     :database_details {:user "u"} :output_schema "s"
-                    :input_schemas ["public"] :status :initialized}]
+                    :input_schemas ["public"] :status :provisioned}]
       (mt/user-http-request :crowberto :put 409 (str "ee/workspace/" id)
                             {:name      "Locked"
                              :databases [{:database_id (mt/id) :input_schemas ["something_else"]}]}))))
 
 (deftest put-preserves-initialized-row-test
-  (testing "PUT that preserves (database_id, input_schemas) of an :initialized row succeeds and leaves the row untouched"
+  (testing "PUT that preserves (database_id, input_schemas) of an :provisioned row succeeds and leaves the row untouched"
     (mt/with-temp [:model/Workspace {id :id} {:name "Locked"}
                    :model/WorkspaceDatabase {init-id :id}
                    {:workspace_id     id
@@ -213,19 +213,19 @@
                     :database_details {:user "keep" :password "pw"}
                     :output_schema    "kept_schema"
                     :input_schemas    ["public"]
-                    :status           :initialized}]
+                    :status           :provisioned}]
       (let [resp (mt/user-http-request :crowberto :put 200 (str "ee/workspace/" id)
                                        {:name      "Renamed"
                                         :databases [{:database_id (mt/id) :input_schemas ["public"]}]})]
         (is (= "Renamed" (:name resp)))
-        (is (= "initialized" (-> resp :databases first :status)))
+        (is (= "provisioned" (-> resp :databases first :status)))
         (is (= {:user "keep" :password "pw"} (-> resp :databases first :database_details)))
         (is (= "kept_schema" (-> resp :databases first :output_schema)))
         (testing "the row's database-side id is unchanged"
           (is (= init-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id id))))))))
 
-(deftest post-deprovision-triggers-test
-  (testing "POST /ee/workspace/:id/deprovision returns triggered count and calls the per-row fn for each initialized row"
+(deftest post-unprovision-triggers-test
+  (testing "POST /ee/workspace/:id/unprovision returns triggered count and calls the per-row fn for each initialized row"
     (mt/with-temp [:model/Workspace {id :id} {:name "Live"}
                    :model/WorkspaceDatabase _
                    {:workspace_id     id
@@ -233,38 +233,38 @@
                     :database_details {:user "u"}
                     :output_schema    "mb_isolation"
                     :input_schemas    ["public"]
-                    :status           :initialized}]
+                    :status           :provisioned}]
       (let [called (atom [])]
         (with-redefs [provisioning/run-async!                   (fn [f] (f))
-                      provisioning/deprovision-workspace-database!
+                      provisioning/unprovision-workspace-database!
                       (fn [wsd-id] (swap! called conj wsd-id) nil)]
-          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/deprovision") {})]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/unprovision") {})]
             (is (= {:workspace_id id :triggered 1} resp))
             (is (= 1 (count @called)))))))))
 
-(deftest post-deprovision-skips-uninitialized-test
-  (testing "POST /ee/workspace/:id/deprovision with no :initialized rows returns triggered=0 and calls nothing"
+(deftest post-unprovision-skips-uninitialized-test
+  (testing "POST /ee/workspace/:id/unprovision with no :provisioned rows returns triggered=0 and calls nothing"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{id :id} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                            {:name "Fresh" :databases [(ws-db-payload)]})
             called   (atom [])]
         (with-redefs [provisioning/run-async!                   (fn [f] (f))
-                      provisioning/deprovision-workspace-database!
+                      provisioning/unprovision-workspace-database!
                       (fn [wsd-id] (swap! called conj wsd-id) nil)]
-          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/deprovision") {})]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/unprovision") {})]
             (is (= {:workspace_id id :triggered 0} resp))
             (is (empty? @called))))))))
 
-(deftest post-deprovision-requires-superuser-test
-  (testing "Non-superusers get 403 from POST /:id/deprovision"
+(deftest post-unprovision-requires-superuser-test
+  (testing "Non-superusers get 403 from POST /:id/unprovision"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                {:name "Guarded" :databases []})]
-        (mt/user-http-request :rasta :post 403 (str "ee/workspace/" id "/deprovision") {})))))
+        (mt/user-http-request :rasta :post 403 (str "ee/workspace/" id "/unprovision") {})))))
 
-(deftest post-deprovision-404-on-unknown-workspace-test
-  (testing "POST /ee/workspace/:id/deprovision with an unknown id returns 404"
-    (mt/user-http-request :crowberto :post 404 (str "ee/workspace/" Integer/MAX_VALUE "/deprovision") {})))
+(deftest post-unprovision-404-on-unknown-workspace-test
+  (testing "POST /ee/workspace/:id/unprovision with an unknown id returns 404"
+    (mt/user-http-request :crowberto :post 404 (str "ee/workspace/" Integer/MAX_VALUE "/unprovision") {})))
 
 (deftest delete-workspace-happy-path-test
   (testing "DELETE /ee/workspace/:id deletes a workspace with no initialized children"
@@ -277,7 +277,7 @@
         (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id id)))))))
 
 (deftest delete-workspace-rejects-when-initialized-test
-  (testing "DELETE /ee/workspace/:id returns 409 when any child is :initialized"
+  (testing "DELETE /ee/workspace/:id returns 409 when any child is :provisioned"
     (mt/with-temp [:model/Workspace {id :id} {:name "Live"}
                    :model/WorkspaceDatabase _
                    {:workspace_id     id
@@ -285,7 +285,7 @@
                     :database_details {:user "u"}
                     :output_schema    "done"
                     :input_schemas    ["public"]
-                    :status           :initialized}]
+                    :status           :provisioned}]
       (mt/user-http-request :crowberto :delete 409 (str "ee/workspace/" id))
       (is (t2/exists? :model/Workspace :id id)))))
 
@@ -344,7 +344,7 @@
                     :database_details {:user "mb_isolation_github" :password "secret"}
                     :output_schema    "mb_isolation_github"
                     :input_schemas    ["raw_github"]
-                    :status           :initialized}]
+                    :status           :provisioned}]
       (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" id "/config"))]
         (is (= {:databases [{:name    "Analytics Data Warehouse"
                              :engine  "postgres"
@@ -362,12 +362,12 @@
                resp))))))
 
 (deftest get-workspace-config-409-on-uninitialized-test
-  (testing "GET /:id/config returns 409 if any WorkspaceDatabase is :uninitialized"
+  (testing "GET /:id/config returns 409 if any WorkspaceDatabase is :unprovisioned"
     (mt/with-temp [:model/Workspace {id :id} {:name "Partial"}
                    :model/WorkspaceDatabase _
                    {:workspace_id id :database_id (mt/id)
                     :database_details {} :output_schema "" :input_schemas ["public"]
-                    :status :uninitialized}]
+                    :status :unprovisioned}]
       (mt/user-http-request :crowberto :get 409 (str "ee/workspace/" id "/config")))))
 
 (deftest get-workspace-config-requires-superuser-test

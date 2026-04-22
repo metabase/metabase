@@ -227,3 +227,24 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_workspace_creator_id
             onDelete: SET NULL
+
+  - changeSet:
+      id: v61.2026-04-22T19:00:00
+      author: eric
+      comment: Rename workspace_database status values to the 4-state machine (uninitialized/initialized -> unprovisioned/provisioned, with new transient provisioning/unprovisioning states)
+      changes:
+        - sql: UPDATE workspace_database SET status = 'unprovisioned' WHERE status = 'uninitialized'
+        - sql: UPDATE workspace_database SET status = 'provisioned'   WHERE status = 'initialized'
+
+  - changeSet:
+      id: v61.2026-04-22T19:00:01
+      author: eric
+      comment: Change workspace_database.status default from 'uninitialized' to 'unprovisioned'
+      changes:
+        - dropDefaultValue:
+            tableName: workspace_database
+            columnName: status
+        - addDefaultValue:
+            tableName: workspace_database
+            columnName: status
+            defaultValue: unprovisioned

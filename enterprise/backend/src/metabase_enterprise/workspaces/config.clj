@@ -24,13 +24,14 @@
   WorkspaceDatabase's override credentials on top of the underlying
   `metabase_database.details` and appending `schema-filters-*` keys derived
   from `:input_schemas`. Returns nil when the workspace does not exist.
-  Throws a 409 `ex-info` if any of the workspace's databases is still
-  `:uninitialized`."
+  Throws a 409 `ex-info` if any of the workspace's databases is not
+  `:provisioned` — the config can only be built once every row has live
+  credentials."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
-      (when (some #(= :uninitialized (:status %)) wsds)
-        (throw (ex-info "Cannot build config while workspace has uninitialized databases"
+      (when (some #(not= :provisioned (:status %)) wsds)
+        (throw (ex-info "Cannot build config while workspace has databases that are not :provisioned"
                         {:status-code  409
                          :workspace_id workspace-id})))
       (let [dbs-by-id (if-let [ids (seq (map :database_id wsds))]

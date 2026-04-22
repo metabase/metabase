@@ -14,7 +14,7 @@
 (comment metabase.table-remapping.model/keep-me)
 
 (def ^:private WorkspaceStatus
-  [:enum "uninitialized" "initialized"])
+  [:enum "unprovisioned" "provisioning" "provisioned" "unprovisioning"])
 
 (def ^:private WorkspaceDatabaseParams
   [:map
@@ -50,12 +50,19 @@
    [:email      ms/NonBlankString]
    [:common_name {:optional true} [:maybe :string]]])
 
+(def ^:private Timestamp
+  [:or
+   (ms/InstanceOfClass java.time.OffsetDateTime)
+   (ms/InstanceOfClass java.time.ZonedDateTime)])
+
 (def ^:private WorkspaceResponse
   [:map
-   [:id        ms/PositiveInt]
-   [:name      ms/NonBlankString]
-   [:creator   [:maybe CreatorResponse]]
-   [:databases [:sequential WorkspaceDatabaseResponse]]])
+   [:id         ms/PositiveInt]
+   [:name       ms/NonBlankString]
+   [:creator    [:maybe CreatorResponse]]
+   [:created_at Timestamp]
+   [:updated_at Timestamp]
+   [:databases  [:sequential WorkspaceDatabaseResponse]]])
 
 (defn- present-workspace-database [wsd]
   (-> wsd
@@ -68,7 +75,7 @@
 
 (defn- present-workspace [ws]
   (some-> ws
-          (select-keys [:id :name :creator :databases])
+          (select-keys [:id :name :creator :created_at :updated_at :databases])
           (update :creator present-creator)
           (update :databases #(mapv present-workspace-database %))))
 
@@ -143,20 +150,20 @@
   {:workspace_id id
    :triggered    (provisioning/provision-workspace! id)})
 
-(api.macros/defendpoint :post "/:id/deprovision"
+(api.macros/defendpoint :post "/:id/unprovision"
   :- [:map [:workspace_id ms/PositiveInt] [:triggered ms/IntGreaterThanOrEqualToZero]]
-  "Kick off asynchronous deprovisioning for every initialized WorkspaceDatabase under
+  "Kick off asynchronous unprovisioning for every initialized WorkspaceDatabase under
   this Workspace. Returns immediately with the number of rows that were scheduled."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (workspace/get-workspace id))
   {:workspace_id id
-   :triggered    (provisioning/deprovision-workspace! id)})
+   :triggered    (provisioning/unprovision-workspace! id)})
 
 (api.macros/defendpoint :delete "/:id"
   :- [:map [:id ms/PositiveInt] [:deleted :boolean]]
-  "Delete a Workspace. Returns 409 if any of its databases is still :initialized —
-  deprovision first."
+  "Delete a Workspace. Returns 409 if any of its databases is in a non-
+  `:unprovisioned` state — unprovision first."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (workspace/get-workspace id))
