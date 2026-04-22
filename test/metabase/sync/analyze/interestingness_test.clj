@@ -2,8 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.interestingness.core :as interestingness]
-   [metabase.interestingness.dimension :as dim]
-   [metabase.interestingness.measure :as measure]))
+   [metabase.interestingness.dimension :as dim]))
 
 ;;; Smoke tests for the canonical weight profiles. The sync step itself is verified
 ;;; end-to-end via `automagic_dashboards` integration tests (which fingerprint + score
@@ -30,13 +29,3 @@
                                  :type {:type/DateTime {:earliest "2022-01-01"
                                                         :latest "2024-12-31"}}}})]
       (is (>= result 0.7)))))
-
-(deftest ^:parallel canonical-measure-weights-test
-  ;; `canonical-measure-weights` is defined for future use (measure-role scoring) but
-  ;; the current sync pipeline persists only `dimension_interestingness`. Validate the
-  ;; profile produces sensible directional scores so it's ready when a consumer needs it.
-
-  (testing "canonical-measure-weights has the expected shape"
-    (is (map? measure/canonical-measure-weights))
-    (is (every? fn? (keys measure/canonical-measure-weights)))
-    (is (every? pos? (vals measure/canonical-measure-weights)))))

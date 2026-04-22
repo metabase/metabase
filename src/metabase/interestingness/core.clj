@@ -8,7 +8,6 @@
 
    - `metabase.interestingness.chart`     — chart-level scoring + stats helpers
    - `metabase.interestingness.dimension` — dimension scorers + canonical weights
-   - `metabase.interestingness.measure`   — measure weight profile
    - `metabase.interestingness.impl`      — shared composition machinery (internal)"
   (:require
    [metabase.interestingness.chart]
