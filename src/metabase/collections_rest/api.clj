@@ -1432,7 +1432,8 @@
       (malli.util/assoc :location [:maybe ms/NonBlankString])
       (malli.util/assoc :namespace [:maybe [:or :keyword ms/NonBlankString]])
       (malli.util/assoc :is_remote_synced [:maybe :boolean])
-      (malli.util/optional-keys [:location])
+      (malli.util/assoc :type [:enum "trash" "library" "library-data" "library-metrics"])
+      (malli.util/optional-keys [:location :type])
       (malli.util/closed-schema)))
 
 (mu/defn- apply-defaults-to-collection :- NewCollectionArguments
@@ -1444,7 +1445,9 @@
     (-> (cond-> coll-data
           (and (:namespace parent-coll)
                (nil? (:namespace coll-data))) (assoc :namespace (:namespace parent-coll))
-          parent-coll (assoc :location (collection/children-location parent-coll)))
+          parent-coll (assoc :location (collection/children-location parent-coll))
+          (and (:type parent-coll)
+               (not= (:type parent-coll) "trash")) (assoc :type (:type parent-coll)))
         (assoc :is_remote_synced (boolean (:is_remote_synced parent-coll)))
         (select-keys (malli.util/keys NewCollectionArguments)))))
 

@@ -35,13 +35,20 @@
                                            :is_published  true}]
           (is (some? table)))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
-                              (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id allow-tables) "/")}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id allow-tables)}))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :metric :collection_id (:id allow-tables)}))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
-                              (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-tables)}))))))))
+                              (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-tables)})))))
+
+      (testing "Can add collections iff they have the same :type"
+        (let [new-coll (merge (mt/with-temp-defaults :model/Collection)
+                              {:location (str "/" (:id allow-tables) "/")})]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add tables to the 'Data' collection"
+                                (t2/insert! :model/Collection new-coll))
+              "basic new collection is rejected")
+          (is (= 1 (t2/insert! :model/Collection (assoc new-coll :type collection/library-data-collection-type)))
+              "new collection with :type set is allowed"))))))
 
 (deftest check-allowed-content-metric
   (mt/with-premium-features #{:library}
@@ -51,11 +58,17 @@
                                          :type          :metric}]
           (is (some? card)))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
-                              (t2/insert! :model/Collection (merge (mt/with-temp-defaults :model/Collection) {:location (str "/" (:id allow-metrics) "/")}))))
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
                               (t2/insert! :model/Card (merge (mt/with-temp-defaults :model/Card) {:type :model :collection_id (:id allow-metrics)}))))
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
-                              (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-metrics)}))))))))
+                              (t2/insert! :model/Dashboard (merge (mt/with-temp-defaults :model/Dashboard) {:collection_id (:id allow-metrics)})))))
+      (testing "Can add collections iff they have the same :type"
+        (let [new-coll (merge (mt/with-temp-defaults :model/Collection)
+                              {:location (str "/" (:id allow-metrics) "/")})]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Can only add metrics to the 'Metrics' collection"
+                                (t2/insert! :model/Collection new-coll))
+              "basic new collection is rejected")
+          (is (= 1 (t2/insert! :model/Collection (assoc new-coll :type collection/library-metrics-collection-type)))
+              "new collection with :type set is allowed"))))))
 
 (deftest cannot-update-library-collections
   (mt/with-premium-features #{:library}
