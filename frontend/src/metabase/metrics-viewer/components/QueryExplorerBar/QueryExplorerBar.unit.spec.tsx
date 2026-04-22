@@ -29,6 +29,7 @@ describe("QueryExplorerBar", () => {
 
   it("calls onChartTypeChange when chart type button is clicked", async () => {
     const onChartTypeChange = jest.fn();
+    const user = userEvent.setup();
 
     renderWithProviders(
       <QueryExplorerBar
@@ -38,7 +39,7 @@ describe("QueryExplorerBar", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "bar" }));
+    await user.click(screen.getByRole("button", { name: "bar" }));
 
     expect(onChartTypeChange).toHaveBeenCalledWith("bar");
     expect(onChartTypeChange).toHaveBeenCalledTimes(1);
