@@ -11,6 +11,7 @@ import type { VisualizationProps } from "metabase/visualizations/types";
 import { PROGRESS_CHART_DEFINITION } from "./chart-definition";
 import {
   calculateProgressMetrics,
+  computeLabelFontSize,
   extractProgressValue,
   findProgressColumn,
   getGoalValue,
@@ -98,6 +99,11 @@ export function Progress(props: VisualizationProps) {
       isMobile,
     });
 
+    // scale label font size based on available height
+    const labelFontSize = computeLabelFontSize(root.clientHeight);
+    label.style.fontSize = `${labelFontSize}px`;
+    container.style.height = `${labelFontSize + 6}px`;
+
     // reset the pointer transform for these computations
     pointer.style.transform = "";
 
@@ -149,7 +155,6 @@ export function Progress(props: VisualizationProps) {
         <div
           ref={containerRef}
           className={cx(CS.relative, CS.textBold, CS.textMedium)}
-          style={{ height: 20 }}
         >
           <div ref={labelRef} style={{ position: "absolute" }}>
             {hasValidValue ? formatValue(value, columnSettings) : t`No data`}

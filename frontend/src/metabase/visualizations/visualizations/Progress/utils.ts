@@ -144,6 +144,14 @@ export const getProgressColors = (
   };
 };
 
+const MIN_LABEL_FONT_SIZE = 14;
+const MAX_LABEL_FONT_SIZE = 36;
+
+export const computeLabelFontSize = (rootHeight: number): number => {
+  const scaled = Math.round(rootHeight * 0.1);
+  return Math.max(MIN_LABEL_FONT_SIZE, Math.min(MAX_LABEL_FONT_SIZE, scaled));
+};
+
 export const getProgressMessage = (metrics: ProgressMetrics): string => {
   const { value, goal, hasValidValue, hasValidGoal } = metrics;
 
