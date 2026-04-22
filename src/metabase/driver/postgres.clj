@@ -1380,27 +1380,26 @@
           (.addBatch ^Statement stmt ^String sql))
         (.executeBatch ^Statement stmt)))))
 
+(defn- grant-workspace-read-access-sqls
+  "Build the sequence of SQL statements that grant `username` read access to every table in each
+  source schema referenced by `tables`. Per source schema we emit three statements:
+  USAGE on the schema, SELECT on all existing tables in the schema, and an ALTER DEFAULT PRIVILEGES
+  covering future tables created by the granting role. Per-table `:name` granularity is intentionally
+  discarded — workspace-scoped users receive schema-wide SELECT."
+  [username tables]
+  (let [qu             (sql.u/quote-name :postgres :field username)
+        source-schemas (into #{} (keep :schema) tables)]
+    (mapcat (fn [s]
+              (let [qs (sql.u/quote-name :postgres :schema s)]
+                [(format "GRANT USAGE ON SCHEMA %s TO %s" qs qu)
+                 (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" qs qu)
+                 (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s" qs qu)]))
+            source-schemas)))
+
 (defmethod driver/grant-workspace-read-access! :postgres
   [_driver database workspace tables]
-  (let [username       (-> workspace :database_details :user)
-        qu             (sql.u/quote-name :postgres :field username)
-        ;; Collect all unique source schemas that contain the tables we need to grant access to
-        source-schemas (into #{} (keep :schema) tables)
-        ;; Grant USAGE on source schemas, then SELECT on each table
-        ;; Note: workspace schema already has ALL PRIVILEGES from init, so no need to grant USAGE there
-        sqls           (concat
-                        ;; USAGE on each source schema containing tables we're granting access to
-                        (for [s source-schemas]
-                          (format "GRANT USAGE ON SCHEMA %s TO %s"
-                                  (sql.u/quote-name :postgres :schema s) qu))
-                        ;; SELECT on each table
-                        (for [{s :schema, t :name} tables]
-                          (if (str/blank? s)
-                            (format "GRANT SELECT ON TABLE %s TO %s"
-                                    (sql.u/quote-name :postgres :table t) qu)
-                            (format "GRANT SELECT ON TABLE %s.%s TO %s"
-                                    (sql.u/quote-name :postgres :schema s)
-                                    (sql.u/quote-name :postgres :table t) qu))))]
+  (let [username (-> workspace :database_details :user)
+        sqls     (grant-workspace-read-access-sqls username tables)]
     (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
       (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
         (doseq [sql sqls]
