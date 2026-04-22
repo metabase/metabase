@@ -76,7 +76,7 @@
           (= 1)))
 
 (def ^:private new-device-email-rate-limit-window (t/hours 1))
-(def ^:private new-device-email-rate-limit-cap 5)
+(def ^:private new-device-email-rate-limit-cap 30)
 
 (defn too-many-new-device-emails-recently?
   "Per-user circuit breaker — true if this user has already triggered

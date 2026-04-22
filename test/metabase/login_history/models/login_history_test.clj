@@ -41,37 +41,38 @@
 
 (deftest too-many-new-device-emails-recently?-test
   (testing "per-user circuit breaker for new-device emails"
-    (mt/with-temp [:model/User {user-id :id}       {}
-                   :model/User {other-user-id :id} {}]
-      (testing "false when the user has no prior first-device events"
-        (is (false? (#'login-history/too-many-new-device-emails-recently? user-id))))
+    (let [cap @#'login-history/new-device-email-rate-limit-cap]
+      (mt/with-temp [:model/User {user-id :id}       {}
+                     :model/User {other-user-id :id} {}]
+        (testing "false when the user has no prior first-device events"
+          (is (false? (#'login-history/too-many-new-device-emails-recently? user-id))))
 
-      (testing "false at the cap (comparison is strict greater-than)"
-        (dotimes [_ 5]
-          (insert-login-history! user-id (str (random-uuid))))
-        (is (false? (#'login-history/too-many-new-device-emails-recently? user-id))))
+        (testing "false at the cap (comparison is strict greater-than)"
+          (dotimes [_ cap]
+            (insert-login-history! user-id (str (random-uuid))))
+          (is (false? (#'login-history/too-many-new-device-emails-recently? user-id))))
 
-      (testing "true when the user is past the cap"
-        (insert-login-history! user-id (str (random-uuid)))
-        (is (true? (#'login-history/too-many-new-device-emails-recently? user-id))))
+        (testing "true when the user is past the cap"
+          (insert-login-history! user-id (str (random-uuid)))
+          (is (true? (#'login-history/too-many-new-device-emails-recently? user-id))))
 
-      (testing "repeated logins from the same device count as one first-device event"
-        (mt/with-temp [:model/User {repeat-user-id :id} {}]
-          (let [device (str (random-uuid))]
-            (dotimes [_ 20]
-              (insert-login-history! repeat-user-id device))
-            (is (false? (#'login-history/too-many-new-device-emails-recently? repeat-user-id))))))
+        (testing "repeated logins from the same device count as one first-device event"
+          (mt/with-temp [:model/User {repeat-user-id :id} {}]
+            (let [device (str (random-uuid))]
+              (dotimes [_ 20]
+                (insert-login-history! repeat-user-id device))
+              (is (false? (#'login-history/too-many-new-device-emails-recently? repeat-user-id))))))
 
-      (testing "another user's activity does not count toward this user's limit"
-        (dotimes [_ 10]
-          (insert-login-history! other-user-id (str (random-uuid))))
-        (mt/with-temp [:model/User {fresh-user-id :id} {}]
-          (is (false? (#'login-history/too-many-new-device-emails-recently? fresh-user-id)))))
-
-      (testing "events outside the rate-limit window do not count"
-        (mt/with-temp [:model/User {old-user-id :id} {}]
+        (testing "another user's activity does not count toward this user's limit"
           (dotimes [_ 10]
-            (insert-login-history! old-user-id
-                                   (str (random-uuid))
-                                   (t/minus (t/offset-date-time) (t/hours 2))))
-          (is (false? (#'login-history/too-many-new-device-emails-recently? old-user-id))))))))
+            (insert-login-history! other-user-id (str (random-uuid))))
+          (mt/with-temp [:model/User {fresh-user-id :id} {}]
+            (is (false? (#'login-history/too-many-new-device-emails-recently? fresh-user-id)))))
+
+        (testing "events outside the rate-limit window do not count"
+          (mt/with-temp [:model/User {old-user-id :id} {}]
+            (dotimes [_ 10]
+              (insert-login-history! old-user-id
+                                     (str (random-uuid))
+                                     (t/minus (t/offset-date-time) (t/hours 2))))
+            (is (false? (#'login-history/too-many-new-device-emails-recently? old-user-id)))))))))
