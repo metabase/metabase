@@ -73,7 +73,7 @@ describe("binning related reproductions", () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count by Created At: Year");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2027");
   });
 

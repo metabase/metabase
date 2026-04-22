@@ -32,7 +32,7 @@ describe("issue 4482", () => {
 
     H.visualize();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("April 1, 2028, 12:00 AM");
   });
 
@@ -44,7 +44,7 @@ describe("issue 4482", () => {
 
     H.visualize();
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("April 1, 2028, 12:00 AM");
   });
 

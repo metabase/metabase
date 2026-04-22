@@ -192,7 +192,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Quarter");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1 2026");
     });
 

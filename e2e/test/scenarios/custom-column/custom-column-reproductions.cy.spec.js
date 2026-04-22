@@ -95,7 +95,7 @@ describe("issue 13289", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("There was a problem with your question").should("not.exist");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At is Sep 1–30, 2025");
   });
 });

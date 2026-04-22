@@ -36,7 +36,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Quarter");
 
       H.cartesianChartCircle();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1 2026");
     });
 
@@ -85,7 +85,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Quarter");
 
       H.cartesianChartCircle();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q1 2026");
     });
 
@@ -129,7 +129,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Month");
 
       H.cartesianChartCircle();
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("January 2026");
     });
 

@@ -78,7 +78,7 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     // Make sure we can override the default value
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("November 2025").click();
     H.popover().contains("Jun").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

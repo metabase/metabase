@@ -184,7 +184,7 @@ describe("scenarios > embedding > questions", () => {
     cy.findByText("Total");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("39.72");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("February 11, 2028, 9:40 PM");
 
     cy.findAllByTestId("mini-bar-container").should("not.exist");

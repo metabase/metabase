@@ -136,9 +136,9 @@ describe("scenarios > embedding > native questions", () => {
 
       cy.findAllByRole("row").should("have.length", 1);
 
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("December 29, 2027, 4:54 AM");
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CO");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sid Mills").should("not.exist");

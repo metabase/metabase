@@ -514,9 +514,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       cy.findByText("Sum of Twice Total");
 
       // check values in the table
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("42,156.87"); // sum of total for 2025
-      // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("84,313.74"); // sum of "twice total" for 2025
 
       // check grand totals
@@ -869,18 +869,18 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       },
     });
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("November 9, 2025");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("November 10, 2025");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("November 11, 2025");
     collapseRowsFor("Created At: Day");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Totals for November 9, 2025");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Totals for November 10, 2025");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Totals for November 11, 2025");
 
     function collapseRowsFor(column_name) {
