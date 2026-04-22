@@ -30,6 +30,8 @@
                                                            com.zaxxer/HikariCP-java7]}
   colorize/colorize                         {:mvn/version "0.1.1"               ; string output with ANSI color codes (for logging)
                                              :exclusions  [org.clojure/clojure]}
+  com.atlassian.prosemirror/test-builder-jvm {:mvn/version "1.1.16"}            ; NodeSpecImpl / MarkSpecImpl concrete classes for JVM ProseMirror Schema construction
+
   com.clearspring.analytics/stream          {:mvn/version "2.9.8"               ; Various sketching algorithms
                                              :exclusions  [it.unimi.dsi/fastutil
                                                            org.slf4j/slf4j-api]}
@@ -112,6 +114,7 @@
   net.carcdr/ycrdt-core                     {:mvn/version "0.1.3"}              ; Y-CRDT interfaces (YDoc, YText, YXmlFragment) for collaborative document editing
   net.carcdr/ycrdt-jni                      {:mvn/version "0.1.3"}              ; Rust-backed Y-CRDT runtime; pulls the platform native library via classifier
   net.carcdr/yhocuspocus                    {:mvn/version "0.1.1"}              ; Transport-agnostic Hocuspocus collaborative editing server (embedded, no Node.js)
+  net.carcdr/yprosemirror                   {:mvn/version "0.1.3"}              ; Typed YXmlFragment ↔ ProseMirror converter (schema-aware)
   net.cgrand/macrovich                      {:mvn/version "0.2.2"}              ; utils for writing macros for both Clojure & ClojureScript
   net.redhogs.cronparser/cron-parser-core   {:mvn/version "3.5"                 ; describe Cron schedule in human-readable language
                                              :exclusions  [org.slf4j/slf4j-api]}
