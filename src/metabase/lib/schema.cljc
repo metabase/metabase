@@ -558,11 +558,11 @@
                        ::id/table [:cat ::id/database ::id/schema :string]
                        ::id/field [:cat ::id/database ::id/schema :string [:+ :string]]
                        ;; this spec has a :multi clause that assumes field IDs
-                       ;; must be integers. the 3 in the update call refers to
-                       ;; the :multi; if that gets moved, this'll need to change
-                       :mbql.clause/field (update (mr/schema :mbql.clause/field) 3
-                                                  conj [:dispatch-type/sequential
-                                                        ::ref/field.id])
+                       ;; must be integers. the 3 in the assoc-in call refers to
+                       ;; the :multi and the 2 refers to :dispatch-type/integer;
+                       ;; if those get moved, this will need to change
+                       :mbql.clause/field (assoc-in (mr/schema :mbql.clause/field)
+                                                    [3 2 0] :dispatch-type/sequential)
                        ;; similarly we need to get rid of the :lib/uuid key of
                        ;; a map that's nested in position 2 of an :and schema:
                        ::common/options (update (mr/schema ::common/options) 2
