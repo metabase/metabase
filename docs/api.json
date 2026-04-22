@@ -14996,22 +14996,32 @@
                 "properties" : {
                   "semantic_queries" : {
                     "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
+                      "anyOf" : [ {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      }, {
                         "type" : "string",
                         "minLength" : 1
-                      }
+                      } ]
                     }, {
                       "type" : "null"
                     } ]
                   },
                   "term_queries" : {
                     "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
+                      "anyOf" : [ {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      }, {
                         "type" : "string",
                         "minLength" : 1
-                      }
+                      } ]
                     }, {
                       "type" : "null"
                     } ]
@@ -25607,6 +25617,13 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "is_locked" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "tokens" : {
                       "oneOf" : [ {
                         "type" : "integer"
@@ -25614,7 +25631,7 @@
                         "type" : "null"
                       } ]
                     },
-                    "updated-at" : {
+                    "updated_at" : {
                       "oneOf" : [ {
                         "type" : "string"
                       }, {
@@ -25622,7 +25639,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "tokens", "updated-at" ]
+                  "required" : [ "is_locked", "tokens", "updated_at" ]
                 }
               }
             }
