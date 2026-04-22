@@ -5,7 +5,7 @@
         "vendor": "com.metabase",
         "name": "data_complexity",
         "format": "jsonschema",
-        "version": "1-0-0"
+        "version": "1-0-1"
     },
     "type": "object",
     "required": [
@@ -53,7 +53,7 @@
                 "null"
             ],
             "minimum": 0,
-            "maximum": 2147483647
+            "maximum": 9007199254740991
         },
         "error": {
             "description": "Present only on `synonym_pairs` when the embedder fell back to 0.",
