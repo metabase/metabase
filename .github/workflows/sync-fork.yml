@@ -2,7 +2,7 @@ name: Sync Fork with Upstream
 
 on:
   schedule:
-    - cron: "0 2 * * *" # Every day at 2 AM UTC
+    - cron: "0 2 * * 1" # Every Monday at 2 AM UTC
   workflow_dispatch:
     inputs:
       force:
