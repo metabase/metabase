@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.api-test
   (:require
-   [clojure.test :refer [deftest testing is]]
+   [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -132,3 +133,40 @@
                                                {:name "Guarded" :databases []})]
         (mt/user-http-request :rasta :get 403 "ee/workspace")
         (mt/user-http-request :rasta :get 403 (str "ee/workspace/" id))))))
+
+(deftest post-initialize-triggers-provisioning-test
+  (testing "POST /ee/workspace/:id/initialize runs provisioning and returns triggered count"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                               {:name "To Init" :databases [(ws-db-payload)]})
+            called       (atom [])]
+        (with-redefs [provisioning/run-async!                 (fn [f] (f))
+                      provisioning/provision-workspace-database!
+                      (fn [wsd-id] (swap! called conj wsd-id) nil)]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/initialize") {})]
+            (is (= {:workspace_id id :triggered 1} resp))
+            (is (= 1 (count @called)))))))))
+
+(deftest post-initialize-skips-already-initialized-test
+  (testing "POST /ee/workspace/:id/initialize skips WorkspaceDatabases that are already :initialized"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                               {:name "Mixed" :databases [(ws-db-payload {:status "initialized"})]})
+            called       (atom [])]
+        (with-redefs [provisioning/run-async!                 (fn [f] (f))
+                      provisioning/provision-workspace-database!
+                      (fn [wsd-id] (swap! called conj wsd-id) nil)]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/initialize") {})]
+            (is (= {:workspace_id id :triggered 0} resp))
+            (is (empty? @called))))))))
+
+(deftest post-initialize-requires-superuser-test
+  (testing "Non-superusers get 403 from POST /ee/workspace/:id/initialize"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                               {:name "Guarded" :databases []})]
+        (mt/user-http-request :rasta :post 403 (str "ee/workspace/" id "/initialize") {})))))
+
+(deftest post-initialize-404-on-unknown-workspace-test
+  (testing "POST to /initialize with an unknown id returns 404"
+    (mt/user-http-request :crowberto :post 404 (str "ee/workspace/" Integer/MAX_VALUE "/initialize") {})))

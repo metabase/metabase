@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.api
   (:require
    [metabase-enterprise.workspaces.models.workspace :as workspace]
+   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -74,6 +75,16 @@
   (api/check-superuser)
   (api/check-404 (workspace/get-workspace id))
   (present-workspace (workspace/update-workspace! id params)))
+
+(api.macros/defendpoint :post "/:id/initialize"
+  :- [:map [:workspace_id ms/PositiveInt] [:triggered ms/IntGreaterThanOrEqualToZero]]
+  "Kick off asynchronous provisioning for every uninitialized WorkspaceDatabase under
+  this Workspace. Returns immediately with the number of rows that were scheduled."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (workspace/get-workspace id))
+  {:workspace_id id
+   :triggered    (provisioning/initialize-workspace! id)})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace` routes"
