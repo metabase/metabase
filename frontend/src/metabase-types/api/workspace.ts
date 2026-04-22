@@ -2,6 +2,8 @@ import type { Database, DatabaseId } from "./database";
 
 export type WorkspaceId = number;
 
+export type WorkspaceStatus = "uninitialized" | "initialized";
+
 export type Workspace = {
   id: WorkspaceId;
   name: string;
