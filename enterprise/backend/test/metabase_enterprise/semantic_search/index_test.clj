@@ -656,14 +656,15 @@
              :attrs {:collection-id [:coalesce :collection.id :other.foo]}
              :joins {:collection [:model/Collection [:= :collection.id :this.c]]
                      :other      [:model/Other [:= :other.foo :this.o]]}}))))
-  (testing "recurses into nested vector expressions and skips control keywords"
-    ;; Mirrors `find-fields-expr`: a `:case` form contains a nested `[:= ...]` predicate plus
-    ;; branch keywords. The recursive walk must pull column refs out of the nested predicate and
-    ;; must not treat `:else` as a column.
+  (testing "recurses into nested vector expressions"
+    ;; Mirrors `find-fields-expr`: a `:case` form contains a nested `[:= ...]` predicate plus a
+    ;; direct branch keyword. The recursive walk must pull column refs out of the nested predicate —
+    ;; if it didn't descend, `:other.flag` would never seed the walk and `:model/Other` would be
+    ;; missing from the reachable set.
     (is (= #{:model/Base :model/Collection :model/Other}
            (trace-collection-id-source-models
             {:model :model/Base
-             :attrs {:collection-id [:case [:= :other.flag true] :collection.id :else :this.collection_id]}
+             :attrs {:collection-id [:case [:= :other.flag true] :collection.id :this.collection_id]}
              :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]
                      :other      [:model/Other [:= :other.flag :this.other_flag]]}}))))
   (testing "descends into `{:fn ... :fields [...]}` attr maps"
@@ -674,6 +675,22 @@
             {:model :model/Base
              :attrs {:collection-id {:fn identity :fields [:collection.id]}}
              :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}})))))
+
+(deftest attr-expr-columns-skips-control-keywords-test
+  (testing "control and SQL-function keywords are dropped instead of being qualified to `:this.<kw>`"
+    ;; `qualify-this` would otherwise turn `:else` into `:this.else` and let branch/type keywords
+    ;; masquerade as column references. Integration coverage can't distinguish filtered from
+    ;; unfiltered behavior because `:this` usually resolves to a model already in the expected set,
+    ;; so assert directly against the extractor.
+    (doseq [kw [:else :integer :float :%now :%foo]]
+      (testing kw
+        (is (= #{} (#'attr-expr-columns kw))
+            (str kw " should be filtered, not returned as a column reference"))))
+    (testing "filtering happens inside nested vector expressions too"
+      (is (= #{:other.flag :collection.id}
+             (#'attr-expr-columns [:case [:= :other.flag true] :collection.id :else :integer]))))
+    (testing "non-control keywords are still qualified to `:this`"
+      (is (= #{:this.foo} (#'attr-expr-columns :foo))))))
 
 (deftest collection-based-visibility-search-model-claims-verified-test
   (testing "every search-model registered with :denormalized-from traces to that model from :collection-id"
