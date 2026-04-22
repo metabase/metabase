@@ -45,43 +45,88 @@ export function DatabaseMappingSection({
   return (
     <TitleSection label={t`Database mapping`}>
       {mappings.map((mapping, index) => (
-        <ExistingDatabaseMapping
+        <DatabaseMappingForm
           key={index}
           mapping={mapping}
           onChange={(newMapping) => handleChange(index, newMapping)}
           onRemove={() => handleRemove(index)}
         />
       ))}
-      <NewDatabaseMapping onAdd={handleAdd} />
+      <DatabaseMappingForm onAdd={handleAdd} />
     </TitleSection>
   );
 }
 
-type NewDatabaseMappingProps = {
-  onAdd: (mapping: WorkspaceDatabase) => void;
+type DatabaseMappingFormProps = {
+  mapping?: WorkspaceDatabase;
+  onAdd?: (newMapping: WorkspaceDatabase) => void;
+  onChange?: (newMapping: WorkspaceDatabase) => void;
+  onRemove?: () => void;
 };
 
-function NewDatabaseMapping({ onAdd }: NewDatabaseMappingProps) {
-  const [databaseId, setDatabaseId] = useState<DatabaseId | undefined>();
-  const [inputSchemas, setInputSchemas] = useState<string[]>([]);
+function DatabaseMappingForm({
+  mapping: initialMapping,
+  onAdd,
+  onChange,
+  onRemove,
+}: DatabaseMappingFormProps) {
+  const [databaseId, setDatabaseId] = useState(initialMapping?.database_id);
+  const [inputSchemas, setInputSchemas] = useState(
+    initialMapping?.input_schemas ?? [],
+  );
+  const { data: databaseData } = useListDatabasesQuery();
+  const { data: availableSchemas = [] } = useListDatabaseSchemasQuery(
+    databaseId != null ? { id: databaseId } : skipToken,
+  );
+
   const newMapping = getDatabaseMapping(databaseId, inputSchemas);
+  const isNew = initialMapping == null;
+
+  const handleDatabaseChange = (newDatabaseId: DatabaseId) => {
+    setDatabaseId(newDatabaseId);
+    const newMapping = getDatabaseMapping(newDatabaseId, inputSchemas);
+    if (newMapping != null) {
+      onChange?.(newMapping);
+    }
+  };
+
+  const handleInputSchemasChange = (newInputSchemas: string[]) => {
+    setInputSchemas(newInputSchemas);
+    const newMapping = getDatabaseMapping(databaseId, newInputSchemas);
+    if (newMapping != null) {
+      onChange?.(newMapping);
+    }
+  };
 
   const handleAdd = () => {
     if (newMapping != null) {
-      onAdd(newMapping);
+      onAdd?.(newMapping);
     }
   };
 
   return (
-    <DatabaseMappingForm
-      databaseId={databaseId}
-      inputSchemas={inputSchemas}
-      isNew
-      isDisabled={newMapping == null}
-      onDatabaseChange={setDatabaseId}
-      onInputSchemasChange={setInputSchemas}
-      onSubmit={handleAdd}
-    />
+    <Group className={S.section} p="md" align="flex-end" wrap="nowrap">
+      <DatabaseSelect
+        databaseId={databaseId}
+        databases={databaseData?.data ?? []}
+        onChange={handleDatabaseChange}
+      />
+      {databaseId != null && (
+        <SchemaSelect
+          inputSchemas={inputSchemas}
+          availableSchemas={availableSchemas}
+          isError={!isNew && inputSchemas.length === 0}
+          onChange={handleInputSchemasChange}
+        />
+      )}
+      <Button
+        variant={isNew ? "filled" : "default"}
+        leftSection={<Icon name={isNew ? "add" : "close"} />}
+        disabled={isNew && newMapping == null}
+        aria-label={isNew ? t`Add database` : t`Remove database`}
+        onClick={isNew ? handleAdd : onRemove}
+      />
+    </Group>
   );
 }
 
@@ -96,96 +141,6 @@ function getDatabaseMapping(
       output_schema: "",
     };
   }
-}
-
-type ExistingDatabaseMappingProps = {
-  mapping: WorkspaceDatabase;
-  onChange: (newMapping: WorkspaceDatabase) => void;
-  onRemove: () => void;
-};
-
-function ExistingDatabaseMapping({
-  mapping,
-  onChange,
-  onRemove,
-}: ExistingDatabaseMappingProps) {
-  const [databaseId, setDatabaseId] = useState(mapping.database_id);
-  const [inputSchemas, setInputSchemas] = useState(mapping.input_schemas);
-
-  const handleDatabaseChange = (newDatabaseId: DatabaseId) => {
-    setDatabaseId(newDatabaseId);
-    const newMapping = getDatabaseMapping(newDatabaseId, inputSchemas);
-    if (newMapping != null) {
-      onChange(newMapping);
-    }
-  };
-
-  const handleInputSchemasChange = (newInputSchemas: string[]) => {
-    setInputSchemas(newInputSchemas);
-    const newMapping = getDatabaseMapping(databaseId, newInputSchemas);
-    if (newMapping != null) {
-      onChange(newMapping);
-    }
-  };
-
-  return (
-    <DatabaseMappingForm
-      databaseId={databaseId}
-      inputSchemas={inputSchemas}
-      onDatabaseChange={handleDatabaseChange}
-      onInputSchemasChange={handleInputSchemasChange}
-      onSubmit={onRemove}
-    />
-  );
-}
-
-type DatabaseMappingFormProps = {
-  databaseId: DatabaseId | undefined;
-  inputSchemas: string[];
-  isNew?: boolean;
-  isDisabled?: boolean;
-  onDatabaseChange: (newDatabaseId: DatabaseId) => void;
-  onInputSchemasChange: (newInputSchemas: string[]) => void;
-  onSubmit?: () => void;
-};
-
-function DatabaseMappingForm({
-  databaseId,
-  inputSchemas,
-  isNew,
-  isDisabled,
-  onDatabaseChange,
-  onInputSchemasChange,
-  onSubmit,
-}: DatabaseMappingFormProps) {
-  const { data: databaseData } = useListDatabasesQuery();
-  const { data: availableSchemas = [] } = useListDatabaseSchemasQuery(
-    databaseId != null ? { id: databaseId } : skipToken,
-  );
-
-  return (
-    <Group className={S.section} p="md" align="flex-end" wrap="nowrap">
-      <DatabaseSelect
-        databaseId={databaseId}
-        databases={databaseData?.data ?? []}
-        onChange={onDatabaseChange}
-      />
-      {databaseId != null && (
-        <SchemaSelect
-          inputSchemas={inputSchemas}
-          availableSchemas={availableSchemas}
-          onChange={onInputSchemasChange}
-        />
-      )}
-      <Button
-        variant={isNew ? "filled" : "default"}
-        leftSection={<Icon name={isNew ? "add" : "close"} />}
-        disabled={isDisabled}
-        aria-label={isNew ? t`Add database` : t`Remove database`}
-        onClick={onSubmit}
-      />
-    </Group>
-  );
 }
 
 type DatabaseSelectProps = {
@@ -233,20 +188,23 @@ function getDatabaseValue(databaseId: DatabaseId): string {
 type SchemaSelectProps = {
   inputSchemas: string[];
   availableSchemas: string[];
+  isError?: boolean;
   onChange: (newInputSchemas: string[]) => void;
 };
 
 function SchemaSelect({
   inputSchemas,
   availableSchemas,
+  isError,
   onChange,
 }: SchemaSelectProps) {
   return (
     <MultiSelect
-      label={t`Schemas`}
-      placeholder={t`Select schemas`}
       data={availableSchemas}
       value={inputSchemas}
+      label={t`Schemas`}
+      placeholder={t`Select schemas`}
+      error={isError}
       searchable
       onChange={onChange}
     />
