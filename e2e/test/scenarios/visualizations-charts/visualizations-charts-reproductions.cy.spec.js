@@ -42,7 +42,7 @@ describe("issue 13504", () => {
 
     cy.findByTestId("qb-filters-panel").within(() => {
       cy.findByText("Total is greater than 50").should("be.visible");
-      cy.findByText("Created At is Mar 1–31, 2023").should("be.visible");
+      cy.findByText("Created At is Mar 1–31, 2026").should("be.visible");
     });
   });
 });
@@ -552,7 +552,7 @@ describe("issue 21452", () => {
     H.cartesianChartCircle().first().trigger("mousemove");
 
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         {
           color: "#88BF4D",
@@ -591,7 +591,7 @@ describe("issue 21504", () => {
     H.openVizSettingsSidebar();
 
     H.leftSidebar().within(() => {
-      cy.findByText("January 2025").should("be.visible");
+      cy.findByText("January 2028").should("be.visible");
     });
   });
 });
@@ -751,7 +751,7 @@ describe("issue 25007", () => {
   it("should display weeks correctly in tooltips for native questions (metabase#25007)", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
     clickLineDot({ index: 1 });
-    H.echartsTooltip().findByText("May 1–7, 2022");
+    H.echartsTooltip().should("contain", "May 4–10, 2025");
   });
 });
 
@@ -783,11 +783,11 @@ describe("issue 25156", () => {
     H.createQuestion(questionDetails, { visitQuestion: true });
 
     H.echartsContainer()
-      .should("contain", "2022")
-      .and("contain", "2023")
-      .and("contain", "2023")
-      .and("contain", "2024")
-      .and("contain", "2025");
+      .should("contain", "2025")
+      .and("contain", "2026")
+      .and("contain", "2026")
+      .and("contain", "2027")
+      .and("contain", "2028");
   });
 });
 

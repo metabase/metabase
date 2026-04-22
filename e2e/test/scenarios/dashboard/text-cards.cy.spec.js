@@ -426,7 +426,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
         .findByText("Single Date")
         .click();
       H.popover().within(() => {
-        cy.findByRole("textbox").click().clear().type("07/19/2023").blur();
+        cy.findByRole("textbox").click().clear().type("07/19/2026").blur();
         cy.button("Add filter").click();
       });
 
@@ -438,15 +438,15 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
 
       // Parameter value in widget should use user localization (English)
       cy.findByTestId("dashboard-parameters-widget-container")
-        .findByText("July 19, 2023")
+        .findByText("July 19, 2026")
         .should("exist");
 
       // Parameter value in dashboard should use site localization (French)
       H.getDashboardCard(1)
-        .findByText("Variable: juillet 19, 2023")
+        .findByText("Variable: juillet 19, 2026")
         .should("exist");
       H.getDashboardCard(2)
-        .findByText("Variable: juillet 19, 2023")
+        .findByText("Variable: juillet 19, 2026")
         .should("exist");
     });
   });

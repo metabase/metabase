@@ -86,7 +86,7 @@ describe("scenarios > visualizations > combo", () => {
     // First circle of the line series
     H.cartesianChartCircleWithColor("#A989C5").eq(0).trigger("mousemove");
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         { color: "#A989C5", name: "Average of Total", value: "56.66" },
         { color: "#F2A86F", name: "Average of Subtotal", value: "54.44" },
@@ -102,7 +102,7 @@ describe("scenarios > visualizations > combo", () => {
 
     // Check the tooltip shows only stacked areas series
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         {
           color: "#EF8C8C",
@@ -127,7 +127,7 @@ describe("scenarios > visualizations > combo", () => {
     // First bar of stacked bar series
     H.chartPathWithFillColor("#7172AD").eq(0).realHover();
     H.assertEChartsTooltip({
-      header: "2022",
+      header: "2025",
       rows: [
         {
           color: "#7172AD",

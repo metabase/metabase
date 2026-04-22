@@ -235,7 +235,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
 
       cy.log("single breakout");
       addQuestion(singleBreakoutQuestionDetails.name);
-      H.ensureDashboardCardHasText("April 2022");
+      H.ensureDashboardCardHasText("April 2025");
       cy.wait("@queryMetadata");
       editParameter(parameterDetails.name);
       H.getDashboardCard().findByText("Select…").click();
@@ -243,7 +243,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.saveDashboard();
 
       cy.wait("@cardQuery");
-      H.ensureDashboardCardHasText("April 2022");
+      H.ensureDashboardCardHasText("April 2025");
       H.filterWidget().click();
       H.popover().findByText("Year").click();
       H.getDashboardCard().within(() => {
@@ -270,7 +270,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.filterWidget().click();
       H.popover().findByText("Quarter").click();
       H.getDashboardCard().within(() => {
-        cy.findByText("Q2 2022").should("be.visible");
+        cy.findByText("Q2 2025").should("be.visible");
         cy.findByText(multiBreakoutQuestionDetails.name).click();
       });
       H.tableInteractive()
@@ -399,10 +399,11 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.popover().findByText("Year").click();
       H.filterWidget().eq(1).click();
       H.popover().findByText("Week").click();
+      // Expect these dates to change when we shift years in the Sample Database
       H.getDashboardCard().within(() => {
         cy.findByText("Created At: Year").should("be.visible");
-        cy.findByText("April 24, 2022").should("be.visible");
-        cy.findByText("May 1, 2022").should("be.visible");
+        cy.findByText("April 27, 2025").should("be.visible");
+        cy.findByText("May 4, 2025").should("be.visible");
         cy.findByText(multiBreakoutQuestionDetails.name).click();
       });
       H.appBar()
@@ -410,7 +411,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .should("contain.text", multiBreakoutQuestionDetails.name);
       H.tableInteractive().within(() => {
         cy.findByText("Created At: Year").should("be.visible");
-        cy.findByText("April 24, 2022").should("be.visible");
+        cy.findByText("April 27, 2025").should("be.visible");
       });
     });
 
@@ -434,9 +435,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.popover().findByText("Year").click();
       H.getDashboardCard().within(() => {
         // metabase#44684
-        // should be "Created At: Year" and "2022" because the last parameter is "Year"
+        // should be "Created At: Year" and "2025" because the last parameter is "Year"
         cy.findByText("Created At: Quarter").should("be.visible");
-        cy.findByText("Q2 2022").should("be.visible");
+        cy.findByText("Q2 2025").should("be.visible");
         cy.findByText(singleBreakoutQuestionDetails.name).click();
       });
       H.appBar()
@@ -444,7 +445,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .should("contain.text", singleBreakoutQuestionDetails.name);
       H.tableInteractive().within(() => {
         cy.findByText("Created At: Year").should("be.visible");
-        cy.findByText("2022").should("be.visible");
+        cy.findByText("2025").should("be.visible");
       });
     });
 
@@ -468,8 +469,8 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       H.filterWidget().click();
       H.popover().findByText("Quarter").click();
       H.getDashboardCard().within(() => {
-        cy.findByText("Q1 2023").should("be.visible");
-        cy.findByText("Question 1").click();
+        cy.findByText("Q1 2026").should("be.visible");
+        cy.findAllByTestId("legend-item").contains("Question 1").click();
       });
       H.appBar()
         .should("contain.text", "Started from")
@@ -480,8 +481,8 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
       backToDashboard();
 
       H.getDashboardCard().within(() => {
-        cy.findByText("Q1 2023").should("be.visible");
-        cy.findByText("Question 2").click();
+        cy.findByText("Q1 2026").should("be.visible");
+        cy.findAllByTestId("legend-item").contains("Question 2").click();
       });
       H.appBar()
         .should("contain.text", "Started from")
