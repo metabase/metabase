@@ -733,7 +733,7 @@
   [docs]
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
-        fast-set      @collection-id-only-search-models
+        fast-set @collection-id-only-search-models
         {fast-docs true slow-docs false} (group-by #(contains? fast-set (:model %)) docs)
         ;; Fast path: for models registered via `perms/define-collection-based-visibility!`, `mi/can-read?` is
         ;; definitionally `(perms/can-read-via-parent-collection? (:collection_id instance))`, so we skip the
