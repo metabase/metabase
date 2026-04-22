@@ -1,9 +1,14 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useListDatabasesQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { Box, Button, Icon } from "metabase/ui";
-import type { WorkspaceDatabaseDraft } from "metabase-types/api";
+import type {
+  Database,
+  DatabaseId,
+  WorkspaceDatabaseDraft,
+} from "metabase-types/api";
 
 import { TitleSection } from "../TitleSection";
 
@@ -19,28 +24,55 @@ export function DatabaseMappingSection({
   mappings,
   onChange,
 }: DatabaseMappingSectionProps) {
-  const [isCreating, setIsCreating] = useState(false);
-  const [editing, setEditing] = useState<WorkspaceDatabaseDraft>();
+  const [isModalOpened, setIsModalOpened] = useState(false);
+  const [selectedDatabaseId, setSelectedDatabaseId] = useState<DatabaseId>();
+
+  const { data: databasesResponse } = useListDatabasesQuery();
+  const allDatabases = databasesResponse?.data ?? [];
+
+  const selectedMapping = mappings.find(
+    (mapping) => mapping.database_id === selectedDatabaseId,
+  );
+
+  const newAvailableDatabases = getAvailableDatabases(allDatabases, mappings);
+  const selectedAvailableDatabases = getAvailableDatabases(
+    allDatabases,
+    mappings,
+    selectedDatabaseId,
+  );
+  const canAddMapping = newAvailableDatabases.length > 0;
+
+  const handleOpenCreate = () => {
+    setSelectedDatabaseId(undefined);
+    setIsModalOpened(true);
+  };
+
+  const handleOpenEdit = (mapping: WorkspaceDatabaseDraft) => {
+    setSelectedDatabaseId(mapping.database_id);
+    setIsModalOpened(true);
+  };
+
+  const handleClose = () => {
+    setIsModalOpened(false);
+    setSelectedDatabaseId(undefined);
+  };
 
   const handleAdd = (mapping: WorkspaceDatabaseDraft) => {
     onChange([...mappings, mapping]);
   };
 
   const handleUpdate = (mapping: WorkspaceDatabaseDraft) => {
-    if (editing == null) {
-      return;
-    }
-    onChange(
-      mappings.map((current) =>
-        current.database_id === editing.database_id ? mapping : current,
-      ),
+    const newMappings = mappings.map((current) =>
+      current.database_id === selectedDatabaseId ? mapping : current,
     );
+    onChange(newMappings);
   };
 
   const handleDelete = (mapping: WorkspaceDatabaseDraft) => {
-    onChange(
-      mappings.filter((current) => current.database_id !== mapping.database_id),
+    const newMappings = mappings.filter(
+      (current) => current.database_id !== mapping.database_id,
     );
+    onChange(newMappings);
   };
 
   return (
@@ -51,7 +83,8 @@ export function DatabaseMappingSection({
         rightSection={
           <Button
             leftSection={<Icon name="add" />}
-            onClick={() => setIsCreating(true)}
+            disabled={!canAddMapping}
+            onClick={handleOpenCreate}
           >
             {t`Add database`}
           </Button>
@@ -62,23 +95,36 @@ export function DatabaseMappingSection({
             <ListEmptyState label={t`No databases yet`} />
           </Box>
         ) : (
-          <DatabaseMappingList mappings={mappings} onRowClick={setEditing} />
+          <DatabaseMappingList
+            mappings={mappings}
+            onRowClick={handleOpenEdit}
+          />
         )}
       </TitleSection>
-      {isCreating && (
+      {isModalOpened && (
         <DatabaseMappingModal
-          onSubmit={handleAdd}
-          onClose={() => setIsCreating(false)}
-        />
-      )}
-      {editing != null && (
-        <DatabaseMappingModal
-          mapping={editing}
-          onSubmit={handleUpdate}
-          onDelete={handleDelete}
-          onClose={() => setEditing(undefined)}
+          mapping={selectedMapping}
+          databases={
+            selectedMapping != null
+              ? selectedAvailableDatabases
+              : newAvailableDatabases
+          }
+          onSubmit={selectedMapping != null ? handleUpdate : handleAdd}
+          onDelete={selectedMapping != null ? handleDelete : undefined}
+          onClose={handleClose}
         />
       )}
     </>
+  );
+}
+
+function getAvailableDatabases(
+  databases: Database[],
+  mappings: WorkspaceDatabaseDraft[],
+  databaseId?: DatabaseId,
+): Database[] {
+  const mappedIds = new Set(mappings.map((mapping) => mapping.database_id));
+  return databases.filter(
+    (database) => !mappedIds.has(database.id) || database.id === databaseId,
   );
 }
