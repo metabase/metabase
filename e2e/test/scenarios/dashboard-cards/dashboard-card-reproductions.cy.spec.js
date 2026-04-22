@@ -1187,7 +1187,7 @@ describe("issue 31628", () => {
         cy.findByRole("tooltip").should("not.exist");
 
         cy.log("it should display the period");
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2026");
+        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
 
         cy.log("should truncate title and show title tooltip on hover");
 
@@ -1243,7 +1243,7 @@ describe("issue 31628", () => {
         cy.findByRole("tooltip").should("not.exist");
 
         cy.log("it should display the period");
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2026");
+        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
 
         cy.log("should truncate title and show title tooltip on hover");
         cy.findByTestId("legend-caption-title")
@@ -1594,7 +1594,7 @@ describe("issue 63416", () => {
           },
         ],
       ],
-      filter: [">=", ["field", ORDERS.CREATED_AT, null], "2024-01-01"],
+      filter: [">=", ["field", ORDERS.CREATED_AT, null], "2027-01-01"],
     },
   };
 

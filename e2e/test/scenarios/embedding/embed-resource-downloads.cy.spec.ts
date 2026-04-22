@@ -492,7 +492,7 @@ H.describeWithSnowplowEE(
 
           waitLoading();
 
-          const FIRST_ROW = [1, "February 11, 2025, 9:40 PM", 2];
+          const FIRST_ROW = [1, "February 11, 2028, 9:40 PM", 2];
 
           H.assertTableData({
             columns: ["ID", "CREATED_AT", "QUANTITY"],

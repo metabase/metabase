@@ -35,10 +35,13 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
 
     H.queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
-      H.echartsContainer().findByText("January 2023").should("exist");
+      H.echartsContainer()
+        .should("contain.text", "July 2025")
+        .and("contain.text", "January 2026");
     });
 
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
+    cy.log("Zoom-in on the left side, which corresponds to July 2025");
     cy.findByTestId("query-visualization-root") // drag across to filter
       .trigger("mousedown", 120, 200)
       .trigger("mousemove", 230, 200)
@@ -52,7 +55,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     );
 
     H.queryBuilderMain().within(() => {
-      H.echartsContainer().findByText("June 2022"); // more granular axis labels
+      H.echartsContainer().should("contain", "June 2025"); // more granular axis labels
 
       // confirm that product category is still broken out
       cy.findByLabelText("Legend").within(() => {
@@ -101,7 +104,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       if (granularity === "month") {
         cy.findByTestId("qb-filters-panel")
           .findByText(
-            "Created At: Month is Sep 1, 2022, 12:00 AM – Feb 1, 2023, 12:00 AM",
+            "Created At: Month is Sep 1, 2025, 12:00 AM – Feb 1, 2026, 12:00 AM",
           )
           .should("exist");
       }
@@ -290,7 +293,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.contains("Orders by Created At: Week").click({ force: true });
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.contains("January 2025");
+    cy.contains("January 2028");
 
     // drill into a recent week
     // eslint-disable-next-line no-unsafe-element-filtering
