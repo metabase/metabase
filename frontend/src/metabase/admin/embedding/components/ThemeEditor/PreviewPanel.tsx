@@ -19,7 +19,7 @@ export function PreviewPanel({ settings }: { settings: MetabaseTheme }) {
 
   const [selectedResource, setSelectedResource] =
     useState<PreviewResource | null>(null);
-  const { resource: defaultResource, isLoading: isDefaultLoading } =
+  const { resource: defaultResource, isLoading: isDefaultResourceLoading } =
     useDefaultPreviewResource();
 
   const resource = selectedResource ?? defaultResource;
@@ -43,7 +43,7 @@ export function PreviewPanel({ settings }: { settings: MetabaseTheme }) {
             isEnabled={isSimpleEmbeddingEnabled}
             isTermsAccepted={isTermsAccepted}
           />
-        ) : isDefaultLoading ? (
+        ) : isDefaultResourceLoading ? (
           <Center h="100%">
             <Loader />
           </Center>

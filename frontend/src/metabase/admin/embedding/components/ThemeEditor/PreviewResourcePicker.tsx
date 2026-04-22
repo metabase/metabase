@@ -14,11 +14,7 @@ interface PreviewResourcePickerProps {
   onChange: (resource: PreviewResource) => void;
 }
 
-const SELECTABLE_MODELS: OmniPickerItem["model"][] = [
-  "dashboard",
-  "card",
-  "collection",
-];
+const SELECTABLE_MODELS: OmniPickerItem["model"][] = ["dashboard", "card"];
 
 export function PreviewResourcePicker({
   resource,
