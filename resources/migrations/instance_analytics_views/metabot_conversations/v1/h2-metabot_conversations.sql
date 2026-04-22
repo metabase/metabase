@@ -6,7 +6,7 @@ SELECT
     c.created_at,
     c.user_id,
     c.summary,
-    COALESCE(u.first_name || ' ' || u.last_name, u.email)            AS user_display_name,
+    COALESCE(u.first_name || ' ' || u.last_name, u.email)             AS user_display_name,
     COUNT(m.id)                                                       AS message_count,
     COUNT(CASE WHEN m.role = 'user' THEN 1 END)                       AS user_message_count,
     COUNT(CASE WHEN m.role = 'assistant' THEN 1 END)                  AS assistant_message_count,
