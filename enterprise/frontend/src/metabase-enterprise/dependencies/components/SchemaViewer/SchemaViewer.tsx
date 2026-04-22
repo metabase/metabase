@@ -315,13 +315,13 @@ export function SchemaViewer({
     shouldWaitForInitialLoad
       ? skipToken
       : getErdQueryParams({
-          databaseId,
-          schema,
-          initialTableIds,
-          hops,
-          selectedTableIds: effectiveSelectedTableIds,
-          isUserModified,
-        }),
+        databaseId,
+        schema,
+        initialTableIds,
+        hops,
+        selectedTableIds: effectiveSelectedTableIds,
+        isUserModified,
+      }),
   );
 
   // Set of valid table IDs for the current schema (for validating saved prefs)
@@ -811,7 +811,7 @@ export function SchemaViewer({
             <Menu.Item
               fz="sm"
               fw="bold"
-              leftSection={<Icon name="eye_outline" c="text-tertiary" />}
+              rightSection={<Icon name="eye_outline" c="text-tertiary" />}
               onClick={() => handleFocusNode(nodeContextMenu.nodeId)}
             >
               {t`Focus node`}

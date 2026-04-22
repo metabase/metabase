@@ -86,7 +86,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   return (
     <Stack
       className={cx(S.card, {
-        [S.focal]: data.is_focal,
+        // [S.focal]: data.is_focal,
         [S.selected]: isConnectedToSelectedEdge,
       })}
       gap={0}

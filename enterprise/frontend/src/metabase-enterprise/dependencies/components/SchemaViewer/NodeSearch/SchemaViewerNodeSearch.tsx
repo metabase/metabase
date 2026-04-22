@@ -24,7 +24,7 @@ type SchemaViewerNodeSearchProps = {
 
 interface SearchItem {
   id: string;
-  label: string;
+  label: React.ReactNode;
   fkCount: number;
   haystack: string;
 }
@@ -35,6 +35,7 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
   const [query, setQuery] = useState("");
 
   const combobox = useCombobox({
+    defaultOpened: true,
     onDropdownClose: () => combobox.resetSelectedOption(),
     onDropdownOpen: () => combobox.updateSelectedOptionIndex("active"),
   });
@@ -126,32 +127,31 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
           }}
         />
       </Combobox.Target>
-      <Combobox.Dropdown>
+      <Combobox.Dropdown p={0}>
         {filteredItems.length === 0 ? (
           <Combobox.Empty>{t`No tables found`}</Combobox.Empty>
         ) : (
-          <Combobox.Options>
-            <ScrollArea.Autosize mah={320} type="scroll">
-              {filteredItems.map((item) => (
-                <Combobox.Option value={item.id} key={item.id}>
-                  <Group
-                    gap="sm"
-                    wrap="nowrap"
-                    justify="space-between"
-                    w="100%"
-                  >
-                    <Text className={S.label}>{item.label}</Text>
-                    <Text className={S.fieldCount} c="text-tertiary" fz="sm">
-                      {ngettext(
-                        msgid`${item.fkCount} FK`,
-                        `${item.fkCount} FKs`,
-                        item.fkCount,
-                      )}
-                    </Text>
-                  </Group>
-                </Combobox.Option>
-              ))}
-            </ScrollArea.Autosize>
+          <Combobox.Options className={S.options}>
+            {/* <ScrollArea.Autosize mah={320} type="scroll"> */}
+            {filteredItems.map((item) => (
+              <Combobox.Option
+                value={item.id}
+                key={item.id}
+                className={S.listItem}
+              >
+                <Group gap="sm" wrap="nowrap" justify="space-between" w="100%">
+                  <Text className={S.label}>{item.label}</Text>
+                  <Text className={S.fieldCount} c="text-tertiary" fz="xs">
+                    {ngettext(
+                      msgid`${item.fkCount} FK`,
+                      `${item.fkCount} FKs`,
+                      item.fkCount,
+                    )}
+                  </Text>
+                </Group>
+              </Combobox.Option>
+            ))}
+            {/* </ScrollArea.Autosize> */}
           </Combobox.Options>
         )}
       </Combobox.Dropdown>
@@ -161,7 +161,11 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
 
 function formatTableLabel(name: string, displayName: string | undefined) {
   if (displayName && displayName !== name) {
-    return `${name} (${displayName})`;
+    return (
+      <>
+        <span style={{ fontWeight: "bold" }}>{name}</span> ({displayName})
+      </>
+    );
   }
   return name;
 }
