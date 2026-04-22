@@ -724,6 +724,7 @@
            metabase.lib.metadata.result-metadata
            metabase.lib.normalize
            metabase.lib.options
+           metabase.lib.parameters
            metabase.lib.query
            metabase.lib.schema
            metabase.lib.schema.actions
@@ -1943,7 +1944,8 @@
            settings
            util
            warehouse-schema
-           warehouses-rest}}
+           warehouses-rest
+           enterprise/transforms}}
 
   enterprise/dependencies
   {:team "Querying"
@@ -2168,6 +2170,28 @@
    :api  #{}
    :uses #{premium-features
            search}}
+
+  enterprise/security-center
+  {:team "Gadget"
+   :api  #{metabase-enterprise.security-center.api
+           metabase-enterprise.security-center.init}
+   :uses #{analytics
+           api
+           app-db
+           channel
+           config
+           driver
+           events
+           models
+           notification
+           permissions
+           premium-features
+           settings
+           system
+           task
+           util}
+   :model-exports #{:model/SecurityAdvisory}
+   :model-imports #{:model/User}}
 
   enterprise/semantic-search
   {:team "Metabot"

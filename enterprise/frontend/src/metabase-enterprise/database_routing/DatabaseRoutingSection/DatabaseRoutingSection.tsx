@@ -29,7 +29,10 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
+import {
+  useListTransformsQuery,
+  useUpdateRouterDatabaseMutation,
+} from "metabase-enterprise/api";
 import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
 import * as Urls from "metabase-enterprise/urls";
 import type { Database } from "metabase-types/api";
@@ -80,7 +83,15 @@ export const DatabaseRoutingSection = ({
   const userAttributeOptions =
     userAttrsReq.data ?? (userAttribute ? [userAttribute] : []);
 
-  const disabledFeatMsg = getDisabledFeatureMessage(database);
+  const transformsQuery = useListTransformsQuery(
+    shouldHideSection ? skipToken : { database_id: database.id },
+  );
+  const transforms = transformsQuery.data ?? [];
+  const hasTransforms = transforms.length > 0;
+
+  const disabledFeatMsg = getDisabledFeatureMessage(database, {
+    hasTransforms,
+  });
   const errMsg = getSelectErrorMessage({
     userAttribute,
     disabledFeatureMessage: disabledFeatMsg,

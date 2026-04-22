@@ -16,7 +16,7 @@
                                                            org.bouncycastle/bcprov-jdk18on]}
   buddy/buddy-sign                          {:mvn/version "3.6.1-359"}          ; JSON Web Tokens; High-Level message signing library
   camel-snake-kebab/camel-snake-kebab       {:mvn/version "0.4.3"}              ; util functions for converting between camel, snake, and kebob case
-  cheshire/cheshire                         {:mvn/version "6.1.0"}             ; fast JSON encoding (used by Ring JSON middleware)
+  cheshire/cheshire                         {:mvn/version "6.2.0"}             ; fast JSON encoding (used by Ring JSON middleware)
   clj-bom/clj-bom                           {:mvn/version "0.1.2"}              ; handle BOMs in imported CSVs
   clj-commons/clj-yaml                      {:mvn/version "1.0.29"}             ; Clojure wrapper for YAML library SnakeYAML
   clj-commons/iapetos                       {:mvn/version "0.1.14"}             ; prometheus metrics
@@ -58,8 +58,8 @@
                                             {:mvn/version "1.0.1"}              ; Snowplow analytics
   com.sun.mail/jakarta.mail                 ^:antq/exclude                      ; 2+ changes imports from javax.mail to jakarta.mail
                                             {:mvn/version "1.6.8"}              ; SMTP lib, required by postal
-  com.taoensso/encore                       {:mvn/version "3.158.0"}            ; Utilities library (used by Nippy)
-  com.taoensso/nippy                        {:mvn/version "3.6.0"}              ; Fast serialization (i.e., GZIP) library for Clojure
+  com.taoensso/encore                       {:mvn/version "3.160.1"}            ; Utilities library (used by Nippy)
+  com.taoensso/nippy                        {:mvn/version "3.6.2"}              ; Fast serialization (i.e., GZIP) library for Clojure
   com.vladsch.flexmark/flexmark             {:mvn/version "0.64.8"}             ; Markdown parsing
   com.vladsch.flexmark/flexmark-ext-autolink
   {:mvn/version "0.64.8"}             ; Flexmark extension for auto-linking bare URLs
@@ -113,7 +113,7 @@
                                                            junit/junit]}
   net.thisptr/jackson-jq                    {:mvn/version "1.6.0"}              ; Java implementation of the JQ json query language
   org.apache.commons/commons-compress       {:mvn/version "1.28.0"}             ; compression utils
-  org.apache.commons/commons-lang3          {:mvn/version "3.19.0"}             ; helper methods for working with java.lang stuff
+  org.apache.commons/commons-lang3          {:mvn/version "3.20.0"}             ; helper methods for working with java.lang stuff
   org.apache.logging.log4j/log4j-1.2-api    {:mvn/version "2.25.3"}             ; apache logging framework
   org.apache.logging.log4j/log4j-api        {:mvn/version "2.25.3"}             ; add compatibility with log4j 1.2
   org.apache.logging.log4j/log4j-core       {:mvn/version "2.25.3"}             ; apache logging framework
@@ -172,6 +172,7 @@
   {:mvn/version "2.7.10"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
   org.postgresql/postgresql                 {:mvn/version "42.7.8"}             ; Postgres driver
+  org.semver4j/semver4j                     {:mvn/version "6.0.0"}              ; Semantic versioning parsing & comparison
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
   org.threeten/threeten-extra               {:mvn/version "1.8.0"}              ; extra Java 8 java.time classes like DayOfMonth and Quarter

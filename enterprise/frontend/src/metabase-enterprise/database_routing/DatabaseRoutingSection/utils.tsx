@@ -6,12 +6,16 @@ import { hasActionsEnabled, hasFeature } from "metabase/admin/databases/utils";
 import { Text } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
-export const getDisabledFeatureMessage = (database: Database) => {
+export const getDisabledFeatureMessage = (
+  database: Database,
+  { hasTransforms = false }: { hasTransforms?: boolean } = {},
+) => {
   return match({
     hasActionsEnabled: hasActionsEnabled(database),
     isPersisted: hasFeature(database, "persist-models-enabled"),
     isUploadDb: database.uploads_enabled,
     supportsRouting: !!database.features?.includes("database-routing"),
+    hasTransforms,
   })
     .with(
       { supportsRouting: false },
@@ -35,6 +39,10 @@ export const getDisabledFeatureMessage = (database: Database) => {
       { isUploadDb: true },
       () =>
         t`Database routing can't be enabled if uploads are enabled for this database.`,
+    )
+    .with(
+      { hasTransforms: true },
+      () => t`Database routing can't be enabled when transforms exist.`,
     )
     .otherwise(() => undefined);
 };
