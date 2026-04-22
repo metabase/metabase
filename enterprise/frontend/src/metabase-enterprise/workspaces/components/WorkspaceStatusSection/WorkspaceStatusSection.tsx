@@ -1,8 +1,9 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Group, Icon, type IconName, Text } from "metabase/ui";
+import { Button, Group, Icon, Loader, Text } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors";
 import {
   useProvisionWorkspaceMutation,
@@ -34,7 +35,7 @@ export function WorkspaceStatusSection({
   const isProvisioned = isWorkspaceProvisioned(workspace);
   const isInProgress = isProvisioning || isUnprovisioning;
 
-  const { name: iconName, color: iconColor } = getStatusIcon(workspace);
+  const statusIcon = getStatusIcon(workspace);
   const message = getStatusMessage(workspace);
 
   const handleProvision = () => {
@@ -70,8 +71,6 @@ export function WorkspaceStatusSection({
   const buttonLabel = getButtonLabel(workspace);
   const buttonColor = getButtonColor(workspace);
 
-  const handleClick = isProvisioned ? handleUnprovision : handleProvision;
-
   return (
     <TitleSection
       label={t`Status`}
@@ -79,14 +78,14 @@ export function WorkspaceStatusSection({
     >
       <Group px="xl" py="md" justify="space-between" wrap="nowrap">
         <Group gap="sm" wrap="nowrap">
-          <Icon name={iconName} c={iconColor} />
+          {statusIcon}
           <Text>{message}</Text>
         </Group>
         <Button
           variant="filled"
           color={buttonColor}
           disabled={isInProgress}
-          onClick={handleClick}
+          onClick={isProvisioned ? handleUnprovision : handleProvision}
         >
           {buttonLabel}
         </Button>
@@ -96,22 +95,17 @@ export function WorkspaceStatusSection({
   );
 }
 
-type StatusIconProps = {
-  name: IconName;
-  color: ColorName;
-};
-
-function getStatusIcon(workspace: Workspace): StatusIconProps {
+function getStatusIcon(workspace: Workspace): ReactNode {
   if (isWorkspaceProvisioning(workspace)) {
-    return { name: "hourglass", color: "text-secondary" };
+    return <Loader size="sm" />;
   }
   if (isWorkspaceUnprovisioning(workspace)) {
-    return { name: "hourglass", color: "text-secondary" };
+    return <Loader size="sm" />;
   }
   if (isWorkspaceProvisioned(workspace)) {
-    return { name: "check_filled", color: "success" };
+    return <Icon name="check_filled" c="success" />;
   }
-  return { name: "warning", color: "warning" };
+  return <Icon name="warning" c="warning" />;
 }
 
 function getStatusMessage(workspace: Workspace): string {
