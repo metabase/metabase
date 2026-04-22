@@ -80,7 +80,7 @@ export function CustomVisualizationsManagePage() {
   if (!customVizFeatureLoaded) {
     return (
       <SettingsPageWrapper
-        title={t`Manage custom visualizations`}
+        title={t`Custom visualizations`}
         description={t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
       >
         <SettingsSection>
