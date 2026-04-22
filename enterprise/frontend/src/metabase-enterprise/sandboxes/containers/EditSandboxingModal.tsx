@@ -1,8 +1,10 @@
 import type { Location } from "history";
 import { push } from "react-router-redux";
+import { t } from "ttag";
 
 import {
-  useListGroupTableAccessPoliciesQuery,
+  skipToken,
+  useGetGroupTableAccessPolicyQuery,
   useListUserAttributesQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -33,13 +35,17 @@ const EditSandboxingModalContainer = ({
   const tableId = parseIntParam(params.tableId);
 
   const {
-    data: policies,
+    data: fetchedPolicy,
     isLoading: isPoliciesLoading,
     error: policiesError,
-  } = useListGroupTableAccessPoliciesQuery({
-    group_id: groupId,
-    table_id: tableId,
-  });
+  } = useGetGroupTableAccessPolicyQuery(
+    tableId == null || groupId == null
+      ? skipToken
+      : {
+          group_id: groupId,
+          table_id: tableId,
+        },
+  );
 
   const {
     data: attributes = [],
@@ -53,7 +59,10 @@ const EditSandboxingModalContainer = ({
     getGroupTableAccessPolicy(state as unknown as SandboxesState, { params }),
   );
 
-  const fetchedPolicy = policies?.[0];
+  if (tableId == null) {
+    return <LoadingAndErrorWrapper error={t`Invalid table id`} />;
+  }
+
   const policy = draftPolicy ?? fetchedPolicy;
 
   const isLoading = isPoliciesLoading || isAttributesLoading;
