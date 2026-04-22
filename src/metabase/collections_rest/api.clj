@@ -174,9 +174,21 @@
     ;; remove the :metabase.collection.models.collection.root/is-root? tag since FE doesn't need it
     ;; and for personal/tenant collections we translate the name to user's locale
     (->> (for [collection collections]
-           (dissoc collection ::collection.root/is-root?))
+           (-> collection
+               (dissoc ::collection.root/is-root?)
+               collection/maybe-mark-collection-as-library-root))
          collection/personal-collections-with-ui-details
          collection/maybe-localize-tenant-collection-names)))
+
+(defn- prep-collection-for-export
+  "Given a collection, tweaks it to be ready for returning to the FE.
+
+  These same functions were called in several places in this namespace, so they're combined here to keep it DRY."
+  [coll]
+  (-> coll
+      collection/personal-collection-with-ui-details
+      collection/maybe-localize-tenant-collection-name
+      collection/maybe-mark-collection-as-library-root))
 
 (defn- shallow-tree-from-collection-id
   "Returns only a shallow Collection in the provided collection-id, e.g.
@@ -194,8 +206,7 @@
   ```"
   [colls]
   (->> colls
-       (map (comp collection/maybe-localize-tenant-collection-name
-                  collection/personal-collection-with-ui-details))
+       (map prep-collection-for-export)
        (collection/collections->tree nil)
        (map (fn [coll] (update coll :children #(boolean (seq %)))))))
 
@@ -282,9 +293,7 @@
                                                                          [:= :archived_at nil]]})
                                                       (map :collection_id)
                                                       (into #{}))}))
-            collections-with-details (map (comp collection/maybe-localize-tenant-collection-name
-                                                collection/personal-collection-with-ui-details)
-                                          collections)]
+            collections-with-details (map prep-collection-for-export collections)]
         (collection/collections->tree collection-type-ids collections-with-details)))))
 
 ;;; --------------------------------- Fetching a single Collection & its 'children' ----------------------------------
@@ -1146,8 +1155,7 @@
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
   (-> collection
-      collection/personal-collection-with-ui-details
-      collection/maybe-localize-tenant-collection-name
+      prep-collection-for-export
       (t2/hydrate :parent_id
                   :effective_location
                   [:effective_ancestors :can_write]

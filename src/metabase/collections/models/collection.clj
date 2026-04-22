@@ -189,6 +189,12 @@
 (def ^:private library-metrics-entity-id
   "librarylibrarymetrics")
 
+(def ^:private library-entity-id?
+  "Returns true if the given entity ID is one of the hard-coded Library keys."
+  #{library-entity-id
+    library-data-entity-id
+    library-metrics-entity-id})
+
 (defn create-library-collection!
   "Create the Library collection. Returns Created collection. Throws if it already exists."
   []
@@ -515,6 +521,16 @@
                (assoc collection
                       :name collection-name
                       :slug (u/slugify collection-name))))) collections)))
+
+(defn maybe-mark-collection-as-library-root
+  "Given a collection, adds `:is_library_root true` to exactly those collections which have hard-coded Library
+  `:entity_id`s - the Library itself, and it's magic top-level collections.
+
+  This uses the `:entity_id`s rather than `:type`s because it only applies to those root collections at the top level,
+  not to all of them."
+  [{:keys [entity_id] :as collection}]
+  (cond-> collection
+    (library-entity-id? entity_id) (assoc :is_library_root true)))
 
 (defn personal-collection-with-ui-details
   "For Personal collection, we make sure the collection's name and slug is translated to user's locale
