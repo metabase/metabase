@@ -24,7 +24,6 @@
     (let [[to-schema* to-table]
           (or (ws.remap/remap-table db-id from-schema from-table)
               (let [to-table (tb.query/remapped-table-name from-schema from-table)]
-                (ws.remap/add-schema+table-mapping!
-                 db-id [from-schema from-table] [to-schema to-table])
+                (ws.remap/record-remapping! db-id from-schema from-table to-table)
                 [to-schema to-table]))]
       {:schema to-schema* :name to-table})))
