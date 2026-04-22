@@ -5,29 +5,42 @@ import { useEffect, useRef, useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
-import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
+import {
+  mountSdk,
+  mountSdkContent,
+} from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
-const query = {
+const buildAdHocPath = (query: Record<string, unknown>) =>
+  `/question#${btoa(
+    JSON.stringify({
+      dataset_query: { database: 1, type: "query", query },
+      display: "table",
+      displayIsLocked: true,
+      visualization_settings: {},
+    }),
+  )}`;
+
+const adHocQuestionPathOrders = buildAdHocPath({
   "source-table": ORDERS_ID,
   aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
   breakout: [["field", ORDERS.PRODUCT_ID, null]],
   limit: 2,
-};
-const adHocQuestionPath = `/question#${btoa(
-  JSON.stringify({
-    dataset_query: { database: 1, type: "query", query },
-    display: "table",
-    displayIsLocked: true,
-    visualization_settings: {},
-  }),
-)}`;
+});
 
-const metabotResponseWithNavigateTo = `0:"Here is the [question link](${adHocQuestionPath})"
-2:{"type":"navigate_to","version":1,"value":"${adHocQuestionPath}"}`;
+const adHocQuestionPathProducts = buildAdHocPath({
+  "source-table": PRODUCTS_ID,
+  aggregation: [["count"]],
+  breakout: [["field", PRODUCTS.CATEGORY, null]],
+  limit: 2,
+});
+
+const buildNavigateToResponse = (path: string) =>
+  `0:"Here is the [question link](${path})"
+2:{"type":"navigate_to","version":1,"value":"${path}"}`;
 
 const MetabotConsumer = () => {
   const metabot = useMetabot();
@@ -130,20 +143,21 @@ describe("scenarios > embedding-sdk > use-metabot hook", () => {
     signInAsAdminAndEnableEmbeddingSdk();
     H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
 
-    H.mockMetabotResponse({
-      statusCode: 200,
-      body: metabotResponseWithNavigateTo,
-    });
-
     cy.signOut();
     mockAuthProviderAndJwtSignIn();
   });
 
   it("exposes Metabot under a bare MetabaseProvider and renders CurrentChart after navigate_to", () => {
+    H.mockMetabotResponse({
+      statusCode: 200,
+      body: buildNavigateToResponse(adHocQuestionPathOrders),
+    });
+
     mountSdkContent(<MetabotConsumer />);
 
     getSdkRoot().within(() => {
       cy.findByTestId("metabot-consumer").should("exist");
+      cy.findByTestId("metabot-current-chart-kind").should("have.text", "null");
       cy.findByTestId("metabot-send").click();
     });
 
@@ -153,6 +167,10 @@ describe("scenarios > embedding-sdk > use-metabot hook", () => {
       cy.findAllByTestId("metabot-message-agent").should(
         "have.length.at.least",
         1,
+      );
+      cy.findByTestId("metabot-current-chart-kind").should(
+        "have.text",
+        "function",
       );
       cy.findByTestId("metabot-current-chart").should("exist");
       cy.findByTestId("visualization-root").should("exist");
