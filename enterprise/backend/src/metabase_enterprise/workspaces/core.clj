@@ -23,6 +23,12 @@
   [config]
   (reset! workspaces-config config))
 
+(defn get-config
+  "Return the current workspace config map, or `nil` when no workspace is active.
+   Shape is `{:name <workspace-name> :databases {<db-id> {:input_schemas [...] :output_schema ...}}}`."
+  []
+  @workspaces-config)
+
 (defenterprise db-workspace-schema
   "Return the workspace-isolated schema name configured for `db-id`, or nil
    when no workspace is configured for that database."
