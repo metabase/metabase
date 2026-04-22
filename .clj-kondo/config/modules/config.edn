@@ -3165,6 +3165,21 @@
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}
 
+  enterprise/semantic-layer
+  {:team "Metabot"
+   :api  #{metabase-enterprise.semantic-layer.api
+           metabase-enterprise.semantic-layer.init}
+   :uses #{analytics
+           api
+           audit-app
+           collections
+           metabot
+           premium-features
+           startup
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/Card :model/Collection :model/Measure :model/Metabot :model/Table}}
+
   enterprise/semantic-search
   {:team "Metabot"
    :api  #{metabase-enterprise.semantic-search.api

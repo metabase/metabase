@@ -400,6 +400,13 @@
    (prometheus/counter :metabase-search/semantic-indexer-dlq-failures
                        {:description "Number of failed semantic search DLQ retries"})
 
+   ;; data-complexity-score timing
+   (prometheus/histogram :metabase-semantic-layer/complexity-score-duration-ms
+                         {:description "Duration (ms) of complexity-score computation per phase (enumerate/score per catalog, plus total)."
+                          :labels      [:phase]
+                          ;; 1ms → 5min: sub-ms on tiny instances, minutes on huge ones.
+                          :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000 120000 300000]})
+
 ;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."

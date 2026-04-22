@@ -54,7 +54,8 @@
    :snowplow/serialization    "1-0-1"
    :snowplow/simple_event     "1-0-0"
    :snowplow/cleanup          "1-0-0"
-   :snowplow/ai_service_event "1-0-0"})
+   :snowplow/ai_service_event "1-0-0"
+   :snowplow/data_complexity "1-0-0"})
 
 (def ^:private SnowplowSchema
   "Malli enum for valid Snowplow schemas"
