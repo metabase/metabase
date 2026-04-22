@@ -18,3 +18,5 @@
    2. Transform runs go to temp schema
 1. Edited asset yml files committed and pushed
 1. In parent instance, new assets are visible with results from "production"
+   1. Can see UI showing which tx output table remappings exist
+   1. Can see transaction run logs showing what the output tables were
