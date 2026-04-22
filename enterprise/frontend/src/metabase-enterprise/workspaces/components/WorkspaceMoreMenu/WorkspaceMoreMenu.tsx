@@ -1,4 +1,3 @@
-import type { MouseEvent } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -19,11 +18,6 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const dispatch = useDispatch();
-
-  const handleIconClick = (event: MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
 
   const handleDelete = () => {
     show({
@@ -47,7 +41,7 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
     <>
       <Menu>
         <Menu.Target>
-          <ActionIcon size="sm" onClick={handleIconClick}>
+          <ActionIcon size="sm">
             <Icon name="ellipsis" />
           </ActionIcon>
         </Menu.Target>

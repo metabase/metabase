@@ -9,6 +9,7 @@ export * from "./FormGroupsWidget";
 export * from "./FormGroupWidget";
 export * from "./FormInlineUpdater";
 export * from "./FormMessage";
+export * from "./FormMultiSelect";
 export * from "./FormNumberInput";
 export * from "./FormObserver";
 export * from "./FormProvider";

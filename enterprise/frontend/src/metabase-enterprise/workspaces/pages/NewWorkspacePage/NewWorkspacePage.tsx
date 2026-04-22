@@ -21,10 +21,7 @@ import type { WorkspaceDatabaseDraft } from "metabase-types/api";
 
 import { DatabaseMappingSection } from "../../components/DatabaseMappingSection";
 
-type WorkspaceInfo = {
-  name: string;
-  databases: WorkspaceDatabaseDraft[];
-};
+import { getInitialWorkspace, isValidWorkspace } from "./utils";
 
 type NewWorkspacePageProps = {
   route: Route;
@@ -36,16 +33,17 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const initialWorkspace = getInitialValues();
+  const initialWorkspace = getInitialWorkspace();
   const [workspace, setWorkspace] = useState(initialWorkspace);
+  const isValid = isValidWorkspace(workspace);
   const isDirty = !_.isEqual(workspace, initialWorkspace);
 
   const handleNameChange = (newName: string) => {
     setWorkspace({ ...workspace, name: newName });
   };
 
-  const handleDatabasesChange = (newDatabases: WorkspaceDatabaseDraft[]) => {
-    setWorkspace({ ...workspace, databases: newDatabases });
+  const handleMappingsChange = (newMappings: WorkspaceDatabaseDraft[]) => {
+    setWorkspace({ ...workspace, databases: newMappings });
   };
 
   const handleCancel = () => {
@@ -53,7 +51,10 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
   };
 
   const handleSave = async () => {
-    const { data, error } = await createWorkspace(workspace);
+    const { data, error } = await createWorkspace({
+      name: workspace.name,
+      databases: workspace.databases,
+    });
     if (error || data == null) {
       sendErrorToast(t`Failed to create workspace`);
       return;
@@ -68,15 +69,15 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
       <PageContainer data-testid="new-workspace-page" gap="2.5rem">
         <NewWorkspacePageHeader
           name={workspace.name}
-          isDirty={isDirty}
+          isValid={isValid}
           isSaving={isSaving}
           onNameChange={handleNameChange}
           onSave={handleSave}
           onCancel={handleCancel}
         />
         <NewWorkspacePageBody
-          databases={workspace.databases}
-          onDatabasesChange={handleDatabasesChange}
+          mappings={workspace.databases}
+          onMappingsChange={handleMappingsChange}
         />
       </PageContainer>
       <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
@@ -84,16 +85,9 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
   );
 }
 
-function getInitialValues(): WorkspaceInfo {
-  return {
-    name: t`New workspace`,
-    databases: [],
-  };
-}
-
 type NewWorkspacePageHeaderProps = {
   name: string;
-  isDirty: boolean;
+  isValid: boolean;
   isSaving: boolean;
   onNameChange: (newName: string) => void;
   onSave: () => void;
@@ -102,7 +96,7 @@ type NewWorkspacePageHeaderProps = {
 
 function NewWorkspacePageHeader({
   name,
-  isDirty,
+  isValid,
   isSaving,
   onNameChange,
   onSave,
@@ -128,8 +122,9 @@ function NewWorkspacePageHeader({
       }
       actions={
         <PaneHeaderActions
-          isDirty={isDirty}
+          isValid={isValid}
           isSaving={isSaving}
+          isDirty
           onSave={onSave}
           onCancel={onCancel}
         />
@@ -139,20 +134,17 @@ function NewWorkspacePageHeader({
 }
 
 type NewWorkspacePageBodyProps = {
-  databases: WorkspaceDatabaseDraft[];
-  onDatabasesChange: (newDatabases: WorkspaceDatabaseDraft[]) => void;
+  mappings: WorkspaceDatabaseDraft[];
+  onMappingsChange: (newMappings: WorkspaceDatabaseDraft[]) => void;
 };
 
 function NewWorkspacePageBody({
-  databases,
-  onDatabasesChange,
+  mappings,
+  onMappingsChange,
 }: NewWorkspacePageBodyProps) {
   return (
     <Stack gap="3.5rem">
-      <DatabaseMappingSection
-        databases={databases}
-        onChange={onDatabasesChange}
-      />
+      <DatabaseMappingSection mappings={mappings} onChange={onMappingsChange} />
     </Stack>
   );
 }

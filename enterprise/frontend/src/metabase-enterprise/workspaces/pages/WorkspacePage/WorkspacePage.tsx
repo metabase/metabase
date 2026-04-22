@@ -21,7 +21,7 @@ import {
   useGetWorkspaceQuery,
   useUpdateWorkspaceMutation,
 } from "metabase-enterprise/api";
-import type { Workspace } from "metabase-types/api";
+import type { Workspace, WorkspaceDatabaseDraft } from "metabase-types/api";
 
 import { DatabaseMappingSection } from "../../components/DatabaseMappingSection";
 import { WorkspaceMoreMenu } from "../../components/WorkspaceMoreMenu";
@@ -64,7 +64,9 @@ function WorkspacePageBody({ workspace, route }: WorkspacePageBodyProps) {
     useUpdateWorkspaceMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const [databases, setDatabases] = useState(workspace.databases);
+  const [databases, setDatabases] = useState<WorkspaceDatabaseDraft[]>(
+    workspace.databases,
+  );
 
   const isDirty = useMemo(
     () => !_.isEqual(databases, workspace.databases),
@@ -138,7 +140,7 @@ function WorkspacePageBody({ workspace, route }: WorkspacePageBodyProps) {
         />
         <Stack gap="3.5rem">
           <DatabaseMappingSection
-            mappings={workspace.databases}
+            mappings={databases}
             onChange={setDatabases}
           />
         </Stack>
