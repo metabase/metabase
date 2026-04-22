@@ -27,7 +27,6 @@ export function MetabotUsageIndicator() {
           <RingProgress
             size={24}
             thickness={3}
-            roundCaps
             rootColor="border"
             sections={[
               {

@@ -91,6 +91,10 @@
   }
 }
 
+.buttonLabel {
+  display: inline-flex;
+}
+
 .promptSuggestionsContainer {
   display: flex;
   flex-direction: column;

@@ -210,12 +210,15 @@ const MetabotQueryBuilderInner = () => {
               <Group gap="sm" align="center">
                 <MetabotUsageIndicator />
                 <Button
-                  className={S.sendButton}
                   variant="filled"
                   disabled={inputDisabled}
                   loading={isDoingScience}
                   onClick={handleEditorSubmit}
                   data-testid="metabot-send-message"
+                  classNames={{
+                    root: S.sendButton,
+                    label: S.buttonLabel,
+                  }}
                 >
                   <Icon name="arrow_up" />
                 </Button>
