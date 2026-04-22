@@ -2,5 +2,8 @@
   "base": {
     "name": "feat/builtin-mcp-ui",
     "hash": "9d79af2e8973a0fe4f7b4af3d568d764e87e7eb0"
+  },
+  "upstream": {
+    "branch": "emb-1586-prototype-interactivity-improvements-for-mcp-apps"
   }
 }
