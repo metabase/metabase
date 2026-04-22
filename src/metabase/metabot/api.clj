@@ -14,6 +14,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.api.conversations]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
@@ -146,10 +147,9 @@
                            parts)
         usage      (extract-usage parts)
         ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
-        ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
-        ;; :data is like `:navigate_to`
         content    (->> parts
-                        (remove #(#{:start :usage :finish :data} (:type %)))
+                        (remove #(#{:start :usage :finish} (:type %)))
+                        (filter streaming/persistable-data-part?)
                         (mapv strip-tool-output-bloat))]
     (prometheus/observe! :metabase-metabot/message-persist-bytes
                          {:profile-id (or profile-id "unknown")}

@@ -102,12 +102,8 @@ const getInternalMessages = createSelector(
 );
 
 export const getMessages = createSelector(
-  [getInternalMessages, getDebugMode],
-  (messages, debugMode) => {
-    return debugMode
-      ? messages
-      : messages.filter((msg) => msg.type !== "tool_call");
-  },
+  getInternalMessages,
+  (messages) => messages,
 );
 
 export const getDeveloperMessage = createSelector(

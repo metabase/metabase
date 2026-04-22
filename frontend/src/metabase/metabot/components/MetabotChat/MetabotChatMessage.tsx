@@ -11,6 +11,7 @@ import type {
   MetabotAgentChatMessage,
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
+  MetabotDataPart,
   MetabotErrorMessage,
   MetabotUserChatMessage,
 } from "metabase/metabot/state";
@@ -27,11 +28,30 @@ import type { MetabotFeedback } from "metabase-types/api";
 
 import { AIMarkdown } from "../AIMarkdown/AIMarkdown";
 
-import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
-import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
+import { AgentDataPartMessage } from "./MetabotAgentDataPartMessage";
 import { AgentToolCallMessage } from "./MetabotAgentToolCallMessage";
 import Styles from "./MetabotChat.module.css";
 import { MetabotFeedbackModal } from "./MetabotFeedbackModal";
+
+const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
+  match(part)
+    .with({ type: "todo_list" }, () => true)
+    .with({ type: "transform_suggestion" }, () => true)
+    .with({ type: "navigate_to" }, () => false)
+    .with({ type: "code_edit" }, () => false)
+    .with({ type: "adhoc_viz" }, () => false)
+    .with({ type: "static_viz" }, () => false)
+    .exhaustive();
+
+const isUserVisibleMessage = (message: MetabotChatMessage): boolean => {
+  if (message.type === "tool_call") {
+    return false;
+  }
+  if (message.role === "agent" && message.type === "data_part") {
+    return isUserVisibleDataPart(message.part);
+  }
+  return true;
+};
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
   message: MetabotChatMessage;
@@ -134,6 +154,7 @@ const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
 
 interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
   message: MetabotAgentChatMessage;
+  debug: boolean;
   onRetry?: (messageId: string) => void;
   onCopy: (messageId: string) => void;
   showFeedbackButtons: boolean;
@@ -145,6 +166,7 @@ interface AgentMessageProps extends Omit<BaseMessageProps, "message"> {
 export const AgentMessage = ({
   message,
   className,
+  debug,
   onCopy,
   onRetry,
   showFeedbackButtons,
@@ -164,11 +186,8 @@ export const AgentMessage = ({
           {message.message}
         </AIMarkdown>
       )}
-      {message.type === "edit_suggestion" && (
-        <AgentSuggestionMessage message={message} />
-      )}
-      {message.type === "todo_list" && (
-        <AgentTodoListMessage todos={message.payload} />
+      {message.type === "data_part" && (
+        <AgentDataPartMessage message={message} debug={debug} />
       )}
       {message.type === "tool_call" && (
         <AgentToolCallMessage message={message} />
@@ -309,6 +328,7 @@ export const Messages = ({
   errorMessages,
   onRetryMessage,
   isDoingScience,
+  debug,
   showFeedbackButtons = false,
   onInternalLinkClick,
 }: {
@@ -316,9 +336,13 @@ export const Messages = ({
   errorMessages: MetabotErrorMessage[];
   onRetryMessage?: (messageId: string) => void;
   isDoingScience: boolean;
+  debug: boolean;
   showFeedbackButtons?: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
 }) => {
+  const visibleMessages = debug
+    ? messages
+    : messages.filter(isUserVisibleMessage);
   const clipboard = useClipboard();
   const [sendToast] = useToast();
 
@@ -376,19 +400,20 @@ export const Messages = ({
 
   return (
     <>
-      {messages.map((message, index) =>
+      {visibleMessages.map((message, index) =>
         message.role === "agent" ? (
           <AgentMessage
             key={"msg-" + message.id}
             data-testid="metabot-chat-message"
             message={message}
+            debug={debug}
             onRetry={onRetryMessage}
             onCopy={onAgentMessageCopy}
             showFeedbackButtons={showFeedbackButtons}
             setFeedbackMessage={setFeedbackModal}
             submittedFeedback={feedbackState.submitted[message.id]}
             hideActions={
-              isDoingScience || messages[index + 1]?.role === "agent"
+              isDoingScience || visibleMessages[index + 1]?.role === "agent"
             }
             onInternalLinkClick={onInternalLinkClick}
           />
@@ -397,7 +422,7 @@ export const Messages = ({
             key={"msg-" + message.id}
             data-testid="metabot-chat-message"
             message={message}
-            hideActions={isDoingScience && messages.length === index + 1}
+            hideActions={isDoingScience && visibleMessages.length === index + 1}
             onCopy={() => {
               const copyText =
                 message.type === "action"

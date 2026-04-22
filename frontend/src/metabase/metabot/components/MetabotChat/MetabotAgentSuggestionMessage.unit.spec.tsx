@@ -18,9 +18,10 @@ import {
   createMockTransform,
 } from "metabase-types/api/mocks/transform";
 
-import type { MetabotAgentEditSuggestionChatMessage } from "../../state/types";
-
-import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
+import {
+  AgentSuggestionMessage,
+  type AgentSuggestionPayload,
+} from "./MetabotAgentSuggestionMessage";
 
 const createMockSuggestedTransform = (
   overrides: Partial<MetabotSuggestedTransform>,
@@ -39,23 +40,17 @@ const createMockTransformInfo = (
   ...overrides,
 });
 
-const createMockTransformSuggestionMessage = (
-  overrides: Partial<MetabotAgentEditSuggestionChatMessage>,
-): MetabotAgentEditSuggestionChatMessage => ({
-  id: "msg-123",
-  role: "agent",
-  type: "edit_suggestion",
-  model: "transform",
-  payload: {
-    editorTransform: undefined,
-    suggestedTransform: createMockSuggestedTransform({}),
-  },
+const createMockSuggestionPayload = (
+  overrides: Partial<AgentSuggestionPayload> = {},
+): AgentSuggestionPayload => ({
+  editorTransform: undefined,
+  suggestedTransform: createMockSuggestedTransform({}),
   ...overrides,
 });
 
-const setup = (message: MetabotAgentEditSuggestionChatMessage) => {
+const setup = (payload: AgentSuggestionPayload) => {
   setupEnterprisePlugins();
-  return renderWithProviders(<AgentSuggestionMessage message={message} />, {
+  return renderWithProviders(<AgentSuggestionMessage payload={payload} />, {
     storeInitialState: createMockState({
       settings: mockSettings(),
       currentUser: createMockUser(),
@@ -66,17 +61,15 @@ const setup = (message: MetabotAgentEditSuggestionChatMessage) => {
 describe("AgentSuggestionMessage", () => {
   it("should show proposal for new transforms", async () => {
     setup(
-      createMockTransformSuggestionMessage({
-        payload: {
-          editorTransform: undefined,
-          suggestedTransform: createMockSuggestedTransform({
-            id: undefined,
-            source: {
-              type: "query",
-              query: createMockNativeDatasetQuery(),
-            },
-          }),
-        },
+      createMockSuggestionPayload({
+        editorTransform: undefined,
+        suggestedTransform: createMockSuggestedTransform({
+          id: undefined,
+          source: {
+            type: "query",
+            query: createMockNativeDatasetQuery(),
+          },
+        }),
       }),
     );
 
@@ -89,21 +82,19 @@ describe("AgentSuggestionMessage", () => {
 
   it("should show diff view for edited transforms", async () => {
     setup(
-      createMockTransformSuggestionMessage({
-        payload: {
-          editorTransform: createMockTransformInfo({
-            id: 123,
-            source: createMockPythonTransformSource({
-              body: "# Original code\nprint('original')",
-            }),
+      createMockSuggestionPayload({
+        editorTransform: createMockTransformInfo({
+          id: 123,
+          source: createMockPythonTransformSource({
+            body: "# Original code\nprint('original')",
           }),
-          suggestedTransform: createMockSuggestedTransform({
-            id: 123,
-            source: createMockPythonTransformSource({
-              body: "# Updated code\nprint('updated')",
-            }),
+        }),
+        suggestedTransform: createMockSuggestedTransform({
+          id: 123,
+          source: createMockPythonTransformSource({
+            body: "# Updated code\nprint('updated')",
           }),
-        },
+        }),
       }),
     );
 
@@ -119,14 +110,12 @@ describe("AgentSuggestionMessage", () => {
 
   it("should be collapsible", async () => {
     setup(
-      createMockTransformSuggestionMessage({
-        payload: {
-          editorTransform: undefined,
-          suggestedTransform: createMockSuggestedTransform({
-            id: undefined, // Make sure this is a new transform
-            name: "Test Transform",
-          }),
-        },
+      createMockSuggestionPayload({
+        editorTransform: undefined,
+        suggestedTransform: createMockSuggestedTransform({
+          id: undefined, // Make sure this is a new transform
+          name: "Test Transform",
+        }),
       }),
     );
 

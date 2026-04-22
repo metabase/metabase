@@ -156,6 +156,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               messages={conversation.chat_messages ?? []}
               errorMessages={[]}
               isDoingScience={false}
+              debug
             />
           </Card>
         </Box>

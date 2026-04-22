@@ -78,8 +78,16 @@
        :args   (when-let [a (:arguments block)] (json/encode a))
        :status "ended"}
 
+      ;; Data part: {:type "data" :data-type "navigate_to" :version 1 :data ...}
+      (= "data" block-type)
+      {:id   (str (random-uuid))
+       :role "agent"
+       :type "data_part"
+       :part {:type    (:data-type block)
+              :version (or (:version block) 1)
+              :value   (:data block)}}
+
       ;; Tool output — skip here, merged via merge-tool-results
-      ;; Data parts — skip for now
       :else nil)))
 
 (defn- merge-tool-results
