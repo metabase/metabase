@@ -1,13 +1,6 @@
 import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
-import {
-  NotificationCardRoot,
-  NotificationContent,
-  NotificationDescription,
-  NotificationIcon,
-  NotificationMessage,
-} from "metabase/account/notifications/components/NotificationCard/DashboardNotificationCard.styled";
 import { formatCreatorMessage } from "metabase/account/notifications/components/NotificationCard/utils";
 import type { QuestionNotificationListItem } from "metabase/account/notifications/types";
 import { Link } from "metabase/common/components/Link/Link";
@@ -17,9 +10,11 @@ import {
   formatTitle,
   getNotificationEnabledChannelsMap,
 } from "metabase/notifications/utils";
-import { Group, Icon } from "metabase/ui";
+import { Box, Flex, Group, Icon, Text } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import type { User } from "metabase-types/api";
+
+import S from "./DashboardNotificationCard.module.css";
 
 type NotificationCardProps = {
   listItem: QuestionNotificationListItem;
@@ -57,13 +52,26 @@ export const NotificationCard = ({
   }, [listItem, onArchive]);
 
   return (
-    <NotificationCardRoot data-testid="notification-alert-item">
-      <NotificationContent>
+    <Flex
+      className={S.root}
+      data-testid="notification-alert-item"
+      align="center"
+      px="lg"
+      py="md"
+      bg="background-primary"
+    >
+      <Box flex="1 1 auto">
         <Link variant="brandBold" to={entityLink}>
           {formatTitle(listItem)}
         </Link>
-        <NotificationDescription>
-          <NotificationMessage>
+        <Flex wrap="wrap" mt="xs">
+          <Text
+            component="span"
+            className={S.message}
+            c="text-secondary"
+            fz="sm"
+            lh="0.875rem"
+          >
             <Group gap="0.75rem" align="center" c="text-secondary">
               {enabledChannelsMap["channel/email"] && <Icon name="mail" />}
               {enabledChannelsMap["channel/slack"] && (
@@ -80,24 +88,30 @@ export const NotificationCard = ({
                 {<span>{formatCreatorMessage(item, user.id)}</span>}
               </Group>
             </Group>
-          </NotificationMessage>
-        </NotificationDescription>
-      </NotificationContent>
+          </Text>
+        </Flex>
+      </Box>
 
       {isEditable && !hasArchive && (
-        <NotificationIcon
+        <Icon
+          className={S.icon}
           name="close"
+          size={16}
+          c="text-tertiary"
           tooltip={t`Unsubscribe`}
           onClick={onUnsubscribeClick}
         />
       )}
       {isEditable && hasArchive && (
-        <NotificationIcon
+        <Icon
+          className={S.icon}
           name="close"
+          size={16}
+          c="text-tertiary"
           tooltip={t`Delete`}
           onClick={onArchiveClick}
         />
       )}
-    </NotificationCardRoot>
+    </Flex>
   );
 };
