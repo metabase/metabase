@@ -494,10 +494,10 @@
                           on-exit         (fn [] (await-barrier barrier-exit) (.set tl-tripped true))
                           original-insert transforms.u/try-start-unless-already-running]
                       (mt/with-dynamic-fn-redefs [transforms.u/try-start-unless-already-running
-                                                  (fn [transform-id run-method user-id]
+                                                  (fn [& args]
                                                     (on-enter)
                                                     (let [[ret ex] (try
-                                                                     [(original-insert transform-id run-method user-id)]
+                                                                     [(apply original-insert args)]
                                                                      (catch Throwable t [nil t]))]
                                                       (on-exit)
                                                       (if ex (throw ex) ret)))]

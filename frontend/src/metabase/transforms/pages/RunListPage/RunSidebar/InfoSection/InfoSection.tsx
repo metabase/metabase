@@ -45,6 +45,16 @@ export function InfoSection({ run }: InfoSectionProps) {
       <InfoSectionItem label={t`Trigger`}>
         {formatRunMethod(run.run_method)}
       </InfoSectionItem>
+      {formatSchemaTable(run.target_schema, run.target_table) != null && (
+        <InfoSectionItem label={t`Target`}>
+          {formatSchemaTable(run.target_schema, run.target_table)}
+        </InfoSectionItem>
+      )}
+      {formatSchemaTable(run.workspace_schema, run.workspace_table) != null && (
+        <InfoSectionItem label={t`Workspace`}>
+          {formatSchemaTable(run.workspace_schema, run.workspace_table)}
+        </InfoSectionItem>
+      )}
       {checkpointField != null && (
         <InfoSectionItem label={t`Checkpoint field`}>
           {checkpointField.display_name}
@@ -68,6 +78,16 @@ export function InfoSection({ run }: InfoSectionProps) {
       )}
     </Card>
   );
+}
+
+function formatSchemaTable(
+  schema: string | null | undefined,
+  table: string | null | undefined,
+): string | null {
+  if (table == null) {
+    return null;
+  }
+  return schema ? `${schema}.${table}` : table;
 }
 
 type InfoSectionItemProps = {

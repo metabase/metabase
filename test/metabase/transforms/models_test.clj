@@ -326,6 +326,42 @@
           (is (= transform-name (:transform_name run)))
           (is (= entity-id (:transform_entity_id run))))))))
 
+(deftest start-run-persists-target-and-workspace-tables-test
+  (testing "start-run! writes target_schema/table and workspace_schema/table to the run row"
+    (mt/with-premium-features #{:transforms-basic}
+      (testing "with a workspace remap, both pairs are populated"
+        (mt/with-temp [:model/Transform {transform-id :id} {}]
+          (let [run (transform-run/start-run!
+                     transform-id
+                     {:run_method       "manual"
+                      :target_schema    "public"
+                      :target_table     "orders"
+                      :workspace_schema "ws_abc"
+                      :workspace_table  "public__orders"})]
+            (is (= "public"         (:target_schema run)))
+            (is (= "orders"         (:target_table run)))
+            (is (= "ws_abc"         (:workspace_schema run)))
+            (is (= "public__orders" (:workspace_table run)))
+            (let [reloaded (t2/select-one :model/TransformRun :id (:id run))]
+              (is (= "public"         (:target_schema reloaded)))
+              (is (= "orders"         (:target_table reloaded)))
+              (is (= "ws_abc"         (:workspace_schema reloaded)))
+              (is (= "public__orders" (:workspace_table reloaded)))))))
+      (testing "without a workspace remap, workspace columns are nil"
+        (mt/with-temp [:model/Transform {transform-id :id} {}]
+          (let [run (transform-run/start-run!
+                     transform-id
+                     {:run_method       "manual"
+                      :target_schema    "public"
+                      :target_table     "widgets"
+                      :workspace_schema nil
+                      :workspace_table  nil})
+                reloaded (t2/select-one :model/TransformRun :id (:id run))]
+            (is (= "public"  (:target_schema reloaded)))
+            (is (= "widgets" (:target_table reloaded)))
+            (is (nil? (:workspace_schema reloaded)))
+            (is (nil? (:workspace_table reloaded)))))))))
+
 (deftest checkpoint-reset-on-filter-field-change-test
   (testing "Changing checkpoint-filter-field-id resets stored checkpoint"
     (mt/with-premium-features #{:transforms-basic}
