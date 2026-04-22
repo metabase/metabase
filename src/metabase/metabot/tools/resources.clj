@@ -82,7 +82,7 @@
                                          :entity-id table-id
                                          :with-fields? true
                                          :with-field-values? false
-                                         :with-related-tables? false
+                                         :with-related-tables? true
                                          :with-measures? true
                                          :with-segments? true})
 
@@ -92,7 +92,7 @@
                                          :entity-id table-id
                                          :with-fields? false
                                          :with-field-values? false
-                                         :with-related-tables? false
+                                         :with-related-tables? true
                                          :with-measures? true
                                          :with-segments? true})
 
