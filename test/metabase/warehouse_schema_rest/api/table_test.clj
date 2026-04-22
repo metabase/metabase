@@ -53,6 +53,7 @@
     :settings                    {}
     :cache_ttl                   nil
     :provider_name               nil
+    :workspace_permissions_status nil
     :is_audit                    false}))
 
 (defn- table-defaults
