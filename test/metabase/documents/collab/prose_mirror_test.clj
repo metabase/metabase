@@ -129,7 +129,132 @@
           round-tripped (collab.prose-mirror/ydoc-bytes->pm-json bytes)]
       (is (= "hi" (get-in round-tripped [:content 0 :content 0 :text]))))))
 
+;; ---------------------------------------------------------------
+;; Coverage for every ported node/mark — round-trip by name
+;; ---------------------------------------------------------------
+
+(deftest ^:parallel blockquote-round-trip-test
+  (let [doc {:type "doc"
+             :content [{:type "blockquote"
+                        :content [{:type "paragraph"
+                                   :content [{:type "text" :text "quoted"}]}]}]}
+        rt  (round-trip doc)]
+    (is (= "blockquote" (get-in rt [:content 0 :type])))
+    (is (= "quoted"     (get-in rt [:content 0 :content 0 :content 0 :text])))))
+
+(deftest ^:parallel code-block-round-trip-test
+  (let [doc {:type "doc"
+             :content [{:type    "codeBlock"
+                        :attrs   {:language "clojure"}
+                        :content [{:type "text" :text "(+ 1 2)"}]}]}
+        rt  (round-trip doc)]
+    (is (= "codeBlock" (get-in rt [:content 0 :type])))
+    (is (= "clojure"   (get-in rt [:content 0 :attrs :language])))
+    (is (= "(+ 1 2)"   (get-in rt [:content 0 :content 0 :text])))))
+
+(deftest ^:parallel bullet-list-round-trip-test
+  (let [doc {:type "doc"
+             :content [{:type "bulletList"
+                        :content [{:type "listItem"
+                                   :content [{:type "paragraph"
+                                              :content [{:type "text" :text "one"}]}]}
+                                  {:type "listItem"
+                                   :content [{:type "paragraph"
+                                              :content [{:type "text" :text "two"}]}]}]}]}
+        rt  (round-trip doc)]
+    (is (= "bulletList" (get-in rt [:content 0 :type])))
+    (is (= 2            (count (get-in rt [:content 0 :content]))))))
+
+(deftest ^:parallel hard-break-round-trip-test
+  (let [doc {:type "doc"
+             :content [{:type "paragraph"
+                        :content [{:type "text" :text "line1"}
+                                  {:type "hardBreak"}
+                                  {:type "text" :text "line2"}]}]}
+        rt  (round-trip doc)
+        content (get-in rt [:content 0 :content])]
+    (is (some #(= "hardBreak" (:type %)) content))))
+
+(deftest ^:parallel horizontal-rule-round-trip-test
+  (let [doc {:type "doc"
+             :content [{:type "paragraph" :content [{:type "text" :text "before"}]}
+                       {:type "horizontalRule"}
+                       {:type "paragraph" :content [{:type "text" :text "after"}]}]}
+        rt  (round-trip doc)]
+    (is (= "horizontalRule" (get-in rt [:content 1 :type])))))
+
+(deftest ^:parallel image-round-trip-test
+  (let [doc {:type "doc"
+             :content [{:type  "image"
+                        :attrs {:src "https://example.com/x.png"
+                                :alt "example"
+                                :title "an image"}}]}
+        rt  (round-trip doc)]
+    (is (= "image" (get-in rt [:content 0 :type])))
+    (is (= "https://example.com/x.png" (get-in rt [:content 0 :attrs :src])))
+    (is (= "example"                   (get-in rt [:content 0 :attrs :alt])))))
+
+(deftest ^:parallel supporting-text-round-trip-test
+  (let [doc {:type "doc"
+             :content [{:type "supportingText"
+                        :content [{:type "paragraph"
+                                   :content [{:type "text" :text "supporting"}]}]}]}
+        rt  (round-trip doc)]
+    (is (= "supportingText" (get-in rt [:content 0 :type])))
+    (is (= "supporting"     (get-in rt [:content 0 :content 0 :content 0 :text])))))
+
+(deftest ^:parallel flex-container-round-trip-test
+  (testing "flexContainer with two supportingText children (within {1,3} content constraint)"
+    (let [doc {:type "doc"
+               :content [{:type "flexContainer"
+                          :content [{:type    "supportingText"
+                                     :content [{:type "paragraph"
+                                                :content [{:type "text" :text "left"}]}]}
+                                    {:type    "supportingText"
+                                     :content [{:type "paragraph"
+                                                :content [{:type "text" :text "right"}]}]}]}]}
+          rt  (round-trip doc)]
+      (is (= "flexContainer" (get-in rt [:content 0 :type])))
+      (is (= 2 (count (get-in rt [:content 0 :content]))))
+      (is (= "left"  (get-in rt [:content 0 :content 0 :content 0 :content 0 :text])))
+      (is (= "right" (get-in rt [:content 0 :content 1 :content 0 :content 0 :text]))))))
+
+(deftest ^:parallel metabot-round-trip-test
+  (testing "metabot block with :code true :marks \"\""
+    (let [doc {:type "doc"
+               :content [{:type    "metabot"
+                          :content [{:type "text" :text "ask something"}]}]}
+          rt  (round-trip doc)]
+      (is (= "metabot" (get-in rt [:content 0 :type])))
+      (is (= "ask something" (get-in rt [:content 0 :content 0 :text]))))))
+
+(deftest ^:parallel italic-mark-round-trip-test
+  (let [doc {:type "doc"
+             :content [{:type "paragraph"
+                        :content [{:type "text" :text "tilted"
+                                   :marks [{:type "italic"}]}]}]}
+        rt  (round-trip doc)]
+    (is (= [{:type "italic"}] (get-in rt [:content 0 :content 0 :marks])))))
+
+(deftest ^:parallel strike-mark-round-trip-test
+  (let [doc {:type "doc"
+             :content [{:type "paragraph"
+                        :content [{:type "text" :text "nope"
+                                   :marks [{:type "strike"}]}]}]}
+        rt  (round-trip doc)]
+    (is (= [{:type "strike"}] (get-in rt [:content 0 :content 0 :marks])))))
+
+(deftest ^:parallel code-mark-round-trip-test
+  (let [doc {:type "doc"
+             :content [{:type "paragraph"
+                        :content [{:type "text" :text "inline"
+                                   :marks [{:type "code"}]}]}]}
+        rt  (round-trip doc)]
+    (is (= [{:type "code"}] (get-in rt [:content 0 :content 0 :marks])))))
+
 (deftest ^:parallel unknown-node-type-fails-test
   (testing "schema validation rejects unknown node types (loud failure, not silent drop)"
     (let [doc {:type "doc" :content [{:type "definitelyNotAThing" :attrs {}}]}]
-      (is (thrown? Exception (collab.prose-mirror/pm-json->ydoc-bytes doc))))))
+      (is (thrown-with-msg? com.atlassian.prosemirror.model.RangeError
+                            #"Unknown node type"
+                            (collab.prose-mirror/pm-json->ydoc-bytes doc))))))

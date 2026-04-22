@@ -19,8 +19,9 @@
 (set! *warn-on-reflection* true)
 
 (defn- attr ^AttributeSpecImpl [default]
-  ;; (AttributeSpecImpl. default, "") → hasDefault=true (implicit), validate=""
-  (AttributeSpecImpl. default ""))
+  ;; 2-arg ctor: (Object default, String validateString) — sets hasDefault=true,
+  ;; no validator. Pass nil for validateString rather than "" for clarity.
+  (AttributeSpecImpl. default nil))
 
 (defn- attrs-map [attrs]
   (when (seq attrs)
@@ -85,7 +86,7 @@
                "listItem"       (node-spec :content "paragraph (paragraph | bulletList | orderedList)*")
                "hardBreak"      (node-spec :group "inline" :inline true :atom true)
                "horizontalRule" (node-spec :group "block" :atom true)
-               "text"           (node-spec :group "inline" :inline true :atom true)
+               "text"           (node-spec :group "inline" :inline true)
 
                ;; Metabase custom nodes.
                "cardEmbed"      (node-spec :group "block" :atom true :draggable true

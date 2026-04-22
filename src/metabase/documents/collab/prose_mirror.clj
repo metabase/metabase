@@ -22,15 +22,22 @@
 (def ^:private fragment-name "default")
 (def ^:private empty-doc     {:type "doc" :content []})
 
-(defn- clojure->json-object ^JsonObject [m]
-  ;; Round-trip through a JSON string so we don't need to build kotlinx JsonElement nodes by hand.
+(defn- clojure->json-object
+  "Convert a Clojure map to a kotlinx `JsonObject` by serializing to JSON text
+   and parsing it back. The extra allocation is intentional — building kotlinx
+   `JsonElement` trees by hand from Clojure is verbose, and this runs on a
+   debounced save path where the YDoc encode dominates anyway."
+  ^JsonObject [m]
   (let [element (.parseToJsonElement Json/Default (json/encode m))]
     (if (instance? JsonObject element)
       element
       (throw (ex-info "expected JSON object at the top level"
                       {:value m})))))
 
-(defn- json-object->clojure [^JsonObject jo]
+(defn- json-object->clojure
+  "Convert a kotlinx `JsonObject` to a Clojure map. `JsonObject.toString()`
+   emits canonical JSON text per kotlinx.serialization, which we then decode."
+  [^JsonObject jo]
   (json/decode+kw (.toString jo)))
 
 (defn ydoc-bytes->pm-json
@@ -53,7 +60,6 @@
           (if empty?
             empty-doc
             (-> (YCrdtConverter/yDocToProsemirror doc fragment-name @schema/tiptap-schema)
-                ^Node identity
                 .toJSON
                 json-object->clojure)))
         (finally (.close doc))))))
@@ -77,7 +83,7 @@
     (try
       (when-not (empty-pm-doc? pm-doc)
         (let [^JsonObject pm-jo (clojure->json-object pm-doc)
-              ^Node pm-node     (.fromJSON (Node/Companion) @schema/tiptap-schema pm-jo false false)
+              ^Node pm-node     (.fromJSON Node/Companion @schema/tiptap-schema pm-jo false false)
               ^YXmlFragment frag (.getXmlFragment doc fragment-name)]
           (try
             (ProseMirrorConverter/nodeToYXml pm-node frag @schema/tiptap-schema)
