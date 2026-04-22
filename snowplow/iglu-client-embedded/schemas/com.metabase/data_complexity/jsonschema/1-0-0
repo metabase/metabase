@@ -53,7 +53,7 @@
                 "null"
             ],
             "minimum": 0,
-            "maximum": 2147483647
+            "maximum": 9007199254740992
         },
         "error": {
             "description": "Present only on `synonym_pairs` when the embedder fell back to 0.",
