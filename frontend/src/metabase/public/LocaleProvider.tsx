@@ -7,9 +7,13 @@ import {
 } from "react";
 
 import { useSetting } from "metabase/common/hooks";
+import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { DatesProvider } from "metabase/ui/components/theme/DatesProvider/DatesProvider";
 import { setLocaleHeader } from "metabase/utils/api";
-import { loadLocalization, setUserLocale } from "metabase/utils/i18n";
+import {
+  type LocaleDataWithLanguage,
+  loadLocalization,
+} from "metabase/utils/i18n";
 
 interface LocaleProviderProps {
   locale?: string | null;
@@ -88,7 +92,7 @@ export const getLocaleToUse = (
   if (!locale) {
     return "en";
   }
-  const [language, country] = locale.split("-");
+  const [language, country] = locale.split(/[-_]/);
 
   const normalizedLanguage = language.toLowerCase();
   const normalizedCountry = country?.toUpperCase();
@@ -118,3 +122,17 @@ export const getLocaleToUse = (
 
   return "en";
 };
+
+/**
+ * In static embeddings/public links, there is no user locale, since there is no user in static embeddings/public links.
+ * But we reset the locale to the site locale when `withInstanceLanguage` is called. This breaks static embeddings/public links
+ * since they don't have a user locale. So this function is for them to set the locale from a URL hash as the user locale,
+ * then the translation on some part of FE still works even after `withInstanceLanguage` is called.
+ */
+export function setUserLocale(
+  translationsObject: LocaleDataWithLanguage,
+): void {
+  if (!isEmbeddingSdk()) {
+    window.MetabaseUserLocalization = translationsObject;
+  }
+}

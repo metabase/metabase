@@ -1,5 +1,5 @@
 (ns metabase-enterprise.metabot.task.ai-usage-trimmer
-  "Scheduled task to delete old ai_usage_log rows (older than 3 months)."
+  "Scheduled task to delete old ai_usage_log rows (older than 6 months)."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
@@ -16,7 +16,7 @@
 (def ^:private trimmer-job-key (jobs/key "metabase.task.metabot.ai-usage-trimmer.job"))
 (def ^:private trimmer-trigger-key (triggers/key "metabase.task.metabot.ai-usage-trimmer.trigger"))
 
-(def ^:private retention-months 3)
+(def ^:private retention-months 6)
 
 (defn- trim-old-usage-data!
   []

@@ -32,4 +32,6 @@ export interface EntitiesState {
   snippets: Record<string, NormalizedNativeQuerySnippet>;
   questions: Record<string, NormalizedCard>;
   groups: Record<string, NormalizedGroup>;
+
+  [key: `${string}_list`]: unknown;
 }

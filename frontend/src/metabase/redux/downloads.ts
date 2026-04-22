@@ -8,6 +8,7 @@ import {
 import { t } from "ttag";
 import _ from "underscore";
 
+import { exportFormatPng } from "metabase/common/types/export";
 import { waitUntilNextFramePainted } from "metabase/common/utils/wait-until-next-frame-paints";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
@@ -227,7 +228,7 @@ export const downloadQueryResults = createAsyncThunk(
       exportType: opts.type,
     });
 
-    if (opts.type === Urls.exportFormatPng) {
+    if (opts.type === exportFormatPng) {
       await dispatch(downloadToImage({ opts, id: Date.now() }));
     } else {
       await dispatch(downloadDataset({ opts, id: Date.now() }));

@@ -3,6 +3,7 @@
   (:require
    [metabase.metabot.provider-util]
    [metabase.metabot.scope]
+   [metabase.metabot.search-models]
    [metabase.metabot.usage]
    [potemkin :as p]))
 
@@ -11,12 +12,14 @@
   metabase-provider?
   provider-and-model->provider]
  [metabase.metabot.scope
-  agent-database-read
   agent-metric-read
   agent-query-construct
   agent-query-execute
   agent-search
-  agent-table-read])
+  agent-table-read]
+ [metabase.metabot.search-models
+  entity-type->search-model
+  search-model->entity-type])
 
 (p/import-vars
  [metabase.metabot.usage

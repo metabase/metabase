@@ -157,7 +157,8 @@
   {:team    "Metabot"
    :api     #{metabase.agent-api.api
               metabase.agent-api.init}
-   :uses    #{api
+   :uses    #{agent-lib
+              api
               auth-identity
               lib
               llm
@@ -168,6 +169,12 @@
               settings
               util}
    :model-imports #{:model/User}}
+
+  agent-lib
+  {:team "Metabot"
+   :api  #{metabase.agent-lib.core}
+   :uses #{lib
+           util}}
 
   analytics
   {:team "UX West"
@@ -562,8 +569,7 @@
                     :model/Table
                     :model/Timeline
                     :model/Transform
-                    :model/User
-                    :model/Workspace}}
+                    :model/User}}
 
   collections-rest
   {:team "UX West"
@@ -787,7 +793,6 @@
            metabase.driver.common.parameters
            metabase.driver.common.parameters.parse
            metabase.driver.connection
-           metabase.driver.connection.workspaces
            metabase.driver.ddl.interface
            metabase.driver.h2
            metabase.driver.impl
@@ -1009,9 +1014,9 @@
   {:team "UX West"
    :api  #{metabase.internal-stats.core}
    :uses #{app-db
-           models
-           util}
-   :model-imports #{:model/Card
+           models}
+   :model-imports #{:model/AiUsageLog
+                    :model/Card
                     :model/Dashboard
                     :model/MetabotMessage
                     :model/QueryExecution
@@ -1063,7 +1068,8 @@
            legacy-mbql
            types
            util}
-   :friends #{legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
+   :friends #{agent-lib           ;; Structured MBQL builder; needs direct access to a few lib internals.
+              legacy-mbql         ;; Reuses internal schemas and a few helper functions. Deeply coupled to MBQL.
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
@@ -1105,7 +1111,8 @@
   {:team "Metabot"
    :api  #{metabase.llm.api
            metabase.llm.init
-           metabase.llm.settings}
+           metabase.llm.settings
+           metabase.llm.startup}
    :uses #{analytics
            api
            driver
@@ -1113,6 +1120,7 @@
            lib-be
            metabot
            models
+           premium-features
            request
            settings
            sql-tools
@@ -1191,6 +1199,7 @@
               enterprise/metabot
               slackbot}
    :uses    #{activity-feed
+              agent-lib
               analytics
               api
               api-scope
@@ -2230,8 +2239,7 @@
            util
            warehouse-schema}
    :friends #{models
-              enterprise/transforms-python
-              enterprise/workspaces}
+              enterprise/transforms-python}
    :model-exports #{:model/Transform
                     :model/TransformJob
                     :model/TransformJobTransformTag
@@ -2252,11 +2260,11 @@
    ;; :model/TransformRun directly. Remove once the module is agnostic to global
    ;; versus workspace transforms. See https://linear.app/metabase/issue/BOT-1143
    :model-imports #{:model/Database
-                    :model/DatabaseRouter
                     :model/Table
                     :model/Transform
                     :model/TransformRun}
-   :uses #{driver
+   :uses #{database-routing
+           driver
            events
            lib
            lib-be
@@ -2265,8 +2273,7 @@
            util
            warehouse-schema}
    :friends #{transforms
-              enterprise/transforms-python
-              enterprise/workspaces}}
+              enterprise/transforms-python}}
 
   transforms-inspector
   {:team "Gadget"
@@ -2288,8 +2295,7 @@
                     :model/TransformJob
                     :model/TransformJobTransformTag
                     :model/TransformRun
-                    :model/TransformTag
-                    :model/WorkspaceMergeTransform}}
+                    :model/TransformTag}}
 
   types
   {:team "Querying Platform"
@@ -2536,6 +2542,7 @@
            request
            sample-data
            secrets
+           server
            settings
            sync
            upload
@@ -2547,11 +2554,8 @@
                     :model/Collection
                     :model/Database
                     :model/Field
+                    :model/FieldValues
                     :model/Table}}
-
-  workspaces
-  {:team "Metabot"
-   :uses #{util}}
 
   xrays
   {:team "Graphy"
@@ -2752,8 +2756,10 @@
   {:team "Graphy"
    ;; todo: add ability to prevent usage (transitive even) of app db
    :api  #{}
-   :uses #{lib
+   :uses #{classloader
+           lib
            models
+           plugins
            query-processor
            sql-tools
            util
@@ -2884,7 +2890,6 @@
            transforms
            transforms-base
            util}
-   :model-exports #{:model/Dependency}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3180,7 +3185,7 @@
            task
            tracing
            util}
-   :model-imports #{:model/Card :model/Collection :model/ModelIndex}}
+   :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 
   enterprise/serialization
   {:team "Graphy"
@@ -3311,8 +3316,7 @@
   {:team "Graphy"
    :api  #{metabase-enterprise.transforms-python.api
            metabase-enterprise.transforms-python.core
-           metabase-enterprise.transforms-python.init
-           metabase-enterprise.transforms-python.python-runner}
+           metabase-enterprise.transforms-python.init}
    :uses #{analytics
            api
            app-db
@@ -3346,37 +3350,8 @@
 
   enterprise/workspaces
   {:team "Metabot"
-   :api  #{metabase-enterprise.workspaces.api
-           metabase-enterprise.workspaces.init}
-   :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
-   :uses #{api
-           api-scope
-           app-db
-           config
-           database-routing
-           driver
-           events
-           lib
-           lib-be
-           models
-           premium-features
-           queries
-           ;; NOTE: we will remove this once we get "pure transforms" module.
-           query-processor
-           request
-           settings
-           sql-tools
-           transforms
-           transforms-base
-           util
-           warehouse-schema
-           enterprise/transforms-python}
-   :model-imports #{:model/Collection
-                    :model/Database
-                    :model/Dependency
-                    :model/Field
-                    :model/Table
-                    :model/Transform}}
+   :api  #{}
+   :uses #{premium-features}}
 
   enterprise/writable-connection
   {:team "Graphy"
