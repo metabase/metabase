@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.api-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.workspaces.core :as ws-core]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -378,3 +379,21 @@
 (deftest get-table-remappings-requires-superuser-test
   (testing "Non-superusers get 403 from GET /ee/workspace/remappings"
     (mt/user-http-request :rasta :get 403 "ee/workspace/remappings")))
+
+(deftest get-current-returns-config-test
+  (testing "GET /ee/workspace/current returns whatever core/get-config returns"
+    (let [cfg {:name      "github"
+               :databases {2 {:name          "Analytics Data Warehouse"
+                              :input_schemas ["raw_github"]
+                              :output_schema "mb__isolation_754bd_github"}}}]
+      (with-redefs [ws-core/get-config (constantly cfg)]
+        (is (= cfg (mt/user-http-request :crowberto :get 200 "ee/workspace/current")))))))
+
+(deftest get-current-returns-nil-when-no-config-test
+  (testing "GET /ee/workspace/current returns 204 (empty body) when no workspace is active"
+    (with-redefs [ws-core/get-config (constantly nil)]
+      (is (nil? (mt/user-http-request :crowberto :get 204 "ee/workspace/current"))))))
+
+(deftest get-current-requires-superuser-test
+  (testing "Non-superusers get 403 from GET /ee/workspace/current"
+    (mt/user-http-request :rasta :get 403 "ee/workspace/current")))

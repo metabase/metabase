@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.api
   (:require
    [metabase-enterprise.workspaces.config :as config]
+   [metabase-enterprise.workspaces.core :as ws-core]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.api.common :as api]
@@ -68,6 +69,12 @@
   []
   (api/check-superuser)
   (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
+
+(api.macros/defendpoint :get "/current"
+  "Return the currently active workspace config (or null if no workspace is active)."
+  []
+  (api/check-superuser)
+  (ws-core/get-config))
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."
