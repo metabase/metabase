@@ -116,6 +116,8 @@ Click **Regenerate suggested prompts** to generate a fresh set of prompts. You c
 
 ## MCP server settings
 
+_Admin > AI > AI settings_
+
 Use the **MCP server** toggle to turn external access to the [MCP server](./mcp.md) on or off.
 
 ### Supported MCP clients
