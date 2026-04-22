@@ -116,7 +116,7 @@
     (select-keys
      field
      [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id
-      :position]))))
+      :position :dimension_interestingness]))))
 
 (defn- card-with-native-query [card-name & {:as kvs}]
   (merge
