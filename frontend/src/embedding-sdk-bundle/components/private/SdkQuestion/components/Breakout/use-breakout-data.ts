@@ -24,9 +24,7 @@ export const useBreakoutData = (): SDKBreakoutItem[] => {
   const question = interactiveQuestionContext.question as Question;
   const onQueryChange = (nextQuery: Lib.Query) => {
     if (question) {
-      updateQuestion(question.setQuery(Lib.dropEmptyStages(nextQuery)), {
-        run: true,
-      });
+      updateQuestion(question.setQuery(nextQuery), { run: true });
     }
   };
 

@@ -6,7 +6,7 @@ import {
 } from "metabase/query_builder/hooks";
 import { BreakoutPopover } from "metabase/querying/notebook/components/BreakoutStep";
 import { Button, Divider, Icon, Stack } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../../context";
 import type { SDKBreakoutItem } from "../use-breakout-data";
@@ -80,9 +80,7 @@ export const BreakoutPicker = ({
 
   const onQueryChange = (nextQuery: Lib.Query) => {
     if (question) {
-      updateQuestion(question.setQuery(Lib.dropEmptyStages(nextQuery)), {
-        run: true,
-      });
+      updateQuestion(question.setQuery(nextQuery), { run: true });
     }
   };
 

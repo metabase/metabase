@@ -32,9 +32,7 @@ export const SummarizePicker = ({
 
   const query = question.query();
   const onQueryChange = (newQuery: Lib.Query) => {
-    updateQuestion(question.setQuery(Lib.dropEmptyStages(newQuery)), {
-      run: true,
-    });
+    updateQuestion(question.setQuery(newQuery), { run: true });
   };
 
   return (
