@@ -8,6 +8,12 @@ import {
   utf8_to_b64,
   utf8_to_b64url,
 } from "metabase/utils/encoding";
+import type {
+  Card,
+  StructuredDatasetQuery,
+  UnsavedCard,
+  VisualizationDisplay,
+} from "metabase-types/api";
 
 const CARD_ID = 31;
 
@@ -19,8 +25,16 @@ const getCard = ({
   database = 1,
   display = "table",
   queryFields = {},
-  table = undefined,
-}) => {
+  table,
+}: {
+  newCard?: boolean;
+  hasOriginalCard?: boolean;
+  isNative?: boolean;
+  database?: number;
+  display?: VisualizationDisplay;
+  queryFields?: StructuredDatasetQuery["query"];
+  table?: number;
+} = {}): Card | UnsavedCard => {
   const savedCardFields = {
     name: "Example Saved Question",
     description: "For satisfying your craving for information",
@@ -28,27 +42,26 @@ const getCard = ({
     id: CARD_ID,
   };
 
+  const datasetQuery = isNative
+    ? {
+        database,
+        type: "native" as const,
+        native: { query: "SELECT * FROM ORDERS" },
+      }
+    : {
+        database,
+        type: "query" as const,
+        query: {
+          ...(table ? { "source-table": table } : {}),
+          ...queryFields,
+        },
+      };
+
   return {
     name: null,
-    display: display,
+    display,
     visualization_settings: {},
-    dataset_query: {
-      database: database,
-      type: isNative ? "native" : "query",
-      ...(!isNative
-        ? {
-            query: {
-              ...(table ? { "source-table": table } : {}),
-              ...queryFields,
-            },
-          }
-        : {}),
-      ...(isNative
-        ? {
-            native: { query: "SELECT * FROM ORDERS" },
-          }
-        : {}),
-    },
+    dataset_query: datasetQuery,
     ...(newCard ? {} : savedCardFields),
     ...(hasOriginalCard ? { original_card_id: CARD_ID } : {}),
   };
