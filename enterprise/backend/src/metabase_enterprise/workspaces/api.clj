@@ -11,23 +11,28 @@
   [:enum "uninitialized" "initialized"])
 
 (def ^:private WorkspaceDatabaseParams
-  [:map {:closed true}
-   [:database_id                  ms/PositiveInt]
-   [:database_details             :map]
-   [:output_schema                ms/NonBlankString]
-   [:input_schemas                [:sequential ms/NonBlankString]]
-   [:status          {:optional true} WorkspaceStatus]])
+  [:map
+   [:database_id   ms/PositiveInt]
+   [:input_schemas [:sequential ms/NonBlankString]]])
 
 (def ^:private WorkspaceParams
   [:map {:closed true}
    [:name      ms/NonBlankString]
    [:databases [:sequential WorkspaceDatabaseParams]]])
 
+(defn- sanitize-workspace-database-params
+  "Strip server-controlled fields the client is not allowed to set."
+  [wsd]
+  (select-keys wsd [:database_id :input_schemas]))
+
+(defn- sanitize-workspace-params [params]
+  (update params :databases #(mapv sanitize-workspace-database-params %)))
+
 (def ^:private WorkspaceDatabaseResponse
   [:map
    [:database_id      ms/PositiveInt]
    [:database_details :map]
-   [:output_schema    ms/NonBlankString]
+   [:output_schema    :string]
    [:input_schemas    [:sequential ms/NonBlankString]]
    [:status           WorkspaceStatus]])
 
@@ -65,7 +70,7 @@
    _query-params
    params :- WorkspaceParams]
   (api/check-superuser)
-  (present-workspace (workspace/create-workspace! params)))
+  (present-workspace (workspace/create-workspace! (sanitize-workspace-params params))))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update an existing Workspace. The supplied `:databases` list fully replaces the existing set."
@@ -74,7 +79,7 @@
    params :- WorkspaceParams]
   (api/check-superuser)
   (api/check-404 (workspace/get-workspace id))
-  (present-workspace (workspace/update-workspace! id params)))
+  (present-workspace (workspace/update-workspace! id (sanitize-workspace-params params))))
 
 (api.macros/defendpoint :post "/:id/initialize"
   :- [:map [:workspace_id ms/PositiveInt] [:triggered ms/IntGreaterThanOrEqualToZero]]

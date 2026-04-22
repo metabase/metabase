@@ -35,6 +35,14 @@
   (when-let [ws (t2/select-one :model/Workspace :id id)]
     (t2/hydrate ws :databases)))
 
+(defn- with-workspace-database-defaults
+  "Fill server-managed columns that are NOT NULL in the DB with their defaults when callers omit them."
+  [wsd workspace-id]
+  (merge {:database_details {}
+          :output_schema    ""}
+         wsd
+         {:workspace_id workspace-id}))
+
 (defn create-workspace!
   "Create a Workspace and its nested WorkspaceDatabase rows in a single transaction.
   Returns the created Workspace with `:databases` hydrated."
@@ -43,7 +51,7 @@
     (let [ws-id (t2/insert-returning-pk! :model/Workspace {:name name})]
       (when (seq databases)
         (t2/insert! :model/WorkspaceDatabase
-                    (map #(assoc % :workspace_id ws-id) databases)))
+                    (map #(with-workspace-database-defaults % ws-id) databases)))
       (get-workspace ws-id))))
 
 (defn update-workspace!
@@ -55,5 +63,5 @@
     (t2/delete! :model/WorkspaceDatabase :workspace_id id)
     (when (seq databases)
       (t2/insert! :model/WorkspaceDatabase
-                  (map #(assoc % :workspace_id id) databases)))
+                  (map #(with-workspace-database-defaults % id) databases)))
     (get-workspace id)))
