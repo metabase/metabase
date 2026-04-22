@@ -57,6 +57,7 @@ export const {
   addUserMessage,
   setIsProcessing,
   setNavigateToPath,
+  setPendingMessageExternalId,
   setProfileOverride,
   toolCallStart,
   toolCallEnd,
@@ -434,6 +435,14 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(addAgentMessage({ ...message, agentId }));
               })
               .exhaustive();
+          },
+          onStartMessagePart: function handleStartMessagePart(part) {
+            dispatch(
+              setPendingMessageExternalId({
+                agentId,
+                externalId: part.messageId,
+              }),
+            );
           },
           onTextPart: function handleTextPart(part) {
             dispatch(addAgentTextDelta({ agentId, text: String(part) }));

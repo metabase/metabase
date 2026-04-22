@@ -154,8 +154,15 @@ export const AgentMessage = ({
   hideActions,
   ...props
 }: AgentMessageProps) => {
+  const messageId = message.type === "text" ? (message.externalId ?? "") : "";
+  const canGiveFeedback = !!(
+    showFeedbackButtons &&
+    setFeedbackMessage &&
+    messageId
+  );
+
   return (
-    <MessageContainer chatRole={message.role} {...props}>
+    <MessageContainer chatRole={message.role} id={messageId} {...props}>
       {message.type === "text" && (
         <AIMarkdown
           className={Styles.message}
@@ -185,7 +192,7 @@ export const AgentMessage = ({
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
             </Tooltip>
-            {showFeedbackButtons && setFeedbackMessage && (
+            {canGiveFeedback && (
               <>
                 <Tooltip label={t`Give positive feedback`}>
                   <FeedbackButton
@@ -194,10 +201,7 @@ export const AgentMessage = ({
                     hasBeenClicked={submittedFeedback === "positive"}
                     disabled={!!submittedFeedback}
                     onClick={() =>
-                      setFeedbackMessage({
-                        messageId: message.id,
-                        positive: true,
-                      })
+                      setFeedbackMessage({ messageId, positive: true })
                     }
                   />
                 </Tooltip>
@@ -208,10 +212,7 @@ export const AgentMessage = ({
                     hasBeenClicked={submittedFeedback === "negative"}
                     disabled={!!submittedFeedback}
                     onClick={() =>
-                      setFeedbackMessage({
-                        messageId: message.id,
-                        positive: false,
-                      })
+                      setFeedbackMessage({ messageId, positive: false })
                     }
                   />
                 </Tooltip>
@@ -333,7 +334,7 @@ export const Messages = ({
   const [submitMetabotFeedback] = useSubmitMetabotFeedbackMutation();
 
   const submitFeedback = async (metabotFeedback: MetabotFeedback) => {
-    const { message_id, positive } = metabotFeedback.feedback;
+    const { message_id, positive } = metabotFeedback;
 
     try {
       await submitMetabotFeedback(metabotFeedback).unwrap();
@@ -386,7 +387,11 @@ export const Messages = ({
             onCopy={onAgentMessageCopy}
             showFeedbackButtons={showFeedbackButtons}
             setFeedbackMessage={setFeedbackModal}
-            submittedFeedback={feedbackState.submitted[message.id]}
+            submittedFeedback={
+              message.type === "text" && message.externalId
+                ? feedbackState.submitted[message.externalId]
+                : undefined
+            }
             hideActions={
               isDoingScience || messages[index + 1]?.role === "agent"
             }

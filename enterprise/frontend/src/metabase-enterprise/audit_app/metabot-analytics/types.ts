@@ -1,5 +1,5 @@
 import type { MetabotChatMessage } from "metabase/metabot/state";
-import type { DatasetQuery } from "metabase-types/api";
+import type { DatasetQuery, MetabotFeedback } from "metabase-types/api";
 
 export type MetabotUserInfo = {
   id: number;
@@ -57,6 +57,10 @@ export type GeneratedQuery = {
   tables: string[];
 };
 
+export type ConversationFeedback = MetabotFeedback & {
+  external_id: string | null;
+};
+
 export type ConversationDetail = {
   conversation_id: string;
   created_at: string;
@@ -71,4 +75,5 @@ export type ConversationDetail = {
   search_count: number;
   query_count: number;
   ip_address: string | null;
+  feedback: ConversationFeedback[];
 };

@@ -63,6 +63,7 @@ export const createConversation = (
     state: {},
     activeToolCalls: [],
     profileOverride: undefined,
+    pendingMessageExternalId: undefined,
     ...overrides,
     conversationId: overrides?.conversationId ?? uuid(),
     experimental: {

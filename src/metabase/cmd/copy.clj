@@ -133,6 +133,7 @@
     :model/Metabot
     :model/MetabotConversation
     :model/MetabotMessage
+    :model/MetabotFeedback
     :model/MetabotPrompt]
    (when config/ee-available?
      [:model/MetabotPermissions
@@ -373,6 +374,7 @@
     :model/FieldUserSettings
     :model/QueryAction
     :model/MetabotConversation
+    :model/MetabotFeedback
     :model/ModelIndexValue})
 
 (defmulti ^:private postgres-id-sequence-name

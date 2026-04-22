@@ -9,11 +9,13 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
+import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Anchor,
+  Badge,
   Box,
   Button,
   Card,
@@ -32,7 +34,7 @@ import { getUrl as ML_getUrl } from "metabase-lib/v1/urls";
 import type { DatasetQuery } from "metabase-types/api";
 
 import { useGetMetabotConversationQuery } from "../../api";
-import type { GeneratedQuery } from "../../types";
+import type { ConversationFeedback, GeneratedQuery } from "../../types";
 
 type StatCardProps = {
   label: string;
@@ -82,6 +84,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   const queryCount = conversation.query_count ?? 0;
   const firstModel = conversation.model ?? undefined;
   const queries = conversation.queries ?? [];
+  const feedback = conversation.feedback ?? [];
 
   return (
     <MetabotAdminLayout>
@@ -131,12 +134,6 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               )}
             </Flex>
           </Stack>
-          {/* <Card withBorder shadow="none" bg="transparent" py="xs" px="sm">
-            <Flex gap="sm" align="center">
-              <Text size="md" c="text-primary">{t`User rating`}</Text>
-              <Icon name="thumbs_up" size={18} c="text-tertiary" />
-            </Flex>
-          </Card> */}
         </Flex>
 
         <SimpleGrid cols={4}>
@@ -148,6 +145,17 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           <StatCard label={t`Queries run`} value={String(queryCount)} />
           <StatCard label={t`Searches`} value={String(searchCount)} />
         </SimpleGrid>
+
+        {feedback.length > 0 && (
+          <Box>
+            <Title order={4}>{t`Feedback`}</Title>
+            <Stack mt="sm" gap="sm">
+              {feedback.map((item) => (
+                <FeedbackCard key={item.message_id} feedback={item} />
+              ))}
+            </Stack>
+          </Box>
+        )}
 
         <Box>
           <Title order={4}>{t`Conversation`}</Title>
@@ -175,6 +183,53 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
         )}
       </Stack>
     </MetabotAdminLayout>
+  );
+}
+
+function FeedbackCard({ feedback }: { feedback: ConversationFeedback }) {
+  const jumpToMessage = () => {
+    const el =
+      feedback.external_id && document.getElementById(feedback.external_id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
+  return (
+    <Card withBorder shadow="none" p="md">
+      <Stack gap="sm">
+        <Flex justify="space-between" align="center" gap="sm" wrap="wrap">
+          <Flex gap="xs" align="center">
+            <Icon
+              name={feedback.positive ? "thumbs_up" : "thumbs_down"}
+              size={20}
+              c="text-secondary"
+            />
+            <Text fw={700}>
+              {feedback.positive ? t`Positive` : t`Negative`}
+            </Text>
+            {!feedback.positive && feedback.issue_type && (
+              <Badge variant="light" bg="background-error" c="error" ml="xs">
+                {getIssueTypeLabel(feedback.issue_type)}
+              </Badge>
+            )}
+          </Flex>
+          {feedback.external_id && (
+            <Anchor
+              component="button"
+              type="button"
+              size="sm"
+              onClick={jumpToMessage}
+            >
+              {t`Jump to message`}
+            </Anchor>
+          )}
+        </Flex>
+        {feedback.freeform_feedback && (
+          <Text>{feedback.freeform_feedback}</Text>
+        )}
+      </Stack>
+    </Card>
   );
 }
 

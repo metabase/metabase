@@ -51,3 +51,7 @@ export const finishPartSchema = Yup.object({
     ])
     .required(),
 });
+
+export const startPartSchema = Yup.object({
+  messageId: Yup.string().required(),
+});

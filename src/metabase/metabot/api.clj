@@ -78,6 +78,7 @@
                  :usage           (:usage finish)
                  :role            (:role (first messages))
                  :profile_id      profile-id
+                 :external_id     (str (random-uuid))
                  :total_tokens    (->> (vals (:usage finish))
                                        ;; NOTE: this filter is supporting backward-compatible usage format, can be
                                        ;; removed when ai-service does not give us `completionTokens` in `usage`
@@ -140,7 +141,7 @@
   avoiding the intermediate 'aisdk messages' format.
 
   Parts format: [{:type :text :text \"...\"} {:type :tool-input ...} ...]"
-  [conversation-id profile-id ip-address embed-url parts]
+  [conversation-id profile-id ip-address embed-url external-id parts]
   (let [state-part (u/seek #(and (= :data (:type %))
                                  (= "state" (:data-type %)))
                            parts)
@@ -168,6 +169,7 @@
                    :usage           usage
                    :role            :assistant
                    :profile_id      profile-id
+                   :external_id     external-id
                    :total_tokens    (->> (vals usage)
                                          (map #(+ (:prompt %) (:completion %)))
                                          (reduce + 0))
@@ -224,13 +226,14 @@
   part at the end of the stream with full LLM request/response data per iteration."
   [{:keys [metabot-id profile-id message context history conversation-id state debug? ip-address embed-url]}]
   (let [enriched-context (metabot.context/create-context context)
-        messages         (concat history [message])]
+        messages         (concat history [message])
+        external-id      (str (random-uuid))]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
-            ;; Compose: collect parts AND convert to lines for streaming.
             ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
             xf         (comp (u/tee-xf parts-atom)
-                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?}))]
+                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
+                                                       :external-id external-id}))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan)
@@ -245,8 +248,13 @@
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))
           (finally
-            (store-native-parts! conversation-id profile-id ip-address embed-url
-                                 (into [] (combine-text-parts-xf) @parts-atom))))))))
+            (try
+              (store-native-parts! conversation-id profile-id ip-address embed-url external-id
+                                   (into [] (combine-text-parts-xf) @parts-atom))
+              (catch Exception e
+                (log/error e "Failed to persist native agent parts"
+                           {:conversation-id conversation-id
+                            :external-id     external-id})))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
@@ -326,18 +334,24 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/feedback"
-  "Proxy Metabot feedback to Harbormaster, adding the premium embedding token."
+  "Persist Metabot feedback locally and proxy it to Harbormaster."
   [_route-params
    _query-params
-   feedback :- :map]
+   body :- [:map
+            [:metabot_id        ms/PositiveInt]
+            [:message_id        ms/NonBlankString]
+            [:positive          :boolean]
+            [:issue_type        {:optional true} [:maybe :string]]
+            [:freeform_feedback {:optional true} [:maybe :string]]]]
   (metabot.config/check-metabot-enabled!)
-  (try
-    (api/check-400 (metabot.feedback/submit-to-harbormaster! feedback)
-                   "Cannot submit feedback. The license token and/or Store API URL are missing!")
-    api/generic-204-no-content
-    (catch Exception e
-      (log/error e "Failed to submit feedback to Harbormaster")
-      (throw e))))
+  (let [message (metabot.feedback/persist-feedback! body)]
+    (try
+      (api/check-400 (metabot.feedback/submit-to-harbormaster!
+                      (metabot.feedback/harbormaster-payload body message))
+                     "Cannot submit feedback. The license token and/or Store API URL are missing!")
+      (catch Exception e
+        (log/error "Failed to submit feedback to Harbormaster: " (ex-message e)))))
+  api/generic-204-no-content)
 
 (def ^:private metabot-provider-schema
   (into [:enum] metabot.settings/supported-metabot-providers))

@@ -31,6 +31,7 @@
                                       :usage           (:usage finish)
                                       :role            (:role (first messages))
                                       :profile_id      profile-id
+                                      :external_id     (str (random-uuid))
                                       :total_tokens    (->> (vals (:usage finish))
                                                             ;; NOTE: this filter is supporting backward-compatible usage format, can be
                                                             ;; removed when ai-service does not give us `completionTokens` in `usage`
@@ -52,8 +53,12 @@
 
 (defn- convert-content-block
   "Convert a single raw content block from `:data` into a frontend `MetabotChatMessage` map.
-   Returns nil for blocks that should be skipped (tool-output, unknown types)."
-  [block]
+   Returns nil for blocks that should be skipped (tool-output, unknown types).
+
+   `external-id` (the parent row's `metabot_message.external_id`) is attached to
+   agent-text chat messages as `:externalId` — the stable key for feedback; the
+   per-block `:id` stays unique."
+  [external-id block]
   (let [block-type (:type block)
         block-role (:role block)]
     (cond
@@ -63,11 +68,19 @@
 
       ;; Assistant text (standard): {:type "text" :text "..."}
       (= "text" block-type)
-      {:id (or (:id block) (str (random-uuid))) :role "agent" :type "text" :message (:text block)}
+      (cond-> {:id (or (:id block) (str (random-uuid)))
+               :role "agent"
+               :type "text"
+               :message (:text block)}
+        external-id (assoc :externalId external-id))
 
       ;; Assistant text (slack format): {:role "assistant" :_type "TEXT" :content "..."}
       (and (= "assistant" block-role) (= "TEXT" (:_type block)))
-      {:id (str (random-uuid)) :role "agent" :type "text" :message (:content block)}
+      (cond-> {:id (str (random-uuid))
+               :role "agent"
+               :type "text"
+               :message (:content block)}
+        external-id (assoc :externalId external-id))
 
       ;; Tool input: {:type "tool-input" :id "..." :function "..." :arguments {...}}
       (= "tool-input" block-type)
@@ -101,11 +114,28 @@
   "Convert a single `MetabotMessage` model instance into a seq of `MetabotChatMessage` maps.
    Each message's `:data` (vector of content blocks) is flattened into typed chat messages."
   [message]
-  (let [blocks    (or (:data message) [])
-        chat-msgs (into [] (keep convert-content-block) blocks)]
+  (let [blocks       (or (:data message) [])
+        external-id  (:external_id message)
+        chat-msgs    (into [] (keep #(convert-content-block external-id %)) blocks)]
     (merge-tool-results chat-msgs blocks)))
 
 (defn messages->chat-messages
   "Convert a seq of `MetabotMessage` model instances into a flat `MetabotChatMessage` vector."
   [messages]
   (into [] (mapcat message->chat-messages) messages))
+
+(defn conversation-detail
+  "Reconstruct a conversation-with-chat-messages snapshot from the DB. Returns nil if the
+   conversation does not exist."
+  [conversation-id]
+  (when-let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
+    (let [messages (t2/select :model/MetabotMessage
+                              {:where    [:and
+                                          [:= :conversation_id conversation-id]
+                                          [:= :deleted_at nil]]
+                               :order-by [[:created_at :asc]]})]
+      {:conversation_id (:id conversation)
+       :created_at      (:created_at conversation)
+       :summary         (:summary conversation)
+       :user_id         (:user_id conversation)
+       :chat_messages   (messages->chat-messages messages)})))

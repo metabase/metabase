@@ -128,9 +128,29 @@
   [{:keys [slack_channel_id slack_thread_ts]}]
   (slackbot.api/conversation-permalink slack_channel_id slack_thread_ts))
 
+(defn- fetch-conversation-feedback
+  "Return all `metabot_feedback` rows for messages in `conversation-id`, ordered by submission time.
+   The submitter is always the conversation owner (enforced at write), so we don't hydrate a
+   per-row user — callers already know the conversation's user from the detail response."
+  [conversation-id]
+  (t2/select :model/MetabotFeedback
+             {:select   [:metabot_feedback.message_id
+                         [:mm.external_id :external_id]
+                         :metabot_feedback.positive
+                         :metabot_feedback.issue_type
+                         :metabot_feedback.freeform_feedback
+                         :metabot_feedback.created_at
+                         :metabot_feedback.updated_at]
+              :from     [:metabot_feedback]
+              :join     [[:metabot_message :mm]
+                         [:= :mm.id :metabot_feedback.message_id]]
+              :where    [:= :mm.conversation_id conversation-id]
+              :order-by [[:metabot_feedback.created_at :asc]
+                         [:metabot_feedback.message_id :asc]]}))
+
 (defn fetch-conversation-detail
   "Fetch a conversation with its user info, the frontend-ready flattened
-   chat messages, and the queries the bot generated during the conversation.
+   chat messages, the queries the bot generated, and any user-submitted feedback.
    404s via `api/check-404` if no conversation matches `conversation-id`."
   [conversation-id]
   (let [conversation (t2/select-one :model/MetabotConversation :id conversation-id)]
@@ -146,8 +166,8 @@
        :user            (trim-user (:user hydrated))
        :message_count   (count messages)
        :total_tokens    (transduce (keep :total_tokens) + 0 messages)
-       ;; Only assistant messages carry a real `profile_id`; user-message
-       ;; rows use a placeholder that shouldn't be surfaced as the "model".
+       ;; only assistant messages carry a real `profile_id`; user-message rows
+       ;; use a placeholder that shouldn't be surfaced as the "model"
        :model           (some #(when (= :assistant (:role %)) (:profile_id %)) messages)
        :slack_permalink (slack-permalink conversation)
        :chat_messages   (metabot-persistence/messages->chat-messages messages)
@@ -155,4 +175,5 @@
        :search_count    (analytics.queries/count-tool-invocations messages "search")
        :query_count     (analytics.queries/count-tool-invocations
                          messages analytics.queries/new-query-tool-names)
-       :ip_address      (:ip_address conversation)})))
+       :ip_address      (:ip_address conversation)
+       :feedback        (fetch-conversation-feedback conversation-id)})))
