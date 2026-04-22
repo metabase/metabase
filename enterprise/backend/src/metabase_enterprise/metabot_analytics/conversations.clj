@@ -166,7 +166,7 @@
        :user            (trim-user (:user hydrated))
        :message_count   (count messages)
        :total_tokens    (transduce (keep :total_tokens) + 0 messages)
-       :profile_id      (some :profile_id messages)
+       :profile_id      (some #(when (= :assistant (:role %)) (:profile_id %)) messages)
        :slack_permalink (slack-permalink conversation)
        :chat_messages   (metabot-persistence/messages->chat-messages messages)
        :queries         (analytics.queries/messages->generated-queries messages)
