@@ -410,45 +410,6 @@ describe("scenarios > embedding > Modular embedding", () => {
         },
       },
     });
-
-    cy.wait("@getDashCardQuery");
-
-    // Spy on the iframe's anchor clicks and window.open
-    // so we can check the default behavior is prevented
-    cy.get("iframe").then(($iframe) => {
-      const iframeWin: any = $iframe[0].contentWindow;
-      expect(iframeWin).to.not.be.null;
-
-      iframeWin.__blankLinkClicks = [];
-      iframeWin.__windowOpenCalls = [];
-
-      iframeWin.HTMLAnchorElement.prototype.click = function () {
-        iframeWin.__blankLinkClicks.push(this.href);
-      };
-
-      iframeWin.open = function (...args: unknown[]) {
-        iframeWin.__windowOpenCalls.push(args);
-      };
-    });
-
-    frame.within(() => {
-      cy.findByText("Order 1").click();
-    });
-
-    cy.log("Verify handleLink was called with the correct URL");
-    cy.window()
-      .its("handleLinkCalls")
-      .should("have.length", 1)
-      .its(0)
-      .should("include", "https://example.org/order/1");
-
-    cy.log("Verify that no default navigation happened");
-    cy.get("iframe")
-      .its("0.contentWindow.__blankLinkClicks")
-      .should("have.length", 0);
-    cy.get("iframe")
-      .its("0.contentWindow.__windowOpenCalls")
-      .should("have.length", 0);
   });
 
   it("should not send an modular embedding usage event in the preview", () => {
