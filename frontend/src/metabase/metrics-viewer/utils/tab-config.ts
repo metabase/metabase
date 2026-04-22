@@ -266,16 +266,16 @@ function getScalarSettings({
     if (!definition.definition) {
       return settings;
     }
-    let label = getDefinitionName(definition.definition);
+    const label = getDefinitionName(definition.definition);
     if (!label) {
       return settings;
     }
+    settings["scalar.label"] = label;
     if (breakoutValue) {
       // scalars don't have a dimension, so the breakout column is the first column
       const breakoutColumnName = cols[0].display_name;
-      label += `\n${breakoutColumnName}: ${breakoutValue}`;
+      settings["scalar.sublabel"] = `${breakoutColumnName}: ${breakoutValue}`;
     }
-    settings["scalar.label"] = label;
   }
   return settings;
 }

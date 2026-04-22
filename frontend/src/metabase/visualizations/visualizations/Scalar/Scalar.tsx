@@ -122,6 +122,11 @@ export class Scalar extends Component<
       hidden: true,
       getDefault: () => undefined,
     },
+    // used by metrics viewer
+    "scalar.sublabel": {
+      hidden: true,
+      getDefault: () => undefined,
+    },
     // LEGACY scalar settings, now handled by column level settings
     "scalar.locale": {
       // title: t`Separator style`,
@@ -220,6 +225,7 @@ export class Scalar extends Component<
     );
 
     const label = settings["scalar.label"];
+    const sublabel = settings["scalar.sublabel"];
     const isMetricsViewer = label !== undefined;
 
     const isClickable = onVisualizationClick != null && !isMetricsViewer;
@@ -265,7 +271,7 @@ export class Scalar extends Component<
               onClick={handleClick}
               ref={(scalar) => (this._scalar = scalar)}
               align="center"
-              gap="xs"
+              gap={0}
             >
               <ScalarValue
                 color={color}
@@ -278,8 +284,19 @@ export class Scalar extends Component<
                 width={Math.max(width - PADDING, 0)}
               />
               {label && (
-                <Text fz={16} ta="center" style={{ whiteSpace: "pre-wrap" }}>
+                <Text fz="14px" lh="16px" c="text-primary" mt="md" ta="center">
                   {label}
+                </Text>
+              )}
+              {sublabel && (
+                <Text
+                  fz="12px"
+                  lh="16px"
+                  c="text-secondary"
+                  mt="xs"
+                  ta="center"
+                >
+                  {sublabel}
                 </Text>
               )}
             </Stack>
