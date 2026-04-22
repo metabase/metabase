@@ -1272,11 +1272,20 @@
 
 (deftest ^:parallel fetch-database-metadata-remove-inactive-test
   (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Table    _ {:db_id db-id, :active false}]
-    (testing "GET /api/database/:id/metadata?include_hidden=true"
+                 :model/Table    _ {:db_id db-id, :active false, :name "INACTIVE_TABLE"}
+                 :model/Table    _ {:db_id db-id, :active true, :name "ACTIVE_TABLE"}]
+    (testing "GET /api/database/:id/metadata?remove_inactive=true"
       (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?remove_inactive=true" db-id))
                         :tables)]
-        (is (= () tables))))))
+        (is (= ["ACTIVE_TABLE"] (map :name tables)))))
+    (testing "GET /api/database/:id/metadata?remove_inactive=false"
+      (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata?remove_inactive=false" db-id))
+                        :tables)]
+        (is (= #{"ACTIVE_TABLE" "INACTIVE_TABLE"} (set (map :name tables))))))
+    (testing "GET /api/database/:id/metadata"
+      (let [tables (->> (mt/user-http-request :rasta :get 200 (format "database/%d/metadata" db-id))
+                        :tables)]
+        (is (= #{"ACTIVE_TABLE" "INACTIVE_TABLE"} (set (map :name tables))))))))
 
 (deftest fetch-database-metadata-skip-fields-test
   (mt/with-empty-h2-app-db!

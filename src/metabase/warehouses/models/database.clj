@@ -514,7 +514,7 @@
   "Return the `Tables` associated with this `Database`."
   [{:keys [id]}]
   ;; TODO - do we want to include tables that should be `:hidden`?
-  (t2/select :model/Table :db_id id :active true {:order-by [[:%lower.display_name :asc]]}))
+  (t2/select :model/Table :db_id id {:order-by [[:%lower.display_name :asc]]}))
 
 (methodical/defmethod t2/batched-hydrate [:model/Database :tables]
   "Batch hydrate `Tables` for the given `Database`."
@@ -525,7 +525,6 @@
               ;; TODO - do we want to include tables that should be `:hidden`?
               (t2/select :model/Table
                          :db_id  [:in (map :id databases)]
-                         :active true
                          {:order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
    :id
    {:default []}))
