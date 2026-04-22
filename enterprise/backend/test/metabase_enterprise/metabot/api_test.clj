@@ -69,17 +69,27 @@
                              :message_id (str (random-uuid))
                              :positive   true}))
 
-    (testing "Returns 400 when the premium token is missing"
+    (testing "Persists locally and returns 204 when the premium token is missing (Harbormaster errors are swallowed)"
       (mt/with-temporary-setting-values [store-api-url store-url]
         (with-owned-message!
           (mt/user->id :rasta)
           (fn [external-id]
-            (mt/with-dynamic-fn-redefs
-              [premium-features/premium-embedding-token (constantly nil)]
-              (mt/user-http-request :rasta :post 400 "metabot/feedback"
-                                    {:metabot_id 1
-                                     :message_id external-id
-                                     :positive   true}))))))))
+            (let [posted? (atom false)
+                  message-row-id (t2/select-one-fn :id :model/MetabotMessage :external_id external-id)]
+              (mt/with-dynamic-fn-redefs
+                [premium-features/premium-embedding-token (constantly nil)
+                 http/post (fn [& _] (reset! posted? true))]
+                (mt/user-http-request :rasta :post 204 "metabot/feedback"
+                                      {:metabot_id        1
+                                       :message_id        external-id
+                                       :positive          true
+                                       :freeform_feedback "ok"})
+                (is (false? @posted?)
+                    "Harbormaster must not be contacted when the premium token is missing")
+                (is (= {:positive true :freeform_feedback "ok"}
+                       (t2/select-one [:model/MetabotFeedback :positive :freeform_feedback]
+                                      :message_id message-row-id))
+                    "Local feedback row should still be persisted")))))))))
 
 (deftest usage-get-returns-token-status-usage-test
   (mt/with-premium-features #{:metabot-v3}
