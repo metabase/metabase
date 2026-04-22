@@ -1040,8 +1040,8 @@ describe("issue 8490", () => {
             filter: [
               "between",
               ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
-              "2024-01-01",
-              "2025-01-01",
+              "2027-01-01",
+              "2028-01-01",
             ],
           },
           limit: 100,
@@ -1074,8 +1074,8 @@ describe("issue 8490", () => {
               [
                 "between",
                 ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
-                "2024-10-01",
-                "2024-12-01",
+                "2027-10-01",
+                "2027-12-01",
               ],
               [
                 "=",

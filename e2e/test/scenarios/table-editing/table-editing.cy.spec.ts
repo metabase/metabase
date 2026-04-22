@@ -296,7 +296,7 @@ describe("scenarios > table-editing", () => {
         const minute = Math.floor(Math.random() * 60);
 
         H.popover().within(() => {
-          cy.findByRole("button", { name: `${day} May 2024` }).click();
+          cy.findByRole("button", { name: `${day} May 2027` }).click();
           cy.findAllByRole("spinbutton").eq(0).type(hour.toString());
           cy.findAllByRole("spinbutton").eq(1).type(minute.toString());
           // It's safe to click the last button because we're in the popover
@@ -306,7 +306,7 @@ describe("scenarios > table-editing", () => {
 
         cy.wait("@updateTableData").then(({ response, request }) => {
           const targetDate = dayjs(
-            new Date(2024, 4, day, hour, minute, 0),
+            new Date(2027, 4, day, hour, minute, 0),
           ).format("YYYY-MM-DDTHH:mm:ss");
 
           const requestDate = request.body.params.CREATED_AT;
