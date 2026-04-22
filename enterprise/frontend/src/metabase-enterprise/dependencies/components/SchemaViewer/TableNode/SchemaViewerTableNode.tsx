@@ -1,21 +1,12 @@
 import { type NodeProps, useReactFlow, useStore } from "@xyflow/react";
 import cx from "classnames";
 import { memo, useCallback, useMemo } from "react";
-import { t } from "ttag";
 
-import {
-  ActionIcon,
-  Box,
-  FixedSizeIcon,
-  Group,
-  Icon,
-  Stack,
-  Tooltip,
-} from "metabase/ui";
+import { Box, FixedSizeIcon, Group, Stack } from "metabase/ui";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 
-import { TOOLTIP_OPEN_DELAY_MS } from "../../../constants";
+import { useSchemaViewerContext } from "../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../types";
 import { useZoomToNodes } from "../useZoomToNodes";
 
@@ -35,6 +26,7 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
 }: SchemaViewerTableNodeProps) {
   const { fitView } = useReactFlow<SchemaViewerFlowNode>();
   const zoomToNodes = useZoomToNodes();
+  const { selectedNodeId, onSelectNode } = useSchemaViewerContext();
   // Highlight this node when any edge that touches it is selected. Uses a
   // React Flow store selector (rather than useEdges()) so the node only
   // re-renders when its own connection-selected state actually flips, not
@@ -47,7 +39,9 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
     }
     return false;
   });
-  const isHighlighted = data.is_focal || isConnectedToSelectedEdge;
+  const isUserSelected = selectedNodeId === id;
+  const isHighlighted =
+    data.is_focal || isConnectedToSelectedEdge || isUserSelected;
   const headerColor = isHighlighted ? "brand" : "text-primary";
   const iconColor = ICON_COLORS[Number(data.table_id) % ICON_COLORS.length];
 
@@ -63,6 +57,16 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
       focusedNodeId = id;
     }
   }, [fitView, id, zoomToNodes]);
+
+  const handleHeaderClick = useCallback(
+    (event: React.MouseEvent) => {
+      // Prevent React Flow's default left-click node handling from clearing
+      // the edge selection we manage in SchemaViewer.
+      event.stopPropagation();
+      onSelectNode(id);
+    },
+    [id, onSelectNode],
+  );
 
   // Find PK field IDs that are targets of self-referencing FKs
   const selfRefTargetIds = useMemo(() => {
@@ -81,18 +85,24 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
     return targetIds;
   }, [data.fields]);
 
-  const tableDetailsUrl = `/data-studio/data/database/${data.db_id}/schema/${data.db_id}:${data.schema ?? ""}/table/${data.table_id}`;
-
   return (
     <Stack
       className={cx(S.card, {
         // [S.focal]: data.is_focal,
-        [S.selected]: isConnectedToSelectedEdge,
+        [S.selected]: isConnectedToSelectedEdge || isUserSelected,
       })}
       gap={0}
       onDoubleClick={handleDoubleClick}
     >
-      <Group className={S.header} gap={8} px={16} py={20} wrap="nowrap">
+      <Group
+        className={S.header}
+        gap={8}
+        px={16}
+        py={20}
+        wrap="nowrap"
+        onClick={handleHeaderClick}
+        style={{ cursor: "pointer" }}
+      >
         <FixedSizeIcon name="table2" style={{ color: iconColor }} />
         <Box
           fz={17}
@@ -106,23 +116,6 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
         >
           {data.name}
         </Box>
-        <Tooltip
-          label={t`View table details`}
-          openDelay={TOOLTIP_OPEN_DELAY_MS}
-        >
-          <ActionIcon
-            component="a"
-            href={tableDetailsUrl}
-            target="_blank"
-            className={S.detailsLink}
-            variant="subtle"
-            c="text-tertiary"
-            size="sm"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Icon name="external" size={14} />
-          </ActionIcon>
-        </Tooltip>
       </Group>
       <Box className={S.fields}>
         {data.fields.map((field) => (

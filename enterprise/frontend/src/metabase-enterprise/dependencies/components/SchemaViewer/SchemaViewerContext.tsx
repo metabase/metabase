@@ -13,11 +13,15 @@ interface SchemaViewerContextValue {
      */
     candidateEdgeIdsToSelect?: readonly string[],
   ) => void;
+  selectedNodeId: string | null;
+  onSelectNode: (nodeId: string | null) => void;
 }
 
 export const SchemaViewerContext = createContext<SchemaViewerContextValue>({
   visibleTableIds: new Set(),
   onExpandToTable: () => {},
+  selectedNodeId: null,
+  onSelectNode: () => {},
 });
 
 export function useSchemaViewerContext() {

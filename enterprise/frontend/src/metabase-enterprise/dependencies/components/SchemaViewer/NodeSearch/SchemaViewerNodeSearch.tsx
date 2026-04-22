@@ -6,7 +6,6 @@ import {
   Combobox,
   FixedSizeIcon,
   Group,
-  ScrollArea,
   Text,
   TextInput,
   useCombobox,
@@ -25,6 +24,7 @@ type SchemaViewerNodeSearchProps = {
 interface SearchItem {
   id: string;
   label: React.ReactNode;
+  text: string;
   fkCount: number;
   haystack: string;
 }
@@ -60,12 +60,14 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
       nodes.map((node) => {
         const { name, display_name, fields } = node.data;
         const label = formatTableLabel(name, display_name);
+        const text = formatTableLabelText(name, display_name);
         const fkCount = fields.filter((f) => isTypeFK(f.semantic_type)).length;
         return {
           id: node.id,
           label,
+          text,
           fkCount,
-          haystack: `${label} ${name} ${display_name ?? ""}`.toLowerCase(),
+          haystack: `${text} ${name} ${display_name ?? ""}`.toLowerCase(),
         };
       }),
     [nodes],
@@ -85,7 +87,7 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
       return;
     }
     zoomToNodes([item.id]);
-    setQuery(item.label);
+    setQuery(item.text);
     combobox.closeDropdown();
     inputRef.current?.blur();
   };
@@ -166,6 +168,13 @@ function formatTableLabel(name: string, displayName: string | undefined) {
         <span style={{ fontWeight: "bold" }}>{name}</span> ({displayName})
       </>
     );
+  }
+  return name;
+}
+
+function formatTableLabelText(name: string, displayName: string | undefined) {
+  if (displayName && displayName !== name) {
+    return `${name} (${displayName})`;
   }
   return name;
 }

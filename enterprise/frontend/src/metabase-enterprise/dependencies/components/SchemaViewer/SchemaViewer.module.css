@@ -9,6 +9,21 @@
   z-index: 5;
 }
 
+.infoPanel {
+  /* Push the info panel down past the top-right action group (share +
+     AppSwitcher) so it doesn't overlap with them. */
+  top: 3.5rem;
+  bottom: 1rem;
+  max-height: calc(100% - 4.5rem);
+  z-index: 5;
+}
+
+.fkLink {
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
 .appSwitcher {
   margin-right: 2.5rem;
   background-color: var(--mb-color-background-secondary);

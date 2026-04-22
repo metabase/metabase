@@ -26,14 +26,21 @@ import {
   Stack,
   Text,
   Tooltip,
+  UnstyledButton,
   useColorScheme,
 } from "metabase/ui";
 import { useGetErdQuery } from "metabase-enterprise/api";
 import type {
   ConcreteTableId,
   DatabaseId,
+  DependencyId,
+  Field,
   GetErdRequest,
+  TableDependencyNode,
+  TableDependencyNodeData,
 } from "metabase-types/api";
+
+import { GraphInfoPanel } from "../DependencyGraph/GraphInfoPanel";
 
 import { SchemaViewerEdge } from "./Edge";
 import { SchemaViewerNodeLayout } from "./NodeLayout";
@@ -130,6 +137,144 @@ function AutoLayoutButton() {
       {t`Auto-layout`}
     </Button>
   );
+}
+
+/**
+ * Wraps the shared GraphInfoPanel so it can live inside ReactFlow (where
+ * useZoomToNodes is available) and adapt our ErdNode data into the
+ * DependencyNode shape that GraphInfoPanel expects. Also handles:
+ *  - onTitleClick: re-zoom onto the selected node
+ *  - renderFieldExtras: append a clickable target-table name next to FK
+ *    fields; clicking it pans to the linked table without dropping the
+ *    current selection
+ */
+function SelectedNodeInfoPanel({
+  nodes,
+  selectedNodeId,
+  onClose,
+}: {
+  nodes: SchemaViewerFlowNode[];
+  selectedNodeId: string | null;
+  onClose: () => void;
+}) {
+  const zoomToNodes = useZoomToNodes();
+
+  const selectedNode = useMemo(
+    () =>
+      selectedNodeId != null
+        ? (nodes.find((n) => n.id === selectedNodeId) ?? null)
+        : null,
+    [nodes, selectedNodeId],
+  );
+
+  const nodesByTableId = useMemo(() => {
+    const map = new Map<number, SchemaViewerFlowNode>();
+    for (const node of nodes) {
+      map.set(Number(node.data.table_id), node);
+    }
+    return map;
+  }, [nodes]);
+
+  const dependencyNode = useMemo(
+    () => (selectedNode != null ? toTableDependencyNode(selectedNode) : null),
+    [selectedNode],
+  );
+
+  const handleTitleClick = useCallback(() => {
+    if (selectedNode != null) {
+      zoomToNodes([selectedNode.id]);
+    }
+  }, [selectedNode, zoomToNodes]);
+
+  const renderFieldExtras = useCallback(
+    (field: Field) => {
+      if (selectedNode == null) {
+        return null;
+      }
+      const erdField = selectedNode.data.fields.find((f) => f.id === field.id);
+      if (erdField?.fk_target_table_id == null) {
+        return null;
+      }
+      const targetNode = nodesByTableId.get(
+        Number(erdField.fk_target_table_id),
+      );
+      if (targetNode == null) {
+        return null;
+      }
+      const targetName = targetNode.data.name;
+      return (
+        <Group gap="xs" wrap="nowrap">
+          <Text c="text-tertiary" fz="sm">
+            →
+          </Text>
+          <UnstyledButton
+            className={S.fkLink}
+            c="brand"
+            fz="sm"
+            onClick={() => zoomToNodes([targetNode.id])}
+          >
+            {targetName}
+          </UnstyledButton>
+        </Group>
+      );
+    },
+    [selectedNode, nodesByTableId, zoomToNodes],
+  );
+
+  if (dependencyNode == null) {
+    return null;
+  }
+
+  return (
+    <Panel className={S.infoPanel} position="top-right">
+      <GraphInfoPanel
+        node={dependencyNode}
+        getGraphUrl={emptyGraphUrl}
+        onClose={onClose}
+        hideReplaceButton
+        onTitleClick={handleTitleClick}
+        renderFieldExtras={renderFieldExtras}
+      />
+    </Panel>
+  );
+}
+
+function emptyGraphUrl(): string {
+  return "";
+}
+
+/**
+ * Adapt a SchemaViewer ErdNode into the TableDependencyNode shape consumed
+ * by GraphInfoPanel. We deliberately leave the `db`/`transform`/`owner`
+ * slots unset — the panel's optional sections degrade gracefully when they
+ * are missing, and we don't carry that data in the ERD payload.
+ */
+function toTableDependencyNode(
+  node: SchemaViewerFlowNode,
+): TableDependencyNode {
+  const data: TableDependencyNodeData = {
+    name: node.data.name,
+    display_name: node.data.display_name,
+    description: null,
+    db_id: node.data.db_id,
+    schema: node.data.schema ?? "",
+    fields: node.data.fields.map(
+      (f) =>
+        ({
+          id: f.id,
+          name: f.name,
+          display_name: f.display_name,
+          database_type: f.database_type,
+          semantic_type: f.semantic_type ?? null,
+          fk_target_field_id: f.fk_target_field_id ?? null,
+        }) as unknown as Field,
+    ),
+  };
+  return {
+    id: Number(node.data.table_id) as DependencyId,
+    type: "table",
+    data,
+  };
 }
 
 interface SchemaViewerProps {
@@ -315,13 +460,13 @@ export function SchemaViewer({
     shouldWaitForInitialLoad
       ? skipToken
       : getErdQueryParams({
-        databaseId,
-        schema,
-        initialTableIds,
-        hops,
-        selectedTableIds: effectiveSelectedTableIds,
-        isUserModified,
-      }),
+          databaseId,
+          schema,
+          initialTableIds,
+          hops,
+          selectedTableIds: effectiveSelectedTableIds,
+          isUserModified,
+        }),
   );
 
   // Set of valid table IDs for the current schema (for validating saved prefs)
@@ -546,13 +691,48 @@ export function SchemaViewer({
     [],
   );
 
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedNodeId(null);
+  }, []);
+
+  const handleSelectNode = useCallback(
+    (nodeId: string | null) => {
+      setSelectedNodeId(nodeId);
+      if (nodeId != null) {
+        // Node selection and edge selection are conceptually exclusive in
+        // this UI — the right-side info panel is about the node, not about
+        // whichever edge happened to be highlighted before.
+        setEdges((currentEdges) =>
+          currentEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
+        );
+      }
+    },
+    [setEdges],
+  );
+
   const schemaViewerContextValue = useMemo(
     () => ({
       visibleTableIds,
       onExpandToTable: handleExpandToTable,
+      selectedNodeId,
+      onSelectNode: handleSelectNode,
     }),
-    [visibleTableIds, handleExpandToTable],
+    [visibleTableIds, handleExpandToTable, selectedNodeId, handleSelectNode],
   );
+
+  // Drop a stale selection when the selected node disappears from the graph
+  // (schema change, table removed, etc.). Without this, the info panel would
+  // keep rendering against a node that no longer exists.
+  useEffect(() => {
+    if (
+      selectedNodeId != null &&
+      !nodes.some((node) => node.id === selectedNodeId)
+    ) {
+      setSelectedNodeId(null);
+    }
+  }, [nodes, selectedNodeId]);
 
   const graph = useMemo(() => {
     if (data == null) {
@@ -753,6 +933,11 @@ export function SchemaViewer({
             <AutoLayoutButton />
           </Panel>
         )}
+        <SelectedNodeInfoPanel
+          nodes={nodes}
+          selectedNodeId={selectedNodeId}
+          onClose={handleClearSelection}
+        />
         <Panel className={S.entryInput} position="top-left">
           <Group gap="sm">
             <SchemaPickerInput databaseId={databaseId} schema={schema} />
