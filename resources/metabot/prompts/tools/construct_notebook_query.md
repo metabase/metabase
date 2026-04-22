@@ -139,7 +139,33 @@ Rules for joins:
 
 ### Implicit joins
 
-Not yet supported in this tool version. Every field you reference must either live on the `source-table` or be reached via an explicit entry in the stage's `joins:` list. If you reference a field on another table without joining it, you'll get an error.
+You can reference a field on another table **directly** — as long as there is exactly one foreign key from the `source-table` to that other table, Metabase will auto-fill the `source-field` option for you and perform an implicit join in the query processor.
+
+```yaml
+lib/type: mbql/query
+database: Sample
+stages:
+  - lib/type: mbql.stage/mbql
+    source-table: [Sample, PUBLIC, ORDERS]
+    aggregation:
+      - [count, {}]
+    breakout:
+      - [field, {}, [Sample, PUBLIC, PRODUCTS, CATEGORY]]
+```
+
+No explicit `joins:` entry needed. Internally, Metabase rewrites the breakout field to `[field, {source-field: [Sample, PUBLIC, ORDERS, PRODUCT_ID]}, [Sample, PUBLIC, PRODUCTS, CATEGORY]]`.
+
+**Rules:**
+
+- Only works when the source table has **exactly one** FK to the target table.
+- If there is more than one FK (e.g. an `ORDERS.CREATED_BY` FK and an `ORDERS.UPDATED_BY` FK both pointing at `USERS`), you'll get an `:ambiguous-fk` error listing the candidate FK columns. Retry with an explicit `source-field` in the field's options map:
+  ```yaml
+  - [field, {source-field: [Sample, PUBLIC, ORDERS, CREATED_BY]}, [Sample, PUBLIC, USERS, NAME]]
+  ```
+- If there is **no** FK path from source to target, you'll get a `:no-fk-path` error. In that case, switch to an explicit `joins:` entry or use a field on the source table instead.
+- Inside an explicit `joins:` block, field references continue to require `{join-alias: <alias>}`; the implicit-join pass does not rewrite those.
+
+**Tip:** Use the `entity_details` tool to discover FK columns. FK columns return a `fk_target_portable_fk` pointing to the target field — that tells you which column to use as the `source-field` when disambiguating.
 
 ## Rules and common mistakes
 
@@ -156,7 +182,6 @@ Not yet supported in this tool version. Every field you reference must either li
 These are not yet available in this tool version; ignore them for now:
 - `source-card` (querying a saved question / model as a source)
 - Multi-stage queries (post-aggregation filtering/grouping)
-- Implicit joins (fields referenced via FK without an explicit `joins:` entry)
 - Custom expressions (`expressions:` clause) and `expression-ref` references
 - Aggregation references with UUIDs
 

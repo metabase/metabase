@@ -9,8 +9,11 @@
    [metabase.metabot.tools.construct :as tools.construct]
    [metabase.metabot.tools.resources :as tools.resources]
    [metabase.metabot.tools.shared :as tools.shared]
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
+   [metabase.util :as u]
    [metabase.util.yaml :as yaml]))
 
 (deftest edit-chart-test
@@ -112,3 +115,77 @@
                    (get-in new-chart-in-memory [:visualization_settings :chart_type])))
             (is (= query
                    (get-in new-chart-in-memory [:queries 0])))))))))
+
+(deftest construct-notebook-query-implicit-join-end-to-end-test
+  (testing (str "End-to-end: YAML with source-table=ORDERS referencing PRODUCTS.CATEGORY "
+                "gets source-field auto-wired, produces a query that compiles to SQL with "
+                "a JOIN and executes successfully against the app DB.")
+    (mt/with-current-user (test.users/user->id :crowberto)
+      (let [;; Discover portable FKs the same way the LLM does: via entity_details / fields.
+            {[{{orders-details :structured-output} :content}] :resources}
+            (tools.resources/read-resource-tool
+             {:uris [(str "metabase://table/" (mt/id :orders) "/fields")]})
+
+            {[{{products-details :structured-output} :content}] :resources}
+            (tools.resources/read-resource-tool
+             {:uris [(str "metabase://table/" (mt/id :products) "/fields")]})
+
+            orders-fk           (:portable_fk orders-details)
+            product-id-field    (some (fn [{:keys [display_name] :as f}]
+                                        (when (= "Product ID" display_name) f))
+                                      (:fields orders-details))
+            ;; The LLM learns PRODUCT_ID points at PRODUCTS via `:fk_target_portable_fk`
+            ;; and then fetches the target table's fields to pick CATEGORY.
+            products-target-fk  (:fk_target_portable_fk product-id-field)
+            category-field-fk   (some (fn [{:keys [display_name portable_fk]}]
+                                        (when (= "Category" display_name) portable_fk))
+                                      (:fields products-details))
+
+            ;; Build the YAML via data structures — no string concatenation. The parser
+            ;; expects string keys; clj-yaml's generate-string round-trips cleanly through
+            ;; `repr/parse-yaml`.
+            query-data {"lib/type" "mbql/query"
+                        "database" (first orders-fk)
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" orders-fk
+                                     "aggregation"  [["count" {}]]
+                                     "breakout"     [["field" {} category-field-fk]]}]}
+            query-yaml (yaml/generate-string query-data)
+
+            construct-result (tools.construct/construct-notebook-query-tool
+                              {:source_entity {:type "table" :id (mt/id :orders)}
+                               :query         query-yaml
+                               :visualization {:chart_type "bar"}})
+            query (get-in construct-result [:structured-output :query])
+            breakout-field (get-in query [:stages 0 :breakout 0])
+            field-opts (second breakout-field)]
+
+        (testing "entity_details surfaced the FK target — sanity-check the inputs we fed in"
+          (is (= ["Product ID" "PRODUCTS"]
+                 [(:display_name product-id-field)
+                  (nth products-target-fk 2)])
+              "Product ID's fk_target_portable_fk should point at PRODUCTS"))
+
+        (testing "repair resolved the portable breakout to PRODUCTS.CATEGORY"
+          (is (= (mt/id :products :category) (nth breakout-field 2))))
+
+        (testing "repair auto-wired :source-field to ORDERS.PRODUCT_ID"
+          (is (= (mt/id :orders :product_id) (:source-field field-opts))))
+
+        (testing "query compiles to SQL that joins ORDERS and PRODUCTS"
+          (let [{:keys [query]} (qp.compile/compile query)]
+            (is (string? query))
+            (is (str/includes? query "JOIN"))
+            (is (str/includes? (u/upper-case-en query) "PRODUCTS"))
+            (is (str/includes? (u/upper-case-en query) "ORDERS"))))
+
+        (testing "query executes and returns grouped rows (categories + counts)"
+          (let [qp-result (qp/process-query query)
+                rows      (mt/rows qp-result)]
+            (is (seq rows) "expected at least one row from the joined query")
+            (is (every? (fn [row] (and (vector? row) (= 2 (count row)))) rows)
+                "each row should be [category, count]")
+            (is (every? string? (map first rows))
+                "first column should be category names (strings)")
+            (is (every? (every-pred number? pos?) (map second rows))
+                "second column should be positive counts")))))))

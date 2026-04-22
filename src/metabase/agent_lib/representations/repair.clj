@@ -21,9 +21,21 @@
   The repair pass does **not** do FK resolution (that's the resolver's job) and does **not**
   validate (that's `representations/validate-query`'s job). It runs *between* parse and
   validate-and-resolve -- i.e. we parse the LLM YAML, repair obvious issues, then validate, then
-  resolve."
+  resolve.
+
+  ## Implicit joins
+
+  In addition to the shape passes above, `repair` also runs an **implicit-join pass** that uses
+  the caller's `MetadataProvider` to auto-wire `source-field` options on field clauses that
+  reference a table other than the stage's `source-table`. That pass is the only reason `repair`
+  takes an `mp` argument — the shape passes themselves don't need it."
   (:require
-   [clojure.walk :as walk]))
+   [clojure.string :as str]
+   [clojure.walk :as walk]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.models.serialization.resolve :as resolve]
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
 
@@ -144,18 +156,196 @@
    form))
 
 ;;; ============================================================
+;;; Pass 3 -- auto-wire `source-field` for implicit joins
+;;;
+;;; When a field clause references a field on a table *other* than the stage's
+;;; `source-table`, and there is exactly one foreign key from the source table to that target
+;;; table, fill in the `source-field` option with the portable FK of the FK column. The QP
+;;; interprets this as an implicit join (the same machinery users get from the notebook UI).
+;;;
+;;; The pass walks stage[0] only, skips descent into the `\"joins\"` subtree (field clauses
+;;; inside a join live in a join context), and is a no-op on clauses that already carry
+;;; `source-field` or `join-alias`.
+;;; ============================================================
+
+(defn- field-clause?
+  "A repaired field clause of shape `[\"field\" <opts-map> <portable-fk-vector>]`. We require the
+  opts map to be a real map and the portable FK to be a vector of >= 4 elements (DB, SCHEMA,
+  TABLE, FIELD, …)."
+  [v]
+  (and (vector? v)
+       (not (map-entry? v))
+       (>= (count v) 3)
+       (= "field" (nth v 0))
+       (map? (nth v 1))
+       (let [fk (nth v 2)]
+         (and (vector? fk) (>= (count fk) 4)))))
+
+(defn- try-resolve-source-table-id
+  "Resolve the stage's `source-table` portable FK to a numeric id. Returns nil on any failure
+  (unknown DB, unknown table, nil source-table, wrong shape, etc.) — implicit-join repair is
+  best-effort and should never mask an error that the downstream validate/resolve passes will
+  surface with a better message."
+  [import-resolver source-table-fk]
+  (try
+    (when (and import-resolver (vector? source-table-fk) (= 3 (count source-table-fk)))
+      (resolve/import-table-fk import-resolver source-table-fk))
+    (catch Exception _ nil)))
+
+(defn- try-resolve-field-target-table-id
+  "Resolve the target-table-id of a portable field FK, by looking up the field and following its
+  `:table-id`. Walks JSON-unfolded parent chains via the resolver's `import-field-fk`. Returns
+  nil on failure."
+  [mp import-resolver field-fk]
+  (try
+    (when-let [fid (resolve/import-field-fk import-resolver field-fk)]
+      (:table-id (lib.metadata.protocols/field mp fid)))
+    (catch Exception _ nil)))
+
+(defn- export-source-field-portable
+  "Convert a numeric FK column id into its portable `[db schema table field …]` path, via the
+  MP-backed export resolver. Returns nil on failure."
+  [export-resolver source-field-id]
+  (try
+    (resolve/export-field-fk export-resolver source-field-id)
+    (catch Exception _ nil)))
+
+(defn- display-source-table [mp source-table-id]
+  (try
+    (let [t (lib.metadata.protocols/table mp source-table-id)]
+      (or (:name t) (str source-table-id)))
+    (catch Exception _ (str source-table-id))))
+
+(defn- display-portable [fk]
+  (pr-str fk))
+
+(defn- maybe-fill-source-field
+  "Given a field-clause vector (already known to be a field clause), the stage's source-table-id,
+  and the precomputed outbound-FK map, return either the original clause or a clause with
+  `\"source-field\"` populated. Throws `:no-fk-path` or `:ambiguous-fk` on hard errors."
+  [clause mp import-resolver export-resolver source-table-id outbound-fks-by-target]
+  (let [opts (nth clause 1)
+        fk   (nth clause 2)]
+    (cond
+      ;; already has source-field or join-alias: leave it alone.
+      (contains? opts "source-field")
+      clause
+
+      (contains? opts "join-alias")
+      clause
+
+      :else
+      (let [target-table-id (try-resolve-field-target-table-id mp import-resolver fk)]
+        (cond
+          ;; Couldn't resolve target table: skip (validate/resolve will surface the real error).
+          (nil? target-table-id)
+          clause
+
+          ;; Field is on the source table itself: nothing to do.
+          (= target-table-id source-table-id)
+          clause
+
+          :else
+          (let [candidates (get outbound-fks-by-target target-table-id)]
+            (case (count candidates)
+              0 (let [src-name (display-source-table mp source-table-id)
+                      tbl-name (nth fk 2)]
+                  (throw (ex-info (tru "Field {0} is on table {1} but there is no foreign key from the source table {2} to {3}. Either add an explicit joins: entry, or use a field from the source table."
+                                       (display-portable fk)
+                                       (pr-str tbl-name)
+                                       (pr-str src-name)
+                                       (pr-str tbl-name))
+                                  {:status-code  400
+                                   :error        :no-fk-path
+                                   :agent-error? true
+                                   :field        fk
+                                   :source-table source-table-id
+                                   :target-table target-table-id})))
+              1 (let [{:keys [source-field-id]} (first candidates)
+                      src-fk (export-source-field-portable export-resolver source-field-id)]
+                  (if src-fk
+                    (assoc clause 1 (assoc opts "source-field" src-fk))
+                    clause))
+              (let [src-name      (display-source-table mp source-table-id)
+                    candidate-fks (mapv (fn [{:keys [source-field-id]}]
+                                          (export-source-field-portable export-resolver source-field-id))
+                                        candidates)]
+                (throw (ex-info (tru "Field {0} can be reached from {1} via {2} foreign keys. Specify :source-field explicitly in the clause options. Candidates: {3}"
+                                     (display-portable fk)
+                                     (pr-str src-name)
+                                     (count candidates)
+                                     (str/join ", " (map display-portable candidate-fks)))
+                                {:status-code  400
+                                 :error        :ambiguous-fk
+                                 :agent-error? true
+                                 :field        fk
+                                 :source-table source-table-id
+                                 :target-table target-table-id
+                                 :candidates   candidate-fks}))))))))))
+
+(defn- resolve-implicit-joins-in-stage
+  "Apply implicit-join repair to a single stage map (string-keyed). Returns an updated stage.
+
+  Skips descent into the `\"joins\"` subtree by plucking it out before the postwalk and
+  restoring it afterwards — field clauses inside explicit joins are expected to carry a
+  `join-alias` already."
+  [stage mp import-resolver export-resolver]
+  (let [source-table-fk (get stage "source-table")
+        source-table-id (try-resolve-source-table-id import-resolver source-table-fk)]
+    (if-not source-table-id
+      ;; Can't resolve source-table: skip the pass and let validate/resolve surface the error.
+      stage
+      (let [outbound  (resolve.mp/outbound-fks-from-table mp source-table-id)
+            by-target (group-by :target-table-id outbound)
+            joins     (get stage "joins")
+            stage'    (cond-> stage (contains? stage "joins") (dissoc "joins"))
+            walked    (walk/postwalk
+                       (fn [node]
+                         (if (field-clause? node)
+                           (maybe-fill-source-field node mp import-resolver export-resolver
+                                                    source-table-id by-target)
+                           node))
+                       stage')]
+        (cond-> walked
+          (contains? stage "joins") (assoc "joins" joins))))))
+
+(defn- resolve-implicit-joins*
+  "Top-level implicit-join pass. Phase 1 handles `stages[0]` only."
+  [query mp]
+  (if-not (and mp (map? query) (vector? (get query "stages")) (seq (get query "stages")))
+    query
+    (let [import-resolver (resolve.mp/import-resolver mp)
+          export-resolver (resolve.mp/export-resolver mp)]
+      (update-in query ["stages" 0] resolve-implicit-joins-in-stage
+                 mp import-resolver export-resolver))))
+
+;;; ============================================================
 ;;; Top-level entry point
 ;;; ============================================================
+
+(defn- normalize-shape*
+  "Pure-shape passes that don't require a metadata provider."
+  [parsed]
+  (-> parsed
+      ensure-clause-options*
+      ensure-lib-types*))
 
 (defn repair
   "Run the repair pipeline on a parsed (string-keyed, portable) representations query.
 
   Phase 1 passes:
     1. ensure every clause vector has an options map at position 2;
-    2. fill in missing `\"lib/type\"` markers on the query and stages.
+    2. fill in missing `\"lib/type\"` markers on the query and stages;
+    3. auto-wire `source-field` on field clauses that reference a foreign table via a single
+       unambiguous FK on the source table (implicit-join resolution).
 
-  Guaranteed to be **idempotent**: `(= (repair q) (repair (repair q)))`."
-  [parsed]
+  Pass 3 requires `mp` (a `MetadataProvider`). It is a best-effort no-op when `mp` can't resolve
+  the source-table (so the subsequent validate/resolve stages can surface the real error with
+  their own, better messages). Hard FK errors (`:no-fk-path`, `:ambiguous-fk`) are raised as
+  `:agent-error?` ex-info so the tool wrapper can relay them to the LLM.
+
+  Guaranteed to be **idempotent**: `(= (repair mp q) (repair mp (repair mp q)))`."
+  [mp parsed]
   (-> parsed
-      ensure-clause-options*
-      ensure-lib-types*))
+      normalize-shape*
+      (resolve-implicit-joins* mp)))
