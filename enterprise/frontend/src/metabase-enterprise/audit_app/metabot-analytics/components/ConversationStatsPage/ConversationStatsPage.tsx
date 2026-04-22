@@ -145,6 +145,7 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
           metric={metric}
           onDimensionClick={handleDayClick}
         />
+
         <SimpleGrid cols={2} spacing="lg">
           <ConversationsBySourceChart dateFilter={dateFilter} metric={metric} />
           <ConversationsByProfileBarChart
@@ -152,16 +153,23 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             metric={metric}
           />
         </SimpleGrid>
+
         <SimpleGrid cols={3} spacing="lg">
-          <ConversationsByGroupChart dateFilter={dateFilter} metric={metric} />
+          <ConversationsByGroupChart
+            dateFilter={dateFilter}
+            metric={metric}
+            h={500}
+          />
           <ConversationsByUserChart
             dateFilter={dateFilter}
             metric={metric}
             onDimensionClick={handleUserClick}
+            h={500}
           />
           <ConversationsByIPAddressChart
             dateFilter={dateFilter}
             metric={metric}
+            h={500}
           />
         </SimpleGrid>
       </SettingsPageWrapper>

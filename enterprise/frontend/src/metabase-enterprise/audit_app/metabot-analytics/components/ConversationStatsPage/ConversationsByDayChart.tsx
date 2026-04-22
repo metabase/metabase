@@ -11,6 +11,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { VIEW_CONVERSATIONS } from "../../constants";
 import { useAuditTable } from "../../hooks/useAuditTable";
 
+import S from "./ConversationsByDayChart.module.css";
 import {
   type UsageStatsMetric,
   applyDateFilter,
@@ -86,6 +87,7 @@ export function ConversationsByDayChart({
             "graph.x_axis.title_text": "",
             "graph.y_axis.title_text": "",
             "line.interpolate": "cardinal",
+            "line.marker_enabled": false,
             ...getMetricSeriesSettings(metric),
           },
         }),
@@ -99,8 +101,16 @@ export function ConversationsByDayChart({
   }
 
   return (
-    <Card withBorder shadow="none" p="md" h={350}>
-      <Text fw="bold" mb="sm">
+    <Card
+      className={S.visualization}
+      withBorder
+      shadow="none"
+      px="lg"
+      pt="md"
+      pb="0"
+      h={350}
+    >
+      <Text fw="bold" mb="md">
         {getChartTitle(metric, bucketName)}
       </Text>
       <Visualization

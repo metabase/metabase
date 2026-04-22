@@ -147,39 +147,37 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
         </SimpleGrid>
 
         {feedback.length > 0 && (
-          <Box>
-            <Title order={4}>{t`Feedback`}</Title>
-            <Stack mt="sm" gap="sm">
+          <Stack gap="md">
+            <Title order={3}>{t`Feedback`}</Title>
+            <Stack gap="sm">
               {feedback.map((item) => (
                 <FeedbackCard key={item.message_id} feedback={item} />
               ))}
             </Stack>
-          </Box>
+          </Stack>
         )}
 
-        <Box>
-          <Title order={4}>{t`Conversation`}</Title>
-          <Card withBorder shadow="none" p="xl" mt="sm">
+        <Stack gap="md">
+          <Title order={3}>{t`Conversation`}</Title>
+          <Card withBorder shadow="none" p="xl">
             <Messages
               messages={conversation.chat_messages ?? []}
               errorMessages={[]}
               isDoingScience={false}
             />
           </Card>
-        </Box>
+        </Stack>
 
         {queries.length > 0 && (
-          <Box>
+          <Stack gap="md">
             <Title order={3}>{t`Queries generated`}</Title>
-            <Stack mt="sm" gap="md">
-              {queries.map((query) => (
-                <GeneratedQueryCard
-                  key={query.call_id ?? `${query.message_id}-${query.query_id}`}
-                  query={query}
-                />
-              ))}
-            </Stack>
-          </Box>
+            {queries.map((query) => (
+              <GeneratedQueryCard
+                key={query.call_id ?? `${query.message_id}-${query.query_id}`}
+                query={query}
+              />
+            ))}
+          </Stack>
         )}
       </Stack>
     </MetabotAdminLayout>

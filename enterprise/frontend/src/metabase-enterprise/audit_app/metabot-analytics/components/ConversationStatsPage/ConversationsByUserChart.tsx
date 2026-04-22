@@ -7,12 +7,14 @@ type Props = {
   dateFilter: DateFilterValue;
   metric: UsageStatsMetric;
   onDimensionClick?: (value: unknown) => void;
+  h?: number;
 };
 
 export function ConversationsByUserChart({
   dateFilter,
   metric,
   onDimensionClick,
+  h,
 }: Props) {
   return (
     <BreakoutChart
@@ -21,6 +23,7 @@ export function ConversationsByUserChart({
       title={getChartTitle(metric, "user")}
       metric={metric}
       onDimensionClick={onDimensionClick}
+      h={h}
     />
   );
 }

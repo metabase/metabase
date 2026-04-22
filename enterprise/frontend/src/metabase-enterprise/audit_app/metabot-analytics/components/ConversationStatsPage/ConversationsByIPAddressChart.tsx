@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import type { DateFilterValue } from "metabase/querying/common/types";
 
 import { BreakoutChart } from "./BreakoutChart";
@@ -7,12 +9,14 @@ type Props = {
   dateFilter: DateFilterValue;
   metric: UsageStatsMetric;
   onDimensionClick?: (value: unknown) => void;
+  h?: number;
 };
 
 export function ConversationsByIPAddressChart({
   dateFilter,
   metric,
   onDimensionClick,
+  h,
 }: Props) {
   return (
     <BreakoutChart
@@ -21,6 +25,8 @@ export function ConversationsByIPAddressChart({
       title={getChartTitle(metric, "ip_address")}
       metric={metric}
       onDimensionClick={onDimensionClick}
+      h={h}
+      nullLabel={t`Unknown`}
     />
   );
 }
