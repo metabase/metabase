@@ -521,6 +521,22 @@
     (is (= #{"card" "metric" "dataset" "dashboard" "indexed-entity"}
            @@#'semantic.index/collection-id-only-search-models))))
 
+(deftest collection-based-visibility-search-model-claims-verified-test
+  (testing "every search-model registered with :denormalized-from actually joins to that model in its spec"
+    ;; Guards the `:denormalized-from` claim made at `define-collection-based-visibility!` call sites
+    ;; against drift: if someone removes the Card join from the `indexed-entity` spec (or typoes the
+    ;; claim), this test fails. Without this, the claim is documentation-only.
+    (let [specs (search/specifications)]
+      (doseq [[search-model denormalized-from] (perms/collection-based-visibility-search-models)]
+        (testing (str search-model " denormalizes from " denormalized-from)
+          (let [spec          (get specs search-model)
+                joined-models (set (map first (vals (:joins spec))))]
+            (is (some? spec)
+                (str "no search spec registered for " (pr-str search-model)))
+            (is (contains? joined-models denormalized-from)
+                (str (pr-str search-model) " claims :denormalized-from " (pr-str denormalized-from)
+                     " but its spec joins are " joined-models))))))))
+
 (deftest collection-id-only-search-models-cold-start-regression-test
   (testing "derivation populates correctly even if registry is empty at first access"
     ;; The derivation must call `search/specifications` before reading the registry — `t2/resolve-model`

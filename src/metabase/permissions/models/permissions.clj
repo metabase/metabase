@@ -453,9 +453,10 @@
 (defonce ^:private collection-based-visibility-registry
   ;; Registrations from `define-collection-based-visibility!`.
   ;; `:t2-methods` maps t2-model-kw → the installed `mi/can-read?` fn (identity-check test uses the value).
-  ;; `:search-models` holds search-model strings whose `:collection_id` is denormalized at index time
-  ;; (e.g. `indexed-entity`) and therefore have no direct t2 model to install `mi/can-read?` on.
-  (atom {:t2-methods {} :search-models #{}}))
+  ;; `:search-models` maps search-model-string → claimed parent t2-model the `:collection_id` is denormalized
+  ;; from at index time. The claim is verified against the spec's joins by a contract test; see
+  ;; `metabase-enterprise.semantic-search.index-test`.
+  (atom {:t2-methods {} :search-models {}}))
 
 (defn collection-id-only-read-models
   "Set of t2 model keywords whose `mi/can-read?` was installed via [[define-collection-based-visibility!]]."
@@ -469,7 +470,8 @@
   (get-in @collection-based-visibility-registry [:t2-methods t2-model]))
 
 (defn collection-based-visibility-search-models
-  "Search-model strings registered via the string form of [[define-collection-based-visibility!]]."
+  "Map of search-model-string → the claimed parent t2-model the `:collection_id` is denormalized from.
+  Registrations come from the string form of [[define-collection-based-visibility!]]."
   []
   (:search-models @collection-based-visibility-registry))
 
@@ -480,8 +482,8 @@
 
 (defn register-collection-based-visibility-search-model!
   "Implementation detail of [[define-collection-based-visibility!]]. Do not call directly."
-  [search-model]
-  (swap! collection-based-visibility-registry update :search-models conj search-model))
+  [search-model denormalized-from]
+  (swap! collection-based-visibility-registry assoc-in [:search-models search-model] denormalized-from))
 
 (defmacro define-collection-based-visibility!
   "Register read perms as determined fully by `:collection_id`.
@@ -508,7 +510,7 @@
     (do
       (assert denormalized-from
               "string form of define-collection-based-visibility! requires :denormalized-from")
-      `(register-collection-based-visibility-search-model! ~target))
+      `(register-collection-based-visibility-search-model! ~target ~denormalized-from))
 
     :else
     (throw (IllegalArgumentException.

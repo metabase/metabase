@@ -717,7 +717,7 @@
   ;; model namespaces that populate it. Otherwise cold start caches an empty set for the JVM lifetime.
   (let [specs                    (search/specifications)
         registered-t2-models     (perms/collection-id-only-read-models)
-        registered-search-models (perms/collection-based-visibility-search-models)]
+        registered-search-models (set (keys (perms/collection-based-visibility-search-models)))]
     (into registered-search-models
           (comp (filter (fn [[_ spec]] (contains? registered-t2-models (:model spec))))
                 (map key))
