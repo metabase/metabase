@@ -66,31 +66,13 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
   return (
     <>
       <PageContainer data-testid="new-workspace-page" gap="2.5rem">
-        <PaneHeader
-          py={0}
-          breadcrumbs={
-            <DataStudioBreadcrumbs>
-              <Link key="workspace-list" to={Urls.workspaceList()}>
-                {t`Workspaces`}
-              </Link>
-              {t`New workspace`}
-            </DataStudioBreadcrumbs>
-          }
-          title={
-            <PaneHeaderInput
-              initialValue={workspace.name}
-              placeholder={t`New workspace`}
-              onChange={handleNameChange}
-            />
-          }
-          actions={
-            <PaneHeaderActions
-              isDirty
-              isSaving={isSaving}
-              onSave={handleSave}
-              onCancel={handleCancel}
-            />
-          }
+        <NewWorkspacePageHeader
+          name={workspace.name}
+          isDirty={isDirty}
+          isSaving={isSaving}
+          onNameChange={handleNameChange}
+          onSave={handleSave}
+          onCancel={handleCancel}
         />
         <NewWorkspacePageBody
           databases={workspace.databases}
@@ -107,6 +89,53 @@ function getInitialValues(): WorkspaceInfo {
     name: t`New workspace`,
     databases: [],
   };
+}
+
+type NewWorkspacePageHeaderProps = {
+  name: string;
+  isDirty: boolean;
+  isSaving: boolean;
+  onNameChange: (newName: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+};
+
+function NewWorkspacePageHeader({
+  name,
+  isDirty,
+  isSaving,
+  onNameChange,
+  onSave,
+  onCancel,
+}: NewWorkspacePageHeaderProps) {
+  return (
+    <PaneHeader
+      py={0}
+      breadcrumbs={
+        <DataStudioBreadcrumbs>
+          <Link key="workspace-list" to={Urls.workspaceList()}>
+            {t`Workspaces`}
+          </Link>
+          {t`New workspace`}
+        </DataStudioBreadcrumbs>
+      }
+      title={
+        <PaneHeaderInput
+          initialValue={name}
+          placeholder={t`New workspace`}
+          onChange={onNameChange}
+        />
+      }
+      actions={
+        <PaneHeaderActions
+          isDirty={isDirty}
+          isSaving={isSaving}
+          onSave={onSave}
+          onCancel={onCancel}
+        />
+      }
+    />
+  );
 }
 
 type NewWorkspacePageBodyProps = {
