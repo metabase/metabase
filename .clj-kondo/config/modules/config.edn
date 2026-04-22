@@ -3360,37 +3360,8 @@
 
   enterprise/workspaces
   {:team "Metabot"
-   :api  #{metabase-enterprise.workspaces.api
-           metabase-enterprise.workspaces.init}
-   :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
-   :uses #{api
-           api-scope
-           app-db
-           config
-           database-routing
-           driver
-           events
-           lib
-           lib-be
-           models
-           premium-features
-           queries
-           ;; NOTE: we will remove this once we get "pure transforms" module.
-           query-processor
-           request
-           settings
-           sql-tools
-           transforms
-           transforms-base
-           util
-           warehouse-schema
-           enterprise/transforms-python}
-   :model-imports #{:model/Collection
-                    :model/Database
-                    :model/Dependency
-                    :model/Field
-                    :model/Table
-                    :model/Transform}}
+   :api  #{}
+   :uses #{premium-features}}
 
   enterprise/writable-connection
   {:team "Graphy"
