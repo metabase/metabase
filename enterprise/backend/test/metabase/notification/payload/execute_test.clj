@@ -74,3 +74,47 @@
                                             {:metabase.models.visualization-settings/table-column-enabled false
                                              :metabase.models.visualization-settings/table-column-name "sum"}]}}}
                     (result-for-card card-2)))))))))
+
+(deftest viz-settings-reflect-card-edit-after-cache-hit-test
+  (testing (str "Editing a card's visualization_settings after its query has been cached should "
+                "produce current viz-settings on subsequent subscription runs, not the stale "
+                "cached ones (#72922 / GDGT-2327)")
+    (let [query            (mt/mbql-query orders {:aggregation [[:count] [:sum $total]]})
+          initial-setting  {:table.cell_column "count"
+                            :table.columns     [{:name "count"   :enabled true}
+                                                {:name "sum"     :enabled true}
+                                                {:name "extra-1" :enabled true}
+                                                {:name "extra-2" :enabled true}]}
+          edited-setting   {:table.cell_column "count"
+                            :table.columns     [{:name "count" :enabled true}
+                                                {:name "sum"   :enabled true}]}
+          table-columns-of (fn [result]
+                             (get-in result [:data :viz-settings
+                                             :metabase.models.visualization-settings/table-columns]))]
+      (t2/delete! :model/QueryCache)
+      (mt/with-premium-features #{:cache-granular-controls}
+        (mt/with-temp
+          [:model/Card          {card-id :id} {:dataset_query          query
+                                               :visualization_settings initial-setting}
+           :model/Dashboard     {dash-id :id} {}
+           :model/DashboardCard {dc-id :id}   {:dashboard_id dash-id :card_id card-id}
+           :model/CacheConfig   _             {:model    "database"
+                                               :model_id (mt/id)
+                                               :strategy :duration
+                                               :config   {:unit :hours :duration 1}}]
+          (let [dashcard {:dashboard_id dash-id :card_id card-id :id dc-id}
+                run-sub! (fn [] (:result (mt/as-admin
+                                           (notification.payload.execute/execute-dashboard-subscription-card
+                                            dashcard []))))]
+            (testing "initial run populates cache with four columns"
+              (let [result (run-sub!)]
+                (is (= 4 (count (table-columns-of result))))
+                (is (pos? (t2/count :model/QueryCache))
+                    "The query should have been cached")))
+            (t2/update! :model/Card card-id {:visualization_settings edited-setting})
+            (testing "after card edit, cache-hit run reflects the two-column setting"
+              (let [result (run-sub!)]
+                (is (= 2 (count (table-columns-of result))))
+                (is (= ["count" "sum"]
+                       (map :metabase.models.visualization-settings/table-column-name
+                            (table-columns-of result))))))))))))

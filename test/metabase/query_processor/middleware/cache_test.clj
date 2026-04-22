@@ -746,3 +746,30 @@
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to run this query"
                      (run-forbidden-query)))))))))))
+
+(deftest cached-results-rff-preserves-fresh-accumulator-test
+  (testing "On cache hit, the rff chain's accumulator (with any modifications from middlewares
+            like update-viz-settings) must not be clobbered by the replayed cached final-metadata
+            map. Before the fix, `([acc row] (vreset! final-metadata row))` returned the row,
+            replacing `acc`. Regression for #72922."
+    (let [cached-results-rff @#'cache/cached-results-rff
+          ;; An rff that injects a sentinel `:fresh` into metadata, the same shape
+          ;; `update-viz-settings` uses to inject fresh viz-settings on cache hit.
+          fresh-injecting-rff (fn [metadata]
+                                (let [inner (qp.reducible/default-rff
+                                             (assoc metadata :fresh "fresh-value"))]
+                                  inner))
+          rf ((cached-results-rff fresh-injecting-rff (byte-array 1))
+              {:last-ran (t/zoned-date-time) :cache-version "v1" :cols [{:name "x"}]})
+          ;; Simulate a cached replay: two actual row vectors, then the final cached
+          ;; result map (which used to stomp acc).
+          acc (reduce rf (rf)
+                      [[1] [2]
+                       {:data {:cols [{:name "x"}] :stale "stale-value"}}])
+          result (rf acc)]
+      (is (= "fresh-value" (get-in result [:data :fresh]))
+          "Fresh value injected by the rff chain must survive the cached-final-metadata replay")
+      (is (= "stale-value" (get-in result [:data :stale]))
+          "Stale-only keys from @final-metadata are still deep-merged in")
+      (is (= [[1] [2]] (get-in result [:data :rows]))
+          "Replayed cached rows are preserved"))))

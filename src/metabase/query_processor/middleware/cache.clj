@@ -152,7 +152,10 @@
 
         ([acc row]
          (if (map? row)
-           (vreset! final-metadata row)
+           ;; Keep the fresh acc; returning `row` would replace it with the stale cached map,
+           ;; clobbering anything post-processing just wrote (e.g. viz-settings). `unreduced`
+           ;; handles a reduced acc from transducers like `(take N)` so completion runs.
+           (do (vreset! final-metadata row) (unreduced acc))
            (rf acc row)))))))
 
 (mu/defn- maybe-reduce-cached-results :- [:tuple
