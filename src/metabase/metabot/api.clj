@@ -4,7 +4,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics.interface :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -117,9 +117,9 @@
         content    (->> parts
                         (remove #(#{:start :usage :finish :data} (:type %)))
                         (mapv strip-tool-output-bloat))]
-    (prometheus/observe! :metabase-metabot/message-persist-bytes
-                         {:profile-id (or profile-id "unknown")}
-                         (u/string-byte-count (json/encode content)))
+    (analytics/observe! :metabase-metabot/message-persist-bytes
+                        {:profile-id (or profile-id "unknown")}
+                        (u/string-byte-count (json/encode content)))
     (t2/with-transaction [_conn]
       (when state-part
         (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}

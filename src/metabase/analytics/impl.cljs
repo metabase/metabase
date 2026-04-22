@@ -15,7 +15,7 @@
   []
   (when-let [events (not-empty @buffer)]
     (reset! buffer [])
-    (let [post-fn (.-postInternalAnalytics (js/require "metabase/lib/internal-analytics"))]
+    (let [post-fn (.-postInternalAnalytics (js/require "metabase/utils/internal-analytics"))]
       (post-fn (clj->js events)))))
 
 (defonce ^:private _interval
