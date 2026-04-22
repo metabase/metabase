@@ -36,7 +36,12 @@ SELECT
      LIMIT 1)                                                         AS source,
     c.ip_address                                                      AS ip_address,
     MAX(a.tenant_id)                                                  AS tenant_id,
-    MAX(t.name)                                                       AS tenant_name
+    MAX(t.name)                                                       AS tenant_name,
+    (SELECT aul.model
+     FROM ai_usage_log aul
+     WHERE aul.conversation_id = c.id
+     ORDER BY aul.created_at
+     LIMIT 1)                                                         AS model
 FROM metabot_conversation c
 LEFT JOIN core_user u
     ON u.id = c.user_id
