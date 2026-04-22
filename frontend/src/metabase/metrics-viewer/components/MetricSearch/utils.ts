@@ -223,7 +223,7 @@ export function getWordAtCursor(
     }
     start = i;
   }
-  for (let i = cursorPos + 1; i <= rightBoundary; i++) {
+  for (let i = cursorPos; i < rightBoundary; i++) {
     if (isWordDelimiter(text[i])) {
       break;
     }

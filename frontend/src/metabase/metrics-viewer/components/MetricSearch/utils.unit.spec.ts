@@ -1272,6 +1272,29 @@ describe("getWordAtCursor", () => {
     expect(result.start).toBe(14);
     expect(result.end).toBe(text.length);
   });
+
+  it("handles delimiters directly after the cursor", () => {
+    const metricNames: MetricNameMap = {
+      "metric:1": "Metric1",
+      "metric:2": "Metric2",
+    };
+    const text = "Metric1, Met Metric2";
+    const cursorPos = 12; // immediately after "Met"
+    const identities: MetricIdentityEntry[] = [
+      { sourceId: "metric:1", from: 0, to: 7, definition: null, slotIndex: 0 },
+      {
+        sourceId: "metric:2",
+        from: 13,
+        to: 20,
+        definition: null,
+        slotIndex: 1,
+      },
+    ];
+    const result = getWordAtCursor(text, cursorPos, metricNames, identities);
+    expect(result.word).toBe("Met");
+    expect(result.start).toBe(9);
+    expect(result.end).toBe(12);
+  });
 });
 
 function sourceId(id: number): MetricSourceId {
