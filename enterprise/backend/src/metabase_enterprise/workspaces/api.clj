@@ -1,11 +1,16 @@
 (ns metabase-enterprise.workspaces.api
   (:require
+   [metabase-enterprise.workspaces.config :as config]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.table-remapping.model]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
+
+(comment metabase.table-remapping.model/keep-me)
 
 (def ^:private WorkspaceStatus
   [:enum "uninitialized" "initialized"])
@@ -57,6 +62,12 @@
   []
   (api/check-superuser)
   (mapv present-workspace (workspace/list-workspaces)))
+
+(api.macros/defendpoint :get "/remappings"
+  "Return every row in the `table_remapping` table."
+  []
+  (api/check-superuser)
+  (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."
@@ -110,6 +121,13 @@
   (api/check-404 (workspace/get-workspace id))
   (workspace/delete-workspace! id)
   {:id id :deleted true})
+
+(api.macros/defendpoint :get "/:id/config"
+  "Return a downloadable JSON config fragment for this Workspace. Returns 409 if
+  any of the Workspace's databases is still uninitialized."
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  (api/check-superuser)
+  (api/check-404 (config/build-workspace-config id)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace` routes"
