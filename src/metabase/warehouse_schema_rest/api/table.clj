@@ -191,7 +191,7 @@
    body]
   (when-let [changes (-> body
                          (u/select-keys-when
-                          :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
+                          :non-nil [:display_name :show_in_getting_started :entity_type :field_order :collection_id]
                           :present [:description :caveats :points_of_interest :visibility_type
                                     :data_layer :data_authority :data_source :owner_email :owner_user_id])
                          (u/update-some :data_layer keyword)
@@ -262,7 +262,8 @@
             [:data_source             {:optional true} [:maybe :string]]
             [:data_layer              {:optional true} [:maybe :string]]
             [:owner_email             {:optional true} [:maybe :string]]
-            [:owner_user_id           {:optional true} [:maybe :int]]]]
+            [:owner_user_id           {:optional true} [:maybe :int]]
+            [:collection_id           {:optional true} [:maybe ms/PositiveInt]]]]
   (first (update-tables! [id] body)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

@@ -162,6 +162,7 @@ export interface UpdateTableRequest {
   entity_type?: string | null;
   owner_email?: string | null;
   owner_user_id?: UserId | null;
+  collection_id?: CollectionId | null;
 }
 
 export interface UpdateTableListRequest {
