@@ -21,8 +21,19 @@
   - metric/card/dataset are near the end because they take a long time (computing has_temporal_dim etc.).
   - table and indexed-entity are near the end because there can be a large number of them.
   - indexed-entity is last so the rest of the index is available before we start on it."
-  ["collection" "dashboard" "segment" "measure" "database" "action" "document" "transform"
-   "table" "metric" "card" "dataset" "indexed-entity"])
+  ["collection"
+   "dashboard"
+   "segment"
+   "measure"
+   "database"
+   "action"
+   "document"
+   "transform"
+   "table"
+   "metric"
+   "card"
+   "dataset"
+   "indexed-entity"])
 
 (def raw-spec-forms
   "Stores the raw (unevaluated) spec forms captured at macro expansion time.
