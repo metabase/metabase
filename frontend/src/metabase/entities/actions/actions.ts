@@ -6,13 +6,14 @@ import {
   useGetActionQuery,
   useListActionsQuery,
 } from "metabase/api";
+import type { Dispatch } from "metabase/redux/store";
+import { ActionSchema } from "metabase/schema";
 import {
   createEntity,
   entityCompatibleQuery,
   undo,
-} from "metabase/lib/entities";
-import { createThunkAction } from "metabase/lib/redux";
-import { ActionSchema } from "metabase/schema";
+} from "metabase/utils/entities";
+import { createThunkAction } from "metabase/utils/redux";
 import type {
   CreateActionRequest,
   GetActionRequest,
@@ -23,7 +24,6 @@ import type {
   WritebackImplicitQueryAction,
   WritebackQueryAction,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 type BaseCreateActionParams = Pick<
   WritebackAction,
@@ -206,7 +206,7 @@ export const Actions = createEntity({
         undo({}, t`action`, archived ? t`archived` : t`unarchived`),
       ),
   },
-  reducer: (state = {}, { type, payload }: { type: string; payload: any }) => {
+  reducer: (state, { type, payload }: { type: string; payload: any }) => {
     switch (type) {
       case CREATE_PUBLIC_LINK: {
         const { id, uuid } = payload;

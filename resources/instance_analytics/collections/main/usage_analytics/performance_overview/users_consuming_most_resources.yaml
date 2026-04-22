@@ -20,13 +20,13 @@ dataset_query:
         - [Internal Metabase Database, public, v_query_log, running_time_seconds]
     breakout:
     - - field
-      - {base-type: type/DateTimeWithLocalTZ, temporal-unit: week, effective-type: type/DateTimeWithLocalTZ}
+      - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, temporal-unit: week}
       - [Internal Metabase Database, public, v_query_log, started_at]
     - - field
       - {base-type: type/Integer, effective-type: type/Integer}
       - [Internal Metabase Database, public, v_query_log, user_id]
     - - field
-      - {base-type: type/Text, join-alias: People - User, effective-type: type/Text}
+      - {base-type: type/Text, effective-type: type/Text, join-alias: People - User}
       - [Internal Metabase Database, public, v_users, full_name]
     filters:
     - - time-interval
@@ -50,7 +50,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_query_log, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: People - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: People - User}
           - [Internal Metabase Database, public, v_users, user_id]
       fields: all
       stages:
@@ -66,7 +66,7 @@ dataset_query:
           - {base-type: type/Integer, effective-type: type/Integer}
           - [Internal Metabase Database, public, v_query_log, user_id]
         - - field
-          - {base-type: type/Integer, join-alias: Group Members - User, effective-type: type/Integer}
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Group Members - User}
           - [Internal Metabase Database, public, v_group_members, user_id]
       fields: all
       stages:
@@ -135,7 +135,7 @@ result_metadata:
   lib/card-id: 116
   lib/deduplicated-name: user_id
   lib/desired-column-alias: user_id
-  lib/external-remap: {field-id: 1626, id: 30, name: User ID, lib/type: metadata.column.remapping/external}
+  lib/external-remap: {field-id: 1645, id: 30, name: User ID, lib/type: metadata.column.remapping/external}
   lib/from-model?: true
   lib/original-display-name: User ID
   lib/original-name: user_id

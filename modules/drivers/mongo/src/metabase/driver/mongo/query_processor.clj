@@ -1765,10 +1765,9 @@ function(bin) {
       [:field & _]
       (update-field-ref &match)
 
-      (join :guard (and (map? join)
-                        (driver-api/qp.add.alias join)
-                        (not= (driver-api/qp.add.alias join) (:alias join))))
-      (&recur (assoc join :alias (driver-api/qp.add.alias join))))))
+      (:and join
+            {driver-api/qp.add.alias (add-alias :guard (and add-alias (not= add-alias (:alias join))))})
+      (&recur (assoc join :alias add-alias)))))
 
 (defn- preprocess
   [inner-query]

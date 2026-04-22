@@ -1,6 +1,6 @@
-import { createEntity } from "metabase/lib/entities";
 import { TransformSchema } from "metabase/schema";
 import { color } from "metabase/ui/utils/colors";
+import { createEntity } from "metabase/utils/entities";
 import type { Transform } from "metabase-types/api";
 
 /**

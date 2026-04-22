@@ -22,6 +22,10 @@ import {
   within,
 } from "__support__/ui";
 import {
+  SdkInternalNavigationContext,
+  type SdkInternalNavigationContextValue,
+} from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
+import {
   SdkQuestionDefaultView,
   type SdkQuestionDefaultViewProps,
 } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
@@ -97,6 +101,21 @@ const TEST_CARD = createMockCard({
   parameters: [TEST_PARAM],
 });
 
+function makeMockNavigation(
+  overrides: Partial<SdkInternalNavigationContextValue> = {},
+): SdkInternalNavigationContextValue {
+  return {
+    stack: [],
+    push: jest.fn(),
+    pop: jest.fn(),
+    canGoBack: false,
+    currentEntry: undefined,
+    previousEntry: undefined,
+    initWithDashboard: jest.fn(),
+    ...overrides,
+  };
+}
+
 const setup = async ({
   isValidCard = true,
   title,
@@ -105,12 +124,16 @@ const setup = async ({
   initialSqlParameters,
   cardId = TEST_CARD_ID,
   preventWaitForLoader = false,
+  mockNavigation,
 }: Partial<
   Pick<BaseSdkQuestionProps, "initialSqlParameters"> &
     Pick<SdkQuestionDefaultViewProps, "withChartTypeSelector" | "title"> & {
       isValidCard?: boolean;
       withCustomLayout?: boolean;
-    } & { cardId: BaseEntityId | CardId; preventWaitForLoader?: boolean }
+      cardId: BaseEntityId | CardId | null;
+      preventWaitForLoader?: boolean;
+      mockNavigation?: SdkInternalNavigationContextValue;
+    }
 > = {}) => {
   const { state } = setupSdkState({
     currentUser: TEST_USER,
@@ -151,14 +174,16 @@ const setup = async ({
   });
 
   renderWithSDKProviders(
-    <SdkQuestion
-      questionId={cardId}
-      title={title}
-      withChartTypeSelector={withChartTypeSelector}
-      initialSqlParameters={initialSqlParameters}
-    >
-      {withCustomLayout ? <InteractiveQuestionCustomLayout /> : undefined}
-    </SdkQuestion>,
+    <SdkInternalNavigationContext.Provider value={mockNavigation ?? null}>
+      <SdkQuestion
+        questionId={cardId}
+        title={title}
+        withChartTypeSelector={withChartTypeSelector}
+        initialSqlParameters={initialSqlParameters}
+      >
+        {withCustomLayout ? <InteractiveQuestionCustomLayout /> : undefined}
+      </SdkQuestion>
+    </SdkInternalNavigationContext.Provider>,
     {
       componentProviderProps: {
         authConfig: createMockSdkConfig(),
@@ -356,5 +381,30 @@ describe("InteractiveQuestion", () => {
       screen.queryByText("Query results will appear here."),
     ).not.toBeInTheDocument();
     expect(screen.getByTestId("query-visualization-root")).toBeInTheDocument();
+  });
+
+  describe("navigation stack initialization", () => {
+    it("should push a question entry with id=null for an ad-hoc question (questionId is null)", async () => {
+      const mockNavigation = makeMockNavigation();
+      await setup({ cardId: null, mockNavigation });
+
+      expect(mockNavigation.push).toHaveBeenCalledWith({
+        type: "question",
+        id: null,
+        name: expect.any(String),
+      });
+    });
+
+    it("should not push to the navigation stack when the stack is already populated", async () => {
+      const existingEntry = {
+        type: "dashboard" as const,
+        id: 1,
+        name: "Sales Dashboard",
+      };
+      const mockNavigation = makeMockNavigation({ stack: [existingEntry] });
+      await setup({ mockNavigation });
+
+      expect(mockNavigation.push).not.toHaveBeenCalled();
+    });
   });
 });

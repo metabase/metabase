@@ -1,8 +1,5 @@
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
-import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnExtractViaPlusModal } from "metabase/querying/analytics";
 import {
   ExtractColumn,
@@ -10,6 +7,7 @@ import {
 } from "metabase/querying/components/expressions";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Box, rem } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
@@ -35,7 +33,6 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
     onChangeCardAndRun,
     onClose,
   }: ClickActionPopoverProps) => {
-    const currentQuestion = useSelector(getQuestion);
     const dispatch = useDispatch();
 
     function handleSubmit(
@@ -44,7 +41,7 @@ export const ExtractColumnAction: LegacyDrill = ({ question, clicked }) => {
       extraction: Lib.ColumnExtraction,
     ) {
       const newQuery = Lib.extract(query, stageIndex, extraction);
-      const nextQuestion = checkNotNull(currentQuestion).setQuery(newQuery);
+      const nextQuestion = question.setQuery(newQuery);
       const nextCard = nextQuestion.card();
 
       trackColumnExtractViaPlusModal(

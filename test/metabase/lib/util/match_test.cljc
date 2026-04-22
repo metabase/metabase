@@ -338,7 +338,7 @@
            (lib.util.match/match-lite "not a vector"
              x (str "fallback: " x))))
   ;; Rest with guard
-  (t/is (= "a=1 b=2 rest=(3 4 5)"
+  (t/is (= "a=1 b=2 rest=[3 4 5]"
            (lib.util.match/match-lite [1 2 3 4 5]
              [a b & (rst :guard (> (count rst) 2))] (str "a=" a " b=" b " rest=" rst))))
 
@@ -375,6 +375,47 @@
                  (:or [(a :guard even?) b]
                       [b a])
                  b)))))
+
+(t/deftest ^:parallel match-lite-and-syntax
+  (t/is (= 10 (lib.util.match/match-lite [1 2 3]
+                (:and [a b c] (_ :guard vector?)) (* a 10))))
+  (t/is (= nil (lib.util.match/match-lite [1 2 3]
+                 (:and [a b c] (_ :guard map?)) (* a 10))))
+  (t/is (= nil (lib.util.match/match-lite [1 2 3]
+                 (:and [a b] (_ :guard vector?)) (* a 10))))
+  (t/is (= 6 (lib.util.match/match-lite [1 2 3]
+               (:and [a b c] (v :guard vector?)) (reduce * 1 v))))
+  (t/testing "later patterns can refer to earlier bindings"
+    (t/is (= 20 (lib.util.match/match-lite [1 2 3]
+                  (:and [a b c]
+                        (_ :guard (and (odd? a) (even? b))))
+                  (* a b 10))))))
+
+(t/deftest ^:parallel match-lite-map-syntax
+  (t/is (= 200 (lib.util.match/match-lite {:a 10, :b 20}
+                 {:a a, :b b} (* a b))))
+  (t/is (= nil (lib.util.match/match-lite {:a 10}
+                 {:a a, :b b} (* a b))))
+  (t/testing "&truthy"
+    (t/is (= 123 (lib.util.match/match-lite {:a 10}
+                   {:a &truthy} 123)))
+    (t/is (= nil (lib.util.match/match-lite {:b 20}
+                   {:a &truthy} 123)))
+    (t/is (= 123 (lib.util.match/match-lite {:a true}
+                   {:a &truthy} 123)))
+    (t/is (= nil (lib.util.match/match-lite {:a false}
+                   {:a &truthy} 123)))
+    (t/is (= nil (lib.util.match/match-lite {:a nil}
+                   {:a &truthy} 123))))
+  (t/testing "_"
+    (t/is (= 123 (lib.util.match/match-lite {:a 10}
+                   {:a _} 123)))
+    (t/is (= nil (lib.util.match/match-lite {:b 20}
+                   {:a _} 123)))
+    (t/is (= 123 (lib.util.match/match-lite {:a true}
+                   {:a _} 123)))
+    (t/is (= 123 (lib.util.match/match-lite {:a false}
+                   {:a _} 123)))))
 
 (t/deftest ^:parallel same-result-with-different-bindings-test
   (t/testing "result here should not be treated as a common because it refers to different bindings in branches"

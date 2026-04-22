@@ -2,16 +2,15 @@ import type { Store } from "@reduxjs/toolkit";
 import type { ComponentType } from "react";
 import { IndexRoute, Route } from "react-router";
 
-import * as Urls from "metabase/lib/urls";
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
-  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
+import type { State } from "metabase/redux/store";
 import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
-import type { State } from "metabase-types/store";
+import * as Urls from "metabase/utils/urls";
 
 import { DataSectionLayout } from "./app/pages/DataSectionLayout";
 import { DataStudioLayout } from "./app/pages/DataStudioLayout";
@@ -19,7 +18,6 @@ import { DependenciesSectionLayout } from "./app/pages/DependenciesSectionLayout
 import { DependencyDiagnosticsSectionLayout } from "./app/pages/DependencyDiagnosticsSectionLayout";
 import { GitSyncSectionLayout } from "./app/pages/GitSyncSectionLayout";
 import { TransformsSectionLayout } from "./app/pages/TransformsSectionLayout";
-import { WorkspacesSectionLayout } from "./app/pages/WorkspacesSectionLayout";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import {
@@ -55,11 +53,6 @@ export function getDataStudioRoutes(
           PLUGIN_LIBRARY.getDataStudioLibraryRoutes()
         ) : (
           <Route path="library" component={LibraryUpsellPage} />
-        )}
-        {PLUGIN_WORKSPACES.isEnabled && (
-          <Route path="workspaces" component={WorkspacesSectionLayout}>
-            {PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes()}
-          </Route>
         )}
         {PLUGIN_DEPENDENCIES.isEnabled ? (
           <Route path="dependencies" component={DependenciesSectionLayout}>

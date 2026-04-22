@@ -1,11 +1,7 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import type {
-  ErrorDiagnosticModalOpenedEvent,
-  ErrorDiagnosticModalSubmittedEvent,
-} from "metabase-types/analytics/event";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 
 export const trackErrorDiagnosticModalOpened = (
-  triggeredFrom: ErrorDiagnosticModalOpenedEvent["triggered_from"],
+  triggeredFrom: "profile-menu" | "command-palette",
 ) => {
   trackSimpleEvent({
     event: "error_diagnostic_modal_opened",
@@ -14,7 +10,7 @@ export const trackErrorDiagnosticModalOpened = (
 };
 
 export const trackErrorDiagnosticModalSubmitted = (
-  eventDetail: ErrorDiagnosticModalSubmittedEvent["event_detail"],
+  eventDetail: "download-diagnostics" | "submit-report",
 ) => {
   trackSimpleEvent({
     event: "error_diagnostic_modal_submitted",

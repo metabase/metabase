@@ -72,6 +72,7 @@ export function DateShortcutPicker({
           display="block"
           variant="subtle"
           onClick={() => onSelectType(option.type)}
+          data-testid={`date-picker-type-${option.type}`}
         >
           {option.label}
         </Button>

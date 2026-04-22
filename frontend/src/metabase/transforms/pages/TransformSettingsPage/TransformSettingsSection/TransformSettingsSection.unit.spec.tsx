@@ -8,7 +8,9 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import * as Urls from "metabase/lib/urls";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
+import * as Urls from "metabase/utils/urls";
 import type {
   EnterpriseSettings,
   TokenFeatures,
@@ -22,8 +24,6 @@ import {
   createMockTransformRun,
   createMockUser,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { TransformSettingsSection } from "./TransformSettingsSection";
 

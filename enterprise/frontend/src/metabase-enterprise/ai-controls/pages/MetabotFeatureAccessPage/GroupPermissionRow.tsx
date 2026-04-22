@@ -3,8 +3,8 @@ import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 import _, { type Dictionary } from "underscore";
 
-import { isDefaultGroup } from "metabase/lib/groups";
 import { Box, Checkbox, Switch, Text } from "metabase/ui";
+import { isDefaultGroup } from "metabase/utils/groups";
 import { AllUsersHigherAccessTooltipIcon } from "metabase-enterprise/ai-controls/components/AllUsersHigherAccessTooltipIcon";
 import {
   AIToolKey,
@@ -129,7 +129,7 @@ export function GroupPermissionRow(props: GroupPermissionRowProps) {
         }
 
         return (
-          <td key={key} className={S.Cell}>
+          <td key={key} className={cx(S.Cell, S.CenterText)}>
             <Box className={S.CellContent}>
               <Checkbox
                 aria-label={t`Allow ${group.name} user group to access ${label} AI tool.`}

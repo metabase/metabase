@@ -71,6 +71,13 @@ export const globalShortcuts = {
     shortcut: ["g k"],
     shortcutGroup: "global" as const,
   },
+  "navigate-data-studio": {
+    get name() {
+      return t`Go to Data Studio`;
+    },
+    shortcut: ["g s"],
+    shortcutGroup: "global" as const,
+  },
 
   "download-diagnostics": {
     get name() {

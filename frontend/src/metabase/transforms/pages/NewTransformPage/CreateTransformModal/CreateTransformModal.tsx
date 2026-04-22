@@ -25,7 +25,6 @@ import type {
   SchemaName,
   Transform,
   TransformSource,
-  WorkspaceTransform,
 } from "metabase-types/api";
 
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
@@ -45,9 +44,7 @@ type CreateTransformModalProps = {
   onClose: () => void;
   schemasFilter?: SchemasFilter;
   validationSchemaExtension?: ValidationSchemaExtension;
-  handleSubmit?: (
-    values: NewTransformValues,
-  ) => Promise<Transform | WorkspaceTransform>;
+  handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
   targetDescription?: string;
   validateOnMount?: boolean;
   showIncrementalSettings?: boolean;
@@ -102,6 +99,11 @@ export function CreateTransformModal({
     [validationSchemaExtension, defaultSchema],
   );
 
+  const validationContext = useMemo(
+    () => ({ supportsSchemas: Boolean(supportsSchemas) }),
+    [supportsSchemas],
+  );
+
   if (isLoading || error != null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
   }
@@ -119,6 +121,7 @@ export function CreateTransformModal({
       <FormProvider
         initialValues={initialValues}
         validationSchema={validationSchema}
+        validationContext={validationContext}
         onSubmit={handleSubmit || defaultHandleSubmit}
         validateOnMount={validateOnMount}
       >

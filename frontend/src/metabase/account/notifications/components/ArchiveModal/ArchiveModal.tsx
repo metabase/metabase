@@ -4,9 +4,9 @@ import { t } from "ttag";
 import { Button } from "metabase/common/components/Button";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormMessage } from "metabase/forms";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
-import { formatChannelRecipients } from "metabase/lib/pulse";
-import Settings from "metabase/lib/settings";
+import { formatDateTimeWithUnit } from "metabase/utils/formatting";
+import { formatChannelRecipients } from "metabase/utils/pulse";
+import Settings from "metabase/utils/settings";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
 import type { NotificationType } from "../../types";

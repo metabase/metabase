@@ -3,7 +3,7 @@ import styled from "@emotion/styled";
 import type { ComponentProps } from "react";
 
 import { LoadingSpinner as LoadingSpinnerBase } from "metabase/common/components/LoadingSpinner";
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { isReducedMotionPreferred } from "metabase/utils/dom";
 
 const TRANSITION_DURATION = () => (isReducedMotionPreferred() ? "0" : "0.25s");
 

@@ -3,7 +3,7 @@ import { useTimeout } from "react-use";
 import { t } from "ttag";
 
 import { DefaultLogoIcon } from "metabase/common/components/LogoIcon";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import { goToNextStep, loadDefaults } from "../../actions";
 import { LOCALE_TIMEOUT } from "../../constants";

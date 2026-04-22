@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 
-import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_WORKSPACES } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import {
   QueryEditor,
   type QueryEditorUiOptions,
   type QueryEditorUiState,
 } from "metabase/querying/editor/components/QueryEditor";
 import { getMetadata } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type {
   Database,
@@ -99,10 +99,7 @@ export function TransformEditor({
       onRunQueryStart={onRunQueryStart}
       onBlur={onBlur}
       topBarInnerContent={
-        showEditButton &&
-        (PLUGIN_WORKSPACES.isEnabled && transform ? (
-          <PLUGIN_WORKSPACES.EditTransformMenu transform={transform} />
-        ) : (
+        showEditButton && (
           <EditDefinitionButton
             bg="transparent"
             fz="sm"
@@ -111,7 +108,7 @@ export function TransformEditor({
             size="xs"
             transformId={transform.id}
           />
-        ))
+        )
       }
       parametersAreUserVisible={false}
     />

@@ -5,3 +5,7 @@ export interface PurchaseCloudAddOnRequest {
   quantity?: number;
   terms_of_service?: boolean;
 }
+
+export interface RemoveCloudAddOnRequest {
+  product_type: AddOnProductType;
+}
