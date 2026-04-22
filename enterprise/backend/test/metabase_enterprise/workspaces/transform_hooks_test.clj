@@ -3,10 +3,13 @@
    transform caller to resolve-or-create a TableRemapping row for a
    transform's declared target in workspace mode."
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.remapping-ledger :as ledger]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.transform-hooks :as transform-hooks]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.test :as mt]))
 
 (defn- with-workspace-config [db-id output-schema f]
@@ -17,7 +20,15 @@
     (ws.table-remapping/clear-mappings-for-db! db-id)
     (try
       (mt/with-premium-features #{:workspaces}
-        (f))
+        ;; Stub the warehouse side of `record-remapping!` — the orchestrator now writes
+        ;; both the ledger and the app-db, but these tests are about the resolve
+        ;; semantics. We don't want to run real CREATE TABLE / INSERT against the test
+        ;; H2 (whose `ws_xyz` schema doesn't exist).
+        (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] {:stubbed true})
+                      jdbc/db-transaction*                     (fn [_cs body-fn & _] (body-fn {:tx true}))
+                      ledger/ensure-ledger-table!              (fn [_conn _schema] nil)
+                      ledger/record-remap!                     (fn [_conn _schema _fs _ft _tt] nil)]
+          (f)))
       (finally
         (ws.table-remapping/clear-mappings-for-db! db-id)
         (reset! config-atom prev)))))
