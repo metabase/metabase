@@ -637,16 +637,19 @@
         ;; Drain any startup/setting events so we only assert on emissions from the call below.
         (snowplow-test/pop-event-data-and-user-id!)
         (let [{:keys [library universe metabot]} (complexity/complexity-scores :embedder nil)
-              events   (complexity-events!)
-              expected (vec
-                        (for [[catalog result] {"library"  library
-                                                "universe" universe
-                                                "metabot"  metabot}
-                              [k score]        (expected-keys-for-catalog result)]
-                          [catalog k score]))
-              actual   (mapv (fn [e] [(get e "catalog") (get e "key") (get e "score")]) events)]
+              events     (complexity-events!)
+              expected   (vec
+                          (for [[catalog result] {"library"  library
+                                                  "universe" universe
+                                                  "metabot"  metabot}
+                                [k score]        (expected-keys-for-catalog result)]
+                            [catalog k score]))
+              actual     (mapv (fn [e] [(get e "catalog") (get e "key") (get e "score")]) events)
+              catalog+key (mapv (fn [e] [(get e "catalog") (get e "key")]) events)]
           (is (= (count expected) (count actual))
               "every (catalog, key) is emitted exactly once — no duplicates")
+          (is (= (count catalog+key) (count (set catalog+key)))
+              "no two events share a normalized (catalog, key) — guards against key-name collisions")
           (is (= (frequencies expected) (frequencies actual))
               "every (catalog, key) pair carries the matching score from the result")
           (testing "every event carries the event name, formula version, and parameters map"
