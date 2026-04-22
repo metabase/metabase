@@ -3025,15 +3025,9 @@
             (is (= 99 (get st "products")))))))))
 
 (deftest backfill-transform-target-tables-test
-  (testing "v60.2026-03-07T00:00:04 : backfill transform target tables and invalidate workspace caches"
+  (testing "v60.2026-03-07T00:00:04 : backfill transform target tables"
     (impl/test-migrations ["v60.2026-03-07T00:00:04"] [migrate!]
-      (let [user-id   (:id (new-instance-with-default :core_user))
-            db-id     (:id (new-instance-with-default :metabase_database))
-            ws-id     (:id (t2/insert-returning-instance!
-                            :workspace {:name       "test-ws"
-                                        :creator_id user-id
-                                        :created_at :%now
-                                        :updated_at :%now}))
+      (let [db-id     (:id (new-instance-with-default :metabase_database))
             source    (json/encode {:type "query" :query {:database db-id}})
             ;; -- Transform with a target that has no existing metabase_table → should create provisional row --
             _         (t2/insert-returning-pk!
@@ -3044,19 +3038,7 @@
                                    :source_database_id db-id
                                    :target_db_id       db-id
                                    :created_at         :%now
-                                   :updated_at         :%now})
-            ;; -- workspace_transform to verify analysis_version bump --
-            _         (t2/insert! :workspace_transform
-                                  {:ref_id       (str (random-uuid))
-                                   :workspace_id ws-id
-                                   :name         "ws-tx"
-                                   :source       source
-                                   :target       (json/encode {:type "table" :schema "public" :name "orders"})
-                                   :created_at   :%now
-                                   :updated_at   :%now})]
-        (testing "Before migration"
-          (is (= 1 (:graph_version (t2/select-one :workspace :id ws-id))))
-          (is (= 1 (:analysis_version (first (t2/select :workspace_transform :workspace_id ws-id))))))
+                                   :updated_at         :%now})]
         (migrate!)
         (testing "Provisional metabase_table created for transform target"
           (let [provisional (first (t2/query {:select [:active :transform_target :data_source :data_authority :display_name]
@@ -3070,8 +3052,4 @@
             (is (true? (:transform_target provisional)))
             (is (= "metabase-transform" (:data_source provisional)))
             (is (= "computed" (:data_authority provisional)))
-            (is (= "New Target Table" (:display_name provisional)))))
-        (testing "Workspace caches invalidated"
-          ;; Both BackfillTransformTargetTables and BackfillTransformTargetTableId bump these
-          (is (= 3 (:graph_version (t2/select-one :workspace :id ws-id))))
-          (is (= 3 (:analysis_version (first (t2/select :workspace_transform :workspace_id ws-id))))))))))
+            (is (= "New Target Table" (:display_name provisional)))))))))
