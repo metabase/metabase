@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "feat/builtin-mcp-ui",
-    "hash": "6032e9a63ddbeb743423833c3c45ed041c56636c"
+    "hash": "ddd74074b6628bad5ce19e4b733f1326e9d9c460"
   },
   "upstream": {
     "branch": "emb-1599-extract-the-metric-explorer-bar-from-explore-page-as-a"
