@@ -6,7 +6,7 @@ SELECT
     a.created_at,
     a.source,
     a.model,
-    a.profile_id                                                      AS profile,
+    a.profile_id,
     a.prompt_tokens,
     a.completion_tokens,
     a.total_tokens,
