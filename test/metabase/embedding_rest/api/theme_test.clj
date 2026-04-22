@@ -194,9 +194,12 @@
             "Admin deletion should be preserved — no re-seed")))
     (testing "rolls back atomically when an insert fails"
       (mt/with-empty-h2-app-db!
-        (with-redefs [t2/insert! (fn [& _args]
-                                   (throw (ex-info "boom" {})))]
-          (mt/user-http-request :crowberto :post 500 "embed-theme/seed-defaults" example-seed-body))
+        (let [original-insert t2/insert!]
+          (with-redefs [t2/insert! (fn [model & rows]
+                                     (if (= model :model/EmbeddingTheme)
+                                       (throw (ex-info "boom" {}))
+                                       (apply original-insert model rows)))]
+            (mt/user-http-request :crowberto :post 500 "embed-theme/seed-defaults" example-seed-body)))
         (is (zero? (t2/count :model/EmbeddingTheme)))
         (is (false? (embedding.settings/default-embedding-themes-seeded))
             "Setting flag must not flip when the insert fails")))
