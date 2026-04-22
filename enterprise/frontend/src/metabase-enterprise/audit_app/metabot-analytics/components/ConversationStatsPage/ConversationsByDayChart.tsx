@@ -17,6 +17,7 @@ import {
   applyUsageStatsAggregation,
   findColumn,
   getChartTitle,
+  getMetricSeriesSettings,
   isSingleDayFilter,
 } from "./query-utils";
 
@@ -85,12 +86,13 @@ export function ConversationsByDayChart({
             "graph.x_axis.title_text": "",
             "graph.y_axis.title_text": "",
             "line.interpolate": "cardinal",
+            ...getMetricSeriesSettings(metric),
           },
         }),
         data: data.data,
       },
     ];
-  }, [data, jsQuery]);
+  }, [data, jsQuery, metric]);
 
   if (isFetching || !rawSeries) {
     return <Skeleton h={350} />;

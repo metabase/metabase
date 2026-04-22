@@ -9,6 +9,7 @@ import {
 } from "metabase/api/ai-streaming";
 import type { ProcessedChatResponse } from "metabase/api/ai-streaming/process-stream";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
@@ -179,7 +180,15 @@ export const executeSlashCommand = createAsyncThunk<
         );
       })
       .otherwise(() => {
-        dispatch(addUndo({ message: "Unknown command" }));
+        const handled = PLUGIN_AUDIT.handleMetabotSlashCommand({
+          command,
+          agentId,
+          dispatch,
+          getState,
+        });
+        if (!handled) {
+          dispatch(addUndo({ message: "Unknown command" }));
+        }
       });
   },
 );

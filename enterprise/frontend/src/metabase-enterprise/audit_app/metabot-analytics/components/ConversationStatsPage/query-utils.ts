@@ -3,10 +3,34 @@ import { t } from "ttag";
 
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
+import { color } from "metabase/ui/colors/palette";
 import type { ColumnMetadata, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
+import type { VisualizationSettings } from "metabase-types/api";
 
 export type UsageStatsMetric = "conversations" | "messages" | "tokens";
+
+const METRIC_ACCENT: Record<UsageStatsMetric, string> = {
+  conversations: "accent0",
+  tokens: "accent2",
+  messages: "accent4",
+};
+
+const METRIC_COLUMN_NAME: Record<UsageStatsMetric, string> = {
+  conversations: "count",
+  tokens: "sum",
+  messages: "sum",
+};
+
+export function getMetricSeriesSettings(
+  metric: UsageStatsMetric,
+): Pick<VisualizationSettings, "series_settings"> {
+  return {
+    series_settings: {
+      [METRIC_COLUMN_NAME[metric]]: { color: color(METRIC_ACCENT[metric]) },
+    },
+  };
+}
 
 /**
  * Case-insensitive column lookup — handles H2 uppercasing vs Postgres lowercase.

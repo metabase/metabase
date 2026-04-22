@@ -17,6 +17,7 @@ import {
   applyDateFilter,
   applyUsageStatsAggregation,
   findColumn,
+  getMetricSeriesSettings,
 } from "./query-utils";
 
 type Props = {
@@ -89,12 +90,13 @@ export function BreakoutChart({
           visualization_settings: {
             "graph.x_axis.title_text": "",
             "graph.y_axis.title_text": "",
+            ...getMetricSeriesSettings(metric),
           },
         }),
         data: data.data,
       },
     ];
-  }, [data, jsQuery, display]);
+  }, [data, jsQuery, display, metric]);
 
   if (isFetching || !rawSeries) {
     return <Skeleton h={350} />;

@@ -1,7 +1,12 @@
 import type { ComponentType, ReactNode } from "react";
 
 import type { LinkProps } from "metabase/common/components/Link";
+import type {
+  MetabotAgentId,
+  SlashCommand,
+} from "metabase/metabot/state/types";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import type { IconName } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type {
@@ -9,6 +14,13 @@ import type {
   Dashboard,
   Database as DatabaseType,
 } from "metabase-types/api";
+
+export type MetabotSlashCommandHandler = (args: {
+  command: SlashCommand;
+  agentId: MetabotAgentId;
+  dispatch: Dispatch;
+  getState: GetState;
+}) => boolean;
 
 export type InsightsLinkProps = (
   | {
@@ -35,6 +47,7 @@ const getDefaultPluginAudit = () => ({
   InsightsMenuItem: PluginPlaceholder as ComponentType<InsightsMenuItemProps>,
   getMetabotAnalyticsNavItems: (): ReactNode => null,
   getMetabotAnalyticsRoutes: (): ReactNode => null,
+  handleMetabotSlashCommand: ((_args) => false) as MetabotSlashCommandHandler,
 });
 
 export const PLUGIN_AUDIT = getDefaultPluginAudit();
