@@ -293,6 +293,7 @@ Static components run inside a **GraalJS (GraalVM) server-side JavaScript engine
 **Guidelines:**
 
 - Use fixed dimensions (e.g. `width: 540, height: 360`) — no responsive sizing.
+- Return a valid React SVG component.
 - Do not use `width`/`height` props (they are not passed in static context).
 - Avoid external dependencies that rely on browser APIs.
 - Use `getAssetUrl()` — in static context assets are provided as base64 data URLs.
