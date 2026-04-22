@@ -89,6 +89,7 @@ function WorkspaceDatabaseListPageBody({
           actions={
             <PaneHeaderActions
               isDirty={isDirty}
+              isValid={databases.length > 0}
               isSaving={isSaving}
               onSave={handleSave}
               onCancel={handleCancel}
