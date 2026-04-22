@@ -1,6 +1,19 @@
 import type { DateFilterValue } from "metabase/querying/common/types";
 
-import { isSingleDayFilter } from "./query-utils";
+import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
+
+import { getViewForMetric, isSingleDayFilter } from "./query-utils";
+
+describe("getViewForMetric", () => {
+  it("routes the tokens metric to v_ai_usage_log", () => {
+    expect(getViewForMetric("tokens")).toBe(VIEW_USAGE_LOG);
+  });
+
+  it("routes conversations and messages to v_metabot_conversations", () => {
+    expect(getViewForMetric("conversations")).toBe(VIEW_CONVERSATIONS);
+    expect(getViewForMetric("messages")).toBe(VIEW_CONVERSATIONS);
+  });
+});
 
 describe("isSingleDayFilter", () => {
   const DAY = new Date(2026, 3, 17);

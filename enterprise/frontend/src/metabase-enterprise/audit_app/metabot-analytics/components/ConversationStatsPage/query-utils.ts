@@ -8,7 +8,17 @@ import type { ColumnMetadata, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { VisualizationSettings } from "metabase-types/api";
 
+import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
+
 export type UsageStatsMetric = "conversations" | "messages" | "tokens";
+
+// The Tokens tab reads from v_ai_usage_log (per-LLM-call ledger) for complete
+// token accounting across all call sites. The Conversations and Messages tabs
+// stay on v_metabot_conversations because aggregate-by-count and sum(message_count)
+// would be semantically wrong over a per-LLM-call table.
+export function getViewForMetric(metric: UsageStatsMetric): string {
+  return metric === "tokens" ? VIEW_USAGE_LOG : VIEW_CONVERSATIONS;
+}
 
 const METRIC_ACCENT: Record<UsageStatsMetric, string> = {
   conversations: "accent0",
