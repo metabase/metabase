@@ -12,9 +12,14 @@
 (defn- query-view
   "Query v_metabot_conversations, returning only rows for the given conversation IDs."
   [conversation-ids]
-  (t2/query {:select [:*]
-             :from   [:v_metabot_conversations]
-             :where  [:in :conversation_id conversation-ids]}))
+  (map (fn [row]
+         (-> row
+             (update :total_tokens long)
+             (update :prompt_tokens long)
+             (update :completion_tokens long)))
+       (t2/query {:select [:*]
+                  :from   [:v_metabot_conversations]
+                  :where  [:in :conversation_id conversation-ids]})))
 
 (defn- find-row [rows conversation-id]
   (some #(when (= (:conversation_id %) conversation-id) %) rows))
