@@ -67,6 +67,17 @@
                         {:status-code 409
                          :database_id database_id}))))))
 
+(defn delete-workspace!
+  "Delete a Workspace. Refuses with a 409 if any of its WorkspaceDatabase rows are
+  `:initialized` (they must be deprovisioned first to avoid leaking isolated
+  schemas/users). Cascade-deletes uninitialized children via the FK."
+  [id]
+  (when (t2/exists? :model/WorkspaceDatabase :workspace_id id :status :initialized)
+    (throw (ex-info "Cannot delete a workspace with initialized databases; deprovision them first"
+                    {:status-code 409
+                     :workspace_id id})))
+  (t2/delete! :model/Workspace :id id))
+
 (defn update-workspace!
   "Update a Workspace and reconcile its `WorkspaceDatabase` rows with the provided
   list. `:initialized` rows are immutable: the incoming list must preserve each

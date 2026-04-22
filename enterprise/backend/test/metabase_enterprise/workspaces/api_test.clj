@@ -143,12 +143,16 @@
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                {:name "To Init" :databases [(ws-db-payload)]})
-            called       (atom [])]
-        (with-redefs [provisioning/run-async!                 (fn [f] (f))
-                      provisioning/provision-workspace-database!
-                      (fn [wsd-id] (swap! called conj wsd-id) nil)]
+            called       (atom [])
+            done         (promise)]
+        (with-redefs [provisioning/provision-workspace-database!
+                      (fn [wsd-id]
+                        (swap! called conj wsd-id)
+                        (deliver done :ok)
+                        nil)]
           (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/initialize") {})]
             (is (= {:workspace_id id :triggered 1} resp))
+            (is (not= :timeout (deref done 2000 :timeout)))
             (is (= 1 (count @called)))))))))
 
 (deftest post-initialize-skips-already-initialized-test
@@ -161,12 +165,15 @@
                     :output_schema    "done"
                     :input_schemas    ["public"]
                     :status           :initialized}]
-      (let [called (atom [])]
-        (with-redefs [provisioning/run-async!                 (fn [f] (f))
+      (let [called     (atom [])
+            batch-done (promise)]
+        (with-redefs [provisioning/initialize-workspace-databases!
+                      (fn [ws-id] (deliver batch-done ws-id))
                       provisioning/provision-workspace-database!
                       (fn [wsd-id] (swap! called conj wsd-id) nil)]
           (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/initialize") {})]
             (is (= {:workspace_id id :triggered 0} resp))
+            (is (not= :timeout (deref batch-done 2000 :timeout)))
             (is (empty? @called))))))))
 
 (deftest post-initialize-requires-superuser-test
@@ -222,3 +229,86 @@
         (is (= "kept_schema" (-> resp :databases first :output_schema)))
         (testing "the row's database-side id is unchanged"
           (is (= init-id (t2/select-one-pk :model/WorkspaceDatabase :workspace_id id))))))))
+
+(deftest post-deprovision-triggers-test
+  (testing "POST /ee/workspace/:id/deprovision returns triggered count and calls the per-row fn for each initialized row"
+    (mt/with-temp [:model/Workspace {id :id} {:name "Live"}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     id
+                    :database_id      (mt/id)
+                    :database_details {:user "u"}
+                    :output_schema    "mb_isolation"
+                    :input_schemas    ["public"]
+                    :status           :initialized}]
+      (let [called (atom [])
+            done   (promise)]
+        (with-redefs [provisioning/deprovision-workspace-database!
+                      (fn [wsd-id]
+                        (swap! called conj wsd-id)
+                        (deliver done :ok)
+                        nil)]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/deprovision") {})]
+            (is (= {:workspace_id id :triggered 1} resp))
+            (is (not= :timeout (deref done 2000 :timeout)))
+            (is (= 1 (count @called)))))))))
+
+(deftest post-deprovision-skips-uninitialized-test
+  (testing "POST /ee/workspace/:id/deprovision with no :initialized rows returns triggered=0 and calls nothing"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [{id :id}   (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                             {:name "Fresh" :databases [(ws-db-payload)]})
+            called     (atom [])
+            batch-done (promise)]
+        (with-redefs [provisioning/deprovision-workspace-databases!
+                      (fn [ws-id] (deliver batch-done ws-id))
+                      provisioning/deprovision-workspace-database!
+                      (fn [wsd-id] (swap! called conj wsd-id) nil)]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/deprovision") {})]
+            (is (= {:workspace_id id :triggered 0} resp))
+            (is (not= :timeout (deref batch-done 2000 :timeout)))
+            (is (empty? @called))))))))
+
+(deftest post-deprovision-requires-superuser-test
+  (testing "Non-superusers get 403 from POST /:id/deprovision"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                               {:name "Guarded" :databases []})]
+        (mt/user-http-request :rasta :post 403 (str "ee/workspace/" id "/deprovision") {})))))
+
+(deftest post-deprovision-404-on-unknown-workspace-test
+  (testing "POST /ee/workspace/:id/deprovision with an unknown id returns 404"
+    (mt/user-http-request :crowberto :post 404 (str "ee/workspace/" Integer/MAX_VALUE "/deprovision") {})))
+
+(deftest delete-workspace-happy-path-test
+  (testing "DELETE /ee/workspace/:id deletes a workspace with no initialized children"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                               {:name "ToDelete" :databases [(ws-db-payload)]})]
+        (is (= {:id id :deleted true}
+               (mt/user-http-request :crowberto :delete 200 (str "ee/workspace/" id))))
+        (is (not (t2/exists? :model/Workspace :id id)))
+        (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id id)))))))
+
+(deftest delete-workspace-rejects-when-initialized-test
+  (testing "DELETE /ee/workspace/:id returns 409 when any child is :initialized"
+    (mt/with-temp [:model/Workspace {id :id} {:name "Live"}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     id
+                    :database_id      (mt/id)
+                    :database_details {:user "u"}
+                    :output_schema    "done"
+                    :input_schemas    ["public"]
+                    :status           :initialized}]
+      (mt/user-http-request :crowberto :delete 409 (str "ee/workspace/" id))
+      (is (t2/exists? :model/Workspace :id id)))))
+
+(deftest delete-workspace-requires-superuser-test
+  (testing "Non-superusers get 403 from DELETE /:id"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                               {:name "Guarded" :databases []})]
+        (mt/user-http-request :rasta :delete 403 (str "ee/workspace/" id))))))
+
+(deftest delete-workspace-404-on-unknown-test
+  (testing "DELETE /:id with an unknown id returns 404"
+    (mt/user-http-request :crowberto :delete 404 (str "ee/workspace/" Integer/MAX_VALUE))))
