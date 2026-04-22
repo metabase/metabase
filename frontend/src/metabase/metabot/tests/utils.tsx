@@ -27,6 +27,7 @@ import {
   createMockUser,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 
 import { Metabot } from "../components/Metabot";
 import { FIXED_METABOT_IDS } from "../constants";
@@ -189,6 +190,20 @@ export function setup(
   );
   setupDatabaseListEndpoint([]);
 
+  // Reset and seed the Metabase provider props store so hooks that gate on
+  // `authConfig` + `reduxStore` (e.g. `useMetabot().CurrentChart`) resolve in
+  // this non-SDK test harness. Tests that specifically need a clean store
+  // should cleanup() in their own afterEach.
+  const metabaseProviderPropsStore = ensureMetabaseProviderPropsStore();
+  metabaseProviderPropsStore.cleanup();
+  const seededStore = ensureMetabaseProviderPropsStore();
+  seededStore.initialize({
+    authConfig: {
+      metabaseInstanceUrl: "http://localhost:3000",
+      authProviderUri: "http://localhost:3000/sso",
+    },
+  });
+
   const { store, rerender } = renderWithProviders(
     <MetabotProvider>{ui}</MetabotProvider>,
     {
@@ -207,6 +222,10 @@ export function setup(
       },
     },
   );
+
+  // Seed the redux store reference on the internal props so `useMetabot`'s
+  // `chartContext` memo resolves.
+  seededStore.updateInternalProps({ reduxStore: store as any });
 
   return {
     rerender,

@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { act, screen, waitFor } from "__support__/ui";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
@@ -52,6 +53,13 @@ jest.mock("embedding-sdk-bundle/components/public/InteractiveQuestion", () => {
 });
 
 describe("useMetabot", () => {
+  afterEach(() => {
+    // The METABASE_PROVIDER_PROPS_STORE lives on `window`; Jest's jsdom is
+    // per-file, not per-test, so reset between tests to avoid leaking a
+    // previous test's `reduxStore` reference.
+    ensureMetabaseProviderPropsStore().cleanup();
+  });
+
   describe("CurrentChart", () => {
     const TestCurrentChart = ({ drills }: { drills?: true }) => {
       const { CurrentChart } = useMetabot();
@@ -110,6 +118,76 @@ describe("useMetabot", () => {
       expect(
         await screen.findByTestId("mock-interactive-question"),
       ).toBeInTheDocument();
+    });
+
+    it("renders under only MetabaseReduxProvider without a ComponentProvider wrap (no redux-context warning)", async () => {
+      // `setup()` (via `renderWithProviders`) installs `MetabaseReduxProvider`
+      // but NO `ComponentProvider`. The mock at the top of this file replaces
+      // the internal `ComponentProvider` with a passthrough so the §3b wrap
+      // inside `createChartComponent` does not self-install one either. If
+      // chart code were to reach into the SDK redux helpers outside a provider,
+      // `useCheckSdkReduxContext` would emit a "Cannot find react-redux
+      // context" warning. This assertion guards that path.
+      const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+
+      try {
+        const { store } = setup({ ui: <TestCurrentChart /> });
+        act(() => {
+          store.dispatch(metabotActions.setNavigateToPath("/question#base64"));
+        });
+        expect(
+          await screen.findByTestId("mock-static-question"),
+        ).toBeInTheDocument();
+
+        const reduxContextWarnings = warnSpy.mock.calls.filter((call) =>
+          call.some(
+            (argument) =>
+              typeof argument === "string" &&
+              argument.includes("Cannot find react-redux context"),
+          ),
+        );
+        expect(reduxContextWarnings).toHaveLength(0);
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+
+    it("caches CurrentChart by navigateToPath (same path → same component reference)", async () => {
+      const capturedComponents: unknown[] = [];
+
+      const CaptureCurrentChart = () => {
+        const { CurrentChart } = useMetabot();
+        if (CurrentChart) {
+          capturedComponents.push(CurrentChart);
+        }
+        return CurrentChart ? <CurrentChart /> : null;
+      };
+
+      const { store } = setup({ ui: <CaptureCurrentChart /> });
+
+      act(() => {
+        store.dispatch(metabotActions.setNavigateToPath("/question#cache"));
+      });
+
+      await waitFor(() => {
+        expect(capturedComponents.length).toBeGreaterThan(0);
+      });
+      const firstReference = capturedComponents[capturedComponents.length - 1];
+
+      // Force the `CurrentChart` `useMemo` to re-evaluate by swapping the
+      // `reduxStore` internal prop to a new (but equivalent) reference. This
+      // changes `chartContext` identity without changing `navigateToPath`, so
+      // the cache lookup must return the same component instance.
+      act(() => {
+        ensureMetabaseProviderPropsStore().updateInternalProps({
+          reduxStore: { ...(store as any) },
+        });
+      });
+
+      expect(capturedComponents.length).toBeGreaterThan(1);
+      expect(capturedComponents[capturedComponents.length - 1]).toBe(
+        firstReference,
+      );
     });
 
     it("updates when a second navigate_to fires", async () => {
