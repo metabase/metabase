@@ -69,13 +69,18 @@ export const NewModals = withRouter((props: WithRouterProps) => {
   );
 
   switch (currentNewModalId) {
-    case "collection":
+    case "collection": {
+      const collectionProps = currentNewModalProps as {
+        collectionId?: number;
+      } | null;
+
       return (
         <CreateCollectionModal
           onClose={handleModalClose}
-          collectionId={collectionId}
+          collectionId={collectionProps?.collectionId ?? collectionId}
         />
       );
+    }
 
     case "dashboard":
       return (

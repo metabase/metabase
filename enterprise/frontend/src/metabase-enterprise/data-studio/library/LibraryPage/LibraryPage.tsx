@@ -384,6 +384,8 @@ function LibraryPageContent() {
                 <CreateMenu
                   metricCollectionId={writableMetricCollection?.id}
                   canWriteToMetricCollection={!!writableMetricCollection}
+                  dataCollectionId={tableCollection?.id}
+                  canWriteToDataCollection={!!tableCollection?.can_write}
                 />
               </Flex>
               <Card withBorder p={0}>

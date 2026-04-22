@@ -5,6 +5,7 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackMetricCreateStarted } from "metabase/data-studio/analytics";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
+import { setOpenModalWithProps } from "metabase/redux/ui";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
@@ -20,9 +21,13 @@ import { PublishTableModal } from "./PublishTableModal";
 export const CreateMenu = ({
   metricCollectionId,
   canWriteToMetricCollection,
+  dataCollectionId,
+  canWriteToDataCollection,
 }: {
   metricCollectionId?: CollectionId;
   canWriteToMetricCollection?: boolean;
+  dataCollectionId?: CollectionId;
+  canWriteToDataCollection?: boolean;
 }) => {
   const dispatch = useDispatch();
   const [modal, setModal] = useState<"snippet-folder" | "publish-table">();
@@ -39,6 +44,10 @@ export const CreateMenu = ({
   const canCreateMetric =
     hasDataAccess && metricCollectionId && canWriteToMetricCollection;
 
+  const canCreateCollection =
+    (dataCollectionId && canWriteToDataCollection) ||
+    (metricCollectionId && canWriteToMetricCollection);
+
   const menuItems = [
     <Menu.Item
       key="publish-table"
@@ -47,6 +56,22 @@ export const CreateMenu = ({
     >
       {t`Published table`}
     </Menu.Item>,
+    canCreateCollection && (
+      <Menu.Item
+        key="collection"
+        leftSection={<FixedSizeIcon name="folder" />}
+        onClick={() =>
+          dispatch(
+            setOpenModalWithProps({
+              id: "collection",
+              props: { collectionId: dataCollectionId },
+            }),
+          )
+        }
+      >
+        {t`Collection`}
+      </Menu.Item>
+    ),
     canCreateMetric && (
       <Menu.Item
         key="metric"
