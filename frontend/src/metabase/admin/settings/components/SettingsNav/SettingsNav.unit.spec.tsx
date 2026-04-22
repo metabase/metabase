@@ -33,6 +33,7 @@ const setup = async ({
     "token-features": createMockTokenFeatures({
       hosting: Boolean(isHosted),
       "custom-viz": true,
+      "custom-viz-available": true,
     }),
   });
 
