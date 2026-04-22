@@ -26,6 +26,7 @@ type Props = {
   title: string;
   display?: VisualizationDisplay;
   metric: UsageStatsMetric;
+  viewName?: string;
   onDimensionClick?: (value: unknown) => void;
 };
 
@@ -42,9 +43,10 @@ export function BreakoutChart({
   title,
   display = "row",
   metric,
+  viewName = VIEW_CONVERSATIONS,
   onDimensionClick,
 }: Props) {
-  const { provider, table } = useAuditTable(VIEW_CONVERSATIONS);
+  const { provider, table } = useAuditTable(viewName);
 
   const query = useMemo(() => {
     if (!provider || !table) {

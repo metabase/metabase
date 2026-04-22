@@ -6,12 +6,14 @@ import { type UsageStatsMetric, getChartTitle } from "./query-utils";
 type Props = {
   dateFilter: DateFilterValue;
   metric: UsageStatsMetric;
+  viewName?: string;
   onDimensionClick?: (value: unknown) => void;
 };
 
 export function ConversationsByProfileBarChart({
   dateFilter,
   metric,
+  viewName,
   onDimensionClick,
 }: Props) {
   return (
@@ -21,6 +23,7 @@ export function ConversationsByProfileBarChart({
       title={getChartTitle(metric, "profile")}
       display="bar"
       metric={metric}
+      viewName={viewName}
       onDimensionClick={onDimensionClick}
     />
   );
