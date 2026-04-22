@@ -3172,11 +3172,13 @@
            metabase-enterprise.semantic-layer.init}
    :uses #{analytics
            api
+           app-db
            audit-app
            collections
            metabot
            premium-features
            settings
+           startup
            task
            util
            enterprise/semantic-search}

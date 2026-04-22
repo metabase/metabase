@@ -1,8 +1,9 @@
 (ns metabase-enterprise.semantic-layer.task.complexity-score
   "Daily Quartz job that emits the Data Complexity Score.
   Shared jobstore + `DisallowConcurrentExecution` → one node per cluster per tick.
-  On boot we `trigger-now!` when the fingerprint setting doesn't match current config, so first-ever
-  runs and parameter bumps don't wait for next cron."
+  Boot-time emission (for first-ever runs and parameter bumps) is driven separately by the startup
+  hook in `metabase-enterprise.semantic-layer.init`, which runs regardless of scheduler state and is
+  guarded by a cluster lock so only one node per cluster emits per fingerprint change."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
@@ -11,6 +12,7 @@
    [metabase-enterprise.semantic-layer.metabot-scope :as metabot-scope]
    [metabase-enterprise.semantic-layer.settings :as settings]
    [metabase-enterprise.semantic-search.core :as semantic-search]
+   [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import
@@ -48,13 +50,34 @@
   DataComplexityScoring [_ctx]
   (run-scoring!))
 
-(defn- needs-immediate-fire?
-  "True when the persisted fingerprint lags behind the live config — first-ever run or a bump since
-  the last successful emission."
+(defn- claim-boot-emission!
+  "Cluster-safe claim: returns true when this node wins the right to emit a boot-time score for the
+  current config fingerprint. Under a short app-db lock we re-check the persisted fingerprint and
+  pre-update it to the current value, so sibling nodes acquiring the lock next see the updated
+  value and skip. Pre-claiming means scoring failures aren't retried on the same node, but the
+  daily cron will catch up, which is preferable to the duplicate-burst behaviour of per-node
+  `trigger-now!`."
   []
-  (and (settings/data-complexity-scoring-enabled)
-       (not= (current-fingerprint)
-             (settings/data-complexity-scoring-last-fingerprint))))
+  (cluster-lock/with-cluster-lock {:lock ::complexity-score-boot-emission
+                                   :timeout-seconds 10}
+    (when (and (settings/data-complexity-scoring-enabled)
+               (not= (current-fingerprint)
+                     (settings/data-complexity-scoring-last-fingerprint)))
+      (settings/data-complexity-scoring-last-fingerprint! (current-fingerprint))
+      true)))
+
+(defn maybe-emit-boot-score!
+  "Emit a Data Complexity Score at boot if the persisted fingerprint lags the live config. Cluster-
+  safe via [[claim-boot-emission!]]; runs regardless of Quartz state so operators still get a score
+  on nodes with `MB_DISABLE_SCHEDULER=true` or a failed scheduler init. Intended to be called from
+  a startup hook on a background thread — see `metabase-enterprise.semantic-layer.init`."
+  []
+  (try
+    (when (claim-boot-emission!)
+      (log/info "Data Complexity Score: fingerprint changed, emitting boot-time score")
+      (run-scoring!))
+    (catch Throwable t
+      (log/warn t "Data Complexity Score: boot-time emission failed"))))
 
 (defmethod task/init! ::DataComplexityScoring [_]
   (let [job     (jobs/build
@@ -63,7 +86,6 @@
                  (jobs/with-identity job-key)
                  (jobs/with-description "Data Complexity Score — daily telemetry"))
         ;; 03:17 UTC — off-hour to avoid cron-thundering-herd with other Metabase jobs.
-        ;; No `start-now`: the fingerprint check below handles first-fire without double-firing.
         trigger (triggers/build
                  (triggers/with-identity trigger-key)
                  (triggers/for-job job-key)
@@ -72,7 +94,4 @@
                    (cron/cron-schedule "0 17 3 * * ? *")
                    (cron/in-time-zone (java.util.TimeZone/getTimeZone "UTC"))
                    (cron/with-misfire-handling-instruction-fire-and-proceed))))]
-    (task/schedule-task! job trigger)
-    (when (needs-immediate-fire?)
-      (log/info "Data Complexity Score: fingerprint changed, firing immediately")
-      (task/trigger-now! job-key))))
+    (task/schedule-task! job trigger)))
