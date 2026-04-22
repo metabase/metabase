@@ -1,14 +1,17 @@
+import type { IconName } from "metabase/ui";
 import { ActionIcon, Flex, Icon } from "metabase/ui";
-
-import type { MetricsViewerDisplayType } from "../../../types/viewer-state";
-import type { ChartTypeOption } from "../../../utils/tab-config";
 
 import S from "./ChartTypePicker.module.css";
 
+export type ChartTypeOption = {
+  type: string;
+  icon: IconName;
+};
+
 type ChartTypePickerProps = {
   chartTypes: ChartTypeOption[];
-  value: MetricsViewerDisplayType;
-  onChange: (type: MetricsViewerDisplayType) => void;
+  value: string;
+  onChange: (type: string) => void;
 };
 
 export function ChartTypePicker({
