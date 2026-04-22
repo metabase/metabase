@@ -3,13 +3,13 @@
 Metabase's internationalization pipeline has two halves that the scripts in this directory
 orchestrate:
 
-1. **[Extraction](#extraction-source--locales-metabasepo)** — scan Clojure/TypeScript source for
-   `trs`/`tru`/`t\`…\`` call sites, emit a gettext source template at `locales/metabase.po`.
-2. **[Artifact generation](#artifact-generation-localespo--resourcesi18nedn--resourcesfrontend_client-json)** —
-   read back translated `locales/*.po` files, filter invalid translations, emit the runtime
-   artifacts at `resources/i18n/*.edn` (backend) and `resources/frontend_client/app/locales/*.json`
-   (frontend). Produces a [violations report](#violations-report-targeti18n-violationscsv) of
-   anything the filter dropped.
+1. **[Extraction](#extraction)** — scan Clojure/TypeScript source for `trs` / `tru` / ttag `t`
+   tagged-template call sites, emit a gettext source template at `locales/metabase.po`.
+2. **[Artifact generation](#artifact-generation)** — read back translated `locales/*.po` files,
+   apply [autofixes](#autofix-pass) for unambiguously repairable translator mistakes, validate
+   the rest, and emit the runtime artifacts at `resources/i18n/*.edn` (backend) and
+   `resources/frontend_client/app/locales/*.json` (frontend). Translations the scanner still
+   flags as fatal are dropped; the full triage queue lands in the [violations report](#violations-report).
 
 Between the two, [Crowdin](https://crowdin.com/project/metabase-i18n) is where translators fill in
 the `msgstr` values. The [`.github/workflows/translation-update.yml`](../../.github/workflows/translation-update.yml)
@@ -33,18 +33,24 @@ flowchart LR
 
     subgraph Build ["Phase 3: Artifact generation"]
         direction TB
+        Autofix[["autofix pass<br/>(e.g. escape bare apostrophes)"]]
+        Scanner[["validation scanner"]]
         Edn["resources/i18n/*.edn<br/>(backend)"]
         Json["resources/frontend_client/<br/>app/locales/*.json<br/>(frontend)"]
         Csv["target/i18n-violations.csv"]
+        Autofix --> Scanner
+        Scanner ==> Edn
+        Scanner ==> Json
+        Scanner ==> Csv
     end
 
     Pot -->|upload| Crowdin
-    LocalePo ==>|build-translation-resources| Edn
-    LocalePo ==>|build-translation-resources| Json
-    LocalePo ==>|build-translation-resources| Csv
+    LocalePo ==>|build-translation-resources| Autofix
 ```
 
-## Extraction (source → `locales/metabase.po`)
+## Extraction
+
+_Source code → `locales/metabase.po`_
 
 ### Building the backend pot file
 
@@ -139,7 +145,9 @@ user=> '`(trs "foobar")
 
 More information in the [grasp issue](https://github.com/borkdude/grasp/issues/28). A quick workaround is just including this manual override.
 
-## Artifact generation (`locales/*.po` → `resources/i18n/*.edn` + `resources/frontend_client/…/*.json`)
+## Artifact generation
+
+_`locales/*.po` → `resources/i18n/*.edn` + `resources/frontend_client/app/locales/*.json`_
 
 Once translators have filled in `locales/<locale>.po` through Crowdin, the build pipeline turns
 those into the runtime artifacts that Metabase actually ships:
@@ -159,23 +167,51 @@ This calls `clojure -X:build:build/i18n`, which invokes
 `i18n.create-artifacts/create-all-artifacts!`. For each locale:
 
 1. Parse the `.po` file via `i18n.common/po-contents` (jgettext).
-2. Run the scanner `i18n.validation/invalid-messages-in-po` to produce a seq of violation maps
-   for every `msgstr` that fails validation — see [violations report](#violations-report-targeti18n-violationscsv)
-   below.
-3. Derive a drop-set of msgids using `i18n.validation/drop-from-build?` (see
-   [drop policy](#drop-policy)), and pass it to the backend + frontend artifact writers. Those
-   writers skip any message in the drop-set — the runtime falls back to English for those
-   msgids.
-4. After all locales finish, aggregate violations across every locale and write
+2. Run the [autofix pass](#autofix-pass) via `i18n.autofix/autofix-po-contents` to silently correct
+   translator mistakes that can be unambiguously repaired (currently: unescaped apostrophes for
+   backend strings).
+3. Run the scanner `i18n.validation/invalid-messages-in-po` on the post-autofix contents to produce
+   a seq of violation maps for every `msgstr` that *still* fails validation — see
+   [violations report](#violations-report) below.
+4. Derive a drop-set of msgids using `i18n.validation/drop-from-build?` (see
+   [drop policy](#drop-policy)) and pass it, along with the post-autofix `po-contents`, to both
+   backend and frontend artifact writers. The writers skip any message in the drop-set — the
+   runtime falls back to English for those msgids.
+5. After all locales finish, aggregate violations across every locale and write
    `target/i18n-violations.csv` and `target/i18n-violations.edn`.
 
 The source of truth for this pipeline lives in `bin/build/src/i18n/`:
 
+- `autofix.clj` — pre-validation fixes (e.g. apostrophe escaping).
 - `validation.clj` — the scanner + drop policy.
 - `create_artifacts.clj` — orchestrator + report writer.
 - `create_artifacts/backend.clj` — backend `.edn` writer.
 - `create_artifacts/frontend.clj` — frontend `.json` writer.
 - `common.clj` — `.po` parser and shared helpers (`backend-message?`, `po-contents`).
+
+### Autofix pass
+
+Runs once per locale, *before* validation, on the parsed `po-contents`. Its job is to silently
+correct translator mistakes that can be unambiguously repaired — making translations that would
+otherwise fail the scanner ship correctly. Both the scanner and the artifact writers consume the
+post-autofix contents, so they agree on what's being shipped.
+
+Current autofixes (all backend-only — frontend `msgstr` values pass through unchanged because
+ttag has different escaping rules):
+
+- **Apostrophe escaping.** Word-adjacent single apostrophes (e.g. Catalan `d'aquí`, English
+  `It's`) are doubled to `''` so `java.text.MessageFormat` treats them as literal characters
+  instead of escape delimiters. Apostrophes that are already doubled, or that sit next to `{` /
+  `}` (i.e. intentional MessageFormat escapes like `'{0}'`), pass through untouched.
+
+This is handled *before* the scanner, so translations that only had apostrophe typos never reach
+the violations report. If you ever see `d'aquí`-style entries in the report, it means autofix
+couldn't reach them (likely a non-backend context) and you'd need to fix them in Crowdin.
+
+Extending the autofix layer: add additional transformations to `i18n.autofix/autofix-po-contents`
+only when the fix is (a) deterministic, (b) semantically neutral (rendered output unchanged), and
+(c) covers a common translator mistake. Everything else should surface in the violations report
+instead.
 
 ### Drop policy
 
@@ -184,7 +220,9 @@ and trigger English fallback anyway — i.e. `:invalid-message-format`. `:skippe
 `:arg-count-mismatch` render imperfectly but don't throw; we keep them so users see mostly-
 localized text rather than regress to full English fallback.
 
-## Violations report (`target/i18n-violations.csv`)
+## Violations report
+
+_`target/i18n-violations.csv`_
 
 Every artifact-generation run emits a report of violations found, in two forms:
 
@@ -258,15 +296,16 @@ These rows have `dropped=false`. At runtime, missing placeholders render as lite
 shows up verbatim), or extra caller-supplied args get silently dropped.
 
 Common cause: the translator added an extra `{0}` (e.g. for pluralization) when English didn't
-have one, or omitted a `{0}` that English required. Another common cause for backend strings:
-unescaped apostrophes in Romance-language translations (e.g. Catalan `d'aquí`) — Java
-MessageFormat treats `'` as an escape delimiter, which can silently swallow the `{0}` that
-follows.
+have one, or omitted a `{0}` that English required.
+
+> **Note:** Romance-language apostrophe mistakes (e.g. Catalan `d'aquí` swallowing a trailing
+> `{0}` in MessageFormat's escape semantics) would have triggered this violation. The
+> [autofix pass](#autofix-pass) handles them upstream, so they shouldn't appear in the
+> report. The mistakes would still be present in Crowdin though.
 
 **Action for translators:** Match the English source's placeholder count. If the source has
 `{0}` and `{1}`, the translation must too — or the plural form of the source, which might have
-a different count. For Romance languages, double the apostrophe (`d''aquí`) to escape it for
-MessageFormat.
+a different count.
 
 ### How to use the report
 
