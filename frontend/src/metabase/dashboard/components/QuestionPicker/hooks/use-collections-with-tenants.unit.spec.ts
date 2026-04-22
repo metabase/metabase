@@ -1,11 +1,21 @@
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { setupCollectionTreeEndpoint } from "__support__/server-mocks/collection";
+import { mockSettings } from "__support__/settings";
+import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection, CollectionId } from "metabase-types/api";
-import { createMockCollection } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import {
   COLLECTIONS_TOP_LEVEL_ID,
+  type ExpandedCollectionNode,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
   mergeSharedCollections,
+  useCollectionsWithTenants,
 } from "./use-collections-with-tenants";
 
 const createMockExpandedCollection = (
@@ -20,6 +30,90 @@ const createMockExpandedCollection = (
   parent: null,
   children: [],
   is_personal: false,
+});
+
+function setupHook({
+  useTenants = false,
+  sharedCollections = [] as Collection[],
+} = {}) {
+  setupCollectionTreeEndpoint(sharedCollections);
+
+  const baseRoot = createMockExpandedCollection({
+    ...ROOT_COLLECTION,
+    path: [],
+  });
+
+  const collectionsById = {
+    [ROOT_COLLECTION.id]: baseRoot,
+  } as Record<CollectionId, Collection>;
+
+  return renderHookWithProviders(
+    () => useCollectionsWithTenants(collectionsById),
+    {
+      storeInitialState: createMockState({
+        settings: mockSettings({
+          "use-tenants": useTenants,
+          "token-features": createMockTokenFeatures({ tenants: true }),
+        }),
+      }),
+    },
+  );
+}
+
+describe("useCollectionsWithTenants", () => {
+  beforeAll(() => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ tenants: true }),
+    });
+
+    setupEnterprisePlugins();
+  });
+
+  it("should return collectionsById unchanged when tenants are disabled", () => {
+    const { result } = setupHook({ useTenants: false });
+
+    expect(result.current).not.toHaveProperty(String(COLLECTIONS_TOP_LEVEL_ID));
+
+    expect(result.current).not.toHaveProperty(
+      String(SHARED_TENANT_COLLECTIONS_ROOT_ID),
+    );
+  });
+
+  it("should return collectionsById unchanged when tenants are enabled but no shared collections exist", async () => {
+    const { result } = setupHook({ useTenants: true, sharedCollections: [] });
+
+    await waitFor(() => {
+      expect(result.current).not.toHaveProperty(
+        String(COLLECTIONS_TOP_LEVEL_ID),
+      );
+    });
+
+    expect(result.current).not.toHaveProperty(
+      String(SHARED_TENANT_COLLECTIONS_ROOT_ID),
+    );
+  });
+
+  it("should merge shared collections when tenants are enabled", async () => {
+    const tenantCollection = createMockCollection({
+      id: 100 as CollectionId,
+      name: "Tenant A",
+      location: "/",
+      namespace: "shared-tenant-collection" as any,
+    });
+
+    const { result } = setupHook({
+      useTenants: true,
+      sharedCollections: [tenantCollection],
+    });
+
+    await waitFor(() => {
+      expect(result.current).toHaveProperty(String(COLLECTIONS_TOP_LEVEL_ID));
+    });
+
+    expect(result.current).toHaveProperty(
+      String(SHARED_TENANT_COLLECTIONS_ROOT_ID),
+    );
+  });
 });
 
 function setup() {
@@ -77,7 +171,7 @@ function setup() {
   tenantA.children = [subCollection];
   subCollection.parent = tenantA;
 
-  return mergeSharedCollections(
+  const collectionsById = mergeSharedCollections(
     baseCollectionsById,
     {
       [ROOT_COLLECTION.id]: sharedRoot,
@@ -86,55 +180,82 @@ function setup() {
     },
     "Shared collections",
   );
+
+  return {
+    collectionsById,
+    ourAnalyticsSubCollection,
+    ourAnalyticsNestedCollection,
+    tenantA,
+    subCollection,
+  };
 }
 
 describe("mergeSharedCollections", () => {
   it("should create a top-level Collections node with Our analytics and Shared collections as siblings", () => {
-    const result = setup() as any;
+    const { collectionsById } = setup();
+    const expanded = collectionsById as Record<
+      CollectionId,
+      ExpandedCollectionNode
+    >;
 
-    const topLevel = result[COLLECTIONS_TOP_LEVEL_ID];
+    const topLevel = expanded[COLLECTIONS_TOP_LEVEL_ID];
     expect(topLevel.name).toBe("Collections");
     expect(topLevel.parent).toBeNull();
     expect(topLevel.children).toHaveLength(2);
     expect(topLevel.children[0].id).toBe(ROOT_COLLECTION.id);
     expect(topLevel.children[1].id).toBe(SHARED_TENANT_COLLECTIONS_ROOT_ID);
 
-    const root = result[ROOT_COLLECTION.id];
-    expect(root.parent.id).toBe(COLLECTIONS_TOP_LEVEL_ID);
+    const root = expanded[ROOT_COLLECTION.id];
+    expect(root.parent?.id).toBe(COLLECTIONS_TOP_LEVEL_ID);
     expect(root.path).toEqual([COLLECTIONS_TOP_LEVEL_ID]);
 
-    const syntheticRoot = result[SHARED_TENANT_COLLECTIONS_ROOT_ID];
+    const syntheticRoot = expanded[SHARED_TENANT_COLLECTIONS_ROOT_ID];
     expect(syntheticRoot.name).toBe("Shared collections");
-    expect(syntheticRoot.parent.id).toBe(COLLECTIONS_TOP_LEVEL_ID);
+    expect(syntheticRoot.parent?.id).toBe(COLLECTIONS_TOP_LEVEL_ID);
     expect(syntheticRoot.path).toEqual([COLLECTIONS_TOP_LEVEL_ID]);
   });
 
   it("should rewrite paths for Our Analytics sub-collections to include the top-level Collections node", () => {
-    const result = setup() as any;
+    const {
+      collectionsById,
+      ourAnalyticsSubCollection,
+      ourAnalyticsNestedCollection,
+    } = setup();
 
-    const sub = result[200 as CollectionId];
-    expect(sub.path).toEqual([COLLECTIONS_TOP_LEVEL_ID, "root"]);
+    expect(collectionsById[ourAnalyticsSubCollection.id].path).toEqual([
+      COLLECTIONS_TOP_LEVEL_ID,
+      "root",
+    ]);
 
-    const nested = result[201 as CollectionId];
-    expect(nested.path).toEqual([COLLECTIONS_TOP_LEVEL_ID, "root", 200]);
+    expect(collectionsById[ourAnalyticsNestedCollection.id].path).toEqual([
+      COLLECTIONS_TOP_LEVEL_ID,
+      "root",
+      ourAnalyticsSubCollection.id,
+    ]);
   });
 
   it("should re-parent children and rewrite paths through the top-level and synthetic root", () => {
-    const result = setup() as any;
+    const { collectionsById, tenantA, subCollection } = setup();
+    const expanded = collectionsById as Record<
+      CollectionId,
+      ExpandedCollectionNode
+    >;
 
-    const tenantA = result[100 as CollectionId];
-    expect(tenantA.parent.id).toBe(SHARED_TENANT_COLLECTIONS_ROOT_ID);
-    expect(tenantA.path).toEqual([
+    const mergedTenantA = expanded[tenantA.id];
+
+    expect(mergedTenantA.parent?.id).toBe(SHARED_TENANT_COLLECTIONS_ROOT_ID);
+    expect(mergedTenantA.path).toEqual([
       COLLECTIONS_TOP_LEVEL_ID,
       SHARED_TENANT_COLLECTIONS_ROOT_ID,
     ]);
 
-    const subcollection = result[300 as CollectionId];
-    expect(subcollection.parent.id).toBe(100);
-    expect(subcollection.path).toEqual([
+    const mergedSubCollection = expanded[subCollection.id];
+
+    expect(mergedSubCollection.parent?.id).toBe(tenantA.id);
+    expect(mergedSubCollection.path).toEqual([
       COLLECTIONS_TOP_LEVEL_ID,
       SHARED_TENANT_COLLECTIONS_ROOT_ID,
-      100,
+      tenantA.id,
     ]);
   });
 });
