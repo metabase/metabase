@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, type Route } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
@@ -16,9 +17,14 @@ import { Stack } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
-import type { WorkspaceDatabase } from "metabase-types/api";
+import type { WorkspaceDatabaseDraft } from "metabase-types/api";
 
 import { DatabaseMappingSection } from "../../components/DatabaseMappingSection";
+
+type WorkspaceInfo = {
+  name: string;
+  databases: WorkspaceDatabaseDraft[];
+};
 
 type NewWorkspacePageProps = {
   route: Route;
@@ -30,18 +36,16 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
   const dispatch = useDispatch();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
-  const [name, setName] = useState(t`New workspace`);
-  const [databases, setDatabases] = useState<WorkspaceDatabase[]>([]);
-  const [isDirty, setIsDirty] = useState(false);
+  const initialWorkspace = getInitialValues();
+  const [workspace, setWorkspace] = useState(initialWorkspace);
+  const isDirty = !_.isEqual(workspace, initialWorkspace);
 
-  const handleNameChange = (value: string) => {
-    setName(value);
-    setIsDirty(true);
+  const handleNameChange = (newName: string) => {
+    setWorkspace({ ...workspace, name: newName });
   };
 
-  const handleDatabasesChange = (value: WorkspaceDatabase[]) => {
-    setDatabases(value);
-    setIsDirty(true);
+  const handleDatabasesChange = (newDatabases: WorkspaceDatabaseDraft[]) => {
+    setWorkspace({ ...workspace, databases: newDatabases });
   };
 
   const handleCancel = () => {
@@ -49,19 +53,14 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
   };
 
   const handleSave = async () => {
-    const { data: workspace, error } = await createWorkspace({
-      name,
-      databases,
-    });
-
-    if (error || workspace == null) {
+    const { data, error } = await createWorkspace(workspace);
+    if (error || data == null) {
       sendErrorToast(t`Failed to create workspace`);
       return;
     }
 
     sendSuccessToast(t`Workspace created`);
-    setIsDirty(false);
-    dispatch(push(Urls.workspace(workspace.id)));
+    dispatch(push(Urls.workspace(data.id)));
   };
 
   return (
@@ -79,7 +78,7 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
           }
           title={
             <PaneHeaderInput
-              initialValue={name}
+              initialValue={workspace.name}
               placeholder={t`New workspace`}
               onChange={handleNameChange}
             />
@@ -92,16 +91,39 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
               onCancel={handleCancel}
             />
           }
-          showMetabotButton
         />
-        <Stack gap="3.5rem">
-          <DatabaseMappingSection
-            mappings={databases}
-            onChange={handleDatabasesChange}
-          />
-        </Stack>
+        <NewWorkspacePageBody
+          databases={workspace.databases}
+          onDatabasesChange={handleDatabasesChange}
+        />
       </PageContainer>
       <LeaveRouteConfirmModal route={route} isEnabled={isDirty && !isSaving} />
     </>
+  );
+}
+
+function getInitialValues(): WorkspaceInfo {
+  return {
+    name: t`New workspace`,
+    databases: [],
+  };
+}
+
+type NewWorkspacePageBodyProps = {
+  databases: WorkspaceDatabaseDraft[];
+  onDatabasesChange: (newDatabases: WorkspaceDatabaseDraft[]) => void;
+};
+
+function NewWorkspacePageBody({
+  databases,
+  onDatabasesChange,
+}: NewWorkspacePageBodyProps) {
+  return (
+    <Stack gap="3.5rem">
+      <DatabaseMappingSection
+        databases={databases}
+        onChange={onDatabasesChange}
+      />
+    </Stack>
   );
 }

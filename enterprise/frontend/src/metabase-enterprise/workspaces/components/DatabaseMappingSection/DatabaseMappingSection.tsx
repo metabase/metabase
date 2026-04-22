@@ -18,12 +18,12 @@ import { TitleSection } from "../TitleSection";
 import S from "./DatabaseMappingSection.module.css";
 
 type DatabaseMappingSectionProps = {
-  mappings: WorkspaceDatabaseDraft[];
-  onChange: (newMappings: WorkspaceDatabaseDraft[]) => void;
+  databases: WorkspaceDatabaseDraft[];
+  onChange: (newDatabases: WorkspaceDatabaseDraft[]) => void;
 };
 
 export function DatabaseMappingSection({
-  mappings,
+  databases: mappings,
   onChange,
 }: DatabaseMappingSectionProps) {
   const handleAdd = (mapping: WorkspaceDatabaseDraft) => {

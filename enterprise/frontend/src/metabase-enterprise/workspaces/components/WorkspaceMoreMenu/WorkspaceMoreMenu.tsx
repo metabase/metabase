@@ -1,22 +1,23 @@
-import { type MouseEvent, useState } from "react";
+import type { MouseEvent } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
+import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
-
-import { DeleteWorkspaceModal } from "./DeleteWorkspaceModal";
 
 type WorkspaceMoreMenuProps = {
   workspace: Workspace;
 };
 
 export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const { sendSuccessToast } = useMetadataToasts();
+  const { modalContent, show } = useConfirmation();
+  const [deleteWorkspace] = useDeleteWorkspaceMutation();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const dispatch = useDispatch();
 
   const handleIconClick = (event: MouseEvent) => {
@@ -25,9 +26,21 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
   };
 
   const handleDelete = () => {
-    sendSuccessToast(t`Workspace deleted`);
-    setIsDeleteModalOpen(false);
-    dispatch(push(Urls.workspaceList()));
+    show({
+      title: t`Delete this workspace?`,
+      message: t`This cannot be undone.`,
+      confirmButtonText: t`Delete workspace`,
+      confirmButtonProps: { variant: "filled", color: "error" },
+      onConfirm: async () => {
+        const { error } = await deleteWorkspace(workspace.id);
+        if (error) {
+          sendErrorToast(t`Failed to delete workspace`);
+          return;
+        }
+        sendSuccessToast(t`Workspace deleted`);
+        dispatch(push(Urls.workspaceList()));
+      },
+    });
   };
 
   return (
@@ -39,21 +52,12 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item
-            leftSection={<Icon name="trash" />}
-            onClick={() => setIsDeleteModalOpen(true)}
-          >
+          <Menu.Item leftSection={<Icon name="trash" />} onClick={handleDelete}>
             {t`Delete`}
           </Menu.Item>
         </Menu.Dropdown>
       </Menu>
-      {isDeleteModalOpen && (
-        <DeleteWorkspaceModal
-          workspace={workspace}
-          onDelete={handleDelete}
-          onClose={() => setIsDeleteModalOpen(false)}
-        />
-      )}
+      {modalContent}
     </>
   );
 }
