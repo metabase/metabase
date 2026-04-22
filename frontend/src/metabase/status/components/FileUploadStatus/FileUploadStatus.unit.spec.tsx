@@ -22,15 +22,15 @@ import {
 } from "__support__/ui";
 import { CollectionContent } from "metabase/collections/components/CollectionContent";
 import {
+  createMockSettingsState,
+  createMockState,
+  createMockUpload,
+} from "metabase/redux/store/mocks";
+import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-  createMockUpload,
-} from "metabase-types/store/mocks";
 
 import { FileUploadStatus } from "./FileUploadStatus";
 

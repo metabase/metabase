@@ -2,6 +2,7 @@ import type { LocationDescriptorObject } from "history";
 import { Component } from "react";
 import type * as tippy from "tippy.js";
 
+import type { Dispatch } from "metabase/redux/store";
 import { PopoverWithRef } from "metabase/ui/components/overlays/Popover/PopoverWithRef";
 import { getEventTarget } from "metabase/utils/dom";
 import { connect } from "metabase/utils/redux";
@@ -15,7 +16,6 @@ import type {
 import { isPopoverClickAction } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import type { Series, VisualizationSettings } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 import { ClickActionsView } from "./ClickActionsView";
 

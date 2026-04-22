@@ -73,15 +73,20 @@ export function hasLog(logs: Log[], targetLog: Log): boolean {
   return _.findLastIndex(logs, targetLog) > -1;
 }
 
-export function filterLogs(logs: Log[], { process, query }: UrlState) {
+export function filterLogs(
+  logs: Log[],
+  { process, query }: UrlState,
+  processUUIDs: string[] = [],
+) {
   const lowerCaseQuery = query ? query.toLowerCase() : "";
+  const formatLog = createLogFormatter(process, processUUIDs);
 
   return logs.filter((log) => {
-    const formattedLog = formatLog(log).join("\n");
-
     const matchesProcessFilter =
       !process || process === "ALL" || log.process_uuid === process;
-    const matchesQueryFilter = formattedLog
+    // only search on text visible to the user to avoid matching hidden data (e.g. process UUID)
+    const matchesQueryFilter = formatLog(log)
+      .join("\n")
       .toLowerCase()
       .includes(lowerCaseQuery);
 
@@ -99,11 +104,15 @@ export function getAllProcessUUIDs(logs: Log[]) {
 const formatTs = (ts: string) => dayjs(ts).format();
 const memoedFormatTs = _.memoize(formatTs);
 
-export function formatLog(log: Log) {
-  const timestamp = memoedFormatTs(log.timestamp);
-  const uuid = log.process_uuid || "---";
-  return [
-    `[${uuid}] ${timestamp} ${log.level} ${log.fqns} ${log.msg}`,
-    ...(log.exception || []),
-  ];
-}
+export const createLogFormatter =
+  (process: string, processUUIDs: string[]) => (log: Log) => {
+    const timestamp = memoedFormatTs(log.timestamp);
+    const uuid =
+      process === "ALL" && processUUIDs.length > 1
+        ? `[${log.process_uuid}]`
+        : undefined;
+    return [
+      [uuid, timestamp, log.level, log.fqns, log.msg].filter(Boolean).join(" "),
+      ...(log.exception || []),
+    ];
+  };

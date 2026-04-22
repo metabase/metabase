@@ -1,8 +1,8 @@
 import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 
 import { getMetabotInitialState } from "./reducer-utils";
 

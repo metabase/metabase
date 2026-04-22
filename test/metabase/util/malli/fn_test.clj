@@ -88,7 +88,7 @@
 
 (deftest ^:parallel instrumented-fn-form-test
   (are [form expected] (= expected
-                          (walk/macroexpand-all (mu.fn/instrumented-fn-form {} (mu.fn/parse-fn-tail form))))
+                          (walk/macroexpand-all (mu.fn/instrumented-fn-form {} :clj (mu.fn/parse-fn-tail form))))
     '([x :- :int y])
     '(let* [&f (fn* ([x y]))]
        (fn* ([a b]
@@ -382,3 +382,108 @@
                     (f)))
              (catch Exception _e
                (is false "it threw a schema error")))))))
+
+(deftest ^:parallel pre-post-conditions-test-1-vanilla-pass-through
+  (testing "plain :pre and :post pass through the macros"
+    (testing "single arity"
+      (let [expansion (macroexpand '(metabase.util.malli.fn/fn [{:keys [a]}]
+                                      {:pre [(pos? a)] :post [(even? %)]}
+                                      (* a 2)))]
+        (is (=? '(let* [&f (clojure.core/fn [{:keys [a]}]
+                             {:pre [(pos? a)] :post [(even? %)]}
+                             (* a 2))
+                        &input-schema-0-a [:maybe :map]])
+                (take 2 expansion)))))
+    (testing "multiple arity"
+      (let [expansion (macroexpand '(metabase.util.malli.fn/fn
+                                      ([{:keys [a]}]
+                                       {:pre [(pos? a)] :post [(even? %)]}
+                                       (* a 2))
+                                      ([m k]
+                                       {:pre [(map? m)] :post [(map? %)]}
+                                       (update m k * 2))))]
+        (is (=? '(let* [&f (clojure.core/fn
+                             ([{:keys [a]}]
+                              {:pre [(pos? a)] :post [(even? %)]}
+                              (* a 2))
+                             ([m k]
+                              {:pre [(map? m)] :post [(map? %)]}
+                              (update m k * 2)))
+                        &input-schema-0-a [:maybe :map]])
+                (take 2 expansion)))))))
+
+(deftest ^:synchronized pre-post-conditions-test-2-include-test-variants
+  (testing ":test/pre and :test/post conditions"
+    (testing "single arity"
+      (let [form '(metabase.util.malli.fn/fn [{:keys [a]}]
+                    {:pre       [(pos? a)]
+                     :post      [(even? %)]
+                     :test/pre  [(int? a)]
+                     :test/post [(int? %)]}
+                    (* a 2))]
+        (testing "are included in dev and test"
+          (is (=? '(let* [&f (clojure.core/fn [{:keys [a]}]
+                               {:pre  [(pos? a)
+                                       (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
+                                                        (int? a))]
+                                :post [(even? %)
+                                       (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
+                                                        (int? %))]}
+                               (* a 2))
+                          &input-schema-0-a [:maybe :map]])
+                  (take 2 (macroexpand form)))))
+        (testing "are excluded in prod"
+          (with-redefs [config/is-prod? true]
+            (is (=? '(let* [&f (clojure.core/fn [{:keys [a]}]
+                                 {:pre  [(pos? a)],
+                                  :post [(even? %)]}
+                                 (* a 2))
+                            &input-schema-0-a [:maybe :map]])
+                    (take 2 (macroexpand form))))))))
+    (testing "multiple arity"
+      (let [form '(metabase.util.malli.fn/fn
+                    ([{:keys [a]}]
+                     {:pre       [(pos? a)]
+                      :post      [(even? %)]
+                      :test/pre  [(int? a)]
+                      :test/post [(int? %)]}
+                     (* a 2))
+                    ([m k]
+                     {:pre       [(map? m)]
+                      :post      [(map? %)]
+                      :test/pre  [(some? k)]
+                      :test/post [(contains? m k)]}
+                     (update m k * 2)))]
+        (testing "are included in dev and test"
+          (is (=? '(let* [&f (clojure.core/fn
+                               ([{:keys [a]}]
+                                {:pre  [(pos? a)
+                                        (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
+                                                         (int? a))]
+                                 :post [(even? %)
+                                        (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
+                                                         (int? %))]}
+                                (* a 2))
+                               ([m k]
+                                {:pre  [(map? m)
+                                        (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
+                                                         (some? k))]
+                                 :post [(map? %)
+                                        (clojure.core/or (clojure.core/not metabase.util.malli.fn/*enforce*)
+                                                         (contains? m k))]}
+                                (update m k * 2)))
+                          &input-schema-0-a [:maybe :map]])
+                  (take 2 (macroexpand form)))))
+        (testing "are excluded in prod"
+          (with-redefs [config/is-prod? true]
+            (is (=? '(let* [&f (clojure.core/fn
+                                 ([{:keys [a]}]
+                                  {:pre  [(pos? a)]
+                                   :post [(even? %)]}
+                                  (* a 2))
+                                 ([m k]
+                                  {:pre  [(map? m)]
+                                   :post [(map? %)]}
+                                  (update m k * 2)))
+                            &input-schema-0-a [:maybe :map]])
+                    (take 2 (macroexpand form))))))))))

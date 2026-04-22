@@ -12,12 +12,12 @@ import {
   getIsSavedQuestionChanged,
   getQuestion,
 } from "metabase/query_builder/selectors";
+import type { State } from "metabase/redux/store";
 import {
   getEmbedOptions,
   getIsEmbeddingIframe,
 } from "metabase/selectors/embed";
 import { getUser } from "metabase/selectors/user";
-import type { State } from "metabase-types/store";
 
 import { getSetting } from "./settings";
 
@@ -61,6 +61,10 @@ export const getIsAdminApp = createSelector([getRouterPath], (path) => {
 
 export const getIsDataStudioApp = createSelector([getRouterPath], (path) => {
   return path.startsWith("/data-studio");
+});
+
+export const getIsMetricsViewer = createSelector([getRouterPath], (path) => {
+  return path.startsWith("/explore");
 });
 
 export const getIsCollectionPathVisible = createSelector(

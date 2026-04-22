@@ -265,8 +265,10 @@ const tokenStatusFeatures = [
   "embedding-simple",
   "embedding-hub",
   "hosting",
+  "offer-metabase-ai-managed",
   "metabase-ai-managed",
   "metabase-store-managed",
+  "metabot-v3",
   "no-upsell",
   "official-collections",
   "query-reference-validation",
@@ -331,6 +333,7 @@ export const tokenFeatures = [
   "hosting",
   "offer-metabase-ai-managed",
   "metabase-ai-managed",
+  "metabot-v3",
   "official_collections",
   "sandboxes",
   "scim",
@@ -366,7 +369,6 @@ export const tokenFeatures = [
   "library",
   "support-users",
   "tenants",
-  "workspaces",
   "writable_connection",
   "admin_security_center",
   "ai_controls",
@@ -534,6 +536,8 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  "ai-features-enabled?": boolean;
+  "agent-api-enabled?": boolean;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
@@ -588,6 +592,7 @@ interface PublicSettings {
   "ldap-user-provisioning-enabled?": boolean;
   "oidc-user-provisioning-enabled?": boolean;
   "loading-message": LoadingMessage;
+  "mcp-enabled?": boolean;
   "map-tile-server-url": string;
   "native-query-autocomplete-match-style": AutocompleteMatchStyle;
   "other-sso-enabled?": boolean | null; // TODO: FIXME! This is an enterprise-only setting!

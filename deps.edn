@@ -37,6 +37,8 @@
   com.clojure-goes-fast/jvm-hiccup-meter    {:mvn/version "0.1.1"}              ; Monitor GC pauses and other system-induced pauses.
   com.draines/postal                        {:mvn/version "2.0.5"               ; SMTP library
                                              :exclusions [com.sun.mail/jakarta.mail]}
+  com.fasterxml.jackson.core/jackson-core       {:mvn/version "2.21.2"}             ; pinned: cheshire pulls 2.21.1 which has resource exhaustion vuln
+  com.fasterxml.jackson.core/jackson-databind   {:mvn/version "2.21.2"}             ; pinned: snowplow pulls 2.13.3 which has DoS vulns
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "7.1.1"}              ; trans dep of commons-codec
                                                                                 ; Detect the charset in uploaded CSV files
   com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
@@ -46,9 +48,9 @@
   com.github.oliyh/martian-clj-http         {:mvn/version "0.2.1"}             ; openapi client
   com.github.seancorfield/honeysql          {:mvn/version "2.7.1350"}           ; Honey SQL 2. SQL generation from Clojure data maps
   com.github.seancorfield/next.jdbc         {:mvn/version "1.3.1070"}           ; Talk to JDBC DBs
-  com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.8"}              ; Telemetry library
-  com.github.steffan-westcott/clj-otel-exporter-otlp {:mvn/version "0.2.8"}     ; OTLP span exporter (gRPC and HTTP)
-  com.github.steffan-westcott/clj-otel-sdk  {:mvn/version "0.2.8"}              ; OpenTelemetry SDK for programmatic configuration
+  com.github.steffan-westcott/clj-otel-api  {:mvn/version "0.2.10"}             ; Telemetry library
+  com.github.steffan-westcott/clj-otel-exporter-otlp {:mvn/version "0.2.10"}    ; OTLP span exporter (gRPC and HTTP)
+  com.github.steffan-westcott/clj-otel-sdk  {:mvn/version "0.2.10"}             ; OpenTelemetry SDK for programmatic configuration
   com.github.vertical-blank/sql-formatter   {:mvn/version "2.0.5"}              ; Java SQL formatting library https://github.com/vertical-blank/sql-formatter
   com.google.auth/google-auth-library-credentials {:mvn/version "1.40.0"}       ; dep for BigQuery, Databricks, and Snowflake. Require here rather than letting different dep versions stomp on each other — see #70908
   com.google.guava/guava                    {:mvn/version "33.5.0-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
@@ -88,8 +90,6 @@
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
   io.github.metabase/macaw                  {:mvn/version "0.2.36"}             ; Parse native SQL queries
-  io.netty/netty-codec-http                 {:mvn/version "4.2.12.Final"}        ; override of transitive dep from aws s3
-  io.netty/netty-codec-http2                {:mvn/version "4.2.12.Final"}        ; override of transitive dep from aws s3
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
@@ -117,17 +117,17 @@
   org.apache.commons/commons-compress           {:mvn/version "1.28.0"}             ; compression utils
   org.apache.commons/commons-lang3              {:mvn/version "3.20.0"}             ; helper methods for working with java.lang stuff
   org.apache.httpcomponents.client5/httpclient5 {:mvn/version "5.4.4"}              ; pinned: ClickHouse JDBC 0.9.7 needs httpcore5 5.3.4+; must pair with httpclient5 5.4.x
-  org.apache.httpcomponents.core5/httpcore5     {:mvn/version "5.3.4"}              ; pinned: ClickHouse JDBC 0.9.7 requires URIBuilder.optimize() added in 5.3
-  org.apache.httpcomponents.core5/httpcore5-h2  {:mvn/version "5.3.4"}              ; pinned: must match httpcore5 version
-  org.apache.logging.log4j/log4j-1.2-api        {:mvn/version "2.25.3"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-api            {:mvn/version "2.25.3"}             ; add compatibility with log4j 1.2
-  org.apache.logging.log4j/log4j-core           {:mvn/version "2.25.3"}             ; apache logging framework
-  org.apache.logging.log4j/log4j-jcl            {:mvn/version "2.25.3"}             ; allows the commons-logging API to work with log4j 2
-  org.apache.logging.log4j/log4j-jul            {:mvn/version "2.25.3"}             ; java.util.logging (JUL) -> Log4j2 adapter
+  org.apache.httpcomponents.core5/httpcore5     {:mvn/version "5.3.5"}              ; pinned: ClickHouse JDBC 0.9.7 requires URIBuilder.optimize() added in 5.3
+  org.apache.httpcomponents.core5/httpcore5-h2  {:mvn/version "5.3.5"}              ; pinned: must match httpcore5 version
+  org.apache.logging.log4j/log4j-1.2-api        {:mvn/version "2.25.4"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-api            {:mvn/version "2.25.4"}             ; add compatibility with log4j 1.2
+  org.apache.logging.log4j/log4j-core           {:mvn/version "2.25.4"}             ; apache logging framework
+  org.apache.logging.log4j/log4j-jcl            {:mvn/version "2.25.4"}             ; allows the commons-logging API to work with log4j 2
+  org.apache.logging.log4j/log4j-jul            {:mvn/version "2.25.4"}             ; java.util.logging (JUL) -> Log4j2 adapter
   org.apache.logging.log4j/log4j-layout-template-json
-  {:mvn/version "2.25.2"}             ; allows the custom json logging format
+  {:mvn/version "2.25.4"}             ; allows the custom json logging format
   org.apache.logging.log4j/log4j-slf4j2-impl
-  {:mvn/version "2.25.2"}             ; allows the slf4j2 API to work with log4j 2
+  {:mvn/version "2.25.4"}             ; allows the slf4j2 API to work with log4j 2
   org.apache.poi/poi                        {:mvn/version "5.4.1"}              ; Work with Office documents (e.g. Excel spreadsheets) -- newer version than one specified by Docjure
   org.apache.poi/poi-ooxml                  {:mvn/version "5.4.1"
                                              :exclusions  [org.bouncycastle/bcpkix-jdk15on
@@ -138,8 +138,8 @@
                                                            org.slf4j/jcl-over-slf4j]}
   org.apache.tika/tika-core                 {:mvn/version "3.2.3"}
   org.apache.xmlgraphics/batik-all          {:mvn/version "1.19"}               ; SVG -> image
-  org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.82"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
-  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.82"}
+  org.bouncycastle/bcpkix-jdk18on           {:mvn/version "1.84"}               ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
+  org.bouncycastle/bcprov-jdk18on           {:mvn/version "1.84"}
   org.clj-commons/claypoole                 {:mvn/version "1.2.2"}              ; Threadpool tools for Clojure
   org.clj-commons/dirigiste                 {:mvn/version "1.0.4"}              ; Instrumented object pooling
   org.clj-commons/hickory                   {:mvn/version "0.7.7"               ; Parse HTML into Clojure data structures
@@ -200,8 +200,13 @@
                                                            org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server]}
   selmer/selmer                             {:mvn/version "1.12.70"}            ; Jinja-like templates for Clojure
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
-  software.amazon.awssdk/s3                 {:mvn/version "2.40.13"}             ; AWS SDK v2 for S3
-  software.amazon.awssdk/sts                {:mvn/version "2.36.2"}             ; Required for S3 client to use service account
+  software.amazon.awssdk/s3                 {:mvn/version "2.40.13"              ; AWS SDK v2 for S3
+                                             ;; Metabase uses only sync S3Client (Apache HttpClient) + S3Presigner;
+                                             ;; excluding the async Netty HTTP client removes all transitive netty
+                                             ;; from the main uberjar and avoids version conflicts with driver-bundled netty.
+                                             :exclusions [software.amazon.awssdk/netty-nio-client]}
+  software.amazon.awssdk/sts                {:mvn/version "2.36.2"               ; Required for S3 client to use service account
+                                             :exclusions [software.amazon.awssdk/netty-nio-client]}
   software.amazon.jdbc/aws-advanced-jdbc-wrapper {:mvn/version "2.6.5"}        ; AWS JDBC wrapper for IAM authentication
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   techascent/tech.ml.dataset                {:mvn/version "8.003"}              ; Tabular data processing for chart statistics
@@ -260,8 +265,19 @@
     com.gfredericks/test.chuck   {:mvn/version "0.2.15"}                    ; generating strings from regexes (useful with malli)
     criterium/criterium          {:mvn/version "0.4.6"}                     ; benchmarking library
     djblue/portal                {:mvn/version "0.62.0"}                    ; ui for inspecting values
+    integrant/integrant          {:mvn/version "1.0.1"}                   ; component lifecycle management
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}                     ; cleaner test output
     io.github.metabase/hawk      {:mvn/version "1.0.13"}                    ; test runner
+    io.zonky.test/embedded-postgres {:mvn/version "2.2.2"}                  ; In-process postgres for dev and testing
+    ;; Native postgres binaries for every OS/arch we're likely to run on in
+    ;; dev or CI. Without these Zonky falls back to x86_64 under Rosetta on
+    ;; Apple Silicon and prints a warning. Versions should be pinned to the
+    ;; latest version shipped by Zonky.
+    io.zonky.test.postgres/embedded-postgres-binaries-darwin-amd64   {:mvn/version "18.3.0"} ; macOS Intel
+    io.zonky.test.postgres/embedded-postgres-binaries-darwin-arm64v8 {:mvn/version "18.3.0"} ; macOS Apple Silicon
+    io.zonky.test.postgres/embedded-postgres-binaries-linux-amd64    {:mvn/version "18.3.0"} ; Linux x86_64 (covers ubuntu-latest GH Actions runner)
+    io.zonky.test.postgres/embedded-postgres-binaries-linux-arm64v8  {:mvn/version "18.3.0"} ; Linux arm64
+    io.zonky.test.postgres/embedded-postgres-binaries-windows-amd64  {:mvn/version "18.3.0"} ; Windows x86_64
     jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
                                   :exclusions
                                   [org.ow2.asm/asm-all]}
@@ -446,6 +462,7 @@
 
   :cljs
   {:extra-paths ["test"]
+   :jvm-opts    ["-Dmb.run.mode=dev"]
    :extra-deps
    {binaryage/devtools                 {:mvn/version "1.0.7"}
     cider/cider-nrepl                  {:mvn/version "0.58.0"}

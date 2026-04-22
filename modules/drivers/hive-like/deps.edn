@@ -48,7 +48,8 @@
                                                                    org.mockito/mockito-core]}
 
   org.apache.hive/hive-standalone-metastore-common   {:mvn/version "4.2.0"
-                                                      :exclusions [com.fasterxml.jackson.core/jackson-databind
+                                                      :exclusions [com.google.guava/guava
+                                                                   com.fasterxml.jackson.core/jackson-databind
                                                                    com.github.ben-manes.caffeine/caffeine
                                                                    com.github.joshelser/dropwizard-metrics-hadoop-metrics2-reporter
                                                                    com.google.protobuf/protobuf-java
@@ -226,11 +227,11 @@
   org.apache.httpcomponents/httpclient               {:mvn/version "4.5.14"
                                                       :exclusions [org.apache.commons/commons-lang3]}
   org.apache.httpcomponents/httpcore                  {:mvn/version "4.4.16"}
-  org.apache.zookeeper/zookeeper                     {:mvn/version "3.8.4"
+  org.apache.zookeeper/zookeeper                     {:mvn/version "3.8.6"
                                                       :exclusions [ch.qos.logback/logback-classic
                                                                    ch.qos.logback/logback-core
                                                                    org.slf4j/slf4j-log4j12]}
-  org.apache.curator/curator-framework               {:mvn/version "5.7.1"
+  org.apache.curator/curator-framework               {:mvn/version "5.9.0"
                                                       :exclusions [org.apache.zookeeper/zookeeper]}
 
   ;; Commons — pinned to override old transitive versions from httpclient/zookeeper.
@@ -238,6 +239,9 @@
   commons-io/commons-io                              {:mvn/version "2.18.0"}
   commons-codec/commons-codec                        {:mvn/version "1.17.1"}
   commons-logging/commons-logging                    {:mvn/version "1.3.5"}
+
+  ;; Guava — hive-standalone-metastore-common pulls 22.0 transitively.
+  com.google.guava/guava                             {:mvn/version "33.5.0-jre"}
 
   ;; Netty — pinned explicitly at safe versions for security scanning.
   ;; Driver JARs are scanned individually so these must be declared directly.

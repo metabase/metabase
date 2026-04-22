@@ -1,3 +1,4 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import type { MetricDefinition } from "metabase-lib/metric";
@@ -68,21 +69,101 @@ export function buildExpressionText(
     .join("");
 }
 
-export function buildFullText(
+export const ENTITY_SEPARATOR = ", ";
+
+export interface FullTextWithIdentities {
+  text: string;
+  identities: MetricIdentityEntry[];
+}
+
+/**
+ * Produces the display text and metric identity entries in a single walk.
+ * Identities carry the exact character offsets matching the text layout.
+ */
+export function buildFullTextWithIdentities(
   formulaEntities: MetricsViewerFormulaEntity[],
   metricNames: MetricNameMap,
+): FullTextWithIdentities {
+  const identities: MetricIdentityEntry[] = [];
+  const parts: string[] = [];
+  let offset = 0;
+  let slotIndex = 0;
+
+  for (const entity of formulaEntities) {
+    if (parts.length > 0) {
+      parts.push(ENTITY_SEPARATOR);
+      offset += ENTITY_SEPARATOR.length;
+    }
+
+    if (isMetricEntry(entity)) {
+      const name = metricNames[entity.id] ?? "";
+      identities.push({
+        sourceId: entity.id,
+        from: offset,
+        to: offset + name.length,
+        definition: entity.definition,
+        slotIndex: slotIndex++,
+      });
+      parts.push(name);
+      offset += name.length;
+      continue;
+    }
+
+    if (isExpressionEntry(entity)) {
+      const defaultText = buildExpressionText(entity.tokens, metricNames);
+      const customName =
+        entity.name && entity.name !== defaultText ? entity.name : undefined;
+
+      for (
+        let tokenIndex = 0;
+        tokenIndex < entity.tokens.length;
+        tokenIndex++
+      ) {
+        const token = entity.tokens[tokenIndex];
+        const prev = entity.tokens[tokenIndex - 1];
+        if (
+          tokenIndex > 0 &&
+          prev?.type !== "open-paren" &&
+          token.type !== "close-paren"
+        ) {
+          parts.push(" ");
+          offset += 1;
+        }
+
+        const fragment = getTokenFragment(token, metricNames);
+        if (token.type === "metric") {
+          identities.push({
+            sourceId: token.sourceId,
+            from: offset,
+            to: offset + fragment.length,
+            definition: token.definition ?? null,
+            slotIndex: slotIndex++,
+            customName,
+          });
+        }
+        parts.push(fragment);
+        offset += fragment.length;
+      }
+      continue;
+    }
+
+    parts.push("");
+  }
+
+  return { text: parts.join(""), identities };
+}
+
+function getTokenFragment(
+  token: ExpressionSubToken,
+  metricNames: MetricNameMap,
 ): string {
-  return formulaEntities
-    .map((entity) => {
-      if (isExpressionEntry(entity)) {
-        return buildExpressionText(entity.tokens, metricNames);
-      }
-      if (isMetricEntry(entity)) {
-        return metricNames[entity.id] ?? "";
-      }
-      return "";
-    })
-    .join(", ");
+  return match(token)
+    .with({ type: "metric" }, (t) => metricNames[t.sourceId] ?? "")
+    .with({ type: "operator" }, (t) => t.op)
+    .with({ type: "constant" }, (t) => String(t.value))
+    .with({ type: "open-paren" }, () => "(")
+    .with({ type: "close-paren" }, () => ")")
+    .exhaustive();
 }
 
 const COMMA = ",";
@@ -115,7 +196,7 @@ function isWordChar(ch: string): boolean {
 export function getWordAtCursor(
   text: string,
   cursorPos: number,
-  metricNames?: MetricNameMap,
+  metricNames: MetricNameMap,
 ): { word: string; start: number; end: number } {
   // Build a set of metric names (lowercased) for quick lookup.
   let metricNamesLower: Set<string> | null = null;
@@ -285,8 +366,9 @@ export function traverseMetricTokens(
   metricNames: MetricNameMap,
   entities: MetricsViewerFormulaEntity[],
   visitor: (visit: MetricTokenVisit) => void,
+  identities: MetricIdentityEntry[],
 ): void {
-  const allTokens = parseFullTextWithPositions(text, metricNames);
+  const allTokens = parseFullTextWithPositions(text, metricNames, identities);
   const separators = findSeparatorCommaPositions(text, allTokens);
   const segments = groupTokensBySegment(allTokens, separators);
 
@@ -371,8 +453,9 @@ function stripPositions(token: PositionedToken): ExpressionSubToken | null {
 export function parseFullText(
   text: string,
   metricNames: MetricNameMap,
+  identities: MetricIdentityEntry[],
 ): MetricsViewerFormulaEntity[] {
-  const allTokens = parseFullTextWithPositions(text, metricNames);
+  const allTokens = parseFullTextWithPositions(text, metricNames, identities);
   const separators = findSeparatorCommaPositions(text, allTokens);
   const segments = groupTokensBySegment(allTokens, separators);
   const result: MetricsViewerFormulaEntity[] = [];
@@ -388,7 +471,6 @@ export function parseFullText(
         .filter((t): t is ExpressionSubToken => t !== null),
     );
 
-    // Single metric reference without operators → standalone metric entry
     const firstToken = subTokens[0];
     if (subTokens.length === 1 && firstToken.type === "metric") {
       const name = metricNames[firstToken.sourceId];
@@ -402,7 +484,6 @@ export function parseFullText(
       }
     }
 
-    // Multiple tokens or operators → expression entry
     const name = buildExpressionText(subTokens, metricNames);
     result.push({
       id: `expression:${name}`,
@@ -555,6 +636,7 @@ function consumeNumber(text: string, startIndex: number): number | null {
 export function parseFullTextWithPositions(
   text: string,
   metricNames: MetricNameMap,
+  identities: MetricIdentityEntry[],
 ): PositionedToken[] {
   const sortedMetrics = Object.entries(metricNames)
     .map(([id, name]) => ({ id, name: (name ?? "").toLowerCase() }))
@@ -564,11 +646,29 @@ export function parseFullTextWithPositions(
     )
     .sort((a, b) => b.name.length - a.name.length);
 
+  const identityByStart = new Map<number, MetricIdentityEntry>();
+  for (const identity of identities) {
+    identityByStart.set(identity.from, identity);
+  }
+
   const lower = text.toLowerCase();
   const tokens: PositionedToken[] = [];
   let i = 0;
 
   while (i < text.length) {
+    const identity = identityByStart.get(i);
+    if (identity) {
+      tokens.push({
+        type: "metric",
+        sourceId: identity.sourceId,
+        count: 0,
+        from: identity.from,
+        to: identity.to,
+      });
+      i = identity.to;
+      continue;
+    }
+
     const ch = text[i];
 
     const isWhitespace = ch === " " || ch === "\t";
@@ -720,10 +820,15 @@ export type ErrorRange = { from: number; to: number; message: string };
 export function findInvalidRanges(
   text: string,
   metricNames: MetricNameMap,
+  identities: MetricIdentityEntry[],
 ): ErrorRange[] {
-  const allTokens = parseFullTextWithPositions(text, metricNames);
+  const allTokens = parseFullTextWithPositions(text, metricNames, identities);
   const separators = findSeparatorCommaPositions(text, allTokens);
   const segments = groupTokensBySegment(allTokens, separators);
+
+  const identityPositions = new Set(
+    identities.map((id) => getPositionKey(id.from, id.to)),
+  );
 
   const invalid: ErrorRange[] = [];
 
@@ -840,6 +945,27 @@ export function findInvalidRanges(
       }
     }
 
+    // Metric tokens matched by greedy name matching but without a tracked
+    // identity (i.e. not selected from the dropdown) must be rejected —
+    // they lack the definition needed for dimension assignment.
+    // Skip when the identities list is completely empty — this means identity
+    // tracking is unavailable (e.g. full doc replacement wiped the RangeSet).
+    if (identityPositions.size > 0) {
+      for (const token of itemTokens) {
+        if (
+          token.type === "metric" &&
+          !identityPositions.has(getPositionKey(token.from, token.to))
+        ) {
+          const metricText = text.substring(token.from, token.to);
+          itemInvalid.push({
+            from: token.from,
+            to: token.to,
+            message: t`Unknown token: "${metricText}"`,
+          });
+        }
+      }
+    }
+
     const hasMetric = itemTokens.some((tok) => tok.type === "metric");
     if (!hasMetric && itemInvalid.length === 0) {
       itemInvalid.push({
@@ -879,7 +1005,8 @@ export type MetricIdentityEntry = {
   from: number;
   to: number;
   definition: MetricDefinition | null;
-  slotIndex: number;
+  slotIndex?: number;
+  customName?: string;
 };
 
 export function stripDefinitionProjections(
@@ -911,12 +1038,17 @@ export function applyTrackedDefinitions(
 ): ApplyTrackedDefinitionsResult {
   const identityByPosition = new Map<
     string,
-    { definition: MetricDefinition | null; slotIndex: number }
+    {
+      definition: MetricDefinition | null;
+      slotIndex: number | undefined;
+      customName: string | undefined;
+    }
   >();
   for (const identity of trackedIdentities) {
     identityByPosition.set(getPositionKey(identity.from, identity.to), {
       definition: identity.definition,
       slotIndex: identity.slotIndex,
+      customName: identity.customName,
     });
   }
 
@@ -928,57 +1060,82 @@ export function applyTrackedDefinitions(
     MetricsViewerFormulaEntity,
     Map<number, MetricDefinition | undefined>
   >();
+  const exprCustomNamesMap = new Map<MetricsViewerFormulaEntity, string>();
   const slotMapping = new Map<number, number>();
   let newSlotCounter = 0;
 
-  traverseMetricTokens(text, metricNames, newEntities, (visit) => {
-    const newSlotIndex = newSlotCounter++;
-    const key = getPositionKey(visit.positioned.from, visit.positioned.to);
-    const tracked = identityByPosition.get(key);
+  traverseMetricTokens(
+    text,
+    metricNames,
+    newEntities,
+    (visit) => {
+      const newSlotIndex = newSlotCounter++;
+      const key = getPositionKey(visit.positioned.from, visit.positioned.to);
+      const tracked = identityByPosition.get(key);
+      if (!tracked) {
+        return;
+      }
 
-    if (tracked) {
-      slotMapping.set(tracked.slotIndex, newSlotIndex);
-    }
+      if (tracked.slotIndex != null) {
+        slotMapping.set(tracked.slotIndex, newSlotIndex);
+      }
 
-    if (!tracked) {
-      return;
-    }
+      if (visit.kind === "standalone") {
+        metricOverrides.set(visit.entity, tracked.definition ?? null);
+        return;
+      }
 
-    if (visit.kind === "standalone") {
-      metricOverrides.set(visit.entity, tracked.definition ?? null);
-      return;
-    }
+      let tokenMap = exprTokenOverrides.get(visit.entity);
+      if (!tokenMap) {
+        tokenMap = new Map();
+        exprTokenOverrides.set(visit.entity, tokenMap);
+      }
+      // remove any existing breakouts - not supported in math expressions
+      const definition =
+        tracked.definition != null
+          ? stripDefinitionProjections(tracked.definition)
+          : undefined;
+      tokenMap.set(visit.exprTokenIndex, definition);
 
-    let tokenMap = exprTokenOverrides.get(visit.entity);
-    if (!tokenMap) {
-      tokenMap = new Map();
-      exprTokenOverrides.set(visit.entity, tokenMap);
-    }
-    // remove any existing breakouts - not supported in math expressions
-    const definition =
-      tracked.definition != null
-        ? stripDefinitionProjections(tracked.definition)
-        : undefined;
-    tokenMap.set(visit.exprTokenIndex, definition);
-  });
+      // First surviving identity with a custom name wins. If identities
+      // from two named expressions merge into one, the earliest (by token
+      // order) name is kept — acceptable per the design.
+      if (tracked.customName && !exprCustomNamesMap.has(visit.entity)) {
+        exprCustomNamesMap.set(visit.entity, tracked.customName);
+      }
+    },
+    trackedIdentities,
+  );
 
   const entities = newEntities.map((entity) => {
     if (metricOverrides.has(entity)) {
       return { ...entity, definition: metricOverrides.get(entity) ?? null };
     }
 
-    const tokenMap = exprTokenOverrides.get(entity);
-    if (tokenMap && isExpressionEntry(entity)) {
-      const newTokens = entity.tokens.map((token, index) => {
-        if (!tokenMap.has(index)) {
-          return token;
-        }
-        return { ...token, definition: tokenMap.get(index) };
-      });
-      const hasChanges = newTokens.some(
+    if (isExpressionEntry(entity)) {
+      const tokenMap = exprTokenOverrides.get(entity);
+      const newTokens = tokenMap
+        ? entity.tokens.map((token, index) => {
+            if (!tokenMap.has(index)) {
+              return token;
+            }
+            return { ...token, definition: tokenMap.get(index) };
+          })
+        : entity.tokens;
+      const tokensChanged = newTokens.some(
         (token, index) => token !== entity.tokens[index],
       );
-      return hasChanges ? { ...entity, tokens: newTokens } : entity;
+      const inheritedName = exprCustomNamesMap.get(entity);
+      const nameChanged =
+        inheritedName != null && inheritedName !== entity.name;
+      if (!tokensChanged && !nameChanged) {
+        return entity;
+      }
+      return {
+        ...entity,
+        tokens: newTokens,
+        ...(nameChanged ? { name: inheritedName } : {}),
+      };
     }
 
     return entity;
