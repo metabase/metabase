@@ -348,3 +348,33 @@
 (deftest get-workspace-config-404-on-unknown-test
   (testing "GET /:id/config with an unknown id returns 404"
     (mt/user-http-request :crowberto :get 404 (str "ee/workspace/" Integer/MAX_VALUE "/config"))))
+
+(deftest get-table-remappings-returns-rows-test
+  (testing "GET /ee/workspace/remappings returns every row in the table_remapping table"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details {}}
+                   :model/TableRemapping _
+                   {:database_id     db-id
+                    :from_schema     "raw"
+                    :from_table_name "events"
+                    :to_schema       "mb_iso_ws"
+                    :to_table_name   "events"}
+                   :model/TableRemapping _
+                   {:database_id     db-id
+                    :from_schema     "raw"
+                    :from_table_name "users"
+                    :to_schema       "mb_iso_ws"
+                    :to_table_name   "users"}]
+      (let [resp (mt/user-http-request :crowberto :get 200 "ee/workspace/remappings")]
+        (is (sequential? resp))
+        (let [ours (filter #(= db-id (:database_id %)) resp)]
+          (is (= 2 (count ours)))
+          (is (= #{"events" "users"}
+                 (into #{} (map :from_table_name) ours)))
+          (let [row (first ours)]
+            (is (every? #(contains? row %)
+                        [:id :database_id :from_schema :from_table_name
+                         :to_schema :to_table_name :created_at]))))))))
+
+(deftest get-table-remappings-requires-superuser-test
+  (testing "Non-superusers get 403 from GET /ee/workspace/remappings"
+    (mt/user-http-request :rasta :get 403 "ee/workspace/remappings")))

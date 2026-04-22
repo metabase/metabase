@@ -6,7 +6,11 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.table-remapping.model]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
+
+(comment metabase.table-remapping.model/keep-me)
 
 (def ^:private WorkspaceStatus
   [:enum "uninitialized" "initialized"])
@@ -58,6 +62,12 @@
   []
   (api/check-superuser)
   (mapv present-workspace (workspace/list-workspaces)))
+
+(api.macros/defendpoint :get "/remappings"
+  "Return every row in the `table_remapping` table."
+  []
+  (api/check-superuser)
+  (t2/select :model/TableRemapping {:order-by [[:id :asc]]}))
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."
