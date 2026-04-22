@@ -14,10 +14,15 @@
            :input_schemas    ["public" "analytics"]}
           overrides)))
 
+(defn- create-ws!
+  "Test helper: supply a default :creator_id so call sites stay terse."
+  [params]
+  (workspace/create-workspace! (merge {:creator_id (mt/user->id :crowberto)} params)))
+
 (deftest create-workspace-minimal-test
   (testing "create-workspace! creates a Workspace with no databases"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [created (workspace/create-workspace! {:name "Solo" :databases []})]
+      (let [created (create-ws! {:name "Solo" :databases []})]
         (is (some? (:id created)))
         (is (= "Solo" (:name created)))
         (is (= [] (:databases created)))
@@ -27,7 +32,7 @@
   (testing "create-workspace! stores nested workspace_database rows"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
-        (let [created (workspace/create-workspace!
+        (let [created (create-ws!
                        {:name      "With DBs"
                         :databases [(ws-db-attrs)
                                     (ws-db-attrs {:database_id   db2-id
@@ -44,7 +49,7 @@
 (deftest get-workspace-test
   (testing "get-workspace returns a hydrated workspace"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [{id :id} (workspace/create-workspace!
+      (let [{id :id} (create-ws!
                       {:name "Fetch Me" :databases [(ws-db-attrs)]})
             fetched (workspace/get-workspace id)]
         (is (= "Fetch Me" (:name fetched)))
@@ -57,9 +62,9 @@
 (deftest list-workspaces-test
   (testing "list-workspaces returns all workspaces with their databases hydrated"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [{id-a :id} (workspace/create-workspace!
+      (let [{id-a :id} (create-ws!
                         {:name "A" :databases [(ws-db-attrs)]})
-            {id-b :id} (workspace/create-workspace!
+            {id-b :id} (create-ws!
                         {:name "B" :databases []})
             results    (workspace/list-workspaces)
             by-id      (into {} (map (juxt :id identity)) results)]
@@ -72,7 +77,7 @@
   (testing "update-workspace! replaces the set of workspace_databases"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
-        (let [{id :id} (workspace/create-workspace!
+        (let [{id :id} (create-ws!
                         {:name      "Before"
                          :databases [(ws-db-attrs {:output_schema "keep_out"
                                                    :input_schemas ["keep"]})
@@ -98,7 +103,7 @@
 (deftest update-workspace-can-clear-databases-test
   (testing "update-workspace! with empty :databases removes all children"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [{id :id} (workspace/create-workspace!
+      (let [{id :id} (create-ws!
                       {:name "To Clear" :databases [(ws-db-attrs)]})
             updated  (workspace/update-workspace! id {:name "Cleared" :databases []})]
         (is (= [] (:databases updated)))
@@ -108,7 +113,7 @@
   (testing "Deleting a Workspace cascades to its workspace_database rows"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
-        (let [{id :id} (workspace/create-workspace!
+        (let [{id :id} (create-ws!
                         {:name      "Doomed"
                          :databases [(ws-db-attrs)
                                      (ws-db-attrs {:database_id db2-id})]})]
@@ -119,14 +124,14 @@
 (deftest status-defaults-to-uninitialized-test
   (testing "When :status is omitted, workspace_database defaults to :uninitialized"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [created (workspace/create-workspace!
+      (let [created (create-ws!
                      {:name "Status Default" :databases [(ws-db-attrs)]})]
         (is (= :uninitialized (:status (first (:databases created)))))))))
 
 (deftest status-round-trip-test
   (testing "Caller-supplied :status round-trips as a keyword"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [created (workspace/create-workspace!
+      (let [created (create-ws!
                      {:name      "Status Set"
                       :databases [(ws-db-attrs {:status :initialized})]})]
         (is (= :initialized (:status (first (:databases created)))))
@@ -139,7 +144,7 @@
 (deftest status-can-be-updated-test
   (testing "update-workspace! can change the :status of a workspace_database"
     (mt/with-model-cleanup [:model/Workspace]
-      (let [{id :id} (workspace/create-workspace!
+      (let [{id :id} (create-ws!
                       {:name      "Evolving"
                        :databases [(ws-db-attrs {:status :uninitialized})]})
             updated  (workspace/update-workspace!
@@ -212,7 +217,7 @@
   (testing "Deleting an underlying Database cascades to workspace_database rows"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details {}}]
-        (let [{ws-id :id} (workspace/create-workspace!
+        (let [{ws-id :id} (create-ws!
                            {:name      "Linked"
                             :databases [(ws-db-attrs {:database_id db-id})]})]
           (is (t2/exists? :model/WorkspaceDatabase :workspace_id ws-id))

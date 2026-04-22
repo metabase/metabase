@@ -300,6 +300,37 @@
   (testing "DELETE /:id with an unknown id returns 404"
     (mt/user-http-request :crowberto :delete 404 (str "ee/workspace/" Integer/MAX_VALUE))))
 
+(deftest post-workspace-records-creator-test
+  (testing "POST records the authenticated user as :creator_id and returns a hydrated :creator"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [resp (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                       {:name "Created By Me" :databases []})]
+        (testing "response includes :creator as a user object"
+          (is (=? {:creator {:id    (mt/user->id :crowberto)
+                             :email (:email (mt/fetch-user :crowberto))}}
+                  resp)))
+        (testing "response does not leak the raw :creator_id column"
+          (is (not (contains? resp :creator_id))))
+        (testing "the row stores the current user id in creator_id"
+          (is (= (mt/user->id :crowberto)
+                 (t2/select-one-fn :creator_id :model/Workspace :id (:id resp)))))))))
+
+(deftest deleting-creator-user-nulls-out-workspace-creator-test
+  (testing "FK onDelete SET NULL: deleting the creator user leaves the workspace with nil :creator_id and :creator"
+    (mt/with-model-cleanup [:model/Workspace]
+      (mt/with-temp [:model/User {tmp-user-id :id} {:first_name "Temp" :email "temp@example.com"}
+                     :model/Workspace {ws-id :id} {:name "Orphaned" :creator_id tmp-user-id}]
+        (is (= tmp-user-id (t2/select-one-fn :creator_id :model/Workspace :id ws-id)))
+        (t2/delete! :model/User :id tmp-user-id)
+        (testing "workspace survives"
+          (is (t2/exists? :model/Workspace :id ws-id)))
+        (testing "creator_id is now nil"
+          (is (nil? (t2/select-one-fn :creator_id :model/Workspace :id ws-id))))
+        (testing "API response has :creator nil"
+          (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" ws-id))]
+            (is (contains? resp :creator))
+            (is (nil? (:creator resp)))))))))
+
 (deftest get-workspace-config-happy-path-test
   (testing "GET /ee/workspace/:id/config returns the config shape as JSON"
     (mt/with-temp [:model/Database {db-id :id}
