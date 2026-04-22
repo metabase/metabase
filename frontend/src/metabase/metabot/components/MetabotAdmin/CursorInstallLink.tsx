@@ -10,15 +10,16 @@ const CURSOR_DEEPLINK = {
   mcpName: "Metabase",
 } as const;
 
-function buildCursorInstallUrl(mcpUrl: string): string {
+const buildCursorInstallUrl = (mcpUrl: string): string => {
   const params = new URLSearchParams({
     name: CURSOR_DEEPLINK.mcpName,
     config: window.btoa(JSON.stringify({ url: mcpUrl })),
   });
-  return `${CURSOR_DEEPLINK.url}?${params.toString()}`;
-}
 
-export function CursorInstallLink() {
+  return `${CURSOR_DEEPLINK.url}?${params.toString()}`;
+};
+
+export const CursorInstallLink = () => {
   const mcpUrl = useMCPServerURL();
 
   if (!mcpUrl) {
@@ -35,4 +36,4 @@ export function CursorInstallLink() {
       {t`Install in Cursor`}
     </Anchor>
   );
-}
+};
