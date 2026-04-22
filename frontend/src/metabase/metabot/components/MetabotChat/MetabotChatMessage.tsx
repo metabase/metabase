@@ -180,57 +180,59 @@ export const AgentMessage = ({
       {message.type === "tool_call" && (
         <AgentToolCallMessage message={message} />
       )}
-      {!hideActions && (
-        <Flex className={Styles.messageActions}>
-          <Tooltip label={t`Copy`}>
-            <ActionIcon
-              h="sm"
-              data-testid="metabot-chat-message-copy"
-              onClick={() => onCopy(message.id)}
-            >
-              <Icon name="copy" size="1rem" />
-            </ActionIcon>
-          </Tooltip>
-          {canGiveFeedback && (
-            <>
-              <Tooltip label={t`Give positive feedback`}>
-                <FeedbackButton
-                  data-testid="metabot-chat-message-thumbs-up"
-                  icon="thumbs_up"
-                  hasBeenClicked={submittedFeedback === "positive"}
-                  disabled={!!submittedFeedback}
-                  onClick={() =>
-                    setFeedbackMessage({ messageId, positive: true })
-                  }
-                />
-              </Tooltip>
-              <Tooltip label={t`Give negative feedback`}>
-                <FeedbackButton
-                  data-testid="metabot-chat-message-thumbs-down"
-                  icon="thumbs_down"
-                  hasBeenClicked={submittedFeedback === "negative"}
-                  disabled={!!submittedFeedback}
-                  onClick={() =>
-                    setFeedbackMessage({ messageId, positive: false })
-                  }
-                />
-              </Tooltip>
-            </>
-          )}
-
-          {onRetry && (
-            <Tooltip label={t`Retry`}>
+      <Flex className={Styles.messageActions}>
+        {!hideActions && (
+          <>
+            <Tooltip label={t`Copy`}>
               <ActionIcon
-                onClick={() => onRetry(message.id)}
                 h="sm"
-                data-testid="metabot-chat-message-retry"
+                data-testid="metabot-chat-message-copy"
+                onClick={() => onCopy(message.id)}
               >
-                <Icon name="revert" size="1rem" />
+                <Icon name="copy" size="1rem" />
               </ActionIcon>
             </Tooltip>
-          )}
-        </Flex>
-      )}
+            {canGiveFeedback && (
+              <>
+                <Tooltip label={t`Give positive feedback`}>
+                  <FeedbackButton
+                    data-testid="metabot-chat-message-thumbs-up"
+                    icon="thumbs_up"
+                    hasBeenClicked={submittedFeedback === "positive"}
+                    disabled={!!submittedFeedback}
+                    onClick={() =>
+                      setFeedbackMessage({ messageId, positive: true })
+                    }
+                  />
+                </Tooltip>
+                <Tooltip label={t`Give negative feedback`}>
+                  <FeedbackButton
+                    data-testid="metabot-chat-message-thumbs-down"
+                    icon="thumbs_down"
+                    hasBeenClicked={submittedFeedback === "negative"}
+                    disabled={!!submittedFeedback}
+                    onClick={() =>
+                      setFeedbackMessage({ messageId, positive: false })
+                    }
+                  />
+                </Tooltip>
+              </>
+            )}
+
+            {onRetry && (
+              <Tooltip label={t`Retry`}>
+                <ActionIcon
+                  onClick={() => onRetry(message.id)}
+                  h="sm"
+                  data-testid="metabot-chat-message-retry"
+                >
+                  <Icon name="revert" size="1rem" />
+                </ActionIcon>
+              </Tooltip>
+            )}
+          </>
+        )}
+      </Flex>
     </MessageContainer>
   );
 };
