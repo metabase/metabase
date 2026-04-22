@@ -1,6 +1,6 @@
 import { useHotkeys } from "@mantine/hooks";
 import { useMemo, useRef, useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   Combobox,
@@ -11,6 +11,7 @@ import {
   TextInput,
   useCombobox,
 } from "metabase/ui";
+import { isTypeFK } from "metabase-lib/v1/types/utils/isa";
 
 import type { SchemaViewerFlowNode } from "../types";
 import { useZoomToNodes } from "../useZoomToNodes";
@@ -24,7 +25,7 @@ type SchemaViewerNodeSearchProps = {
 interface SearchItem {
   id: string;
   label: string;
-  fieldCount: number;
+  fkCount: number;
   haystack: string;
 }
 
@@ -58,10 +59,11 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
       nodes.map((node) => {
         const { name, display_name, fields } = node.data;
         const label = formatTableLabel(name, display_name);
+        const fkCount = fields.filter((f) => isTypeFK(f.semantic_type)).length;
         return {
           id: node.id,
           label,
-          fieldCount: fields.length,
+          fkCount,
           haystack: `${label} ${name} ${display_name ?? ""}`.toLowerCase(),
         };
       }),
@@ -132,10 +134,19 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
             <ScrollArea.Autosize mah={320} type="scroll">
               {filteredItems.map((item) => (
                 <Combobox.Option value={item.id} key={item.id}>
-                  <Group gap="sm" wrap="nowrap" justify="space-between">
+                  <Group
+                    gap="sm"
+                    wrap="nowrap"
+                    justify="space-between"
+                    w="100%"
+                  >
                     <Text className={S.label}>{item.label}</Text>
                     <Text className={S.fieldCount} c="text-tertiary" fz="sm">
-                      {t`${item.fieldCount} fields`}
+                      {ngettext(
+                        msgid`${item.fkCount} FK`,
+                        `${item.fkCount} FKs`,
+                        item.fkCount,
+                      )}
                     </Text>
                   </Group>
                 </Combobox.Option>

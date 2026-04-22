@@ -324,8 +324,7 @@ function findNonCollidingPosition(
   placed: Map<string, SchemaViewerFlowNode>,
 ): { x: number; y: number } {
   const nodeWidth = getStyleDimension(newNode, "width") ?? NODE_WIDTH;
-  const nodeHeight =
-    getStyleDimension(newNode, "height") ?? HEADER_HEIGHT;
+  const nodeHeight = getStyleDimension(newNode, "height") ?? HEADER_HEIGHT;
   const xOffset = NODE_WIDTH + DAGRE_RANK_SEP;
   const preferredX = prefersRight
     ? neighbor.position.x + xOffset
@@ -406,4 +405,142 @@ function getStyleDimension(
 ): number | null {
   const value = node.style?.[key];
   return typeof value === "number" ? value : null;
+}
+
+/**
+ * Re-layout the graph centered on the focal node: incoming edges end up on
+ * the left, outgoing on the right, remaining nodes get placed next to a
+ * connected neighbor using the same non-colliding placement rules that
+ * {@link mergeWithExistingPositions} uses for FK expansion. The focal node
+ * stays put so the user's camera position remains meaningful.
+ */
+export function focusNodeLayout(
+  focalId: string,
+  nodes: SchemaViewerFlowNode[],
+  edges: { source: string; target: string }[],
+): SchemaViewerFlowNode[] {
+  const focal = nodes.find((n) => n.id === focalId);
+  if (focal == null) {
+    return nodes;
+  }
+
+  const nodesById = new Map(nodes.map((n) => [n.id, n]));
+  const focalWidth = getStyleDimension(focal, "width") ?? NODE_WIDTH;
+  const focalHeight = getStyleDimension(focal, "height") ?? HEADER_HEIGHT;
+  const focalCenterY = focal.position.y + focalHeight / 2;
+
+  // Partition neighbors by edge direction (self-refs are ignored).
+  const incomingIds = new Set<string>();
+  const outgoingIds = new Set<string>();
+  for (const edge of edges) {
+    if (edge.source === focalId && edge.target !== focalId) {
+      outgoingIds.add(edge.target);
+    } else if (edge.target === focalId && edge.source !== focalId) {
+      incomingIds.add(edge.source);
+    }
+  }
+
+  const placedById = new Map<string, SchemaViewerFlowNode>();
+  placedById.set(focalId, {
+    ...focal,
+    style: { ...focal.style, opacity: 1 },
+  });
+
+  // Drop each row onto a single column that's vertically centered on the
+  // focal node. A small additional gap below COLLISION_PADDING keeps rows
+  // from touching.
+  const columnGap = DAGRE_NODE_SEP;
+
+  const placeColumn = (neighborIds: Set<string>, x: number) => {
+    const neighbors = [...neighborIds]
+      .map((id) => nodesById.get(id))
+      .filter((n): n is SchemaViewerFlowNode => n != null);
+    if (neighbors.length === 0) {
+      return;
+    }
+    const heights = neighbors.map(
+      (n) => getStyleDimension(n, "height") ?? HEADER_HEIGHT,
+    );
+    const totalHeight =
+      heights.reduce((sum, h) => sum + h, 0) +
+      columnGap * (neighbors.length - 1);
+    let cursorY = focalCenterY - totalHeight / 2;
+    for (let i = 0; i < neighbors.length; i++) {
+      const node = neighbors[i];
+      placedById.set(node.id, {
+        ...node,
+        position: { x, y: cursorY },
+        style: { ...node.style, opacity: 1 },
+      });
+      cursorY += heights[i] + columnGap;
+    }
+  };
+
+  placeColumn(incomingIds, focal.position.x - NODE_WIDTH - DAGRE_RANK_SEP);
+  placeColumn(outgoingIds, focal.position.x + focalWidth + DAGRE_RANK_SEP);
+
+  // Anything not directly connected to the focal node: place it next to a
+  // neighbor that's already positioned. Iterate in passes — just like the
+  // FK-expansion merge path — so chains keep growing outward.
+  let remaining = nodes.filter((n) => !placedById.has(n.id));
+  let progressed = true;
+  while (remaining.length > 0 && progressed) {
+    progressed = false;
+    const stillRemaining: SchemaViewerFlowNode[] = [];
+    for (const node of remaining) {
+      const connectingEdge = edges.find(
+        (e) =>
+          (e.source === node.id && placedById.has(e.target)) ||
+          (e.target === node.id && placedById.has(e.source)),
+      );
+      if (connectingEdge == null) {
+        stillRemaining.push(node);
+        continue;
+      }
+      const neighborId =
+        connectingEdge.source === node.id
+          ? connectingEdge.target
+          : connectingEdge.source;
+      const neighbor = placedById.get(neighborId)!;
+      // rankdir: LR — target sits to the right of source.
+      const prefersRight = connectingEdge.target === node.id;
+      const position = findNonCollidingPosition(
+        node,
+        neighbor,
+        prefersRight,
+        placedById,
+      );
+      placedById.set(node.id, {
+        ...node,
+        position,
+        style: { ...node.style, opacity: 1 },
+      });
+      progressed = true;
+    }
+    remaining = stillRemaining;
+  }
+
+  // Fully disconnected leftovers: drop them in a fresh column to the right
+  // of everything that's already placed, stacked top-down. This keeps them
+  // out of the focal layout while still making them reachable via pan.
+  if (remaining.length > 0) {
+    let maxRight = 0;
+    for (const node of placedById.values()) {
+      const w = getStyleDimension(node, "width") ?? NODE_WIDTH;
+      maxRight = Math.max(maxRight, node.position.x + w);
+    }
+    let cursorY = focal.position.y;
+    for (const node of remaining) {
+      const h = getStyleDimension(node, "height") ?? HEADER_HEIGHT;
+      placedById.set(node.id, {
+        ...node,
+        position: { x: maxRight + DAGRE_RANK_SEP, y: cursorY },
+        style: { ...node.style, opacity: 1 },
+      });
+      cursorY += h + columnGap;
+    }
+  }
+
+  // Preserve original node order.
+  return nodes.map((n) => placedById.get(n.id) ?? n);
 }

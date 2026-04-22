@@ -6,6 +6,7 @@ import {
   ReactFlow,
   useEdgesState,
   useNodesState,
+  useReactFlow,
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
@@ -17,9 +18,11 @@ import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
   ActionIcon,
   Box,
+  Button,
   Group,
   Icon,
   Loader,
+  Menu,
   Stack,
   Text,
   Tooltip,
@@ -43,7 +46,12 @@ import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
 import { useSchemaViewerShareUrl } from "./useSchemaViewerShareUrl";
 import { useZoomToNodes } from "./useZoomToNodes";
-import { mergeWithExistingPositions, toFlowGraph } from "./utils";
+import {
+  focusNodeLayout,
+  getNodesWithPositions,
+  mergeWithExistingPositions,
+  toFlowGraph,
+} from "./utils";
 
 const NODE_TYPES = {
   schemaViewerTable: SchemaViewerTableNode,
@@ -89,6 +97,39 @@ function FitToNewNodes({ nodeIds, onDone }: FitToNewNodesProps) {
     return () => cancelAnimationFrame(handle);
   }, [nodeIds, zoomToNodes, onDone]);
   return null;
+}
+
+/**
+ * Re-runs the default Dagre layout on all currently-displayed nodes. Rendered
+ * inside ReactFlow so it can use {@link useReactFlow} to read and replace
+ * node state imperatively (React Flow's fitView can only run inside the
+ * provider).
+ */
+function AutoLayoutButton() {
+  const { getNodes, getEdges, setNodes, fitView } =
+    useReactFlow<SchemaViewerFlowNode>();
+
+  const handleClick = useCallback(() => {
+    const currentNodes = getNodes();
+    const currentEdges = getEdges();
+    if (currentNodes.length === 0) {
+      return;
+    }
+    const laidOut = getNodesWithPositions(currentNodes, currentEdges);
+    setNodes(laidOut);
+    fitView({ nodes: laidOut, duration: 500 });
+  }, [getNodes, getEdges, setNodes, fitView]);
+
+  return (
+    <Button
+      bg="background-primary"
+      variant="default"
+      leftSection={<Icon name="sparkles" />}
+      onClick={handleClick}
+    >
+      {t`Auto-layout`}
+    </Button>
+  );
 }
 
 interface SchemaViewerProps {
@@ -440,6 +481,55 @@ export function SchemaViewer({
     }
   }, [currentContextKey, setNodes, setEdges]);
 
+  // Right-click on a table node opens a context menu at the cursor. Tracked
+  // as a single piece of state so the menu is controlled from React (rather
+  // than wired through each individual node).
+  const [nodeContextMenu, setNodeContextMenu] = useState<{
+    x: number;
+    y: number;
+    nodeId: string;
+  } | null>(null);
+
+  const handleNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: SchemaViewerFlowNode) => {
+      event.preventDefault();
+      setNodeContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        nodeId: node.id,
+      });
+    },
+    [],
+  );
+
+  const closeNodeContextMenu = useCallback(() => {
+    setNodeContextMenu(null);
+  }, []);
+
+  const handleFocusNode = useCallback(
+    (nodeId: string) => {
+      setNodes((currentNodes) => {
+        const laidOut = focusNodeLayout(
+          nodeId,
+          currentNodes,
+          edges.map((edge) => ({ source: edge.source, target: edge.target })),
+        );
+        // Clear any previous node selection so the fresh layout starts from
+        // a clean slate.
+        return laidOut.map((n) => (n.selected ? { ...n, selected: false } : n));
+      });
+      // Drop any edge highlighting from before the rearrangement.
+      setEdges((currentEdges) =>
+        currentEdges.map((e) => (e.selected ? { ...e, selected: false } : e)),
+      );
+      // Zoom in on the focal node itself — useZoomToNodes clamps to ≥0.5 so
+      // the table stays legible, and keeps the node's header in view.
+      setPendingFitNodeIds([nodeId]);
+      setNodeContextMenu(null);
+    },
+    [edges, setNodes, setEdges],
+  );
+
   // Double-click on an edge: alternate between zooming to the source node
   // (first double-click, or any time the previous was "target") and the
   // target node (when the previous was "source"). The edge stays selected
@@ -624,6 +714,8 @@ export function SchemaViewer({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onEdgeDoubleClick={handleEdgeDoubleClick}
+        onNodeContextMenu={handleNodeContextMenu}
+        onPaneClick={closeNodeContextMenu}
       >
         <Background />
         <MiniMap position="bottom-right" pannable zoomable />
@@ -656,6 +748,11 @@ export function SchemaViewer({
           </Group>
         </Panel>
         {nodes.length > 0 && <SchemaViewerNodeLayout />}
+        {nodes.length > 0 && (
+          <Panel position="bottom-left">
+            <AutoLayoutButton />
+          </Panel>
+        )}
         <Panel className={S.entryInput} position="top-left">
           <Group gap="sm">
             <SchemaPickerInput databaseId={databaseId} schema={schema} />
@@ -687,6 +784,41 @@ export function SchemaViewer({
           </Panel>
         )}
       </ReactFlow>
+      {nodeContextMenu != null && (
+        <Menu
+          opened
+          position="bottom-start"
+          offset={2}
+          onChange={(opened) => {
+            if (!opened) {
+              setNodeContextMenu(null);
+            }
+          }}
+        >
+          <Menu.Target>
+            <div
+              style={{
+                position: "fixed",
+                left: nodeContextMenu.x,
+                top: nodeContextMenu.y,
+                width: 1,
+                height: 1,
+                pointerEvents: "none",
+              }}
+            />
+          </Menu.Target>
+          <Menu.Dropdown p={0}>
+            <Menu.Item
+              fz="sm"
+              fw="bold"
+              leftSection={<Icon name="eye_outline" c="text-tertiary" />}
+              onClick={() => handleFocusNode(nodeContextMenu.nodeId)}
+            >
+              {t`Focus node`}
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      )}
     </SchemaViewerContext.Provider>
   );
 }
