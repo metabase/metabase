@@ -609,7 +609,7 @@
      :order-by [[:keyword_rank :asc]]
      :limit (semantic-settings/semantic-search-results-limit)}))
 
-(def max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
+(def ^:private ^:const max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
 
 (defn- semantic-search-query
   "Build a semantic search query using vector similarity with post-filtering to enable HNSW index usage."

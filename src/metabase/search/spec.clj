@@ -27,7 +27,7 @@
    "transform"
    ;; The following come last as they can be slow to index due to:
    ;; - cardinality (table, indexed-entity),
-   ;; - cost (e.g. computing has_temporal dim for cards)
+   ;; - cost (e.g. computing has_temporal_dim for cards)
    "table"
    "metric"
    "card"
