@@ -229,12 +229,11 @@
   {:namespace       mi/transform-keyword
    :authority_level mi/transform-keyword})
 
-(defn- system-library-collection?
+(defn- library-root-collection?
   "Is this one of the three system-created Library collections (root, data, or metrics)?
   Returns false for user-created subcollections that inherit a library type."
   [collection]
-  (contains? #{library-entity-id library-data-entity-id library-metrics-entity-id}
-             (:entity_id collection)))
+  (library-entity-id? (:entity_id collection)))
 
 (defn maybe-localize-system-collection-name
   "If the collection is a system-defined collection (Trash, Library, Data, or Metrics), translate the `name`.
@@ -246,13 +245,13 @@
     (is-trash? collection)
     (assoc :name (tru "Trash"))
 
-    (and (is-library? collection) (system-library-collection? collection))
+    (and (is-library? collection) (library-root-collection? collection))
     (assoc :name (tru "Library"))
 
-    (and (is-library-data-collection? collection) (system-library-collection? collection))
+    (and (is-library-data-collection? collection) (library-root-collection? collection))
     (assoc :name (tru "Data"))
 
-    (and (is-library-metrics-collection? collection) (system-library-collection? collection))
+    (and (is-library-metrics-collection? collection) (library-root-collection? collection))
     (assoc :name (tru "Metrics"))))
 
 (t2/define-after-select :model/Collection [collection]
