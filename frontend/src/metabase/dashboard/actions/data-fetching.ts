@@ -26,7 +26,6 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
-import { getIsEmbedPreview } from "metabase/get-is-embed-preview";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
@@ -38,6 +37,7 @@ import {
   EmbedApi,
   MetabaseApi,
   PublicApi,
+  getEmbedBase,
   maybeUsePivotEndpoint,
 } from "metabase/services";
 import {
@@ -541,8 +541,10 @@ function getBatchRequestConfig(
       qs.set("cards", JSON.stringify(cards));
     }
     const query = qs.toString();
+    // getEmbedBase() returns /api/preview_embed inside the embed-preview iframe
+    // and /api/embed everywhere else; both routes expose card-query-batch.
     return {
-      url: `/api/embed/dashboard/${dashboardId}/card-query-batch${query ? `?${query}` : ""}`,
+      url: `${getEmbedBase()}/dashboard/${dashboardId}/card-query-batch${query ? `?${query}` : ""}`,
       method: "GET",
       signal,
     };
@@ -554,10 +556,6 @@ function canUseBatchEndpoint(
   dashboardType: string,
   isEditing: boolean,
 ): boolean {
-  // preview_embed has no batch endpoint; fall back to per-card there
-  if (dashboardType === "embed" && getIsEmbedPreview()) {
-    return false;
-  }
   return (
     !isEditing &&
     (dashboardType === "normal" ||
