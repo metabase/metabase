@@ -604,6 +604,33 @@
           reducible))
   (.write writer "]"))
 
+(defn- visible-db-where
+  "Honeysql `:where` clause restricting a `:metabase_database :d` join to databases that
+  belong in a bulk export for the current user: not audit, not a router DB, and inside
+  the query-builder visibility filter."
+  []
+  [:and
+   [:= :d.is_audit false]
+   [:= :d.router_database_id nil]
+   [:in :d.id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]])
+
+(defn- visible-table-where
+  "Honeysql `:where` clause restricting a `:metabase_table :t` join to active, non-hidden
+  tables inside the current user's query-builder visibility filter."
+  []
+  [:and
+   [:= :t.active true]
+   [:= :t.visibility_type nil]
+   [:in :t.id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]])
+
+(defn- visible-field-where
+  "Honeysql `:where` clause restricting a `:metabase_field :f` join to active,
+  non-sensitive fields."
+  []
+  [:and
+   [:= :f.active true]
+   [:<> :f.visibility_type "sensitive"]])
+
 (defn- write-databases-metadata!
   "Streams the databases/tables/fields metadata as JSON to the given OutputStream.
 
@@ -612,17 +639,9 @@
   section is written directly to the underlying writer as rows are pulled from a
   reducible query, keeping memory usage bounded regardless of schema size."
   [^java.io.OutputStream os]
-  (let [db-filter [:and
-                   [:= :d.is_audit false]
-                   [:= :d.router_database_id nil]
-                   [:in :d.id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]]
-        t-filter  [:and
-                   [:= :t.active true]
-                   [:= :t.visibility_type nil]
-                   [:in :t.id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
-        f-filter  [:and
-                   [:= :f.active true]
-                   [:<> :f.visibility_type "sensitive"]]
+  (let [db-filter (visible-db-where)
+        t-filter  (visible-table-where)
+        f-filter  (visible-field-where)
         writer    (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
     (.write writer "{\"databases\":")
     (write-json-array! writer
@@ -695,6 +714,74 @@
   []
   (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
                       (write-databases-metadata! os)))
+
+;;; --------------------------------------- GET /api/database/field-values ---------------------------------------
+
+(defn- format-field-values-entry
+  "Formats a FieldValues row for the /field-values response. Omits `human_readable_values`
+  when empty to keep the common case compact."
+  [{:keys [field_id values human_readable_values has_more_values]}]
+  (m/assoc-some {:field_id        field_id
+                 :values          (or values [])
+                 :has_more_values (boolean has_more_values)}
+                :human_readable_values (not-empty human_readable_values)))
+
+(defn- write-field-values!
+  "Streams the `field_values` JSON array to `os`. Exports only unconstrained (`:full`)
+  FieldValues — sandboxed, impersonation, and linked-filter variants are user-specific
+  and excluded from the bulk export. Visibility filter matches `GET /api/database/metadata`
+  so every streamed row has a corresponding field entry there."
+  [^java.io.OutputStream os]
+  (let [db-filter (visible-db-where)
+        t-filter  (visible-table-where)
+        f-filter  (visible-field-where)
+        fv-filter [:and
+                   [:= :fv.type "full"]
+                   [:= :fv.hash_key nil]]
+        writer    (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
+    (.write writer "{\"field_values\":")
+    (write-json-array! writer
+                       (t2/reducible-select [:model/FieldValues
+                                             :fv.field_id :fv.values :fv.human_readable_values :fv.has_more_values]
+                                            {:from  [[:metabase_fieldvalues :fv]]
+                                             :join  [[:metabase_field :f]    [:= :fv.field_id :f.id]
+                                                     [:metabase_table :t]    [:= :f.table_id :t.id]
+                                                     [:metabase_database :d] [:= :t.db_id :d.id]]
+                                             :where [:and db-filter t-filter f-filter fv-filter]})
+                       format-field-values-entry)
+    (.write writer "}")
+    (.flush writer)))
+
+(mr/def ::field-values-info
+  [:map
+   [:field_id ::lib.schema.id/field]
+   [:values [:sequential [:sequential :any]]]
+   [:has_more_values :boolean]
+   [:human_readable_values {:optional true} [:sequential [:maybe :string]]]])
+
+(mr/def ::field-values-response
+  [:map
+   [:field_values [:sequential ::field-values-info]]])
+
+(api.macros/defendpoint :get "/field-values"
+  :- (server.streaming-response/streaming-response-schema ::field-values-response)
+  "Get sampled field values for every field in the instance, streamed as a single
+  `{\"field_values\": [...]}` document. Each entry carries `field_id`, `values`,
+  optional `human_readable_values`, and `has_more_values`.
+
+  Only unconstrained (`:full`) FieldValues are included — sandboxed, impersonation, and
+  linked-filter variants are user-specific and would bypass their own enforcement
+  mechanisms in a bulk export. Pair with `GET /api/database/metadata` to resolve
+  `field_id` to table and field names. Response is streamed for efficiency with large
+  schemas.
+
+  Admin-only: this endpoint exposes cached values computed over the unrestricted
+  dataset, so it would leak data past sandbox / impersonation rules if served to
+  regular users."
+  []
+  (api/check-superuser)
+  (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
+                      (write-field-values! os)))
 
 ;;; ----------------------------------------- POST /api/database/metadata -----------------------------------------
 

@@ -2554,6 +2554,7 @@
                     :model/Collection
                     :model/Database
                     :model/Field
+                    :model/FieldValues
                     :model/Table}}
 
   xrays
