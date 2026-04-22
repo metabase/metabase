@@ -10,7 +10,7 @@ on:
 
 jobs:
   emotion-stats:
-    if: github.repository == 'metabase/metabase' 
+    if: github.repository == 'metabase/metabase'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
