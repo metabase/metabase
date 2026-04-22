@@ -30,6 +30,7 @@ import {
   Title,
 } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
+import { getUrlProtocol } from "metabase/utils/formatting/url";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import {
@@ -59,8 +60,27 @@ type FormState = {
 
 const WARNING_ACK_KEY = "custom_viz_add_warning";
 
+const ALLOWED_REPO_URL_PROTOCOLS = new Set([
+  "http:",
+  "https:",
+  "git:",
+  "file:",
+]);
+
 const validationSchema: Yup.SchemaOf<FormState> = Yup.object({
-  repoUrl: Yup.string().default(""),
+  repoUrl: Yup.string()
+    .default("")
+    .required(Errors.required)
+    .test(
+      "valid-repo-url",
+      () => t`Enter a valid URL (http://, https://, git://, or file://).`,
+      (value) => {
+        const protocol = value ? getUrlProtocol(value) : undefined;
+        return (
+          protocol !== undefined && ALLOWED_REPO_URL_PROTOCOLS.has(protocol)
+        );
+      },
+    ),
   isPrivateRepo: Yup.boolean().default(false),
   accessToken: Yup.string()
     .default("")
@@ -165,10 +185,10 @@ export function CustomVizPage({ params }: Props) {
     setConfirming(true);
     setConfirmError(null);
     try {
+      await submitValues(pendingValues);
       if (dontWarnAgain) {
         ack();
       }
-      await submitValues(pendingValues);
       setPendingValues(null);
     } catch (error) {
       setConfirmError(getErrorMessage(error));
@@ -219,7 +239,7 @@ export function CustomVizPage({ params }: Props) {
     <SettingsPageWrapper>
       <Stack gap="0">
         <Flex justify="space-between">
-          <Title order={1} style={{ alignItems: "center", height: "2.5rem" }}>
+          <Title order={1} style={{ height: "2.5rem" }}>
             {t`Custom visualizations`}
           </Title>
         </Flex>
@@ -242,8 +262,8 @@ export function CustomVizPage({ params }: Props) {
           >
             {({ dirty, values }) => (
               <Form>
-                <Stack gap="lg">
-                  <Title order={2}>
+                <Stack gap={0}>
+                  <Title order={2} mb="2.5rem">
                     {isEdit
                       ? t`Edit visualization`
                       : t`Add a new visualization`}
@@ -255,8 +275,12 @@ export function CustomVizPage({ params }: Props) {
                     placeholder="https://github.com/user/custom-viz-plugin"
                     disabled={isEdit}
                     autoFocus={!isEdit}
+                    styles={{
+                      description: { color: "var(--mb-color-text-tertiary)" },
+                      root: { marginBottom: "1rem" },
+                    }}
                   />
-                  <Stack gap="sm">
+                  <Stack gap="md">
                     <FormCheckbox
                       name="isPrivateRepo"
                       label={t`This is a private repository`}
@@ -271,7 +295,7 @@ export function CustomVizPage({ params }: Props) {
                       />
                     )}
                   </Stack>
-                  <Stack gap="sm">
+                  <Stack gap="md" mt="2rem">
                     <Flex gap="sm" align="center">
                       <FormSwitch
                         size="sm"
@@ -279,7 +303,6 @@ export function CustomVizPage({ params }: Props) {
                         labelPosition="left"
                         styles={{ label: { fontWeight: 700 } }}
                         label={t`Pin to a specific version`}
-                        aria-label={t`Pin to a specific version`}
                       />
                     </Flex>
                     {values.pinVersion && (
@@ -290,6 +313,11 @@ export function CustomVizPage({ params }: Props) {
                         description={t`Branch, tag, or commit SHA to pin to.`}
                         placeholder="main"
                         autoFocus
+                        styles={{
+                          description: {
+                            color: "var(--mb-color-text-tertiary)",
+                          },
+                        }}
                       />
                     )}
                   </Stack>

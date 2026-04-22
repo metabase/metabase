@@ -47,7 +47,7 @@ export function ManageCustomVizPage() {
     <SettingsPageWrapper>
       <Stack gap="0">
         <Flex justify="space-between">
-          <Title order={1} style={{ alignItems: "center", height: "2.5rem" }}>
+          <Title order={1} style={{ height: "2.5rem" }}>
             {t`Custom visualizations`}
           </Title>
           <Button
