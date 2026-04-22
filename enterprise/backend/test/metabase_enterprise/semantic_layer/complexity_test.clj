@@ -818,24 +818,75 @@
             (is (= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint preserved — next boot / cron will retry the emission")))))))
 
-(deftest ^:sequential maybe-emit-boot-score-reverts-fingerprint-on-publish-failure-test
-  (testing "boot-time emission must revert its pre-claimed fingerprint when Snowplow didn't accept
-           the event — otherwise the stale-fingerprint check on the next boot would skip retry"
+(deftest ^:sequential maybe-emit-boot-score-only-advances-fingerprint-on-successful-publish-test
+  (testing "boot-time emission never advances the last-successful fingerprint on failure — the
+           success fingerprint is separate from the in-progress boot-claim, so a scoring/publish
+           failure (or a crash mid-run) leaves the fingerprint stale and the next boot retries"
     (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
-      (testing "publish failure → the claimed fingerprint is reverted to the stale value"
+      (testing "publish failure → fingerprint stays at the stale value (and boot-claim is cleared)"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
-                                           data-complexity-scoring-last-fingerprint "stale"]
+                                           data-complexity-scoring-last-fingerprint "stale"
+                                           data-complexity-scoring-boot-claim      ""]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result false))]
             (task.complexity-score/maybe-emit-boot-score!)
             (is (= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
-                "pre-claimed fingerprint was reverted so the next boot retries"))))
-      (testing "publish success → the claimed fingerprint stays at the new value"
+                "fingerprint unchanged — next boot/cron will retry the emission")
+            (is (= "" (semantic-layer.settings/data-complexity-scoring-boot-claim))
+                "boot-claim released so sibling nodes can proceed without waiting for TTL"))))
+      (testing "publish success → fingerprint advances to the new value (and boot-claim is cleared)"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
-                                           data-complexity-scoring-last-fingerprint "stale"]
+                                           data-complexity-scoring-last-fingerprint "stale"
+                                           data-complexity-scoring-boot-claim      ""]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result true))]
             (task.complexity-score/maybe-emit-boot-score!)
             (is (not= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
-                "fingerprint advanced to reflect the confirmed publish")))))))
+                "fingerprint advanced to reflect the confirmed publish")
+            (is (= "" (semantic-layer.settings/data-complexity-scoring-boot-claim))
+                "boot-claim released after successful run")))))))
+
+(deftest ^:sequential maybe-emit-boot-score-skips-when-sibling-node-holds-active-claim-test
+  (testing "a fresh boot-claim from a sibling node blocks duplicate emission on this node, even
+           when the last-successful fingerprint is stale — prevents two nodes in a cluster from
+           both emitting the boot score for the same fingerprint change"
+    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
+      (let [current-fp (#'task.complexity-score/current-fingerprint)
+            ;; Serialize a sibling-node claim for the same fingerprint, timestamped just now so
+            ;; it's well inside the TTL.
+            active-claim (pr-str {:fingerprint current-fp :claimed-at (System/currentTimeMillis)})
+            scoring-ran? (atom false)]
+        (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
+                                           data-complexity-scoring-last-fingerprint "stale"
+                                           data-complexity-scoring-boot-claim      active-claim]
+          (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                      (fn [& _] (reset! scoring-ran? true) (stub-result true))]
+            (task.complexity-score/maybe-emit-boot-score!)
+            (is (false? @scoring-ran?)
+                "scoring skipped because a sibling node already claimed the current fingerprint")
+            (is (= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
+                "fingerprint untouched when the claim is skipped")
+            (is (= active-claim (semantic-layer.settings/data-complexity-scoring-boot-claim))
+                "sibling's claim is preserved (we never took it, so we don't clear it)")))))))
+
+(deftest ^:sequential maybe-emit-boot-score-reclaims-when-prior-claim-has-expired-test
+  (testing "an expired (TTL-exceeded) boot-claim must not permanently suppress emission — a
+           crashed or orphaned claim from a prior boot should be replaced and scoring proceed"
+    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
+      (let [current-fp (#'task.complexity-score/current-fingerprint)
+            ;; 1 hour ago — older than the 30-minute TTL, so this claim is treated as orphaned.
+            expired-claim (pr-str {:fingerprint current-fp
+                                   :claimed-at (- (System/currentTimeMillis)
+                                                  (* 60 60 1000))})
+            scoring-ran? (atom false)]
+        (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
+                                           data-complexity-scoring-last-fingerprint "stale"
+                                           data-complexity-scoring-boot-claim      expired-claim]
+          (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                      (fn [& _] (reset! scoring-ran? true) (stub-result true))]
+            (task.complexity-score/maybe-emit-boot-score!)
+            (is (true? @scoring-ran?)
+                "scoring ran because the prior claim had aged past the TTL")
+            (is (not= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
+                "fingerprint advanced on successful publish after re-claim")))))))
 
 (deftest ^:sequential complexity-scores-tags-publish-success-on-result-test
   (testing "complexity-scores stamps publish success/failure via metadata for schedule/boot callers"

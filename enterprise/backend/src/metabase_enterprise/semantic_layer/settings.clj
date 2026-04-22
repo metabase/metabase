@@ -22,3 +22,12 @@
   :type       :string
   :export?    false
   :doc        false)
+
+(defsetting data-complexity-scoring-boot-claim
+  (deferred-tru "Internal bookkeeping: edn-encoded claim marking an in-progress boot-time emission so sibling nodes skip duplicate work. Cleared after the run; a TTL on the claim timestamp lets the next boot retry if the claimant crashed.")
+  :encryption :no
+  :visibility :internal
+  :default    ""
+  :type       :string
+  :export?    false
+  :doc        false)
