@@ -15,7 +15,6 @@
    [metabase.interestingness.chart.repr]
    [metabase.interestingness.chart.stats]
    [metabase.interestingness.dimension]
-   [metabase.interestingness.todo.measure]
    [potemkin :as p]))
 
 (p/import-vars
@@ -24,9 +23,6 @@
 
  [metabase.interestingness.dimension
   dimension-interestingness]
-
- [metabase.interestingness.todo.measure
-  measure-interestingness]
 
  [metabase.interestingness.chart.repr
   generate-representation]
