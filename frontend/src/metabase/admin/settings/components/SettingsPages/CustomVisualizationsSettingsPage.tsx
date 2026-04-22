@@ -12,32 +12,91 @@ import { useAdminSetting } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 
+export function CustomVisualizationsManagePage() {
+  const customVizLoaded = useHasTokenFeature("custom-viz");
+  const customVizAvailable = useHasTokenFeature("custom-viz-available");
+
+  useCustomVizEnabledSetting();
+
+  if (!customVizAvailable) {
+    return (
+      <SettingsPageWrapper title={t`Custom visualizations`}>
+        <UpsellCustomViz location="settings-custom-viz" />
+      </SettingsPageWrapper>
+    );
+  }
+
+  if (!customVizLoaded) {
+    return <CustomVizNotLoaded />;
+  }
+
+  return <PLUGIN_CUSTOM_VIZ.ManageCustomVizPage />;
+}
+
+export function CustomVisualizationsFormPage({
+  params,
+}: {
+  params?: { id?: string };
+}) {
+  const customVizFeatureLoaded = useHasTokenFeature("custom-viz");
+  const hasCustomVizAvailable = useHasTokenFeature("custom-viz-available");
+  useCustomVizEnabledSetting();
+
+  if (!hasCustomVizAvailable) {
+    return (
+      <SettingsPageWrapper title={t`Custom visualizations`}>
+        <UpsellCustomViz location="settings-custom-viz" />
+      </SettingsPageWrapper>
+    );
+  }
+
+  if (!customVizFeatureLoaded) {
+    return <CustomVizNotLoaded />;
+  }
+
+  return <PLUGIN_CUSTOM_VIZ.CustomVizPage params={params} />;
+}
+
+export function CustomVisualizationsDevelopmentPage() {
+  const hasCustomVizAvailable = useHasTokenFeature("custom-viz-available");
+  const customVizFeatureLoaded = useHasTokenFeature("custom-viz");
+  useCustomVizEnabledSetting();
+
+  if (!hasCustomVizAvailable) {
+    return (
+      <SettingsPageWrapper title={t`Custom visualizations`}>
+        <UpsellCustomViz location="settings-custom-viz" />
+      </SettingsPageWrapper>
+    );
+  }
+
+  if (!customVizFeatureLoaded) {
+    return <CustomVizNotLoaded />;
+  }
+
+  return <PLUGIN_CUSTOM_VIZ.CustomVizDevPage />;
+}
+
 const CUSTOM_VIZ_ENABLED_SETTING = "custom-viz-enabled";
 
+function CustomVizNotLoaded() {
+  return (
+    <SettingsPageWrapper title={t`Custom visualizations`}>
+      <SettingsSection>
+        <CustomVizEnableSwitch />
+      </SettingsSection>
+    </SettingsPageWrapper>
+  );
+}
+
 export function CustomVizEnableSwitch() {
-  const { value: isCustomVizEnabled } = useAdminSetting(
+  const { value: customVizEnabledSetting } = useAdminSetting(
     CUSTOM_VIZ_ENABLED_SETTING,
   );
-  const hasCustomVizFeature = useHasTokenFeature("custom-viz");
-  const previousIsCustomVizEnabled = usePrevious(isCustomVizEnabled);
-  const showCustomVizSettings = isCustomVizEnabled && hasCustomVizFeature;
 
-  const description = showCustomVizSettings
+  const description = customVizEnabledSetting
     ? t`Should custom visualizations be enabled for this instance? Disabling this will reload the page.`
     : t`Should custom visualizations be enabled for this instance? Enabling this will reload the page.`;
-
-  useEffect(() => {
-    if (
-      previousIsCustomVizEnabled === undefined ||
-      isCustomVizEnabled === undefined
-    ) {
-      return;
-    }
-
-    if (isCustomVizEnabled !== previousIsCustomVizEnabled) {
-      window.location.reload();
-    }
-  }, [isCustomVizEnabled, previousIsCustomVizEnabled]);
 
   return (
     <AdminSettingInput
@@ -49,77 +108,25 @@ export function CustomVizEnableSwitch() {
   );
 }
 
-export function CustomVisualizationsManagePage() {
-  const customVizIsAvailable = useHasTokenFeature("custom-viz-available");
-  const customVizFeatureLoaded = useHasTokenFeature("custom-viz");
-  const { value: customVizEnabled } = useAdminSetting(
+function useCustomVizEnabledSetting() {
+  const { value: customVizEnabledSetting } = useAdminSetting(
     CUSTOM_VIZ_ENABLED_SETTING,
   );
-  const previousCustomVizEnabled = usePrevious(customVizEnabled);
+  const customVizEnabledSettingPrev = usePrevious(customVizEnabledSetting);
 
   useEffect(() => {
     if (
-      previousCustomVizEnabled === undefined ||
-      customVizEnabled === undefined
+      customVizEnabledSettingPrev === undefined ||
+      customVizEnabledSetting === undefined
     ) {
       return;
     }
-    if (previousCustomVizEnabled !== customVizEnabled) {
-      window.location.reload();
+
+    if (customVizEnabledSetting !== customVizEnabledSettingPrev) {
+      setTimeout(() => {
+        window.location.reload();
+        // timeout helps to render the UI consistently when toggling feature
+      }, 1000);
     }
-  }, [customVizEnabled, previousCustomVizEnabled]);
-
-  if (!customVizIsAvailable) {
-    return (
-      <SettingsPageWrapper title={t`Custom visualizations`}>
-        <UpsellCustomViz location="settings-custom-viz" />
-      </SettingsPageWrapper>
-    );
-  }
-
-  if (!customVizFeatureLoaded) {
-    return (
-      <SettingsPageWrapper
-        title={t`Custom visualizations`}
-        description={t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
-      >
-        <SettingsSection>
-          <CustomVizEnableSwitch />
-        </SettingsSection>
-      </SettingsPageWrapper>
-    );
-  }
-
-  return <PLUGIN_CUSTOM_VIZ.ManageCustomVizPage />;
-}
-
-export function CustomVisualizationsFormPage({
-  params,
-}: {
-  params?: { id?: string };
-}) {
-  const hasCustomVizAvailable = useHasTokenFeature("custom-viz-available");
-
-  if (!hasCustomVizAvailable) {
-    return (
-      <SettingsPageWrapper title={t`Custom visualizations`}>
-        <UpsellCustomViz location="settings-custom-viz" />
-      </SettingsPageWrapper>
-    );
-  }
-
-  return <PLUGIN_CUSTOM_VIZ.CustomVizPage params={params} />;
-}
-
-export function CustomVisualizationsDevelopmentPage() {
-  const hasCustomVizAvailable = useHasTokenFeature("custom-viz-available");
-
-  if (!hasCustomVizAvailable) {
-    return (
-      <SettingsPageWrapper title={t`Custom visualizations`}>
-        <UpsellCustomViz location="settings-custom-viz" />
-      </SettingsPageWrapper>
-    );
-  }
-  return <PLUGIN_CUSTOM_VIZ.CustomVizDevPage />;
+  }, [customVizEnabledSetting, customVizEnabledSettingPrev]);
 }
