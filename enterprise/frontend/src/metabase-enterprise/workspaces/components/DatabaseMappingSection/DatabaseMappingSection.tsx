@@ -64,11 +64,11 @@ type NewDatabaseMappingProps = {
 function NewDatabaseMapping({ onAdd }: NewDatabaseMappingProps) {
   const [databaseId, setDatabaseId] = useState<DatabaseId | undefined>();
   const [inputSchemas, setInputSchemas] = useState<string[]>([]);
-  const mapping = getDatabaseMapping(databaseId, inputSchemas);
+  const newMapping = getDatabaseMapping(databaseId, inputSchemas);
 
   const handleAdd = () => {
-    if (mapping != null) {
-      onAdd(mapping);
+    if (newMapping != null) {
+      onAdd(newMapping);
     }
   };
 
@@ -77,7 +77,7 @@ function NewDatabaseMapping({ onAdd }: NewDatabaseMappingProps) {
       databaseId={databaseId}
       inputSchemas={inputSchemas}
       isNew
-      isDisabled={mapping == null}
+      isDisabled={newMapping == null}
       onDatabaseChange={setDatabaseId}
       onInputSchemasChange={setInputSchemas}
       onSubmit={handleAdd}
@@ -109,15 +109,22 @@ function ExistingDatabaseMapping({
   onChange,
   onRemove,
 }: ExistingDatabaseMappingProps) {
-  const { database_id: databaseId, input_schemas: inputSchemas } = mapping;
+  const [databaseId, setDatabaseId] = useState(mapping.database_id);
+  const [inputSchemas, setInputSchemas] = useState(mapping.input_schemas);
 
   const handleDatabaseChange = (newDatabaseId: DatabaseId) => {
-    onChange({ ...mapping, database_id: newDatabaseId });
+    setDatabaseId(newDatabaseId);
+    const newMapping = getDatabaseMapping(newDatabaseId, inputSchemas);
+    if (newMapping != null) {
+      onChange(newMapping);
+    }
   };
 
   const handleInputSchemasChange = (newInputSchemas: string[]) => {
-    if (newInputSchemas.length > 0) {
-      onChange({ ...mapping, input_schemas: newInputSchemas });
+    setInputSchemas(newInputSchemas);
+    const newMapping = getDatabaseMapping(databaseId, newInputSchemas);
+    if (newMapping != null) {
+      onChange(newMapping);
     }
   };
 
@@ -157,7 +164,7 @@ function DatabaseMappingForm({
   );
 
   return (
-    <Group className={S.section} p="md" wrap="nowrap">
+    <Group className={S.section} p="md" align="flex-end" wrap="nowrap">
       <DatabaseSelect
         databaseId={databaseId}
         databases={databaseData?.data ?? []}
