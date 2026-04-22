@@ -1,3 +1,7 @@
 .selected {
   box-shadow: 0 1px 2px var(--mb-color-shadow);
 }
+
+.divider {
+  align-self: stretch;
+}
