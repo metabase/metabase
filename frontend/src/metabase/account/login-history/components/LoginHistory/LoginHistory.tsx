@@ -21,11 +21,13 @@ const LoginHistoryItem = ({ item }: { item: FormattedLoginItem }) => (
     className={cx(CS.my2, CS.py1)}
     style={{ paddingLeft: 20, paddingRight: 20 }}
   >
-    <Flex align="center">
+    <Flex align="flex-start">
       <div>
         <Label>
-          {item.location} -{" "}
-          <span className={CS.textMedium}>{item.ip_address}</span>
+          {item.location}
+          <Text component="span" display="block" className={CS.textMedium}>
+            {item.ip_address}
+          </Text>
         </Label>
         <Text style={{ marginTop: -8 }}>{item.device_description}</Text>
       </div>
