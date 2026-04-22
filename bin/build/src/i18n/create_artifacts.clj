@@ -7,8 +7,8 @@
    [i18n.common :as i18n]
    [i18n.create-artifacts.backend :as backend]
    [i18n.create-artifacts.frontend :as frontend]
-   [i18n.validation :as i18n.validation]
    [i18n.pseudo-locale :as pseudo-locale]
+   [i18n.validation :as i18n.validation]
    [metabuild-common.core :as u]))
 
 (set! *warn-on-reflection* true)
