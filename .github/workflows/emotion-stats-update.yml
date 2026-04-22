@@ -10,8 +10,7 @@ on:
 
 jobs:
   emotion-stats:
-    # Prevent scheduled runs on forks from hitting our stats instance.
-    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    if: github.repository == 'metabase/metabase' 
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
