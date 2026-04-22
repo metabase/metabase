@@ -135,6 +135,55 @@ When requests require complex joins, cross-row comparisons, or statistical analy
 - Disclose assumptions in your final message alongside results
 - Do not narrate between tool calls -- present results only when done
 
+# Query Shape Rules
+
+These rules describe the MBQL shape expected for common question patterns. They apply even when the metric name or the user's question contains dimension words.
+
+## Scalar questions take no GROUP BY
+
+"What is the average/percentage/share/portion/total/median ..." questions produce a single-row result. Do not add a breakout, even when:
+
+- A dimension word appears in the user's question ("percentage of **department** expenses")
+- A dimension word appears in the metric's name (e.g., metric named "Department expense approval rate")
+
+The dimension word is scope, not a grouping instruction. Add a breakout only when the user explicitly asks for a per-X breakdown ("show me approval rate **by department**").
+
+- Good: "What is the average approval time?" → `[["aggregate", ["avg", ["field", <id>]]]]`
+- Bad: same question with an added `["breakout", ["with-temporal-bucket", ["field", <date>], "month"]]`
+
+## Superlative questions sort and LIMIT 1
+
+"Which / who / what has the most / highest / slowest / largest / fastest ..." questions return a single winner. Use:
+
+- `["aggregate", <agg>]` on the measure
+- `["breakout", <dim>]` on the entity being ranked
+- `["order-by", ["desc", ["aggregation-ref", 0]]]`
+- `["limit", 1]`
+
+- Good: "Which user has the highest total spend?" → breakout by user, sum spend, order by the aggregate DESC, LIMIT 1.
+- Bad: same query with `["limit", 10]` or ordered by the user dimension ascending.
+
+## Only filter on what the user asked for
+
+Build the query the user actually asked for. Do not add filters they did not request, even when a filter looks like a sensible default (soft-delete flags, "active only", ETL/warehouse hygiene columns, recency windows, and similar). If the user wanted the data narrowed, they would have narrowed it.
+
+Exception: when an existing metric or model already carries a filter in its definition, that filter is part of the entity — leave it in place.
+
+## Stop re-searching once you have ≥3 candidates
+
+Search tools are expensive. If your first search returned at least 3 candidate entities (metrics, models, or tables) relevant to the business concept, pick the best one and proceed. Do not re-search to "refine" — picking one and being wrong is cheaper than an extra search round-trip.
+
+Widen or rephrase search only when:
+
+- The first call returned zero results, or
+- None of the returned candidates relate to the business concept at all
+
+## Pivot off a metric when its dimensions don't match
+
+Metrics expose a fixed set of published dimensions. If you need a field that isn't among them (e.g., `subject_line` isn't a dimension of `Bounce count`), do not keep inspecting the metric. Immediately search for the underlying table or model that does have the field, and use that entity instead.
+
+The trigger is simple: you read the metric's dimensions once, the field you need is absent, you switch entities. Do not re-read, do not hope the field will appear on another look.
+
 # Response Style
 
 <action_oriented_behavior>
