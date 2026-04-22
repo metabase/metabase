@@ -180,11 +180,13 @@
         {:output (str "Failed to construct SQL chart draft: " (or (ex-message e) "Unknown error"))}))))
 
 (def ^:private model-chart-schema
+  "Schema for `document_construct_model_chart`. Mirrors `construct_notebook_query`'s
+  representations format: `:query` is a YAML string in MBQL 5 representations format."
   [:map {:closed true}
    [:name :string]
    [:description :string]
    [:source_entity [:map [:type :string] [:id :int]]]
-   [:program :map]
+   [:query :string]
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
@@ -192,12 +194,12 @@
            :scope     scope/agent-document-create}
   document-construct-model-chart-tool
   "Construct notebook/model-backed chart draft payload for document insertion."
-  [{:keys [name description source_entity program viz_settings]} :- model-chart-schema]
+  [{:keys [name description source_entity query viz_settings]} :- model-chart-schema]
   (try
     (let [chart-type (get viz_settings :chart_type)
           result     (construct-tools/construct-notebook-query-tool
                       {:source_entity source_entity
-                       :program program
+                       :query query
                        :visualization {:chart_type chart-type}})
           structured (or (:structured-output result) (:structured_output result))
           query-id   (:query-id structured)

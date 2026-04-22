@@ -10,7 +10,8 @@
    [metabase.metabot.tools.resources :as tools.resources]
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.test :as mt]
-   [metabase.test.data.users :as test.users]))
+   [metabase.test.data.users :as test.users]
+   [metabase.util.yaml :as yaml]))
 
 (deftest edit-chart-test
   (testing "edits a chart's visualization type"
@@ -71,16 +72,26 @@
           (tools.resources/read-resource-tool {:uris [table-fields-uri]})
 
           table-id (:id table)
-          category-field-id (some (fn [{:keys [display_name field_id]}]
+          ;; Representations-format query: LLM-facing code should prefer the portable_fk path
+          ;; over numeric field ids. Take them straight from the entity_details response.
+          table-fk (:portable_fk table)
+          category-field-fk (some (fn [{:keys [display_name portable_fk]}]
                                     (when (= "Category" display_name)
-                                      field_id))
+                                      portable_fk))
                                   (:fields table))
-          ;; (1) construct a query
+          ;; (1) construct a query via the YAML representations format. Build the YAML from
+          ;; a Clojure data structure and let `yaml/generate-string` handle quoting, flow
+          ;; sequences, and `nil`-as-`null` so we don't have to do any manual JSON escaping.
+          query-data {"lib/type" "mbql/query"
+                      "database" (first table-fk)
+                      "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                   "source-table" table-fk
+                                   "aggregation"  [["count" {}]]
+                                   "breakout"     [["field" {} category-field-fk]]}]}
+          query-yaml (yaml/generate-string query-data)
           construct-result (tools.construct/construct-notebook-query-tool
                             {:source_entity {:type "table" :id table-id}
-                             :program       {:source     {:type "table" :id table-id}
-                                             :operations [["aggregate" ["count"]]
-                                                          ["breakout" ["field" category-field-id]]]}
+                             :query         query-yaml
                              :visualization {:chart_type "bar"}})
           query-id (get-in construct-result [:structured-output :query-id])
           query (get-in construct-result [:structured-output :query])

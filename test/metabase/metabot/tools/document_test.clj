@@ -122,11 +122,13 @@
                     {:structured-output {:query-id "3"
                                          :query {:database 1
                                                  :type "query"}}})]
+      ;; `construct-notebook-query-tool` is stubbed above, so the YAML string is an opaque
+      ;; placeholder — it only needs to be a string.
       (let [result (document-tools/document-construct-model-chart-tool
                     {:name "Test Name"
                      :description "Test Desc"
                      :source_entity {:type "model" :id 4}
-                     :program {:source {:type "context" :ref "source"} :operations []}
+                     :query ""
                      :viz_settings {:chart_type "bar"}})
             structured (:structured-output result)]
         (is (true? (:final-response? result)))
