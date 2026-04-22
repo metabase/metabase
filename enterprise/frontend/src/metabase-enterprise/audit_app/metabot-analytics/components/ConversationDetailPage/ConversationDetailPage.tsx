@@ -250,6 +250,7 @@ function FeedbackCard({
             submittedFeedback={undefined}
             bg="background-secondary"
             p="md"
+            pb="0"
             bd="1px solid var(--mb-color-border)"
             bdrs="1rem"
           />
