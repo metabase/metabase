@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { createMockSettingsState } from "metabase/redux/store/mocks";
 import {
   createMockSettings,
@@ -32,10 +32,6 @@ const setup = ({
 };
 
 describe("EmbeddingThemeListingApp", () => {
-  afterEach(() => {
-    fetchMock.removeRoutes().clearHistory();
-  });
-
   it("renders the themes upsell for OSS/starter users", async () => {
     setup({ hasSimpleEmbedding: false });
 
@@ -66,10 +62,8 @@ describe("EmbeddingThemeListingApp", () => {
     await screen.findByText("Create custom themes");
 
     // Give RTK Query a chance to fire the request if it were going to.
-    await waitFor(() => {
-      expect(fetchMock.callHistory.calls("path:/api/embed-theme")).toHaveLength(
-        0,
-      );
-    });
+    expect(fetchMock.callHistory.calls("path:/api/embed-theme")).toHaveLength(
+      0,
+    );
   });
 });
