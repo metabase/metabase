@@ -20,3 +20,16 @@
 1. In parent instance, new assets are visible with results from "production"
    1. Can see UI showing which tx output table remappings exist
    1. Can see transaction run logs showing what the output tables were
+
+
+## alt:
+
+1. have a metabase instance locally with the github_raw data loaded on it. This is the parent. You'll need an api key to fetch metadata.
+1. create a workspace on parent, add the github data
+1. download config.yaml
+1. create an empty github, add a single empty file to it and comit
+1. start up local instance with config.yaml, add repo from above `file:///tmp/repo`
+1. open up claude code in git repo directory. tell it url of local instance and api key to local instance
+1. load the skill
+1. create transforms, commit, load, run transforms
+1. create dashboards, commit, load, go view
