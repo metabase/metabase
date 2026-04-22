@@ -70,6 +70,15 @@
   [_db-id]
   nil)
 
+(defenterprise resolve-transform-remapping!
+  "In workspace mode, resolve (and persist) the TableRemapping row for this
+   transform's declared (db-id, from-schema, from-table) and return the
+   resulting {:schema :name} for run-query-transform!'s :table-remapping
+   option. OSS implementation - always nil."
+  metabase-enterprise.workspaces.transform-hooks
+  [_db-id _from-schema _from-table]
+  nil)
+
 (defn- short-hash
   "Short, stable, URL-safe hash of a string (hex, first 8 chars of SHA-1)."
   [^String s]
