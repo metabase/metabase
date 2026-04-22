@@ -654,7 +654,10 @@ describe("issue 24966", () => {
     cy.button("Add filter").click();
     cy.location("search").should("eq", "?text=Widget");
     cy.get("@dashcardId").then((id) => {
-      H.assertDatasetReqIsSandboxed({ requestAlias: `@dashcardQuery${id}` });
+      H.assertDatasetReqIsSandboxed({
+        requestAlias: "@batchQuery",
+        dashcardId: id,
+      });
     });
   });
 });

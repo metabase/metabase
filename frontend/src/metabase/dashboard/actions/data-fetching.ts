@@ -26,6 +26,7 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
+import { isEmbedPreview as getIsEmbedPreview } from "metabase/embedding/config";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
@@ -564,6 +565,10 @@ function canUseBatchEndpoint(
   dashboardType: string,
   isEditing: boolean,
 ): boolean {
+  // preview_embed has no batch endpoint; fall back to per-card there
+  if (dashboardType === "embed" && getIsEmbedPreview()) {
+    return false;
+  }
   return (
     !isEditing &&
     (dashboardType === "normal" ||
@@ -654,7 +659,12 @@ export const fetchDashboardCardData =
           continue;
         }
         if (inFlight) {
-          dispatch(cancelFetchCardData(card.id, dashcard.id));
+          // Clear the stale entry inline rather than dispatching cancelFetchCardData — the latter
+          // aborts the whole batch (which would discard in-flight work for cards whose params
+          // didn't change). The old batch's onCardResult for this card will be dropped by the
+          // deferred-identity check in dispatchBatchCardResult.
+          inFlight.deferred.resolve();
+          cardDataCancelDeferreds[key] = null;
         }
         if (lastResult) {
           dispatch(clearCardData(card.id, dashcard.id));
@@ -905,6 +915,14 @@ export const cancelFetchCardData = createAction(
     if (entry) {
       entry.deferred.resolve();
       cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = null;
+    }
+    // Per-card XHR cancellation isn't possible on the batch endpoint — a
+    // batch carries every loading card on one fetch. Abort it so removing /
+    // navigating away from a card during load doesn't leave a slow stream
+    // running; the remaining cards refetch on the next fetchDashboardCardData.
+    if (batchFetchAbortController) {
+      batchFetchAbortController.abort();
+      batchFetchAbortController = null;
     }
     return { payload: { dashcard_id, card_id } };
   },

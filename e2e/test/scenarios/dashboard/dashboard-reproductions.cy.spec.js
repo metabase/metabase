@@ -205,13 +205,16 @@ describe("issue 12926", () => {
         cy.visit(`/dashboard/${dashboard_id}`);
       });
 
+      // The batch endpoint uses fetch + AbortController rather than XHR.abort,
+      // so we spy on AbortController.abort to verify the in-flight request
+      // gets cancelled when the card is removed.
       cy.window().then((win) => {
-        cy.spy(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
+        cy.spy(win.AbortController.prototype, "abort").as("abortCtrl");
       });
 
       removeCard();
 
-      cy.get("@xhrAbort").should("have.been.calledOnce");
+      cy.get("@abortCtrl").should("have.been.called");
     });
 
     it("should re-fetch the query when doing undo on the removal", () => {
@@ -545,7 +548,7 @@ describe("issue 17879", () => {
     }).then(({ dashboard }) => {
       cy.intercept(
         "POST",
-        `/api/dashboard/${dashboard.id}/dashcard/*/card/*/query`,
+        `/api/dashboard/${dashboard.id}/card-query-batch`,
       ).as("getCardQuery");
 
       H.visitDashboard(dashboard.id);
@@ -632,7 +635,7 @@ describe("issue 21830", () => {
     cy.intercept(
       {
         method: "POST",
-        url: "/api/dashboard/*/dashcard/*/card/*/query",
+        url: "/api/dashboard/*/card-query-batch",
         middleware: true,
       },
       (req) => {
