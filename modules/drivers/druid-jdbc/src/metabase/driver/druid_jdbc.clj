@@ -170,7 +170,7 @@
       identifier
       (if (or (::sql.qp/forced-alias opts)
               (= driver-api/qp.add.source (driver-api/qp.add.source-table opts)))
-        (keyword (driver-api/qp.add.source-alias opts))
+        (h2x/identifier :field-alias (driver-api/qp.add.source-alias opts))
         (perf/postwalk #(if (h2x/identifier? %)
                           (sql.qp/json-query :druid-jdbc % stored-field)
                           %)
