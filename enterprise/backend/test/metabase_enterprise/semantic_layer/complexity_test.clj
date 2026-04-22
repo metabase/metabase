@@ -891,6 +891,28 @@
             (is (not= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint advanced on successful publish after re-claim")))))))
 
+(deftest ^:sequential maybe-emit-boot-score-does-not-clear-sibling-claim-after-ttl-takeover-test
+  (testing "if our run outlives the TTL and a sibling legitimately re-claims, the original
+           claimant's release-boot-claim! must NOT wipe the sibling's still-active claim — doing so
+           would reopen the duplicate-publish race (a third node would see no claim and emit again)"
+    (mt/with-dynamic-fn-redefs [metabot-scope/internal-metabot-scope (constantly {})]
+      ;; Stub scoring so that while this node is mid-run the persisted claim is replaced with a
+      ;; sibling's fresh claim (different :owner). This simulates: our run hung past the 30-min
+      ;; TTL → sibling saw an expired claim → sibling wrote its own → our run finally returns.
+      (let [sibling-claim (pr-str {:fingerprint (#'task.complexity-score/current-fingerprint)
+                                   :claimed-at  (System/currentTimeMillis)
+                                   :owner       "sibling-node-owner-token"})]
+        (mt/with-temporary-setting-values [data-complexity-scoring-enabled          true
+                                           data-complexity-scoring-last-fingerprint "stale"
+                                           data-complexity-scoring-boot-claim       ""]
+          (mt/with-dynamic-fn-redefs [complexity/complexity-scores
+                                      (fn [& _]
+                                        (semantic-layer.settings/data-complexity-scoring-boot-claim! sibling-claim)
+                                        (stub-result true))]
+            (task.complexity-score/maybe-emit-boot-score!)
+            (is (= sibling-claim (semantic-layer.settings/data-complexity-scoring-boot-claim))
+                "sibling's claim preserved — our release was a compare-and-clear and the owners didn't match")))))))
+
 (deftest ^:sequential complexity-scores-tags-publish-success-on-result-test
   (testing "complexity-scores stamps publish success/failure via metadata for schedule/boot callers"
     (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [])

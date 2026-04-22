@@ -69,8 +69,8 @@
 (defn- now-ms [] (System/currentTimeMillis))
 
 (defn- parse-boot-claim
-  "Parse the persisted claim string into `{:fingerprint <str> :claimed-at <long>}` or nil when the
-  setting is empty/garbled."
+  "Parse the persisted claim string into `{:fingerprint <str> :claimed-at <long> :owner <str>}` or
+  nil when the setting is empty/garbled."
   [s]
   (when (and s (seq s))
     (try
@@ -90,17 +90,20 @@
                (< (- (now-ms) (long ts)) boot-claim-ttl-ms))))))
 
 (defn- claim-boot-emission!
-  "Cluster-safe boot-time claim. Returns `true` when this node wins the right to run a boot-time
-  emission for the current config fingerprint, `nil` otherwise.
+  "Cluster-safe boot-time claim. Returns the claim map (including a unique `:owner` token) when
+  this node wins the right to run a boot-time emission for the current config fingerprint, or nil
+  otherwise. The returned claim must be passed back to [[release-boot-claim!]] so the release is a
+  compare-and-clear — a sibling node that took over after a TTL-based expiry keeps its own claim.
 
   We do not advance [[settings/data-complexity-scoring-last-fingerprint]] here — only `run-scoring!`
   does, after confirmed Snowplow publish. Instead we write a separate
-  [[settings/data-complexity-scoring-boot-claim]] marker (fingerprint + timestamp) so that:
+  [[settings/data-complexity-scoring-boot-claim]] marker (fingerprint + timestamp + owner) so that:
 
   - sibling nodes acquiring the lock next see an active claim and skip (no duplicate boot score);
   - a scoring/publish failure or crash mid-run leaves the success fingerprint untouched, so the
     next boot retries instead of treating the fingerprint as up-to-date;
-  - the TTL on `:claimed-at` means even a hard JVM crash doesn't permanently suppress emission.
+  - the TTL on `:claimed-at` means even a hard JVM crash doesn't permanently suppress emission;
+  - the `:owner` token lets a slow claimant distinguish its own claim from a sibling's takeover.
 
   Reads inside the lock bypass the in-process settings cache via `config/*disable-setting-cache*`
   so values freshly committed by sibling nodes are always visible — the cache is only refreshed
@@ -115,19 +118,26 @@
                    (not (boot-claim-active?
                          (parse-boot-claim (settings/data-complexity-scoring-boot-claim))
                          current)))
-          (settings/data-complexity-scoring-boot-claim!
-           (pr-str {:fingerprint current :claimed-at (now-ms)}))
-          true)))))
+          (let [claim {:fingerprint current
+                       :claimed-at  (now-ms)
+                       :owner       (str (random-uuid))}]
+            (settings/data-complexity-scoring-boot-claim! (pr-str claim))
+            claim))))))
 
 (defn- release-boot-claim!
-  "Best-effort claim release. Failure here is non-fatal — the TTL on the claim timestamp ensures
-  the next boot can still retry."
-  []
+  "Best-effort compare-and-clear of the caller's boot claim. Only clears the persisted value when
+  its `:owner` still matches `claim` — protecting against the case where our run outlived the TTL
+  and a sibling legitimately took over the claim in the meantime. Failure is non-fatal: the TTL on
+  the claim timestamp ensures the next boot can retry either way."
+  [claim]
   (try
     (cluster-lock/with-cluster-lock {:lock ::complexity-score-boot-emission
                                      :timeout-seconds 10}
       (binding [config/*disable-setting-cache* true]
-        (settings/data-complexity-scoring-boot-claim! "")))
+        (let [persisted (parse-boot-claim (settings/data-complexity-scoring-boot-claim))]
+          (if (and persisted (= (:owner persisted) (:owner claim)))
+            (settings/data-complexity-scoring-boot-claim! "")
+            (log/info "Data Complexity Score: skipping boot-claim release — persisted claim no longer belongs to this node (sibling takeover after TTL)")))))
     (catch Throwable t
       (log/warn t "Data Complexity Score: failed to clear boot-claim; it will expire via TTL"))))
 
@@ -139,15 +149,16 @@
 
   Success advances the last-successful fingerprint inside `run-scoring!`; any other outcome (skip,
   throw, publish failure) leaves it untouched so the next boot or cron retries. The boot-claim is
-  always released after the run so sibling nodes can proceed without waiting for the TTL."
+  released (compare-and-clear on `:owner`) after the run so sibling nodes can proceed without
+  waiting for the TTL — unless our run outlived the TTL and a sibling has taken over the claim."
   []
   (try
-    (when (claim-boot-emission!)
+    (when-let [claim (claim-boot-emission!)]
       (log/info "Data Complexity Score: fingerprint changed, emitting boot-time score")
       (try
         (run-scoring!)
         (finally
-          (release-boot-claim!))))
+          (release-boot-claim! claim))))
     (catch Throwable t
       (log/warn t "Data Complexity Score: boot-time emission failed"))))
 
