@@ -45,11 +45,6 @@
   [f]
   (reset! default-report-fn f))
 
-(def ^:dynamic *default-report-fn*
-  "Dynamic override for the default report fn. When non-nil, takes precedence over
-   the atom set via [[set-default-report-fn!]]. Useful for testing."
-  nil)
-
 (def ^:dynamic *sync?*
   "When true, forces synchronous candidate execution on JVM. For testing only."
   false)
@@ -109,7 +104,7 @@
   (when (and (experiments-enabled?)
              (throttle-allows? name (or min-interval-ms 1000)))
     (let [comparator-fn (or comparator-fn =)
-          report-fn (or report-fn *default-report-fn* @default-report-fn)
+          report-fn (or report-fn @default-report-fn)
           run-fn
           (fn []
             (let [start             (nanotime)
@@ -151,7 +146,7 @@
      :name            - keyword identifying this experiment (required)
      :min-interval-ms - minimum ms between candidate runs (default 1000)
      :comparator-fn   - 2-arg fn for comparing results (default =)
-     :report-fn       - 1-arg fn called with result map (default *default-report-fn*)
+     :report-fn       - 1-arg fn called with result map (default: the fn set via set-default-report-fn!)
 
    Usage:
      (experiment {:name :my-experiment}
