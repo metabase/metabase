@@ -11,8 +11,10 @@
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
+   [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.models.database :as database]
-   [metabase.warehouses.settings :as warehouses.settings]))
+   [metabase.warehouses.settings :as warehouses.settings]
+   [toucan2.core :as t2]))
 
 (deftest disable-sync-setting-defaults-off-test
   (is (false? (warehouses.settings/disable-sync)))
@@ -111,6 +113,46 @@
               (#'task.sync-databases/update-field-values! ::fake-job-context)))
           (is (false? @reached-fv?)
               "guard missing: update-field-values! reached sync.field-values despite disable-sync"))))))
+
+(deftest disable-sync-blocks-jit-field-values-cache-miss-test
+  (testing (str "get-or-create-full-field-values! is the JIT path behind GET /api/field/:id/values. "
+                "On a cache miss, it must NOT issue a warehouse query when disable-sync is on — operators "
+                "rely on the kill-switch's docstring promise that field-value sync is suppressed regardless "
+                "of how it was triggered.")
+    (mt/dataset test-data
+      (let [field-id (mt/id :categories :name)]
+        (t2/delete! :model/FieldValues :field_id field-id :type :full)
+        (mt/with-temporary-setting-values [disable-sync true]
+          (with-redefs [field-values/distinct-values
+                        (fn [& _] (throw (ex-info "distinct-values must not run under disable-sync" {})))]
+            (let [result (field-values/get-or-create-full-field-values!
+                          (t2/select-one :model/Field :id field-id))]
+              (is (nil? result)
+                  "with no cached FieldValues and kill-switch on, returns nil (downstream emits empty values)")
+              (is (zero? (t2/count :model/FieldValues :field_id field-id :type :full))
+                  "no FieldValues row was created — confirms create-or-update path was skipped"))))))))
+
+(deftest disable-sync-serves-stale-field-values-test
+  (testing (str "When the cache row exists but is stale (inactive?), disable-sync must serve the stale row "
+                "rather than re-fetching from the warehouse — degraded but consistent with the kill-switch contract.")
+    (mt/dataset test-data
+      (let [field-id (mt/id :categories :name)]
+        (t2/delete! :model/FieldValues :field_id field-id :type :full)
+        ;; Seed a stale FieldValues row by writing one then aging its last_used_at past the inactive cutoff.
+        (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id))
+        (t2/update! :model/FieldValues
+                    {:field_id field-id :type :full}
+                    {:last_used_at (java.time.OffsetDateTime/of 2001 1 1 0 0 0 0 java.time.ZoneOffset/UTC)})
+        (let [stale (t2/select-one :model/FieldValues :field_id field-id :type :full)]
+          (mt/with-temporary-setting-values [disable-sync true]
+            (with-redefs [field-values/distinct-values
+                          (fn [& _] (throw (ex-info "distinct-values must not run under disable-sync" {})))]
+              (let [result (field-values/get-or-create-full-field-values!
+                            (t2/select-one :model/Field :id field-id))]
+                (is (some? result)
+                    "stale row is returned, not nil")
+                (is (= (:id stale) (:id result))
+                    "the same FieldValues row id comes back")))))))))
 
 (deftest flag-off-sync-still-works-test
   (testing "flag off: baseline that the gates don't break normal sync"

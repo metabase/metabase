@@ -36,6 +36,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -508,13 +509,22 @@
 
 (defn get-or-create-full-field-values!
   "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
-  created FieldValues for `Field`. Updates :last_used_at so sync will know this is active."
+  created FieldValues for `Field`. Updates :last_used_at so sync will know this is active.
+
+  Honors the global `disable-sync` kill-switch: on a cache miss/inactive entry, returns the existing row (which may
+  be `nil` if no cache, or the stale row if one exists) rather than reaching into the warehouse for fresh values."
   {:arglists '([field] [field human-readable-values])}
   [{field-id :id field-values :values :as field} & [human-readable-values]]
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
     (let [existing (or (not-empty field-values) (get-latest-full-field-values field-id))]
-      (if (or (not existing) (inactive? existing))
+      (cond
+        (and (or (not existing) (inactive? existing))
+             (sync-util/sync-disabled?))
+        (do (sync-util/log-sync-refused! :cache-field-values field)
+            existing)
+
+        (or (not existing) (inactive? existing))
         (case (create-or-update-full-field-values! field :human-readable-values human-readable-values)
           ::fv-deleted
           nil
@@ -526,6 +536,8 @@
             (when existing
               (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now}))
             (get-latest-full-field-values field-id)))
+
+        :else
         (do
           (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now})
           existing)))))
