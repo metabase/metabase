@@ -63,12 +63,25 @@
   (testing "Non-superusers get 403 from POST /ee/workspace"
     (mt/with-model-cleanup [:model/Workspace]
       (mt/user-http-request :rasta :post 403 "ee/workspace"
-                            {:name "Denied" :databases []}))))
+                            {:name "Denied" :databases [(ws-db-payload)]}))))
 
 (deftest post-workspace-schema-validation-test
   (testing "POST with missing :name returns 400"
     (mt/user-http-request :crowberto :post 400 "ee/workspace"
-                          {:databases []})))
+                          {:databases [(ws-db-payload)]})))
+
+(deftest post-workspace-rejects-empty-databases-test
+  (testing "POST with an empty :databases list returns 400 — a Workspace must have at least one database"
+    (mt/user-http-request :crowberto :post 400 "ee/workspace"
+                          {:name "No DBs" :databases []})))
+
+(deftest put-workspace-rejects-empty-databases-test
+  (testing "PUT with an empty :databases list returns 400"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                               {:name "Start" :databases [(ws-db-payload)]})]
+        (mt/user-http-request :crowberto :put 400 (str "ee/workspace/" id)
+                              {:name "Start" :databases []})))))
 
 (deftest get-workspace-list-test
   (testing "GET /ee/workspace returns all workspaces with hydrated databases"
@@ -76,13 +89,13 @@
       (let [created-a (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                             {:name "WS A" :databases [(ws-db-payload)]})
             created-b (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                            {:name "WS B" :databases []})
+                                            {:name "WS B" :databases [(ws-db-payload)]})
             resp      (mt/user-http-request :crowberto :get 200 "ee/workspace")
             by-id     (into {} (map (juxt :id identity)) resp)]
         (is (contains? by-id (:id created-a)))
         (is (contains? by-id (:id created-b)))
         (is (= 1 (count (:databases (get by-id (:id created-a))))))
-        (is (= [] (:databases (get by-id (:id created-b)))))))))
+        (is (= 1 (count (:databases (get by-id (:id created-b))))))))))
 
 (deftest get-workspace-by-id-test
   (testing "GET /ee/workspace/:id returns one workspace hydrated"
@@ -127,15 +140,15 @@
   (testing "Non-superusers get 403 from PUT /ee/workspace/:id"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                               {:name "Guarded" :databases []})]
+                                               {:name "Guarded" :databases [(ws-db-payload)]})]
         (mt/user-http-request :rasta :put 403 (str "ee/workspace/" id)
-                              {:name "Nope" :databases []})))))
+                              {:name "Nope" :databases [(ws-db-payload)]})))))
 
 (deftest get-workspace-requires-superuser-test
   (testing "Non-superusers get 403 from GET endpoints"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                               {:name "Guarded" :databases []})]
+                                               {:name "Guarded" :databases [(ws-db-payload)]})]
         (mt/user-http-request :rasta :get 403 "ee/workspace")
         (mt/user-http-request :rasta :get 403 (str "ee/workspace/" id))))))
 
@@ -174,7 +187,7 @@
   (testing "Non-superusers get 403 from POST /ee/workspace/:id/provision"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                               {:name "Guarded" :databases []})]
+                                               {:name "Guarded" :databases [(ws-db-payload)]})]
         (mt/user-http-request :rasta :post 403 (str "ee/workspace/" id "/provision") {})))))
 
 (deftest post-provision-404-on-unknown-workspace-test
@@ -259,7 +272,7 @@
   (testing "Non-superusers get 403 from POST /:id/unprovision"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                               {:name "Guarded" :databases []})]
+                                               {:name "Guarded" :databases [(ws-db-payload)]})]
         (mt/user-http-request :rasta :post 403 (str "ee/workspace/" id "/unprovision") {})))))
 
 (deftest post-unprovision-404-on-unknown-workspace-test
@@ -293,7 +306,7 @@
   (testing "Non-superusers get 403 from DELETE /:id"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                               {:name "Guarded" :databases []})]
+                                               {:name "Guarded" :databases [(ws-db-payload)]})]
         (mt/user-http-request :rasta :delete 403 (str "ee/workspace/" id))))))
 
 (deftest delete-workspace-404-on-unknown-test
@@ -304,7 +317,7 @@
   (testing "POST records the authenticated user as :creator_id and returns a hydrated :creator"
     (mt/with-model-cleanup [:model/Workspace]
       (let [resp (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                       {:name "Created By Me" :databases []})]
+                                       {:name "Created By Me" :databases [(ws-db-payload)]})]
         (testing "response includes :creator as a user object"
           (is (=? {:creator {:id    (mt/user->id :crowberto)
                              :email (:email (mt/fetch-user :crowberto))}}
@@ -374,7 +387,7 @@
   (testing "Non-superusers get 403 from GET /:id/config"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                               {:name "Guarded" :databases []})]
+                                               {:name "Guarded" :databases [(ws-db-payload)]})]
         (mt/user-http-request :rasta :get 403 (str "ee/workspace/" id "/config"))))))
 
 (deftest get-workspace-config-404-on-unknown-test
