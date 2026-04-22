@@ -1,6 +1,7 @@
 (ns metabase.login-history.models.login-history
   (:require
    [java-time.api :as t]
+   [metabase.login-history.settings :as login-history.settings]
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -75,8 +76,7 @@
           count
           (= 1)))
 
-(def ^:private new-device-email-rate-limit-window (t/hours 1))
-(def ^:private new-device-email-rate-limit-cap 30)
+(def ^:private new-device-email-rate-limit-window (t/hours 24))
 
 (defn too-many-new-device-emails-recently?
   "Per-user circuit breaker — true if this user has already triggered
@@ -96,7 +96,7 @@
                                            [:= :lh2.user_id   :login_history.user_id]
                                            [:= :lh2.device_id :login_history.device_id]
                                            [:< :lh2.id        :login_history.id]]}]]]})
-       new-device-email-rate-limit-cap)))
+       (login-history.settings/new-device-email-rate-limit-cap))))
 
 (t2/define-before-update :model/LoginHistory [_login-history]
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))

@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.login-history.models.login-history :as login-history]
+   [metabase.login-history.settings :as login-history.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -41,7 +42,7 @@
 
 (deftest too-many-new-device-emails-recently?-test
   (testing "per-user circuit breaker for new-device emails"
-    (let [cap @#'login-history/new-device-email-rate-limit-cap]
+    (let [cap (login-history.settings/new-device-email-rate-limit-cap)]
       (mt/with-temp [:model/User {user-id :id}       {}
                      :model/User {other-user-id :id} {}]
         (testing "false when the user has no prior first-device events"
@@ -74,5 +75,5 @@
             (dotimes [_ 10]
               (insert-login-history! old-user-id
                                      (str (random-uuid))
-                                     (t/minus (t/offset-date-time) (t/hours 2))))
+                                     (t/minus (t/offset-date-time) (t/days 2))))
             (is (false? (#'login-history/too-many-new-device-emails-recently? old-user-id)))))))))

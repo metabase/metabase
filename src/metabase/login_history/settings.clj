@@ -13,3 +13,15 @@
   :default    true
   :doc "This variable also controls the geocoding service that Metabase uses to know the location of your logged in users.
         Setting this variable to false also disables this reverse geocoding functionality.")
+
+(defsetting new-device-email-rate-limit-cap
+  "Maximum number of new-device login emails to send per user per day. Circuit breaker that
+   protects the instance's shared SMTP budget (alerts, subscriptions, password resets) from
+   being drained by cookie-churn patterns — typically a single user in an incognito loop or
+   behind a broken embed integration that keeps minting new device_ids. Env-only so an
+   attacker with admin creds cannot disable it."
+  :type       :integer
+  :visibility :internal
+  :setter     :none
+  :export?    false
+  :default    30)
