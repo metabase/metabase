@@ -101,6 +101,7 @@
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
+   [metabase-enterprise.advanced-config.file.workspace]
    ;; TODO (Cam 10/3/25) -- update this to use the Lib versions of these namespaces
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.driver.common.parameters.parse :as params.parse]
@@ -120,6 +121,8 @@
   metabase-enterprise.advanced-config.file.databases/keep-me
   ;; for `users:` section code
   metabase-enterprise.advanced-config.file.users/keep-me
+
+  metabase-enterprise.advanced-config.file.workspace/keep-me
   ;; for `api-keys:` section code
   metabase-enterprise.advanced-config.file.api-keys/keep-me)
 

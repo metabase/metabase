@@ -2255,6 +2255,7 @@
   {:team "Graphy"
    :api  #{metabase.transforms-base.init
            metabase.transforms-base.interface
+           metabase.transforms-base.query
            metabase.transforms-base.util}
    ;; TODO regressions — transforms-base should not depend on :model/Transform or
    ;; :model/TransformRun directly. Remove once the module is agnostic to global
@@ -2626,7 +2627,8 @@
            setup
            sync
            users
-           util}
+           util
+           enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/advanced-permissions
@@ -3349,8 +3351,9 @@
    :model-imports #{:model/Database :model/Table}}
 
   enterprise/workspaces
-  {:team "Metabot"
-   :api  #{}
+  {:team "Graphy"
+   :api  #{metabase-enterprise.workspaces.core
+           metabase-enterprise.workspaces.transform-hooks}
    :uses #{premium-features}}
 
   enterprise/writable-connection

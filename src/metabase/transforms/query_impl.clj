@@ -5,6 +5,7 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.query :as transforms-base.query]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.interface :as transforms.i]
@@ -41,14 +42,17 @@
                    (transforms.u/run-cancelable-transform!
                     run-id transform driver transform-details
                     (fn [cancel-chan source-range-params]
-                      (let [result (transforms-base.i/execute-base!
+                      (let [remap (transforms-base.query/resolve-transform-remapping!
+                                   (:id db) (:schema target) (:name target))
+                            result (transforms-base.i/execute-base!
                                     transform
-                                    {:cancelled?           #(boolean (a/poll! cancel-chan))
-                                     :run-id               run-id
-                                     :source-range-params  source-range-params
-                                     :with-stage-timing-fn (fn [rid stage thunk]
-                                                             (transforms.instrumentation/with-stage-timing [rid stage]
-                                                               (thunk)))})]
+                                    (cond-> {:cancelled?           #(boolean (a/poll! cancel-chan))
+                                             :run-id               run-id
+                                             :source-range-params  source-range-params
+                                             :with-stage-timing-fn (fn [rid stage thunk]
+                                                                     (transforms.instrumentation/with-stage-timing [rid stage]
+                                                                       (thunk)))}
+                                      remap (assoc :table-remapping remap)))]
                         ;; Bridge result-map to exception-based flow for run-cancelable-transform!
                         (when-not (= :succeeded (:status result))
                           (throw (or (:error result) (ex-info "Transform failed" {:status (:status result)}))))

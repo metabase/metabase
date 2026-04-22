@@ -59,6 +59,13 @@
 
 ;;; ------------------------------------------------- Options -------------------------------------------------
 
+(mr/def ::table-remapping
+  "Resolved remap for a transform's target. When present, run-query-transform!
+   writes to this schema/table instead of the transform's declared target."
+  [:map
+   [:schema :string]
+   [:name   :string]])
+
 (mr/def ::execute-base-options
   "Options map for execute-base! and its implementations."
   [:map
@@ -68,7 +75,8 @@
    [:publish-events? {:optional true} :boolean]
    [:message-log {:optional true} [:maybe ::atom]]
    [:cancel-chan {:optional true} [:maybe ::chan]]
-   [:source-range-params {:optional true} [:maybe ::source-range-params]]])
+   [:source-range-params {:optional true} [:maybe ::source-range-params]]
+   [:table-remapping {:optional true} [:maybe ::table-remapping]]])
 
 ;;; ------------------------------------------------- Result -------------------------------------------------
 
