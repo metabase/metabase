@@ -2,11 +2,11 @@ import { getIn } from "icepick";
 import _ from "underscore";
 
 import { cardApi, dashboardApi, datasetApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities";
 import { Databases } from "metabase/entities/databases";
 import { Fields } from "metabase/entities/fields";
 import { Segments } from "metabase/entities/segments";
 import { Tables } from "metabase/entities/tables";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import { isProduction } from "metabase/env";
 import { createThunkAction } from "metabase/redux";
 import { RevisionsApi } from "metabase/services";

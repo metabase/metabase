@@ -2,8 +2,8 @@ import { assocIn, dissocIn, updateIn } from "icepick";
 import { t } from "ttag";
 
 import { cardApi } from "metabase/api";
-import { entityCompatibleQuery } from "metabase/entities";
 import { Collections } from "metabase/entities/collections";
+import { entityCompatibleQuery } from "metabase/entities/utils";
 import type { Dispatch, State } from "metabase/redux/store";
 import type { FileUploadState } from "metabase/redux/store/upload";
 import { UploadMode } from "metabase/redux/store/upload";
