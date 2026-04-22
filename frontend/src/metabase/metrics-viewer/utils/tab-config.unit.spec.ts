@@ -358,7 +358,7 @@ describe("DISPLAY_TYPE_REGISTRY", () => {
       });
 
       expect(result.series_settings).toEqual({
-        COUNT: { color: "#509EE3" },
+        COUNT: expect.objectContaining({ color: "#509EE3" }),
       });
     });
 
@@ -485,6 +485,7 @@ describe("DISPLAY_TYPE_REGISTRY", () => {
       });
 
       expect(result["scalar.label"]).toBe("Revenue Growth");
+      expect(result["scalar.sublabel"]).toBeUndefined();
     });
 
     it("sets scalar.label from definition name for metric entries", () => {
@@ -507,9 +508,10 @@ describe("DISPLAY_TYPE_REGISTRY", () => {
       });
 
       expect(result["scalar.label"]).toBe("Revenue");
+      expect(result["scalar.sublabel"]).toBeUndefined();
     });
 
-    it("appends breakout info to label when breakoutValue is provided", () => {
+    it("adds sublabel when breakoutValue is provided", () => {
       const sourceId: MetricSourceId = `metric:${REVENUE_METRIC.id}`;
       const metricEntity: MetricsViewerFormulaEntity = {
         id: sourceId,
@@ -530,7 +532,8 @@ describe("DISPLAY_TYPE_REGISTRY", () => {
       });
 
       expect(result["scalar.field"]).toBe("COUNT");
-      expect(result["scalar.label"]).toBe("Revenue\nCategory: Gadgets");
+      expect(result["scalar.label"]).toBe("Revenue");
+      expect(result["scalar.sublabel"]).toBe("Category: Gadgets");
     });
   });
 });
