@@ -1,5 +1,5 @@
-import { QueryDefinition } from "metabase/admin/datamodel/components/QueryDefinition";
 import CS from "metabase/css/core/index.css";
+import { QueryDefinition } from "metabase/querying/segments/components/QueryDefinition";
 import type { QueryDiff as QueryDiffType, TableId } from "metabase-types/api";
 
 type Props = {
