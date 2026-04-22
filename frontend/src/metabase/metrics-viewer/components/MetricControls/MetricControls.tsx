@@ -78,6 +78,33 @@ export function MetricControls({
     ? displayType
     : config.defaultDisplayType;
 
+  const { projectionDimension } = projectionInfo;
+
+  let granularityControl;
+
+  // Bucket and binning controls are mutually exclusive
+  if (projectionDimension) {
+    if (hasBucketControls) {
+      granularityControl = (
+        <BucketButton
+          definition={definition}
+          dimension={projectionDimension}
+          projection={projectionInfo.projection!}
+          onChange={onTemporalUnitChange}
+        />
+      );
+    } else if (hasBinningControls) {
+      granularityControl = (
+        <BinningButton
+          definition={definition}
+          dimension={projectionDimension}
+          projection={projectionInfo.projection!}
+          onBinningChange={onBinningChange}
+        />
+      );
+    }
+  }
+
   return (
     <QueryExplorerBar
       chartTypes={chartTypes}
@@ -107,23 +134,7 @@ export function MetricControls({
           />
         ) : undefined
       }
-      granularityControl={
-        hasBucketControls && projectionInfo.projectionDimension ? (
-          <BucketButton
-            definition={definition}
-            dimension={projectionInfo.projectionDimension}
-            projection={projectionInfo.projection!}
-            onChange={onTemporalUnitChange}
-          />
-        ) : hasBinningControls && projectionInfo.projectionDimension ? (
-          <BinningButton
-            definition={definition}
-            dimension={projectionInfo.projectionDimension}
-            projection={projectionInfo.projection!}
-            onBinningChange={onBinningChange}
-          />
-        ) : undefined
-      }
+      granularityControl={granularityControl}
     />
   );
 }
