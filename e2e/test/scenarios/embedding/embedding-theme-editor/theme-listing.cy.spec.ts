@@ -147,7 +147,7 @@ describe(
 
       H.main().within(() => {
         cy.log("duplicated theme should have 'Copy of' prepended");
-        cy.findByText("Untitled theme").should("be.visible");
+        cy.findByText("Untitled theme").scrollIntoView().should("be.visible");
         cy.findByText("Copy of Untitled theme").should("be.visible");
       });
     });
