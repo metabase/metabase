@@ -1,4 +1,5 @@
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { act, screen, waitFor } from "__support__/ui";
 import { metabotActions } from "metabase/metabot/state";
@@ -28,6 +29,14 @@ import { useMetabot } from "./use-metabot";
 // so those assertions are direct. Real rendering of Static/Interactive
 // questions (base64 query decode, ad-hoc dataset execution, viz output) is
 // covered by StaticQuestion.unit.spec.tsx and InteractiveQuestion.unit.spec.tsx.
+// `use-metabot.tsx` wraps chart output in `ComponentProvider` so callers of
+// `useMetabot()` can render charts under a bare `MetabaseProvider`. These
+// specs verify chart-wiring only, not provider init (`useInitDataInternal`,
+// authConfig plumbing, etc.), so pass `ComponentProvider` through.
+jest.mock("embedding-sdk-bundle/components/public/ComponentProvider", () => ({
+  ComponentProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
+}));
+
 jest.mock("embedding-sdk-bundle/components/public/StaticQuestion", () => {
   const Component = ({ query }: { query?: string }) => (
     <div data-testid="mock-static-question" data-query={query} />

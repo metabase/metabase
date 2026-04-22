@@ -26,6 +26,7 @@ export * from "./components/public/debug/SdkDebugInfo";
 export { useApplicationName } from "./hooks/public/use-application-name";
 export { useAvailableFonts } from "./hooks/public/use-available-fonts";
 export { useCurrentUser } from "./hooks/public/use-current-user";
+export { useMetabot } from "./hooks/public/use-metabot";
 export { useCreateDashboardApi } from "./hooks/public/use-create-dashboard-api";
 export { useMetabaseAuthStatus } from "./hooks/public/use-metabase-auth-status";
 
@@ -118,6 +119,10 @@ export type {
   MetabaseTheme,
   MetabaseThemePreset,
   MetabaseUser,
+  MetabotChartProps,
+  MetabotErrorMessage,
+  MetabotMessage,
+  UseMetabotResult,
   SdkEntityToken,
   SdkCollectionId,
   SdkDashboardId,

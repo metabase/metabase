@@ -1,5 +1,6 @@
 import type { JSXElementConstructor } from "react";
 
+import type { MetabotSubscriber } from "embedding-sdk-bundle/components/private/MetabotSubscriber/MetabotSubscriber";
 import type { CollectionBrowser } from "embedding-sdk-bundle/components/public/CollectionBrowser";
 import type { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import type { CreateDashboardModal } from "embedding-sdk-bundle/components/public/CreateDashboardModal";
@@ -39,7 +40,18 @@ export type MetabaseEmbeddingSdkBundleExports = PublicExports &
   ReduxStoreUtilityFunctionExports &
   ReduxStoreSelectorsExports &
   InternalHooksExports &
-  SchemaValidationUtils;
+  SchemaValidationUtils &
+  InternalBundleGlue;
+
+/**
+ * Internal glue between the bundle and the package. Not part of the public
+ * consumer API. Field names here are implementation details and may change.
+ */
+export type InternalBundleGlue = {
+  _internal: {
+    MetabotSubscriber: typeof MetabotSubscriber;
+  };
+};
 
 export type PublicExports = {
   CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
