@@ -604,6 +604,33 @@
           reducible))
   (.write writer "]"))
 
+(defn- visible-db-where
+  "Honeysql `:where` clause restricting a `:metabase_database :d` join to databases that
+  belong in a bulk export for the current user: not audit, not a router DB, and inside
+  the query-builder visibility filter."
+  []
+  [:and
+   [:= :d.is_audit false]
+   [:= :d.router_database_id nil]
+   [:in :d.id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]])
+
+(defn- visible-table-where
+  "Honeysql `:where` clause restricting a `:metabase_table :t` join to active, non-hidden
+  tables inside the current user's query-builder visibility filter."
+  []
+  [:and
+   [:= :t.active true]
+   [:= :t.visibility_type nil]
+   [:in :t.id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]])
+
+(defn- visible-field-where
+  "Honeysql `:where` clause restricting a `:metabase_field :f` join to active,
+  non-sensitive fields."
+  []
+  [:and
+   [:= :f.active true]
+   [:<> :f.visibility_type "sensitive"]])
+
 (defn- write-databases-metadata!
   "Streams the databases/tables/fields metadata as JSON to the given OutputStream.
 
@@ -612,17 +639,9 @@
   section is written directly to the underlying writer as rows are pulled from a
   reducible query, keeping memory usage bounded regardless of schema size."
   [^java.io.OutputStream os]
-  (let [db-filter [:and
-                   [:= :d.is_audit false]
-                   [:= :d.router_database_id nil]
-                   [:in :d.id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]]
-        t-filter  [:and
-                   [:= :t.active true]
-                   [:= :t.visibility_type nil]
-                   [:in :t.id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
-        f-filter  [:and
-                   [:= :f.active true]
-                   [:<> :f.visibility_type "sensitive"]]
+  (let [db-filter (visible-db-where)
+        t-filter  (visible-table-where)
+        f-filter  (visible-field-where)
         writer    (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
     (.write writer "{\"databases\":")
     (write-json-array! writer
@@ -713,17 +732,9 @@
   and excluded from the bulk export. Visibility filter matches `GET /api/database/metadata`
   so every streamed row has a corresponding field entry there."
   [^java.io.OutputStream os]
-  (let [db-filter [:and
-                   [:= :d.is_audit false]
-                   [:= :d.router_database_id nil]
-                   [:in :d.id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]]
-        t-filter  [:and
-                   [:= :t.active true]
-                   [:= :t.visibility_type nil]
-                   [:in :t.id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
-        f-filter  [:and
-                   [:= :f.active true]
-                   [:<> :f.visibility_type "sensitive"]]
+  (let [db-filter (visible-db-where)
+        t-filter  (visible-table-where)
+        f-filter  (visible-field-where)
         fv-filter [:and
                    [:= :fv.type "full"]
                    [:= :fv.hash_key nil]]
