@@ -46,6 +46,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses-rest.api.ndjson-import :as ndjson-import]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
    [toucan2.core :as t2]))
@@ -1079,160 +1080,6 @@
   (api/check-superuser)
   (import-metadata!* body))
 
-;;; ------------------------- POST /api/database/(metadata/* | field-values) streaming ----------------------------
-
-(def ^:private ndjson-content-type
-  "Content-Type for NDJSON request and response bodies."
-  "application/x-ndjson; charset=utf-8")
-
-(defn- unique-violation?
-  "True if `e` or any cause is a SQL unique-constraint violation. Handles Postgres and H2 via
-  SQLState \"23505\" (SQL:2003 standard) and MySQL/MariaDB via SQLState \"23000\" + vendor error
-  code 1062."
-  [^Throwable e]
-  (loop [^Throwable cause e]
-    (cond
-      (nil? cause) false
-      (instance? java.sql.SQLException cause)
-      (let [sql-ex ^java.sql.SQLException cause]
-        (or (case (.getSQLState sql-ex)
-              "23505" true
-              "23000" (= 1062 (.getErrorCode sql-ex))
-              false)
-            (recur (.getCause cause))))
-      :else (recur (.getCause cause)))))
-
-(defn- ndjson-request-reader
-  "Wrap a request `:body` `InputStream` in a UTF-8 `BufferedReader`. Returns nil if `body` is nil.
-  Caller must close the returned reader."
-  ^java.io.BufferedReader [^java.io.InputStream body]
-  (when body
-    (java.io.BufferedReader. (java.io.InputStreamReader. body java.nio.charset.StandardCharsets/UTF_8))))
-
-(defn- write-ndjson-line!
-  "Write a single JSON record to `writer` followed by `\\n`."
-  [^java.io.Writer writer record]
-  (json/encode-to record writer {})
-  (.write writer "\n"))
-
-(defn- response-writer
-  "Wrap the streaming-response `OutputStream` in a `BufferedWriter` for writing NDJSON lines."
-  ^java.io.BufferedWriter [^java.io.OutputStream os]
-  (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8)))
-
-(defn- bad-input!
-  "Throw an `ex-info` with `:kind :invalid_input` for a required field that's missing or of the
-  wrong type."
-  [line-num field-name detail & extras]
-  (throw (ex-info (format "invalid_input: %s" field-name)
-                  (apply hash-map
-                         :kind :invalid_input
-                         :line line-num
-                         :detail detail
-                         extras))))
-
-(defn- parse-ndjson-line!
-  "Parse one NDJSON line. On malformed JSON, throws an `ex-info` with `:kind :malformed_json` and
-  the 1-indexed `:line` number of the bad input."
-  [line-num ^String line]
-  (try
-    (json/decode+kw line)
-    (catch Throwable e
-      (throw (ex-info "malformed_json"
-                      {:kind :malformed_json
-                       :line line-num
-                       :detail (.getMessage e)})))))
-
-(defn- numbered-lines
-  "Sequence of `[line-num raw-line]` pairs for the request body. Blank lines are skipped; the
-  line number is the 1-indexed position of the raw line in the request body (including blanks),
-  so error reports point at the user's literal line in the file."
-  [^java.io.BufferedReader reader]
-  (keep-indexed (fn [idx ^String s]
-                  (when (and s (not (zero? (.length s))))
-                    [(inc idx) s]))
-                (line-seq reader)))
-
-(defn- parsed-batches
-  "Lazy seq of batches of `[line-num parsed-map]` pairs, each batch up to `import-batch-size`
-  lines. Malformed lines throw via `parse-ndjson-line!`."
-  [^java.io.BufferedReader reader]
-  (->> (numbered-lines reader)
-       (map (fn [[n raw]] [n (parse-ndjson-line! n raw)]))
-       (partition-all import-batch-size)))
-
-(defn- error-line
-  "Build the final error NDJSON record. `kind` is a keyword naming the failure category (e.g.
-  `:invalid_input`, `:no_match`, `:unique_violation`, `:server_error`); `line-num` is the
-  1-indexed source line (or nil if not knowable); `extras` is merged in for the echo key
-  (`old_id`, `id`, `field_id`) when it's unambiguously knowable."
-  [kind line-num detail extras]
-  (merge {:error (name kind) :detail (or detail "")}
-         (when line-num {:line line-num})
-         extras))
-
-(def ^:private echo-keys
-  "Keys we allow through from an `ex-info`'s `ex-data` to the error line as echo fields."
-  #{:old_id :id :field_id})
-
-(defn- classify-throwable
-  "Return the error NDJSON record for a caught throwable. `ExceptionInfo` with a `:kind` in its
-  ex-data was thrown by a validation or lookup site here and carries its own `:line` and
-  echo-key extras — those pass through. Anything else is classified by walking the cause chain:
-  `unique-violation?` matches become `:unique_violation`, everything else becomes `:server_error`."
-  [^Throwable t]
-  (let [data (when (instance? clojure.lang.ExceptionInfo t) (ex-data t))
-        kind (:kind data)]
-    (cond
-      (keyword? kind)
-      (error-line kind (:line data) (or (:detail data) (.getMessage t))
-                  (select-keys data echo-keys))
-
-      (unique-violation? t)
-      (error-line :unique_violation nil (.getMessage t) nil)
-
-      :else
-      (error-line :server_error nil (.getMessage t) nil))))
-
-(defn- wrap-row-error
-  "Tag an exception from a per-row processor with `:line` and an echo key so the error NDJSON line
-  points at the offending row. Already-classified `ExceptionInfo` (one with `:kind` in ex-data)
-  passes through unchanged — it already has its line and echo extras from the throw site.
-  Anything else is wrapped as `ex-info` with `:kind` pre-classified via `unique-violation?`."
-  [^Throwable e line-num echo-extras]
-  (let [data (when (instance? clojure.lang.ExceptionInfo e) (ex-data e))]
-    (if (:kind data)
-      e
-      (ex-info (.getMessage e)
-               (merge echo-extras
-                      {:kind   (if (unique-violation? e) :unique_violation :server_error)
-                       :line   line-num
-                       :detail (.getMessage e)})
-               e))))
-
-(defn- stream-ndjson-import!
-  "Shared driver for the five NDJSON import endpoints. `process-batch!` is called once per batch
-  with `[batch buffer]` where `batch` is a seq of `[line-num parsed-map]` pairs and `buffer` is a
-  `java.util.ArrayList` that the processor pushes response maps into. On success the buffer is
-  drained to the response writer after the batch's transaction commits. On any throwable the
-  batch's transaction rolls back (via rethrow), the buffer is discarded, one final error line is
-  written, and the response closes cleanly."
-  [^java.io.InputStream in ^java.io.OutputStream out process-batch!]
-  (with-open [reader (ndjson-request-reader in)
-              writer (response-writer out)]
-    (try
-      (doseq [batch (parsed-batches reader)]
-        (let [buffer (java.util.ArrayList.)]
-          (t2/with-transaction [_conn]
-            (process-batch! batch buffer))
-          (doseq [record buffer]
-            (write-ndjson-line! writer record))
-          (.flush writer)))
-      (catch Throwable t
-        (log/debugf t "NDJSON import failed")
-        (write-ndjson-line! writer (classify-throwable t))
-        (.flush writer)))))
-
 ;;; ----------------------------------------- POST /api/database/field-values -----------------------------------------
 
 (mr/def ::field-values-import-request
@@ -1246,11 +1093,11 @@
   "Upsert a single FieldValues row, appending the response record to `buffer`. Throws
   `ex-info` with `:kind :invalid_input` or `:invalid_field_id` on validation or lookup failures;
   unexpected exceptions from the DB operations are wrapped with `:line` and `:field_id` by
-  `wrap-row-error`."
+  `ndjson-import/wrap-row-error`."
   [^java.util.ArrayList buffer line-num {:keys [field_id values has_more_values human_readable_values]}]
   (try
     (when-not (int? field_id)
-      (bad-input! line-num "field_id" "field_id is required and must be an integer"))
+      (ndjson-import/bad-input! line-num "field_id" "field_id is required and must be an integer"))
     (when-not (t2/exists? :model/Field :id field_id)
       (throw (ex-info "invalid_field_id"
                       {:kind :invalid_field_id
@@ -1274,14 +1121,14 @@
                                :hash_key nil))
             (.add buffer {:field_id field_id :created true}))))
     (catch Throwable e
-      (throw (wrap-row-error e line-num {:field_id field_id})))))
+      (throw (ndjson-import/wrap-row-error e line-num {:field_id field_id})))))
 
 (defn- import-field-values-ndjson!
   "Core handler for POST /api/database/field-values. Reads NDJSON from `in`, writes NDJSON to
-  `out`, fast-fails on any error via `stream-ndjson-import!`."
+  `out`, terminates the stream with a single error line on any failure."
   [^java.io.InputStream in ^java.io.OutputStream out]
-  (stream-ndjson-import!
-   in out
+  (ndjson-import/stream-import!
+   in out import-batch-size
    (fn [batch buffer]
      (doseq [[line-num line] batch]
        (process-field-values-line! buffer line-num line)))))
@@ -1307,7 +1154,7 @@
    _body
    {:keys [body]} :- [:map [:body [:fn #(instance? java.io.InputStream %)]]]]
   (api/check-superuser)
-  (streaming-response {:content-type ndjson-content-type} [os _canceled]
+  (streaming-response {:content-type ndjson-import/content-type} [os _canceled]
                       (import-field-values-ndjson! body os)))
 
 ;;; ----------------------------------------- POST /api/database/metadata/databases -----------------------------------------
@@ -1316,11 +1163,11 @@
   [^java.util.ArrayList buffer line-num {:keys [id name engine]}]
   (try
     (when-not (int? id)
-      (bad-input! line-num "id" "id is required and must be an integer"))
+      (ndjson-import/bad-input! line-num "id" "id is required and must be an integer"))
     (when-not (string? name)
-      (bad-input! line-num "name" "name is required and must be a string" :old_id id))
+      (ndjson-import/bad-input! line-num "name" "name is required and must be a string" :old_id id))
     (when-not (or (string? engine) (keyword? engine))
-      (bad-input! line-num "engine" "engine is required" :old_id id))
+      (ndjson-import/bad-input! line-num "engine" "engine is required" :old_id id))
     (if-some [match (t2/select-one [:model/Database :id]
                                    :name   name
                                    :engine (engine-name engine))]
@@ -1332,12 +1179,12 @@
                        :detail (format "No database with name=%s engine=%s"
                                        (pr-str name) (pr-str (engine-name engine)))})))
     (catch Throwable e
-      (throw (wrap-row-error e line-num {:old_id id})))))
+      (throw (ndjson-import/wrap-row-error e line-num {:old_id id})))))
 
 (defn- import-databases-ndjson!
   [^java.io.InputStream in ^java.io.OutputStream out]
-  (stream-ndjson-import!
-   in out
+  (ndjson-import/stream-import!
+   in out import-batch-size
    (fn [batch buffer]
      (doseq [[line-num line] batch]
        (process-databases-line! buffer line-num line)))))
@@ -1360,7 +1207,7 @@
    _body
    {:keys [body]} :- [:map [:body [:fn #(instance? java.io.InputStream %)]]]]
   (api/check-superuser)
-  (streaming-response {:content-type ndjson-content-type} [os _canceled]
+  (streaming-response {:content-type ndjson-import/content-type} [os _canceled]
                       (import-databases-ndjson! body os)))
 
 ;;; ----------------------------------------- POST /api/database/metadata/tables -----------------------------------------
@@ -1383,11 +1230,11 @@
   [^java.util.ArrayList buffer line-num {:keys [id db_id schema name description]}]
   (try
     (when-not (int? id)
-      (bad-input! line-num "id" "id is required and must be an integer"))
+      (ndjson-import/bad-input! line-num "id" "id is required and must be an integer"))
     (when-not (int? db_id)
-      (bad-input! line-num "db_id" "db_id is required and must be an integer" :old_id id))
+      (ndjson-import/bad-input! line-num "db_id" "db_id is required and must be an integer" :old_id id))
     (when-not (string? name)
-      (bad-input! line-num "name" "name is required and must be a string" :old_id id))
+      (ndjson-import/bad-input! line-num "name" "name is required and must be a string" :old_id id))
     (if-some [existing (match-table db_id schema name)]
       (do
         (when (some? description)
@@ -1408,12 +1255,12 @@
               new-id (first (t2/insert-returning-pks! :model/Table row))]
           (.add buffer {:old_id id :new_id new-id}))))
     (catch Throwable e
-      (throw (wrap-row-error e line-num {:old_id id})))))
+      (throw (ndjson-import/wrap-row-error e line-num {:old_id id})))))
 
 (defn- import-tables-ndjson!
   [^java.io.InputStream in ^java.io.OutputStream out]
-  (stream-ndjson-import!
-   in out
+  (ndjson-import/stream-import!
+   in out import-batch-size
    (fn [batch buffer]
      (doseq [[line-num line] batch]
        (process-tables-line! buffer line-num line)))))
@@ -1437,7 +1284,7 @@
    _body
    {:keys [body]} :- [:map [:body [:fn #(instance? java.io.InputStream %)]]]]
   (api/check-superuser)
-  (streaming-response {:content-type ndjson-content-type} [os _canceled]
+  (streaming-response {:content-type ndjson-import/content-type} [os _canceled]
                       (import-tables-ndjson! body os)))
 
 ;;; ----------------------------------------- POST /api/database/metadata/fields -----------------------------------------
@@ -1475,19 +1322,19 @@
   row to bulk-insert), or throws `ex-info` with `:kind :invalid_input` or `:invalid_table_id`.
   For matched root-level rows, the patch UPDATE runs here since we already have the target id.
   Unexpected exceptions from the DB lookups are tagged with `:line` and `:old_id` by
-  `wrap-row-error`."
+  `ndjson-import/wrap-row-error`."
   [line-num {:keys [id table_id name base_type database_type] :as line}]
   (try
     (when-not (int? id)
-      (bad-input! line-num "id" "id is required and must be an integer"))
+      (ndjson-import/bad-input! line-num "id" "id is required and must be an integer"))
     (when-not (int? table_id)
-      (bad-input! line-num "table_id" "table_id is required and must be an integer" :old_id id))
+      (ndjson-import/bad-input! line-num "table_id" "table_id is required and must be an integer" :old_id id))
     (when-not (string? name)
-      (bad-input! line-num "name" "name is required and must be a string" :old_id id))
+      (ndjson-import/bad-input! line-num "name" "name is required and must be a string" :old_id id))
     (when-not (string? base_type)
-      (bad-input! line-num "base_type" "base_type is required and must be a string" :old_id id))
+      (ndjson-import/bad-input! line-num "base_type" "base_type is required and must be a string" :old_id id))
     (when-not (string? database_type)
-      (bad-input! line-num "database_type" "database_type is required and must be a string" :old_id id))
+      (ndjson-import/bad-input! line-num "database_type" "database_type is required and must be a string" :old_id id))
     (if-some [existing (match-root-field table_id name)]
       (let [patch (matched-field-patch line)]
         (when (seq patch)
@@ -1501,7 +1348,7 @@
                          :detail (format "Table with id=%d does not exist" table_id)}))
         [:insert (new-defective-field-row line) {:old_id id}]))
     (catch Throwable e
-      (throw (wrap-row-error e line-num {:old_id id})))))
+      (throw (ndjson-import/wrap-row-error e line-num {:old_id id})))))
 
 (defn- process-fields-batch!
   "Classify each line in `batch`, bulk-insert the `:insert` rows, and append response records to
@@ -1521,8 +1368,8 @@
 
 (defn- import-fields-ndjson!
   [^java.io.InputStream in ^java.io.OutputStream out]
-  (stream-ndjson-import!
-   in out
+  (ndjson-import/stream-import!
+   in out import-batch-size
    (fn [batch buffer]
      (process-fields-batch! batch buffer))))
 
@@ -1546,20 +1393,20 @@
    _body
    {:keys [body]} :- [:map [:body [:fn #(instance? java.io.InputStream %)]]]]
   (api/check-superuser)
-  (streaming-response {:content-type ndjson-content-type} [os _canceled]
+  (streaming-response {:content-type ndjson-import/content-type} [os _canceled]
                       (import-fields-ndjson! body os)))
 
 ;;; --------------------------------- POST /api/database/metadata/fields/finalize ---------------------------------
 
 (defn- process-finalize-line!
   "Update one finalized field, appending its response record to `buffer`. Unique-constraint
-  violations from the UPDATE surface as `java.sql.SQLException`; `wrap-row-error` classifies them
+  violations from the UPDATE surface as `java.sql.SQLException`; `ndjson-import/wrap-row-error` classifies them
   as `:unique_violation` and tags them with `:line` and `:id`. Any other unexpected exception
   becomes `:server_error` with the same tags."
   [^java.util.ArrayList buffer line-num {:keys [id parent_id fk_target_field_id]}]
   (try
     (when-not (int? id)
-      (bad-input! line-num "id" "id is required and must be an integer"))
+      (ndjson-import/bad-input! line-num "id" "id is required and must be an integer"))
     (let [updates {:parent_id              parent_id
                    :fk_target_field_id     fk_target_field_id
                    :is_defective_duplicate false}
@@ -1572,12 +1419,12 @@
                          :id id
                          :detail (format "Field with id=%d does not exist" id)}))))
     (catch Throwable e
-      (throw (wrap-row-error e line-num {:id id})))))
+      (throw (ndjson-import/wrap-row-error e line-num {:id id})))))
 
 (defn- import-fields-finalize-ndjson!
   [^java.io.InputStream in ^java.io.OutputStream out]
-  (stream-ndjson-import!
-   in out
+  (ndjson-import/stream-import!
+   in out import-batch-size
    (fn [batch buffer]
      (doseq [[line-num line] batch]
        (process-finalize-line! buffer line-num line)))))
@@ -1598,7 +1445,7 @@
    _body
    {:keys [body]} :- [:map [:body [:fn #(instance? java.io.InputStream %)]]]]
   (api/check-superuser)
-  (streaming-response {:content-type ndjson-content-type} [os _canceled]
+  (streaming-response {:content-type ndjson-import/content-type} [os _canceled]
                       (import-fields-finalize-ndjson! body os)))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
