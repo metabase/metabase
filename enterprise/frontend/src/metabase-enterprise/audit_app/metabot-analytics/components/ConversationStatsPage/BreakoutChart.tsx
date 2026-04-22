@@ -28,6 +28,7 @@ type Props = {
   title: string;
   display?: VisualizationDisplay;
   metric: UsageStatsMetric;
+  viewName?: string;
   onDimensionClick?: (value: unknown) => void;
   h?: number;
   nullLabel?: string;
@@ -47,13 +48,14 @@ export function BreakoutChart({
   title,
   display = "row",
   metric,
+  viewName = VIEW_CONVERSATIONS,
   onDimensionClick,
   h = 350,
   nullLabel,
   maxCategories = 8,
 }: Props) {
   const otherLabel = t`Other`;
-  const { provider, table } = useAuditTable(VIEW_CONVERSATIONS);
+  const { provider, table } = useAuditTable(viewName);
 
   const query = useMemo(() => {
     if (!provider || !table) {
@@ -143,15 +145,7 @@ export function BreakoutChart({
         data: { ...data.data, rows },
       },
     ];
-  }, [
-    data,
-    jsQuery,
-    display,
-    metric,
-    nullLabel,
-    maxCategories,
-    otherLabel,
-  ]);
+  }, [data, jsQuery, display, metric, nullLabel, maxCategories, otherLabel]);
 
   if (isFetching || !rawSeries) {
     return <Skeleton h={h} />;

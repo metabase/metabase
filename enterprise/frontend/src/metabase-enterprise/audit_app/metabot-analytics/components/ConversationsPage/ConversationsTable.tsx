@@ -100,9 +100,9 @@ export function ConversationsTable({
               >
                 <td>{convo.user ? getUserName(convo.user) : t`Unknown`}</td>
                 <td>
-                  {convo.model && (
+                  {convo.profile_id && (
                     <Badge size="sm" variant="light">
-                      {convo.model}
+                      {convo.profile_id}
                     </Badge>
                   )}
                 </td>

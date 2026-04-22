@@ -17,7 +17,7 @@ export function ConversationsByProfileChart({
   return (
     <BreakoutChart
       dateFilter={dateFilter}
-      breakoutColumn="model"
+      breakoutColumn="profile_id"
       title={getChartTitle(metric, "profile")}
       metric={metric}
       onDimensionClick={onDimensionClick}

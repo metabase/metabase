@@ -25,6 +25,7 @@ import {
 type Props = {
   dateFilter: DateFilterValue;
   metric: UsageStatsMetric;
+  viewName?: string;
   onDimensionClick?: (value: unknown) => void;
 };
 
@@ -35,9 +36,10 @@ const CLICKABLE_MODE: ClickActionsMode = {
 export function ConversationsByDayChart({
   dateFilter,
   metric,
+  viewName = VIEW_CONVERSATIONS,
   onDimensionClick,
 }: Props) {
-  const { provider, table } = useAuditTable(VIEW_CONVERSATIONS);
+  const { provider, table } = useAuditTable(viewName);
 
   const bucketName = isSingleDayFilter(dateFilter) ? "hour" : "day";
 
