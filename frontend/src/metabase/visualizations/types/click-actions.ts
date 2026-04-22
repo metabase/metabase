@@ -9,6 +9,8 @@ import type {
   ClickObject,
 } from "metabase-lib/v1/queries/drills/types";
 import type { Card, Series, VisualizationSettings } from "metabase-types/api";
+import type { ClickBehaviorLinkTarget } from "metabase-types/api/click-behavior";
+import type { Dispatch, GetState } from "metabase-types/store";
 
 export type ClickActionModeGetter = (data: {
   question: Question;
@@ -98,6 +100,7 @@ export type PopoverClickAction = ClickActionBase & {
 type UrlClickActionBase = {
   ignoreSiteUrl?: boolean;
   url: () => string;
+  linkTarget?: ClickBehaviorLinkTarget;
 };
 
 export type UrlClickAction = ClickActionBase & UrlClickActionBase;

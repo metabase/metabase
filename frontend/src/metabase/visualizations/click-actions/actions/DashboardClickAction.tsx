@@ -8,6 +8,7 @@ import type {
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
 import {
+  getDashboardDrillLinkTarget,
   getDashboardDrillLinkUrl,
   getDashboardDrillParameters,
   getDashboardDrillQuestionUrl,
@@ -46,19 +47,24 @@ function getAction(
   const setParameterValue = clicked.extraData
     ?.setParameterValue as SetParameterValue;
 
+  const linkTarget = getDashboardDrillLinkTarget(clicked);
+
   switch (type) {
     case "link-url":
       return {
         ignoreSiteUrl: true,
         url: () => getDashboardDrillLinkUrl(clicked),
+        ...(linkTarget ? { linkTarget } : {}),
       };
     case "question-url":
       return {
         url: () => getDashboardDrillQuestionUrl(question, clicked),
+        ...(linkTarget ? { linkTarget } : {}),
       };
     case "dashboard-url":
       return {
         url: () => getDashboardDrillUrl(clicked),
+        ...(linkTarget ? { linkTarget } : {}),
       };
     case "dashboard-filter":
       return {

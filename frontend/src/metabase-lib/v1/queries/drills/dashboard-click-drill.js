@@ -76,6 +76,17 @@ export function getDashboardDrillLinkUrl(clicked) {
   return renderLinkURLForClick(clickBehavior.linkTemplate || "", data);
 }
 
+const LINK_TARGETS = new Set(["_self", "_blank", "_parent", "_top"]);
+
+export function getDashboardDrillLinkTarget(clicked) {
+  const clickBehavior = getClickBehavior(clicked);
+  if (!clickBehavior || clickBehavior.type !== "link") {
+    return undefined;
+  }
+  const { linkTarget } = clickBehavior;
+  return LINK_TARGETS.has(linkTarget) ? linkTarget : undefined;
+}
+
 export function getDashboardDrillUrl(clicked) {
   const clickBehavior = getClickBehavior(clicked);
   const { data, extraData, parameterMapping, targetId } = getClickBehaviorData(
