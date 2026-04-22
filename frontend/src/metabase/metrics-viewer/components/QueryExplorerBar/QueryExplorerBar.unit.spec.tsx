@@ -21,12 +21,13 @@ describe("QueryExplorerBar", () => {
       />,
     );
 
+    expect(screen.getAllByRole("button")).toHaveLength(3);
     expect(screen.getByRole("button", { name: "line" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "area" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "bar" })).toBeInTheDocument();
   });
 
-  it("calls onChartTypeChange with the type when a chart type button is clicked", async () => {
+  it("calls onChartTypeChange when chart type button is clicked", async () => {
     const onChartTypeChange = jest.fn();
 
     renderWithProviders(
@@ -58,26 +59,10 @@ describe("QueryExplorerBar", () => {
     expect(screen.getByText("granularity picker")).toBeInTheDocument();
   });
 
-  it("does not render optional slots when not provided", () => {
+  it("renders the table chart type button when provided", () => {
     renderWithProviders(
       <QueryExplorerBar
-        chartTypes={CHART_TYPES}
-        currentChartType="line"
-        onChartTypeChange={jest.fn()}
-      />,
-    );
-
-    // Only the 3 chart type buttons should be present, no extra content
-    expect(screen.getAllByRole("button")).toHaveLength(3);
-  });
-
-  it("accepts a table type as a chart type option", () => {
-    renderWithProviders(
-      <QueryExplorerBar
-        chartTypes={[
-          ...CHART_TYPES,
-          { type: "table", icon: "table2" as const },
-        ]}
+        chartTypes={[...CHART_TYPES, { type: "table", icon: "table2" }]}
         currentChartType="table"
         onChartTypeChange={jest.fn()}
       />,
