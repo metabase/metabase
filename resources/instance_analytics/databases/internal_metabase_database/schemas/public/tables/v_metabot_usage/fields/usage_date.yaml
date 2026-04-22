@@ -1,0 +1,28 @@
+name: usage_date
+display_name: Usage Date
+description: Day bucket (date truncation of message created_at).
+created_at: '2026-04-21T23:16:38.105167Z'
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_metabot_usage
+database_type: date
+base_type: type/Date
+effective_type: type/Date
+dimensions: []
+position: 0
+custom_position: 0
+database_position: 0
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_metabot_usage
+  model: Table
+- id: usage_date
+  model: Field
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

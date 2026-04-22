@@ -1,0 +1,30 @@
+name: model
+display_name: Model
+description: LLM model/profile used on this day.
+created_at: '2026-04-21T23:16:38.105167Z'
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_metabot_usage
+database_type: text
+base_type: type/Text
+effective_type: type/Text
+semantic_type: type/Category
+dimensions: []
+position: 1
+custom_position: 0
+database_position: 1
+has_field_values: auto-list
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_metabot_usage
+  model: Table
+- id: model
+  model: Field
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

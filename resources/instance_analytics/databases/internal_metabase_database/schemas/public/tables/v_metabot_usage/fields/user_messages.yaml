@@ -1,0 +1,30 @@
+name: user_messages
+display_name: User Messages
+description: Count of user-role messages on this day.
+created_at: '2026-04-21T23:16:38.105167Z'
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_metabot_usage
+database_type: int8
+base_type: type/BigInteger
+effective_type: type/BigInteger
+semantic_type: type/Quantity
+dimensions: []
+position: 4
+custom_position: 0
+database_position: 4
+has_field_values: auto-list
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_metabot_usage
+  model: Table
+- id: user_messages
+  model: Field
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false

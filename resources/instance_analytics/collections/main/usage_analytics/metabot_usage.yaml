@@ -1,0 +1,70 @@
+name: Metabot Usage
+description: 'Daily Metabot usage rollup by model: conversations, unique users, user/assistant messages, and total tokens.'
+entity_id: 4HzVsq_6bA31UuCjn8Rse
+created_at: '2026-04-22T08:18:47.309416Z'
+creator_id: internal@metabase.com
+display: table
+collection_id: vG58R8k-QddHWA7_47umn
+collection_position: 22
+query_type: query
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_metabot_usage
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - source-table:
+    - Internal Metabase Database
+    - public
+    - v_metabot_usage
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- description: Day bucket (date truncation of message created_at).
+  display_name: Usage Date
+  name: usage_date
+  semantic_type: null
+  visibility_type: normal
+- description: LLM model/profile used on this day.
+  display_name: Model
+  name: model
+  semantic_type: type/Category
+  visibility_type: normal
+- description: Number of distinct conversations with at least one message on this day.
+  display_name: Conversation Count
+  name: conversation_count
+  semantic_type: type/Quantity
+  visibility_type: normal
+- description: Number of distinct users with at least one message on this day.
+  display_name: Unique Users
+  name: unique_users
+  semantic_type: type/Quantity
+  visibility_type: normal
+- description: Count of user-role messages on this day.
+  display_name: User Messages
+  name: user_messages
+  semantic_type: type/Quantity
+  visibility_type: normal
+- description: Count of assistant-role messages on this day.
+  display_name: Assistant Messages
+  name: assistant_messages
+  semantic_type: type/Quantity
+  visibility_type: normal
+- description: Sum of tokens across all messages on this day.
+  display_name: Total Tokens
+  name: total_tokens
+  semantic_type: type/Quantity
+  visibility_type: normal
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: 4HzVsq_6bA31UuCjn8Rse
+  label: metabot_usage
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (9afffd8)
+type: model

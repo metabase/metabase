@@ -1,0 +1,30 @@
+name: model
+display_name: Model
+description: LLM model/profile that produced the message.
+created_at: '2026-04-21T23:16:38.089896Z'
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_metabot_messages
+database_type: text
+base_type: type/Text
+effective_type: type/Text
+semantic_type: type/Category
+dimensions: []
+position: 4
+custom_position: 0
+database_position: 4
+has_field_values: auto-list
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_metabot_messages
+  model: Table
+- id: model
+  model: Field
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false
