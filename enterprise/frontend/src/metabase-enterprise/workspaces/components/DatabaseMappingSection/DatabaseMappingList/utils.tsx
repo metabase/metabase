@@ -26,10 +26,10 @@ export function getDatabaseColumn(
   };
 }
 
-export function getSchemasColumn(): TreeTableColumnDef<DatabaseMappingRow> {
+export function getInputSchemasColumn(): TreeTableColumnDef<DatabaseMappingRow> {
   return {
     id: "input_schemas",
-    header: t`Schemas`,
+    header: t`Input schemas`,
     width: "auto",
     minWidth: 200,
     accessorFn: (row) => row.input_schemas.join(", "),
@@ -39,13 +39,30 @@ export function getSchemasColumn(): TreeTableColumnDef<DatabaseMappingRow> {
   };
 }
 
+export function getOutputSchemaColumn(): TreeTableColumnDef<DatabaseMappingRow> {
+  return {
+    id: "output_schema",
+    header: t`Output schema`,
+    width: "auto",
+    minWidth: 200,
+    accessorFn: (row) => row.output_schema ?? "",
+    cell: ({ row }) => (
+      <Ellipsified>{row.original.output_schema ?? ""}</Ellipsified>
+    ),
+  };
+}
+
 export function getColumns(
   databases: Database[],
 ): TreeTableColumnDef<DatabaseMappingRow>[] {
-  return [getDatabaseColumn(databases), getSchemasColumn()];
+  return [
+    getDatabaseColumn(databases),
+    getInputSchemasColumn(),
+    getOutputSchemaColumn(),
+  ];
 }
 
-export const COLUMN_WIDTHS = [0.5, 0.5];
+export const COLUMN_WIDTHS = [0.34, 0.33, 0.33];
 
 export function toMappingRow(
   mapping: WorkspaceDatabaseDraft,

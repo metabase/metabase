@@ -161,7 +161,7 @@ function DatabaseSchemasSelect({ databaseId }: DatabaseSchemasSelectProps) {
   return (
     <FormMultiSelect
       name="input_schemas"
-      label={t`Schemas`}
+      label={t`Input schemas`}
       description={t`Tables in these schemas will be readable when this workspace is used.`}
       placeholder={t`Select schemas`}
       data={schemas}
