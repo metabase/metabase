@@ -421,12 +421,10 @@
      [:= namespace-keyword "tenant-specific"])])
 
 (defn can-read-via-parent-collection?
-  "Read permission for any row whose read policy is a pure function of `:collection_id` plus
-  the current user's permissions set. Both [[can-read-audit-helper]] (the standard
-  Card/Dashboard/etc. path) and semantic search's `filter-read-permitted` fast path go through
-  this function, so they cannot drift: the signature is deliberately `[coll-id]` (not an
-  instance), making it structurally impossible for the logic to grow a dependency on other
-  instance fields."
+  "Read permission for rows whose read policy is a pure function of `:collection_id` and current user perms.
+  Used by models that opt into the collection-id-only contract via [[define-collection-based-visibility!]],
+  and by semantic search's fast path; sharing this helper keeps the two paths structurally in sync.
+  Takes `coll-id` (not an instance) so the logic cannot grow a dependency on other instance fields."
   [coll-id]
   (and (or (premium-features/enable-audit-app?)
            (not (and (some? coll-id) (audit/is-collection-id-audit? coll-id))))
@@ -441,56 +439,80 @@
   "Audit instances should only be readable if audit app is enabled."
   [model    :- :keyword
    instance :- :map]
-  (case model
-    :model/Collection
-    (if (and (not (premium-features/enable-audit-app?))
-             (audit/is-collection-id-audit? (:id instance)))
-      false
-      (mi/current-user-has-full-permissions? :read instance))
-    ;; default: models whose read perms depend only on `:collection_id`.
-    (can-read-via-parent-collection? (:collection_id instance))))
+  (if (and (not (premium-features/enable-audit-app?))
+           (case model
+             :model/Collection (audit/is-collection-id-audit? (:id instance))
+             (audit/is-parent-collection-audit? instance)))
+    false
+    (case model
+      :model/Collection (mi/current-user-has-full-permissions? :read instance)
+      (mi/current-user-has-full-permissions? (perms-objects-set-for-parent-collection instance :read)))))
 
-;;; ---- Collection-id-only read registration ----
+;;; ---- Collection-based visibility registration ----
 
-(defonce ^:private collection-id-only-read-method-registry
-  ;; t2-model-kw → the fn installed as `mi/can-read?` by
-  ;; `define-collection-id-only-read-perms!`. The identity-check test uses this to detect any
-  ;; later `defmethod mi/can-read?` that would silently override the registered semantics.
-  (atom {}))
+(defonce ^:private collection-based-visibility-registry
+  ;; Registrations from `define-collection-based-visibility!`.
+  ;; `:t2-methods` maps t2-model-kw → the installed `mi/can-read?` fn (identity-check test uses the value).
+  ;; `:search-models` holds search-model strings whose `:collection_id` is denormalized at index time
+  ;; (e.g. `indexed-entity`) and therefore have no direct t2 model to install `mi/can-read?` on.
+  (atom {:t2-methods {} :search-models #{}}))
 
 (defn collection-id-only-read-models
-  "Set of t2 model keywords whose `mi/can-read?` was installed via
-  [[define-collection-id-only-read-perms!]]. Downstream consumers (e.g., semantic search's
-  fast-path filter) derive their own sets from this so the two can't drift."
+  "Set of t2 model keywords whose `mi/can-read?` was installed via [[define-collection-based-visibility!]]."
   []
-  (set (keys @collection-id-only-read-method-registry)))
+  (set (keys (:t2-methods @collection-based-visibility-registry))))
 
 (defn collection-id-only-read-method
-  "The exact `mi/can-read?` fn installed by [[define-collection-id-only-read-perms!]] for
-  `t2-model`. Exposed so identity-check tests can detect later overrides. Returns nil for
-  unregistered models."
+  "The `mi/can-read?` fn [[define-collection-based-visibility!]] installed for `t2-model`, or nil.
+  Exposed so identity-check tests can detect later overrides."
   [t2-model]
-  (get @collection-id-only-read-method-registry t2-model))
+  (get-in @collection-based-visibility-registry [:t2-methods t2-model]))
+
+(defn collection-based-visibility-search-models
+  "Search-model strings registered via the string form of [[define-collection-based-visibility!]]."
+  []
+  (:search-models @collection-based-visibility-registry))
 
 (defn register-collection-id-only-read-method!
-  "Implementation detail of [[define-collection-id-only-read-perms!]]. Do not call directly."
+  "Implementation detail of [[define-collection-based-visibility!]]. Do not call directly."
   [t2-model method]
-  (swap! collection-id-only-read-method-registry assoc t2-model method))
+  (swap! collection-based-visibility-registry assoc-in [:t2-methods t2-model] method))
 
-(defmacro define-collection-id-only-read-perms!
-  "Install `mi/can-read?` for `t2-model` as a pure delegate to
-  [[can-read-via-parent-collection?]], and register the model so downstream code (notably
-  semantic search's permission-filter fast path) can discover it. Use this in a model
-  namespace in place of a handwritten `(defmethod mi/can-read? t2-model ...)` whose body is
-  `(can-read-audit-helper t2-model instance)`. If the model ever needs richer read perms,
-  remove the macro invocation and write a plain `defmethod` — the identity-check test in
-  `metabase.permissions.models.permissions-test` will otherwise flag a silent override."
-  [t2-model]
-  `(do
-     (defmethod mi/can-read? ~t2-model
-       ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
-       ([_# pk#]    (mi/can-read? (t2/select-one ~t2-model :id pk#))))
-     (register-collection-id-only-read-method! ~t2-model (get-method mi/can-read? ~t2-model))))
+(defn register-collection-based-visibility-search-model!
+  "Implementation detail of [[define-collection-based-visibility!]]. Do not call directly."
+  [search-model]
+  (swap! collection-based-visibility-registry update :search-models conj search-model))
+
+(defmacro define-collection-based-visibility!
+  "Register read perms as determined fully by `:collection_id`.
+
+  Normal form — `target` is a t2-model keyword: installs `mi/can-read?` as a delegate to
+  [[can-read-via-parent-collection?]] and registers the model.
+  If a model later needs richer read perms, remove the macro call and write a plain `defmethod`.
+  The identity-check test in `metabase.permissions.models.permissions-test` will flag silent overrides.
+
+  Alternate form — `target` is a search-model string whose index-row `:collection_id` is denormalized
+  from a parent model at index time (e.g. `\"indexed-entity\"` from its parent Card).
+  No `mi/can-read?` is installed; the registration only flags the search-model for the semantic-search
+  fast path. `:denormalized-from` is required and names the parent t2-model for documentation."
+  [target & {:keys [denormalized-from]}]
+  (cond
+    (keyword? target)
+    `(do
+       (defmethod mi/can-read? ~target
+         ([instance#] (can-read-via-parent-collection? (:collection_id instance#)))
+         ([_# pk#]    (mi/can-read? (t2/select-one ~target :id pk#))))
+       (register-collection-id-only-read-method! ~target (get-method mi/can-read? ~target)))
+
+    (string? target)
+    (do
+      (assert denormalized-from
+              "string form of define-collection-based-visibility! requires :denormalized-from")
+      `(register-collection-based-visibility-search-model! ~target))
+
+    :else
+    (throw (IllegalArgumentException.
+            "define-collection-based-visibility! target must be a t2-model keyword or search-model string"))))
 
 ; Audit permissions helper fns end
 

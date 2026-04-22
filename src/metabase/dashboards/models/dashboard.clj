@@ -59,7 +59,7 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Dashboard :id pk))))
 
-(perms/define-collection-id-only-read-perms! :model/Dashboard)
+(perms/define-collection-based-visibility! :model/Dashboard)
 
 (defmethod mi/non-timestamped-fields :model/Dashboard [_]
   #{:last_viewed_at})

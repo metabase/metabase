@@ -144,7 +144,7 @@
   ([_ pk]
    (mi/can-write? (t2/select-one :model/Card :id pk))))
 
-(perms/define-collection-id-only-read-perms! :model/Card)
+(perms/define-collection-based-visibility! :model/Card)
 
 (defn model?
   "Returns true if `card` is a model."

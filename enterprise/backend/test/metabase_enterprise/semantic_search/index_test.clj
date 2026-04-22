@@ -502,7 +502,7 @@
                         "only the doc whose denormalized collection_id is readable survives")))))))
 
         (testing "memoizes permission check per collection_id across docs"
-          (let [calls (atom 0)
+          (let [calls       (atom 0)
                 real-helper perms/can-read-via-parent-collection?]
             (with-redefs [perms/can-read-via-parent-collection? (fn [& args]
                                                                   (swap! calls inc)
@@ -516,25 +516,16 @@
           (is (= [] (#'semantic.index/filter-read-permitted []))))))))
 
 (deftest collection-id-only-search-models-derived-correctly-test
-  (testing "derived set includes every search-model whose t2 model is registered as collection-id-only, plus indexed-entity"
-    ;; Sanity smoke test: derivation machinery is working. If this fails, the registry
-    ;; probably isn't populating (namespace load order) or the search spec for one of these
-    ;; models lost its t2 model keyword.
+  (testing "derived set includes every collection-id-only search-model plus indexed-entity"
+    ;; Update the expected set when `define-collection-based-visibility!` is added to or removed from a model.
     (is (= #{"card" "metric" "dataset" "dashboard" "indexed-entity"}
-           @@#'semantic.index/collection-id-only-search-models)
-        "The fast-path set is derived from `perms/collection-id-only-read-models` plus
-         indexed-entity. If you added `perms/define-collection-id-only-read-perms!` to a new
-         model (or removed it from an existing one), update this expected set.")))
+           @@#'semantic.index/collection-id-only-search-models))))
 
 (deftest collection-id-only-search-models-cold-start-regression-test
   (testing "derivation populates correctly even if registry is empty at first access"
-    ;; Regression guard: on cold start, the namespaces whose
-    ;; `perms/define-collection-id-only-read-perms!` calls populate the registry haven't
-    ;; loaded yet. The derivation relies on `search/specifications` (via its internal
-    ;; `t2/resolve-model`) to trigger those loads BEFORE reading the registry. If the order
-    ;; ever flips, the derivation would snapshot an empty registry and cache an incomplete
-    ;; set for the JVM lifetime. The existing smoke test above can't catch this because
-    ;; other tests have already loaded the model namespaces by the time it runs.
+    ;; The derivation must call `search/specifications` before reading the registry — `t2/resolve-model`
+    ;; inside `specifications` loads the model namespaces that populate the registry.
+    ;; If the order flips, cold start caches an empty set for the JVM lifetime.
     (let [real-specs    (var-get #'search/specifications)
           real-registry perms/collection-id-only-read-models
           specs-loaded? (atom false)]
@@ -546,13 +537,9 @@
                                                              (real-registry)
                                                              #{}))]
         (let [result (#'semantic.index/compute-collection-id-only-search-models)]
-          (is (contains? result "card")
-              "card must appear even when the registry is empty at first call — proves
-               `search/specifications` was called before the registry was read.")
-          (is (contains? result "dashboard")
-              "dashboard must appear even when the registry is empty at first call.")
-          (is (contains? result "indexed-entity")
-              "indexed-entity is always included."))))))
+          (is (contains? result "card"))
+          (is (contains? result "dashboard"))
+          (is (contains? result "indexed-entity")))))))
 
 (deftest to-boolean-test
   (testing "to-boolean function correctly converts various input types to booleans"

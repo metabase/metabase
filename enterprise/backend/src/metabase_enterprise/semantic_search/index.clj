@@ -711,50 +711,38 @@
   (update row :legacy_input decode-pgobject))
 
 (defn- compute-collection-id-only-search-models
-  "Body of the `collection-id-only-search-models` delay, extracted so the cold-start ordering
-  (specs-before-registry) is exercised by a regression test.
-
-  Must call `(search/specifications)` BEFORE reading the registry: the `t2/resolve-model`
-  calls inside `specifications` load the model namespaces whose
-  `perms/define-collection-id-only-read-perms!` invocations populate the registry. Reading
-  the registry first risks snapshotting an empty set on cold start and caching it for the
-  JVM lifetime."
+  "Compute search-models whose read perms are determined fully by their collection id."
   []
-  (let [specs                (search/specifications)
-        registered-t2-models (perms/collection-id-only-read-models)]
-    (into #{"indexed-entity"}
+  ;; `search/specifications` must run before reading the registry: its `t2/resolve-model` calls load the
+  ;; model namespaces that populate it. Otherwise cold start caches an empty set for the JVM lifetime.
+  (let [specs                    (search/specifications)
+        registered-t2-models     (perms/collection-id-only-read-models)
+        registered-search-models (perms/collection-based-visibility-search-models)]
+    (into registered-search-models
           (comp (filter (fn [[_ spec]] (contains? registered-t2-models (:model spec))))
                 (map key))
           specs)))
 
-;; Search-model strings whose read permission is determined by `:collection_id` alone. Derived
-;; from `perms/collection-id-only-read-models` (models registered via
-;; `perms/define-collection-id-only-read-perms!`) plus `"indexed-entity"`, whose index-row
-;; `:collection_id` is denormalized from the parent Card via the search spec's Collection join
-;; and whose read policy is therefore transitively the registered Card's.
-;; Computed lazily so the registry has time to populate at app init before first search.
 (def ^:private collection-id-only-search-models
+  "Search-models whose read perms are determined fully by their collection id.
+  Wrapped in `delay` so the registry can populate before first read."
   (delay (compute-collection-id-only-search-models)))
 
 (defn- filter-read-permitted
-  "Returns only those documents in `docs` whose corresponding t2 instances pass an mi/can-read? check for the bound api user."
+  "Returns the subset of `docs` whose t2 instances pass `mi/can-read?` for the current user."
   [docs]
   (let [timer (u/start-timer)
         doc->t2-model (fn [doc] (:model (search/spec (:model doc))))
         fast-set      @collection-id-only-search-models
         {fast-docs true slow-docs false} (group-by #(contains? fast-set (:model %)) docs)
-        ;; Fast path: for models registered via `perms/define-collection-id-only-read-perms!`,
-        ;; `mi/can-read?` is definitionally `(perms/can-read-via-parent-collection?
-        ;; (:collection_id instance))`, so we can skip the t2/select and check permissions
-        ;; straight from the denormalized `:collection_id` on the index row. Calling the shared
-        ;; helper directly means the fast path runs literally the same code as the slow path
-        ;; for these models — no drift possible on the permission logic. Memoizing dedupes the
-        ;; perm check across docs that share a collection.
+        ;; Fast path: for models registered via `perms/define-collection-based-visibility!`, `mi/can-read?` is
+        ;; definitionally `(perms/can-read-via-parent-collection? (:collection_id instance))`, so we skip the
+        ;; t2/select and check perms straight from the denormalized `:collection_id` on the index row.
+        ;; Calling the shared helper means fast and slow paths run the same code for these models.
+        ;; Memoizing dedupes the perm check across docs that share a collection.
         ;;
-        ;; Trade-off: the indexed `:collection_id` is eventually-consistent. Between a move or
-        ;; delete and the next reindex, a user may see a search hit whose live `collection_id`
-        ;; they no longer have access to. The per-row entity fetch on click-through still
-        ;; enforces live permissions, bounding exposure to search-result metadata.
+        ;; Trade-off: the indexed `:collection_id` is eventually-consistent, so a moved/deleted row may appear
+        ;; in results until the next reindex. Click-through still enforces live perms.
         coll-readable? (memoize perms/can-read-via-parent-collection?)
         fast-filtered (filterv #(coll-readable? (:collection_id %)) fast-docs)
         slow-t2-instances (vec

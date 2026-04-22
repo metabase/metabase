@@ -306,19 +306,15 @@
 
 (deftest collection-id-only-read-methods-not-overridden-test
   (testing "no one has redefmethod'd mi/can-read? for a model registered as collection-id-only"
-    ;; Require the model namespaces to ensure their `define-collection-id-only-read-perms!`
-    ;; invocations have run and populated the registry.
+    ;; Load the model namespaces so their `define-collection-based-visibility!` calls populate the registry.
     (require 'metabase.queries.models.card
              'metabase.dashboards.models.dashboard)
     (let [registered (perms/collection-id-only-read-models)]
-      (is (seq registered)
-          "registry should be populated after loading Card/Dashboard namespaces")
+      (is (seq registered))
       (doseq [t2-model registered]
         (is (identical? (perms/collection-id-only-read-method t2-model)
                         (get-method mi/can-read? t2-model))
             (str t2-model ": `mi/can-read?` was overridden after "
-                 "`perms/define-collection-id-only-read-perms!` installed it. "
-                 "If this model's read policy now needs more than `:collection_id`, "
-                 "remove the macro invocation in its model namespace so downstream consumers "
-                 "(e.g., semantic search's fast-path filter) don't continue to assume the "
-                 "collection-id-only contract."))))))
+                 "`define-collection-based-visibility!` installed it. "
+                 "If this model needs richer read perms, remove the macro call so downstream consumers "
+                 "(e.g., semantic search's fast path) don't assume the collection-id-only contract."))))))
