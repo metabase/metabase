@@ -95,6 +95,7 @@ export function MetricsFilterPills({
               {item.metricName && (
                 <Text component="span" fw={700} c="inherit" fz="inherit">
                   {item.metricName}
+                  {", "}
                 </Text>
               )}
               <Text component="span" fw={700} c="inherit" fz="inherit">

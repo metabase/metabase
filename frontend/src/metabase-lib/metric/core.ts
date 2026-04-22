@@ -7,6 +7,7 @@ import type {
   JsMetricDefinition,
   MeasureId,
   MetricId,
+  SegmentId,
 } from "metabase-types/api";
 
 import type {
@@ -231,6 +232,10 @@ export function segmentMetadataForFilter(
     definition,
     filterClause,
   ) as SegmentMetadata | null;
+}
+
+export function segmentMetadataId(segment: SegmentMetadata): SegmentId {
+  return LibMetric.segmentMetadataId(segment) as SegmentId;
 }
 
 export function stringFilterClause(parts: StringFilterParts): FilterClause {

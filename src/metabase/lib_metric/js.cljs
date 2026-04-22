@@ -415,6 +415,12 @@
   [definition segment-metadata]
   (lib-metric.filter/add-segment-filter definition segment-metadata))
 
+(defn ^:export segmentMetadataId
+  "Return the numeric id of a segment metadata map returned by `availableSegments`
+   or `segmentMetadataForFilter`."
+  [segment-metadata]
+  (:id segment-metadata))
+
 ;;; -------------------------------------------------- Filter Parts JS Conversion --------------------------------------------------
 
 (defn- js-key->cljs-key

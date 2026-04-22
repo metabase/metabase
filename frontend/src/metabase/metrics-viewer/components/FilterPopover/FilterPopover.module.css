@@ -43,11 +43,3 @@
 .accordionHeaderExpanded {
   padding-bottom: 0.375rem;
 }
-
-.segmentItem {
-  cursor: pointer;
-
-  &:hover {
-    background-color: var(--mb-color-filter);
-  }
-}
