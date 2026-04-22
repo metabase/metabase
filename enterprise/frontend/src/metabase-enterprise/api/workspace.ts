@@ -1,5 +1,6 @@
 import type {
   CreateWorkspaceRequest,
+  UpdateWorkspaceRequest,
   Workspace,
   WorkspaceId,
 } from "metabase-types/api";
@@ -39,6 +40,15 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("workspace")]),
     }),
+    updateWorkspace: builder.mutation<Workspace, UpdateWorkspaceRequest>({
+      query: ({ id, ...body }) => ({
+        method: "PUT",
+        url: `/api/ee/workspace/${id}`,
+        body,
+      }),
+      invalidatesTags: (_, error, { id }) =>
+        invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
+    }),
     deleteWorkspace: builder.mutation<void, WorkspaceId>({
       query: (id) => ({
         method: "DELETE",
@@ -54,5 +64,6 @@ export const {
   useListWorkspacesQuery,
   useGetWorkspaceQuery,
   useCreateWorkspaceMutation,
+  useUpdateWorkspaceMutation,
   useDeleteWorkspaceMutation,
 } = workspaceApi;
