@@ -1,20 +1,19 @@
 (ns metabase-enterprise.workspaces.api-test
   (:require
-   [clojure.test :refer [deftest testing is]]
+   [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (defn- ws-db-payload
   ([] (ws-db-payload {}))
   ([overrides]
-   (merge {:database_id      (mt/id)
-           :database_details {:user "alice" :password "s3cr3t"}
-           :output_schema    "ws_out"
-           :input_schemas    ["public"]}
+   (merge {:database_id   (mt/id)
+           :input_schemas ["public"]}
           overrides)))
 
 (deftest post-workspace-creates-test
-  (testing "POST /ee/workspace creates a workspace with nested databases"
+  (testing "POST /ee/workspace creates a workspace with server-defaulted output_schema / database_details / status"
     (mt/with-model-cleanup [:model/Workspace]
       (let [resp (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                        {:name      "Made by API"
@@ -22,35 +21,42 @@
         (is (=? {:id        integer?
                  :name      "Made by API"
                  :databases [{:database_id      (mt/id)
-                              :database_details {:user "alice" :password "s3cr3t"}
-                              :output_schema    "ws_out"
+                              :database_details {}
+                              :output_schema    ""
                               :input_schemas    ["public"]
                               :status           "uninitialized"}]}
                 resp))
         (is (t2/exists? :model/Workspace :id (:id resp)))))))
 
-(deftest post-workspace-accepts-status-test
-  (testing "POST /ee/workspace accepts :status on each database and echoes it back"
+(deftest post-workspace-strips-server-controlled-fields-test
+  (testing "output_schema / database_details / status on the request body are silently ignored"
     (mt/with-model-cleanup [:model/Workspace]
       (let [resp (mt/user-http-request :crowberto :post 200 "ee/workspace"
-                                       {:name      "With Status"
-                                        :databases [(ws-db-payload {:status "initialized"})]})]
-        (is (= "initialized" (:status (first (:databases resp)))))))))
+                                       {:name      "Sneaky"
+                                        :databases [(assoc (ws-db-payload)
+                                                           :output_schema    "evil"
+                                                           :database_details {:user "hacker" :password "pwned"}
+                                                           :status           "initialized")]})
+            db   (first (:databases resp))]
+        (is (= ""  (:output_schema db)))
+        (is (= {}  (:database_details db)))
+        (is (= "uninitialized" (:status db)))))))
 
-(deftest put-workspace-updates-status-test
-  (testing "PUT /ee/workspace/:id can change a workspace_database's :status"
+(deftest put-workspace-strips-server-controlled-fields-test
+  (testing "PUT ignores output_schema / database_details / status from the client"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                {:name "Evolving" :databases [(ws-db-payload)]})
             resp         (mt/user-http-request :crowberto :put 200 (str "ee/workspace/" id)
                                                {:name      "Evolving"
-                                                :databases [(ws-db-payload {:status "initialized"})]})]
-        (is (= "initialized" (:status (first (:databases resp)))))))))
-
-(deftest post-workspace-rejects-unknown-status-test
-  (testing "POST with an unknown :status value is rejected"
-    (mt/user-http-request :crowberto :post 400 "ee/workspace"
-                          {:name "Bad Status" :databases [(ws-db-payload {:status "nonsense"})]})))
+                                                :databases [(assoc (ws-db-payload)
+                                                                   :output_schema    "evil"
+                                                                   :database_details {:user "hacker"}
+                                                                   :status           "initialized")]})
+            db           (first (:databases resp))]
+        (is (= ""  (:output_schema db)))
+        (is (= {}  (:database_details db)))
+        (is (= "uninitialized" (:status db)))))))
 
 (deftest post-workspace-requires-superuser-test
   (testing "Non-superusers get 403 from POST /ee/workspace"
@@ -87,9 +93,10 @@
         (is (=? {:id        id
                  :name      "Single"
                  :databases [{:database_id      (mt/id)
-                              :database_details {:user "alice" :password "s3cr3t"}
-                              :output_schema    "ws_out"
-                              :input_schemas    ["public"]}]}
+                              :database_details {}
+                              :output_schema    ""
+                              :input_schemas    ["public"]
+                              :status           "uninitialized"}]}
                 resp)))))
 
   (testing "GET /ee/workspace/:id with unknown id returns 404"
@@ -101,21 +108,19 @@
       (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}]
         (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                  {:name      "Before"
-                                                  :databases [(ws-db-payload {:output_schema "keep"
-                                                                              :input_schemas ["keep"]})
+                                                  :databases [(ws-db-payload)
                                                               (ws-db-payload {:database_id   db2-id
-                                                                              :output_schema "drop"
-                                                                              :input_schemas ["drop"]})]})
+                                                                              :input_schemas ["to_drop"]})]})
               resp         (mt/user-http-request :crowberto :put 200 (str "ee/workspace/" id)
                                                  {:name      "After"
-                                                  :databases [(ws-db-payload {:output_schema "keep"
-                                                                              :input_schemas ["keep"]})
+                                                  :databases [(ws-db-payload)
                                                               (ws-db-payload {:database_id   db2-id
-                                                                              :output_schema "new"
-                                                                              :input_schemas ["new"]})]})]
+                                                                              :input_schemas ["fresh"]})]})]
           (is (= "After" (:name resp)))
-          (is (= #{"keep" "new"} (into #{} (map :output_schema) (:databases resp))))
-          (is (not (t2/exists? :model/WorkspaceDatabase :workspace_id id :output_schema "drop"))))))))
+          (is (= 2 (count (:databases resp))))
+          (is (= #{["public"] ["fresh"]} (into #{} (map :input_schemas) (:databases resp))))
+          (testing "only the two databases from the PUT survive (the previous ['to_drop'] row is gone)"
+            (is (= 2 (t2/count :model/WorkspaceDatabase :workspace_id id)))))))))
 
 (deftest put-workspace-requires-superuser-test
   (testing "Non-superusers get 403 from PUT /ee/workspace/:id"
@@ -132,3 +137,45 @@
                                                {:name "Guarded" :databases []})]
         (mt/user-http-request :rasta :get 403 "ee/workspace")
         (mt/user-http-request :rasta :get 403 (str "ee/workspace/" id))))))
+
+(deftest post-initialize-triggers-provisioning-test
+  (testing "POST /ee/workspace/:id/initialize runs provisioning and returns triggered count"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                               {:name "To Init" :databases [(ws-db-payload)]})
+            called       (atom [])]
+        (with-redefs [provisioning/run-async!                 (fn [f] (f))
+                      provisioning/provision-workspace-database!
+                      (fn [wsd-id] (swap! called conj wsd-id) nil)]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/initialize") {})]
+            (is (= {:workspace_id id :triggered 1} resp))
+            (is (= 1 (count @called)))))))))
+
+(deftest post-initialize-skips-already-initialized-test
+  (testing "POST /ee/workspace/:id/initialize skips WorkspaceDatabases that are already :initialized"
+    (mt/with-temp [:model/Workspace {id :id} {:name "Mixed"}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     id
+                    :database_id      (mt/id)
+                    :database_details {:user "x"}
+                    :output_schema    "done"
+                    :input_schemas    ["public"]
+                    :status           :initialized}]
+      (let [called (atom [])]
+        (with-redefs [provisioning/run-async!                 (fn [f] (f))
+                      provisioning/provision-workspace-database!
+                      (fn [wsd-id] (swap! called conj wsd-id) nil)]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/initialize") {})]
+            (is (= {:workspace_id id :triggered 0} resp))
+            (is (empty? @called))))))))
+
+(deftest post-initialize-requires-superuser-test
+  (testing "Non-superusers get 403 from POST /ee/workspace/:id/initialize"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                               {:name "Guarded" :databases []})]
+        (mt/user-http-request :rasta :post 403 (str "ee/workspace/" id "/initialize") {})))))
+
+(deftest post-initialize-404-on-unknown-workspace-test
+  (testing "POST to /initialize with an unknown id returns 404"
+    (mt/user-http-request :crowberto :post 404 (str "ee/workspace/" Integer/MAX_VALUE "/initialize") {})))
