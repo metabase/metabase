@@ -1,0 +1,189 @@
+## Drop all workspace tables and the workspace_permissions_status column on metabase_database.
+## The workspaces feature was removed; these tables and the column are no longer used.
+## Tables are dropped children-first to respect foreign-key dependencies.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v61.2026-04-22T00:00:00
+      author: ranquild
+      comment: Drop workspace_merge_transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace_merge_transform
+      changes:
+        - dropTable:
+            tableName: workspace_merge_transform
+            cascadeConstraints: true
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:00:10
+      author: ranquild
+      comment: Drop workspace_merge table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace_merge
+      changes:
+        - dropTable:
+            tableName: workspace_merge
+            cascadeConstraints: true
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:00:20
+      author: ranquild
+      comment: Drop workspace_input_transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace_input_transform
+      changes:
+        - dropTable:
+            tableName: workspace_input_transform
+            cascadeConstraints: true
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:00:30
+      author: ranquild
+      comment: Drop workspace_output_external table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace_output_external
+      changes:
+        - dropTable:
+            tableName: workspace_output_external
+            cascadeConstraints: true
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:00:40
+      author: ranquild
+      comment: Drop workspace_input_external table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace_input_external
+      changes:
+        - dropTable:
+            tableName: workspace_input_external
+            cascadeConstraints: true
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:00:50
+      author: ranquild
+      comment: Drop workspace_output table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace_output
+      changes:
+        - dropTable:
+            tableName: workspace_output
+            cascadeConstraints: true
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:00
+      author: ranquild
+      comment: Drop workspace_input table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace_input
+      changes:
+        - dropTable:
+            tableName: workspace_input
+            cascadeConstraints: true
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:10
+      author: ranquild
+      comment: Drop workspace_transform table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace_transform
+      changes:
+        - dropTable:
+            tableName: workspace_transform
+            cascadeConstraints: true
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:20
+      author: ranquild
+      comment: Drop workspace_log table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace_log
+      changes:
+        - dropTable:
+            tableName: workspace_log
+            cascadeConstraints: true
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:30
+      author: ranquild
+      comment: Drop workspace_graph table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace_graph
+      changes:
+        - dropTable:
+            tableName: workspace_graph
+            cascadeConstraints: true
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:40
+      author: ranquild
+      comment: Drop workspace table
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: workspace
+      changes:
+        - dropTable:
+            tableName: workspace
+            cascadeConstraints: true
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:50
+      author: ranquild
+      comment: Drop workspace_permissions_status column from metabase_database
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: metabase_database
+            columnName: workspace_permissions_status
+      changes:
+        - dropColumn:
+            tableName: metabase_database
+            columnName: workspace_permissions_status
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:02:00
+      author: ranquild
+      comment: Drop workspace_id column from collection
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: collection
+            columnName: workspace_id
+      changes:
+        - dropColumn:
+            tableName: collection
+            columnName: workspace_id
+      rollback: # workspaces feature removed; no rollback

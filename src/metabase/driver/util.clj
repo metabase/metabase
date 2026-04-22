@@ -17,7 +17,6 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru trs]]
    [metabase.util.log :as log]
@@ -760,72 +759,6 @@
         (auth-provider/fetch-auth auth-provider database-id db-details)
         db-details))
      db-details)))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                        Workspace Isolation Utilities                                           |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- instance-uuid-slug
-  "Create a slug from the site UUID, taking the first character of each section."
-  [site-uuid-string]
-  (->> (str/split site-uuid-string #"-")
-       (map first)
-       (apply str)))
-
-;; WARNING: Do NOT change this prefix. It is baked into existing workspace schemas in production databases.
-;; Changing it would require extreme care for backwards compatibility. If you need to match against this
-;; prefix, use [[workspace-isolated-schema?]] or [[workspace-isolated-schema-clause]] rather than hardcoding it.
-(def ^:private workspace-isolated-prefix "mb__isolation_")
-;; Escaped for SQL LIKE: underscores are wildcards, so we escape them with backslash.
-;; The default escape character works across all supported app-database engines (H2, Postgres, MySQL, MariaDB),
-;; so an explicit ESCAPE clause is not necessary.
-(def ^:private workspace-isolated-like-pattern
-  (str (str/replace workspace-isolated-prefix "_" "\\_") "%"))
-
-(defn workspace-isolated-schema?
-  "Returns true if the given schema name belongs to a workspace isolation namespace."
-  [schema-name]
-  (and (some? schema-name)
-       (str/starts-with? schema-name workspace-isolated-prefix)))
-
-(defn workspace-isolated-schema-clause
-  "Returns a HoneySQL [:like column pattern] clause that matches workspace isolation schemas.
-   `column` is typically `:schema`."
-  [column]
-  [:like column workspace-isolated-like-pattern])
-
-(defn workspace-isolation-namespace-name
-  "Generate namespace/database name for workspace isolation following mb__isolation_<slug>_<workspace-id> pattern.
-  Uses 'namespace' as the generic term that maps to 'schema' in Postgres, 'database' in ClickHouse, etc."
-  [workspace]
-  (assert (some? (:id workspace)) "Workspace must have an :id")
-  (let [instance-slug      (instance-uuid-slug (str (system/site-uuid)))
-        clean-workspace-id (str/replace (str (:id workspace)) #"[^a-zA-Z0-9]" "_")]
-    (format "%s%s_%s" workspace-isolated-prefix instance-slug clean-workspace-id)))
-
-(defn workspace-isolation-user-name
-  "Generate username for workspace isolation."
-  [workspace]
-  (let [instance-slug (instance-uuid-slug (str (system/site-uuid)))]
-    (format "%s%s_%s" workspace-isolated-prefix instance-slug (:id workspace))))
-
-(def ^:private workspace-password-char-sets
-  "Character sets for password generation. Cycles through these to ensure representation from each."
-  ["ABCDEFGHJKLMNPQRSTUVWXYZ"
-   "abcdefghjkmnpqrstuvwxyz"
-   "123456789"
-   "!#$%&*+-="])
-
-(defn random-workspace-password
-  "Generate a random password suitable for most database engines.
-   Ensures the password contains characters from all sets (uppercase, lowercase, digits, special)
-   by cycling through the character sets. Result is shuffled for randomness."
-  []
-  (->> (cycle workspace-password-char-sets)
-       (take (+ 32 (rand-int 32)))
-       (map rand-nth)
-       shuffle
-       (apply str)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Macaw parsing helpers                                                |
