@@ -153,7 +153,7 @@ describe("scenarios > navigation > navbar", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
     });
 
     it("should show the library when a table is published", () => {

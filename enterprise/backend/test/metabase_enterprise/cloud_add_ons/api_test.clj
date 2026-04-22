@@ -99,6 +99,45 @@
               (is (=? {}
                       (mt/user-http-request user :post 200 (str "ee/cloud-add-ons/" product-type) {}))))))))))
 
+(deftest ^:sequential delete-product-type-test
+  (testing "DELETE /api/ee/cloud-add-ons/metabase-ai-managed"
+    (testing "requires superuser"
+      (mt/with-premium-features #{}
+        (is (=? "You don't have permissions to do that."
+                (mt/user-http-request :rasta :delete 403 "ee/cloud-add-ons/metabase-ai-managed")))))
+    (testing "requires token feature 'hosting'"
+      (mt/with-premium-features #{}
+        (is (=? "Can only access Store API for Metabase Cloud instances."
+                (mt/user-http-request :crowberto :delete 400 "ee/cloud-add-ons/metabase-ai-managed")))))
+    (testing "when conditions are met"
+      (mt/with-premium-features #{:hosting}
+        (doseq [[status-code error-message] {404 "Could not establish a connection to Metabase Cloud."
+                                             403 "Could not establish a connection to Metabase Cloud."
+                                             401 "Could not establish a connection to Metabase Cloud."
+                                             400 "Could not remove this add-on."}]
+          (testing (format "passes through HTTP status %d from Store API" status-code)
+            (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {:status status-code})))]
+              (is (=? error-message
+                      (mt/user-http-request :crowberto :delete status-code "ee/cloud-add-ons/metabase-ai-managed"))))))
+        (testing "responds with HTTP status 500 for other errors from Store API"
+          (with-redefs [hm.client/call (fn [& _] (throw (ex-info "TEST" {})))]
+            (is (=? "Unexpected error"
+                    (mt/user-http-request :crowberto :delete 500 "ee/cloud-add-ons/metabase-ai-managed")))))
+        (testing "succeeds"
+          (let [{store-api-proxy :proxy store-api-calls :calls} (semantic.tu/spy (constantly nil))
+                {clear-token-cache-proxy :proxy clear-token-cache-calls :calls} (semantic.tu/spy premium-features/clear-cache!)]
+            (with-redefs [hm.client/call                store-api-proxy
+                          premium-features/clear-cache! clear-token-cache-proxy]
+              (is (=? {}
+                      (mt/user-http-request :crowberto :delete 200 "ee/cloud-add-ons/metabase-ai-managed")))
+              (is (= [{:args [:change-add-ons
+                              :remove-add-ons
+                              [{:product-type "metabase-ai-managed"}]]
+                       :ret  nil}]
+                     @store-api-calls))
+              (is (not-empty @clear-token-cache-calls)
+                  "Token cache was cleared"))))))))
+
 (deftest ^:sequential get-plans-test
   (testing "GET /api/ee/cloud-add-ons/plans"
     (testing "requires superuser"

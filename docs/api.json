@@ -3367,20 +3367,6 @@
           "required" : [ "unknown" ]
         } ]
       },
-      "metabase.agent-api.api.aggregation" : {
-        "description" : "Aggregation — count (field optional), field-based (field required), or measure-based.",
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.count-aggregation"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.field-aggregation"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.measure-aggregation"
-        } ]
-      },
-      "metabase.agent-api.api.bucket" : {
-        "type" : "string",
-        "enum" : [ "millisecond", "second", "minute", "hour", "day", "week", "month", "quarter", "year", "second-of-minute", "minute-of-hour", "hour-of-day", "day-of-week", "day-of-month", "day-of-year", "week-of-year", "month-of-year", "quarter-of-year", "year-of-era" ]
-      },
       "metabase.agent-api.api.column-metadata" : {
         "description" : "Metadata for a single result column.",
         "type" : "object",
@@ -3404,51 +3390,6 @@
         },
         "required" : [ "name", "base_type", "display_name" ]
       },
-      "metabase.agent-api.api.construct-query-metric-request" : {
-        "description" : "Request schema for constructing a query from a metric.\n   Only supports filters and group_by (aggregation is defined by the metric).",
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "filters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.agent-api.api.filter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "group_by" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.agent-api.api.group-by"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "metric_id" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }
-          },
-          "required" : [ "metric_id" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
-      "metabase.agent-api.api.construct-query-request" : {
-        "description" : "Request schema for /v1/construct-query. Accepts either table_id or metric_id.",
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-table-request"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-metric-request"
-        } ]
-      },
       "metabase.agent-api.api.construct-query-response" : {
         "description" : "Response containing a base64-encoded MBQL query for use with /v1/execute.",
         "type" : "object",
@@ -3459,216 +3400,6 @@
           }
         },
         "required" : [ "query" ]
-      },
-      "metabase.agent-api.api.construct-query-table-request" : {
-        "description" : "Request schema for constructing a query from a table.\n\n   Query components:\n   - filters: Filter conditions to apply\n   - fields: Specific fields to select (omit for all fields)\n   - aggregations: Aggregation functions (sum, count, avg, etc.). Use sort_order on the aggregation to order by it.\n   - group_by: Fields to group by, with optional temporal granularity\n   - order_by: Order by regular fields only. To order by an aggregation result, use sort_order on the aggregation instead.\n   - limit: Maximum rows to return",
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "aggregations" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.agent-api.api.aggregation"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "fields" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.agent-api.api.field"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "filters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.agent-api.api.filter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "group_by" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.agent-api.api.group-by"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "limit" : {
-              "oneOf" : [ {
-                "description" : "value must be an integer greater than zero.",
-                "type" : "integer",
-                "minimum" : 1
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "order_by" : {
-              "description" : "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation.",
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.agent-api.api.order-by"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "table_id" : {
-              "description" : "value must be an integer greater than zero.",
-              "type" : "integer",
-              "minimum" : 1
-            }
-          },
-          "required" : [ "table_id" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
-      "metabase.agent-api.api.count-aggregation" : {
-        "description" : "Count aggregation — counts rows, no field_id needed.\n   Use sort_order to order results by this aggregation ('asc' or 'desc').",
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "bucket" : {
-              "$ref" : "#/components/schemas/metabase.agent-api.api.bucket"
-            },
-            "function" : {
-              "const" : "count"
-            },
-            "sort_order" : {
-              "oneOf" : [ {
-                "type" : "string",
-                "enum" : [ "asc", "desc" ]
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "required" : [ "function" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
-      "metabase.agent-api.api.disjunctive-numeric-filter" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "field_id" : {
-              "type" : "string"
-            },
-            "operation" : {
-              "type" : "string",
-              "enum" : [ "equals", "not-equals" ]
-            },
-            "values" : {
-              "type" : "array",
-              "items" : {
-                "anyOf" : [ {
-                  "type" : "integer"
-                }, {
-                  "type" : "number"
-                } ]
-              }
-            }
-          },
-          "required" : [ "field_id", "operation", "values" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
-      "metabase.agent-api.api.disjunctive-string-date-filter" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "field_id" : {
-              "type" : "string"
-            },
-            "operation" : {
-              "type" : "string",
-              "enum" : [ "equals", "not-equals", "string-contains", "string-not-contains", "string-starts-with", "string-ends-with" ]
-            },
-            "values" : {
-              "type" : "array",
-              "items" : {
-                "type" : "string"
-              }
-            }
-          },
-          "required" : [ "field_id", "operation", "values" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
-      "metabase.agent-api.api.disjunctive-temporal-extraction-filter" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "field_id" : {
-              "type" : "string"
-            },
-            "operation" : {
-              "type" : "string",
-              "enum" : [ "year-equals", "year-not-equals", "quarter-equals", "quarter-not-equals", "month-equals", "month-not-equals", "day-of-week-equals", "day-of-week-not-equals", "hour-equals", "hour-not-equals", "minute-equals", "minute-not-equals", "second-equals", "second-not-equals" ]
-            },
-            "values" : {
-              "type" : "array",
-              "items" : {
-                "type" : "integer"
-              }
-            }
-          },
-          "required" : [ "field_id", "operation", "values" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
-      "metabase.agent-api.api.disjunctive-temporal-filter" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "bucket" : {
-              "$ref" : "#/components/schemas/metabase.agent-api.api.bucket"
-            },
-            "field_id" : {
-              "type" : "string"
-            },
-            "operation" : {
-              "type" : "string",
-              "enum" : [ "equals", "not-equals", "greater-than", "greater-than-or-equal", "less-than", "less-than-or-equal" ]
-            },
-            "values" : {
-              "type" : "array",
-              "items" : {
-                "anyOf" : [ {
-                  "type" : "string"
-                }, {
-                  "type" : "integer"
-                } ]
-              }
-            }
-          },
-          "required" : [ "field_id", "operation", "values" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
       },
       "metabase.agent-api.api.entity-type" : {
         "description" : "The type of queryable entity.",
@@ -3725,70 +3456,91 @@
         },
         "required" : [ "status" ]
       },
-      "metabase.agent-api.api.existence-filter" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "field_id" : {
-              "type" : "string"
-            },
-            "operation" : {
-              "type" : "string",
-              "enum" : [ "is-null", "is-not-null", "string-is-empty", "string-is-not-empty", "is-true", "is-false" ]
-            }
-          },
-          "required" : [ "field_id", "operation" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
       "metabase.agent-api.api.field" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "bucket" : {
-              "$ref" : "#/components/schemas/metabase.agent-api.api.bucket"
-            },
-            "field_id" : {
+        "description" : "A field from a table or metric. field_id is the real database field ID (integer) for concrete fields,\n  or a string alias for expression/aggregation columns.",
+        "type" : "object",
+        "properties" : {
+          "base_type" : {
+            "oneOf" : [ {
               "type" : "string"
-            }
+            }, {
+              "type" : "null"
+            } ]
           },
-          "required" : [ "field_id" ]
+          "coercion_strategy" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "semantic_type" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "display_name" : {
+            "type" : "string"
+          },
+          "field_values" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : { }
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "type" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.agent-api.api.field-type"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "field_id" : {
+            "$ref" : "#/components/schemas/metabase.agent-api.api.field-id"
+          },
+          "effective_type" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "database_type" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "field_id", "name", "display_name" ]
+      },
+      "metabase.agent-api.api.field-id" : {
+        "description" : "Field id as accepted by agent_api endpoints — either a real app-DB field id (positive integer)\n  or a string alias for expression/aggregation columns.",
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
         }, {
-          "type" : "object",
-          "properties" : { }
+          "type" : "string"
         } ]
       },
-      "metabase.agent-api.api.field-aggregation" : {
-        "description" : "Aggregation using a field and function. field_id is required.\n   Use sort_order to order results by this aggregation ('asc' or 'desc').",
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "bucket" : {
-              "$ref" : "#/components/schemas/metabase.agent-api.api.bucket"
-            },
-            "field_id" : {
-              "type" : "string"
-            },
-            "function" : {
-              "type" : "string",
-              "enum" : [ "avg", "count-distinct", "max", "min", "sum" ]
-            },
-            "sort_order" : {
-              "oneOf" : [ {
-                "type" : "string",
-                "enum" : [ "asc", "desc" ]
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "required" : [ "field_id", "function" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
+      "metabase.agent-api.api.field-type" : {
+        "description" : "A data type for a field derived from Metabase's type hierarchy.",
+        "type" : "string",
+        "enum" : [ "boolean", "date", "datetime", "time", "number", "string" ]
       },
       "metabase.agent-api.api.field-values" : {
         "description" : "Statistics and sample values for a specific field.",
@@ -3796,7 +3548,7 @@
         "properties" : {
           "field_id" : {
             "oneOf" : [ {
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.agent-api.api.field-id"
             }, {
               "type" : "null"
             } ]
@@ -3817,51 +3569,6 @@
             } ]
           }
         }
-      },
-      "metabase.agent-api.api.filter" : {
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.segment-filter"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.existence-filter"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.temporal-extraction-filter"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.disjunctive-temporal-extraction-filter"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.temporal-filter"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.disjunctive-temporal-filter"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.string-filter"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.disjunctive-string-date-filter"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.numeric-filter"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.disjunctive-numeric-filter"
-        } ]
-      },
-      "metabase.agent-api.api.group-by" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "field_granularity" : {
-              "oneOf" : [ {
-                "type" : "string",
-                "enum" : [ "minute", "hour", "day", "week", "month", "quarter", "year", "day-of-week" ]
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "field_id" : {
-              "type" : "string"
-            }
-          },
-          "required" : [ "field_id" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
       },
       "metabase.agent-api.api.measure" : {
         "description" : "A reusable aggregation expression associated with a table. Reference via measure_id in the aggregations array.",
@@ -3890,36 +3597,13 @@
         },
         "required" : [ "id", "name" ]
       },
-      "metabase.agent-api.api.measure-aggregation" : {
-        "description" : "Aggregation using a pre-defined measure.",
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "measure_id" : {
-              "type" : "integer"
-            },
-            "sort_order" : {
-              "oneOf" : [ {
-                "type" : "string",
-                "enum" : [ "asc", "desc" ]
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "required" : [ "measure_id" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
       "metabase.agent-api.api.metric" : {
         "description" : "A metric with its queryable dimensions and segments. The default_time_dimension_field_id is the field_id of the recommended time dimension for temporal breakouts.",
         "type" : "object",
         "properties" : {
           "default_time_dimension_field_id" : {
             "oneOf" : [ {
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.agent-api.api.field-id"
             }, {
               "type" : "null"
             } ]
@@ -3976,7 +3660,7 @@
         "properties" : {
           "default_time_dimension_field_id" : {
             "oneOf" : [ {
-              "type" : "string"
+              "$ref" : "#/components/schemas/metabase.agent-api.api.field-id"
             }, {
               "type" : "null"
             } ]
@@ -4000,47 +3684,12 @@
         },
         "required" : [ "id", "type", "name" ]
       },
-      "metabase.agent-api.api.numeric-filter" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "field_id" : {
-              "type" : "string"
-            },
-            "operation" : {
-              "type" : "string",
-              "enum" : [ "equals", "not-equals", "greater-than", "greater-than-or-equal", "less-than", "less-than-or-equal" ]
-            },
-            "value" : {
-              "anyOf" : [ {
-                "type" : "integer"
-              }, {
-                "type" : "number"
-              } ]
-            }
-          },
-          "required" : [ "field_id", "operation", "value" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
-      "metabase.agent-api.api.order-by" : {
-        "description" : "Order by item specifying a field and sort direction.",
-        "type" : "object",
-        "properties" : {
-          "direction" : {
-            "type" : "string",
-            "enum" : [ "asc", "desc" ]
-          },
-          "field" : {
-            "$ref" : "#/components/schemas/metabase.agent-api.api.field"
-          }
-        },
-        "required" : [ "field", "direction" ]
+      "metabase.agent-api.api.program-request" : {
+        "description" : "Request body for /v2/construct-query and /v2/query.\n  An agent-lib structured program with `:source` and `:operations`. The top-level\n  `:source` must reference a database entity (`table`, `card`, `dataset`, or\n  `metric`); `context` and nested `program` sources are rejected at the HTTP\n  boundary by [[evaluate-program-for-execution]] because they require an\n  in-process evaluation context.",
+        "$ref" : "#/components/schemas/metabase.agent-lib.schema.program"
       },
       "metabase.agent-api.api.query-request" : {
-        "description" : "Request schema for /v1/query. Accepts construct params (table_id or metric_id) or a continuation_token.",
+        "description" : "Request body for /v2/query. Accepts either a structured program or a continuation_token.",
         "oneOf" : [ {
           "type" : "object",
           "properties" : {
@@ -4051,9 +3700,7 @@
           },
           "required" : [ "continuation_token" ]
         }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-table-request"
-        }, {
-          "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-metric-request"
+          "$ref" : "#/components/schemas/metabase.agent-api.api.program-request"
         } ]
       },
       "metabase.agent-api.api.query-response" : {
@@ -4275,21 +3922,6 @@
         },
         "required" : [ "id", "name" ]
       },
-      "metabase.agent-api.api.segment-filter" : {
-        "description" : "Filter using a pre-defined segment.",
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "segment_id" : {
-              "type" : "integer"
-            }
-          },
-          "required" : [ "segment_id" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
       "metabase.agent-api.api.statistics" : {
         "description" : "Statistical summary of a field's values computed during database sync. Includes counts, percentages, numeric summaries (min/max/avg/quartiles/sd), and date ranges.",
         "type" : "object",
@@ -4401,27 +4033,6 @@
           }
         }
       },
-      "metabase.agent-api.api.string-filter" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "field_id" : {
-              "type" : "string"
-            },
-            "operation" : {
-              "type" : "string",
-              "enum" : [ "equals", "not-equals", "string-contains", "string-not-contains", "string-starts-with", "string-ends-with" ]
-            },
-            "value" : {
-              "type" : "string"
-            }
-          },
-          "required" : [ "field_id", "operation", "value" ]
-        }, {
-          "type" : "object",
-          "properties" : { }
-        } ]
-      },
       "metabase.agent-api.api.table" : {
         "description" : "Full details of a table including its fields, related tables, metrics, and segments.",
         "type" : "object",
@@ -4507,54 +4118,301 @@
         },
         "required" : [ "id", "type", "name", "display_name", "database_id", "database_engine", "fields" ]
       },
-      "metabase.agent-api.api.temporal-extraction-filter" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "field_id" : {
-              "type" : "string"
-            },
-            "operation" : {
-              "type" : "string",
-              "enum" : [ "year-equals", "year-not-equals", "quarter-equals", "quarter-not-equals", "month-equals", "month-not-equals", "day-of-week-equals", "day-of-week-not-equals", "hour-equals", "hour-not-equals", "minute-equals", "minute-not-equals", "second-equals", "second-not-equals" ]
-            },
-            "value" : {
-              "type" : "integer"
-            }
-          },
-          "required" : [ "field_id", "operation", "value" ]
+      "metabase.agent-lib.schema.aggregation-ref-form" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "aggregation-ref"
         }, {
-          "type" : "object",
-          "properties" : { }
+          "type" : "integer",
+          "minimum" : 0
         } ]
       },
-      "metabase.agent-api.api.temporal-filter" : {
-        "allOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "bucket" : {
-              "$ref" : "#/components/schemas/metabase.agent-api.api.bucket"
-            },
-            "field_id" : {
-              "type" : "string"
-            },
-            "operation" : {
-              "type" : "string",
-              "enum" : [ "equals", "not-equals", "greater-than", "greater-than-or-equal", "less-than", "less-than-or-equal" ]
-            },
-            "value" : {
-              "anyOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "integer"
-              } ]
+      "metabase.agent-lib.schema.expression-ref-form" : {
+        "type" : "array",
+        "prefixItems" : [ {
+          "const" : "expression-ref"
+        }, {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.non-blank-string"
+        } ]
+      },
+      "metabase.agent-lib.schema.form" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.source-ref"
+        }, {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.query-aware-ref"
+        }, {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.nested-operator-form"
+        } ]
+      },
+      "metabase.agent-lib.schema.map-literal" : {
+        "type" : "object",
+        "additionalProperties" : {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.node"
+        }
+      },
+      "metabase.agent-lib.schema.nested-operator-form" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.node"
+        },
+        "minItems" : 1
+      },
+      "metabase.agent-lib.schema.node" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.scalar"
+        }, {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.program-literal"
+        }, {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.map-literal"
+        }, {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
+        }, {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.vector-literal"
+        } ]
+      },
+      "metabase.agent-lib.schema.non-blank-string" : {
+        "type" : "string"
+      },
+      "metabase.agent-lib.schema.page" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "page" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          }
+        },
+        "required" : [ "page", "items" ],
+        "additionalProperties" : false
+      },
+      "metabase.agent-lib.schema.program" : {
+        "type" : "object",
+        "properties" : {
+          "operations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.agent-lib.schema.top-level-op"
             }
           },
-          "required" : [ "field_id", "operation", "value" ]
+          "source" : {
+            "$ref" : "#/components/schemas/metabase.agent-lib.schema.source"
+          }
+        },
+        "required" : [ "source", "operations" ],
+        "additionalProperties" : false
+      },
+      "metabase.agent-lib.schema.program-literal" : {
+        "type" : "object",
+        "properties" : {
+          "program" : {
+            "$ref" : "#/components/schemas/metabase.agent-lib.schema.program"
+          },
+          "type" : {
+            "const" : "program"
+          }
+        },
+        "required" : [ "type", "program" ],
+        "additionalProperties" : false
+      },
+      "metabase.agent-lib.schema.query-aware-ref" : {
+        "anyOf" : [ {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.expression-ref-form"
+        }, {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.aggregation-ref-form"
+        } ]
+      },
+      "metabase.agent-lib.schema.scalar" : {
+        "anyOf" : [ {
+          "type" : "null"
+        }, {
+          "type" : "string"
+        }, {
+          "type" : "number"
+        }, {
+          "type" : "boolean"
+        } ]
+      },
+      "metabase.agent-lib.schema.source" : {
+        "anyOf" : [ {
+          "type" : "object",
+          "properties" : {
+            "ref" : {
+              "const" : "source"
+            },
+            "type" : {
+              "const" : "context"
+            }
+          },
+          "required" : [ "type", "ref" ],
+          "additionalProperties" : false
         }, {
           "type" : "object",
-          "properties" : { }
+          "properties" : {
+            "id" : {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            },
+            "type" : {
+              "type" : "string",
+              "enum" : [ "table", "card", "dataset", "metric" ]
+            }
+          },
+          "required" : [ "type", "id" ],
+          "additionalProperties" : false
+        }, {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.program-literal"
         } ]
+      },
+      "metabase.agent-lib.schema.source-ref" : {
+        "anyOf" : [ {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "field"
+          }, {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "table"
+          }, {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "card"
+          }, {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "metric"
+          }, {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          } ]
+        } ]
+      },
+      "metabase.agent-lib.schema.top-level-op" : {
+        "anyOf" : [ {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "filter"
+          }, {
+            "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "aggregate"
+          }, {
+            "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "breakout"
+          }, {
+            "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "with-fields"
+          }, {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
+            }
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "limit"
+          }, {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "expression"
+          }, {
+            "$ref" : "#/components/schemas/metabase.agent-lib.schema.non-blank-string"
+          }, {
+            "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "join"
+          }, {
+            "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
+          } ]
+        }, {
+          "anyOf" : [ {
+            "type" : "array",
+            "prefixItems" : [ {
+              "const" : "order-by"
+            }, {
+              "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
+            } ]
+          }, {
+            "type" : "array",
+            "prefixItems" : [ {
+              "const" : "order-by"
+            }, {
+              "$ref" : "#/components/schemas/metabase.agent-lib.schema.form"
+            }, {
+              "type" : "string",
+              "enum" : [ "asc", "desc" ]
+            } ]
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "append-stage"
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "drop-stage"
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "drop-empty-stages"
+          } ]
+        }, {
+          "type" : "array",
+          "prefixItems" : [ {
+            "const" : "with-page"
+          }, {
+            "$ref" : "#/components/schemas/metabase.agent-lib.schema.page"
+          } ]
+        } ]
+      },
+      "metabase.agent-lib.schema.vector-literal" : {
+        "type" : "array",
+        "items" : {
+          "$ref" : "#/components/schemas/metabase.agent-lib.schema.node"
+        }
       },
       "metabase.analyze.query-results.ResultsMetadata" : {
         "description" : "value must be an array of valid results column metadata maps.",
@@ -8838,7 +8696,7 @@
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
         "type" : "string",
-        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "transform-inspector", "slackbot" ]
+        "enum" : [ "action", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot" ]
       },
       "metabase.lib.schema.info.hash" : {
         "type" : "string",
@@ -12974,6 +12832,13 @@
             "details" : {
               "type" : "object",
               "properties" : {
+                "channel_id" : {
+                  "oneOf" : [ {
+                    "type" : "string"
+                  }, {
+                    "type" : "null"
+                  } ]
+                },
                 "value" : { }
               },
               "required" : [ "value" ],
@@ -14091,6 +13956,172 @@
           "required" : [ "enabled" ]
         }
       },
+      "metabase.warehouses-rest.api.database-info" : {
+        "type" : "object",
+        "properties" : {
+          "engine" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "engine" ]
+      },
+      "metabase.warehouses-rest.api.databases-metadata-response" : {
+        "type" : "object",
+        "properties" : {
+          "databases" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.database-info"
+            }
+          },
+          "fields" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.field-info"
+            }
+          },
+          "tables" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.table-info"
+            }
+          }
+        },
+        "required" : [ "databases", "tables", "fields" ]
+      },
+      "metabase.warehouses-rest.api.field-info" : {
+        "type" : "object",
+        "properties" : {
+          "base_type" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "coercion_strategy" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "semantic_type" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          },
+          "effective_type" : {
+            "type" : "string"
+          },
+          "parent_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "database_type" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "fk_target_field_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          }
+        },
+        "required" : [ "id", "table_id", "name", "base_type" ]
+      },
+      "metabase.warehouses-rest.api.metadata-import-report" : {
+        "type" : "object",
+        "properties" : {
+          "databases" : {
+            "type" : "object",
+            "properties" : {
+              "failed" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : { }
+                }
+              },
+              "matched" : {
+                "type" : "integer"
+              },
+              "missing" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : { }
+                }
+              }
+            },
+            "required" : [ "matched", "missing" ]
+          },
+          "fields" : {
+            "type" : "object",
+            "properties" : {
+              "created" : {
+                "type" : "integer"
+              },
+              "matched" : {
+                "type" : "integer"
+              },
+              "missing" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : { }
+                }
+              }
+            },
+            "required" : [ "matched", "created", "missing" ]
+          },
+          "tables" : {
+            "type" : "object",
+            "properties" : {
+              "created" : {
+                "type" : "integer"
+              },
+              "matched" : {
+                "type" : "integer"
+              },
+              "missing" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : { }
+                }
+              }
+            },
+            "required" : [ "matched", "created", "missing" ]
+          }
+        },
+        "required" : [ "databases", "tables", "fields" ]
+      },
+      "metabase.warehouses-rest.api.table-info" : {
+        "type" : "object",
+        "properties" : {
+          "db_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "db_id", "name" ]
+      },
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON"
       },
@@ -14605,42 +14636,6 @@
         "tags" : [ "/api/activity" ]
       }
     },
-    "/api/agent/v1/construct-query" : {
-      "post" : {
-        "operationId" : "post-api-agent-v1-construct-query",
-        "summary" : "POST /api/agent/v1/construct-query",
-        "description" : "Construct an MBQL query from a table or metric.\n\n  Returns a base64-encoded MBQL query that can be used with the query API.\n\n  For tables, supports: filters, fields, aggregations, group_by, order_by, limit.\n  For metrics, supports: filters, group_by (aggregation is defined by the metric).",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-request"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/agent" ]
-      }
-    },
     "/api/agent/v1/execute" : {
       "post" : {
         "operationId" : "post-api-agent-v1-execute",
@@ -14834,42 +14829,6 @@
         "tags" : [ "/api/agent" ]
       }
     },
-    "/api/agent/v1/query" : {
-      "post" : {
-        "operationId" : "post-api-agent-v1-query",
-        "summary" : "POST /api/agent/v1/query",
-        "description" : "Query a Metabase table or metric, or continue paginating a previous query.\n\n  Accepts either construct params (table_id/metric_id + filters, aggregations, etc.)\n  or a continuation_token from a previous response. Returns results with column metadata\n  and an optional continuation_token for fetching the next page.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase.agent-api.api.query-response"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase.agent-api.api.query-request"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/agent" ]
-      }
-    },
     "/api/agent/v1/search" : {
       "post" : {
         "operationId" : "post-api-agent-v1-search",
@@ -14902,22 +14861,32 @@
                 "properties" : {
                   "semantic_queries" : {
                     "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
+                      "anyOf" : [ {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      }, {
                         "type" : "string",
                         "minLength" : 1
-                      }
+                      } ]
                     }, {
                       "type" : "null"
                     } ]
                   },
                   "term_queries" : {
                     "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
+                      "anyOf" : [ {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      }, {
                         "type" : "string",
                         "minLength" : 1
-                      }
+                      } ]
                     }, {
                       "type" : "null"
                     } ]
@@ -15071,6 +15040,78 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/agent" ]
+      }
+    },
+    "/api/agent/v2/construct-query" : {
+      "post" : {
+        "operationId" : "post-api-agent-v2-construct-query",
+        "summary" : "POST /api/agent/v2/construct-query",
+        "description" : "Construct an MBQL query from a structured agent-lib program.\n\n  The body is the program itself: a JSON object with `source` (identifying the\n  table/card/dataset/metric to query) and `operations` (an array of operator\n  tuples). Returns a base64-encoded MBQL query that can be executed via\n  /v1/execute. See the agent_api reference for the full program syntax.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.agent-api.api.construct-query-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.agent-api.api.program-request"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/agent" ]
+      }
+    },
+    "/api/agent/v2/query" : {
+      "post" : {
+        "operationId" : "post-api-agent-v2-query",
+        "summary" : "POST /api/agent/v2/query",
+        "description" : "Execute a structured program and stream the results, with continuation-token pagination.\n\n  Accepts either a program (same shape as /v2/construct-query) or a\n  `continuation_token` from a previous response. Returns results with column\n  metadata and an optional `continuation_token` for fetching the next page.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.agent-api.api.query-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.agent-api.api.query-request"
+              }
+            }
           }
         },
         "tags" : [ "/api/agent" ]
@@ -21173,6 +21214,67 @@
         "tags" : [ "/api/database" ]
       }
     },
+    "/api/database/metadata" : {
+      "get" : {
+        "operationId" : "get-api-database-metadata",
+        "summary" : "GET /api/database/metadata",
+        "description" : "Get metadata (databases, tables, and fields) for all databases visible to the current user.\n  Returns a flat structure with three arrays: databases, tables, and fields.\n  Response is streamed for efficiency with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.warehouses-rest.api.databases-metadata-response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/database" ]
+      },
+      "post" : {
+        "operationId" : "post-api-database-metadata",
+        "summary" : "POST /api/database/metadata",
+        "description" : "Import database/table/field metadata previously exported from `GET /api/database/metadata`.\n\n  Entities are matched by natural key — databases by `(name, engine)`, tables by\n  `(database, schema, name)`, fields by `(table, parent-path, name)` — so the numeric ids\n  in the payload are only used to link fields to their tables within the request.\n\n  Tables and fields that don't exist on the target are created when their parent\n  (database for tables; table for fields) is present on the target. Databases are\n  not auto-created — missing databases are reported instead. Field `fk_target_field_id`\n  is re-resolved through the natural-key lookup after all fields exist.\n\n  For matched entities, only user-editable metadata is written: table `description`;\n  field `description`, `semantic_type`, `coercion_strategy`, `effective_type`, and\n  `fk_target_field_id`. For newly-created fields, `base_type` and `database_type` are\n  also populated from the payload. Keys absent from the payload (including null values)\n  are left untouched on matched entities.\n\n  Processing is isolated per target database: each matched DB imports in its own\n  transaction so a failure on one DB does not roll back the others. DBs whose\n  transaction failed appear under `databases.failed` in the response along with\n  the error message; every other DB's tables, fields, and same-DB `fk_target_field_id`\n  references still commit. Cross-database `fk_target_field_id` references are\n  resolved in a final pass after all per-DB transactions have committed.\n\n  Returns counts of matched + created entities per type, a list of entities in the\n  payload that could not be placed (their parent was missing on the target), and,\n  when any DB failed, a `databases.failed` list naming each failed DB.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase.warehouses-rest.api.metadata-import-report"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/metabase.warehouses-rest.api.databases-metadata-response"
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/database" ]
+      }
+    },
     "/api/database/sample_database" : {
       "post" : {
         "operationId" : "post-api-database-sample_database",
@@ -24401,6 +24503,46 @@
           }
         },
         "tags" : [ "/api/ee/cloud-add-ons" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-cloud-add-ons-product-type",
+        "summary" : "DELETE /api/ee/cloud-add-ons/{product-type}",
+        "description" : "Remove an add-on.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "product-type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : { },
+                    "status" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
       }
     },
     "/api/ee/cloud-proxy/{operation-id}" : {
@@ -25991,6 +26133,13 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "is_locked" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "tokens" : {
                       "oneOf" : [ {
                         "type" : "integer"
@@ -25998,7 +26147,7 @@
                         "type" : "null"
                       } ]
                     },
-                    "updated-at" : {
+                    "updated_at" : {
                       "oneOf" : [ {
                         "type" : "string"
                       }, {
@@ -26006,7 +26155,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "tokens", "updated-at" ]
+                  "required" : [ "is_locked", "tokens", "updated_at" ]
                 }
               }
             }
@@ -27918,6 +28067,95 @@
           },
           "5XX" : {
             "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/security-center" ]
+      }
+    },
+    "/api/ee/security-center/acknowledge" : {
+      "post" : {
+        "operationId" : "post-api-ee-security-center-acknowledge",
+        "summary" : "POST /api/ee/security-center/acknowledge",
+        "description" : "Acknowledge multiple security advisories. Skips already-acknowledged advisories.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "acknowledged_at" : {
+                        "oneOf" : [ {
+                          "type" : "string",
+                          "format" : "date-time"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "acknowledged_by" : {
+                        "oneOf" : [ {
+                          "type" : "object",
+                          "properties" : {
+                            "common_name" : {
+                              "type" : "string",
+                              "minLength" : 1
+                            },
+                            "email" : {
+                              "description" : "value must be a valid email address.",
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            }
+                          },
+                          "required" : [ "id", "common_name", "email" ]
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "advisory_id" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.advisory-id"
+                      },
+                      "match_status" : {
+                        "$ref" : "#/components/schemas/metabase-enterprise.security-center.schema.match-status"
+                      }
+                    },
+                    "required" : [ "advisory_id", "match_status", "acknowledged_by", "acknowledged_at" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "advisory_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  }
+                },
+                "required" : [ "advisory_ids" ]
+              }
+            }
           }
         },
         "tags" : [ "/api/ee/security-center" ]
@@ -43622,6 +43860,13 @@
                                 "type" : "null"
                               } ]
                             },
+                            "metered_as" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            },
                             "transform_name" : {
                               "oneOf" : [ {
                                 "type" : "string"
@@ -43948,6 +44193,13 @@
                           },
                           "end_time" : {
                             "oneOf" : [ { }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "metered_as" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
                               "type" : "null"
                             } ]
                           },
@@ -45653,6 +45905,13 @@
                               "type" : "null"
                             } ]
                           },
+                          "metered_as" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
+                              "type" : "null"
+                            } ]
+                          },
                           "transform_name" : {
                             "oneOf" : [ {
                               "type" : "string"
@@ -45834,6 +46093,13 @@
                         "type" : "null"
                       } ]
                     },
+                    "metered_as" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "transform_name" : {
                       "oneOf" : [ {
                         "type" : "string"
@@ -46011,6 +46277,13 @@
                           },
                           "end_time" : {
                             "oneOf" : [ { }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "metered_as" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
                               "type" : "null"
                             } ]
                           },
@@ -46348,6 +46621,13 @@
                           },
                           "end_time" : {
                             "oneOf" : [ { }, {
+                              "type" : "null"
+                            } ]
+                          },
+                          "metered_as" : {
+                            "oneOf" : [ {
+                              "type" : "string"
+                            }, {
                               "type" : "null"
                             } ]
                           },
@@ -46822,6 +47102,13 @@
                             },
                             "end_time" : {
                               "oneOf" : [ { }, {
+                                "type" : "null"
+                              } ]
+                            },
+                            "metered_as" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
                                 "type" : "null"
                               } ]
                             },

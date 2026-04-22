@@ -21,6 +21,7 @@ const DataSourceSelectorsPropTypes = {
   setTableId: PropTypes.func,
   editorContext: PropTypes.oneOf(["action", "question"]),
   databaseIsDisabled: PropTypes.func,
+  databaseDisabledTooltip: PropTypes.func,
 };
 
 const PopulatedDataSourceSelectorsPropTypes = {
@@ -32,6 +33,7 @@ const PopulatedDataSourceSelectorsPropTypes = {
   setDatabaseId: PropTypes.func,
   setTableId: PropTypes.func,
   databaseIsDisabled: PropTypes.func,
+  databaseDisabledTooltip: PropTypes.func,
 };
 
 const DatabaseSelectorPropTypes = {
@@ -40,6 +42,7 @@ const DatabaseSelectorPropTypes = {
   readOnly: PropTypes.bool,
   setDatabaseId: PropTypes.func,
   databaseIsDisabled: PropTypes.func,
+  databaseDisabledTooltip: PropTypes.func,
 };
 
 const SingleDatabaseNamePropTypes = {
@@ -67,6 +70,7 @@ export const DataSourceSelectors = ({
   setTableId,
   editorContext,
   databaseIsDisabled,
+  databaseDisabledTooltip,
 }) => {
   const database = question.database();
 
@@ -101,6 +105,7 @@ export const DataSourceSelectors = ({
       setDatabaseId={setDatabaseId}
       setTableId={setTableId}
       databaseIsDisabled={databaseIsDisabled}
+      databaseDisabledTooltip={databaseDisabledTooltip}
     />
   );
 };
@@ -115,6 +120,7 @@ const PopulatedDataSourceSelectors = ({
   setDatabaseId,
   setTableId,
   databaseIsDisabled,
+  databaseDisabledTooltip,
 }) => {
   const dataSourceSelectors = [];
 
@@ -132,6 +138,7 @@ const PopulatedDataSourceSelectors = ({
         readOnly={readOnly}
         setDatabaseId={setDatabaseId}
         databaseIsDisabled={databaseIsDisabled}
+        databaseDisabledTooltip={databaseDisabledTooltip}
       />,
     );
   } else if (database) {
@@ -167,6 +174,7 @@ const DatabaseSelector = ({
   readOnly,
   setDatabaseId,
   databaseIsDisabled,
+  databaseDisabledTooltip,
 }) => (
   <div
     className={cx(
@@ -186,6 +194,7 @@ const DatabaseSelector = ({
       isInitiallyOpen={database == null && databases.length > 1}
       readOnly={readOnly}
       databaseIsDisabled={databaseIsDisabled}
+      databaseDisabledTooltip={databaseDisabledTooltip}
     />
   </div>
 );

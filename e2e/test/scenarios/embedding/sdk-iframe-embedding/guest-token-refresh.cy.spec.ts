@@ -407,8 +407,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     .its("0.contentWindow")
                     .should("exist")
                     .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS =
-                        true;
+                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
                     });
 
                   H.getSimpleEmbedIframeContent().within(() => {
@@ -474,8 +473,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     .its("0.contentWindow")
                     .should("exist")
                     .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS =
-                        true;
+                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
                     });
 
                   H.getSimpleEmbedIframeContent().within(() => {
@@ -799,8 +797,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     .its("0.contentWindow")
                     .should("exist")
                     .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS =
-                        true;
+                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
                     });
 
                   H.getSimpleEmbedIframeContent().within(() => {
@@ -868,8 +865,7 @@ describe("scenarios > embedding > sdk iframe embedding > guest token refresh", (
                     .its("0.contentWindow")
                     .should("exist")
                     .then((contentWindow) => {
-                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS =
-                        true;
+                      contentWindow.FORCE_REFRESH_GUEST_EMBED_TOKEN_IN_CYPRESS = true;
                     });
 
                   H.getSimpleEmbedIframeContent().within(() => {

@@ -92,7 +92,7 @@ export const CustomHomePageModal = ({
         <Text>
           {t`If anyone lacks permission to see the dashboard you pick, they'll be redirected to the default homepage.`}
         </Text>
-        <Text mt="sm">{jt`You can always change the homepage in ${(<Link key="link" className={CS.link} to="/admin/settings/general" style={{ textDecoration: "underline" }}>{t`admin settings`}</Link>)} under General.`}</Text>
+        <Text mt="sm">{jt`You can always change the homepage in ${<Link key="link" className={CS.link} to="/admin/settings/general" style={{ textDecoration: "underline" }}>{t`admin settings`}</Link>} under General.`}</Text>
         <Box mt="lg">
           <DashboardSelector
             value={dashboardId}
