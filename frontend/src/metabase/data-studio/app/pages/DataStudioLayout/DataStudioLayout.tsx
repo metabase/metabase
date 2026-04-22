@@ -100,7 +100,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
   const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
-  const { data: currentWorkspace } = PLUGIN_WORKSPACES.useCurrentWorkspace();
+  const { currentWorkspace } = PLUGIN_WORKSPACES.useCurrentWorkspace();
 
   const currentTab = getCurrentTab(pathname);
 

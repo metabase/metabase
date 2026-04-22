@@ -31,7 +31,7 @@
   and returns it. Throws if the row is already initialized.
 
   Holds an appdb cluster-lock keyed on `workspace-database-id` for the duration of the
-  warehouse-side work. Concurrent callers (same process via `initialize-workspace!`
+  warehouse-side work. Concurrent callers (same process via `provision-workspace!`
   futures, or different nodes of a clustered deployment) serialize: the first caller
   creates the schema/user and flips status to `:initialized`; the second caller then
   acquires the lock, re-reads status, sees `:initialized`, and throws."
@@ -62,7 +62,7 @@
                      :status           :initialized})
         (t2/select-one :model/WorkspaceDatabase :id workspace-database-id)))))
 
-(defn initialize-workspace-databases!
+(defn provision-workspace-databases!
   "Synchronously provision every `:uninitialized` WorkspaceDatabase under `workspace-id`.
   Each row is attempted independently; per-row exceptions are logged and swallowed so a
   single failure does not block the rest of the batch."
@@ -83,14 +83,14 @@
   [f]
   (future (f)))
 
-(defn initialize-workspace!
+(defn provision-workspace!
   "Kick off async provisioning for every `:uninitialized` WorkspaceDatabase under
   `workspace-id`. Returns the number of rows that were scheduled."
   [workspace-id]
   (let [pending-count (t2/count :model/WorkspaceDatabase
                                 :workspace_id workspace-id
                                 :status       :uninitialized)]
-    (run-async! (fn [] (initialize-workspace-databases! workspace-id)))
+    (run-async! (fn [] (provision-workspace-databases! workspace-id)))
     pending-count))
 
 (defn deprovision-workspace-database!

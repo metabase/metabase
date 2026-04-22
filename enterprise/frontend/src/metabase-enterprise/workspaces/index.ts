@@ -1,6 +1,6 @@
 import { PLUGIN_WORKSPACES } from "metabase/plugins";
-
 import { useGetCurrentWorkspaceQuery } from "metabase-enterprise/api";
+
 import {
   getDataStudioWorkspaceInstanceRoutes,
   getDataStudioWorkspaceRoutes,

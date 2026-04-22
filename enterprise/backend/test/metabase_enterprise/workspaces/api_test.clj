@@ -139,8 +139,8 @@
         (mt/user-http-request :rasta :get 403 "ee/workspace")
         (mt/user-http-request :rasta :get 403 (str "ee/workspace/" id))))))
 
-(deftest post-initialize-triggers-provisioning-test
-  (testing "POST /ee/workspace/:id/initialize runs provisioning and returns triggered count"
+(deftest post-provision-triggers-provisioning-test
+  (testing "POST /ee/workspace/:id/provision runs provisioning and returns triggered count"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                {:name "To Init" :databases [(ws-db-payload)]})
@@ -148,12 +148,12 @@
         (with-redefs [provisioning/run-async!                  (fn [f] (f))
                       provisioning/provision-workspace-database!
                       (fn [wsd-id] (swap! called conj wsd-id) nil)]
-          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/initialize") {})]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/provision") {})]
             (is (= {:workspace_id id :triggered 1} resp))
             (is (= 1 (count @called)))))))))
 
-(deftest post-initialize-skips-already-initialized-test
-  (testing "POST /ee/workspace/:id/initialize skips WorkspaceDatabases that are already :initialized"
+(deftest post-provision-skips-already-initialized-test
+  (testing "POST /ee/workspace/:id/provision skips WorkspaceDatabases that are already :initialized"
     (mt/with-temp [:model/Workspace {id :id} {:name "Mixed"}
                    :model/WorkspaceDatabase _
                    {:workspace_id     id
@@ -166,20 +166,20 @@
         (with-redefs [provisioning/run-async!                  (fn [f] (f))
                       provisioning/provision-workspace-database!
                       (fn [wsd-id] (swap! called conj wsd-id) nil)]
-          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/initialize") {})]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/provision") {})]
             (is (= {:workspace_id id :triggered 0} resp))
             (is (empty? @called))))))))
 
-(deftest post-initialize-requires-superuser-test
-  (testing "Non-superusers get 403 from POST /ee/workspace/:id/initialize"
+(deftest post-provision-requires-superuser-test
+  (testing "Non-superusers get 403 from POST /ee/workspace/:id/provision"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                {:name "Guarded" :databases []})]
-        (mt/user-http-request :rasta :post 403 (str "ee/workspace/" id "/initialize") {})))))
+        (mt/user-http-request :rasta :post 403 (str "ee/workspace/" id "/provision") {})))))
 
-(deftest post-initialize-404-on-unknown-workspace-test
-  (testing "POST to /initialize with an unknown id returns 404"
-    (mt/user-http-request :crowberto :post 404 (str "ee/workspace/" Integer/MAX_VALUE "/initialize") {})))
+(deftest post-provision-404-on-unknown-workspace-test
+  (testing "POST to /provision with an unknown id returns 404"
+    (mt/user-http-request :crowberto :post 404 (str "ee/workspace/" Integer/MAX_VALUE "/provision") {})))
 
 (deftest put-rejects-drop-of-initialized-test
   (testing "PUT returns 409 when it would drop an :initialized workspace_database"
@@ -299,6 +299,37 @@
 (deftest delete-workspace-404-on-unknown-test
   (testing "DELETE /:id with an unknown id returns 404"
     (mt/user-http-request :crowberto :delete 404 (str "ee/workspace/" Integer/MAX_VALUE))))
+
+(deftest post-workspace-records-creator-test
+  (testing "POST records the authenticated user as :creator_id and returns a hydrated :creator"
+    (mt/with-model-cleanup [:model/Workspace]
+      (let [resp (mt/user-http-request :crowberto :post 200 "ee/workspace"
+                                       {:name "Created By Me" :databases []})]
+        (testing "response includes :creator as a user object"
+          (is (=? {:creator {:id    (mt/user->id :crowberto)
+                             :email (:email (mt/fetch-user :crowberto))}}
+                  resp)))
+        (testing "response does not leak the raw :creator_id column"
+          (is (not (contains? resp :creator_id))))
+        (testing "the row stores the current user id in creator_id"
+          (is (= (mt/user->id :crowberto)
+                 (t2/select-one-fn :creator_id :model/Workspace :id (:id resp)))))))))
+
+(deftest deleting-creator-user-nulls-out-workspace-creator-test
+  (testing "FK onDelete SET NULL: deleting the creator user leaves the workspace with nil :creator_id and :creator"
+    (mt/with-model-cleanup [:model/Workspace]
+      (mt/with-temp [:model/User {tmp-user-id :id} {:first_name "Temp" :email "temp@example.com"}
+                     :model/Workspace {ws-id :id} {:name "Orphaned" :creator_id tmp-user-id}]
+        (is (= tmp-user-id (t2/select-one-fn :creator_id :model/Workspace :id ws-id)))
+        (t2/delete! :model/User :id tmp-user-id)
+        (testing "workspace survives"
+          (is (t2/exists? :model/Workspace :id ws-id)))
+        (testing "creator_id is now nil"
+          (is (nil? (t2/select-one-fn :creator_id :model/Workspace :id ws-id))))
+        (testing "API response has :creator nil"
+          (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" ws-id))]
+            (is (contains? resp :creator))
+            (is (nil? (:creator resp)))))))))
 
 (deftest get-workspace-config-happy-path-test
   (testing "GET /ee/workspace/:id/config returns the config shape as JSON"

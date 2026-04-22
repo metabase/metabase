@@ -42,10 +42,19 @@
    [:input_schemas    [:sequential ms/NonBlankString]]
    [:status           WorkspaceStatus]])
 
+(def ^:private CreatorResponse
+  [:map
+   [:id         ms/PositiveInt]
+   [:first_name [:maybe :string]]
+   [:last_name  [:maybe :string]]
+   [:email      ms/NonBlankString]
+   [:common_name {:optional true} [:maybe :string]]])
+
 (def ^:private WorkspaceResponse
   [:map
    [:id        ms/PositiveInt]
    [:name      ms/NonBlankString]
+   [:creator   [:maybe CreatorResponse]]
    [:databases [:sequential WorkspaceDatabaseResponse]]])
 
 (defn- present-workspace-database [wsd]
@@ -53,9 +62,14 @@
       (select-keys [:database_id :database_details :output_schema :input_schemas :status])
       (update :status name)))
 
+(defn- present-creator [creator]
+  (when creator
+    (select-keys creator [:id :first_name :last_name :email :common_name])))
+
 (defn- present-workspace [ws]
   (some-> ws
-          (select-keys [:id :name :databases])
+          (select-keys [:id :name :creator :databases])
+          (update :creator present-creator)
           (update :databases #(mapv present-workspace-database %))))
 
 (api.macros/defendpoint :get "/" :- [:sequential WorkspaceResponse]
@@ -100,12 +114,15 @@
   (present-workspace (api/check-404 (workspace/get-workspace id))))
 
 (api.macros/defendpoint :post "/" :- WorkspaceResponse
-  "Create a new Workspace."
+  "Create a new Workspace. The authenticated user is recorded as :creator_id."
   [_route-params
    _query-params
    params :- WorkspaceParams]
   (api/check-superuser)
-  (present-workspace (workspace/create-workspace! (sanitize-workspace-params params))))
+  (present-workspace
+   (workspace/create-workspace!
+    (assoc (sanitize-workspace-params params)
+           :creator_id api/*current-user-id*))))
 
 (api.macros/defendpoint :put "/:id" :- WorkspaceResponse
   "Update an existing Workspace. The supplied `:databases` list fully replaces the existing set."
@@ -116,7 +133,7 @@
   (api/check-404 (workspace/get-workspace id))
   (present-workspace (workspace/update-workspace! id (sanitize-workspace-params params))))
 
-(api.macros/defendpoint :post "/:id/initialize"
+(api.macros/defendpoint :post "/:id/provision"
   :- [:map [:workspace_id ms/PositiveInt] [:triggered ms/IntGreaterThanOrEqualToZero]]
   "Kick off asynchronous provisioning for every uninitialized WorkspaceDatabase under
   this Workspace. Returns immediately with the number of rows that were scheduled."
@@ -124,7 +141,7 @@
   (api/check-superuser)
   (api/check-404 (workspace/get-workspace id))
   {:workspace_id id
-   :triggered    (provisioning/initialize-workspace! id)})
+   :triggered    (provisioning/provision-workspace! id)})
 
 (api.macros/defendpoint :post "/:id/deprovision"
   :- [:map [:workspace_id ms/PositiveInt] [:triggered ms/IntGreaterThanOrEqualToZero]]

@@ -16,17 +16,27 @@
 
 (defn normalize
   "Take a raw workspace config, with database configs indexed by database name,
-  and return a normalized config with database configs indexed by db-id."
+  and return a normalized config with database configs indexed by db-id.
+
+  Throws `ex-info` if any referenced database name does not resolve via
+  `db-id-by-name`. All unresolved names are reported together in
+  `:missing-names` so operators see the full list of typos at once rather
+  than fixing them one boot at a time."
   [{:keys [db-id-by-name]} raw-config]
-  (-> (ordered->plain raw-config)
-      (update :databases
-              (fn [dbs]
-                (u/index-by :id
-                            (for [[name-kw config] dbs]
-                              (let [db-name (name name-kw)]
-                                (assoc config
-                                       :name db-name
-                                       :id (db-id-by-name db-name)))))))))
+  (let [plain    (ordered->plain raw-config)
+        resolved (for [[name-kw config] (:databases plain)]
+                   (let [db-name (name name-kw)]
+                     (assoc config
+                            :name db-name
+                            :id   (db-id-by-name db-name))))
+        missing  (seq (keep (fn [{db-name :name db-id :id}]
+                              (when (nil? db-id) db-name))
+                            resolved))]
+    (when missing
+      (throw (ex-info (str "Workspace config references unknown databases: "
+                           (pr-str (vec missing)))
+                      {:missing-names (vec missing)})))
+    (assoc plain :databases (u/index-by :id resolved))))
 
 (defmethod advanced-config.file.i/initialize-section! :workspace
   [_section-name section-config]

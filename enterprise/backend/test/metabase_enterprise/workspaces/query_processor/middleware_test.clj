@@ -220,6 +220,59 @@
           (is (str/includes? sql to-name))
           (is (not (str/includes? sql from-name))))))))
 
+(deftest remaps-nested-native-sql-test
+  (testing (str "stage 0 native SQL is rewritten even when an outer MBQL stage wraps it — this is the "
+                "`[native, mbql]` shape produced when a native source card is resolved into a flat pipeline")
+    (binding [driver/*driver* :h2]
+      (let [mp        (mt/metadata-provider)
+            db-id     (mt/id)
+            orders    (lib.metadata/table mp (mt/id :orders))
+            {from-schema :schema
+             from-name   :name} orders
+            to-schema "ws_bryan_apr21"
+            to-name   "orders_copy"
+            query     (-> (lib/native-query
+                           mp
+                           (str "SELECT * FROM \"" from-schema "\".\"" from-name "\""))
+                          lib/append-stage)]
+        (mt/with-temp [:model/TableRemapping _ {:database_id     db-id
+                                                :from_schema     from-schema
+                                                :from_table_name from-name
+                                                :to_schema       to-schema
+                                                :to_table_name   to-name}]
+          (let [remapped (ws.qp.middleware/apply-workspace-table-remapping query)
+                sql     (lib/raw-native-query remapped)]
+            (testing "stage 0 native SQL has the workspace schema/name"
+              (is (str/includes? sql to-schema))
+              (is (str/includes? sql to-name)))
+            (testing "original schema/name no longer appear in stage 0 native SQL"
+              (is (not (str/includes? sql from-schema)))
+              (is (not (str/includes? sql from-name))))
+            (testing "outer MBQL stage is passed through unchanged"
+              (is (= (get-in query    [:stages 1])
+                     (get-in remapped [:stages 1]))))))))))
+
+(deftest legacy-apply-workspace-remapping-handles-nested-native-test
+  (testing "legacy `apply-workspace-remapping` also rewrites stage 0 native SQL on a [native, mbql] query"
+    (binding [driver/*driver* :h2]
+      (let [mp        (mt/metadata-provider)
+            from-schema "PUBLIC"
+            from-name "ORDERS"
+            to-schema "ws_legacy"
+            to-name   "orders_copy"
+            query     (-> (lib/native-query
+                           mp
+                           (str "SELECT * FROM \"" from-schema "\".\"" from-name "\""))
+                          lib/append-stage
+                          (assoc-in [:middleware :workspace-remapping]
+                                    {:tables {{:schema from-schema :table from-name}
+                                              {:schema to-schema   :table to-name}}}))
+            remapped  (ws.qp.middleware/apply-workspace-remapping query)
+            sql       (lib/raw-native-query remapped)]
+        (is (str/includes? sql to-schema))
+        (is (str/includes? sql to-name))
+        (is (not (str/includes? sql from-name)))))))
+
 (deftest no-op-when-workspaces-feature-disabled-test
   (testing "dispatching var returns query unchanged when :workspaces premium feature is off"
     ;; Calls the public `defenterprise` dispatching var (not the ee impl) so the feature gate

@@ -1,211 +1,138 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useListDatabaseSchemasQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
-import { Button, Group, Icon, MultiSelect, Select } from "metabase/ui";
+import { useListDatabasesQuery } from "metabase/api";
+import { ListEmptyState } from "metabase/common/components/ListEmptyState";
+import { Box, Button, Icon, Tooltip } from "metabase/ui";
 import type {
   Database,
   DatabaseId,
   WorkspaceDatabaseDraft,
 } from "metabase-types/api";
 
+import { isWorkspaceDatabase } from "../../utils";
 import { TitleSection } from "../TitleSection";
 
-import S from "./DatabaseMappingSection.module.css";
+import { DatabaseMappingList } from "./DatabaseMappingList";
+import { DatabaseMappingModal } from "./DatabaseMappingModal";
 
 type DatabaseMappingSectionProps = {
-  databases: WorkspaceDatabaseDraft[];
-  onChange: (newDatabases: WorkspaceDatabaseDraft[]) => void;
+  mappings: WorkspaceDatabaseDraft[];
+  onChange: (mappings: WorkspaceDatabaseDraft[]) => void;
 };
 
 export function DatabaseMappingSection({
-  databases: mappings,
+  mappings,
   onChange,
 }: DatabaseMappingSectionProps) {
+  const [isModalOpened, setIsModalOpened] = useState(false);
+  const [selectedDatabaseId, setSelectedDatabaseId] = useState<DatabaseId>();
+
+  const { data: databasesResponse } = useListDatabasesQuery();
+  const allDatabases = databasesResponse?.data ?? [];
+
+  const selectedMapping = mappings.find(
+    (mapping) => mapping.database_id === selectedDatabaseId,
+  );
+
+  const newAvailableDatabases = getAvailableDatabases(allDatabases, mappings);
+  const selectedAvailableDatabases = getAvailableDatabases(
+    allDatabases,
+    mappings,
+    selectedDatabaseId,
+  );
+  const canAddMapping = newAvailableDatabases.length > 0;
+
+  const handleOpenCreate = () => {
+    setSelectedDatabaseId(undefined);
+    setIsModalOpened(true);
+  };
+
+  const handleOpenEdit = (mapping: WorkspaceDatabaseDraft) => {
+    setSelectedDatabaseId(mapping.database_id);
+    setIsModalOpened(true);
+  };
+
+  const handleClose = () => {
+    setIsModalOpened(false);
+    setSelectedDatabaseId(undefined);
+  };
+
   const handleAdd = (mapping: WorkspaceDatabaseDraft) => {
     onChange([...mappings, mapping]);
   };
 
-  const handleChange = (index: number, mapping: WorkspaceDatabaseDraft) => {
-    const newMappings = [...mappings];
-    newMappings[index] = mapping;
+  const handleUpdate = (mapping: WorkspaceDatabaseDraft) => {
+    const newMappings = mappings.map((current) =>
+      current.database_id === selectedDatabaseId ? mapping : current,
+    );
     onChange(newMappings);
   };
 
-  const handleRemove = (index: number) => {
-    const newMappings = [...mappings];
-    newMappings.splice(index, 1);
+  const handleDelete = (mapping: WorkspaceDatabaseDraft) => {
+    const newMappings = mappings.filter(
+      (current) => current.database_id !== mapping.database_id,
+    );
     onChange(newMappings);
   };
 
   return (
-    <TitleSection label={t`Database mapping`}>
-      {mappings.map((mapping, index) => (
-        <DatabaseMappingForm
-          key={index}
-          mapping={mapping}
-          onChange={(newMapping) => handleChange(index, newMapping)}
-          onRemove={() => handleRemove(index)}
-        />
-      ))}
-      <DatabaseMappingForm onAdd={handleAdd} />
-    </TitleSection>
-  );
-}
-
-type DatabaseMappingFormProps = {
-  mapping?: WorkspaceDatabaseDraft;
-  onAdd?: (newMapping: WorkspaceDatabaseDraft) => void;
-  onChange?: (newMapping: WorkspaceDatabaseDraft) => void;
-  onRemove?: () => void;
-};
-
-function DatabaseMappingForm({
-  mapping: initialMapping,
-  onAdd,
-  onChange,
-  onRemove,
-}: DatabaseMappingFormProps) {
-  const [databaseId, setDatabaseId] = useState(initialMapping?.database_id);
-  const [inputSchemas, setInputSchemas] = useState(
-    initialMapping?.input_schemas ?? [],
-  );
-  const { data: databaseData } = useListDatabasesQuery();
-  const { data: availableSchemas = [] } = useListDatabaseSchemasQuery(
-    databaseId != null ? { id: databaseId } : skipToken,
-  );
-
-  const newMapping = getDatabaseMapping(databaseId, inputSchemas);
-  const isNew = initialMapping == null;
-
-  const handleDatabaseChange = (newDatabaseId: DatabaseId) => {
-    setDatabaseId(newDatabaseId);
-    const newMapping = getDatabaseMapping(newDatabaseId, inputSchemas);
-    if (newMapping != null) {
-      onChange?.(newMapping);
-    }
-  };
-
-  const handleInputSchemasChange = (newInputSchemas: string[]) => {
-    setInputSchemas(newInputSchemas);
-    const newMapping = getDatabaseMapping(databaseId, newInputSchemas);
-    if (newMapping != null) {
-      onChange?.(newMapping);
-    }
-  };
-
-  const handleAdd = () => {
-    if (newMapping != null) {
-      onAdd?.(newMapping);
-    }
-  };
-
-  return (
-    <Group className={S.section} p="md" align="flex-end" wrap="nowrap">
-      <DatabaseSelect
-        databaseId={databaseId}
-        databases={databaseData?.data ?? []}
-        onChange={handleDatabaseChange}
-      />
-      {databaseId != null && (
-        <SchemaSelect
-          inputSchemas={inputSchemas}
-          availableSchemas={availableSchemas}
-          isError={!isNew && inputSchemas.length === 0}
-          onChange={handleInputSchemasChange}
+    <>
+      <TitleSection
+        label={t`Database isolation`}
+        description={t`Configure how databases are isolated for this workspace.`}
+        rightSection={
+          <Tooltip
+            label={t`No available databases that support workspaces.`}
+            disabled={canAddMapping}
+          >
+            <Button
+              leftSection={<Icon name="add" />}
+              disabled={!canAddMapping}
+              onClick={handleOpenCreate}
+            >
+              {t`Add database`}
+            </Button>
+          </Tooltip>
+        }
+      >
+        {mappings.length === 0 ? (
+          <Box p="xl">
+            <ListEmptyState label={t`No databases yet`} />
+          </Box>
+        ) : (
+          <DatabaseMappingList
+            mappings={mappings}
+            onRowClick={handleOpenEdit}
+          />
+        )}
+      </TitleSection>
+      {isModalOpened && (
+        <DatabaseMappingModal
+          mapping={selectedMapping}
+          databases={
+            selectedMapping != null
+              ? selectedAvailableDatabases
+              : newAvailableDatabases
+          }
+          onSubmit={selectedMapping != null ? handleUpdate : handleAdd}
+          onDelete={selectedMapping != null ? handleDelete : undefined}
+          onClose={handleClose}
         />
       )}
-      <Button
-        variant={isNew ? "filled" : "default"}
-        leftSection={<Icon name={isNew ? "add" : "close"} />}
-        disabled={isNew && newMapping == null}
-        aria-label={isNew ? t`Add database` : t`Remove database`}
-        onClick={isNew ? handleAdd : onRemove}
-      />
-    </Group>
+    </>
   );
 }
 
-function getDatabaseMapping(
-  databaseId: DatabaseId | undefined,
-  inputSchemas: string[],
-): WorkspaceDatabaseDraft | undefined {
-  if (databaseId != null && inputSchemas.length > 0) {
-    return {
-      database_id: databaseId,
-      input_schemas: inputSchemas,
-    };
-  }
-}
-
-type DatabaseSelectProps = {
-  databaseId: DatabaseId | undefined;
-  databases: Database[];
-  onChange: (newDatabaseId: DatabaseId) => void;
-};
-
-function DatabaseSelect({
-  databaseId,
-  databases,
-  onChange,
-}: DatabaseSelectProps) {
-  const options = databases.map((database) => ({
-    value: getDatabaseValue(database.id),
-    label: database.name,
-    database,
-  }));
-
-  const handleChange = (newValue: string | null) => {
-    if (newValue != null) {
-      onChange(getDatabaseId(newValue));
-    }
-  };
-
-  return (
-    <Select
-      data={options}
-      value={databaseId != null ? getDatabaseValue(databaseId) : null}
-      label={t`Database`}
-      placeholder={t`Select a database`}
-      onChange={handleChange}
-    />
-  );
-}
-
-function getDatabaseId(value: string) {
-  return Number(value);
-}
-
-function getDatabaseValue(databaseId: DatabaseId): string {
-  return String(databaseId);
-}
-
-type SchemaSelectProps = {
-  inputSchemas: string[];
-  availableSchemas: string[];
-  isError?: boolean;
-  onChange: (newInputSchemas: string[]) => void;
-};
-
-function SchemaSelect({
-  inputSchemas,
-  availableSchemas,
-  isError,
-  onChange,
-}: SchemaSelectProps) {
-  return (
-    <MultiSelect
-      data={availableSchemas}
-      value={inputSchemas}
-      label={t`Schemas`}
-      placeholder={t`Select schemas`}
-      error={isError}
-      searchable
-      onChange={onChange}
-    />
+function getAvailableDatabases(
+  databases: Database[],
+  mappings: WorkspaceDatabaseDraft[],
+  databaseId?: DatabaseId,
+): Database[] {
+  const mappedIds = new Set(mappings.map((mapping) => mapping.database_id));
+  return databases.filter(
+    (database) =>
+      isWorkspaceDatabase(database) &&
+      (!mappedIds.has(database.id) || database.id === databaseId),
   );
 }

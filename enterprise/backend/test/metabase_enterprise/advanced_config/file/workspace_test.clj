@@ -21,7 +21,36 @@
              :databases
              {(keyword "Analytics Data Warehouse")
               {:input_schemas ["raw_github"]
-               :output_schema "mb__isolation_754bd_github"}}})))))
+               :output_schema "mb__isolation_754bd_github"}}}))))
+  (testing "Throws when a referenced database name does not resolve"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"unknown databases.*Typo Warehouse"
+         (acf.ws/normalize
+          {:db-id-by-name {"Analytics Data Warehouse" 2}}
+          {:name "github"
+           :databases
+           {(keyword "Typo Warehouse")
+            {:input_schemas ["raw_github"]
+             :output_schema "mb__isolation_754bd_github"}}}))))
+  (testing "Reports every unknown name — does not silently collapse multiple unknowns into one nil key"
+    (let [thrown (try
+                   (acf.ws/normalize
+                    {:db-id-by-name {"Analytics Data Warehouse" 2}}
+                    {:name "github"
+                     :databases
+                     {(keyword "First Unknown")
+                      {:input_schemas ["a"] :output_schema "x"}
+                      (keyword "Second Unknown")
+                      {:input_schemas ["b"] :output_schema "y"}
+                      (keyword "Analytics Data Warehouse")
+                      {:input_schemas ["c"] :output_schema "z"}}})
+                   (catch clojure.lang.ExceptionInfo e e))]
+      (is (some? thrown)
+          "normalize should throw when any referenced database name is unknown")
+      (is (= #{"First Unknown" "Second Unknown"}
+             (set (:missing-names (ex-data thrown))))
+          "ex-data :missing-names must list every unknown name, not just one"))))
 
 (deftest initialize-section-does-not-poll-test
   (testing "initialize-section! :workspace MUST NOT call remapping-poll/poll-once! synchronously"
