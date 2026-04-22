@@ -2626,7 +2626,8 @@
            setup
            sync
            users
-           util}
+           util
+           enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/advanced-permissions
@@ -3349,8 +3350,8 @@
    :model-imports #{:model/Database :model/Table}}
 
   enterprise/workspaces
-  {:team "Metabot"
-   :api  #{}
+  {:team "Graphy"
+   :api  #{metabase-enterprise.workspaces.core}
    :uses #{premium-features}}
 
   enterprise/writable-connection
