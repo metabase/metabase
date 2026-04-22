@@ -252,11 +252,10 @@
 
 (deftest ^:sequential search-index-embedder-global-dedup-test
   (testing "global dedup picks lowest numeric model_id regardless of batch boundaries"
-    ;; Stub at fetch-batch (not fetch-by-model+id) so the real partition-all + mapcat batching
-    ;; path executes. With batch-size 1, each entity pair lands in its own SQL batch, so the
-    ;; two duplicates come back from separate partitions and must be merged by the caller.
-    ;; The stub keys the expected batches by `(model, model_id)` pair-seq, so a regression in
-    ;; `entity-type->search-model` (or any extra/missing fetch call) fails the test.
+    ;; Stub at fetch-batch so the real batching path executes. With batch-size 1, each entity
+    ;; pair lands in its own SQL batch, so the two duplicates come back from separate partitions
+    ;; and must be merged by the fold. The stub keys expected batches by `(model, model_id)`
+    ;; pair-seq, so a regression in `entity-type->search-model` or any missing batch fails here.
     (let [winner-vec (float-array [1.0 0.0 0.0])
           loser-vec  (float-array [0.0 1.0 0.0])
           {:keys [unseen stub]}
@@ -307,11 +306,10 @@
 
 (deftest ^:sequential search-index-embedder-cross-batch-dedup-test
   (testing "duplicates split across separate fetch batches are resolved globally"
-    ;; Mock at the fetch-batch level (not fetch-by-model+id) so the real partition-all + mapcat
-    ;; path in fetch-by-model+id executes. With batch-size 1, each entity pair lands in its own
-    ;; SQL batch. The stub is keyed by the expected `(model, model_id)` pair-seq, so it validates
-    ;; the batching contract — `entity-type->search-model` mapping (`:question` → "card",
-    ;; `:table` → "table") is exercised, not assumed, and extra/missing batches fail the test.
+    ;; Mock at fetch-batch so the real partition-all fold executes. With batch-size 1, each entity
+    ;; pair lands in its own SQL batch. The stub is keyed by the expected `(model, model_id)`
+    ;; pair-seq, so it validates the batching contract — `entity-type->search-model` mapping
+    ;; (`:question` → "card", `:table` → "table") is exercised, not assumed.
     (let [winner-vec (float-array [1.0 0.0 0.0])
           loser-vec  (float-array [0.0 1.0 0.0])
           other-vec  (float-array [0.0 0.0 1.0])
@@ -403,7 +401,7 @@
                     (constantly {:pgvector   :mock
                                  :table-name "mock_table"
                                  :model      {:provider "openai" :model-name "text-embedding-3-small"}})
-                    ss.embedders/fetch-by-model+id (constantly [])]
+                    ss.embedders/fetch-batch (constantly [])]
         (let [{:keys [meta]} (complexity/complexity-scores :embedder semantic-search/search-index-embedder)]
           (is (= {:provider "openai" :model-name "text-embedding-3-small"}
                  (:embedding-model meta))))))))
@@ -539,7 +537,7 @@
                     (constantly {:pgvector   :mock
                                  :table-name "mock_table"
                                  :model      {:provider "openai" :model-name "text-embedding-3-small"}})
-                    ss.embedders/fetch-by-model+id (constantly [])]
+                    ss.embedders/fetch-batch (constantly [])]
         (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
                                     complexity/universe-entities (constantly [(entity :name "orders")])]
           (snowplow-test/pop-event-data-and-user-id!)

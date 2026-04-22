@@ -88,12 +88,16 @@
                             {:quoted true})]
     (jdbc/execute! pgvector sql-vec {:builder-fn jdbc.rs/as-unqualified-lower-maps})))
 
-(defn- fetch-by-model+id
-  "Query the active pgvector index for `(model, model_id)` pairs, batching to stay under JDBC
-  limits. Returns a seq of row maps."
-  [pgvector table-name pairs]
-  (when (seq pairs)
-    (into [] (mapcat #(fetch-batch pgvector table-name %)) (partition-all fetch-batch-size pairs))))
+(defn- reduce-batched-rows
+  "Fold `rf` over rows fetched from the pgvector index in batches of [[fetch-batch-size]] pairs.
+  Never materializes the full row list — each batch is fetched, reduced into `acc`, and discarded
+  before the next batch is fetched. Keeps peak memory to `O(batch + reduced-state)` instead of
+  `O(total-rows)`, which matters because raw pgvector embedding strings are ~6–18KB each."
+  [pgvector table-name pairs rf init]
+  (reduce (fn [acc batch]
+            (reduce rf acc (fetch-batch pgvector table-name batch)))
+          init
+          (partition-all fetch-batch-size pairs)))
 
 (defn- try-active-index-state
   "Return the active index state, or nil if unavailable. Never throws."
@@ -115,9 +119,15 @@
   unreachable).
   Never throws.
 
-  When multiple entities share a normalized name but have different indexed embeddings, the row chosen
-  by [[prefer-new-row?]] wins so the result is deterministic across runs regardless of batch
-  boundaries."
+  When multiple entities share a normalized name but have different indexed embeddings the row
+  chosen by [[prefer-new-row?]] wins, so the result is deterministic across runs regardless of
+  batch boundaries.
+
+  Parses embeddings as we fold so raw pgvector strings (6–18 KB each) aren't retained alongside
+  the parsed float-arrays. Peak memory is still O(distinct-names) in float-arrays, which will
+  matter on very large instances (>~50k entities) — the pairwise comparison downstream is the
+  harder scaling problem and both will want to be revisited together (push similarity into
+  pgvector SQL, or switch to HNSW approximate-neighbor)."
   [entities]
   (if-let [{:keys [pgvector table-name]} (try-active-index-state)]
     (try
@@ -125,25 +135,26 @@
                         :let [m (metabot/entity-type->search-model kind)]
                         :when m]
                     [m (str id)])
-            rows  (fetch-by-model+id pgvector table-name pairs)
-            ;; Global dedup: when multiple rows share a normalized name, pick the winner
-            ;; using `prefer-new-row?` (lowest numeric model_id, then model as tie-break).
-            ;; This must happen after all batches are merged so the choice is globally
-            ;; correct, not just correct within each 500-row partition.
-            keyed (reduce (fn [acc {:keys [name model_id] :as row}]
-                            (let [k     (normalize-name name)
-                                  row+  (assoc row :mid (parse-long model_id))
-                                  prior (get acc k)]
-                              (if (or (nil? prior) (prefer-new-row? row+ prior))
-                                (assoc acc k row+)
-                                acc)))
-                          {}
-                          rows)]
-        (into {}
-              (keep (fn [[k {:keys [embedding]}]]
-                      (when-let [v (parse-pgvector embedding)]
-                        [k v])))
-              keyed))
+            ;; Fold fetch → parse → dedup in one pass. `prefer-new-row?` keeps the winner globally
+            ;; (lowest numeric model_id, then model as tie-break) so the result is stable across
+            ;; runs regardless of which 500-row batch boundary a duplicate lands on.
+            keyed (when (seq pairs)
+                    (reduce-batched-rows
+                     pgvector table-name pairs
+                     (fn [acc {:keys [name model_id model embedding]}]
+                       (if-let [vec (parse-pgvector embedding)]
+                         (let [k     (normalize-name name)
+                               entry {:mid      (parse-long model_id)
+                                      :model    model
+                                      :model_id model_id
+                                      :vec      vec}
+                               prior (get acc k)]
+                           (if (or (nil? prior) (prefer-new-row? entry prior))
+                             (assoc acc k entry)
+                             acc))
+                         acc))
+                     {}))]
+        (update-vals (or keyed {}) :vec))
       (catch Throwable t
         (log/warn t "search-index-embedder: failed to read from search index; returning {}")
         {}))
