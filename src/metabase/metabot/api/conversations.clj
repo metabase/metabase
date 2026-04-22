@@ -57,7 +57,9 @@
 ;;; ---------------------------------------- Endpoints ----------------------------------------
 
 (api.macros/defendpoint :get "/" :- ListConversationsResponse
-  "List conversations belonging to the current user, most-recent first."
+  "List conversations the current user participates in (has authored at least
+  one message in), most-recent first. Covers both solo web-UI chats and shared
+  Slack threads where the user is one of several participants."
   []
   (let [user-id (api/check-404 api/*current-user-id*)
         limit   (or (request/limit) default-limit)
