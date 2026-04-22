@@ -804,6 +804,66 @@
         (is (= {:databases [] :tables [] :fields []}
                (mt/user-http-request :rasta :get 202 "database/metadata")))))))
 
+(deftest databases-field-values-test
+  (testing "GET /api/database/field-values"
+    (mt/with-temp [:model/Database    {db-id :id} {:name "fv-db" :engine :h2}
+                   :model/Table       {t-id :id}  {:db_id db-id :name "people" :schema "PUBLIC"}
+                   :model/Field       {f1-id :id} {:table_id t-id :name "state" :base_type :type/Text
+                                                   :database_type "VARCHAR"}
+                   :model/Field       {f2-id :id} {:table_id t-id :name "rating" :base_type :type/Integer
+                                                   :database_type "INTEGER"}
+                   :model/FieldValues _           {:field_id f1-id :type :full
+                                                   :values [["CA"] ["NY"] ["TX"]]
+                                                   :has_more_values false}
+                   :model/FieldValues _           {:field_id f2-id :type :full
+                                                   :values [[1] [2] [3]]
+                                                   :human_readable_values ["Low" "Mid" "High"]
+                                                   :has_more_values true}]
+      (let [{:keys [field_values]} (mt/user-http-request :crowberto :get 202 "database/field-values")
+            by-field                (into {} (map (juxt :field_id identity)) field_values)]
+        (is (=? {:field_id        f1-id
+                 :values          [["CA"] ["NY"] ["TX"]]
+                 :has_more_values false}
+                (by-field f1-id)))
+        (is (nil? (:human_readable_values (by-field f1-id)))
+            "human_readable_values is omitted when empty")
+        (is (=? {:field_id              f2-id
+                 :values                [[1] [2] [3]]
+                 :human_readable_values ["Low" "Mid" "High"]
+                 :has_more_values       true}
+                (by-field f2-id)))))))
+
+(deftest databases-field-values-non-admin-test
+  (testing "GET /api/database/field-values — non-admin requests are rejected"
+    (mt/with-temp [:model/Database    {db-id :id} {:name "fv-db" :engine :h2}
+                   :model/Table       {t-id :id}  {:db_id db-id :name "people" :schema "PUBLIC"}
+                   :model/Field       {f-id :id}  {:table_id t-id :name "state" :base_type :type/Text
+                                                   :database_type "VARCHAR"}
+                   :model/FieldValues _           {:field_id f-id :type :full
+                                                   :values [["CA"] ["NY"]]
+                                                   :has_more_values false}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "database/field-values"))))))
+
+(deftest databases-field-values-excludes-non-full-test
+  (testing "GET /api/database/field-values — only :full FieldValues are included"
+    (mt/with-temp [:model/Database    {db-id :id} {:name "fv-db" :engine :h2}
+                   :model/Table       {t-id :id}  {:db_id db-id :name "people" :schema "PUBLIC"}
+                   :model/Field       {f-id :id}  {:table_id t-id :name "state" :base_type :type/Text
+                                                   :database_type "VARCHAR"}
+                   :model/FieldValues _           {:field_id f-id :type :full
+                                                   :values [["CA"]]
+                                                   :has_more_values false}
+                   :model/FieldValues _           {:field_id f-id :type :sandbox
+                                                   :hash_key "sandbox-hash"
+                                                   :values [["NY"]]
+                                                   :has_more_values false}]
+      (let [{:keys [field_values]} (mt/user-http-request :crowberto :get 202 "database/field-values")
+            for-field               (filter #(= f-id (:field_id %)) field_values)]
+        (is (= 1 (count for-field))
+            "only the :full entry streams; :sandbox / other variants are excluded")
+        (is (= [["CA"]] (-> for-field first :values)))))))
+
 (deftest databases-metadata-excludes-audit-db-test
   (testing "GET /api/database/metadata — audit (internal) database, its tables, and its fields are excluded"
     (mt/with-temp [:model/Database {db-id :id} {:name "audit-db" :engine :h2 :is_audit true}
@@ -3000,63 +3060,6 @@
                                           :api-test-disabled-for-database
                                           :api-test-disabled-for-custom-reasons
                                           :api-test-disabled-for-multiple-reasons])))))))))
-
-;;; ---------------------------------------- workspace permissions endpoint tests ----------------------------------------
-
-(deftest workspace-permission-endpoint-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
-    (testing "POST /api/database/:id/permission/workspace/check"
-      (testing "returns cached status when available"
-        ;; First call to populate cache
-        (mt/user-http-request :crowberto :post 200
-                              (format "database/%d/permission/workspace/check" (mt/id))
-                              {:cached false})
-        ;; Second call should return cached result
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             (format "database/%d/permission/workspace/check" (mt/id)))]
-          (is (= "ok" (:status response)))
-          (is (some? (:checked_at response)))
-          (is (nil? (:error response)))))
-
-      (testing "runs permission check when no cache exists"
-        ;; Clear the cache
-        (t2/update! :model/Database (mt/id) {:workspace_permissions_status nil})
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             (format "database/%d/permission/workspace/check" (mt/id)))]
-          (is (= "ok" (:status response)) (str "response: " (pr-str response)))
-          (is (some? (:checked_at response)))
-          ;; Verify it was cached
-          (let [db (t2/select-one :model/Database (mt/id))]
-            (is (= "ok" (:status (:workspace_permissions_status db)))
-                (str "cached: " (pr-str (:workspace_permissions_status db)))))))
-
-      (testing "cached=false forces permission check"
-        ;; Set a stale cache value
-        (t2/update! :model/Database (mt/id) {:workspace_permissions_status {:status "stale" :checked_at "2020-01-01T00:00:00Z"}})
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             (format "database/%d/permission/workspace/check" (mt/id))
-                                             {:cached false})]
-          (is (= "ok" (:status response)))
-          ;; Verify cache was updated
-          (let [db (t2/select-one :model/Database (mt/id))]
-            (is (= "ok" (:status (:workspace_permissions_status db)))))))
-
-      (testing "requires superuser"
-        (is (= "You don't have permissions to do that."
-               (mt/user-http-request :rasta :post 403
-                                     (format "database/%d/permission/workspace/check" (mt/id)))))))))
-
-(deftest workspace-permission-failure-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :workspace)
-    (testing "returns failed status when permissions check fails"
-      (mt/with-dynamic-fn-redefs [driver/check-isolation-permissions
-                                  (fn [_driver _database _table]
-                                    "permission denied")]
-        (let [response (mt/user-http-request :crowberto :post 200
-                                             (format "database/%d/permission/workspace/check" (mt/id))
-                                             {:cached false})]
-          (is (= "failed" (:status response)))
-          (is (= "permission denied" (:error response))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         can-query filter tests                                                  |
