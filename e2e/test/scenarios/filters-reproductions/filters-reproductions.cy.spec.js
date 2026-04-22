@@ -63,8 +63,8 @@ describe.skip("issue 12496", () => {
           filter: [
             "between",
             ["field", ORDERS.CREATED_AT, null],
-            "2022-04-01",
-            "2022-05-31",
+            "2025-04-01",
+            "2025-05-31",
           ],
         },
         display: "line",
@@ -80,12 +80,12 @@ describe.skip("issue 12496", () => {
     H.cartesianChartCircle().eq(0).click({ force: true });
     H.popover().contains("See this Order").click();
     cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 24–30, 2022")
+      .contains("Created At is April 24–30, 2025")
       .click();
     H.popover().within(() => {
       cy.findByTestId("between-date-picker").within(() => {
-        datePickerInput(0, 0).should("have.value", "04/24/2022");
-        datePickerInput(1, 0).should("have.value", "04/30/2022");
+        datePickerInput(0, 0).should("have.value", "04/24/2025");
+        datePickerInput(1, 0).should("have.value", "04/30/2025");
       });
     });
   });
@@ -95,12 +95,12 @@ describe.skip("issue 12496", () => {
     H.cartesianChartCircle().eq(0).click({ force: true });
     H.popover().contains("See this Order").click();
     cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 2022")
+      .contains("Created At is April 2025")
       .click();
     H.popover().within(() => {
       cy.findByTestId("between-date-picker").within(() => {
-        datePickerInput(0, 0).should("have.value", "04/01/2022");
-        datePickerInput(1, 0).should("have.value", "04/30/2022");
+        datePickerInput(0, 0).should("have.value", "04/01/2025");
+        datePickerInput(1, 0).should("have.value", "04/30/2025");
       });
     });
   });
@@ -110,14 +110,14 @@ describe.skip("issue 12496", () => {
     H.cartesianChartCircle().eq(0).click({ force: true });
     H.popover().contains("See this Order").click();
     cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 30, 2022, 6:00–59 PM")
+      .contains("Created At is April 30, 2025, 6:00–59 PM")
       .click();
     H.popover().within(() => {
       cy.findByTestId("between-date-picker").within(() => {
-        datePickerInput(0, 0).should("have.value", "04/30/2022");
+        datePickerInput(0, 0).should("have.value", "04/30/2025");
         datePickerInput(0, 1).should("have.value", "6");
         datePickerInput(0, 2).should("have.value", "00");
-        datePickerInput(1, 0).should("have.value", "04/30/2022");
+        datePickerInput(1, 0).should("have.value", "04/30/2025");
         datePickerInput(1, 1).should("have.value", "6");
         datePickerInput(1, 2).should("have.value", "59");
       });
@@ -129,10 +129,10 @@ describe.skip("issue 12496", () => {
     H.cartesianChartCircle().eq(0).click({ force: true });
     H.popover().contains("See this Order").click();
     cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 30, 2022, 6:56 PM")
+      .contains("Created At is April 30, 2025, 6:56 PM")
       .click();
     H.popover().within(() => {
-      datePickerInput(0, 0).should("have.value", "04/30/2022");
+      datePickerInput(0, 0).should("have.value", "04/30/2025");
       datePickerInput(0, 1).should("have.value", "6");
       datePickerInput(0, 2).should("have.value", "56");
     });
@@ -143,10 +143,10 @@ describe.skip("issue 12496", () => {
     H.cartesianChartCircle().eq(0).click({ force: true });
     H.popover().contains("See this Order").click();
     cy.findByTestId("qb-filters-panel")
-      .contains("Created At is April 30, 2022")
+      .contains("Created At is April 30, 2025")
       .click();
     H.popover().within(() => {
-      datePickerInput(0, 0).should("have.value", "04/30/2022");
+      datePickerInput(0, 0).should("have.value", "04/30/2025");
     });
   });
 });
@@ -1122,8 +1122,8 @@ describe("issue 35043", () => {
               "base-type": "type/DateTime",
             },
           ],
-          "2024-04-15",
-          "2024-05-22",
+          "2027-04-15",
+          "2027-05-22",
         ],
         limit: 5,
       },
@@ -1134,12 +1134,12 @@ describe("issue 35043", () => {
 
     cy.findByTestId("filters-visibility-control").click();
     cy.findByTestId("filter-pill")
-      .should("have.text", "Created At is Apr 15 – May 22, 2024")
+      .should("have.text", "Created At is Apr 15 – May 22, 2027")
       .click();
 
     cy.findByTestId("date-filter-picker").within(() => {
       cy.intercept("POST", "/api/dataset").as("dataset");
-      cy.findByDisplayValue("May 22, 2024").type("{backspace}2").blur();
+      cy.findByDisplayValue("May 22, 2027").type("{backspace}2").blur();
       cy.findByDisplayValue("May 22, 2022").should("exist");
 
       cy.button("Update filter").click();
@@ -1148,7 +1148,7 @@ describe("issue 35043", () => {
 
     cy.findByTestId("filter-pill").should(
       "have.text",
-      "Created At is May 22, 2022 – Apr 15, 2024",
+      "Created At is May 22, 2022 – Apr 15, 2027",
     );
   });
 });

@@ -1044,8 +1044,8 @@ function assertCanViewOrdersTableDashcard() {
   assertClientSideTableSorting({
     columnName: "Created At",
     columnId: "CREATED_AT",
-    defaultValue: "February 11, 2025, 9:40 PM",
-    descValue: "April 19, 2026, 2:07 PM",
-    ascValue: "June 1, 2022, 6:12 PM",
+    defaultValue: "February 11, 2028, 9:40 PM",
+    descValue: "April 19, 2029, 2:07 PM",
+    ascValue: "June 1, 2025, 6:12 PM",
   });
 }

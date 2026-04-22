@@ -633,7 +633,7 @@ describe("scenarios > visualizations > line chart", () => {
 
             showTooltipForFirstCircleInSeries("#88BF4D");
             H.assertEChartsTooltip({
-              header: "2022",
+              header: "2025",
               rows: [
                 {
                   color: "#88BF4D",
@@ -687,7 +687,7 @@ describe("scenarios > visualizations > line chart", () => {
 
             showTooltipForFirstCircleInSeries("#88BF4D");
             H.assertEChartsTooltip({
-              header: "2022",
+              header: "2025",
               rows: [
                 {
                   color: "#88BF4D",

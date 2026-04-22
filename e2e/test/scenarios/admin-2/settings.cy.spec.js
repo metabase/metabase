@@ -171,7 +171,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     cy.findByTextEnsureVisible("Created At");
     cy.get("[data-testid=cell-data]")
       .should("contain", "Created At")
-      .and("contain", "2025/2/11, 21:40");
+      .and("contain", "2028/2/11, 21:40");
 
     // Go back to the settings and reset the time formatting
     cy.visit("/admin/settings/localization");
@@ -186,7 +186,7 @@ H.describeWithSnowplow("scenarios > admin > settings", () => {
     H.openOrdersTable({ limit: 2 });
 
     cy.findByTextEnsureVisible("Created At");
-    cy.get("[data-testid=cell-data]").and("contain", "2025/2/11, 9:40 PM");
+    cy.get("[data-testid=cell-data]").and("contain", "2028/2/11, 9:40 PM");
   });
 
   it("should show where to display the unit of currency (metabase#table-metadata-missing-38021 and update the formatting", () => {
@@ -753,32 +753,27 @@ describe("scenarios > admin > localization", () => {
 
   it("should correctly apply start of the week to a bar chart (metabase#13516)", () => {
     // programatically create and save a question based on Orders table
-    // filter: created before June 1st, 2022
+    // filter: created before June 1st, 2025
     // summarize: Count by CreatedAt: Week
-
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    H.createQuestion({
-      name: "Orders created before June 1st 2022",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
-        filter: ["<", ["field", ORDERS.CREATED_AT, null], "2022-06-01"],
+    H.createQuestion(
+      {
+        name: "Orders created before June 1st 2025",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+          filter: ["<", ["field", ORDERS.CREATED_AT, null], "2025-06-01"],
+        },
+        display: "bar",
       },
-      display: "line",
-    });
-
-    // find and open that question
-    cy.visit("/collection/root");
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders created before June 1st 2022").click();
-
-    cy.wait("@cardQuery");
+      { visitQuestion: true },
+    );
 
     cy.log("Assert the dates on the X axis");
     // it's hard and tricky to invoke hover in Cypress, especially in our graphs
     // that's why we have to assert on the x-axis, instead of a popover that shows on a dot hover
-    H.echartsContainer().get("text").contains("April 25, 2022");
+    // April 28 is Monday in year 2025. Expect this to break when we shift years in the Sample Database.
+    H.echartsContainer().find("text").should("contain", "April 28, 2025");
   });
 
   it("should display days on X-axis correctly when grouped by 'Day of the Week' (metabase#13604)", () => {
@@ -950,7 +945,7 @@ describe("scenarios > admin > localization", () => {
       cy.findByTextEnsureVisible("Add filter");
 
       // update the date input in the widget
-      cy.findByLabelText("Date").clear().type("2024/5/15").blur();
+      cy.findByLabelText("Date").clear().type("2027/5/15").blur();
 
       // add a time to the date
       cy.findByText("Add time").click();
@@ -966,7 +961,7 @@ describe("scenarios > admin > localization", () => {
 
     // verify that the correct row is displayed
     H.tableInteractive().within(() => {
-      cy.findByText("2024/5/15, 19:56");
+      cy.findByText("2027/5/15, 19:56");
       cy.findByText("127.52");
     });
   });
