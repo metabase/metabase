@@ -40,6 +40,7 @@ export function ManageCustomVizPage() {
           name={CUSTOM_VIZ_ENABLED_SETTING}
           title={t`Enable Custom Visualizations`}
           inputType="boolean"
+          description={t`Should custom visualizations be enabled for this instance? Disabling this will reload the page.`}
         />
       </SettingsSection>
 
