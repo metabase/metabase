@@ -6,7 +6,7 @@ SELECT
     m.conversation_id,
     m.created_at,
     m.role,
-    m.profile_id                   AS model,
+    m.profile_id,
     m.total_tokens,
     c.user_id,
     'user_' || c.user_id           AS user_qualified_id,

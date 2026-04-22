@@ -21,7 +21,7 @@ SELECT
        AND mm.role = 'assistant'
        AND mm.deleted_at IS NULL
      ORDER BY mm.created_at
-     LIMIT 1)                                                         AS model,
+     LIMIT 1)                                                         AS profile_id,
     (SELECT pg.name
      FROM permissions_group_membership pgm
      JOIN permissions_group pg ON pg.id = pgm.group_id

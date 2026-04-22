@@ -82,7 +82,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   const messageCount = conversation.message_count ?? 0;
   const searchCount = conversation.search_count ?? 0;
   const queryCount = conversation.query_count ?? 0;
-  const firstModel = conversation.model ?? undefined;
+  const firstProfile = conversation.profile_id ?? undefined;
   const queries = conversation.queries ?? [];
   const feedback = conversation.feedback ?? [];
 
@@ -108,11 +108,11 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                   <DateTime value={conversation.created_at} unit="day" />
                 </Text>
               </Flex>
-              {firstModel && (
+              {firstProfile && (
                 <Flex gap="xs" align="center">
                   <Icon name="metabot" size={16} c="text-tertiary" />
                   <Text size="md" c="text-secondary">
-                    {firstModel}
+                    {firstProfile}
                   </Text>
                 </Flex>
               )}

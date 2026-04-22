@@ -51,7 +51,7 @@
                             [:= :mm.deleted_at nil]]
                  :order-by [[:mm.created_at :asc]]
                  :limit    1}
-                :model]]
+                :profile_id]]
    :from      [[:metabot_conversation :c]]
    :left-join [[:metabot_message :m] [:and
                                       [:= :m.conversation_id :c.id]
@@ -71,7 +71,7 @@
    :assistant_message_count (:assistant_message_count row)
    :total_tokens            (long (:total_tokens row 0))
    :last_message_at         (:last_message_at row)
-   :model                   (:model row)
+   :profile_id              (:profile_id row)
    :search_count            (:search_count row 0)
    :query_count             (:query_count row 0)
    :ip_address              (:ip_address row)
@@ -166,9 +166,7 @@
        :user            (trim-user (:user hydrated))
        :message_count   (count messages)
        :total_tokens    (transduce (keep :total_tokens) + 0 messages)
-       ;; only assistant messages carry a real `profile_id`; user-message rows
-       ;; use a placeholder that shouldn't be surfaced as the "model"
-       :model           (some #(when (= :assistant (:role %)) (:profile_id %)) messages)
+       :profile_id      (some :profile_id messages)
        :slack_permalink (slack-permalink conversation)
        :chat_messages   (metabot-persistence/messages->chat-messages messages)
        :queries         (analytics.queries/messages->generated-queries messages)
