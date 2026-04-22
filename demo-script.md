@@ -25,6 +25,10 @@
 ## alt:
 
 1. have a metabase instance locally with the github_raw data loaded on it. This is the parent. You'll need an api key to fetch metadata.
+
+   - ```shell
+MB_CONFIG_FILE_PATH=./parent_config.yml;MB_DB_CONNECTION_URI="postgres://localhost:5433/metabase?user=metabase&password=password";MB_PREMIUM_EMBEDDING_TOKEN=<token> clojure -M:dev:ee:ee-dev:drivers:drivers-dev:run
+```
 1. create a workspace on parent, add the github data
 1. download config.yaml
 1. create an empty github, add a single empty file to it and comit
