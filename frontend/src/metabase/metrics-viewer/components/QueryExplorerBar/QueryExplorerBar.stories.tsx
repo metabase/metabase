@@ -79,12 +79,23 @@ export const WithGranularityControl = {
   },
 };
 
+export const WithLayoutToggle = {
+  render: Template,
+  args: {
+    chartTypes: CHART_TYPES,
+    currentChartType: "bar",
+    onChartTypeChange: () => {},
+    layout: { isStacked: false, onToggle: () => {} },
+  },
+};
+
 export const WithAllControls = {
   render: Template,
   args: {
     chartTypes: CHART_TYPES,
     currentChartType: "bar",
     onChartTypeChange: () => {},
+    layout: { isStacked: true, onToggle: () => {} },
     filterControl: (
       <Button variant="subtle" color="text-primary">
         All time
