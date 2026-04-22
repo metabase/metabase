@@ -718,6 +718,12 @@
   (let [specs                    (search/specifications)
         registered-t2-models     (perms/collection-id-only-read-models)
         registered-search-models (set (keys (perms/collection-based-visibility-search-models)))]
+    ;; Two sources:
+    ;; (1) string-form registrations, whose spec's `:model` is a different t2-model (e.g. ModelIndex)
+    ;;     and wouldn't be picked up by the filter below;
+    ;; (2) every spec whose `:model` was registered via the keyword form — `mi/can-read?` dispatches on
+    ;;     the t2-model, so sibling specs like "dataset"/"metric" that share `:model/Card` are covered
+    ;;     by one registration.
     (into registered-search-models
           (comp (filter (fn [[_ spec]] (contains? registered-t2-models (:model spec))))
                 (map key))
