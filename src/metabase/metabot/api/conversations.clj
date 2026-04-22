@@ -21,15 +21,14 @@
 
 (def ^:private ConversationSummary
   [:map
-   [:conversation_id    ms/UUIDString]
-   [:created_at         ms/TemporalInstant]
-   [:summary            [:maybe :string]]
-   ;; `originator_user_id` is the user who sent the first message; set once on
-   ;; insert, never updated. Distinct from the set of participants — any user
-   ;; who has sent a message in the conversation can read it.
-   [:originator_user_id [:maybe ms/PositiveInt]]
-   [:message_count      ms/IntGreaterThanOrEqualToZero]
-   [:last_message_at    [:maybe ms/TemporalInstant]]])
+   [:conversation_id ms/UUIDString]
+   [:created_at      ms/TemporalInstant]
+   [:summary         [:maybe :string]]
+   ;; Wire compatibility: keep the field name `user_id`, but it now means the
+   ;; conversation originator (first writer), not "the only allowed reader".
+   [:user_id         [:maybe ms/PositiveInt]]
+   [:message_count   ms/IntGreaterThanOrEqualToZero]
+   [:last_message_at [:maybe ms/TemporalInstant]]])
 
 (def ^:private ListConversationsResponse
   [:map
@@ -40,11 +39,11 @@
 
 (def ^:private ConversationDetail
   [:map
-   [:conversation_id    ms/UUIDString]
-   [:created_at         ms/TemporalInstant]
-   [:summary            [:maybe :string]]
-   [:originator_user_id [:maybe ms/PositiveInt]]
-   [:chat_messages      [:sequential :map]]])
+   [:conversation_id ms/UUIDString]
+   [:created_at      ms/TemporalInstant]
+   [:summary         [:maybe :string]]
+   [:user_id         [:maybe ms/PositiveInt]]
+   [:chat_messages   [:sequential :map]]])
 
 (def ^:private ConversationIdParams
   [:map [:id ms/UUIDString]])
@@ -88,7 +87,7 @@
         ;; soft-deleted messages still count. Legacy rows fall back to
         ;; `metabot_conversation.user_id`.
         rows    (t2/select :model/MetabotConversation
-                           {:select   [:id :created_at :summary [:user_id :originator_user_id]
+                           {:select   [:id :created_at :summary :user_id
                                        [{:select [[[:count :*]]]
                                          :from   [:metabot_message]
                                          :where  [:and
@@ -106,7 +105,7 @@
                             :limit    limit
                             :offset   offset})]
     {:data   (mapv #(-> %
-                        (select-keys [:created_at :summary :originator_user_id :message_count :last_message_at])
+                        (select-keys [:created_at :summary :user_id :message_count :last_message_at])
                         (assoc :conversation_id (:id %)))
                    rows)
      :total  (t2/count :model/MetabotConversation {:where visible-to-user})
@@ -119,10 +118,7 @@
   Accessible to any participant in the conversation or to any superuser."
   [{:keys [id]} :- ConversationIdParams]
   (api/read-check :model/MetabotConversation id)
-  (let [{:keys [user_id] :as detail} (metabot.persistence/conversation-detail id)]
-    (-> detail
-        (dissoc :user_id)
-        (assoc :originator_user_id user_id))))
+  (metabot.persistence/conversation-detail id))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/conversations` routes."

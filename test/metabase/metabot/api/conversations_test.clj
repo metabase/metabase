@@ -127,7 +127,7 @@
                                              (str "metabot/conversations/" convo-id))]
           (is (= convo-id (:conversation_id response)))
           (is (= "mine" (:summary response)))
-          (is (= user-id (:originator_user_id response)))
+          (is (= user-id (:user_id response)))
           (is (= 1 (count (:chat_messages response)))))
         (finally
           (cleanup! [convo-id]))))))
@@ -144,7 +144,7 @@
         (let [response (mt/user-http-request :lucky :get 200
                                              (str "metabot/conversations/" convo-id))]
           (is (= convo-id (:conversation_id response)))
-          (is (= originator-id (:originator_user_id response))))
+          (is (= originator-id (:user_id response))))
         (finally
           (cleanup! [convo-id]))))))
 
@@ -157,7 +157,7 @@
         (let [response (mt/user-http-request :crowberto :get 200
                                              (str "metabot/conversations/" convo-id))]
           (is (= convo-id (:conversation_id response)))
-          (is (= owner-id (:originator_user_id response))))
+          (is (= owner-id (:user_id response))))
         (finally
           (cleanup! [convo-id]))))))
 
