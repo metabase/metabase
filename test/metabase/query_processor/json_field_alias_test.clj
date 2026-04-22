@@ -13,13 +13,19 @@
    [metabase.test.data.env :as tx.env]))
 
 (defn- drivers-with-nested-field-support
-  "Active test drivers that support JSON unfolding (`:nested-field-columns`) or native nested fields
-  (`:nested-fields`). Uses a stub database so this works without any live DB connection."
+  "Active SQL test drivers that support JSON unfolding (`:nested-field-columns`) or native nested
+  fields (`:nested-fields`). The bug this test guards against is about SQL identifier quoting, so
+  non-SQL drivers (e.g. Mongo) are excluded. Uses a stub database so this works without any live DB
+  connection."
   []
   (for [driver (tx.env/test-drivers)
-        :let   [stub-db {:lib/type :metadata/database, :engine driver, :id -1, :details {}}]
-        :when  (or (driver/database-supports? driver :nested-field-columns stub-db)
-                   (driver/database-supports? driver :nested-fields stub-db))]
+        ;; force the driver namespace to load so its hierarchy derivations and `database-supports?`
+        ;; defmethods are registered.
+        :let   [_       (driver/the-driver driver)
+                stub-db {:lib/type :metadata/database, :engine driver, :id -1, :details {}}]
+        :when  (and (isa? driver/hierarchy driver :sql)
+                    (or (driver/database-supports? driver :nested-field-columns stub-db)
+                        (driver/database-supports? driver :nested-fields stub-db)))]
     driver))
 
 (defn- json-field-slash-alias-metadata-provider [driver]
