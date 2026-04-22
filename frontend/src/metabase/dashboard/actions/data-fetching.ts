@@ -648,9 +648,12 @@ export const fetchDashboardCardData =
         ]);
         if (
           lastResult &&
+          !("error" in lastResult) &&
           _.isEqual(getDatasetQueryParams(lastResult.json_query), queryParams)
         ) {
-          continue; // cached, drop from both loadingIds and batch
+          // Cached. Note: error results always retry — the user may have fixed
+          // a bad parameter mapping or upstream config.
+          continue;
         }
         const inFlight = cardDataCancelDeferreds[key];
         if (inFlight && _.isEqual(inFlight.queryParams, queryParams)) {
@@ -936,17 +939,22 @@ export const cancelFetchCardData = createAction(
       entry.deferred.resolve();
       cardDataCancelDeferreds[`${dashcard_id},${card_id}`] = null;
     }
-    // Per-card XHR cancellation isn't possible on the batch endpoint — a
-    // batch carries every loading card on one fetch. Abort it so removing /
-    // navigating away from a card during load doesn't leave a slow stream
-    // running; the remaining cards refetch on the next fetchDashboardCardData.
-    if (batchFetchAbortController) {
-      batchFetchAbortController.abort();
-      batchFetchAbortController = null;
-    }
     return { payload: { dashcard_id, card_id } };
   },
 );
+
+/**
+ * Abort the in-flight batch card-query request, if any. Per-card cancellation
+ * isn't possible on the batch endpoint — one fetch carries every loading card.
+ * Callers that need to stop a mid-stream batch (e.g. dashcard removal) invoke
+ * this directly.
+ */
+export function abortBatchCardQuery() {
+  if (batchFetchAbortController) {
+    batchFetchAbortController.abort();
+    batchFetchAbortController = null;
+  }
+}
 
 export const clearCardData = createAction(
   CLEAR_CARD_DATA,
