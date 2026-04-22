@@ -1317,6 +1317,32 @@
         (is (every? :created resp))
         (is (= n (t2/count :model/FieldValues :field_id [:in f-ids] :type :full :hash_key nil)))))))
 
+(deftest post-field-values-query-count-test
+  (testing "POST /api/database/field-values — # SQL statements per batch is O(1), not O(N)"
+    ;; Measures the batch processor directly — wrapping the full HTTP request counts session/perm/
+    ;; streaming-setup queries that vary with JVM warmth and drown out the signal we care about.
+    (mt/with-temp [:model/Database {db-id :id} {:name "fv-qcount-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      (let [n       50
+            rows    (mapv (fn [i]
+                            {:table_id t-id :name (str "f" i)
+                             :base_type :type/Text :database_type "TEXT" :active true})
+                          (range n))
+            f-ids   (t2/insert-returning-pks! :model/Field rows)
+            batch   (map-indexed (fn [i fid]
+                                   [(inc i) {:field_id fid :values [[(str "val-" fid)]] :has_more_values false}])
+                                 f-ids)
+            buffer  (java.util.ArrayList.)
+            calls   (t2/with-call-count [call-count]
+                      (t2/with-transaction [_conn]
+                        (#'metabase.warehouses-rest.api/process-field-values-batch! batch buffer))
+                      (call-count))]
+        (testing "field-values batch processor should issue a bounded number of statements independent of batch size"
+          (is (< calls 10)
+              (format "expected < 10 SQL statements for %d-row field-values batch, got %d" n calls))
+          (is (= n (.size buffer)))
+          (is (every? :created (vec buffer))))))))
+
 (deftest post-field-values-non-admin-test
   (testing "POST /api/database/field-values — non-admin requests are rejected"
     (let [body (ByteArrayInputStream. (.getBytes "{}\n" "UTF-8"))
@@ -1561,9 +1587,10 @@
                                      [{:id parent-id :parent_id nil       :fk_target_field_id nil}
                                       {:id leaf1-id  :parent_id parent-id :fk_target_field_id nil}
                                       {:id leaf2-id  :parent_id parent-id :fk_target_field_id nil}])]
-        (testing "exactly one line is written and it's the unique_violation, tagged with line and id"
+        (testing "exactly one line is written and it's a unique_violation"
+          ;; Per the batched-UPDATE plan, per-row :line / :id attribution is lost for SQL-level throws.
           (is (= 1 (count fin-resp)))
-          (is (=? {:error "unique_violation" :line 3 :id leaf2-id} (first fin-resp))))
+          (is (=? {:error "unique_violation"} (first fin-resp))))
         (testing "the whole batch rolled back — every row stays defective"
           (is (true? (t2/select-one-fn :is_defective_duplicate :metabase_field :id parent-id)))
           (is (true? (t2/select-one-fn :is_defective_duplicate :metabase_field :id leaf1-id)))
@@ -1575,16 +1602,33 @@
                    :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}
                    :model/Field    {f-id :id}  {:table_id t-id :name "x" :base_type :type/Integer
                                                 :database_type "INT" :is_defective_duplicate true}]
-      (let [orig-update t2/update!]
-        (with-redefs [t2/update! (fn [& args]
-                                   (if (and (= :model/Field (first args))
-                                            (= f-id (second args)))
+      ;; Batched-UPDATE path issues one t2/query per batch — simulate a DB-layer failure by
+      ;; throwing from it. Per-line attribution is lost for SQL-level throws (documented caveat).
+      (let [orig-query t2/query]
+        (with-redefs [t2/query (fn [& args]
+                                 (let [q (first args)]
+                                   (if (and (vector? q)
+                                            (str/starts-with? (str (first q)) "UPDATE metabase_field"))
                                      (throw (RuntimeException. "kaboom"))
-                                     (apply orig-update args)))]
+                                     (apply orig-query args))))]
           (let [resp (ndjson-post :crowberto "database/metadata/fields/finalize"
                                   [{:id f-id :parent_id nil :fk_target_field_id nil}])]
             (is (= 1 (count resp)))
-            (is (=? {:error "server_error" :line 1 :id f-id} (first resp)))))))))
+            (is (=? {:error "server_error"} (first resp)))))))))
+
+(deftest post-metadata-fields-finalize-not-found-test
+  (testing "POST /api/database/metadata/fields/finalize — unknown id terminates the stream with :not_found tagged to the offending line"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fin-notfound-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}
+                   :model/Field    {f-id :id}  {:table_id t-id :name "x" :base_type :type/Integer
+                                                :database_type "INT" :is_defective_duplicate true}]
+      (let [resp (ndjson-post :crowberto "database/metadata/fields/finalize"
+                              [{:id f-id     :parent_id nil :fk_target_field_id nil}
+                               {:id 99999999 :parent_id nil :fk_target_field_id nil}])]
+        (is (= 1 (count resp)))
+        (is (=? {:error "not_found" :line 2 :id 99999999} (first resp)))
+        (testing "the whole batch rolled back — the real row stays defective"
+          (is (true? (t2/select-one-fn :is_defective_duplicate :metabase_field :id f-id))))))))
 
 (deftest post-metadata-fields-finalize-batched-test
   (testing "POST /api/database/metadata/fields/finalize — > import-batch-size rows stream per-row UPDATEs"
@@ -1604,6 +1648,55 @@
         (is (every? :ok resp))
         (is (zero? (t2/count :metabase_field {:where [:and [:= :table_id t-id]
                                                       [:= :is_defective_duplicate true]]})))))))
+
+(deftest post-metadata-fields-finalize-query-count-test
+  (testing "POST /api/database/metadata/fields/finalize — # SQL statements is O(1) in batch size, not O(N)"
+    ;; Measures the batch processor directly — wrapping the full HTTP request counts session/perm/
+    ;; streaming-setup queries that vary with JVM warmth and drown out the signal we care about.
+    (mt/with-temp [:model/Database {db-id :id} {:name "fin-qcount-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      (let [n      50
+            rows   (mapv (fn [i]
+                           {:table_id t-id :name (str "col" i)
+                            :base_type :type/Integer :database_type "INT"
+                            :active true :is_defective_duplicate true})
+                         (range n))
+            f-ids  (t2/insert-returning-pks! :model/Field rows)
+            batch  (map-indexed (fn [i fid]
+                                  [(inc i) {:id fid :parent_id nil :fk_target_field_id nil}])
+                                f-ids)
+            buffer (java.util.ArrayList.)
+            calls  (t2/with-call-count [call-count]
+                     (t2/with-transaction [_conn]
+                       (#'metabase.warehouses-rest.api/process-finalize-batch! batch buffer))
+                     (call-count))]
+        (testing "finalize batch processor should issue a bounded number of statements independent of batch size"
+          (is (< calls 10)
+              (format "expected < 10 SQL statements for %d-row finalize batch, got %d" n calls))
+          (is (= n (.size buffer)))
+          (is (every? :ok (vec buffer))))))))
+
+(deftest post-metadata-fields-finalize-overrides-user-settings-test
+  (testing "POST /api/database/metadata/fields/finalize — finalize's fk_target_field_id wins over any existing FieldUserSettings row"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fin-overrides-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}
+                   :model/Field    {fk-target-a :id} {:table_id t-id :name "target_a"
+                                                      :base_type :type/Integer :database_type "INT"}
+                   :model/Field    {fk-target-b :id} {:table_id t-id :name "target_b"
+                                                      :base_type :type/Integer :database_type "INT"}
+                   :model/Field    {f-id :id}   {:table_id t-id :name "x"
+                                                 :base_type :type/Integer :database_type "INT"
+                                                 :is_defective_duplicate true}
+                   ;; User settings row carries an fk_target_field_id pointing at target A. finalize
+                   ;; sends target B. The contract says finalize wins; the current pre-update hook
+                   ;; merges the user-settings value over the finalize value and target A survives.
+                   :model/FieldUserSettings _ {:field_id f-id :fk_target_field_id fk-target-a}]
+      (let [resp (ndjson-post :crowberto "database/metadata/fields/finalize"
+                              [{:id f-id :parent_id nil :fk_target_field_id fk-target-b}])]
+        (is (= [{:id f-id :ok true}] resp))
+        (is (= fk-target-b
+               (t2/select-one-fn :fk_target_field_id :metabase_field :id f-id))
+            "finalize's fk_target_field_id must not be overridden by FieldUserSettings")))))
 
 (deftest post-metadata-streaming-end-to-end-test
   (testing "POST /api/database/metadata/{databases,tables,fields,fields/finalize} — full happy-path chain"

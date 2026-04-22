@@ -3,10 +3,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.util]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.sync :as sync]
    [metabase.sync.sync-metadata :as sync-metadata]
+   [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.sync.util :as sync-util]
    [metabase.test :as mt]
    [metabase.warehouses.models.database :as database]
@@ -81,6 +83,34 @@
         (let [response (mt/user-http-request :crowberto :post 503
                                              (format "database/%d/rescan_values" (:id db)))]
           (is (= "sync-disabled" (get response :error-code))))))))
+
+(deftest disable-sync-blocks-quartz-sync-and-analyze-test
+  (testing "sync-and-analyze-database*! refuses at the job entry point when disable-sync is on (defense in depth)"
+    (mt/with-temp [:model/Database db {:engine :h2}]
+      (mt/with-temporary-setting-values [disable-sync true]
+        (let [reached-sync? (atom false)]
+          ;; Stub driver.u/can-connect-with-details? so the guard under test is the only thing
+          ;; between the entry point and the sync/analyze fns — otherwise a failing connect here
+          ;; would short-circuit and the assertion would pass vacuously.
+          (with-redefs [metabase.driver.util/can-connect-with-details? (fn [& _] true)
+                        sync-metadata/sync-db-metadata!                (fn [& _] (reset! reached-sync? true) nil)
+                        analyze/analyze-db!                            (fn [& _] (reset! reached-sync? true) nil)]
+            (#'task.sync-databases/sync-and-analyze-database*! (:id db))
+            (is (false? @reached-sync?)
+                "guard missing: sync-and-analyze-database*! reached sync/analyze despite disable-sync")))))))
+
+(deftest disable-sync-blocks-quartz-update-field-values-test
+  (testing "update-field-values! refuses at the job entry point when disable-sync is on (defense in depth)"
+    (mt/with-temp [:model/Database db {:engine :h2}]
+      (mt/with-temporary-setting-values [disable-sync true]
+        (let [reached-fv? (atom false)
+              db-id       (:id db)]
+          (with-redefs-fn {#'task.sync-databases/job-context->database-id (fn [_] db-id)
+                           #'sync.field-values/update-field-values!       (fn [& _] (reset! reached-fv? true) nil)}
+            (fn []
+              (#'task.sync-databases/update-field-values! ::fake-job-context)))
+          (is (false? @reached-fv?)
+              "guard missing: update-field-values! reached sync.field-values despite disable-sync"))))))
 
 (deftest flag-off-sync-still-works-test
   (testing "flag off: baseline that the gates don't break normal sync"
