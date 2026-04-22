@@ -6,12 +6,12 @@ import type {
   SchemaEntityId,
   TableEntityId,
 } from "metabase/admin/permissions/types";
+import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionValue,
-} from "metabase/admin/permissions/types";
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import type { GroupsPermissions } from "metabase-types/api";
+  type GroupsPermissions,
+} from "metabase-types/api";
 
 // permission that do not have a nested schemas/native key
 const flatPermissions = new Set([

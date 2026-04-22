@@ -10,10 +10,7 @@ import type {
   CollectionSidebarType,
 } from "metabase/admin/permissions/selectors/collection-permissions";
 import { getPermissionWarningModal } from "metabase/admin/permissions/selectors/confirmations";
-import type {
-  DataPermissionValue,
-  PermissionEditorType,
-} from "metabase/admin/permissions/types";
+import type { PermissionEditorType } from "metabase/admin/permissions/types";
 import { findCollectionById } from "metabase/common/utils/collections";
 import {
   Collections,
@@ -31,6 +28,7 @@ import {
 import type {
   CollectionId,
   CollectionPermissions,
+  DataPermissionValue,
   Group as GroupType,
 } from "metabase-types/api";
 

@@ -6,11 +6,7 @@ import {
   UPDATE_DATA_PERMISSION,
   updateDataPermission,
 } from "metabase/admin/permissions/permissions";
-import {
-  DataPermission,
-  DataPermissionType,
-  DataPermissionValue,
-} from "metabase/admin/permissions/types";
+import { DataPermissionType } from "metabase/admin/permissions/types";
 import { GTAPApi } from "metabase/services";
 import {
   combineReducers,
@@ -19,6 +15,7 @@ import {
   handleActions,
   withRequestState,
 } from "metabase/utils/redux";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
 import { getPolicyKey, getPolicyKeyFromParams } from "./utils";
 
