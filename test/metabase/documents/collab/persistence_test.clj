@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.documents.collab.persistence :as collab.persistence]
+   [metabase.documents.collab.prose-mirror :as collab.prose-mirror]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -36,24 +37,31 @@
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"document name missing entity-id"
                         (collab.persistence/parse-doc-name "document:   "))))
 
-(deftest extension-round-trips-bytes-test
-  (testing "saveToDatabase followed by loadFromDatabase returns the exact bytes"
+(deftest extension-round-trips-state-test
+  (testing "saveToDatabase followed by loadFromDatabase yields bytes equivalent to what was saved"
     (mt/with-temp [:model/Document {entity-id :entity_id}
                    {:name     "Round trip"
                     :document {:type "doc" :content []}}]
       (let [ext     ^DatabaseExtension (collab.persistence/create-persistence-extension)
             doc-id  (str "document:" entity-id)
-            payload (byte-array [0 1 2 3 42 127 -1 -128])]
+            pm      {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "round trip"}]}]}
+            payload (collab.prose-mirror/pm-json->ydoc-bytes pm)]
         (.saveToDatabase ext doc-id payload)
-        (is (= (vec payload)
-               (vec (.loadFromDatabase ext doc-id))))))))
+        (let [loaded (.loadFromDatabase ext doc-id)]
+          (is (some? loaded))
+          (is (= pm (collab.prose-mirror/ydoc-bytes->pm-json loaded))))))))
 
-(deftest extension-load-returns-nil-for-fresh-document-test
-  (testing "loadFromDatabase returns nil when no ydoc has been saved yet"
+(deftest extension-load-empty-document-returns-empty-state-test
+  (testing "loadFromDatabase for a document with empty JSON and no ydoc returns minimal-state bytes"
+    ;; Old behaviour was nil. With hydration, an empty PM doc `{:type "doc" :content []}`
+    ;; hydrates to a valid (empty) YDoc state, which is what yhocuspocus wants.
     (mt/with-temp [:model/Document {entity-id :entity_id}
-                   {:name "Fresh" :document {:type "doc" :content []}}]
-      (let [ext ^DatabaseExtension (collab.persistence/create-persistence-extension)]
-        (is (nil? (.loadFromDatabase ext (str "document:" entity-id))))))))
+                   {:name "Empty-doc fresh" :document {:type "doc" :content []}}]
+      (let [ext   ^DatabaseExtension (collab.persistence/create-persistence-extension)
+            bytes (.loadFromDatabase ext (str "document:" entity-id))]
+        (is (some? bytes))
+        (is (= {:type "doc" :content []}
+               (collab.prose-mirror/ydoc-bytes->pm-json bytes)))))))
 
 (deftest extension-load-returns-nil-for-unknown-entity-test
   (let [ext ^DatabaseExtension (collab.persistence/create-persistence-extension)]
@@ -71,21 +79,39 @@
   (testing "saveToDatabase fires :event/document-update on success"
     (mt/with-temp [:model/Document {entity-id :entity_id}
                    {:name "Event emission" :document {:type "doc" :content []}}]
-      (let [captured (atom [])]
+      (let [captured (atom [])
+            payload  (collab.prose-mirror/pm-json->ydoc-bytes
+                      {:type "doc" :content [{:type "paragraph"
+                                              :content [{:type "text" :text "x"}]}]})]
         (with-redefs [events/publish-event! (fn [topic event] (swap! captured conj [topic event]))]
           (.saveToDatabase ^DatabaseExtension (collab.persistence/create-persistence-extension)
                            (str "document:" entity-id)
-                           (byte-array [9 9 9])))
+                           payload))
         (is (= 1 (count @captured)))
         (is (= :event/document-update (ffirst @captured)))
         (is (= entity-id (get-in (second (first @captured)) [:object :entity_id])))))))
 
-(deftest save-to-database-leaves-document-json-untouched-test
-  (testing "ydoc-only save does NOT clobber the ProseMirror JSON column"
-    (let [pm {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "Hello"}]}]}]
+(deftest save-to-database-populates-document-json-test
+  (testing "dual-write: saveToDatabase writes both :ydoc bytes and derived PM JSON"
+    (let [pm {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "initial"}]}]}]
       (mt/with-temp [:model/Document {entity-id :entity_id, doc-id :id}
-                     {:name "Untouched JSON" :document pm}]
-        (.saveToDatabase ^DatabaseExtension (collab.persistence/create-persistence-extension)
-                         (str "document:" entity-id)
-                         (byte-array [1 2 3]))
-        (is (= pm (t2/select-one-fn :document :model/Document :id doc-id)))))))
+                     {:name "Dual-written" :document pm}]
+        (let [ext        ^DatabaseExtension (collab.persistence/create-persistence-extension)
+              ;; Build realistic ydoc bytes by round-tripping a different PM JSON through the converter.
+              new-pm     {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "edited"}]}]}
+              state-bytes (collab.prose-mirror/pm-json->ydoc-bytes new-pm)]
+          (.saveToDatabase ext (str "document:" entity-id) state-bytes)
+          (let [{:keys [ydoc document]} (t2/select-one [:model/Document :ydoc :document] :id doc-id)]
+            (is (some? ydoc))
+            (is (= "edited" (get-in document [:content 0 :content 0 :text]))
+                "document JSON reflects the new ydoc state")))))))
+
+(deftest load-from-database-hydrates-from-pm-json-test
+  (testing "loadFromDatabase hydrates bytes from existing :document JSON when :ydoc is nil"
+    (let [pm {:type "doc" :content [{:type "paragraph" :content [{:type "text" :text "prehydrated"}]}]}]
+      (mt/with-temp [:model/Document {entity-id :entity_id} {:name "Prehydrated" :document pm}]
+        (let [ext   ^DatabaseExtension (collab.persistence/create-persistence-extension)
+              bytes (.loadFromDatabase ext (str "document:" entity-id))]
+          (is (some? bytes))
+          (let [round-tripped (collab.prose-mirror/ydoc-bytes->pm-json bytes)]
+            (is (= "prehydrated" (get-in round-tripped [:content 0 :content 0 :text])))))))))

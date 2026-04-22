@@ -27,13 +27,15 @@ User-facing docs live elsewhere.
 
 ## File roles
 
-| File            | Responsibility                                                           |
-|-----------------|--------------------------------------------------------------------------|
-| `native.clj`    | JNI load probe — gates all collab initialization.                        |
-| `transport.clj` | Ring WebSocket ↔ `yhocuspocus.Transport` bridge (byte buffers, futures). |
-| `handler.clj`   | `/api/document/collab` endpoint; feature-flag gate + `handleConnection`. |
-| `server.clj`    | Lazy `YHocuspocus` singleton + `stop!` lifecycle hook.                   |
-| `persistence.clj` | `DatabaseExtension` backed by `document.ydoc` (binary column).         |
+| File                | Responsibility                                                           |
+|---------------------|--------------------------------------------------------------------------|
+| `native.clj`        | JNI load probe — gates all collab initialization.                        |
+| `transport.clj`     | Ring WebSocket ↔ `yhocuspocus.Transport` bridge (byte buffers, futures). |
+| `handler.clj`       | `/api/document/collab` endpoint; feature-flag gate + `handleConnection`. |
+| `server.clj`        | Lazy `YHocuspocus` singleton + `stop!` lifecycle hook.                   |
+| `persistence.clj`   | `DatabaseExtension` — dual-writes `document.ydoc` + `document.document`. |
+| `authz.clj`         | `Extension#onAuthenticate` — per-document read/write permission check.   |
+| `prose_mirror.clj`  | Schema-free `YXmlFragment` ↔ ProseMirror JSON walker.                    |
 
 ## Doc naming
 
@@ -45,11 +47,33 @@ dashboards) can claim their own prefixes; unknown prefixes throw
 
 ## Storage
 
-Binary Y-CRDT state lives in `document.ydoc` (`bytea` / `blob`). The
-`document` column (ProseMirror JSON) is **NOT** updated by the collab
-save path. The ProseMirror derivation lands in a later phase; until then,
-a collab-edited document can drift from its JSON. That's acceptable
-because the feature flag is off by default.
+Binary Y-CRDT state lives in `document.ydoc` (`bytea` / `blob`). The existing
+ProseMirror JSON in the `document.document` column is kept in sync on every
+save — `saveToDatabase` derives PM JSON from the post-edit YDoc via the
+schema-free walker in `prose_mirror.clj` and writes both columns in one
+transaction. Viewers of `GET /api/document/:id` therefore always see the
+latest state without needing to know about collab.
+
+When a document that has existing JSON but no ydoc connects for the first
+time, `loadFromDatabase` hydrates bytes from the JSON so the collab session
+starts at the current state rather than empty.
+
+## Authorization
+
+The handler is mounted behind `+auth` in the top-level route map, so
+session resolution + 401 rejection happens upstream — we don't duplicate
+that work. Inside the handler, `api/*current-user-id*` is already bound;
+we stash it in the yhocuspocus context `HashMap` as `"userId"`.
+
+The `authz.clj` `Extension` runs on the yhocuspocus executor. Its
+`onAuthenticate` hook reads `"userId"` from the context, rebinds it via
+`request.session/with-current-user`, and checks `mi/can-read?` /
+`mi/can-write?` on the resolved document. Three outcomes:
+
+- Unknown entity-id or no read perms → throws; yhocuspocus closes the
+  connection.
+- Read perms but no write perms → `payload.setReadOnly(true)`.
+- Write perms → connection accepted as-is.
 
 ## Feature flag
 

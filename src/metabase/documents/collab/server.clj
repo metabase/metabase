@@ -7,6 +7,7 @@
    (the websocket handler closes the connection with 1011 in that case)."
   (:require
    [metabase.config.core :as config]
+   [metabase.documents.collab.authz :as collab.authz]
    [metabase.documents.collab.native :as collab.native]
    [metabase.documents.collab.persistence :as collab.persistence]
    [metabase.util.log :as log])
@@ -20,6 +21,7 @@
   (log/info "collab: starting YHocuspocus server")
   (.. (YHocuspocus/builder)
       (extension (collab.persistence/create-persistence-extension))
+      (extension (collab.authz/create-authz-extension))
       (debounce    (Duration/ofSeconds 2))
       (maxDebounce (Duration/ofSeconds 10))
       (build)))

@@ -1,14 +1,23 @@
 (ns metabase.documents.collab.persistence
-  "YHocuspocus `DatabaseExtension` backed by the `document.ydoc` column.
+  "YHocuspocus `DatabaseExtension` backed by the `document.ydoc` column plus
+   a derived ProseMirror-JSON mirror in the existing `document.document`
+   column. Both columns are written in a single transaction so viewers of
+   `/api/document/:id` never see them drift.
 
-   Writes the binary Y-CRDT state but deliberately skips the `:model/Document`
-   `define-after-update` hook, which syncs associated cards on every update —
-   unnecessary (and expensive) for ydoc-only writes that fire every few seconds
-   during active editing. The `:event/document-update` event is re-emitted
-   here explicitly so downstream consumers still observe the change."
+   Writes deliberately skip the `:model/Document` `define-after-update` hook
+   (which syncs associated cards on every update — unnecessary and expensive
+   for ydoc-only writes that fire every few seconds during active editing).
+   The `:event/document-update` event is re-emitted here explicitly so
+   downstream consumers still observe the change.
+
+   `loadFromDatabase` hydrates from the ProseMirror-JSON column when there is
+   no ydoc yet, so documents created before collab existed automatically
+   seed an empty-but-correct YDoc on first connect."
   (:require
    [clojure.string :as str]
+   [metabase.documents.collab.prose-mirror :as collab.prose-mirror]
    [metabase.events.core :as events]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -39,25 +48,38 @@
     (throw (ex-info "unsupported document name prefix"
                     {:doc-name s :known-prefixes #{document-prefix}}))))
 
-(defn- load-snapshot [entity-id]
-  (t2/select-one-fn :ydoc :model/Document :entity_id entity-id))
+(defn- load-snapshot
+  "Return the document's Y-CRDT state bytes. If no ydoc has been saved yet
+   but the document has existing ProseMirror JSON, synthesize bytes from the
+   JSON so the first collab session seeds correctly. Returns nil for unknown
+   entity-ids and for empty-or-missing documents."
+  ^bytes [entity-id]
+  (let [{:keys [ydoc document]} (t2/select-one [:model/Document :ydoc :document]
+                                               :entity_id entity-id)]
+    (or ydoc
+        (when (seq document)
+          (collab.prose-mirror/pm-json->ydoc-bytes document)))))
 
 (defn- save-snapshot!
-  "UPDATE + SELECT wrapped in a transaction so the event payload is guaranteed
-   to reflect the post-update state (or absent if the row doesn't exist).
+  "Dual-write the ydoc bytes + derived ProseMirror JSON in a single
+   transaction. UPDATE + SELECT wrapped together so the event payload always
+   reflects the post-update state.
 
    Don't use the UPDATE row-count to decide whether to emit the event — on
    MySQL with default driver settings, an UPDATE that sets identical bytes
    reports 0 affected rows. The SELECT inside the transaction is the
    authoritative existence check."
   [entity-id ^bytes state-bytes]
-  (t2/with-transaction [_conn]
-    (t2/query-one {:update :document
-                   :set    {:ydoc       state-bytes
-                            :updated_at :%now}
-                   :where  [:= :entity_id entity-id]})
-    (when-let [doc (t2/select-one :model/Document :entity_id entity-id)]
-      (events/publish-event! :event/document-update {:object doc}))))
+  (let [pm-json   (collab.prose-mirror/ydoc-bytes->pm-json state-bytes)
+        pm-string (json/encode pm-json)]
+    (t2/with-transaction [_conn]
+      (t2/query-one {:update :document
+                     :set    {:ydoc       state-bytes
+                              :document   pm-string
+                              :updated_at :%now}
+                     :where  [:= :entity_id entity-id]})
+      (when-let [doc (t2/select-one :model/Document :entity_id entity-id)]
+        (events/publish-event! :event/document-update {:object doc})))))
 
 (defn create-persistence-extension
   "Build a `DatabaseExtension` proxy that yhocuspocus calls to load and save

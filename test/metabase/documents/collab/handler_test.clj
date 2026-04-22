@@ -1,6 +1,7 @@
 (ns metabase.documents.collab.handler-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.documents.collab.handler :as collab.handler]
    [metabase.documents.collab.server :as collab.server])
@@ -77,3 +78,23 @@
             [sock closes] (recording-socket)]
         ((:on-open listener) sock)
         (is (= [[1011 "document-collab server unavailable"]] @closes))))))
+
+(deftest on-open-forwards-user-id-to-server-test
+  (testing "with a running server, :on-open invokes handleConnection with a context HashMap that includes userId"
+    (let [captured (atom nil)]
+      (with-redefs [config/config-bool               (constantly true)
+                    collab.server/get-server         (constantly ::fake-server)
+                    ;; Stub the indirection; real YHocuspocus is final and can't be reified.
+                    collab.handler/call-handle-connection!
+                    (fn [server _transport ctx]
+                      (reset! captured {:server server
+                                        :user-id (.get ctx "userId")
+                                        :connection-id (.get ctx "connectionId")}))]
+        (let [resp          (binding [api/*current-user-id* 42]
+                              (call-handler (upgrade-request "/collab")))
+              listener      (:ring.websocket/listener resp)
+              [sock _close] (recording-socket)]
+          ((:on-open listener) sock)
+          (is (= ::fake-server (:server @captured)))
+          (is (= 42 (:user-id @captured)))
+          (is (string? (:connection-id @captured))))))))

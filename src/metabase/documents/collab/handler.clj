@@ -1,8 +1,15 @@
 (ns metabase.documents.collab.handler
   "Ring handler for `GET /api/document/collab`. On upgrade, hands the resulting
    `Transport` to the embedded `YHocuspocus` server via `handleConnection`.
-   Gated behind `MB_ENABLE_DOCUMENT_COLLAB`."
+   Gated behind `MB_ENABLE_DOCUMENT_COLLAB`.
+
+   Authentication is already enforced by `+auth` middleware upstream; by the
+   time this handler runs, `api/*current-user-id*` is bound to the session's
+   user. We capture it into the yhocuspocus context so extensions running on
+   the server's executor threads (e.g. the authz hook) can rebind it for
+   permission checks."
   (:require
+   [metabase.api.common :as api]
    [metabase.config.core :as config]
    [metabase.documents.collab.server :as collab.server]
    [metabase.documents.collab.transport :as collab.transport]
@@ -27,27 +34,37 @@
 
 (defn- make-context
   "Build the `Map<String,Object>` context yhocuspocus surfaces to extension
-   hooks. Phase 4 will add `\"userId\"`; keep the keys co-located here so the
-   addition is a one-line change."
-  ^HashMap [conn-id remote]
+   hooks. Keys are co-located here so future additions (e.g. tenant) stay
+   consolidated."
+  ^HashMap [conn-id remote user-id]
   (doto (HashMap.)
     (.put "connectionId"  conn-id)
-    (.put "remoteAddress" (or remote "unknown"))))
+    (.put "remoteAddress" (or remote "unknown"))
+    (.put "userId"        user-id)))
+
+(defn call-handle-connection!
+  "Thin indirection over `YHocuspocus.handleConnection` so tests can stub the
+   server interaction without having to mock a final Java class. Public only
+   for testability — not intended for external callers."
+  [^YHocuspocus server ^Transport transport ^HashMap ctx]
+  (.handleConnection server transport ctx))
 
 (defn- ws-response [request]
   (let [conn-id  (str (random-uuid))
         remote   (:remote-addr request)
+        user-id  api/*current-user-id*
         ^YHocuspocus server (collab.server/get-server)
         [^Transport transport ws-listener] (collab.transport/create-ring-transport conn-id remote)
         listener (if server
                    (wrap-on-open ws-listener
                                  (fn on-server-ready [_sock]
-                                   (.handleConnection server transport (make-context conn-id remote))))
+                                   (call-handle-connection! server transport (make-context conn-id remote user-id))))
                    (wrap-on-open ws-listener
                                  (fn on-no-server [sock]
                                    (log/warn "collab: rejecting connection — server unavailable")
                                    (ring.ws/close sock 1011 "document-collab server unavailable"))))]
-    (log/debugf "collab upgrade accepted: %s from %s (server=%s)" conn-id remote (some? server))
+    (log/debugf "collab upgrade accepted: %s from %s (user=%s server=%s)"
+                conn-id remote user-id (some? server))
     {::ring.ws/listener listener}))
 
 (defn routes
