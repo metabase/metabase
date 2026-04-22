@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
 import { Ellipsified, type TreeTableColumnDef } from "metabase/ui";
+import { getUserName } from "metabase/utils/user";
 import type { Workspace } from "metabase-types/api";
 
 export function getNameColumn(): TreeTableColumnDef<Workspace> {
@@ -12,6 +13,18 @@ export function getNameColumn(): TreeTableColumnDef<Workspace> {
     width: "auto",
     minWidth: 200,
     accessorFn: (workspace) => workspace.name,
+    cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
+  };
+}
+
+export function getCreatedByColumn(): TreeTableColumnDef<Workspace> {
+  return {
+    id: "created_by",
+    header: t`Created by`,
+    width: "auto",
+    minWidth: 160,
+    accessorFn: (workspace) =>
+      workspace.creator ? getUserName(workspace.creator) : "",
     cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
   };
 }
@@ -29,7 +42,7 @@ export function getCreatedAtColumn(): TreeTableColumnDef<Workspace> {
 }
 
 export function getColumns(): TreeTableColumnDef<Workspace>[] {
-  return [getNameColumn(), getCreatedAtColumn()];
+  return [getNameColumn(), getCreatedByColumn(), getCreatedAtColumn()];
 }
 
-export const COLUMN_WIDTHS = [0.7, 0.3];
+export const COLUMN_WIDTHS = [0.5, 0.25, 0.25];

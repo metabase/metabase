@@ -118,7 +118,7 @@ function getStatusMessage(workspace: Workspace): string {
   if (isWorkspaceProvisioned(workspace)) {
     return t`This workspace is provisioned and ready to use.`;
   }
-  return t`This workspace has not been provisioned yet.`;
+  return t`This workspace is not provisioned yet.`;
 }
 
 function getButtonLabel(workspace: Workspace): string {

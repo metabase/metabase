@@ -1,4 +1,5 @@
 import type { DatabaseId } from "./database";
+import type { UserId, UserInfo } from "./user";
 
 export type WorkspaceId = number;
 
@@ -14,6 +15,9 @@ export type Workspace = {
   databases: WorkspaceDatabase[];
   created_at: string;
   updated_at: string;
+
+  creator_id: UserId | null;
+  creator?: UserInfo | null;
 };
 
 export type WorkspaceDatabase = {
