@@ -8,7 +8,7 @@ describe("memoize", () => {
         return ++x;
       }
     }
-    const foo = memoizeClass("bar")(fooInner);
+    const foo = memoizeClass<fooInner>("bar")(fooInner);
     const f = new foo();
     expect(f.bar()).toEqual(1);
     expect(f.bar()).toEqual(1);
@@ -20,7 +20,7 @@ describe("memoize", () => {
         return {};
       }
     }
-    const foo = memoizeClass("bar")(fooInner);
+    const foo = memoizeClass<fooInner>("bar")(fooInner);
     const f = new foo();
     const x = f.bar();
     expect(f.bar()).toEqual(x);
@@ -28,11 +28,11 @@ describe("memoize", () => {
 
   it("should use args in cache key", () => {
     class fooInner {
-      bar(a, b, c) {
+      bar(a: number, b: number, c: number) {
         return a + b + c;
       }
     }
-    const foo = memoizeClass("bar")(fooInner);
+    const foo = memoizeClass<fooInner>("bar")(fooInner);
     const f = new foo();
     expect(f.bar(1, 2, 3)).toEqual(6);
     expect(f.bar(1, 2, 4)).toEqual(7);
@@ -40,11 +40,11 @@ describe("memoize", () => {
 
   it("should allow calling with variable number of args", () => {
     class fooInner {
-      bar(x) {
+      bar(x?: number) {
         return x;
       }
     }
-    const foo = memoizeClass("bar")(fooInner);
+    const foo = memoizeClass<fooInner>("bar")(fooInner);
     const f = new foo();
     expect(f.bar()).toEqual(undefined);
     expect(f.bar(1)).toEqual(1);
@@ -61,7 +61,7 @@ describe("memoize", () => {
         return ++x;
       }
     }
-    const foo = memoizeClass("bar", "biz")(fooInner);
+    const foo = memoizeClass<fooInner>("bar", "biz")(fooInner);
     const f = new foo();
     expect(f.bar()).toEqual(1);
     expect(f.bar()).toEqual(1);

@@ -64,3 +64,10 @@ export const trackMetricsViewerDimensionTabRemoved = () => {
     event: "metrics_viewer_dimension_tab_removed",
   });
 };
+
+export const trackStackedSeriesEnabled = () => {
+  trackSimpleEvent({
+    event: "stack_series_enabled",
+    triggered_from: "metrics_viewer",
+  });
+};

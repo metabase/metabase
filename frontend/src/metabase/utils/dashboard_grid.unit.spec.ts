@@ -1,6 +1,8 @@
+import type { CardPosition } from "metabase/utils/dashboard_grid";
 import { getPositionForNewDashCard } from "metabase/utils/dashboard_grid";
 
-const getPos = (cards) => getPositionForNewDashCard(cards, 2, 2, 6);
+const getPos = (cards: CardPosition[]): CardPosition =>
+  getPositionForNewDashCard(cards, 2, 2, 6);
 
 describe("dashboard_grid", () => {
   describe("getPositionForNewDashCard", () => {
@@ -32,6 +34,6 @@ describe("dashboard_grid", () => {
 });
 
 // shorthand for creating a position object, default to 2x2
-function pos(col, row, size_x = 2, size_y = 2) {
+function pos(col: number, row: number, size_x = 2, size_y = 2): CardPosition {
   return { col, row, size_x, size_y };
 }

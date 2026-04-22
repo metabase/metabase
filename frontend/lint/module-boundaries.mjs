@@ -37,7 +37,7 @@ const elements = [
   createElement({
     type: "basic",
     name: "mlv2",
-    pattern: "frontend/src/metabase-lib/*/**",
+    pattern: "frontend/src/metabase-lib/**",
   }),
   createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
   createElement({ type: "shared", name: "api" }),
