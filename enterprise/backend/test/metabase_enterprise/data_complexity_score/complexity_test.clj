@@ -614,6 +614,16 @@
                  (for [[g s] group-total] [(str g ".total") s])
                  (for [[leaf s] leaves]   [(str (leaf-key->group leaf) "." leaf) s])))))
 
+(defn- events-by-key
+  "Build an `{key -> event}` map for one catalog after asserting the catalog emitted exactly
+   one event per key, so duplicate emissions can't be silently overwritten by `into {}`."
+  [events catalog]
+  (let [catalog-events (filterv #(= catalog (get % "catalog")) events)
+        keys          (mapv #(get % "key") catalog-events)]
+    (is (= (count keys) (count (distinct keys)))
+        (format "catalog %s should emit each key exactly once" catalog))
+    (into {} (map (juxt #(get % "key") identity)) catalog-events)))
+
 (deftest ^:sequential emit-snowplow-publishes-total-and-each-subscore-test
   (testing "one event per (catalog × key) — grand total, group rollups, and leaves — with correct scores"
     (snowplow-test/with-fake-snowplow-collector
@@ -659,9 +669,7 @@
                                                :metabot  []})]
         (snowplow-test/pop-event-data-and-user-id!)
         (complexity/complexity-scores :embedder nil)
-        (let [by-key (->> (complexity-events!)
-                          (filter #(= "library" (get % "catalog")))
-                          (into {} (map (juxt #(get % "key") identity))))]
+        (let [by-key (events-by-key (complexity-events!) "library")]
           (testing "aggregate totals (grand and per-group) have no measurement key"
             (is (not (contains? (get by-key "total")           "measurement")))
             (is (not (contains? (get by-key "size.total")      "measurement")))
@@ -684,9 +692,7 @@
                                                :metabot  []})]
         (snowplow-test/pop-event-data-and-user-id!)
         (complexity/complexity-scores :embedder (fn [_] (throw (ex-info "embedder boom" {}))))
-        (let [by-key (->> (complexity-events!)
-                          (filter #(= "library" (get % "catalog")))
-                          (into {} (map (juxt #(get % "key") identity))))]
+        (let [by-key (events-by-key (complexity-events!) "library")]
           (testing ":error from the synonym-pair scorer reaches the Snowplow leaf event"
             (is (= "embedder boom" (get-in by-key ["ambiguity.synonym_pairs" "error"]))))
           (testing ":error is only present on the originating leaf — aggregates use null score instead"
