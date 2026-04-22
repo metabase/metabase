@@ -28,7 +28,7 @@ type MetabotAgentChartMessage = {
   /** URL path to the question, e.g. `/question#<base64>` */
   questionPath: string;
   /** A pre-wired React component that renders the chart. */
-  Component: React.ComponentType<MetabotChartProps>;
+  Chart: React.ComponentType<MetabotChartProps>;
 };
 
 // Internal variants intentionally omitted. `use-metabot.tsx` filters these out before mapping:
@@ -67,7 +67,7 @@ export type UseMetabotResult = {
   /** Clear all messages and start fresh. */
   resetConversation: () => void;
 
-  /** All messages in the conversation. Chart messages include a `Component` property. */
+  /** All messages in the conversation. Chart messages include a `Chart` property. */
   messages: MetabotMessage[];
   /** Errors are conversation-level, not attached to individual messages. */
   errorMessages: MetabotErrorMessage[];

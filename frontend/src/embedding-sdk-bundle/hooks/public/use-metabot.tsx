@@ -136,7 +136,7 @@ const mapMessage = (
           role: "agent",
           type: "chart",
           questionPath: navigateTo,
-          Component: getCachedChartComponent(navigateTo, cache),
+          Chart: getCachedChartComponent(navigateTo, cache),
         }) as const,
     )
     .exhaustive();

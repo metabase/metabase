@@ -194,10 +194,10 @@ describe("useMetabot", () => {
       });
 
       const [message] = await readMessages();
-      // `Component` is a React component reference — JSON.stringify drops
+      // `Chart` is a React component reference — JSON.stringify drops
       // functions, so it appears as `undefined` in the serialized snapshot
       // the harness reads. We assert only the serializable fields here;
-      // `Component` wiring is covered by the `messages[n].Component` describe.
+      // `Chart` wiring is covered by the `messages[n].Chart` describe.
       expect(message).toEqual({
         id: expect.any(String),
         role: "agent",
@@ -351,15 +351,15 @@ describe("useMetabot", () => {
     });
   });
 
-  describe("messages[n].Component", () => {
+  describe("messages[n].Chart", () => {
     const TestMessageComponent = ({ drills }: { drills?: true }) => {
       const { messages } = useMetabot();
       const chartMessage = messages.find((message) => message.type === "chart");
       if (!chartMessage) {
         return null;
       }
-      const { Component } = chartMessage;
-      return <Component drills={drills} />;
+      const { Chart } = chartMessage;
+      return <Chart drills={drills} />;
     };
 
     it("renders StaticQuestion when drills is absent", async () => {
@@ -398,8 +398,8 @@ describe("useMetabot", () => {
       ).toBeInTheDocument();
     });
 
-    it("Component reference is stable after a second chart message arrives", async () => {
-      let firstComponent: unknown = null;
+    it("Chart reference is stable after a second chart message arrives", async () => {
+      let firstChart: unknown = null;
 
       const TestCapture = () => {
         const { messages } = useMetabot();
@@ -407,7 +407,7 @@ describe("useMetabot", () => {
           (message) => message.type === "chart",
         );
         if (chartMessages[0]) {
-          firstComponent = chartMessages[0].Component;
+          firstChart = chartMessages[0].Chart;
         }
         return <div data-testid="chart-count">{chartMessages.length}</div>;
       };
@@ -427,8 +427,8 @@ describe("useMetabot", () => {
       await waitFor(() => {
         expect(screen.getByTestId("chart-count")).toHaveTextContent("1");
       });
-      const capturedComponent = firstComponent;
-      expect(capturedComponent).not.toBeNull();
+      const capturedChart = firstChart;
+      expect(capturedChart).not.toBeNull();
 
       act(() => {
         store.dispatch(
@@ -444,7 +444,7 @@ describe("useMetabot", () => {
         expect(screen.getByTestId("chart-count")).toHaveTextContent("2");
       });
 
-      expect(firstComponent).toBe(capturedComponent);
+      expect(firstChart).toBe(capturedChart);
     });
   });
 });
