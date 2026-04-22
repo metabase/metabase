@@ -14,7 +14,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.workspaces.core :as workspaces]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -447,19 +446,20 @@
           triple->table
           target-triples))
 
+(defn- target->triple
+  "Extract a [db-id schema name] triple from a transform :target map."
+  [{:keys [database schema name]}]
+  [database schema name])
+
 (defn gc-transform-target-tables!
   "Deletes provisional table rows (created by [[upsert-transform-target-table!]]) that are no longer
-   referenced by any Transform or WorkspaceTransform. Safe because these rows were never active,
+   referenced by any Transform. Safe because these rows were never active,
    so they have no child records.
 
    Note: this only handles *inactive* provisional tables. Active tables that were previously
    targeted by a transform retain `transform_target = true` even after the transform is deleted.
    A separate process to reset `transform_target` on active, unreferenced tables is not yet
-   implemented.
-
-   Future optimizations:
-   - Add target_table_id FKs to avoid scanning transform rows.
-   - Pre-filter via workspace_input/workspace_output table references."
+   implemented."
   []
   (let [candidates (t2/select [:model/Table :id :db_id :schema :name]
                               :active false :transform_target true :deactivated_at nil
@@ -473,12 +473,8 @@
                             (map (fn [{:keys [target target_db_id]}]
                                    (-> target
                                        (update :database #(or % target_db_id))
-                                       workspaces/target->triple)))
-                            (t2/reducible-select [:model/Transform :target :target_db_id] :target_db_id [:in db-ids])))
-            remaining     (when (seq remaining)
-                            (remove-referenced-candidates
-                             remaining
-                             (workspaces/reducible-target-triples db-ids)))]
+                                       target->triple)))
+                            (t2/reducible-select [:model/Transform :target :target_db_id] :target_db_id [:in db-ids])))]
         (when-let [dead-ids (seq (mapv :id (vals remaining)))]
           (log/infof "Deleting %d orphaned transform target table(s)" (count dead-ids))
           (t2/delete! :model/Table :id [:in dead-ids]))))))

@@ -26,7 +26,6 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -37,7 +36,7 @@
    [metabase.util.performance :as perf :refer [get-in not-empty some]])
   (:import
    (java.io File)
-   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData SQLException Statement Types)
+   (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData SQLException Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
 
@@ -94,8 +93,7 @@
                               :transforms/index-ddl                   false
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
-                              :describe-is-generated                  true
-                              :workspace                              true}]
+                              :describe-is-generated                  true}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -1227,118 +1225,6 @@
 (defmethod driver/extra-info :mysql
   [_driver]
   nil)
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                         Workspace Isolation                                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- mysql-user-exists?
-  "Check if a MySQL user exists."
-  [conn username]
-  (seq (jdbc/query conn ["SELECT 1 FROM mysql.user WHERE user = ?" username])))
-
-(defmethod driver/init-workspace-isolation! :mysql
-  [_driver database workspace]
-  ;; MySQL doesn't have schemas in the PostgreSQL sense - each database is its own namespace.
-  ;; We create a separate database for workspace isolation.
-  (let [db-name          (driver.u/workspace-isolation-namespace-name workspace)
-        user             (driver.u/workspace-isolation-user-name workspace)
-        password         (driver.u/random-workspace-password)
-        escaped-password (sql.u/escape-sql password :ansi)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (let [user-sql (if (mysql-user-exists? t-conn user)
-                       (format "ALTER USER `%s`@'%%' IDENTIFIED BY '%s'"
-                               user escaped-password)
-                       (format "CREATE USER `%s`@'%%' IDENTIFIED BY '%s'"
-                               user escaped-password))]
-        (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-          (doseq [sql [;; Create the isolated database
-                       (format "CREATE DATABASE IF NOT EXISTS `%s`" db-name)
-                       user-sql
-                       ;; Grant all privileges on the isolated database
-                       (format "GRANT ALL PRIVILEGES ON `%s`.* TO `%s`@'%%'" db-name user)]]
-            (.addBatch ^Statement stmt ^String sql))
-          (.executeBatch ^Statement stmt))))
-    {:schema           db-name
-     :database_details {:user user, :password password :db db-name}}))
-
-(defmethod driver/destroy-workspace-isolation! :mysql
-  [_driver database workspace]
-  (let [db-name  (:schema workspace)
-        username (-> workspace :database_details :user)]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql (cond-> [(format "DROP DATABASE IF EXISTS `%s`" db-name)]
-                      (mysql-user-exists? t-conn username)
-                      (conj (format "DROP USER IF EXISTS `%s`@'%%'" username)))]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
-
-(defmethod driver/grant-workspace-read-access! :mysql
-  [_driver database workspace tables]
-  (let [username (-> workspace :database_details :user)
-        qu       (sql.u/quote-name :mysql :field username)
-        ;; In MySQL, tables don't have separate schemas within a database,
-        ;; but the :schema field contains the source database name
-        sqls     (for [{db :schema, t :name} tables]
-                   (if (str/blank? db)
-                     (format "GRANT SELECT ON %s TO %s@'%%'"
-                             (sql.u/quote-name :mysql :table t) qu)
-                     (format "GRANT SELECT ON %s.%s TO %s@'%%'"
-                             (sql.u/quote-name :mysql :schema db)
-                             (sql.u/quote-name :mysql :table t) qu)))]
-    (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/db->pooled-connection-spec (:id database))]
-      (with-open [^Statement stmt (.createStatement ^Connection (:connection t-conn))]
-        (doseq [sql sqls]
-          (.addBatch ^Statement stmt ^String sql))
-        (.executeBatch ^Statement stmt)))))
-
-;; MySQL doesn't support transactional DDL, so we need to override check-isolation-permissions
-;; to manually clean up after testing rather than relying on transaction rollback.
-(def ^:private perm-check-workspace-id "-1337")
-
-(defmethod driver/check-isolation-permissions :mysql
-  [driver database test-table]
-  (let [test-workspace {:id   perm-check-workspace-id
-                        :name "_mb_perm_check_"}]
-    (sql-jdbc.execute/do-with-connection-with-options
-     driver
-     database
-     {:write? true}
-     (fn [^Connection _conn]
-       (let [result (try
-                      (let [init-result (try
-                                          (driver/init-workspace-isolation! driver database test-workspace)
-                                          (catch Exception e
-                                            (throw (ex-info (format "Failed to initialize workspace isolation (CREATE DATABASE/USER): %s"
-                                                                    (ex-message e))
-                                                            {:step :init} e))))
-                            workspace-with-details (merge test-workspace init-result)]
-                        (when test-table
-                          (try
-                            (driver/grant-workspace-read-access! driver database workspace-with-details [test-table])
-                            (catch Exception e
-                              (throw (ex-info (format "Failed to grant read access to table %s.%s: %s"
-                                                      (:schema test-table) (:name test-table) (ex-message e))
-                                              {:step :grant :table test-table} e)))))
-                        (try
-                          (driver/destroy-workspace-isolation! driver database workspace-with-details)
-                          (catch Exception e
-                            (throw (ex-info (format "Failed to destroy workspace isolation (DROP DATABASE/USER): %s"
-                                                    (ex-message e))
-                                            {:step :destroy} e))))
-                        nil)
-                      (catch Exception e
-                        ;; On failure, attempt cleanup
-                        (try
-                          (driver/destroy-workspace-isolation! driver database
-                                                               (merge test-workspace
-                                                                      {:schema           (driver.u/workspace-isolation-namespace-name test-workspace)
-                                                                       :database_details {:user (driver.u/workspace-isolation-user-name test-workspace)}}))
-                          (catch Exception _cleanup-error
-                            nil))
-                        (ex-message e)))]
-         result)))))
 
 (defmethod driver/llm-sql-dialect-resource :mysql [_]
   "metabot/prompts/dialects/mysql.md")

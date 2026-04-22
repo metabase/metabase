@@ -2096,7 +2096,8 @@
           :namespace
           :slug
           :type]
-   :skip []
+   :skip      [;; legacy workspace column still present in v60 DBs
+               :workspace_id]
    :transform {:created_at        (serdes/date)
                ;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
@@ -2104,8 +2105,7 @@
                                               (serdes/fk :model/Collection)
                                               {:export location-path->parent-id
                                                :import parent-id->location-path}))
-               :personal_owner_id (serdes/fk :model/User)
-               :workspace_id      (serdes/fk :model/Workspace)}
+               :personal_owner_id (serdes/fk :model/User)}
    :defaults {:archived         false
               :is_sample        false
               :is_remote_synced false}})
