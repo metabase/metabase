@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
+   [metabase.permissions.core :as perms]
    [metabase.setup.core :as setup]
    [metabase.test :as mt]
    [metabase.util.password :as u.password]
@@ -175,3 +176,90 @@
       (finally
         (t2/delete! :model/User :email "cam+config-file-test@metabase.com")
         (t2/delete! :model/User :email "Cam+config-file-test@metabase.com")))))
+
+(deftest init-from-config-file-with-groups-test
+  (testing "Users can be assigned to groups via the config file"
+    (try
+      (binding [advanced-config.file/*config* {:version 1
+                                               :config  {:users [{:first_name "Alice"
+                                                                  :last_name  "Analyst"
+                                                                  :email      "alice+config-file-groups-test@metabase.com"
+                                                                  :password   "123123123"
+                                                                  :groups     ["Data Analysts"]}]}}]
+        (testing "Create user with group assignment"
+          (is (= :ok
+                 (advanced-config.file/initialize!)))
+          (let [user           (t2/select-one :model/User :email "alice+config-file-groups-test@metabase.com")
+                group-ids      (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                data-analyst-id (:id (perms/data-analyst-group))
+                all-users-id    (:id (perms/all-users-group))]
+            (is (some? user))
+            (is (contains? group-ids data-analyst-id)
+                "User should be in the Data Analysts group")
+            (is (contains? group-ids all-users-id)
+                "User should always be in the All Users group"))))
+
+      (testing "Re-running is idempotent"
+        (binding [advanced-config.file/*config* {:version 1
+                                                 :config  {:users [{:first_name "Alice"
+                                                                    :last_name  "Analyst"
+                                                                    :email      "alice+config-file-groups-test@metabase.com"
+                                                                    :password   "123123123"
+                                                                    :groups     ["Data Analysts"]}]}}]
+          (is (= :ok
+                 (advanced-config.file/initialize!)))))
+      (finally
+        (t2/delete! :model/User :email "alice+config-file-groups-test@metabase.com")))))
+
+(deftest init-from-config-file-with-custom-group-test
+  (testing "Users can be assigned to custom groups that get auto-created"
+    (try
+      (binding [advanced-config.file/*config* {:version 1
+                                               :config  {:users [{:first_name "Bob"
+                                                                  :last_name  "Builder"
+                                                                  :email      "bob+config-file-groups-test@metabase.com"
+                                                                  :password   "123123123"
+                                                                  :groups     ["Marketing Team"]}]}}]
+        (is (= :ok
+               (advanced-config.file/initialize!)))
+        (let [user      (t2/select-one :model/User :email "bob+config-file-groups-test@metabase.com")
+              group     (t2/select-one :model/PermissionsGroup :name "Marketing Team")
+              group-ids (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))]
+          (is (some? user))
+          (is (some? group)
+              "Custom group should be created")
+          (is (contains? group-ids (:id group))
+              "User should be in the custom group")))
+      (finally
+        (t2/delete! :model/User :email "bob+config-file-groups-test@metabase.com")
+        (t2/delete! :model/PermissionsGroup :name "Marketing Team")))))
+
+(deftest init-from-config-file-group-removal-test
+  (testing "Removing a group from the config file removes the user from that group"
+    (try
+      (testing "First, create user with a group"
+        (binding [advanced-config.file/*config* {:version 1
+                                                 :config  {:users [{:first_name "Carol"
+                                                                    :last_name  "Config"
+                                                                    :email      "carol+config-file-groups-test@metabase.com"
+                                                                    :password   "123123123"
+                                                                    :groups     ["Data Analysts"]}]}}]
+          (is (= :ok (advanced-config.file/initialize!)))
+          (let [user (t2/select-one :model/User :email "carol+config-file-groups-test@metabase.com")]
+            (is (contains? (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                           (:id (perms/data-analyst-group)))))))
+
+      (testing "Then, update config without that group"
+        (binding [advanced-config.file/*config* {:version 1
+                                                 :config  {:users [{:first_name "Carol"
+                                                                    :last_name  "Config"
+                                                                    :email      "carol+config-file-groups-test@metabase.com"
+                                                                    :password   "123123123"
+                                                                    :groups     []}]}}]
+          (is (= :ok (advanced-config.file/initialize!)))
+          (let [user (t2/select-one :model/User :email "carol+config-file-groups-test@metabase.com")]
+            (is (not (contains? (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id (:id user))
+                                (:id (perms/data-analyst-group))))
+                "User should no longer be in the Data Analysts group"))))
+      (finally
+        (t2/delete! :model/User :email "carol+config-file-groups-test@metabase.com")))))
