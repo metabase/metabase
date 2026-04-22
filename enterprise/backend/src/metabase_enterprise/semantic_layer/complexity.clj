@@ -335,9 +335,11 @@
       (component-score :synonym-pair pairs))
     (catch Throwable t
       (log/warn t "Complexity score: synonym detection failed; falling back to 0")
-      (let [msg (.getMessage t)]
-        (cond-> (component-score :synonym-pair 0)
-          (not (str/blank? msg)) (assoc :error msg))))))
+      (let [msg (some-> (.getMessage t) str/trim)
+            err (if (str/blank? msg)
+                  (or (some-> (class t) .getName) "synonym detection failed")
+                  msg)]
+        (assoc (component-score :synonym-pair 0) :error err)))))
 
 (defn score-catalog
   "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`."

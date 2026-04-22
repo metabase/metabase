@@ -129,18 +129,21 @@
       (is (=? {:components {:synonym-pairs {:measurement 0.0 :score 0 :error "boom"}}}
               (#'complexity/score-catalog es embedder)))))
 
-  (testing "throwable with a nil/blank message omits :error entirely (response schema requires string)"
-    ;; Regression: we used to unconditionally assoc :error (.getMessage t); many throwables have a
-    ;; nil message, which would send {:error nil} through the API and fail schema validation.
+  (testing "throwable with a nil/blank message still records :error as a nonblank string"
+    ;; Regression: we must not emit {:error nil} (schema requires string), but we also must keep
+    ;; :error present so an embedder failure is distinguishable from a genuine zero-synonym
+    ;; result on the API/Snowplow payload. Fall back to the exception class name.
     (let [es         [(entity :name "customers") (entity :name "clients")]
           synonym-of #(get-in (#'complexity/score-catalog es %) [:components :synonym-pairs])]
-      (doseq [[label embedder] [["nil message"   (fn [_] (throw (NullPointerException.)))]
-                                ["blank message" (fn [_] (throw (RuntimeException. "   ")))]]]
+      (doseq [[label embedder expected] [["nil message"   (fn [_] (throw (NullPointerException.)))
+                                          "java.lang.NullPointerException"]
+                                         ["blank message" (fn [_] (throw (RuntimeException. "   ")))
+                                          "java.lang.RuntimeException"]]]
         (testing label
           (let [sub (synonym-of embedder)]
             (is (= 0 (:score sub)))
-            (is (not (contains? sub :error))
-                (format ":error must be absent when the throwable's message is %s" label))))))))
+            (is (= expected (:error sub))
+                (format ":error must be a nonblank string when the throwable's message is %s" label))))))))
 
 (deftest ^:sequential complexity-scores-metabot-scope-opt-test
   (testing ":verified-only? true routes the :metabot catalog through metabot-entities"
