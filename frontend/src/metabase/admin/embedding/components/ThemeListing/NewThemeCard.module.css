@@ -10,11 +10,7 @@
 
 .card:hover {
   border-color: var(--mb-color-brand);
-  background-color: color-mix(in srgb, var(--mb-color-brand) 7%, transparent);
-}
-
-.previewSpacer {
-  aspect-ratio: 1 / 1;
+  background-color: var(--mb-color-background-hover);
 }
 
 .overlay {

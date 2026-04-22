@@ -23,7 +23,7 @@ export function ColorSwatchCard({
             direction="column"
             align="center"
             justify="space-evenly"
-            pt={2}
+            pt={3}
           >
             <Box
               w={20}

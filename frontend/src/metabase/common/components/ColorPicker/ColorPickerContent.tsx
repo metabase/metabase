@@ -75,7 +75,7 @@ export const ColorPickerContent = forwardRef(function ColorPickerContent(
             onChange={handleAlphaPercentChange}
             min={0}
             max={100}
-            w="5.5rem"
+            w="6rem"
             rightSection="%"
             hideControls
           />
@@ -104,12 +104,5 @@ const getBaseHex = (value?: string): string | undefined => {
 };
 
 const buildHex = (hex: string, alpha: number): string => {
-  const base = hex.toLowerCase();
-  if (alpha >= 1) {
-    return base;
-  }
-  const alphaHex = Math.round(Math.max(0, alpha) * 255)
-    .toString(16)
-    .padStart(2, "0");
-  return `${base}${alphaHex}`;
+  return Color(hex).alpha(alpha).hexa().toLowerCase();
 };
