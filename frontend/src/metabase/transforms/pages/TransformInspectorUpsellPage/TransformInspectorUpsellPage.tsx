@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DottedBackground } from "metabase/common/components/upsells/components/DottedBackground";
+import { LineDecorator } from "metabase/common/components/upsells/components/LineDecorator";
 import { useUpgradeAction } from "metabase/common/components/upsells/components/UpgradeModal";
+import { UpsellCardContent } from "metabase/common/components/upsells/components/UpsellCardContent";
 import { DATA_STUDIO_UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import { DottedBackground } from "metabase/data-studio/upsells/components/DottedBackground";
-import { LineDecorator } from "metabase/data-studio/upsells/components/LineDecorator";
-import { UpsellCardContent } from "metabase/data-studio/upsells/components/UpsellCardContent";
 import { TransformHeader } from "metabase/transforms/components/TransformHeader";
 import {
   INSPECTOR_UPSELL_CAMPAIGN,
