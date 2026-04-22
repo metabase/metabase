@@ -3,7 +3,7 @@
 # The image includes Clojure, Java, Babashka, and all tools from mise.toml.
 # DB connection info is forwarded from mise.local.toml.
 #
-# Usage: autobot add --agent ./bin/claude-dangerous feat/my-branch
+# Usage: workmux add --agent ./bin/claude-dangerous feat/my-branch
 #
 # Pass --build as the first arg to force a rebuild of the image.
 
@@ -93,4 +93,4 @@ exec docker run -it --rm \
   "${ENV_ARGS[@]}" \
   --add-host=host.docker.internal:host-gateway \
   "$IMAGE_NAME" \
-  --dangerously-skip-permissions "$@"
+  --dangerously-skip-permissions
