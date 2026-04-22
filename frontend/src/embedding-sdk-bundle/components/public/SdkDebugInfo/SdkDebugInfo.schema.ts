@@ -1,4 +1,4 @@
-import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
+import type { FunctionSchema } from "metabase/embedding/sdk-bundle/types/schema";
 
 export const sdkDebugInfoSchema: FunctionSchema = {
   input: [],

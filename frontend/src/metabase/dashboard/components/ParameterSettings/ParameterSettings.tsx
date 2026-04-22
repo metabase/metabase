@@ -7,12 +7,12 @@ import {
 } from "react";
 import { t } from "ttag";
 
+import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
 import { ParameterValueWidget } from "metabase/parameters/components/ParameterValueWidget";
 import { RequiredParamToggle } from "metabase/parameters/components/RequiredParamToggle";
 import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUnitSettings";
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import {
   Box,
   type BoxProps,

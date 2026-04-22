@@ -11,10 +11,10 @@ import {
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { INPUT_WRAPPER_TEST_ID } from "metabase/common/components/TabButton";
 import { getDefaultTab, resetTempTabId } from "metabase/dashboard/actions";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getSelectedTabId } from "metabase/dashboard/selectors";
 import { createTabSlug } from "metabase/dashboard/utils";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { TEST_CARD } from "metabase/query_builder/containers/test-utils";
 import type { DashboardState, State } from "metabase/redux/store";
 import { useSelector } from "metabase/utils/redux";

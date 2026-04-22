@@ -15,7 +15,7 @@ import type {
   NavigateToNewCardParams,
   SdkQuestionState,
   SqlParameterValues,
-} from "embedding-sdk-bundle/types/question";
+} from "metabase/embedding/sdk-bundle/types/question";
 import { isStaticEmbeddingEntityLoadingError } from "metabase/utils/errors/is-static-embedding-entity-loading-error";
 import { type Deferred, defer } from "metabase/utils/promise";
 import type Question from "metabase-lib/v1/Question";

@@ -1,4 +1,4 @@
-import type { SdkBreadcrumbItem } from "embedding-sdk-bundle/types/breadcrumb";
+import type { SdkBreadcrumbItem } from "metabase/embedding/sdk-bundle/types/breadcrumb";
 
 export function updateBreadcrumbsWithItem(
   breadcrumbs: SdkBreadcrumbItem[],

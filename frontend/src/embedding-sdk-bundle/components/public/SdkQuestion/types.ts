@@ -1,4 +1,4 @@
-import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
+import type { SdkQuestionId } from "metabase/embedding/sdk-bundle/types/question";
 
 export type SdkQuestionIdProps = {
   /**

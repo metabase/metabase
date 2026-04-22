@@ -34,8 +34,8 @@ import {
 import { renderWithSDKProviders } from "embedding-sdk-bundle/test/__support__/ui";
 import { createMockSdkConfig } from "embedding-sdk-bundle/test/mocks/config";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import type { SdkQuestionId } from "embedding-sdk-bundle/types/question";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
+import type { SdkQuestionId } from "metabase/embedding/sdk-bundle/types/question";
 import { reinitialize } from "metabase/plugins";
 import type { EmbeddingDataPicker } from "metabase/redux/store/embedding-data-picker";
 import type { CardId, CollectionType, TokenFeatures } from "metabase-types/api";

@@ -9,7 +9,7 @@ import {
 import { match } from "ts-pattern";
 
 import { SdkDashboardStyledWrapper } from "embedding-sdk-bundle/components/public/dashboard/SdkDashboardStyleWrapper";
-import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
+import type { SdkDashboardId } from "metabase/embedding/sdk-bundle/types/dashboard";
 import { Stack } from "metabase/ui";
 
 import { SdkQuestion } from "../../public/SdkQuestion";

@@ -4,12 +4,12 @@ import type { Dispatch, SetStateAction } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import type {
   DisplayTheme,
   EmbedResourceDownloadOptions,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover/QuestionDownloadPopover";
 import { PublicMode } from "metabase/visualizations/click-actions/modes/PublicMode";
 import Visualization from "metabase/visualizations/components/Visualization";

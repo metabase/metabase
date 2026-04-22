@@ -1,5 +1,7 @@
-import * as MetabaseError from "embedding-sdk-bundle/errors";
-import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
+/* eslint-disable no-restricted-imports -- shared sdk-bundle contract (moved from embedding-sdk-bundle/errors + /types) */
+import * as MetabaseError from "metabase/embedding/sdk-bundle/errors";
+import type { MetabaseAuthMethod } from "metabase/embedding/sdk-bundle/types";
+/* eslint-enable no-restricted-imports */
 
 export async function connectToInstanceAuthSso(
   url: string,

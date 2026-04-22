@@ -18,7 +18,7 @@ import {
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getVisibleCardIds } from "metabase/dashboard/utils";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import type { State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Flex, type FlexProps } from "metabase/ui";

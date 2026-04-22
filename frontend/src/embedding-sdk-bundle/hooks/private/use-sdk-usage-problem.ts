@@ -9,8 +9,8 @@ import {
   getIsGuestEmbedRaw,
   getUsageProblem,
 } from "embedding-sdk-bundle/store/selectors";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { useSetting } from "metabase/common/hooks";
+import type { MetabaseAuthConfig } from "metabase/embedding/sdk-bundle/types/auth-config";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { getTokenFeature } from "metabase/setup/selectors";

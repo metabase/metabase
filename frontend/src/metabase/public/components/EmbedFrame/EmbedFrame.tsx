@@ -14,7 +14,13 @@ import {
   DASHBOARD_PDF_EXPORT_ROOT_ID,
 } from "metabase/dashboard/constants";
 import { useIsParameterPanelSticky } from "metabase/dashboard/hooks/use-is-parameter-panel-sticky";
+import type { DashboardUrlHashOptions } from "metabase/dashboard/types";
+import {
+  ActionButtonsContainer,
+  type FooterVariant,
+} from "metabase/embedding/components/EmbedFooter.styled";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
+import EmbedThemeS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { FilterApplyToast } from "metabase/parameters/components/FilterApplyToast";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
@@ -37,12 +43,8 @@ import type {
   ParameterValuesMap,
 } from "metabase-types/api";
 
-import type { DashboardUrlHashOptions } from "../../../dashboard/types";
-
 import EmbedFrameS from "./EmbedFrame.module.css";
-import type { FooterVariant } from "./EmbedFrame.styled";
 import {
-  ActionButtonsContainer,
   Body,
   ContentContainer,
   DashboardTabsContainer,
@@ -182,8 +184,8 @@ export const EmbedFrame = ({
       hasScroll={hasFrameScroll}
       isBordered={bordered}
       hasVisibleOverflowWhenPriting={isPublicDashboard}
-      className={cx(className, EmbedFrameS.EmbedFrame, {
-        [EmbedFrameS.NoBackground]: !background,
+      className={cx(className, EmbedThemeS.EmbedFrame, {
+        [EmbedThemeS.NoBackground]: !background,
       })}
       data-testid="embed-frame"
       data-embed-theme={theme}
@@ -191,8 +193,8 @@ export const EmbedFrame = ({
       <ContentContainer
         id={DASHBOARD_PDF_EXPORT_ROOT_ID}
         className={cx(contentClassName, {
-          [EmbedFrameS.ContentContainer]: true,
-          [EmbedFrameS.WithThemeBackground]: true,
+          [EmbedThemeS.ContentContainer]: true,
+          [EmbedThemeS.WithThemeBackground]: true,
 
           // If we are showing a standalone question, make the entire card a hover parent
           [CS.hoverParent]: question,
@@ -202,7 +204,7 @@ export const EmbedFrame = ({
         {hasHeader && (
           <Header
             className={cx(
-              EmbedFrameS.EmbedFrameHeader,
+              EmbedThemeS.EmbedFrameHeader,
               SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS,
             )}
             data-testid="embed-frame-header"
@@ -246,7 +248,7 @@ export const EmbedFrame = ({
               </DashboardTabsContainer>
             )}
 
-            {finalName && <Separator className={EmbedFrameS.Separator} />}
+            {finalName && <Separator className={EmbedThemeS.Separator} />}
           </Header>
         )}
 

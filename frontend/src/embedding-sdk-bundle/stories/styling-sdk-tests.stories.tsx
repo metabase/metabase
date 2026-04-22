@@ -1,7 +1,7 @@
 import { ComponentProvider } from "embedding-sdk-bundle/components/public/ComponentProvider";
 import { StaticQuestion } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import { storybookSdkAuthDefaultConfig } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
+import type { MetabaseAuthConfig } from "metabase/embedding/sdk-bundle/types";
 
 export default {
   title: "EmbeddingSDK/styles tests",

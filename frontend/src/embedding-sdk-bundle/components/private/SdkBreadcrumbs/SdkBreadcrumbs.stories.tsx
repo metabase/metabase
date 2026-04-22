@@ -4,8 +4,8 @@ import { P, match } from "ts-pattern";
 import { InteractiveDashboard } from "embedding-sdk-bundle/components/public/dashboard/InteractiveDashboard";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
-import type { SdkCollectionId } from "embedding-sdk-bundle/types";
-import type { SdkBreadcrumbItemType } from "embedding-sdk-bundle/types/breadcrumb";
+import type { SdkCollectionId } from "metabase/embedding/sdk-bundle/types";
+import type { SdkBreadcrumbItemType } from "metabase/embedding/sdk-bundle/types/breadcrumb";
 import { Stack } from "metabase/ui";
 
 import { CollectionBrowser } from "../../public/CollectionBrowser";

@@ -11,7 +11,7 @@ import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
 import type {
   CreateDashboardValues,
   MetabaseDashboard,
-} from "embedding-sdk-bundle/types/dashboard";
+} from "metabase/embedding/sdk-bundle/types/dashboard";
 import { createMockUser } from "metabase-types/api/mocks";
 
 import { useCreateDashboardApi } from "./use-create-dashboard-api";

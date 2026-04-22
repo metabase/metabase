@@ -9,7 +9,7 @@ import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js
 import type {
   EmbedResource,
   EmbedResourceType,
-} from "metabase/public/lib/types";
+} from "metabase/embedding/types";
 import { setOpenModal } from "metabase/redux/ui";
 import { useDispatch } from "metabase/utils/redux";
 

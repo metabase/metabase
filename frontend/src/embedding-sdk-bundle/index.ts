@@ -17,7 +17,7 @@ initializePlugins();
 // Imports which are only applicable to the embedding sdk, and not the new iframe embedding.
 import "sdk-specific-imports";
 
-import type { MetabaseEmbeddingSdkBundleExports } from "./types/sdk-bundle";
+import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/types/sdk-bundle";
 
 import { CollectionBrowser } from "./components/public/CollectionBrowser";
 import { CreateDashboardModal } from "./components/public/CreateDashboardModal";

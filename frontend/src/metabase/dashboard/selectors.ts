@@ -7,6 +7,7 @@ import {
   DASHBOARD_SLOW_TIMEOUT,
   SIDEBAR_NAME,
 } from "metabase/dashboard/constants";
+import type { EmbeddingParameterVisibility } from "metabase/embedding/types";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import {
   getDashboardQuestions,
@@ -15,7 +16,6 @@ import {
 } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
-import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import type {
   ClickBehaviorSidebarState,
   EditParameterSidebarState,

@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { useSelector } from "metabase/utils/redux";
 import type { Dashboard } from "metabase-types/api";
+
+type DashboardLoadHandlerProps = {
+  onLoad?: (dashboard: Dashboard | null) => void;
+  onLoadWithoutCards?: (dashboard: Dashboard | null) => void;
+};
 
 import { getEventHandlers } from "../../store/selectors";
 
 export const useDashboardLoadHandlers = ({
   onLoad,
   onLoadWithoutCards,
-}: PublicOrEmbeddedDashboardEventHandlersProps) => {
+}: DashboardLoadHandlerProps) => {
   const sdkEventHandlers = useSelector(getEventHandlers);
   // Hack: since we're storing functions in the redux store there are issues
   // with timing and serialization. We'll need to do something about this in the future

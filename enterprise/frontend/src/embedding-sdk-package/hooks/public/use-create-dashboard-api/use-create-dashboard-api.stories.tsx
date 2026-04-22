@@ -2,12 +2,12 @@ import type { StoryFn } from "@storybook/react";
 import { type JSXElementConstructor, useState } from "react";
 
 import { getStorybookSdkAuthConfigForUser } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
+import { MetabaseProvider } from "embedding-sdk-package/components/public/MetabaseProvider";
+import { getHostedBundleStoryDecorator } from "embedding-sdk-package/test/getHostedBundleStoryDecorator";
 import type {
   CreateDashboardValues,
   MetabaseDashboard,
-} from "embedding-sdk-bundle/types/dashboard";
-import { MetabaseProvider } from "embedding-sdk-package/components/public/MetabaseProvider";
-import { getHostedBundleStoryDecorator } from "embedding-sdk-package/test/getHostedBundleStoryDecorator";
+} from "metabase/embedding/sdk-bundle/types/dashboard";
 import { Box, Button } from "metabase/ui";
 
 import { useCreateDashboardApi } from "./use-create-dashboard-api";

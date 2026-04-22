@@ -10,13 +10,13 @@ import {
   setMetabaseInstanceVersion,
 } from "embedding-sdk-bundle/store/reducer";
 import { getFetchRefreshTokenFn } from "embedding-sdk-bundle/store/selectors";
-import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import { useLazySelector } from "embedding-sdk-shared/hooks/use-lazy-selector";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-shared/hooks/use-metabase-provider-props-store";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
+import type { SdkStore } from "metabase/embedding/sdk-bundle/store-types";
+import type { MetabaseAuthConfig } from "metabase/embedding/sdk-bundle/types";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import api from "metabase/utils/api";
 import registerVisualizations from "metabase/visualizations/register";

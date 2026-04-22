@@ -15,7 +15,7 @@ import {
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
 import { setupSdkState } from "embedding-sdk-bundle/test/server-mocks/sdk-init";
-import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
+import type { MetabaseProviderProps } from "metabase/embedding/sdk-bundle/types/metabase-provider";
 import {
   createMockCard,
   createMockCardQueryMetadata,

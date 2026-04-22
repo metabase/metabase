@@ -1,9 +1,9 @@
 import cx from "classnames";
 import { type PropsWithChildren, forwardRef } from "react";
 
-import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import CS from "metabase/css/core/index.css";
 import { useDashboardContext } from "metabase/dashboard/context";
+import type { CommonStylingProps } from "metabase/embedding/sdk-bundle/types/props";
 import { Flex } from "metabase/ui";
 
 import SdkDashboardStyleWrapperS from "./SdkDashboardStyleWrapper.module.css";

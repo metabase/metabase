@@ -1,6 +1,6 @@
 import { getStorybookSdkAuthConfigForUser } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
-import type { MetabaseCollectionItem } from "embedding-sdk-bundle/types";
 import { getHostedBundleStoryDecorator } from "embedding-sdk-package/test/getHostedBundleStoryDecorator";
+import type { MetabaseCollectionItem } from "metabase/embedding/sdk-bundle/types";
 
 import { MetabaseProvider } from "../MetabaseProvider";
 

@@ -1,4 +1,4 @@
-import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
+import type { SdkStoreState } from "metabase/embedding/sdk-bundle/store-types";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";

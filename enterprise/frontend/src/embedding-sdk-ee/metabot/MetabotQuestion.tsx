@@ -10,7 +10,6 @@ import {
 import { ResizeWrapper } from "embedding-sdk-bundle/components/private/ResizeWrapper";
 import { SdkAdHocQuestion } from "embedding-sdk-bundle/components/private/SdkAdHocQuestion";
 import { SdkQuestionDefaultView } from "embedding-sdk-bundle/components/private/SdkQuestionDefaultView";
-import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/MetabotQuestion/MetabotQuestion";
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useLocale } from "metabase/common/hooks/use-locale";
 import {
@@ -18,6 +17,7 @@ import {
   useMetabotName,
 } from "metabase/metabot/hooks";
 import { useMetabotReactions } from "metabase/metabot/hooks/use-metabot-reactions";
+import { METABOT_SDK_EE_PLUGIN } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 
 import { MetabotChatHistory } from "./MetabotChatHistory";

@@ -7,9 +7,9 @@ import {
   DASHBOARD_HEADER_PARAMETERS_PDF_EXPORT_NODE_ID,
   DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME,
 } from "metabase/dashboard/constants";
+import EmbedFrameS from "metabase/embedding/theme.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isStorybookActive } from "metabase/env";
-import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { utf8_to_b64 } from "metabase/utils/encoding";
 import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
 

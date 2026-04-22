@@ -18,9 +18,9 @@ import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-br
 import { shouldRunCardQuery } from "embedding-sdk-bundle/lib/sdk-question";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
-import type { SdkQuestionTitleProps } from "embedding-sdk-bundle/types/question";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { useLocale } from "metabase/common/hooks/use-locale";
+import type { SdkQuestionTitleProps } from "metabase/embedding/sdk-bundle/types/question";
 import {
   Box,
   Button,

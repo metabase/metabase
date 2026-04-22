@@ -8,7 +8,7 @@ import {
 
 import { EditableDashboard } from "embedding-sdk-bundle/components/public/dashboard";
 import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
-import type { MetabaseDashboard } from "embedding-sdk-bundle/types/dashboard";
+import type { MetabaseDashboard } from "metabase/embedding/sdk-bundle/types/dashboard";
 
 import { CreateDashboardModal } from "./CreateDashboardModal";
 

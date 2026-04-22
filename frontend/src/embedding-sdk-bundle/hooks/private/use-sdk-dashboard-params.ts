@@ -1,10 +1,10 @@
 import { pick } from "underscore";
 
-import type { SdkEntityToken } from "embedding-sdk-bundle/types";
-import type { SdkDashboardId } from "embedding-sdk-bundle/types/dashboard";
-import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { DEFAULT_DASHBOARD_DISPLAY_OPTIONS } from "metabase/dashboard/constants";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
+import type { SdkEntityToken } from "metabase/embedding/sdk-bundle/types";
+import type { SdkDashboardId } from "metabase/embedding/sdk-bundle/types/dashboard";
+import type { CommonStylingProps } from "metabase/embedding/sdk-bundle/types/props";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { isNotNull } from "metabase/utils/types";
 

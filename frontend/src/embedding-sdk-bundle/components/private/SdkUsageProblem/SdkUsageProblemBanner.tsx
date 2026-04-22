@@ -6,9 +6,9 @@ import wrenchImage from "assets/img/sdk-banner-wrench.svg";
 import { DEFAULT_FONT } from "embedding-sdk-bundle/config";
 import { useSdkDispatch } from "embedding-sdk-bundle/store";
 import { setUsageProblem } from "embedding-sdk-bundle/store/reducer";
-import type { SdkUsageProblem } from "embedding-sdk-bundle/types/usage-problem";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { DefaultLogoIcon } from "metabase/common/components/LogoIcon";
+import type { SdkUsageProblem } from "metabase/embedding/sdk-bundle/types/usage-problem";
 import { Button, Card, Flex, Icon, Popover, Stack, Text } from "metabase/ui";
 import { originalColors } from "metabase/ui/colors";
 

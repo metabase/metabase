@@ -11,7 +11,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { MockDashboardContext } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { createMockState } from "metabase/redux/store/mocks";
 import type { Dashboard, Settings, TokenFeatures } from "metabase-types/api";
 import {

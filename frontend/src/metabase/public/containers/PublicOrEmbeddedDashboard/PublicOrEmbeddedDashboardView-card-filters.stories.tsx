@@ -7,11 +7,11 @@ import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
-import { Heading } from "metabase/dashboard/visualizations/Heading";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
-} from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
+} from "metabase/dashboard/context/mock-context";
+import { Heading } from "metabase/dashboard/visualizations/Heading";
 import { publicReducers } from "metabase/reducers-public";
 import {
   createMockDashboardState,

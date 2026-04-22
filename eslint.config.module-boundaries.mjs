@@ -52,7 +52,7 @@ const alwaysPassingPlugin = {
 };
 
 export default defineConfig([
-  globalIgnores(["**/*.unit.spec.*", "**/e2e/**", "*.stories.*", "test/**"]),
+  globalIgnores(["**/*.unit.spec.*", "**/e2e/**", "**/*.stories.*", "test/**"]),
   {
     linterOptions: {
       reportUnusedDisableDirectives: "off",
@@ -84,7 +84,7 @@ export default defineConfig([
       "boundaries/ignore": [
         "**/*.unit.spec.*",
         "**/e2e/**",
-        "*.stories.*",
+        "**/*.stories.*",
         "test/**",
       ],
       "import-x/resolver": {

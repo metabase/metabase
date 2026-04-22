@@ -1,11 +1,11 @@
 import type * as Yup from "yup";
 
-import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 import type {
   FunctionParametersSchemaValidationErrorMetadata,
   FunctionSchemaValidationResult,
   SchemaValidationErrorMetadata,
 } from "embedding-sdk-shared/types/validation";
+import type { FunctionSchema } from "metabase/embedding/sdk-bundle/types/schema";
 
 const getErrorMetadata = <
   TMetadata extends

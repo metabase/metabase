@@ -2,11 +2,11 @@ import { Fragment } from "react";
 import { match } from "ts-pattern";
 
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
+import { Badge } from "metabase/common/components/Badge";
 import type {
   SdkBreadcrumbItem,
   SdkBreadcrumbItemType,
-} from "embedding-sdk-bundle/types/breadcrumb";
-import { Badge } from "metabase/common/components/Badge";
+} from "metabase/embedding/sdk-bundle/types/breadcrumb";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { Flex, type IconName } from "metabase/ui";
 

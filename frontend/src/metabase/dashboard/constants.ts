@@ -5,8 +5,10 @@ import type {
 
 import type { EmbedDisplayParams } from "./types";
 
-export const DASHBOARD_NAME_MAX_LENGTH = 254;
-export const DASHBOARD_DESCRIPTION_MAX_LENGTH = 1500;
+export {
+  DASHBOARD_NAME_MAX_LENGTH,
+  DASHBOARD_DESCRIPTION_MAX_LENGTH,
+} from "metabase/common/utils/dashboard";
 
 export const SIDEBAR_NAME: Record<DashboardSidebarName, DashboardSidebarName> =
   {

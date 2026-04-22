@@ -1,15 +1,15 @@
 import type { PropsWithChildren } from "react";
 
 import type { LoadQuestionHookResult } from "embedding-sdk-bundle/hooks/private/use-load-question";
-import type { SdkEntityToken } from "embedding-sdk-bundle/types";
-import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
-import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
+import type { SdkEntityToken } from "metabase/embedding/sdk-bundle/types";
+import type { SdkCollectionId } from "metabase/embedding/sdk-bundle/types/collection";
+import type { MetabasePluginsConfig } from "metabase/embedding/sdk-bundle/types/plugins";
 import type {
   LoadSdkQuestionParams,
   MetabaseQuestion,
   SdkQuestionId,
   SqlParameterValues,
-} from "embedding-sdk-bundle/types/question";
+} from "metabase/embedding/sdk-bundle/types/question";
 import type {
   EmbeddingDataPicker,
   EmbeddingEntityType,

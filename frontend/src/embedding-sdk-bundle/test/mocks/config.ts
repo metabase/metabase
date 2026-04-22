@@ -1,7 +1,7 @@
 import type {
   MetabaseAuthConfig,
   MetabaseAuthConfigWithApiKey,
-} from "embedding-sdk-bundle/types";
+} from "metabase/embedding/sdk-bundle/types";
 
 import { MOCK_INSTANCE_URL } from "./sso";
 

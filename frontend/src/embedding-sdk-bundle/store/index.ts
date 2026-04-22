@@ -1,6 +1,10 @@
 import { type Reducer, combineReducers } from "@reduxjs/toolkit";
 import { useContext } from "react";
 
+import type {
+  SdkDispatch,
+  SdkStore,
+} from "metabase/embedding/sdk-bundle/store-types";
 import * as pulse from "metabase/notifications/pulse/reducers";
 import * as qb from "metabase/query_builder/reducers";
 import { commonReducers } from "metabase/reducers-common";
@@ -14,7 +18,6 @@ import {
 import { reducer as visualizer } from "metabase/visualizer/visualizer.slice";
 
 import { sdk } from "./reducer";
-import type { SdkDispatch, SdkStore } from "./types";
 
 export const sdkReducers = {
   ...commonReducers,

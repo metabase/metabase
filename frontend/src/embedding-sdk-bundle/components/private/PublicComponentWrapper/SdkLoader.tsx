@@ -1,4 +1,4 @@
-import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
+import type { CommonStylingProps } from "metabase/embedding/sdk-bundle/types/props";
 import { Center, Loader } from "metabase/ui";
 
 export const SdkLoader = ({ className, style }: CommonStylingProps) => {

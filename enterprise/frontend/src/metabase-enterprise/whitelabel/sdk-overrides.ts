@@ -1,5 +1,5 @@
-import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
-import type { MetabaseGlobalPluginsConfig } from "embedding-sdk-package";
+import type { SdkStoreState } from "metabase/embedding/sdk-bundle/store-types";
+import type { MetabaseGlobalPluginsConfig } from "metabase/embedding/sdk-bundle/types/plugins";
 import { PLUGIN_SELECTORS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import { hasPremiumFeature } from "metabase-enterprise/settings";

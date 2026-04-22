@@ -8,7 +8,7 @@ import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
-import { LocaleProvider } from "metabase/public/LocaleProvider";
+import { LocaleProvider } from "metabase/embedding/LocaleProvider";
 import { publicReducers } from "metabase/reducers-public";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";

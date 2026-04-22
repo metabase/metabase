@@ -2,8 +2,8 @@ import { useEffect } from "react";
 
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
-import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import { useLocale } from "metabase/common/hooks";
+import type { SdkEntityToken } from "metabase/embedding/sdk-bundle/types";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 
 export const useSetupContentTranslations = ({

@@ -1,4 +1,4 @@
-import type { EmbedResourceDownloadOptions } from "metabase/public/lib/types";
+import type { EmbedResourceDownloadOptions } from "metabase/embedding/types";
 
 type EmbedFlowParams = {
   locked?: number;

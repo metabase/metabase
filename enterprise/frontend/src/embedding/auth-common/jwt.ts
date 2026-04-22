@@ -1,4 +1,5 @@
-import * as MetabaseError from "embedding-sdk-bundle/errors";
+// eslint-disable-next-line no-restricted-imports -- shared sdk-bundle contract (moved from embedding-sdk-bundle/errors)
+import * as MetabaseError from "metabase/embedding/sdk-bundle/errors";
 
 export async function jwtDefaultRefreshTokenFunction(
   responseUrl: string,

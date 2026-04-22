@@ -1,11 +1,7 @@
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
-
 /**
  * Defines a Metabase auth config.
  *
  * @function
  * @category MetabaseProvider
  */
-export const defineMetabaseAuthConfig = (
-  config: MetabaseAuthConfig,
-): MetabaseAuthConfig => config;
+export { defineMetabaseAuthConfig } from "embedding-sdk-shared/lib/define-metabase-auth-config";

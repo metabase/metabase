@@ -3,7 +3,7 @@ import { merge } from "icepick";
 import type {
   MetabaseDashboardPluginsConfig,
   MetabasePluginsConfig,
-} from "embedding-sdk-bundle/types/plugins";
+} from "metabase/embedding/sdk-bundle/types/plugins";
 
 const DEFAULT_DASHCARD_MENU_ITEMS: MetabaseDashboardPluginsConfig = {
   dashboardCardMenu: {

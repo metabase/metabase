@@ -1,10 +1,10 @@
 import { t } from "ttag";
 
-import type { DashboardSubscriptionsButtonProps } from "embedding-sdk-bundle/components/public/notifications";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useHasEmailSetup } from "metabase/common/hooks";
 import { toggleSharing } from "metabase/dashboard/actions";
 import { useDashboardContext } from "metabase/dashboard/context";
+import type { DashboardSubscriptionsButtonProps } from "metabase/plugins";
 import { useDispatch } from "metabase/utils/redux";
 
 /**

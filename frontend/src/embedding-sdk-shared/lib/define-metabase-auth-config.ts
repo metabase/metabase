@@ -1,4 +1,4 @@
-import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
+import type { MetabaseAuthConfig } from "metabase/embedding/sdk-bundle/types";
 
 export const defineMetabaseAuthConfig = (
   config: MetabaseAuthConfig,
