@@ -2,14 +2,19 @@ import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Group, Icon, Text } from "metabase/ui";
+import { Button, Group, Icon, type IconName, Text } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors";
 import {
   useDeprovisionWorkspaceMutation,
   useProvisionWorkspaceMutation,
 } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
-import { isWorkspaceProvisioned } from "../../utils";
+import {
+  isWorkspaceDeprovisioning,
+  isWorkspaceProvisioned,
+  isWorkspaceProvisioning,
+} from "../../utils";
 import { TitleSection } from "../TitleSection";
 
 type WorkspaceStatusSectionProps = {
@@ -22,9 +27,15 @@ export function WorkspaceStatusSection({
   const { modalContent, show } = useConfirmation();
   const [provisionWorkspace] = useProvisionWorkspaceMutation();
   const [deprovisionWorkspace] = useDeprovisionWorkspaceMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+  const { sendErrorToast } = useMetadataToasts();
 
+  const isProvisioning = isWorkspaceProvisioning(workspace);
+  const isDeprovisioning = isWorkspaceDeprovisioning(workspace);
   const isProvisioned = isWorkspaceProvisioned(workspace);
+  const isInProgress = isProvisioning || isDeprovisioning;
+
+  const { name: iconName, color: iconColor } = getStatusIcon(workspace);
+  const message = getStatusMessage(workspace);
 
   const handleProvision = () => {
     show({
@@ -36,8 +47,6 @@ export function WorkspaceStatusSection({
         const { error } = await provisionWorkspace(workspace.id);
         if (error) {
           sendErrorToast(t`Failed to provision workspace`);
-        } else {
-          sendSuccessToast(t`Workspace provisioned`);
         }
       },
     });
@@ -53,12 +62,15 @@ export function WorkspaceStatusSection({
         const { error } = await deprovisionWorkspace(workspace.id);
         if (error) {
           sendErrorToast(t`Failed to deprovision workspace`);
-        } else {
-          sendSuccessToast(t`Workspace deprovisioned`);
         }
       },
     });
   };
+
+  const buttonLabel = getButtonLabel(workspace);
+  const buttonColor = getButtonColor(workspace);
+
+  const handleClick = isProvisioned ? handleDeprovision : handleProvision;
 
   return (
     <TitleSection
@@ -67,31 +79,73 @@ export function WorkspaceStatusSection({
     >
       <Group px="xl" py="md" justify="space-between" wrap="nowrap">
         <Group gap="sm" wrap="nowrap">
-          {isProvisioned ? (
-            <Icon name="check_filled" c="success" />
-          ) : (
-            <Icon name="warning" c="warning" />
-          )}
-          <Text>
-            {isProvisioned
-              ? t`This workspace is provisioned and ready to use.`
-              : t`This workspace has not been provisioned yet.`}
-          </Text>
+          <Icon name={iconName} c={iconColor} />
+          <Text>{message}</Text>
         </Group>
-        {isProvisioned ? (
-          <Button
-            variant="filled"
-            color="error"
-            onClick={handleDeprovision}
-          >{t`Deprovision workspace`}</Button>
-        ) : (
-          <Button
-            variant="filled"
-            onClick={handleProvision}
-          >{t`Provision workspace`}</Button>
-        )}
+        <Button
+          variant="filled"
+          color={buttonColor}
+          disabled={isInProgress}
+          onClick={handleClick}
+        >
+          {buttonLabel}
+        </Button>
       </Group>
       {modalContent}
     </TitleSection>
   );
+}
+
+type StatusIconProps = {
+  name: IconName;
+  color: ColorName;
+};
+
+function getStatusIcon(workspace: Workspace): StatusIconProps {
+  if (isWorkspaceProvisioning(workspace)) {
+    return { name: "hourglass", color: "text-secondary" };
+  }
+  if (isWorkspaceDeprovisioning(workspace)) {
+    return { name: "hourglass", color: "text-secondary" };
+  }
+  if (isWorkspaceProvisioned(workspace)) {
+    return { name: "check_filled", color: "success" };
+  }
+  return { name: "warning", color: "warning" };
+}
+
+function getStatusMessage(workspace: Workspace): string {
+  if (isWorkspaceProvisioning(workspace)) {
+    return t`Provisioning this workspace…`;
+  }
+  if (isWorkspaceDeprovisioning(workspace)) {
+    return t`Deprovisioning this workspace…`;
+  }
+  if (isWorkspaceProvisioned(workspace)) {
+    return t`This workspace is provisioned and ready to use.`;
+  }
+  return t`This workspace has not been provisioned yet.`;
+}
+
+function getButtonLabel(workspace: Workspace): string {
+  if (isWorkspaceProvisioning(workspace)) {
+    return t`Provisioning…`;
+  }
+  if (isWorkspaceDeprovisioning(workspace)) {
+    return t`Deprovisioning…`;
+  }
+  if (isWorkspaceProvisioned(workspace)) {
+    return t`Deprovision workspace`;
+  }
+  return t`Provision workspace`;
+}
+
+function getButtonColor(workspace: Workspace): ColorName {
+  if (isWorkspaceDeprovisioning(workspace)) {
+    return "error";
+  }
+  if (isWorkspaceProvisioned(workspace)) {
+    return "error";
+  }
+  return "brand";
 }

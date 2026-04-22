@@ -3,7 +3,6 @@ import type { Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
@@ -11,14 +10,12 @@ import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHe
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Center, Stack } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
-import {
-  useGetWorkspaceQuery,
-  useUpdateWorkspaceMutation,
-} from "metabase-enterprise/api";
+import { useUpdateWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace, WorkspaceDatabaseDraft } from "metabase-types/api";
 
 import { DatabaseMappingSection } from "../../components/DatabaseMappingSection";
 import { WorkspaceHeader } from "../../components/WorkspaceHeader";
+import { useFetchWorkspace } from "../../hooks/use-fetch-workspace";
 
 type WorkspaceDatabaseListPageParams = {
   workspaceId: string;
@@ -34,11 +31,7 @@ export function WorkspaceDatabaseListPage({
   route,
 }: WorkspaceDatabaseListPageProps) {
   const workspaceId = Urls.extractEntityId(params.workspaceId);
-  const {
-    data: workspace,
-    isLoading,
-    error,
-  } = useGetWorkspaceQuery(workspaceId ?? skipToken);
+  const { workspace, isLoading, error } = useFetchWorkspace(workspaceId);
 
   if (isLoading || error != null || workspace == null) {
     return (

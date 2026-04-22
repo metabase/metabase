@@ -1,12 +1,11 @@
-import { skipToken } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { Center, Stack } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
-import { useGetWorkspaceQuery } from "metabase-enterprise/api";
 
 import { WorkspaceHeader } from "../../components/WorkspaceHeader";
 import { WorkspaceStatusSection } from "../../components/WorkspaceStatusSection";
+import { useFetchWorkspace } from "../../hooks/use-fetch-workspace";
 
 type WorkspaceOverviewPageParams = {
   workspaceId: string;
@@ -18,11 +17,7 @@ type WorkspaceOverviewPageProps = {
 
 export function WorkspaceOverviewPage({ params }: WorkspaceOverviewPageProps) {
   const workspaceId = Urls.extractEntityId(params.workspaceId);
-  const {
-    data: workspace,
-    isLoading,
-    error,
-  } = useGetWorkspaceQuery(workspaceId ?? skipToken);
+  const { workspace, isLoading, error } = useFetchWorkspace(workspaceId);
 
   if (isLoading || error != null || workspace == null) {
     return (

@@ -2,7 +2,11 @@ import type { DatabaseId } from "./database";
 
 export type WorkspaceId = number;
 
-export type WorkspaceDatabaseStatus = "provisioned" | "deprovisioned";
+export type WorkspaceDatabaseStatus =
+  | "provisioned"
+  | "provisioning"
+  | "deprovisioning"
+  | "deprovisioned";
 
 export type Workspace = {
   id: WorkspaceId;
