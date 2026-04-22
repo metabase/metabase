@@ -41,12 +41,13 @@ export default function () {
   registerVisualization(ScatterPlot);
   registerVisualization(BoxPlot);
   registerVisualization(PieChart);
+  // @ts-expect-error: migrate Map to tsx
   registerVisualization(Map);
   registerVisualization(Funnel);
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
   registerVisualization(SankeyChart);
-
+  // @ts-expect-error: not a real visualization, requires type rework
   registerVisualization(ActionViz);
 
   registerVisualization(ListViz);
