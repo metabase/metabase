@@ -539,19 +539,25 @@
 
 (deftest collection-id-only-search-models-cold-start-regression-test
   (testing "derivation populates correctly even if registry is empty at first access"
-    ;; The derivation must call `search/specifications` before reading the registry — `t2/resolve-model`
-    ;; inside `specifications` loads the model namespaces that populate the registry.
-    ;; If the order flips, cold start caches an empty set for the JVM lifetime.
-    (let [real-specs    (var-get #'search/specifications)
-          real-registry perms/collection-id-only-read-models
-          specs-loaded? (atom false)]
+    ;; The derivation must call `search/specifications` before reading either registry — `t2/resolve-model`
+    ;; inside `specifications` loads the model namespaces that populate them.
+    ;; If the order flips, cold start caches an empty set for the JVM lifetime. Both the t2-model registry
+    ;; (card/metric/dataset/dashboard) and the search-model registry (indexed-entity) must be covered.
+    (let [real-specs          (var-get #'search/specifications)
+          real-t2-registry    perms/collection-id-only-read-models
+          real-search-registry perms/collection-based-visibility-search-models
+          specs-loaded?       (atom false)]
       (with-redefs [search/specifications (fn []
                                             (reset! specs-loaded? true)
                                             (real-specs))
                     perms/collection-id-only-read-models (fn []
                                                            (if @specs-loaded?
-                                                             (real-registry)
-                                                             #{}))]
+                                                             (real-t2-registry)
+                                                             #{}))
+                    perms/collection-based-visibility-search-models (fn []
+                                                                      (if @specs-loaded?
+                                                                        (real-search-registry)
+                                                                        {}))]
         (let [result (#'semantic.index/compute-collection-id-only-search-models)]
           (is (contains? result "card"))
           (is (contains? result "dashboard"))
