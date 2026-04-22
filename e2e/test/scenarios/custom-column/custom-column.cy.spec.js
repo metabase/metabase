@@ -596,8 +596,8 @@ describe("scenarios > question > custom column", () => {
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Fixed date range…").click();
-      cy.findByLabelText("Start date").clear().type("12/10/2024");
-      cy.findByLabelText("End date").clear().type("01/05/2025");
+      cy.findByLabelText("Start date").clear().type("12/10/2027");
+      cy.findByLabelText("End date").clear().type("01/05/2028");
       cy.button("Add filter").click();
     });
 
@@ -2411,7 +2411,7 @@ describe("scenarios > question > custom column > aggregation", () => {
 
       H.assertTableData({
         columns: ["Created At: Month", "Foo", "Bar", "Sum"],
-        firstRows: [["April 2022", "49.54", "52.76", "102.29"]],
+        firstRows: [["April 2025", "49.54", "52.76", "102.29"]],
       });
     });
 
@@ -2428,7 +2428,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Foo", "Bar"],
-        firstRows: [["September 2022", "15.69", "18.57"]],
+        firstRows: [["September 2025", "15.69", "18.57"]],
       });
     });
 
@@ -2450,7 +2450,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Foo", "Bar", "Products - Foo → ID"],
-        firstRows: [["April 2022", "49.54", "52.76", "34"]],
+        firstRows: [["April 2025", "49.54", "52.76", "34"]],
       });
     });
 
@@ -2463,7 +2463,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Foo", "Bar"],
-        firstRows: [["April 2023", "15.69", "18.21"]],
+        firstRows: [["April 2026", "15.69", "18.21"]],
       });
     });
 
@@ -2531,7 +2531,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Count", "Count"],
-        firstRows: [["April 2022", "2", "3"]],
+        firstRows: [["April 2025", "2", "3"]],
       });
 
       cy.log(
@@ -2549,7 +2549,7 @@ describe("scenarios > question > custom column > aggregation", () => {
       H.visualize();
       H.assertTableData({
         columns: ["Created At: Month", "Count", "Count"],
-        firstRows: [["April 2022", "3", "2"]],
+        firstRows: [["April 2025", "3", "2"]],
       });
     });
   });

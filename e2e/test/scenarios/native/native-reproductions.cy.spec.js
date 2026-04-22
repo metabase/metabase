@@ -762,7 +762,7 @@ describe("issue 35785", () => {
           name: "from",
           "display-name": "From",
           type: "date",
-          default: "2022-10-02",
+          default: "2025-10-02",
           required: true,
         },
       },
