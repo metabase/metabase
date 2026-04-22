@@ -10,7 +10,7 @@ import { Button, Group, Icon, MultiSelect, Select } from "metabase/ui";
 import type {
   Database,
   DatabaseId,
-  WorkspaceDatabaseMapping as WorkspaceDatabase,
+  WorkspaceDatabaseDraft,
 } from "metabase-types/api";
 
 import { TitleSection } from "../TitleSection";
@@ -18,19 +18,19 @@ import { TitleSection } from "../TitleSection";
 import S from "./DatabaseMappingSection.module.css";
 
 type DatabaseMappingSectionProps = {
-  mappings: WorkspaceDatabase[];
-  onChange: (newDatabases: WorkspaceDatabase[]) => void;
+  mappings: WorkspaceDatabaseDraft[];
+  onChange: (newMappings: WorkspaceDatabaseDraft[]) => void;
 };
 
 export function DatabaseMappingSection({
   mappings,
   onChange,
 }: DatabaseMappingSectionProps) {
-  const handleAdd = (mapping: WorkspaceDatabase) => {
+  const handleAdd = (mapping: WorkspaceDatabaseDraft) => {
     onChange([...mappings, mapping]);
   };
 
-  const handleChange = (index: number, mapping: WorkspaceDatabase) => {
+  const handleChange = (index: number, mapping: WorkspaceDatabaseDraft) => {
     const newMappings = [...mappings];
     newMappings[index] = mapping;
     onChange(newMappings);
@@ -58,9 +58,9 @@ export function DatabaseMappingSection({
 }
 
 type DatabaseMappingFormProps = {
-  mapping?: WorkspaceDatabase;
-  onAdd?: (newMapping: WorkspaceDatabase) => void;
-  onChange?: (newMapping: WorkspaceDatabase) => void;
+  mapping?: WorkspaceDatabaseDraft;
+  onAdd?: (newMapping: WorkspaceDatabaseDraft) => void;
+  onChange?: (newMapping: WorkspaceDatabaseDraft) => void;
   onRemove?: () => void;
 };
 
@@ -133,12 +133,11 @@ function DatabaseMappingForm({
 function getDatabaseMapping(
   databaseId: DatabaseId | undefined,
   inputSchemas: string[],
-): WorkspaceDatabase | undefined {
+): WorkspaceDatabaseDraft | undefined {
   if (databaseId != null && inputSchemas.length > 0) {
     return {
       database_id: databaseId,
       input_schemas: inputSchemas,
-      output_schema: "",
     };
   }
 }

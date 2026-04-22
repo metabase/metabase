@@ -1,4 +1,4 @@
-import type { Database, DatabaseId } from "./database";
+import type { DatabaseId } from "./database";
 
 export type WorkspaceId = number;
 
@@ -7,26 +7,30 @@ export type WorkspaceStatus = "uninitialized" | "initialized";
 export type Workspace = {
   id: WorkspaceId;
   name: string;
-  databases: WorkspaceDatabaseMapping[];
+  databases: WorkspaceDatabase[];
   created_at: string;
   updated_at: string;
 };
 
-export type WorkspaceDatabaseMapping = {
+export type WorkspaceDatabase = {
   database_id: DatabaseId;
   input_schemas: string[];
   output_schema: string;
+};
 
-  database?: Database;
+export type WorkspaceDatabaseDraft = {
+  database_id: DatabaseId;
+  input_schemas: string[];
+  output_schema?: string;
 };
 
 export type CreateWorkspaceRequest = {
   name: string;
-  databases: WorkspaceDatabaseMapping[];
+  databases: WorkspaceDatabaseDraft[];
 };
 
 export type UpdateWorkspaceRequest = {
   id: WorkspaceId;
   name?: string;
-  databases?: WorkspaceDatabaseMapping[];
+  databases?: WorkspaceDatabaseDraft[];
 };

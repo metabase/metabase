@@ -16,7 +16,7 @@ import { Stack } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import { useCreateWorkspaceMutation } from "metabase-enterprise/api";
-import type { WorkspaceDatabaseMapping } from "metabase-types/api";
+import type { WorkspaceDatabase } from "metabase-types/api";
 
 import { DatabaseMappingSection } from "../../components/DatabaseMappingSection";
 
@@ -31,7 +31,7 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const [name, setName] = useState(t`New workspace`);
-  const [databases, setDatabases] = useState<WorkspaceDatabaseMapping[]>([]);
+  const [databases, setDatabases] = useState<WorkspaceDatabase[]>([]);
   const [isDirty, setIsDirty] = useState(false);
 
   const handleNameChange = (value: string) => {
@@ -39,7 +39,7 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
     setIsDirty(true);
   };
 
-  const handleDatabasesChange = (value: WorkspaceDatabaseMapping[]) => {
+  const handleDatabasesChange = (value: WorkspaceDatabase[]) => {
     setDatabases(value);
     setIsDirty(true);
   };
