@@ -15,7 +15,9 @@
    1. Input comes from temp schema
 1. Tell claude to generate some models/transforms/dashboards
    1. Asset yml files are created
-   2. Transform runs go to temp schema
+   1. Transform runs go to temp schema
+   1. Mission control of Claude activity is visible in the UI of the child instance showing
+     - All query runs, transform runs, file changes, remappings, anything else claude is touching
 1. Edited asset yml files committed and pushed
 1. In parent instance, new assets are visible with results from "production"
    1. Can see UI showing which tx output table remappings exist
