@@ -20,9 +20,7 @@ describe("PythonTransformsUpsellModal", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(
-        /Please ask a Metabase Store Admin to enable this for you/,
-      ),
+      screen.getByText(/Please ask a Store Admin to enable this for you/),
     ).toBeInTheDocument();
 
     expect(

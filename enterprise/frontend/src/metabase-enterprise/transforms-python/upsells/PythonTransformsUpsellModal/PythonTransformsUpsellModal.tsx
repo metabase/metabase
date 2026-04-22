@@ -124,10 +124,8 @@ export function PythonTransformsUpsellModal({
                 {!isStoreUser && (
                   <Text fw="bold" lh="md">
                     {anyStoreUserEmailAddress
-                      ? // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
-                        t`Please ask a Metabase Store Admin (${anyStoreUserEmailAddress}) to enable this for you.`
-                      : // eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for admins.
-                        t`Please ask a Metabase Store Admin to enable this for you.`}
+                      ? t`Please ask a Store Admin (${anyStoreUserEmailAddress}) to enable this for you.`
+                      : t`Please ask a Store Admin to enable this for you.`}
                   </Text>
                 )}
                 {isStoreUser && !isHosted && <SelfHostedStorePurchaseLink />}
