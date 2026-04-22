@@ -551,18 +551,37 @@
     kw
     (keyword (str "this." (name kw)))))
 
+(defn- attr-expr-columns
+  "Recursively extract the set of dotted column-reference keywords referenced in an `:attrs`
+  expression, mirroring `find-fields-expr`/`find-fields-kw` in `metabase.search.spec`. Descends
+  into nested vectors and `{:fields ...}` maps, and filters out SQL-function/control keywords
+  (`:else`, `:integer`, `:float`, `%...`)."
+  [expr]
+  (cond
+    (keyword? expr)
+    (if (or (str/starts-with? (name expr) "%")
+            (#{:else :integer :float} expr))
+      #{}
+      #{(qualify-this expr)})
+
+    (and (vector? expr) (> (count expr) 1))
+    (into #{} (mapcat attr-expr-columns) (subvec expr 1))
+
+    (and (map? expr) (:fields expr))
+    (into #{} (mapcat attr-expr-columns) (:fields expr))
+
+    :else #{}))
+
 (defn- attr-seed-columns
   "Return the set of dotted column-reference keywords to seed a trace from, given an `:attrs` attr
-  value. Handles the three shorthand forms accepted by the search spec:
+  value. Mirrors the shorthand expansion in `metabase.search.spec`:
   - `true`: column with the attr's name in snake_case, qualified to `:this`
-  - keyword (bare or dotted): the referenced column
-  - vector expression: every column keyword referenced in its arguments"
+  - keyword, vector expression, or `{:fields ...}` map: recursively collected via
+    `attr-expr-columns`, matching `find-fields-expr` semantics"
   [attr-key attr-val]
-  (cond
-    (true? attr-val)    #{(keyword (str "this." (u/->snake_case_en (name attr-key))))}
-    (keyword? attr-val) #{(qualify-this attr-val)}
-    (vector? attr-val)  (into #{} (comp (filter keyword?) (map qualify-this)) (rest attr-val))
-    :else               #{}))
+  (if (true? attr-val)
+    #{(keyword (str "this." (u/->snake_case_en (name attr-key))))}
+    (attr-expr-columns attr-val)))
 
 (defn- trace-collection-id-source-models
   "Return t2-model keywords reachable from the spec's `:collection-id` attribute via join equalities.
@@ -627,13 +646,34 @@
              :attrs {:collection-id true}
              :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}}))))
   (testing "extracts referenced columns from a vector attr expression"
-    ;; A computed `:collection-id` — e.g. `[:coalesce :collection.id :this.collection_id]` — seeds
-    ;; the walk from every column keyword in the expression.
+    ;; A computed `:collection-id` seeds the walk from every column keyword in the expression.
+    ;; The fixture is shaped so each referenced column reaches a distinct model: without extracting
+    ;; `:collection.id` the walk misses `:model/Collection`, and without extracting `:other.foo` it
+    ;; misses `:model/Other`. A regression that only seeded from the first column would fail.
+    (is (= #{:model/Base :model/Collection :model/Other}
+           (trace-collection-id-source-models
+            {:model :model/Base
+             :attrs {:collection-id [:coalesce :collection.id :other.foo]}
+             :joins {:collection [:model/Collection [:= :collection.id :this.c]]
+                     :other      [:model/Other [:= :other.foo :this.o]]}}))))
+  (testing "recurses into nested vector expressions and skips control keywords"
+    ;; Mirrors `find-fields-expr`: a `:case` form contains a nested `[:= ...]` predicate plus
+    ;; branch keywords. The recursive walk must pull column refs out of the nested predicate and
+    ;; must not treat `:else` as a column.
+    (is (= #{:model/Base :model/Collection :model/Other}
+           (trace-collection-id-source-models
+            {:model :model/Base
+             :attrs {:collection-id [:case [:= :other.flag true] :collection.id :else :this.collection_id]}
+             :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]
+                     :other      [:model/Other [:= :other.flag :this.other_flag]]}}))))
+  (testing "descends into `{:fn ... :fields [...]}` attr maps"
+    ;; The search spec allows `{:fn f :fields [:a :b]}` attr values; `find-fields-expr` descends
+    ;; into `:fields`. The test helper must do the same.
     (is (= #{:model/Base :model/Collection}
            (trace-collection-id-source-models
             {:model :model/Base
-             :attrs {:collection-id [:coalesce :collection.id :this.collection_id]}
-             :joins {:collection [:model/Collection [:= :collection.id :this.some_other_field]]}})))))
+             :attrs {:collection-id {:fn identity :fields [:collection.id]}}
+             :joins {:collection [:model/Collection [:= :collection.id :this.collection_id]]}})))))
 
 (deftest collection-based-visibility-search-model-claims-verified-test
   (testing "every search-model registered with :denormalized-from traces to that model from :collection-id"
