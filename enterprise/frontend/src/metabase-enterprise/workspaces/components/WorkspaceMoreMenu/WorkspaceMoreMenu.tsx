@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
@@ -18,6 +18,7 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const dispatch = useDispatch();
+  const canDelete = workspace.status === "uninitialized";
 
   const handleDelete = () => {
     show({
@@ -46,9 +47,18 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item leftSection={<Icon name="trash" />} onClick={handleDelete}>
-            {t`Delete`}
-          </Menu.Item>
+          <Tooltip
+            label={t`Deprovision this workspace before deleting.`}
+            disabled={canDelete}
+          >
+            <Menu.Item
+              leftSection={<Icon name="trash" />}
+              disabled={!canDelete}
+              onClick={handleDelete}
+            >
+              {t`Delete`}
+            </Menu.Item>
+          </Tooltip>
         </Menu.Dropdown>
       </Menu>
       {modalContent}

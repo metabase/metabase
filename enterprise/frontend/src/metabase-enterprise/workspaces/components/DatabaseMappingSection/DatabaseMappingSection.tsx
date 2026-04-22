@@ -3,13 +3,14 @@ import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
-import { Box, Button, Icon } from "metabase/ui";
+import { Box, Button, Icon, Tooltip } from "metabase/ui";
 import type {
   Database,
   DatabaseId,
   WorkspaceDatabaseDraft,
 } from "metabase-types/api";
 
+import { isWorkspaceDatabase } from "../../utils";
 import { TitleSection } from "../TitleSection";
 
 import { DatabaseMappingList } from "./DatabaseMappingList";
@@ -81,13 +82,18 @@ export function DatabaseMappingSection({
         label={t`Database isolation`}
         description={t`Configure how databases are isolated for this workspace.`}
         rightSection={
-          <Button
-            leftSection={<Icon name="add" />}
-            disabled={!canAddMapping}
-            onClick={handleOpenCreate}
+          <Tooltip
+            label={t`No available databases that support workspaces.`}
+            disabled={canAddMapping}
           >
-            {t`Add database`}
-          </Button>
+            <Button
+              leftSection={<Icon name="add" />}
+              disabled={!canAddMapping}
+              onClick={handleOpenCreate}
+            >
+              {t`Add database`}
+            </Button>
+          </Tooltip>
         }
       >
         {mappings.length === 0 ? (
@@ -125,6 +131,8 @@ function getAvailableDatabases(
 ): Database[] {
   const mappedIds = new Set(mappings.map((mapping) => mapping.database_id));
   return databases.filter(
-    (database) => !mappedIds.has(database.id) || database.id === databaseId,
+    (database) =>
+      isWorkspaceDatabase(database) &&
+      (!mappedIds.has(database.id) || database.id === databaseId),
   );
 }

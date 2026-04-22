@@ -7,6 +7,7 @@ export type WorkspaceStatus = "uninitialized" | "initialized";
 export type Workspace = {
   id: WorkspaceId;
   name: string;
+  status: WorkspaceStatus;
   databases: WorkspaceDatabase[];
   created_at: string;
   updated_at: string;

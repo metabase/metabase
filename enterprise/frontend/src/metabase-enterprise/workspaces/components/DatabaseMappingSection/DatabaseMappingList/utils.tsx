@@ -29,7 +29,7 @@ export function getDatabaseColumn(
 export function getSchemasColumn(): TreeTableColumnDef<DatabaseMappingRow> {
   return {
     id: "input_schemas",
-    header: t`Accessible schemas`,
+    header: t`Schemas`,
     width: "auto",
     minWidth: 200,
     accessorFn: (row) => row.input_schemas.join(", "),

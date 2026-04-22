@@ -1,19 +1,13 @@
 import { useMemo, useState } from "react";
-import { Link, type Route } from "react-router";
+import type { Route } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { skipToken } from "metabase/api";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
-import {
-  PaneHeader,
-  PaneHeaderActions,
-  PaneHeaderInput,
-  PaneHeaderTabs,
-} from "metabase/data-studio/common/components/PaneHeader";
+import { PaneHeaderActions } from "metabase/data-studio/common/components/PaneHeader";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Center, Stack } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
@@ -24,18 +18,21 @@ import {
 import type { Workspace, WorkspaceDatabaseDraft } from "metabase-types/api";
 
 import { DatabaseMappingSection } from "../../components/DatabaseMappingSection";
-import { WorkspaceMoreMenu } from "../../components/WorkspaceMoreMenu";
+import { WorkspaceHeader } from "../../components/WorkspaceHeader";
 
-type WorkspacePageParams = {
+type WorkspaceDatabaseListPageParams = {
   workspaceId: string;
 };
 
-type WorkspacePageProps = {
-  params: WorkspacePageParams;
+type WorkspaceDatabaseListPageProps = {
+  params: WorkspaceDatabaseListPageParams;
   route: Route;
 };
 
-export function WorkspacePage({ params, route }: WorkspacePageProps) {
+export function WorkspaceDatabaseListPage({
+  params,
+  route,
+}: WorkspaceDatabaseListPageProps) {
   const workspaceId = Urls.extractEntityId(params.workspaceId);
   const {
     data: workspace,
@@ -51,36 +48,29 @@ export function WorkspacePage({ params, route }: WorkspacePageProps) {
     );
   }
 
-  return <WorkspacePageBody workspace={workspace} route={route} />;
+  return <WorkspaceDatabaseListPageBody workspace={workspace} route={route} />;
 }
 
-type WorkspacePageBodyProps = {
+type WorkspaceDatabaseListPageBodyProps = {
   workspace: Workspace;
   route: Route;
 };
 
-function WorkspacePageBody({ workspace, route }: WorkspacePageBodyProps) {
-  const [updateWorkspace, { isLoading: isSaving }] =
-    useUpdateWorkspaceMutation();
-  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-
+function WorkspaceDatabaseListPageBody({
+  workspace,
+  route,
+}: WorkspaceDatabaseListPageBodyProps) {
   const [databases, setDatabases] = useState<WorkspaceDatabaseDraft[]>(
     workspace.databases,
   );
+  const [updateWorkspace, { isLoading: isSaving }] =
+    useUpdateWorkspaceMutation();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
 
   const isDirty = useMemo(
     () => !_.isEqual(databases, workspace.databases),
     [databases, workspace.databases],
   );
-
-  const handleNameChange = async (name: string) => {
-    const { error } = await updateWorkspace({ id: workspace.id, name });
-    if (error) {
-      sendErrorToast(t`Failed to update workspace name`);
-    } else {
-      sendSuccessToast(t`Workspace name updated`);
-    }
-  };
 
   const handleCancel = () => {
     setDatabases(workspace.databases);
@@ -100,34 +90,9 @@ function WorkspacePageBody({ workspace, route }: WorkspacePageBodyProps) {
 
   return (
     <>
-      <PageContainer data-testid="workspace-page" gap="2.5rem">
-        <PaneHeader
-          py={0}
-          breadcrumbs={
-            <DataStudioBreadcrumbs>
-              <Link key="workspace-list" to={Urls.workspaceList()}>
-                {t`Workspaces`}
-              </Link>
-              {workspace.name}
-            </DataStudioBreadcrumbs>
-          }
-          title={
-            <PaneHeaderInput
-              initialValue={workspace.name}
-              onChange={handleNameChange}
-            />
-          }
-          menu={<WorkspaceMoreMenu workspace={workspace} />}
-          tabs={
-            <PaneHeaderTabs
-              tabs={[
-                {
-                  label: t`Settings`,
-                  to: Urls.workspace(workspace.id),
-                },
-              ]}
-            />
-          }
+      <PageContainer data-testid="workspace-database-list-page" gap="2.5rem">
+        <WorkspaceHeader
+          workspace={workspace}
           actions={
             <PaneHeaderActions
               isDirty={isDirty}
@@ -136,7 +101,6 @@ function WorkspacePageBody({ workspace, route }: WorkspacePageBodyProps) {
               onCancel={handleCancel}
             />
           }
-          showMetabotButton
         />
         <Stack gap="3.5rem">
           <DatabaseMappingSection

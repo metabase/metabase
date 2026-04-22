@@ -13,3 +13,7 @@ export function newWorkspace() {
 export function workspace(workspaceId: WorkspaceId) {
   return `${WORKSPACES_ROOT_URL}/${workspaceId}`;
 }
+
+export function workspaceDatabases(workspaceId: WorkspaceId) {
+  return `${workspace(workspaceId)}/databases`;
+}
