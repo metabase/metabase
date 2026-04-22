@@ -56,7 +56,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     );
 
     H.queryBuilderMain().within(() => {
-      H.echartsContainer().contains(/^June.+2025$/); // more granular axis labels
+      H.echartsContainer().should("contain", "June 2025"); // more granular axis labels
 
       // confirm that product category is still broken out
       cy.findByLabelText("Legend").within(() => {
