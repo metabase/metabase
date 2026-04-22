@@ -130,7 +130,7 @@ You can mix and match bar, line, and areas in stacked series - select the right 
 
 ### Values on data points
 
-You can show some values (Metabase will pick some values to make the chart more legible), all values, or no values.
+You can show some values (Metabase will pick some values to make the chart more legible), all values, only the latest value, or no values. The **Latest only** option displays just the most recent (rightmost) data point's value for each series, keeping visuals clean while surfacing the key metric.
 
 If you toggle on values on data points, you can toggle values for individual series on the [Data](#data-settings) tab of the chart's settings. For example, if you have four series, and only want to display values for one of the series.
 

@@ -740,6 +740,63 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
+  describe("latest only data labels", () => {
+    it("should show only the last data point value for a single-series line chart", () => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "native",
+          native: {
+            query:
+              "SELECT 'a' as x, 10 as y UNION ALL SELECT 'b', 20 UNION ALL SELECT 'c', 30",
+            "template-tags": {},
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+        visualization_settings: {
+          "graph.show_values": true,
+          "graph.label_value_frequency": "latest",
+        },
+      });
+
+      H.echartsContainer().within(() => {
+        cy.findByText("30").should("be.visible");
+        cy.findByText("10").should("not.exist");
+        cy.findByText("20").should("not.exist");
+      });
+    });
+
+    it("should show only the last data point value for each series in a multi-series line chart", () => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "native",
+          native: {
+            query:
+              "SELECT 'a' as x, 'series1' as cat, 10 as val UNION ALL SELECT 'b', 'series1', 20 UNION ALL SELECT 'c', 'series1', 30 UNION ALL SELECT 'a', 'series2', 100 UNION ALL SELECT 'b', 'series2', 200 UNION ALL SELECT 'c', 'series2', 300",
+            "template-tags": {},
+          },
+          database: SAMPLE_DB_ID,
+        },
+        display: "line",
+        visualization_settings: {
+          "graph.show_values": true,
+          "graph.label_value_frequency": "latest",
+          "graph.dimensions": ["X", "CAT"],
+          "graph.metrics": ["VAL"],
+        },
+      });
+
+      H.echartsContainer().within(() => {
+        cy.findByText("30").should("be.visible");
+        cy.findByText("300").should("be.visible");
+        cy.findByText("10").should("not.exist");
+        cy.findByText("20").should("not.exist");
+        cy.findByText("100").should("not.exist");
+        cy.findByText("200").should("not.exist");
+      });
+    });
+  });
+
   it("should split series into panels and render each series in its own panel", () => {
     H.visitQuestionAdhoc({
       dataset_query: {

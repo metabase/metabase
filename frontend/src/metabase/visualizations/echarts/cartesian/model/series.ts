@@ -408,7 +408,8 @@ export function getWaterfallChartDataDensity(
   const type = "waterfall";
   if (
     !settings["graph.show_values"] ||
-    settings["graph.label_value_frequency"] === "all"
+    settings["graph.label_value_frequency"] === "all" ||
+    settings["graph.label_value_frequency"] === "latest"
   ) {
     return {
       type,
@@ -512,7 +513,8 @@ export function getComboChartDataDensity(
     // label statistics
     if (
       !settings["graph.show_values"] ||
-      settings["graph.label_value_frequency"] === "all"
+      settings["graph.label_value_frequency"] === "all" ||
+      settings["graph.label_value_frequency"] === "latest"
     ) {
       return;
     }

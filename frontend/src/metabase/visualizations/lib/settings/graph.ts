@@ -523,6 +523,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS: VisualizationSettingsDefinitions = {
       options: [
         { name: t`Some`, value: "fit" },
         { name: t`All`, value: "all" },
+        { name: t`Latest only`, value: "latest" },
       ],
     }),
     getDefault: getDefaultDataLabelsFrequency,

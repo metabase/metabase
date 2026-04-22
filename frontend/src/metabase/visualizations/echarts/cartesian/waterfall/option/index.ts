@@ -120,6 +120,10 @@ export const buildEChartsWaterfallSeries = (
       renderingContext,
       chartWidth,
       labelFormatter,
+      undefined,
+      undefined,
+      undefined,
+      dataset.length - 1,
     ),
     formatter:
       labelFormatter &&
@@ -130,6 +134,8 @@ export const buildEChartsWaterfallSeries = (
         chartWidth,
         settings,
         chartModel.dataDensity,
+        undefined,
+        dataset.length - 1,
       ),
   });
 
