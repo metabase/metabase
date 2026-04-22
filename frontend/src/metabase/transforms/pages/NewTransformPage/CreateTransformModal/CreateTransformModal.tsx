@@ -25,7 +25,6 @@ import type {
   SchemaName,
   Transform,
   TransformSource,
-  WorkspaceTransform,
 } from "metabase-types/api";
 
 import { SchemaFormSelect } from "../../../components/SchemaFormSelect";
@@ -45,9 +44,7 @@ type CreateTransformModalProps = {
   onClose: () => void;
   schemasFilter?: SchemasFilter;
   validationSchemaExtension?: ValidationSchemaExtension;
-  handleSubmit?: (
-    values: NewTransformValues,
-  ) => Promise<Transform | WorkspaceTransform>;
+  handleSubmit?: (values: NewTransformValues) => Promise<Transform>;
   targetDescription?: string;
   validateOnMount?: boolean;
   showIncrementalSettings?: boolean;
