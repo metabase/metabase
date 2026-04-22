@@ -4,7 +4,9 @@ import type { IconName } from "metabase/ui";
 import { Divider, Flex } from "metabase/ui";
 
 import { ChartLayoutPicker } from "../MetricControls/ChartLayoutPicker";
+import type { ChartTypeOption } from "../MetricControls/ChartTypePicker";
 import { ChartTypePicker } from "../MetricControls/ChartTypePicker";
+import type { MetricsViewerDisplayType } from "../types/viewer-state";
 
 import S from "./QueryExplorerBar.module.css";
 
@@ -63,8 +65,8 @@ export function QueryExplorerBar({
       data-testid="query-explorer-bar"
     >
       <ChartTypePicker
-        chartTypes={chartTypes}
-        value={currentChartType}
+        chartTypes={chartTypes as ChartTypeOption[]}
+        value={currentChartType as MetricsViewerDisplayType}
         onChange={onChartTypeChange}
       />
 
