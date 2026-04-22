@@ -22,8 +22,18 @@
   [_original-model _k]
   :model/Document)
 
+(defn- blob->bytes ^bytes [v]
+  (if (instance? java.sql.Blob v)
+    (.getBytes ^java.sql.Blob v 0 (.length ^java.sql.Blob v))
+    v))
+
+(def ^:private transform-bytes
+  {:in  identity
+   :out blob->bytes})
+
 (t2/deftransforms :model/Document
-  {:document mi/transform-json})
+  {:document mi/transform-json
+   :ydoc     transform-bytes})
 
 (doto :model/Document
   (derive :metabase/model)

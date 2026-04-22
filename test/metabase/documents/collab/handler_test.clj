@@ -2,7 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
-   [metabase.documents.collab.handler :as collab.handler]))
+   [metabase.documents.collab.handler :as collab.handler]
+   [metabase.documents.collab.server :as collab.server])
+  (:import
+   (ring.websocket.protocols Socket)))
 
 (set! *warn-on-reflection* true)
 
@@ -45,9 +48,32 @@
       (is (= 426 (:status resp))))))
 
 (deftest upgrade-returns-websocket-listener-test
-  (with-redefs [config/config-bool (constantly true)]
+  (with-redefs [config/config-bool     (constantly true)
+                collab.server/get-server (constantly nil)]
     (let [resp (call-handler (upgrade-request "/collab"))]
       (is (contains? resp :ring.websocket/listener))
       (let [listener (:ring.websocket/listener resp)]
         (is (map? listener))
         (is (every? listener [:on-open :on-message :on-close :on-error]))))))
+
+(defn- recording-socket
+  "A `Socket` stub that records every `-close` invocation as `[code reason]`."
+  []
+  (let [closes (atom [])
+        sock   (reify Socket
+                 (-open?  [_] true)
+                 (-send   [_ _msg] nil)
+                 (-ping   [_ _data] nil)
+                 (-pong   [_ _data] nil)
+                 (-close  [_ code reason] (swap! closes conj [code reason])))]
+    [sock closes]))
+
+(deftest on-open-closes-1011-when-server-unavailable-test
+  (testing "with no running YHocuspocus, :on-open closes the socket with 1011"
+    (with-redefs [config/config-bool       (constantly true)
+                  collab.server/get-server (constantly nil)]
+      (let [resp          (call-handler (upgrade-request "/collab"))
+            listener      (:ring.websocket/listener resp)
+            [sock closes] (recording-socket)]
+        ((:on-open listener) sock)
+        (is (= [[1011 "document-collab server unavailable"]] @closes))))))
