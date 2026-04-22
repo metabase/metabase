@@ -4176,7 +4176,7 @@
    :embedding_params nil,
    :cache_ttl nil,
    :dataset_query
-   "{\"database\":1,\"query\":{\"aggregation\":[[\"sum\",[\"field\",2,{\"base-type\":\"type/Integer\"}]]],\"breakout\":[[\"field\",13,{\"base-type\":\"type/DateTime\",\"temporal-unit\":\"month\"}]],\"filter\":[\"and\",[\"between\",[\"field\",13,{\"base-type\":\"type/DateTime\"}],\"2021-01-01\",\"2024-01-23\"],[\"=\",[\"field\",14,{\"base-type\":\"type/Integer\"}],86]],\"source-table\":2},\"type\":\"query\"}",
+   "{\"database\":1,\"query\":{\"aggregation\":[[\"sum\",[\"field\",2,{\"base-type\":\"type/Integer\"}]]],\"breakout\":[[\"field\",13,{\"base-type\":\"type/DateTime\",\"temporal-unit\":\"month\"}]],\"filter\":[\"and\",[\"between\",[\"field\",13,{\"base-type\":\"type/DateTime\"}],\"2024-01-01\",\"2027-01-23\"],[\"=\",[\"field\",14,{\"base-type\":\"type/Integer\"}],86]],\"source-table\":2},\"type\":\"query\"}",
    :id 26,
    :parameter_mappings "[]",
    :dataset_query_metrics_v2_migration_backup nil,
@@ -4283,7 +4283,7 @@
    :embedding_params nil,
    :cache_ttl nil,
    :dataset_query
-   "{\"database\":1,\"query\":{\"aggregation\":[[\"sum\",[\"field\",2,{\"base-type\":\"type/Integer\"}]]],\"breakout\":[[\"field\",13,{\"base-type\":\"type/DateTime\",\"temporal-unit\":\"month\"}]],\"filter\":[\"and\",[\"between\",[\"field\",13,{\"base-type\":\"type/DateTime\"}],\"2021-01-01\",\"2024-01-23\"],[\"=\",[\"field\",14,{\"base-type\":\"type/Integer\"}],17]],\"source-table\":2},\"type\":\"query\"}",
+   "{\"database\":1,\"query\":{\"aggregation\":[[\"sum\",[\"field\",2,{\"base-type\":\"type/Integer\"}]]],\"breakout\":[[\"field\",13,{\"base-type\":\"type/DateTime\",\"temporal-unit\":\"month\"}]],\"filter\":[\"and\",[\"between\",[\"field\",13,{\"base-type\":\"type/DateTime\"}],\"2024-01-01\",\"2027-01-23\"],[\"=\",[\"field\",14,{\"base-type\":\"type/Integer\"}],17]],\"source-table\":2},\"type\":\"query\"}",
    :id 29,
    :parameter_mappings "[]",
    :dataset_query_metrics_v2_migration_backup nil,
@@ -4568,7 +4568,7 @@
    :embedding_params nil,
    :cache_ttl nil,
    :dataset_query
-   "{\"database\":1,\"query\":{\"aggregation\":[[\"sum\",[\"field\",2,{\"base-type\":\"type/Integer\"}]]],\"breakout\":[[\"field\",13,{\"base-type\":\"type/DateTime\",\"temporal-unit\":\"month\"}]],\"filter\":[\"and\",[\"between\",[\"field\",13,{\"base-type\":\"type/DateTime\"}],\"2021-01-01\",\"2024-01-23\"],[\"=\",[\"field\",14,{\"base-type\":\"type/Integer\"}],165]],\"source-table\":2},\"type\":\"query\"}",
+   "{\"database\":1,\"query\":{\"aggregation\":[[\"sum\",[\"field\",2,{\"base-type\":\"type/Integer\"}]]],\"breakout\":[[\"field\",13,{\"base-type\":\"type/DateTime\",\"temporal-unit\":\"month\"}]],\"filter\":[\"and\",[\"between\",[\"field\",13,{\"base-type\":\"type/DateTime\"}],\"2024-01-01\",\"2027-01-23\"],[\"=\",[\"field\",14,{\"base-type\":\"type/Integer\"}],165]],\"source-table\":2},\"type\":\"query\"}",
    :id 37,
    :parameter_mappings "[]",
    :dataset_query_metrics_v2_migration_backup nil,
