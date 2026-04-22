@@ -46,6 +46,7 @@
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses-rest.api.metadata-import :as metadata-import]
    [metabase.warehouses-rest.api.ndjson-import :as ndjson-import]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
@@ -1169,57 +1170,6 @@
 
 ;;; ----------------------------------------- POST /api/database/field-values -----------------------------------------
 
-(mr/def ::field-values-import-request
-  [:map
-   [:field_id ::lib.schema.id/field]
-   [:values [:sequential [:sequential :any]]]
-   [:has_more_values :boolean]
-   [:human_readable_values {:optional true} [:maybe [:sequential [:maybe :string]]]]])
-
-(defn- process-field-values-line!
-  "Upsert a single FieldValues row, appending the response record to `buffer`. Throws
-  `ex-info` with `:kind :invalid_input` or `:invalid_field_id` on validation or lookup failures;
-  unexpected exceptions from the DB operations are wrapped with `:line` and `:field_id` by
-  `ndjson-import/wrap-row-error`."
-  [^java.util.ArrayList buffer line-num {:keys [field_id values has_more_values human_readable_values]}]
-  (try
-    (when-not (int? field_id)
-      (ndjson-import/bad-input! line-num "field_id" "field_id is required and must be an integer"))
-    (when-not (t2/exists? :model/Field :id field_id)
-      (throw (ex-info "invalid_field_id"
-                      {:kind :invalid_field_id
-                       :line line-num
-                       :field_id field_id
-                       :detail (format "Field with id=%d does not exist" field_id)})))
-    (let [existing (t2/select-one :model/FieldValues
-                                  :field_id field_id
-                                  :type     :full
-                                  :hash_key nil)
-          payload  (cond-> {:values          (or values [])
-                            :has_more_values (boolean has_more_values)}
-                     (some? human_readable_values) (assoc :human_readable_values human_readable_values))]
-      (if existing
-        (do (t2/update! :model/FieldValues (:id existing) payload)
-            (.add buffer {:field_id field_id :updated true}))
-        (do (t2/insert! :model/FieldValues
-                        (assoc payload
-                               :field_id field_id
-                               :type     :full
-                               :hash_key nil))
-            (.add buffer {:field_id field_id :created true}))))
-    (catch Throwable e
-      (throw (ndjson-import/wrap-row-error e line-num {:field_id field_id})))))
-
-(defn- import-field-values-ndjson!
-  "Core handler for POST /api/database/field-values. Reads NDJSON from `in`, writes NDJSON to
-  `out`, terminates the stream with a single error line on any failure."
-  [^java.io.InputStream in ^java.io.OutputStream out]
-  (ndjson-import/stream-import!
-   in out import-batch-size
-   (fn [batch buffer]
-     (doseq [[line-num line] batch]
-       (process-field-values-line! buffer line-num line)))))
-
 (api.macros/defendpoint :post "/field-values"
   :- (server.streaming-response/streaming-response-schema
       [:sequential [:map
@@ -1242,39 +1192,9 @@
    {:keys [body]} :- [:map [:body [:fn #(instance? java.io.InputStream %)]]]]
   (api/check-superuser)
   (streaming-response {:content-type ndjson-import/content-type} [os _canceled]
-                      (import-field-values-ndjson! body os)))
+                      (metadata-import/import-field-values-ndjson! body os)))
 
 ;;; ----------------------------------------- POST /api/database/metadata/databases -----------------------------------------
-
-(defn- process-databases-line!
-  [^java.util.ArrayList buffer line-num {:keys [id name engine]}]
-  (try
-    (when-not (int? id)
-      (ndjson-import/bad-input! line-num "id" "id is required and must be an integer"))
-    (when-not (string? name)
-      (ndjson-import/bad-input! line-num "name" "name is required and must be a string" :old_id id))
-    (when-not (or (string? engine) (keyword? engine))
-      (ndjson-import/bad-input! line-num "engine" "engine is required" :old_id id))
-    (if-some [match (t2/select-one [:model/Database :id]
-                                   :name   name
-                                   :engine (engine-name engine))]
-      (.add buffer {:old_id id :new_id (:id match)})
-      (throw (ex-info "no_match"
-                      {:kind :no_match
-                       :line line-num
-                       :old_id id
-                       :detail (format "No database with name=%s engine=%s"
-                                       (pr-str name) (pr-str (engine-name engine)))})))
-    (catch Throwable e
-      (throw (ndjson-import/wrap-row-error e line-num {:old_id id})))))
-
-(defn- import-databases-ndjson!
-  [^java.io.InputStream in ^java.io.OutputStream out]
-  (ndjson-import/stream-import!
-   in out import-batch-size
-   (fn [batch buffer]
-     (doseq [[line-num line] batch]
-       (process-databases-line! buffer line-num line)))))
 
 (api.macros/defendpoint :post "/metadata/databases"
   :- (server.streaming-response/streaming-response-schema
@@ -1295,62 +1215,9 @@
    {:keys [body]} :- [:map [:body [:fn #(instance? java.io.InputStream %)]]]]
   (api/check-superuser)
   (streaming-response {:content-type ndjson-import/content-type} [os _canceled]
-                      (import-databases-ndjson! body os)))
+                      (metadata-import/import-databases-ndjson! body os)))
 
 ;;; ----------------------------------------- POST /api/database/metadata/tables -----------------------------------------
-
-(defn- match-table
-  "Match an incoming table against the target by `(db_id, schema, name)`, scoped to active + not defective.
-  `schema` may be nil for schemaless engines — handled with `IS NULL` in the WHERE clause."
-  [db-id schema name]
-  (t2/select-one [:model/Table :id]
-                 {:where [:and
-                          [:= :db_id db-id]
-                          (if (nil? schema)
-                            [:= :schema nil]
-                            [:= :schema schema])
-                          [:= :name name]
-                          [:= :active true]
-                          [:= :is_defective_duplicate false]]}))
-
-(defn- process-tables-line!
-  [^java.util.ArrayList buffer line-num {:keys [id db_id schema name description]}]
-  (try
-    (when-not (int? id)
-      (ndjson-import/bad-input! line-num "id" "id is required and must be an integer"))
-    (when-not (int? db_id)
-      (ndjson-import/bad-input! line-num "db_id" "db_id is required and must be an integer" :old_id id))
-    (when-not (string? name)
-      (ndjson-import/bad-input! line-num "name" "name is required and must be a string" :old_id id))
-    (if-some [existing (match-table db_id schema name)]
-      (do
-        (when (some? description)
-          (t2/update! :model/Table (:id existing) {:description description}))
-        (.add buffer {:old_id id :existing_id (:id existing)}))
-      (if-not (t2/exists? :model/Database :id db_id)
-        (throw (ex-info "invalid_db_id"
-                        {:kind :invalid_db_id
-                         :line line-num
-                         :old_id id
-                         :detail (format "Database with id=%d does not exist" db_id)}))
-        (let [row (cond-> {:db_id               db_id
-                           :name                name
-                           :schema              schema
-                           :active              true
-                           :initial_sync_status "complete"}
-                    (some? description) (assoc :description description))
-              new-id (first (t2/insert-returning-pks! :model/Table row))]
-          (.add buffer {:old_id id :new_id new-id}))))
-    (catch Throwable e
-      (throw (ndjson-import/wrap-row-error e line-num {:old_id id})))))
-
-(defn- import-tables-ndjson!
-  [^java.io.InputStream in ^java.io.OutputStream out]
-  (ndjson-import/stream-import!
-   in out import-batch-size
-   (fn [batch buffer]
-     (doseq [[line-num line] batch]
-       (process-tables-line! buffer line-num line)))))
 
 (api.macros/defendpoint :post "/metadata/tables"
   :- (server.streaming-response/streaming-response-schema
@@ -1372,93 +1239,9 @@
    {:keys [body]} :- [:map [:body [:fn #(instance? java.io.InputStream %)]]]]
   (api/check-superuser)
   (streaming-response {:content-type ndjson-import/content-type} [os _canceled]
-                      (import-tables-ndjson! body os)))
+                      (metadata-import/import-tables-ndjson! body os)))
 
 ;;; ----------------------------------------- POST /api/database/metadata/fields -----------------------------------------
-
-(defn- match-root-field
-  "Match an incoming root-level field by `(table_id, name) AND parent_id IS NULL`, scoped to
-  active + not defective. Returns the existing row on match, nil otherwise."
-  [table-id name]
-  (t2/select-one [:model/Field :id]
-                 {:where [:and
-                          [:= :table_id table-id]
-                          [:= :name name]
-                          [:= :parent_id nil]
-                          [:= :active true]
-                          [:= :is_defective_duplicate false]]}))
-
-(defn- new-defective-field-row
-  "Row for the fields insert pass. Every row is inserted with `is_defective_duplicate = true`,
-  `parent_id = NULL`, `fk_target_field_id = NULL` so it's exempt from `idx_unique_field`. The
-  finalize pass flips the flag and writes the real pointers."
-  [{:keys [table_id name base_type database_type description effective_type semantic_type coercion_strategy]}]
-  (cond-> {:table_id               table_id
-           :name                   name
-           :base_type              base_type
-           :database_type          database_type
-           :active                 true
-           :is_defective_duplicate true}
-    (some? description)       (assoc :description description)
-    (some? effective_type)    (assoc :effective_type effective_type)
-    (some? semantic_type)     (assoc :semantic_type semantic_type)
-    (some? coercion_strategy) (assoc :coercion_strategy coercion_strategy)))
-
-(defn- classify-fields-line!
-  "Classify a field line as `[:match echo]` (already present on target), `[:insert row echo]` (new
-  row to bulk-insert), or throws `ex-info` with `:kind :invalid_input` or `:invalid_table_id`.
-  For matched root-level rows, the patch UPDATE runs here since we already have the target id.
-  Unexpected exceptions from the DB lookups are tagged with `:line` and `:old_id` by
-  `ndjson-import/wrap-row-error`."
-  [line-num {:keys [id table_id name base_type database_type] :as line}]
-  (try
-    (when-not (int? id)
-      (ndjson-import/bad-input! line-num "id" "id is required and must be an integer"))
-    (when-not (int? table_id)
-      (ndjson-import/bad-input! line-num "table_id" "table_id is required and must be an integer" :old_id id))
-    (when-not (string? name)
-      (ndjson-import/bad-input! line-num "name" "name is required and must be a string" :old_id id))
-    (when-not (string? base_type)
-      (ndjson-import/bad-input! line-num "base_type" "base_type is required and must be a string" :old_id id))
-    (when-not (string? database_type)
-      (ndjson-import/bad-input! line-num "database_type" "database_type is required and must be a string" :old_id id))
-    (if-some [existing (match-root-field table_id name)]
-      (let [patch (matched-field-patch line)]
-        (when (seq patch)
-          (t2/update! :model/Field (:id existing) patch))
-        [:match {:old_id id :existing_id (:id existing)}])
-      (if-not (t2/exists? :model/Table :id table_id)
-        (throw (ex-info "invalid_table_id"
-                        {:kind :invalid_table_id
-                         :line line-num
-                         :old_id id
-                         :detail (format "Table with id=%d does not exist" table_id)}))
-        [:insert (new-defective-field-row line) {:old_id id}]))
-    (catch Throwable e
-      (throw (ndjson-import/wrap-row-error e line-num {:old_id id})))))
-
-(defn- process-fields-batch!
-  "Classify each line in `batch`, bulk-insert the `:insert` rows, and append response records to
-  `buffer` in input order. Any throwable propagates out and rolls back the batch."
-  [batch ^java.util.ArrayList buffer]
-  (let [classified  (mapv (fn [[line-num line]] (classify-fields-line! line-num line)) batch)
-        insert-rows (into [] (keep (fn [[tag row _echo]] (when (= tag :insert) row))) classified)
-        new-ids     (when (seq insert-rows)
-                      (t2/insert-returning-pks! :model/Field insert-rows))
-        id-queue    (volatile! (seq new-ids))]
-    (doseq [[tag payload echo] classified]
-      (case tag
-        :match (.add buffer payload)
-        :insert (let [nid (first @id-queue)]
-                  (vswap! id-queue next)
-                  (.add buffer (merge echo {:new_id nid})))))))
-
-(defn- import-fields-ndjson!
-  [^java.io.InputStream in ^java.io.OutputStream out]
-  (ndjson-import/stream-import!
-   in out import-batch-size
-   (fn [batch buffer]
-     (process-fields-batch! batch buffer))))
 
 (api.macros/defendpoint :post "/metadata/fields"
   :- (server.streaming-response/streaming-response-schema
@@ -1481,40 +1264,9 @@
    {:keys [body]} :- [:map [:body [:fn #(instance? java.io.InputStream %)]]]]
   (api/check-superuser)
   (streaming-response {:content-type ndjson-import/content-type} [os _canceled]
-                      (import-fields-ndjson! body os)))
+                      (metadata-import/import-fields-ndjson! body os)))
 
 ;;; --------------------------------- POST /api/database/metadata/fields/finalize ---------------------------------
-
-(defn- process-finalize-line!
-  "Update one finalized field, appending its response record to `buffer`. Unique-constraint
-  violations from the UPDATE surface as `java.sql.SQLException`; `ndjson-import/wrap-row-error` classifies them
-  as `:unique_violation` and tags them with `:line` and `:id`. Any other unexpected exception
-  becomes `:server_error` with the same tags."
-  [^java.util.ArrayList buffer line-num {:keys [id parent_id fk_target_field_id]}]
-  (try
-    (when-not (int? id)
-      (ndjson-import/bad-input! line-num "id" "id is required and must be an integer"))
-    (let [updates {:parent_id              parent_id
-                   :fk_target_field_id     fk_target_field_id
-                   :is_defective_duplicate false}
-          rows    (t2/update! :model/Field id updates)]
-      (if (pos? rows)
-        (.add buffer {:id id :ok true})
-        (throw (ex-info "not_found"
-                        {:kind :not_found
-                         :line line-num
-                         :id id
-                         :detail (format "Field with id=%d does not exist" id)}))))
-    (catch Throwable e
-      (throw (ndjson-import/wrap-row-error e line-num {:id id})))))
-
-(defn- import-fields-finalize-ndjson!
-  [^java.io.InputStream in ^java.io.OutputStream out]
-  (ndjson-import/stream-import!
-   in out import-batch-size
-   (fn [batch buffer]
-     (doseq [[line-num line] batch]
-       (process-finalize-line! buffer line-num line)))))
 
 (api.macros/defendpoint :post "/metadata/fields/finalize"
   :- (server.streaming-response/streaming-response-schema
@@ -1533,7 +1285,7 @@
    {:keys [body]} :- [:map [:body [:fn #(instance? java.io.InputStream %)]]]]
   (api/check-superuser)
   (streaming-response {:content-type ndjson-import/content-type} [os _canceled]
-                      (import-fields-finalize-ndjson! body os)))
+                      (metadata-import/import-fields-finalize-ndjson! body os)))
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
 

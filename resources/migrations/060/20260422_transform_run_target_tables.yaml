@@ -1,0 +1,50 @@
+## Record the production target and, if any, the workspace-remapped destination
+## on each transform run, so the run log shows both addresses as they were at run time.
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+  - changeSet:
+      id: v60.2026-04-22T12:00:00
+      author: bcm
+      comment: Add target and workspace schema/table columns to transform_run
+      changes:
+        - addColumn:
+            tableName: transform_run
+            columns:
+              - column:
+                  name: target_schema
+                  type: varchar(254)
+                  remarks: Schema of the transform's declared production target at run start
+                  constraints:
+                    nullable: true
+              - column:
+                  name: target_table
+                  type: varchar(254)
+                  remarks: Table name of the transform's declared production target at run start
+                  constraints:
+                    nullable: true
+              - column:
+                  name: workspace_schema
+                  type: varchar(254)
+                  remarks: Schema the run actually wrote to when a workspace remapping is active; NULL when running without a remap
+                  constraints:
+                    nullable: true
+              - column:
+                  name: workspace_table
+                  type: varchar(254)
+                  remarks: Table name the run actually wrote to when a workspace remapping is active; NULL when running without a remap
+                  constraints:
+                    nullable: true
+      rollback:
+        - dropColumn:
+            tableName: transform_run
+            columnName: target_schema
+        - dropColumn:
+            tableName: transform_run
+            columnName: target_table
+        - dropColumn:
+            tableName: transform_run
+            columnName: workspace_schema
+        - dropColumn:
+            tableName: transform_run
+            columnName: workspace_table

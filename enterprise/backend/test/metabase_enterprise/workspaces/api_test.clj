@@ -139,8 +139,8 @@
         (mt/user-http-request :rasta :get 403 "ee/workspace")
         (mt/user-http-request :rasta :get 403 (str "ee/workspace/" id))))))
 
-(deftest post-initialize-triggers-provisioning-test
-  (testing "POST /ee/workspace/:id/initialize runs provisioning and returns triggered count"
+(deftest post-provision-triggers-provisioning-test
+  (testing "POST /ee/workspace/:id/provision runs provisioning and returns triggered count"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                {:name "To Init" :databases [(ws-db-payload)]})
@@ -148,12 +148,12 @@
         (with-redefs [provisioning/run-async!                  (fn [f] (f))
                       provisioning/provision-workspace-database!
                       (fn [wsd-id] (swap! called conj wsd-id) nil)]
-          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/initialize") {})]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/provision") {})]
             (is (= {:workspace_id id :triggered 1} resp))
             (is (= 1 (count @called)))))))))
 
-(deftest post-initialize-skips-already-initialized-test
-  (testing "POST /ee/workspace/:id/initialize skips WorkspaceDatabases that are already :initialized"
+(deftest post-provision-skips-already-initialized-test
+  (testing "POST /ee/workspace/:id/provision skips WorkspaceDatabases that are already :initialized"
     (mt/with-temp [:model/Workspace {id :id} {:name "Mixed"}
                    :model/WorkspaceDatabase _
                    {:workspace_id     id
@@ -166,20 +166,20 @@
         (with-redefs [provisioning/run-async!                  (fn [f] (f))
                       provisioning/provision-workspace-database!
                       (fn [wsd-id] (swap! called conj wsd-id) nil)]
-          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/initialize") {})]
+          (let [resp (mt/user-http-request :crowberto :post 200 (str "ee/workspace/" id "/provision") {})]
             (is (= {:workspace_id id :triggered 0} resp))
             (is (empty? @called))))))))
 
-(deftest post-initialize-requires-superuser-test
-  (testing "Non-superusers get 403 from POST /ee/workspace/:id/initialize"
+(deftest post-provision-requires-superuser-test
+  (testing "Non-superusers get 403 from POST /ee/workspace/:id/provision"
     (mt/with-model-cleanup [:model/Workspace]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/workspace"
                                                {:name "Guarded" :databases []})]
-        (mt/user-http-request :rasta :post 403 (str "ee/workspace/" id "/initialize") {})))))
+        (mt/user-http-request :rasta :post 403 (str "ee/workspace/" id "/provision") {})))))
 
-(deftest post-initialize-404-on-unknown-workspace-test
-  (testing "POST to /initialize with an unknown id returns 404"
-    (mt/user-http-request :crowberto :post 404 (str "ee/workspace/" Integer/MAX_VALUE "/initialize") {})))
+(deftest post-provision-404-on-unknown-workspace-test
+  (testing "POST to /provision with an unknown id returns 404"
+    (mt/user-http-request :crowberto :post 404 (str "ee/workspace/" Integer/MAX_VALUE "/provision") {})))
 
 (deftest put-rejects-drop-of-initialized-test
   (testing "PUT returns 409 when it would drop an :initialized workspace_database"
@@ -374,7 +374,35 @@
           (let [row (first ours)]
             (is (every? #(contains? row %)
                         [:id :database_id :from_schema :from_table_name
-                         :to_schema :to_table_name :created_at]))))))))
+                         :to_schema :to_table_name :created_at
+                         :from_table_id :to_table_id]))))))))
+
+(deftest get-table-remappings-enriches-with-table-ids-test
+  (testing "Each remapping row carries :from_table_id / :to_table_id — nil when no metabase_table row matches, id when it does"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details {}}
+                   :model/Table {from-tid :id} {:db_id db-id :schema "raw" :name "events"}
+                   :model/Table {to-tid :id}   {:db_id db-id :schema "mb_iso_ws" :name "events"}
+                   :model/TableRemapping _
+                   {:database_id     db-id
+                    :from_schema     "raw"
+                    :from_table_name "events"
+                    :to_schema       "mb_iso_ws"
+                    :to_table_name   "events"}
+                   :model/TableRemapping _
+                   {:database_id     db-id
+                    :from_schema     "raw"
+                    :from_table_name "unknown_from"
+                    :to_schema       "mb_iso_ws"
+                    :to_table_name   "unknown_to"}]
+      (let [resp    (mt/user-http-request :crowberto :get 200 "ee/workspace/remappings")
+            by-from (into {} (map (juxt :from_table_name identity))
+                          (filter #(= db-id (:database_id %)) resp))]
+        (testing "row with matching Tables gets both ids"
+          (is (= from-tid (get-in by-from ["events" :from_table_id])))
+          (is (= to-tid   (get-in by-from ["events" :to_table_id]))))
+        (testing "row without matching Tables gets nils"
+          (is (nil? (get-in by-from ["unknown_from" :from_table_id])))
+          (is (nil? (get-in by-from ["unknown_from" :to_table_id]))))))))
 
 (deftest get-table-remappings-requires-superuser-test
   (testing "Non-superusers get 403 from GET /ee/workspace/remappings"

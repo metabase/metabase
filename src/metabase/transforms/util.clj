@@ -90,18 +90,22 @@
 (defn try-start-unless-already-running
   "Start a transform run. Throws ex-info with {:error :already-running} if another
    run is already active (duplicate key violation). Other errors are rethrown.
-   If `user-id` is provided, it will be stored with the run for attribution purposes."
-  [id run-method user-id]
-  (try
-    (transform-run/start-run! id (cond-> {:run_method run-method}
-                                   user-id (assoc :user_id user-id)))
-    (catch Exception e
-      (if (duplicate-key-violation? e)
-        (throw (ex-info "Transform is already running"
-                        {:error        :already-running
-                         :transform-id id}
-                        e))
-        (throw e)))))
+   If `user-id` is provided, it will be stored with the run for attribution purposes.
+   `extra-props` is a map of additional columns to persist on the new run row
+   (e.g. :source_schema/:source_table/:destination_schema/:destination_table)."
+  ([id run-method user-id]
+   (try-start-unless-already-running id run-method user-id nil))
+  ([id run-method user-id extra-props]
+   (try
+     (transform-run/start-run! id (cond-> (merge extra-props {:run_method run-method})
+                                    user-id (assoc :user_id user-id)))
+     (catch Exception e
+       (if (duplicate-key-violation? e)
+         (throw (ex-info "Transform is already running"
+                         {:error        :already-running
+                          :transform-id id}
+                         e))
+         (throw e))))))
 
 (defn run-cancelable-transform!
   "Execute a transform with cancellation support and proper error handling.
