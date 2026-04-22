@@ -3,13 +3,14 @@
 
    Direct access to `(:details database)` is an anti-pattern. It couples callers to
    the raw data layout, which means any change to how details are resolved — connection
-   routing, write credentials, security boundaries — requires
+   routing, write credentials, workspace isolation, security boundaries — requires
    finding and updating every call site. This namespace provides the indirection that
    makes those changes possible.
 
    Primary API: [[effective-details]], [[with-write-connection]], [[default-details]]."
   (:require
    [metabase.analytics.prometheus :as prometheus]
+   [metabase.driver.connection.workspaces :as driver.w]
    [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -45,11 +46,14 @@
 ;; there's no corresponding classification for "this field doesn't need to be encrypted at all."
 ;;
 ;; This namespace centralizes all reads of `:details` (and `:write-data-details`) behind
-;; functions that can apply connection-type routing and — eventually —
+;; functions that can apply connection-type routing, workspace isolation, and — eventually —
 ;; a proper separation of credentials from configuration. The immediate goal is to make
 ;; direct `(:details database)` access a greppable code smell. The longer-term goal is to
 ;; make it possible to store non-sensitive configuration outside the encrypted column
-;; without a codebase-wide refactor.
+;; without a codebase-wide refactor. The immediate need for this namespace was to make it
+;; possible to access and *use* configuration in a controllable and auditable way as we
+;; are going from one master-connection to a database to two + any number of dynamic
+;; workspaces connections.
 ;;
 ;; Please use/adapt/augment/improve this namespace and avoid all such patterns:
 ;;  - (:details database)
@@ -101,17 +105,23 @@
    Accepts a database (Toucan2 instance or lib/metadata). Returns nil for nil input.
 
    By default, returns the primary `:details`. Within a [[with-write-connection]] scope,
-   takes `:write-data-details` into account (if configured)."
+   takes `:write-data-details` into account (if configured). Within a
+   [[driver.w/with-swapped-connection-details]] scope, applies workspace isolation
+   overrides on top."
   [database]
   (when-let [database (some-> database driver.u/ensure-lib-database)]
     (let [write?        (= *connection-type* :write-data)
           write-details (when write? (database-write-data-details database))
           base          (merge (:details database) write-details)]
+      ;; Track when write-data-details are genuinely used (not fallback, not workspace-swapped).
+      ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
+      ;; pool-level connection acquisition metrics.
       (when (and write-details
-                 (not *suppress-resolution-telemetry*))
+                 (not *suppress-resolution-telemetry*)
+                 (not (driver.w/has-connection-swap? (:id database))))
         (try (prometheus/inc! :metabase-db-connection/type-resolved {:connection-type "write-data"})
              (catch Exception _ nil)))
-      (-> base
+      (-> (driver.w/maybe-swap-details (:id database) base)
           (assoc ::effective-connection-type (if write-details :write-data :default))
           (assoc ::database-id (u/id database))))))
 
