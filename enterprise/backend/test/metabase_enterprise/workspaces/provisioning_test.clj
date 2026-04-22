@@ -92,8 +92,8 @@
           (is (thrown? Exception (provisioning/provision-workspace-database! wsd-id)))
           (is (empty? @init-calls)))))))
 
-(deftest initialize-workspace-databases-runs-every-uninitialized-row-test
-  (testing "initialize-workspace-databases! provisions every :uninitialized row and skips :initialized ones"
+(deftest provision-workspace-databases-runs-every-uninitialized-row-test
+  (testing "provision-workspace-databases! provisions every :uninitialized row and skips :initialized ones"
     (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}
                    :model/Workspace {ws-id :id} {:name "WS"}
                    :model/WorkspaceDatabase {uninit-id :id}
@@ -107,11 +107,11 @@
       (let [calls (atom [])]
         (with-redefs [provisioning/provision-workspace-database!
                       (fn [id] (swap! calls conj id) nil)]
-          (provisioning/initialize-workspace-databases! ws-id)
+          (provisioning/provision-workspace-databases! ws-id)
           (is (= [uninit-id] @calls))
           (is (not (some #{already-id} @calls))))))))
 
-(deftest initialize-workspace-databases-isolates-failures-test
+(deftest provision-workspace-databases-isolates-failures-test
   (testing "A failing provision doesn't stop subsequent rows from being processed"
     (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}
                    :model/Workspace {ws-id :id} {:name "WS"}
@@ -129,7 +129,7 @@
                         (swap! attempted conj id)
                         (when (= id wsd-a) (throw (ex-info "boom" {:id id})))
                         nil)]
-          (provisioning/initialize-workspace-databases! ws-id)
+          (provisioning/provision-workspace-databases! ws-id)
           (is (= #{wsd-a wsd-b} (set @attempted))))))))
 
 (deftest deprovision-happy-path-test

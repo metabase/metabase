@@ -116,7 +116,7 @@
   (api/check-404 (workspace/get-workspace id))
   (present-workspace (workspace/update-workspace! id (sanitize-workspace-params params))))
 
-(api.macros/defendpoint :post "/:id/initialize"
+(api.macros/defendpoint :post "/:id/provision"
   :- [:map [:workspace_id ms/PositiveInt] [:triggered ms/IntGreaterThanOrEqualToZero]]
   "Kick off asynchronous provisioning for every uninitialized WorkspaceDatabase under
   this Workspace. Returns immediately with the number of rows that were scheduled."
@@ -124,7 +124,7 @@
   (api/check-superuser)
   (api/check-404 (workspace/get-workspace id))
   {:workspace_id id
-   :triggered    (provisioning/initialize-workspace! id)})
+   :triggered    (provisioning/provision-workspace! id)})
 
 (api.macros/defendpoint :post "/:id/deprovision"
   :- [:map [:workspace_id ms/PositiveInt] [:triggered ms/IntGreaterThanOrEqualToZero]]
