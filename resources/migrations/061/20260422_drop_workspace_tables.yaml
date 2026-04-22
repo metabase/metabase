@@ -145,6 +145,35 @@ databaseChangeLog:
       rollback: # workspaces feature removed; no rollback
 
   - changeSet:
+      id: v61.2026-04-22T00:01:35
+      author: ranquild
+      comment: Drop FK fk_collection_workspace_id before dropping the workspace table (MySQL requires explicit FK drop)
+      preConditions:
+        - onFail: MARK_RAN
+        - foreignKeyConstraintExists:
+            foreignKeyName: fk_collection_workspace_id
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: collection
+            constraintName: fk_collection_workspace_id
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
+      id: v61.2026-04-22T00:01:36
+      author: ranquild
+      comment: Drop workspace_id column from collection
+      preConditions:
+        - onFail: MARK_RAN
+        - columnExists:
+            tableName: collection
+            columnName: workspace_id
+      changes:
+        - dropColumn:
+            tableName: collection
+            columnName: workspace_id
+      rollback: # workspaces feature removed; no rollback
+
+  - changeSet:
       id: v61.2026-04-22T00:01:40
       author: ranquild
       comment: Drop workspace table
@@ -171,19 +200,4 @@ databaseChangeLog:
         - dropColumn:
             tableName: metabase_database
             columnName: workspace_permissions_status
-      rollback: # workspaces feature removed; no rollback
-
-  - changeSet:
-      id: v61.2026-04-22T00:02:00
-      author: ranquild
-      comment: Drop workspace_id column from collection
-      preConditions:
-        - onFail: MARK_RAN
-        - columnExists:
-            tableName: collection
-            columnName: workspace_id
-      changes:
-        - dropColumn:
-            tableName: collection
-            columnName: workspace_id
       rollback: # workspaces feature removed; no rollback
