@@ -11,7 +11,7 @@ import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { useSelector } from "metabase/utils/redux";
-import type { MetabotFeedback } from "metabase-types/api";
+import type { MetabotFeedback, MetabotIssueType } from "metabase-types/api";
 
 import { issueTypeOptions } from "./feedback-issue-types";
 
@@ -66,16 +66,25 @@ export const MetabotFeedbackModal = ({
   const metabotName = useMetabotName();
   const metabotId = useSelector(getMetabotId);
 
-  const handleSubmit = (
-    values: Pick<MetabotFeedback, "issue_type" | "freeform_feedback">,
-  ) =>
-    onSubmit({
+  const handleSubmit = (values: {
+    freeform_feedback: string;
+    issue_type?: MetabotIssueType | "";
+  }) => {
+    const base = {
       metabot_id: metabotId,
       message_id: messageId,
-      positive,
-      issue_type: values.issue_type || undefined,
       freeform_feedback: values.freeform_feedback,
-    });
+    };
+    onSubmit(
+      positive
+        ? { ...base, positive: true }
+        : {
+            ...base,
+            positive: false,
+            issue_type: values.issue_type || undefined,
+          },
+    );
+  };
 
   return (
     <Modal

@@ -66,7 +66,6 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             date,
             user,
             group,
-            profile: null,
             ...filterOverrides,
           }),
         }),

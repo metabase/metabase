@@ -1,42 +1,23 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
-export const ISSUE_TYPE_VALUES = [
-  "ui-bug",
-  "took-incorrect-actions",
-  "overall-refusal",
-  "did-not-follow-request",
-  "not-factual",
-  "incomplete-response",
-  "other",
-] as const;
+import {
+  METABOT_ISSUE_TYPE_VALUES,
+  type MetabotIssueType,
+} from "metabase-types/api";
 
-export type IssueType = (typeof ISSUE_TYPE_VALUES)[number];
+export const getIssueTypeLabel = (value: MetabotIssueType): string =>
+  match(value)
+    .with("ui-bug", () => t`UI bug`)
+    .with("took-incorrect-actions", () => t`Took incorrect actions`)
+    .with("overall-refusal", () => t`Overall refusal`)
+    .with("did-not-follow-request", () => t`Did not follow request`)
+    .with("not-factual", () => t`Not factually correct`)
+    .with("incomplete-response", () => t`Incomplete response`)
+    .with("other", () => t`Other`)
+    .exhaustive();
 
-export const getIssueTypeLabel = (value: string): string => {
-  switch (value) {
-    case "ui-bug":
-      return t`UI bug`;
-    case "took-incorrect-actions":
-      return t`Took incorrect actions`;
-    case "overall-refusal":
-      return t`Overall refusal`;
-    case "did-not-follow-request":
-      return t`Did not follow request`;
-    case "not-factual":
-      return t`Not factually correct`;
-    case "incomplete-response":
-      return t`Incomplete response`;
-    case "other":
-      return t`Other`;
-    default:
-      if (process.env.NODE_ENV !== "production") {
-        console.warn(`Unknown Metabot feedback issue_type: ${value}`);
-      }
-      return t`Other`;
-  }
-};
-
-export const issueTypeOptions = ISSUE_TYPE_VALUES.map((value) => ({
+export const issueTypeOptions = METABOT_ISSUE_TYPE_VALUES.map((value) => ({
   value,
   label: getIssueTypeLabel(value),
 }));

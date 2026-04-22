@@ -155,7 +155,7 @@ export const AgentMessage = ({
   ...props
 }: AgentMessageProps) => {
   const messageId = message.type === "text" ? (message.externalId ?? "") : "";
-  const canFeedbackButtons = !!(
+  const canGiveFeedback = !!(
     showFeedbackButtons &&
     setFeedbackMessage &&
     messageId
@@ -192,7 +192,7 @@ export const AgentMessage = ({
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
             </Tooltip>
-            {canFeedbackButtons && (
+            {canGiveFeedback && (
               <>
                 <Tooltip label={t`Give positive feedback`}>
                   <FeedbackButton

@@ -248,8 +248,13 @@
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))
           (finally
-            (store-native-parts! conversation-id profile-id ip-address embed-url external-id
-                                 (into [] (combine-text-parts-xf) @parts-atom))))))))
+            (try
+              (store-native-parts! conversation-id profile-id ip-address embed-url external-id
+                                   (into [] (combine-text-parts-xf) @parts-atom))
+              (catch Exception e
+                (log/error e "Failed to persist native agent parts"
+                           {:conversation-id conversation-id
+                            :external-id     external-id})))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
@@ -345,8 +350,7 @@
                       (metabot.feedback/harbormaster-payload body message))
                      "Cannot submit feedback. The license token and/or Store API URL are missing!")
       (catch Exception e
-        (log/errorf "Failed to submit feedback to Harbormaster: %s" (ex-message e))
-        (throw e))))
+        (log/error "Failed to submit feedback to Harbormaster: " (ex-message e)))))
   api/generic-204-no-content)
 
 (def ^:private metabot-provider-schema

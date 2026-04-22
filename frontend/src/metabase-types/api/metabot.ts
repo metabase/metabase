@@ -247,13 +247,23 @@ export type DeleteSuggestedMetabotPromptRequest = {
   prompt_id: SuggestedMetabotPrompt["id"];
 };
 
-export interface MetabotFeedback {
+export const METABOT_ISSUE_TYPE_VALUES = [
+  "ui-bug",
+  "took-incorrect-actions",
+  "overall-refusal",
+  "did-not-follow-request",
+  "not-factual",
+  "incomplete-response",
+  "other",
+] as const;
+
+export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
+
+export type MetabotFeedback = {
   metabot_id: MetabotId;
   message_id: string;
-  positive: boolean;
-  issue_type?: string;
   freeform_feedback?: string;
-}
+} & ({ positive: true } | { positive: false; issue_type?: MetabotIssueType });
 
 /* Metabot v3 - Entity Types */
 
