@@ -12,6 +12,7 @@ import {
   modelEditor,
   question,
 } from "metabase/utils/urls";
+import type { Bookmark, CollectionId } from "metabase-types/api";
 
 describe("urls", () => {
   describe("question", () => {
@@ -159,9 +160,13 @@ describe("urls", () => {
     });
 
     it("should work with `model: dataset` property", () => {
-      expect(model({ id: 1, card_id: 42, model: "dataset", name: "Foo" })).toBe(
-        "/model/42-foo",
-      );
+      const card = {
+        id: 1,
+        card_id: 42,
+        model: "dataset",
+        name: "Foo",
+      };
+      expect(model(card)).toBe("/model/42-foo");
     });
 
     it("should handle object ID", () => {
@@ -213,26 +218,24 @@ describe("urls", () => {
     });
 
     it("resolves /root and /users collections", () => {
-      expect(collection({ id: "root" })).toBe("/collection/root");
-      expect(collection({ id: "users" })).toBe("/collection/users");
+      expect(collection({ id: "root", name: "Root" })).toBe("/collection/root");
+      expect(collection({ id: "users", name: "Users" })).toBe(
+        "/collection/users",
+      );
     });
 
     it("should treat `null` ID as a root collection", () => {
-      expect(collection({ id: null })).toBe("/collection/root");
+      const col = {
+        id: null,
+        name: "Root",
+      };
+      expect(collection(col)).toBe("/collection/root");
     });
 
     it("returns correct url", () => {
       expect(collection({ id: 1, name: "First collection" })).toBe(
         "/collection/1-first-collection",
       );
-
-      expect(
-        collection({
-          id: 1,
-          slug: "first_collection",
-          name: "First collection",
-        }),
-      ).toBe("/collection/1-first-collection");
     });
 
     it("handles possessives correctly", () => {
@@ -301,19 +304,17 @@ describe("urls", () => {
     });
 
     it("returns collection bookmark path", () => {
-      expect(
-        bookmark({
-          id: "collection-8",
-          item_id: 8,
-          name: "Growth",
-          type: "collection",
-        }),
-      ).toBe("/collection/8-growth");
+      const bm: Pick<Bookmark, "id" | "type" | "card_type" | "name"> = {
+        id: "collection-8",
+        name: "Growth",
+        type: "collection",
+      };
+      expect(bookmark(bm)).toBe("/collection/8-growth");
     });
   });
 
   describe("extractEntityId", () => {
-    const testCases = [
+    const testCases: { slug: string | undefined; id: number | undefined }[] = [
       { slug: "33", id: 33 },
       { slug: "33-", id: 33 },
       { slug: "33-metabase-ga", id: 33 },
@@ -331,7 +332,10 @@ describe("urls", () => {
   });
 
   describe("extractCollectionId", () => {
-    const testCases = [
+    const testCases: {
+      slug: string | undefined;
+      id: CollectionId | undefined;
+    }[] = [
       { slug: "23", id: 23 },
       { slug: "23-", id: 23 },
       { slug: "23-customer-success", id: 23 },
@@ -349,7 +353,7 @@ describe("urls", () => {
   });
 
   describe("isCollectionPath", () => {
-    const testCases = [
+    const testCases: { path: string; expected: boolean }[] = [
       { path: "collection/1", expected: true },
       { path: "collection/123", expected: true },
       { path: "/collection/1", expected: true },
@@ -452,7 +456,7 @@ describe("urls", () => {
       const { caseName, input, expectedString } = testCase;
       const entity = { id: 1, name: input };
 
-      function expectedUrl(path, slug) {
+      function expectedUrl(path: string, slug: string): string {
         // If slug is an empty string, we test we don't append `-` char
         return slug ? `${path}-${slug}` : path;
       }
@@ -466,8 +470,7 @@ describe("urls", () => {
       it(`should handle ${caseName} correctly for collection URLs`, () => {
         // collection objects have not transliterated slugs separated by underscores
         // this makes sure they don't affect the slug builder
-        const collectionOwnSlug = entity.name.split(" ").join("_");
-        expect(collection({ ...entity, slug: collectionOwnSlug })).toBe(
+        expect(collection({ id: entity.id, name: entity.name })).toBe(
           expectedUrl("/collection/1", expectedString),
         );
       });

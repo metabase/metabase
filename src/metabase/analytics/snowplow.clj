@@ -54,7 +54,8 @@
    :snowplow/serialization    "1-0-2"
    :snowplow/simple_event     "1-0-0"
    :snowplow/cleanup          "1-0-0"
-   :snowplow/ai_service_event "1-0-0"})
+   :snowplow/ai_service_event "1-0-0"
+   :snowplow/data_complexity  "1-0-0"})
 
 (def ^:private SnowplowSchema
   "Malli enum for valid Snowplow schemas"
@@ -144,20 +145,24 @@
   [tracker event]
   (.track ^Tracker tracker ^SelfDescribing event))
 
-(mu/defn track-event!
+(mu/defn track-event! :- :boolean
   "Send a single analytics event to the Snowplow collector, if tracking is enabled for this MB instance and a collector
-  is available."
+  is available. Returns true when the event was actually handed to the tracker; false when tracking is disabled or
+  emission threw — callers that need to gate durable side-effects on real delivery can check the return value."
   ([schema :- SnowplowSchema data]
    (track-event! schema data api/*current-user-id*))
 
   ([schema :- SnowplowSchema data user-id]
-   (when (analytics.settings/snowplow-enabled)
-     (try
-       (let [^SelfDescribing$Builder2 builder (-> (. SelfDescribing builder)
-                                                  (.eventData (payload schema (schema->version schema) data))
-                                                  (.customContext [(context)])
-                                                  (cond-> user-id (.subject (subject user-id))))
-             ^SelfDescribing event (.build builder)]
-         (track-event-impl! tracker event))
-       (catch Throwable e
-         (log/errorf e "Error sending Snowplow analytics event for schema %s" schema))))))
+   (boolean
+    (when (analytics.settings/snowplow-enabled)
+      (try
+        (let [^SelfDescribing$Builder2 builder (-> (. SelfDescribing builder)
+                                                   (.eventData (payload schema (schema->version schema) data))
+                                                   (.customContext [(context)])
+                                                   (cond-> user-id (.subject (subject user-id))))
+              ^SelfDescribing event (.build builder)]
+          (track-event-impl! tracker event)
+          true)
+        (catch Throwable e
+          (log/errorf e "Error sending Snowplow analytics event for schema %s" schema)
+          false))))))

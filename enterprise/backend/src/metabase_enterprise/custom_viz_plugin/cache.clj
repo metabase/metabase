@@ -99,6 +99,38 @@
       (log/warnf "Failed to read %s from git at %s: %s" rel-path (:resolved_commit plugin) (ex-message e))
       nil)))
 
+;;; ------------------------------------------------ Size Limits ------------------------------------------------
+
+(def ^:private ^:const max-file-bytes
+  "Maximum size in bytes for any single bundled file (bundle or asset)."
+  (* 2 1024 1024))
+
+(def ^:private ^:const max-plugin-bytes
+  "Maximum combined size in bytes of all files served for a single plugin."
+  (* 8 1024 1024))
+
+(defn- validate-size!
+  "Ensure no file in `git-paths` exceeds `max-file-bytes` and their combined
+   size stays below `max-plugin-bytes`."
+  [snapshot commit-sha git-paths]
+  (reduce
+   (fn [total path]
+     (if-let [size (rs.git/file-size snapshot path)]
+       (do
+         (when (> size max-file-bytes)
+           (throw (ex-info (format "%s is %d bytes, exceeds the %d byte per-file limit"
+                                   path size max-file-bytes)
+                           {:status-code 400 :commit commit-sha})))
+         (let [total' (+ total size)]
+           (when (> total' max-plugin-bytes)
+             (throw (ex-info (format "Plugin exceeds the %d byte total size limit"
+                                     max-plugin-bytes)
+                             {:status-code 400 :commit commit-sha})))
+           total'))
+       total))
+   0
+   git-paths))
+
 ;;; ------------------------------------------------ Fetch & Update ------------------------------------------------
 
 (defn- fetch-plugin-data!
@@ -119,7 +151,9 @@
                                   manifest/parse-manifest)
                           (throw (ex-info (str (manifest/manifest-path) " not found or invalid in repository")
                                           {:status-code 400 :commit commit-sha})))
-          version-str (get-in parsed [:metabase :version])]
+          version-str (get-in parsed [:metabase :version])
+          asset-paths (map #(git-path (asset-rel-path %)) (manifest/asset-paths parsed))]
+      (validate-size! snapshot commit-sha (cons (git-path bundle-rel-path) asset-paths))
       (when (and version-str
                  (not (manifest/compatible? {:metabase_version version-str})))
         (throw (ex-info
