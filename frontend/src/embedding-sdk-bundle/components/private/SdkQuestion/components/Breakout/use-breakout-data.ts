@@ -2,7 +2,7 @@ import {
   type ListItem as BreakoutListItem,
   getBreakoutListItem,
 } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList";
-import { useBreakoutQueryHandlers } from "metabase/query_builder/hooks/use-breakout-query-handlers";
+import { useBreakoutQueryHandlers } from "metabase/query_builder/hooks";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
