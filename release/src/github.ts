@@ -10,7 +10,7 @@ export const getMilestones = async ({
   github,
   owner,
   repo,
-  state = "open",
+  state,
 }: GithubProps & { state?: "open" | "closed" }) => {
   const milestones = await github.paginate(github.rest.issues.listMilestones, {
     owner,
