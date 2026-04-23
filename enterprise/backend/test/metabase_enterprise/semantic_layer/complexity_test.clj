@@ -94,6 +94,24 @@
       (is (=? {:components {:synonym-pairs {:measurement 0.0 :score 0}}}
               (#'complexity/score-catalog es nil))))))
 
+(deftest ^:parallel score-from-entities-metabot-fallback-test
+  (testing "score-from-entities marks :metabot as a universe fallback when no metabot-entities are passed"
+    (let [library  []
+          universe [(entity :name "orders") (entity :name "widgets")]]
+      (testing "nil metabot-entities → :metabot reuses the :universe score and :meta flags the fallback"
+        (let [result (complexity/score-from-entities library universe nil {})]
+          (is (= :universe-fallback (get-in result [:meta :metabot-source]))
+              "benchmark consumers need this marker to tell an approximated :metabot apart from a real one")
+          (is (= (:universe result) (:metabot result))
+              "fallback path must copy :universe verbatim — no second scoring pass")))
+      (testing "non-nil metabot-entities → :metabot is scored separately and the marker is absent"
+        (let [result (complexity/score-from-entities library universe nil
+                                                     {:metabot-entities [(entity :name "orders")]})]
+          (is (nil? (get-in result [:meta :metabot-source]))
+              "real metabot score must not be stamped with the fallback marker")
+          (is (not= (:universe result) (:metabot result))
+              "pre-check: the metabot vector is smaller than universe so the scores should differ"))))))
+
 (deftest ^:parallel synonym-scoring-test
   (testing "cosine similarity above threshold flags a synonym pair"
     (let [es       [(entity :name "customers") (entity :name "clients")]
