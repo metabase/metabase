@@ -118,7 +118,7 @@
   Pgvector read failures (e.g. the index table exists but the query errors out) propagate so the
   caller can annotate its own error state — silently returning `{}` would look indistinguishable
   from \"no synonym matches\", which would let transient failures underreport complexity with no
-  machine-readable signal. See [[metabase-enterprise.semantic-layer.complexity/score-synonym-pairs]]
+  machine-readable signal. See [[metabase-enterprise.data-complexity-score.complexity/score-synonym-pairs]]
   for the wrapping `catch` that converts this into a `:error` field on the sub-score.
 
   When multiple entities share a normalized name but have different indexed embeddings the row

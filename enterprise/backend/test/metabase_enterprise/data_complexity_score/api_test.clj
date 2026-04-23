@@ -1,9 +1,9 @@
-(ns metabase-enterprise.semantic-layer.api-test
+(ns metabase-enterprise.data-complexity-score.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.semantic-layer.api :as api]
-   [metabase-enterprise.semantic-layer.complexity :as complexity]
-   [metabase-enterprise.semantic-layer.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.api :as api]
+   [metabase-enterprise.data-complexity-score.complexity :as complexity]
+   [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase.metabot.config :as metabot.config]
    [metabase.test :as mt]
    [toucan2.core :as t2])
@@ -14,7 +14,7 @@
 
 (comment api/keep-me)
 
-(def ^:private endpoint "ee/semantic-layer/complexity")
+(def ^:private endpoint "ee/data-complexity-score/complexity")
 
 (defn- internal-metabot-id
   "Primary key of the internal Metabot row — used by the tests that temporarily tweak its

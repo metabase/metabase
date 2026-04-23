@@ -3166,10 +3166,10 @@
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}
 
-  enterprise/semantic-layer
+  enterprise/data-complexity-score
   {:team "Metabot"
-   :api  #{metabase-enterprise.semantic-layer.api
-           metabase-enterprise.semantic-layer.init}
+   :api  #{metabase-enterprise.data-complexity-score.api
+           metabase-enterprise.data-complexity-score.init}
    :uses #{analytics
            api
            app-db

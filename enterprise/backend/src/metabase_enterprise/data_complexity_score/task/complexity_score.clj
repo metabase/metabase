@@ -1,13 +1,13 @@
-(ns metabase-enterprise.semantic-layer.task.complexity-score
+(ns metabase-enterprise.data-complexity-score.task.complexity-score
   "Daily Quartz job that computes and publishes the Data Complexity Score."
   (:require
    [clojure.edn :as edn]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
-   [metabase-enterprise.semantic-layer.complexity :as complexity]
-   [metabase-enterprise.semantic-layer.metabot-scope :as metabot-scope]
-   [metabase-enterprise.semantic-layer.settings :as settings]
+   [metabase-enterprise.data-complexity-score.complexity :as complexity]
+   [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.settings :as settings]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
@@ -18,8 +18,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private job-key     (jobs/key "metabase-enterprise.semantic-layer.task.complexity-score.job"))
-(def ^:private trigger-key (triggers/key "metabase-enterprise.semantic-layer.task.complexity-score.trigger"))
+(def ^:private job-key     (jobs/key "metabase-enterprise.data-complexity-score.task.complexity-score.job"))
+(def ^:private trigger-key (triggers/key "metabase-enterprise.data-complexity-score.task.complexity-score.trigger"))
 
 (defn- current-fingerprint
   "String capturing everything that changes the meaning of an emitted score — mirror of the Snowplow
@@ -163,7 +163,7 @@
   lands on top of a 03:17 UTC cron tick can't double-publish. Runs regardless of Quartz state so
   operators still get a score on nodes with `MB_DISABLE_SCHEDULER=true` or a failed scheduler init.
   Intended to be called from a startup hook on a background thread — see
-  `metabase-enterprise.semantic-layer.init`.
+  `metabase-enterprise.data-complexity-score.init`.
 
   Success advances the last-successful fingerprint inside `run-scoring!`; any other outcome (skip,
   throw, publish failure) leaves it untouched so the next boot or cron retries. The claim is

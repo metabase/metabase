@@ -1,4 +1,4 @@
-(ns metabase-enterprise.semantic-layer.metabot-scope
+(ns metabase-enterprise.data-complexity-score.metabot-scope
   "Resolves the internal Metabot's retrieval scope for the `:metabot` catalog."
   (:require
    [metabase.metabot.config :as metabot.config]

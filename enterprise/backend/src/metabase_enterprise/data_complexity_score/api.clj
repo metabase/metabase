@@ -1,8 +1,8 @@
-(ns metabase-enterprise.semantic-layer.api
+(ns metabase-enterprise.data-complexity-score.api
   "Admin-only HTTP endpoint exposing the Data Complexity Score."
   (:require
-   [metabase-enterprise.semantic-layer.complexity :as complexity]
-   [metabase-enterprise.semantic-layer.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.complexity :as complexity]
+   [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]))
@@ -42,7 +42,7 @@
     [:model-name string?]]])
 
 (def ^:private ComplexityScoresResponse
-  "Full response body for `GET /api/ee/semantic-layer/complexity`."
+  "Full response body for `GET /api/ee/data-complexity-score/complexity`."
   [:map
    [:library  Catalog]
    [:universe Catalog]
@@ -80,5 +80,5 @@
       (.set api-scoring-running? false))))
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/ee/semantic-layer` routes."
+  "`/api/ee/data-complexity-score` routes."
   (api.macros/ns-handler *ns* +auth))

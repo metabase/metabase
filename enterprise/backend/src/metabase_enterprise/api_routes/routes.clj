@@ -15,6 +15,7 @@
    [metabase-enterprise.cloud-proxy.api]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
+   [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
    [metabase-enterprise.database-routing.api]
@@ -31,7 +32,6 @@
    [metabase-enterprise.sandbox.api.routes]
    [metabase-enterprise.scim.routes]
    [metabase-enterprise.security-center.api]
-   [metabase-enterprise.semantic-layer.api]
    [metabase-enterprise.semantic-search.api]
    [metabase-enterprise.serialization.api]
    [metabase-enterprise.stale.api]
@@ -124,7 +124,7 @@
    "/scim"                         (premium-handler metabase-enterprise.scim.routes/routes :scim)
    ;; No premium-handler gate yet — we haven't settled on the feature flag name or final API shape.
    ;; Endpoint is superuser-only so it's not exposed to regular users in the meantime.
-   "/semantic-layer"               metabase-enterprise.semantic-layer.api/routes
+   "/data-complexity-score"               metabase-enterprise.data-complexity-score.api/routes
    "/semantic-search"              (premium-handler metabase-enterprise.semantic-search.api/routes :semantic-search)
    "/security-center"              (premium-handler metabase-enterprise.security-center.api/routes :admin-security-center)
    "/serialization"                (premium-handler metabase-enterprise.serialization.api/routes :serialization)

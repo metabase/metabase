@@ -1,4 +1,4 @@
-(ns metabase-enterprise.semantic-layer.complexity-embedders
+(ns metabase-enterprise.data-complexity-score.complexity-embedders
   "Pluggable embedding sources for the complexity score's synonym axis.
   An embedder takes entities `{:id :name :kind}` and returns `{normalized-name -> ^floats vector}`,
   omitting entities without a known vector."

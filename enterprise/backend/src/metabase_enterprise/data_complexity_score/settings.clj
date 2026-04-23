@@ -1,5 +1,5 @@
-(ns metabase-enterprise.semantic-layer.settings
-  "Settings for the semantic-layer module."
+(ns metabase-enterprise.data-complexity-score.settings
+  "Settings for the data-complexity-score module."
   (:require
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))

@@ -1,15 +1,15 @@
-(ns metabase-enterprise.semantic-layer.complexity-test
+(ns metabase-enterprise.data-complexity-score.complexity-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.semantic-layer.complexity :as complexity]
-   [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
+   [metabase-enterprise.data-complexity-score.complexity :as complexity]
+   [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    ;; Load init for side-effect: exercises the transitive require of the task ns so
    ;; `scoring-task-registered-test` verifies init.clj's actual wiring path.
-   [metabase-enterprise.semantic-layer.init]
-   [metabase-enterprise.semantic-layer.metabot-scope :as metabot-scope]
-   [metabase-enterprise.semantic-layer.settings :as semantic-layer.settings]
-   [metabase-enterprise.semantic-layer.task.complexity-score :as task.complexity-score]
+   [metabase-enterprise.data-complexity-score.init]
+   [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.settings :as data-complexity-score.settings]
+   [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedders :as ss.embedders]
@@ -337,9 +337,9 @@
 ;; We're only reading the method table via `methods`, not calling the impure `!` fn — safe in parallel.
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (deftest ^:parallel scoring-task-registered-test
-  (testing "loading the semantic-layer init namespace registers the scoring task's `task/init!` method"
+  (testing "loading the data-complexity-score init namespace registers the scoring task's `task/init!` method"
     (is (contains? (methods task/init!)
-                   :metabase-enterprise.semantic-layer.task.complexity-score/DataComplexityScoring))))
+                   :metabase-enterprise.data-complexity-score.task.complexity-score/DataComplexityScoring))))
 
 (deftest ^:parallel search-index-embedder-degrades-gracefully-test
   (testing "returns {} when semantic-search index isn't available (no throw)"
@@ -726,7 +726,7 @@
                                              :universe [(entity :name "orders")]
                                              :metabot  []})
                                 analytics/track-event!       (fn [& _] (throw (RuntimeException. "snowplow down")))]
-      (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer.complexity :warn]]
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.data-complexity-score.complexity :warn]]
         (let [result (complexity/complexity-scores :embedder nil)]
           (is (=? {:library  {:total 10 :components {:entity-count {:measurement 1.0 :score 10}}}
                    :universe {:total 10 :components {:entity-count {:measurement 1.0 :score 10}}}}
@@ -744,7 +744,7 @@
                                              :universe [(entity :name "orders")]
                                              :metabot  []})
                                 analytics/track-event!       (fn [& _] (throw (RuntimeException. "snowplow down")))]
-      (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer.complexity :info]]
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.data-complexity-score.complexity :info]]
         (complexity/complexity-scores :embedder nil)
         (is (some #(and (= :info (:level %))
                         (re-find #"Semantic complexity score" (:message %)))
@@ -758,7 +758,7 @@
                                              :universe [(entity :name "orders")]
                                              :metabot  []})]
       (mt/with-temporary-setting-values [data-complexity-scoring-enabled true]
-        (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer.complexity :info]]
+        (mt/with-log-messages-for-level [messages [metabase-enterprise.data-complexity-score.complexity :info]]
           (#'task.complexity-score/run-scoring! "test-fp")
           (is (some #(and (= :info (:level %))
                           (re-find #"Semantic complexity score" (:message %)))
@@ -870,7 +870,7 @@
   (with-meta
    {:library {:total 0 :components {}} :universe {:total 0 :components {}}
     :metabot {:total 0 :components {}} :meta {}}
-   {:metabase-enterprise.semantic-layer.complexity/snowplow-published? published?}))
+   {:metabase-enterprise.data-complexity-score.complexity/snowplow-published? published?}))
 
 (deftest ^:sequential run-scoring-persists-fingerprint-only-on-successful-publish-test
   (testing "fingerprint advances only when Snowplow accepted the event — failed publish must leave
@@ -881,14 +881,14 @@
                                            data-complexity-scoring-last-fingerprint "stale"]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result true))]
             (#'task.complexity-score/run-scoring! "fresh-fp")
-            (is (= "fresh-fp" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
+            (is (= "fresh-fp" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint stamped from the claim fingerprint, not re-sampled at commit time"))))
       (testing "failed publish → fingerprint stays at the stale value for the next retry"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
                                            data-complexity-scoring-last-fingerprint "stale"]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result false))]
             (#'task.complexity-score/run-scoring! "fresh-fp")
-            (is (= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
+            (is (= "stale" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint preserved — next boot / cron will retry the emission")))))))
 
 (deftest ^:sequential maybe-emit-boot-score-only-advances-fingerprint-on-successful-publish-test
@@ -902,9 +902,9 @@
                                            data-complexity-scoring-claim          ""]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result false))]
             (task.complexity-score/maybe-emit-boot-score!)
-            (is (= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
+            (is (= "stale" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint unchanged — next boot/cron will retry the emission")
-            (is (= "" (semantic-layer.settings/data-complexity-scoring-claim))
+            (is (= "" (data-complexity-score.settings/data-complexity-scoring-claim))
                 "scoring claim released so other paths can proceed without waiting for TTL"))))
       (testing "publish success → fingerprint advances to the new value (and claim is cleared)"
         (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
@@ -912,9 +912,9 @@
                                            data-complexity-scoring-claim          ""]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores (fn [& _] (stub-result true))]
             (task.complexity-score/maybe-emit-boot-score!)
-            (is (not= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
+            (is (not= "stale" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint advanced to reflect the confirmed publish")
-            (is (= "" (semantic-layer.settings/data-complexity-scoring-claim))
+            (is (= "" (data-complexity-score.settings/data-complexity-scoring-claim))
                 "scoring claim released after successful run")))))))
 
 (deftest ^:sequential maybe-emit-boot-score-skips-when-another-path-holds-active-claim-test
@@ -935,9 +935,9 @@
             (task.complexity-score/maybe-emit-boot-score!)
             (is (false? @scoring-ran?)
                 "scoring skipped because another path already claimed the current fingerprint")
-            (is (= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
+            (is (= "stale" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint untouched when the claim is skipped")
-            (is (= active-claim (semantic-layer.settings/data-complexity-scoring-claim))
+            (is (= active-claim (data-complexity-score.settings/data-complexity-scoring-claim))
                 "other path's claim is preserved (we never took it, so we don't clear it)")))))))
 
 (deftest ^:sequential maybe-emit-boot-score-reclaims-when-prior-claim-has-expired-test
@@ -958,7 +958,7 @@
             (task.complexity-score/maybe-emit-boot-score!)
             (is (true? @scoring-ran?)
                 "scoring ran because the prior claim had aged past the TTL")
-            (is (not= "stale" (semantic-layer.settings/data-complexity-scoring-last-fingerprint))
+            (is (not= "stale" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
                 "fingerprint advanced on successful publish after re-claim")))))))
 
 (deftest ^:sequential maybe-emit-boot-score-does-not-clear-sibling-claim-after-ttl-takeover-test
@@ -977,10 +977,10 @@
                                            data-complexity-scoring-claim            ""]
           (mt/with-dynamic-fn-redefs [complexity/complexity-scores
                                       (fn [& _]
-                                        (semantic-layer.settings/data-complexity-scoring-claim! sibling-claim)
+                                        (data-complexity-score.settings/data-complexity-scoring-claim! sibling-claim)
                                         (stub-result true))]
             (task.complexity-score/maybe-emit-boot-score!)
-            (is (= sibling-claim (semantic-layer.settings/data-complexity-scoring-claim))
+            (is (= sibling-claim (data-complexity-score.settings/data-complexity-scoring-claim))
                 "replacement claim preserved — our release was a compare-and-clear and the owners didn't match")))))))
 
 (deftest ^:sequential cron-skips-when-boot-run-holds-active-claim-test
@@ -1004,7 +1004,7 @@
             (#'task.complexity-score/with-scoring-claim! {} #'task.complexity-score/run-scoring!)
             (is (false? @scoring-ran?)
                 "cron tick skipped because the boot run holds the scoring claim")
-            (is (= boot-claim (semantic-layer.settings/data-complexity-scoring-claim))
+            (is (= boot-claim (data-complexity-score.settings/data-complexity-scoring-claim))
                 "boot's claim preserved — cron never took it, so it doesn't clear it")))))))
 
 (deftest ^:sequential complexity-scores-tags-publish-success-on-result-test
@@ -1014,12 +1014,12 @@
       (testing "successful publish → ::snowplow-published? true"
         (snowplow-test/with-fake-snowplow-collector
           (let [result (complexity/complexity-scores :embedder nil)]
-            (is (true? (:metabase-enterprise.semantic-layer.complexity/snowplow-published?
+            (is (true? (:metabase-enterprise.data-complexity-score.complexity/snowplow-published?
                         (meta result)))))))
       (testing "publish throw → ::snowplow-published? false (and the result is still returned)"
         (mt/with-dynamic-fn-redefs [analytics/track-event! (fn [& _] (throw (RuntimeException. "snowplow down")))]
           (let [result (complexity/complexity-scores :embedder nil)]
-            (is (false? (:metabase-enterprise.semantic-layer.complexity/snowplow-published?
+            (is (false? (:metabase-enterprise.data-complexity-score.complexity/snowplow-published?
                          (meta result)))))))
       (testing "snowplow disabled → ::snowplow-published? false so the fingerprint stays unadvanced"
         ;; `track-event!` no-ops when anon-tracking is off; without a real-delivery signal it would
@@ -1027,5 +1027,5 @@
         ;; silently suppressing the boot-time retry once tracking is turned back on.
         (mt/with-temporary-setting-values [anon-tracking-enabled false]
           (let [result (complexity/complexity-scores :embedder nil)]
-            (is (false? (:metabase-enterprise.semantic-layer.complexity/snowplow-published?
+            (is (false? (:metabase-enterprise.data-complexity-score.complexity/snowplow-published?
                          (meta result))))))))))

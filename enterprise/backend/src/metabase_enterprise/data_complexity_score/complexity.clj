@@ -1,4 +1,4 @@
-(ns metabase-enterprise.semantic-layer.complexity
+(ns metabase-enterprise.data-complexity-score.complexity
   "Computes the Data Complexity Score for the semantic layer across three catalogs:
     :library  — the curated subset (Cards of type :model and :metric)
     :universe — everything (library entities + all active physical tables)
@@ -6,7 +6,7 @@
   (:require
    [clojure.pprint :as pprint]
    [clojure.string :as str]
-   [metabase-enterprise.semantic-layer.complexity-embedders :as embedders]
+   [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
@@ -42,7 +42,7 @@
 (def synonym-similarity-threshold
   "Cosine-similarity cutoff for flagging two names as synonyms.
   Higher than semantic-search's retrieval cutoff (0.30) because scoring wants precision, not recall.
-  Eyeballed against stats-appdb samples; see `test_resources/semantic_layer/analysis/2026_04_21_data_analysis_summary.md`.
+  Eyeballed against stats-appdb samples; see `test_resources/data_complexity_score/analysis/2026_04_21_data_analysis_summary.md`.
   Hard-coded so it can drift independently from the search cutoff."
   0.90)
 
