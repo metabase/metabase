@@ -155,4 +155,3 @@
   "Tool map for tests — keyed by tool name string."
   (let [tool-defs (map #(%) [get-time-tool convert-currency-tool mock-llm-tool no-arg-tool])]
     (into {} (map (juxt :tool-name identity)) tool-defs)))
-
