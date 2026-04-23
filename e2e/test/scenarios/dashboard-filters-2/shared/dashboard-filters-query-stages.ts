@@ -730,12 +730,33 @@ export function getDashboardId(): Cypress.Chainable<number> {
     .then((dashboardId) => dashboardId as unknown as number);
 }
 
-export function waitForPublicDashboardData(requestCount: number) {
-  cy.wait(Array(requestCount).fill("@publicDashboardData"));
+export function waitForPublicDashboardData(expectedCards: number) {
+  assertBatchCompletedCards("@publicDashboardData", expectedCards);
 }
 
-export function waitForEmbeddedDashboardData(requestCount: number) {
-  cy.wait(Array(requestCount).fill("@embeddedDashboardData"));
+export function waitForEmbeddedDashboardData(expectedCards: number) {
+  assertBatchCompletedCards("@embeddedDashboardData", expectedCards);
+}
+
+function assertBatchCompletedCards(alias: string, expectedCards: number) {
+  cy.wait(alias).then(({ request }) => {
+    // GET (public/embed) carries `cards` as a URL query param; POST (normal)
+    // carries it in the JSON body.
+    const fromQuery = (() => {
+      const cards = new URL(request.url).searchParams.get("cards");
+      if (!cards) {
+        return undefined;
+      }
+      try {
+        return JSON.parse(cards) as unknown[];
+      } catch {
+        return undefined;
+      }
+    })();
+    const fromBody = (request.body as { cards?: unknown[] })?.cards;
+    const cards = fromQuery ?? fromBody ?? [];
+    expect(cards, `${alias} cards[]`).to.have.length(expectedCards);
+  });
 }
 
 export function verifyDashcardMappingOptions(

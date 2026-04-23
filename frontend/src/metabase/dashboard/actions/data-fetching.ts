@@ -26,7 +26,6 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
-import { isEmbedPreview as getIsEmbedPreview } from "metabase/embedding/config";
 import { entityCompatibleQuery } from "metabase/entities/utils";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
@@ -55,6 +54,7 @@ import { defer } from "metabase/utils/promise";
 import { uuid } from "metabase/utils/uuid";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
@@ -709,13 +709,20 @@ export const fetchDashboardCardData =
     }
 
     if (useBatchEndpoint) {
-      // Include cleared params too (value: null) so the server can delete
-      // their stored last-used value on filter reset.
-      const batchParameters = (dashboard.parameters ?? []).map((p) => ({
-        id: p.id,
-        type: p.type,
-        value: parameterValues[p.id] ?? null,
-      }));
+      // Send every dashboard parameter, including ones with a null value, so
+      // the server can clear its stored last-used value on filter reset.
+      // `options` carries operator defaults like `case-sensitive: false` for
+      // `string/contains`; without it the backend runs a case-sensitive
+      // filter.
+      const batchParameters = (dashboard.parameters ?? []).map((p) => {
+        const options = deriveFieldOperatorFromParameter(p)?.optionsDefaults;
+        return {
+          id: p.id,
+          type: p.type,
+          value: parameterValues[p.id] ?? null,
+          ...(options ? { options } : {}),
+        };
+      });
 
       const cards = batchCardsToFetch.map(({ card, dashcard }) => ({
         dashcard_id: dashcard.id,
@@ -787,7 +794,9 @@ export const fetchDashboardCardData =
             dashcard_id: dashcardId,
             card_id: cardId,
             result:
-              payload.error !== undefined ? { error: payload.error } : payload.result!,
+              payload.error !== undefined
+                ? (payload.error as Dataset)
+                : payload.result!,
           }),
         );
         completedCount++;
@@ -798,6 +807,10 @@ export const fetchDashboardCardData =
         onCardResult: (dashcardId, cardId, result) =>
           dispatchBatchCardResult(dashcardId, cardId, { result }),
         onCardError: (dashcardId, cardId, error) =>
+          // Pass the error payload directly (not wrapped in `{error}`) so
+          // `error_is_curated`, `error_type`, etc. sit at the top level of the
+          // cached dataset for `getDashcardResultsError` to surface a curated
+          // message.
           dispatchBatchCardResult(dashcardId, cardId, { error }),
         onComplete: () => {
           clearBatchDeferreds();
@@ -806,6 +819,7 @@ export const fetchDashboardCardData =
         },
       }).catch((err) => {
         if (err?.name === "AbortError") {
+          clearBatchDeferreds();
           batchFetchAbortController = null;
           return;
         }
@@ -819,14 +833,10 @@ export const fetchDashboardCardData =
             : undefined) ?? 500;
         const message =
           err instanceof Error ? err.message : "Batch card query failed";
-        for (const { card, dashcard } of cardsNeedingFetch) {
-          dispatch(
-            receiveBatchCardResult({
-              dashcard_id: dashcard.id,
-              card_id: (card as Card).id,
-              result: { error: { status, message } },
-            }),
-          );
+        for (const { card, dashcard } of batchCardsToFetch) {
+          dispatchBatchCardResult(dashcard.id, card.id, {
+            error: { status, message },
+          });
         }
         clearBatchDeferreds();
         batchFetchAbortController = null;
@@ -889,11 +899,7 @@ export const reloadDashboardCards =
 export const cancelFetchDashboardCardData = createThunkAction(
   CANCEL_FETCH_DASHBOARD_CARD_DATA,
   () => (dispatch, getState) => {
-    // Cancel batch request if in flight
-    if (batchFetchAbortController) {
-      batchFetchAbortController.abort();
-      batchFetchAbortController = null;
-    }
+    abortBatchCardQuery();
 
     const dashboard = getDashboardComplete(getState());
 
