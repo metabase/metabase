@@ -14,6 +14,7 @@
    (org.apache.commons.io FileUtils)
    (org.eclipse.jgit.api Git GitCommand TransportCommand)
    (org.eclipse.jgit.dircache DirCache DirCacheEntry)
+   (org.eclipse.jgit.errors NoRemoteRepositoryException RepositoryNotFoundException)
    (org.eclipse.jgit.lib CommitBuilder Constants FileMode PersonIdent Ref)
    (org.eclipse.jgit.revwalk RevCommit RevWalk)
    (org.eclipse.jgit.transport PushResult RefSpec RemoteRefUpdate
@@ -83,13 +84,7 @@
     branch
     (str "refs/heads/" branch)))
 
-(defn fetch!
-  "Fetches updates from the remote git repository.
-
-  Takes a git-source map containing a :git Git instance and optional :token for authentication. Returns the result
-  of the git fetch operation. Uses the 'origin' remote which is configured by ensure-origin-configured!.
-
-  Throws ExceptionInfo if the fetch operation fails."
+(defn- fetch!*
   [{:keys [^Git git] :as git-source}]
   (when (some? git)
     (log/info "Fetching repository" {:repo (str git)})
@@ -238,13 +233,7 @@
   (when-let [idx (str/index-of path "/")]
     (subs path 0 idx)))
 
-(defn default-branch
-  "Retrieves the default branch name of the git repository.
-
-  Takes a git-source map containing a :git Git instance.
-
-  Returns the default branch name as a string (without 'refs/heads/' prefix).
-  Throws ExceptionInfo if no default branch is found."
+(defn- default-branch*
   [{:keys [^Git git] :as git-source}]
   ;; Query the remote directly to get HEAD - lsRemote returns symbolic refs
   (let [refs (call-remote-command (.lsRemote git) git-source)
@@ -330,13 +319,7 @@
             (push-branch! snapshot)
             (.name commit-id)))))))
 
-(defn branches
-  "Retrieves all branch names from the remote repository.
-
-  Takes a source map containing a :git Git instance and optional :token for authentication.
-  Uses the 'origin' remote which is configured by ensure-origin-configured!.
-
-  Returns a sorted sequence of branch name strings (without 'refs/heads/' prefix)."
+(defn- branches*
   [{:keys [^Git git] :as source}]
   (->> (call-remote-command (.lsRemote git) source)
        (filter #(str/starts-with? (.getName ^Ref %) "refs/heads/"))
@@ -351,11 +334,11 @@
 
   Returns true if the repository has at least one commit, false otherwise."
   [source]
-  (< 0 (count (branches source))))
+  (< 0 (count (branches* source))))
 
 (defn- delete-branches-without-remote!
   [{:keys [^Git git] :as source}]
-  (let [remote-branches (set (branches source))
+  (let [remote-branches (set (branches* source))
         local-refs (call-command (.branchList git))
         branches-to-delete (keep (fn [^Ref ref]
                                    (let [branch-name (str/replace-first (.getName ref) "refs/heads/" "")]
@@ -371,17 +354,9 @@
     {:deleted (count branches-to-delete)
      :branch-names branches-to-delete}))
 
-(defn create-branch
-  "Creates a new branch in the git repository from an existing branch.
-
-  Takes a source map containing a :git Git instance and optional :token for authentication, a branch-name string for
-  the new branch, and a base-branch to use as the base for the new branch.
-
-  Returns the name of the newly created branch.
-
-  Throws ExceptionInfo if the base branch is not found or if the new branch already exists."
+(defn- create-branch*
   [{:keys [^Git git] :as source} branch-name base-commit-ish]
-  (fetch! source)
+  (fetch!* source)
   (delete-branches-without-remote! source)
   (let [repo (.getRepository git)
         new-branch-ref (qualify-branch branch-name)
@@ -416,50 +391,117 @@
 (def ^:private jgit (atom {}))
 
 (defn- stale-cache-error?
-  "Returns true if the exception indicates a stale git cache (e.g., after a force-push on the remote)."
+  "Returns true if the exception indicates a stale git cache.
+
+  Covers two scenarios: a force-push on the remote that leaves the local cache
+  referencing commits no longer reachable (\"Missing commit\"), and an externally
+  deleted on-disk clone (NoRemoteRepositoryException / RepositoryNotFoundException)
+  that can happen when the OS or an operator clears the temp directory."
   [^Exception e]
-  (some-> (ex-message e) (str/includes? "Missing commit")))
+  (let [root (root-cause e)
+        msg (or (ex-message root) "")]
+    (boolean
+     (or (str/includes? msg "Missing commit")
+         (instance? NoRemoteRepositoryException root)
+         (instance? RepositoryNotFoundException root)))))
 
 (defn- clear-cached-repo!
-  "Clears a cached git repository from memory and disk."
+  "Clears a cached git repository from memory and disk. Safe to call when the
+  on-disk directory has already been removed."
   [^File repo-path]
   (log/info "Clearing stale git cache" {:repo-path (str repo-path)})
   (swap! jgit dissoc (.getPath repo-path))
-  (FileUtils/deleteDirectory repo-path))
+  (when (.exists repo-path)
+    (FileUtils/deleteDirectory repo-path)))
 
 (defn- get-jgit [^File path {:keys [remote-url token] :as args}]
-  (if-let [obj (get @jgit (.getPath path))]
-    obj
-    (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
-                                                                     :token      token})
-                                             (when-not (has-data? (assoc args :git <>))
-                                               (FileUtils/deleteDirectory path)
-                                               (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
-         (.getPath path))))
+  (let [cached (get @jgit (.getPath path))]
+    (if (and cached (.isDirectory path))
+      cached
+      (do
+        (when cached
+          (log/info "Cached git repo missing on disk; re-cloning" {:repo-path (str path)})
+          (swap! jgit dissoc (.getPath path)))
+        (get (swap! jgit assoc (.getPath path) (u/prog1 (open-jgit path {:remote-url remote-url
+                                                                         :token      token})
+                                                 (when-not (has-data? (assoc args :git <>))
+                                                   (FileUtils/deleteDirectory path)
+                                                   (throw (ex-info "Cannot connect to uninitialized repository" {:url remote-url})))))
+             (.getPath path))))))
+
+(defn- with-cache-recovery
+  "Runs `(f source)`. If it throws a stale-cache error, clears the cached git
+  repo, re-clones, and retries once with a refreshed :git in the source."
+  [{:keys [remote-url token] :as source} f]
+  (try
+    (f source)
+    (catch Exception e
+      (if (stale-cache-error? e)
+        (let [path (repo-path {:remote-url remote-url :token token})]
+          (clear-cached-repo! path)
+          (let [fresh-git (get-jgit path {:remote-url remote-url :token token})]
+            (log/info "Retrying git operation after clearing stale cache")
+            (f (assoc source :git fresh-git))))
+        (throw e)))))
+
+(defn fetch!
+  "Fetches updates from the remote git repository.
+
+  Takes a git-source map containing a :git Git instance and optional :token for authentication. Returns the result
+  of the git fetch operation. Uses the 'origin' remote which is configured by ensure-origin-configured!.
+
+  Recovers from a stale or externally-deleted local clone by re-cloning once.
+  Throws ExceptionInfo if the fetch operation still fails after recovery."
+  [source]
+  (with-cache-recovery source fetch!*))
+
+(defn branches
+  "Retrieves all branch names from the remote repository.
+
+  Takes a source map containing a :git Git instance and optional :token for authentication.
+  Uses the 'origin' remote which is configured by ensure-origin-configured!.
+
+  Recovers from a stale or externally-deleted local clone by re-cloning once.
+  Returns a sorted sequence of branch name strings (without 'refs/heads/' prefix)."
+  [source]
+  (with-cache-recovery source branches*))
+
+(defn default-branch
+  "Retrieves the default branch name of the git repository.
+
+  Takes a git-source map containing a :git Git instance.
+
+  Recovers from a stale or externally-deleted local clone by re-cloning once.
+  Returns the default branch name as a string (without 'refs/heads/' prefix).
+  Throws ExceptionInfo if no default branch is found."
+  [source]
+  (with-cache-recovery source default-branch*))
+
+(defn create-branch
+  "Creates a new branch in the git repository from an existing branch.
+
+  Takes a source map containing a :git Git instance and optional :token for authentication, a branch-name string for
+  the new branch, and a base-branch to use as the base for the new branch.
+
+  Recovers from a stale or externally-deleted local clone by re-cloning once.
+  Returns the name of the newly created branch.
+
+  Throws ExceptionInfo if the base branch is not found or if the new branch already exists."
+  [source branch-name base-commit-ish]
+  (with-cache-recovery source #(create-branch* % branch-name base-commit-ish)))
 
 (defn- snapshot*
-  "Internal snapshot implementation. Returns a GitSnapshot or throws."
   [source]
-  (fetch! source)
+  (fetch!* source)
   (let [version (commit-sha source (:branch source))]
     (if version
       (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source) (:managed-dirs source))
       (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
 
 (defn- snapshot
-  "Creates a snapshot, recovering from stale cache errors by re-cloning."
-  [{:keys [remote-url token] :as source}]
-  (try
-    (snapshot* source)
-    (catch Exception e
-      (if (stale-cache-error? e)
-        (let [path (repo-path {:remote-url remote-url :token token})]
-          (clear-cached-repo! path)
-          (let [fresh-git (get-jgit path {:remote-url remote-url :token token})
-                fresh-source (assoc source :git fresh-git)]
-            (log/info "Retrying snapshot after clearing stale cache")
-            (snapshot* fresh-source)))
-        (throw e)))))
+  "Creates a snapshot, recovering from stale or missing local clones by re-cloning."
+  [source]
+  (with-cache-recovery source snapshot*))
 
 (defrecord GitSource [git remote-url branch token managed-dirs]
   source.p/Source
