@@ -98,7 +98,7 @@ const STEPS: Record<NotebookStepType, StepUIItem> = {
     get title() {
       return t`Breakout`;
     },
-    icon: "segment2",
+    icon: "segment",
     priority: 1,
     color: () => "accent4",
     Step: BreakoutStep,

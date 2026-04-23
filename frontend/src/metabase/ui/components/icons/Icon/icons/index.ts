@@ -430,8 +430,8 @@ import search_check_component from "./search_check.svg?component";
 import search_check_source from "./search_check.svg?source";
 import section_component from "./section.svg?component";
 import section_source from "./section.svg?source";
-import segment2_component from "./segment2.svg?component";
-import segment2_source from "./segment2.svg?source";
+import segment_component from "./segment.svg?component";
+import segment_source from "./segment.svg?source";
 import send_component from "./send.svg?component";
 import send_source from "./send.svg?source";
 import settings_component from "./settings.svg?component";
@@ -1459,9 +1459,9 @@ export const Icons: Record<IconName, { component: React.VFC; source: string }> =
       component: section_component,
       source: section_source,
     },
-    segment2: {
-      component: segment2_component,
-      source: segment2_source,
+    segment: {
+      component: segment_component,
+      source: segment_source,
     },
     send: {
       component: send_component,
@@ -1952,7 +1952,7 @@ export type IconName =
   | "search"
   | "search_check"
   | "section"
-  | "segment2"
+  | "segment"
   | "shield"
   | "shield_outline"
   | "sidebar_closed"

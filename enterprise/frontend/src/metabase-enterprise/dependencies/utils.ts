@@ -114,7 +114,7 @@ export function getNodeIconWithType(
     case "sandbox":
       return "permissions_limited";
     case "segment":
-      return "segment2";
+      return "segment";
     case "measure":
       return "ruler";
   }

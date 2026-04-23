@@ -52,7 +52,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
   question: "table2",
   model: "model",
   card: "table2",
-  segment: "segment2",
+  segment: "segment",
   measure: "ruler",
   metric: "metric",
   snippet: "snippet",
