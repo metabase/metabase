@@ -4,7 +4,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -22,6 +21,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
@@ -35,7 +35,6 @@
    [metabase.settings.core :as setting]
    [metabase.slackbot.api]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -87,94 +86,6 @@
                                        (apply +))
                  :ai_proxied      (boolean ai-proxy?)})))
 
-(defn- extract-usage
-  "Extract usage from parts, taking the last `:usage` per model.
-
-  The agent loop emits cumulative usage — each `:usage` part subsumes all prior
-  usage for that model — so we simply take the last one per model rather than
-  summing. Returns a map keyed by model name:
-  {\"model-name\" {:prompt X :completion Y}}"
-  [parts]
-  (transduce
-   (filter #(= :usage (:type %)))
-   (completing
-    (fn [acc {:keys [usage model]}]
-      (let [model (or model "unknown")]
-        (assoc acc model {:prompt     (:promptTokens usage 0)
-                          :completion (:completionTokens usage 0)}))))
-   {}
-   parts))
-
-(def ^:private persisted-structured-output-keys
-  "Subset of `:structured-output` that must survive persistence so
-  `metabase-enterprise.metabot-analytics.queries` can surface generated
-  queries on the admin detail page."
-  [:query-id :query-content :query :database])
-
-(defn- trim-structured-output [structured]
-  (when (map? structured)
-    (not-empty (select-keys structured persisted-structured-output-keys))))
-
-(defn- strip-tool-output-bloat
-  "For :tool-output parts, keep `:output` and a trimmed `:structured-output` in
-  the result map. Both LLM adapters only read `(get-in part [:result :output])`
-  when replaying history, so `:output` is all they need. The analytics extractor,
-  however, reads a small subset of `:structured-output` off persisted messages
-  (see `persisted-structured-output-keys`), so we keep those four keys and drop
-  everything else (`:resources`, `:data-parts`, `:reactions`, …) — that's where
-  the bulk of the bloat lives."
-  [{:keys [type] :as part}]
-  (if (= :tool-output type)
-    (update part :result
-            (fn [r]
-              (cond-> (select-keys r [:output])
-                (trim-structured-output (:structured-output r))
-                (assoc :structured-output (trim-structured-output (:structured-output r)))
-                (trim-structured-output (:structured_output r))
-                (assoc :structured_output (trim-structured-output (:structured_output r))))))
-    part))
-
-(defn- store-native-parts!
-  "Store assistant response parts directly to the database.
-
-  Takes AI SDK parts (after aisdk-xf combining) and stores them in the native format,
-  avoiding the intermediate 'aisdk messages' format.
-
-  Parts format: [{:type :text :text \"...\"} {:type :tool-input ...} ...]"
-  [conversation-id profile-id ip-address embed-url external-id parts]
-  (let [state-part (u/seek #(and (= :data (:type %))
-                                 (= "state" (:data-type %)))
-                           parts)
-        usage      (extract-usage parts)
-        ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
-        ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
-        ;; :data is like `:navigate_to`
-        content    (->> parts
-                        (remove #(#{:start :usage :finish :data} (:type %)))
-                        (mapv strip-tool-output-bloat))]
-    (prometheus/observe! :metabase-metabot/message-persist-bytes
-                         {:profile-id (or profile-id "unknown")}
-                         (u/string-byte-count (json/encode content)))
-    (t2/with-transaction [_conn]
-      (when state-part
-        (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                                  (fn [existing]
-                                    (cond-> {:user_id api/*current-user-id*
-                                             :state   (:data state-part)}
-                                      (nil? (:ip_address existing)) (assoc :ip_address ip-address)
-                                      (nil? (:embed_url existing))  (assoc :embed_url embed-url)))))
-      (t2/insert! :model/MetabotMessage
-                  {:conversation_id conversation-id
-                   :data            content
-                   :usage           usage
-                   :role            :assistant
-                   :profile_id      profile-id
-                   :external_id     external-id
-                   :total_tokens    (->> (vals usage)
-                                         (map #(+ (:prompt %) (:completion %)))
-                                         (reduce + 0))
-                   :ai_proxied      (boolean ai-proxy?)}))))
-
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
 
@@ -195,22 +106,6 @@
          (.flush os)
          (catch org.eclipse.jetty.io.EofException _
            (reduced acc)))))))
-
-(defn- combine-text-parts-xf []
-  (fn [rf]
-    (let [pending (volatile! nil)]
-      (fn
-        ([] (rf))
-        ([result]
-         (let [p @pending]
-           (rf (if p (rf result p) result))))
-        ([result part]
-         (let [prev @pending]
-           (if (and prev (= :text (:type prev) (:type part)))
-             (do (vswap! pending update :text str (:text part))
-                 result)
-             (do (vreset! pending part)
-                 (if prev (rf result prev) result)))))))))
 
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
@@ -249,8 +144,12 @@
             (log/debug "Client disconnected during native agent streaming"))
           (finally
             (try
-              (store-native-parts! conversation-id profile-id ip-address embed-url external-id
-                                   (into [] (combine-text-parts-xf) @parts-atom))
+              (metabot.persistence/store-native-parts!
+               conversation-id profile-id
+               (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
+               :ip-address  ip-address
+               :embed-url   embed-url
+               :external-id external-id)
               (catch Exception e
                 (log/error e "Failed to persist native agent parts"
                            {:conversation-id conversation-id

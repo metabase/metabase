@@ -15,6 +15,7 @@
    [metabase.metabot.api :as api]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.openrouter :as openrouter]
@@ -160,7 +161,7 @@
                             http/post                                (fn [url opts]
                                                                        (real-http-post url (assoc opts :decompress-body false)))
                             metabot.context/create-context           identity
-                            api/store-native-parts!                  (fn [_conv-id _prof-id _ip _embed-url _external-id parts]
+                            metabot.persistence/store-native-parts!  (fn [_conv-id _prof-id parts & _kwargs]
                                                                        (reset! stored-parts parts))
                             sr/async-cancellation-poll-interval-ms   5]
                 (testing "Closing stream body will drop connection to LLM"
@@ -619,7 +620,7 @@
 (deftest extract-usage-test
   (testing "takes last cumulative usage per model"
     (is (= {"gpt-4" {:prompt 250 :completion 50}}
-           (#'api/extract-usage
+           (metabot.persistence/extract-usage
             [{:type :text :text "hi"}
              {:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "gpt-4"}
              {:type :tool-input :id "t1"}
@@ -629,27 +630,27 @@
   (testing "handles multiple models independently"
     (is (= {"model-a" {:prompt 100 :completion 20}
             "model-b" {:prompt 200 :completion 40}}
-           (#'api/extract-usage
+           (metabot.persistence/extract-usage
             [{:type :usage :usage {:promptTokens 100 :completionTokens 20} :model "model-a"}
              {:type :usage :usage {:promptTokens 200 :completionTokens 40} :model "model-b"}]))))
 
   (testing "returns empty map when no usage parts"
-    (is (= {} (#'api/extract-usage [{:type :text :text "hi"}]))))
+    (is (= {} (metabot.persistence/extract-usage [{:type :text :text "hi"}]))))
 
   (testing "missing model defaults to unknown"
     (is (= {"unknown" {:prompt 50 :completion 10}}
-           (#'api/extract-usage
+           (metabot.persistence/extract-usage
             [{:type :usage :usage {:promptTokens 50 :completionTokens 10}}])))))
 
 (deftest combine-text-parts-xf-test
   (testing "passes through non-text parts"
     (is (= [{:type :tool, :id 1} {:type :tool, :id 2}]
-           (into [] (#'api/combine-text-parts-xf)
+           (into [] (metabot.persistence/combine-text-parts-xf)
                  [{:type :tool, :id 1} {:type :tool, :id 2}]))))
 
   (testing "combines consecutive text parts"
     (is (= [{:type :text, :text "hello world"}]
-           (into [] (#'api/combine-text-parts-xf)
+           (into [] (metabot.persistence/combine-text-parts-xf)
                  [{:type :text, :text "hello "}
                   {:type :text, :text "world"}]))))
 
@@ -657,7 +658,7 @@
     (is (= [{:type :text, :text "ab"}
             {:type :tool, :id 1}
             {:type :text, :text "cd"}]
-           (into [] (#'api/combine-text-parts-xf)
+           (into [] (metabot.persistence/combine-text-parts-xf)
                  [{:type :text, :text "a"}
                   {:type :text, :text "b"}
                   {:type :tool, :id 1}
@@ -665,11 +666,11 @@
                   {:type :text, :text "d"}]))))
 
   (testing "handles empty input"
-    (is (= [] (into [] (#'api/combine-text-parts-xf) []))))
+    (is (= [] (into [] (metabot.persistence/combine-text-parts-xf) []))))
 
   (testing "handles single text part"
     (is (= [{:type :text, :text "solo"}]
-           (into [] (#'api/combine-text-parts-xf)
+           (into [] (metabot.persistence/combine-text-parts-xf)
                  [{:type :text, :text "solo"}])))))
 
 (defn- store-and-check!
@@ -679,14 +680,15 @@
     (let [conv-id (str (random-uuid))]
       (try
         (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider provider]
-          (#'api/store-native-parts!
-           conv-id "internal" nil nil (str (random-uuid))
+          (metabot.persistence/store-native-parts!
+           conv-id "internal"
            [{:type :start :id "msg-1"}
             {:type :text :text "Hello"}
             ;; SSE usage parts carry bare model names (from provider API response)
             {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 100 :completionTokens 50}}
             {:type :data :data-type "state" :data {:step 1}}
-            {:type :finish}])
+            {:type :finish}]
+           :external-id (str (random-uuid)))
           (t2/select-one :model/MetabotMessage :conversation_id conv-id))
         (finally
           (t2/delete! :model/MetabotMessage :conversation_id conv-id)
@@ -709,7 +711,7 @@
 (deftest strip-tool-output-bloat-test
   (testing "drops transient keys and structured-output fields outside the persisted subset"
     (is (= {:type :tool-output :id "call-1" :result {:output "<result>XML</result>"}}
-           (#'api/strip-tool-output-bloat
+           (metabot.persistence/strip-tool-output-bloat
             {:type   :tool-output
              :id     "call-1"
              :result {:output            "<result>XML</result>"
@@ -725,7 +727,7 @@
                                            :query-content "SELECT 1"
                                            :query         query-map
                                            :database      1}}}
-             (#'api/strip-tool-output-bloat
+             (metabot.persistence/strip-tool-output-bloat
               {:type   :tool-output
                :id     "call-sql"
                :result {:output            "<result>...</result>"
@@ -741,7 +743,7 @@
             :id     "call-snake"
             :result {:output            "<result>...</result>"
                      :structured_output {:query-id "qid-2" :query-content "SELECT 2"}}}
-           (#'api/strip-tool-output-bloat
+           (metabot.persistence/strip-tool-output-bloat
             {:type   :tool-output
              :id     "call-snake"
              :result {:output            "<result>...</result>"
@@ -750,10 +752,10 @@
                                           :extra-bloat   [1 2 3]}}}))))
   (testing "leaves non-tool-output parts untouched"
     (let [text-part {:type :text :text "hello"}]
-      (is (= text-part (#'api/strip-tool-output-bloat text-part)))))
+      (is (= text-part (metabot.persistence/strip-tool-output-bloat text-part)))))
   (testing "handles result with no :output key and no query-related structured-output"
     (is (= {:type :tool-output :id "call-2" :result {}}
-           (#'api/strip-tool-output-bloat
+           (metabot.persistence/strip-tool-output-bloat
             {:type   :tool-output
              :id     "call-2"
              :result {:structured-output {:some "data"}}})))))
