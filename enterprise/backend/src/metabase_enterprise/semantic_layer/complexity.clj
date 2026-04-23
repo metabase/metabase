@@ -388,10 +388,10 @@
                                            :key     (dotted-key :total)
                                            :score   (:total result))])]
                  event)]
-    ;; Submit every event — `(f event)` comes first in the `and` so it always runs, even after
-    ;; a prior failure has pinned `all-ok?` to false.
+    ;; No short-circuiting - even if they are failures, attempt the rest.
     (reduce (fn [all-ok? event]
               (and (analytics/track-event! :snowplow/data_complexity event) all-ok?))
+            ;; Since events cannot be empty, we don't need to worry about returning a vacuous true.
             true
             events)))
 
