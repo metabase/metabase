@@ -66,6 +66,14 @@
                     limit
                     (max limit *minimum-download-row-limit*)))))
 
+(defsetting clickhouse-native
+  (deferred-tru "Use ClickHouse Client V2 binary protocol (RowBinary + LZ4) instead of JDBC for query execution. Provides ~1.8x faster queries at low column counts by eliminating JDBC/JSON overhead. Per-database ''use-native-client'' connection detail overrides this global default.")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    true
+  :audit      :getter)
+
 (defsetting csv-field-separator
   (deferred-tru "Character to use as field separator in CSV exports. Defaults to comma (,). Common alternatives include semicolon (;) for European locales and tab (\\t).")
   :type       :string

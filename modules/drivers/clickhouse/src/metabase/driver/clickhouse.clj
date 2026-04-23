@@ -7,9 +7,12 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse-introspection]
+   [metabase.driver.clickhouse-native :as clickhouse-native]
+   [metabase.query-processor.settings :as qp.settings]
    [metabase.driver.clickhouse-nippy]
    [metabase.driver.clickhouse-qp]
    [metabase.driver.clickhouse-version :as clickhouse-version]
+   [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -176,6 +179,29 @@
          (.getString rset 1))))))
 
 (defmethod driver/db-start-of-week :clickhouse [_] :monday)
+
+;;; ------------------------------------------ Client V2 Native Protocol ------------------------------------------
+
+(defn- use-native-client?
+  "Returns true if this database should use the Client V2 binary protocol.
+   Per-database `use-native-client` connection detail takes precedence;
+   falls back to the global `MB_CLICKHOUSE_NATIVE` setting."
+  [database]
+  (let [details (driver.conn/effective-details database)
+        per-db  (get details :use-native-client)]
+    (if (some? per-db)
+      (boolean per-db)
+      (boolean (qp.settings/clickhouse-native)))))
+
+(defmethod driver/execute-reducible-query :clickhouse
+  [driver {{sql :query, params :params} :native, :as outer-query} context respond]
+  (let [database (driver-api/database (driver-api/metadata-provider))]
+    (if (use-native-client? database)
+      ;; Client V2 path: RowBinary format, LZ4 compression, connection pooling
+      (let [max-rows (driver-api/determine-query-max-rows outer-query)]
+        (clickhouse-native/execute-native-query database sql params max-rows respond))
+      ;; JDBC path: standard sql-jdbc execution
+      (sql-jdbc.execute/execute-reducible-query driver outer-query context respond))))
 
 (defmethod ddl.i/format-name :clickhouse
   [_ table-or-field-name]
