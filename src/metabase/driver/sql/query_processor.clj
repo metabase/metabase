@@ -338,6 +338,10 @@
 (defmethod date [:sql :month-of-year]    [_driver _ expr] (h2x/month expr))
 (defmethod date [:sql :quarter-of-year]  [_driver _ expr] (h2x/quarter expr))
 (defmethod date [:sql :year-of-era]      [_driver _ expr] (h2x/year expr))
+
+;; ISO8501 consider the first week of the year is the week that contains the 1st Thursday and week starts on Monday.
+;; - If 1st Jan is Friday, then 1st Jan is the last week of previous year.
+;; - If 1st Jan is Wednesday, then 1st Jan is in the 1st week.
 (defmethod date [:sql :week-of-year-iso] [_driver _ expr] (h2x/week expr))
 
 (defmulti datetime-diff
@@ -397,14 +401,6 @@
                                                   days-till-start-of-first-full-week)
         total-full-weeks                   (->honeysql driver [:ceil (compiled (h2x// total-full-week-days 7.0))])]
     (->integer driver (h2x/+ 1 total-full-weeks))))
-
-;; ISO8501 consider the first week of the year is the week that contains the 1st Thursday and week starts on Monday.
-;; - If 1st Jan is Friday, then 1st Jan is the last week of previous year.
-;; - If 1st Jan is Wednesday, then 1st Jan is in the 1st week.
-(defmethod date
-  [:sql :week-of-year-iso]
-  [_driver _ honeysql-expr]
-  (h2x/week honeysql-expr))
 
 ;; US consider the first week begins on 1st Jan, and 2nd week starts on the 1st Sunday
 (defmethod date [:sql :week-of-year-us]
