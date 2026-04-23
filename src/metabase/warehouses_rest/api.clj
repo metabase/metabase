@@ -604,6 +604,33 @@
           reducible))
   (.write writer "]"))
 
+(defn- visible-db-where
+  "Honeysql `:where` clause restricting a `:metabase_database :d` join to databases that
+  belong in a bulk export for the current user: not audit, not a router DB, and inside
+  the query-builder visibility filter."
+  []
+  [:and
+   [:= :d.is_audit false]
+   [:= :d.router_database_id nil]
+   [:in :d.id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]])
+
+(defn- visible-table-where
+  "Honeysql `:where` clause restricting a `:metabase_table :t` join to active, non-hidden
+  tables inside the current user's query-builder visibility filter."
+  []
+  [:and
+   [:= :t.active true]
+   [:= :t.visibility_type nil]
+   [:in :t.id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]])
+
+(defn- visible-field-where
+  "Honeysql `:where` clause restricting a `:metabase_field :f` join to active,
+  non-sensitive fields."
+  []
+  [:and
+   [:= :f.active true]
+   [:<> :f.visibility_type "sensitive"]])
+
 (defn- write-databases-metadata!
   "Streams the databases/tables/fields metadata as JSON to the given OutputStream.
 
@@ -612,17 +639,9 @@
   section is written directly to the underlying writer as rows are pulled from a
   reducible query, keeping memory usage bounded regardless of schema size."
   [^java.io.OutputStream os]
-  (let [db-filter [:and
-                   [:= :d.is_audit false]
-                   [:= :d.router_database_id nil]
-                   [:in :d.id (perms/visible-database-filter-select (perm-user-info) (perm-mapping))]]
-        t-filter  [:and
-                   [:= :t.active true]
-                   [:= :t.visibility_type nil]
-                   [:in :t.id (perms/visible-table-filter-select :id (perm-user-info) (perm-mapping))]]
-        f-filter  [:and
-                   [:= :f.active true]
-                   [:<> :f.visibility_type "sensitive"]]
+  (let [db-filter (visible-db-where)
+        t-filter  (visible-table-where)
+        f-filter  (visible-field-where)
         writer    (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
     (.write writer "{\"databases\":")
     (write-json-array! writer
@@ -695,6 +714,74 @@
   []
   (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
                       (write-databases-metadata! os)))
+
+;;; --------------------------------------- GET /api/database/field-values ---------------------------------------
+
+(defn- format-field-values-entry
+  "Formats a FieldValues row for the /field-values response. Omits `human_readable_values`
+  when empty to keep the common case compact."
+  [{:keys [field_id values human_readable_values has_more_values]}]
+  (m/assoc-some {:field_id        field_id
+                 :values          (or values [])
+                 :has_more_values (boolean has_more_values)}
+                :human_readable_values (not-empty human_readable_values)))
+
+(defn- write-field-values!
+  "Streams the `field_values` JSON array to `os`. Exports only unconstrained (`:full`)
+  FieldValues — sandboxed, impersonation, and linked-filter variants are user-specific
+  and excluded from the bulk export. Visibility filter matches `GET /api/database/metadata`
+  so every streamed row has a corresponding field entry there."
+  [^java.io.OutputStream os]
+  (let [db-filter (visible-db-where)
+        t-filter  (visible-table-where)
+        f-filter  (visible-field-where)
+        fv-filter [:and
+                   [:= :fv.type "full"]
+                   [:= :fv.hash_key nil]]
+        writer    (java.io.BufferedWriter. (java.io.OutputStreamWriter. os java.nio.charset.StandardCharsets/UTF_8))]
+    (.write writer "{\"field_values\":")
+    (write-json-array! writer
+                       (t2/reducible-select [:model/FieldValues
+                                             :fv.field_id :fv.values :fv.human_readable_values :fv.has_more_values]
+                                            {:from  [[:metabase_fieldvalues :fv]]
+                                             :join  [[:metabase_field :f]    [:= :fv.field_id :f.id]
+                                                     [:metabase_table :t]    [:= :f.table_id :t.id]
+                                                     [:metabase_database :d] [:= :t.db_id :d.id]]
+                                             :where [:and db-filter t-filter f-filter fv-filter]})
+                       format-field-values-entry)
+    (.write writer "}")
+    (.flush writer)))
+
+(mr/def ::field-values-info
+  [:map
+   [:field_id ::lib.schema.id/field]
+   [:values [:sequential [:sequential :any]]]
+   [:has_more_values :boolean]
+   [:human_readable_values {:optional true} [:sequential [:maybe :string]]]])
+
+(mr/def ::field-values-response
+  [:map
+   [:field_values [:sequential ::field-values-info]]])
+
+(api.macros/defendpoint :get "/field-values"
+  :- (server.streaming-response/streaming-response-schema ::field-values-response)
+  "Get sampled field values for every field in the instance, streamed as a single
+  `{\"field_values\": [...]}` document. Each entry carries `field_id`, `values`,
+  optional `human_readable_values`, and `has_more_values`.
+
+  Only unconstrained (`:full`) FieldValues are included — sandboxed, impersonation, and
+  linked-filter variants are user-specific and would bypass their own enforcement
+  mechanisms in a bulk export. Pair with `GET /api/database/metadata` to resolve
+  `field_id` to table and field names. Response is streamed for efficiency with large
+  schemas.
+
+  Admin-only: this endpoint exposes cached values computed over the unrestricted
+  dataset, so it would leak data past sandbox / impersonation rules if served to
+  regular users."
+  []
+  (api/check-superuser)
+  (streaming-response {:content-type "application/json; charset=utf-8"} [os _]
+                      (write-field-values! os)))
 
 ;;; ----------------------------------------- POST /api/database/metadata -----------------------------------------
 
@@ -1777,24 +1864,6 @@
     (delete-all-field-values-for-database! db))
   {:status :ok})
 
-(api.macros/defendpoint :post "/:id/permission/workspace/check"
-  :- [:map
-      [:status :string]
-      [:checked_at :string]
-      [:error {:optional true} :string]]
-  "Check if database's connection has the required permissions to manage workspaces.
-  By default it'll return the cached permission check."
-  [{:keys [id cached]} :- [:map [:id ms/PositiveInt]
-                           [:cached {:optional true
-                                     :default true} :boolean]]]
-  (api/check-superuser)
-  (let [db (api/check-404 (t2/select-one :model/Database id))
-        _  (api/check-400 (driver.u/supports? (:engine db) :workspace db)
-                          "Database does not support workspaces")]
-    (or (when cached
-          (t2/select-one-fn :workspace_permissions_status :model/Database id))
-        (database/check-and-cache-workspace-permissions! db))))
-
 ;;; ------------------------------------------ GET /api/database/:id/schemas -----------------------------------------
 
 (defenterprise current-user-can-manage-schema-metadata?
@@ -1839,7 +1908,7 @@
 
 (defn database-schemas
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
-  [id {:keys [include-editable-data-model? include-hidden? can-query? can-write-metadata? include-workspace?]}]
+  [id {:keys [include-editable-data-model? include-hidden? can-query? can-write-metadata?]}]
   (let [filter-schemas (fn [schemas]
                          (if include-editable-data-model?
                            (if-let [f (u/ignore-exceptions
@@ -1851,18 +1920,7 @@
         clauses         (cond-> []
                           ;; a non-nil value means Table is hidden --
                           ;; see [[metabase.warehouse-schema.models.table/visibility-types]]
-                          (not include-hidden?) (conj [:= :visibility_type nil])
-                          (not include-workspace?) (conj [:or
-                                                          [:= :schema nil]
-                                                          [:not
-                                                           (driver.u/workspace-isolated-schema-clause :schema)
-                                                          ;; TODO (Chris 2025-12-09) -- this might behave terribly without an index when there are lots of workspaces
-                                                           #_[:exists {:select [1]
-                                                                       :from   [[(t2/table-name :model/Workspace) :w]]
-                                                                       :where  [:and
-                                                                                [:= :w.database_id id]
-                                                                                [:= :w.schema :metabase_table.schema]
-                                                                                [:= :w.archived_at nil]]}]]]))
+                          (not include-hidden?) (conj [:= :visibility_type nil]))
         ;; For can-query? and can-write-metadata?, we need to filter based on tables in each schema
         filter-schemas-by-tables (fn [schemas]
                                    (if (or can-query? can-write-metadata?)
@@ -1902,22 +1960,15 @@
    {:keys [include_editable_data_model
            include_hidden
            can-query
-           can-write-metadata
-           include_workspace]} :- [:map
-                                   [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                   [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                   [:can-query                   {:optional true} [:maybe :boolean]]
-                                   [:can-write-metadata          {:optional true} [:maybe :boolean]]
-                                   [:include_workspace           {:default false} [:maybe ms/BooleanValue]]]]
+           can-write-metadata]} :- [:map
+                                    [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                    [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                    [:can-query                   {:optional true} [:maybe :boolean]]
+                                    [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
   (database-schemas id {:include-editable-data-model? include_editable_data_model
-                        :include-hidden? include_hidden
+                        :include-hidden?              include_hidden
                         :can-query?                   can-query
-                        :can-write-metadata?          can-write-metadata
-                        ;; TODO (Chris 2025-12-09) -- filtering out workspace schemas has a weird FE consequence - if you type one of those
-                        ;;       schemas out manually in the targets, it will offer to create it for you.
-                        ;;       this ends up being a no-op, so i guess it's harmless for now?
-                        ;;       it will look very weird when we add validation to refuse saving that target.
-                        :include-workspace? include_workspace}))
+                        :can-write-metadata?          can-write-metadata}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

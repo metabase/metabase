@@ -569,8 +569,7 @@
                     :model/Table
                     :model/Timeline
                     :model/Transform
-                    :model/User
-                    :model/Workspace}}
+                    :model/User}}
 
   collections-rest
   {:team "UX West"
@@ -794,7 +793,6 @@
            metabase.driver.common.parameters
            metabase.driver.common.parameters.parse
            metabase.driver.connection
-           metabase.driver.connection.workspaces
            metabase.driver.ddl.interface
            metabase.driver.h2
            metabase.driver.impl
@@ -1150,6 +1148,7 @@
            metabase.login-history.init}
    :uses #{analytics
            api
+           app-db
            channel
            request
            settings
@@ -2241,8 +2240,7 @@
            util
            warehouse-schema}
    :friends #{models
-              enterprise/transforms-python
-              enterprise/workspaces}
+              enterprise/transforms-python}
    :model-exports #{:model/Transform
                     :model/TransformJob
                     :model/TransformJobTransformTag
@@ -2276,8 +2274,7 @@
            util
            warehouse-schema}
    :friends #{transforms
-              enterprise/transforms-python
-              enterprise/workspaces}}
+              enterprise/transforms-python}}
 
   transforms-inspector
   {:team "Gadget"
@@ -2299,8 +2296,7 @@
                     :model/TransformJob
                     :model/TransformJobTransformTag
                     :model/TransformRun
-                    :model/TransformTag
-                    :model/WorkspaceMergeTransform}}
+                    :model/TransformTag}}
 
   types
   {:team "Querying Platform"
@@ -2559,11 +2555,8 @@
                     :model/Collection
                     :model/Database
                     :model/Field
+                    :model/FieldValues
                     :model/Table}}
-
-  workspaces
-  {:team "Metabot"
-   :uses #{util}}
 
   xrays
   {:team "Graphy"
@@ -2898,7 +2891,6 @@
            transforms
            transforms-base
            util}
-   :model-exports #{:model/Dependency}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3005,7 +2997,6 @@
               permissions
               premium-features
               settings
-              task
               util
               enterprise/dependencies
               enterprise/transforms-python}
@@ -3325,8 +3316,7 @@
   {:team "Graphy"
    :api  #{metabase-enterprise.transforms-python.api
            metabase-enterprise.transforms-python.core
-           metabase-enterprise.transforms-python.init
-           metabase-enterprise.transforms-python.python-runner}
+           metabase-enterprise.transforms-python.init}
    :uses #{analytics
            api
            app-db
@@ -3360,37 +3350,8 @@
 
   enterprise/workspaces
   {:team "Metabot"
-   :api  #{metabase-enterprise.workspaces.api
-           metabase-enterprise.workspaces.init}
-   :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}
-   :uses #{api
-           api-scope
-           app-db
-           config
-           database-routing
-           driver
-           events
-           lib
-           lib-be
-           models
-           premium-features
-           queries
-           ;; NOTE: we will remove this once we get "pure transforms" module.
-           query-processor
-           request
-           settings
-           sql-tools
-           transforms
-           transforms-base
-           util
-           warehouse-schema
-           enterprise/transforms-python}
-   :model-imports #{:model/Collection
-                    :model/Database
-                    :model/Dependency
-                    :model/Field
-                    :model/Table
-                    :model/Transform}}
+   :api  #{}
+   :uses #{premium-features}}
 
   enterprise/writable-connection
   {:team "Graphy"

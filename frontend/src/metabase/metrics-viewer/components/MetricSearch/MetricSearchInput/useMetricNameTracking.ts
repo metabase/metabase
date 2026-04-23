@@ -1,4 +1,4 @@
-import type { MutableRefObject } from "react";
+import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import type { MetricDefinition } from "metabase-lib/metric";
@@ -31,6 +31,7 @@ type UseMetricNameTrackingResult = {
     oldMetric: SelectedMetric,
     newMetric: SelectedMetric,
   ) => void;
+  setSearchMetricNames: Dispatch<SetStateAction<MetricNameMap>>;
 };
 
 export function useMetricNameTracking({
@@ -39,10 +40,12 @@ export function useMetricNameTracking({
   onRemoveMetric,
   onSwapMetric,
 }: UseMetricNameTrackingParams): UseMetricNameTrackingResult {
+  const [searchMetricNames, setSearchMetricNames] = useState<MetricNameMap>({});
   const [localMetricNames, setLocalMetricNames] = useState<MetricNameMap>({});
 
   const metricNames: MetricNameMap = useMemo(
     () => ({
+      ...searchMetricNames,
       ...localMetricNames,
       ...Object.fromEntries(
         Object.values(definitions)
@@ -54,7 +57,7 @@ export function useMetricNameTracking({
           .filter(([, name]) => name !== null),
       ),
     }),
-    [localMetricNames, definitions],
+    [searchMetricNames, localMetricNames, definitions],
   );
 
   const metricNamesRef = useRef<MetricNameMap>(metricNames);
@@ -108,5 +111,6 @@ export function useMetricNameTracking({
     handleAddMetric,
     handleRemoveMetric,
     handleSwapMetric,
+    setSearchMetricNames,
   };
 }
