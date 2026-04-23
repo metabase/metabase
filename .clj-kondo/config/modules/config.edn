@@ -2501,8 +2501,7 @@
   {:team "UX West"
    :api  #{metabase.warehouses.core
            metabase.warehouses.init
-           metabase.warehouses.models.database
-           metabase.warehouses.settings}
+           metabase.warehouses.models.database}
    :uses #{analytics
            api
            app-db

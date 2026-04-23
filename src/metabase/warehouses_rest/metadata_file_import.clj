@@ -18,7 +18,6 @@
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
    [metabase.warehouses-rest.metadata-import-core :as core]
-   [metabase.warehouses.settings :as warehouses.settings]
    [toucan2.core :as t2])
   (:import
    (com.fasterxml.jackson.core JsonParser JsonToken)
@@ -243,23 +242,18 @@
                       {:kind :file_not_readable, :path path})))
     f))
 
-(defn- require-sync-disabled! []
-  (when-not (warehouses.settings/disable-sync)
-    (throw (ex-info (str "MB_TABLE_METADATA_PATH / MB_FIELD_VALUES_PATH require `disable-sync` "
-                         "to be true. Set `MB_DISABLE_SYNC=true` or add `disable-sync: true` to "
-                         "your config.yml.")
-                    {:kind :sync-must-be-disabled}))))
-
 (defn initialize-from-env!
   "If `MB_TABLE_METADATA_PATH` or `MB_FIELD_VALUES_PATH` is set in the environment, stream the
   referenced file(s) through the metadata-import pipeline. Returns `:ok` in every successful
   case — including the no-env-vars case, which is a silent no-op.
 
   Pre-conditions (all hard failures):
-    - `disable-sync` must be true when either path is set.
     - Files referenced by the env vars must exist and be readable.
     - `MB_FIELD_VALUES_PATH` on its own is not supported — the field-id map is derived from the
       metadata file, so loading just field values would leave the file ids unresolved.
+
+  `disable-sync` is NOT required; callers can load files into a sync-enabled instance if they
+  want. Behavior in that case is up to them.
 
   Invoked once during boot from `metabase.core.config-from-file/init-from-file-if-code-available!`."
   []
@@ -270,23 +264,20 @@
       :ok
 
       (and (some? fv-path) (nil? metadata-path))
-      (do (require-sync-disabled!)
-          (throw (ex-info "MB_FIELD_VALUES_PATH set without MB_TABLE_METADATA_PATH — field ids cannot be resolved"
-                          {:kind :missing_metadata_path})))
+      (throw (ex-info "MB_FIELD_VALUES_PATH set without MB_TABLE_METADATA_PATH — field ids cannot be resolved"
+                      {:kind :missing_metadata_path}))
 
       :else
-      (do
-        (require-sync-disabled!)
-        (let [metadata-file (assert-file-readable! metadata-path)
-              fv-file       (when fv-path (assert-file-readable! fv-path))]
-          (log/infof "metadata-file-import: loading metadata from %s" metadata-path)
-          (let [db-id-map             (load-databases! metadata-file)
-                tbl-id-map            (load-tables! metadata-file db-id-map)
-                [fld-id-map inserted] (load-fields-insert! metadata-file tbl-id-map)]
-            (load-fields-finalize! metadata-file fld-id-map inserted)
-            (log/infof "metadata-file-import: databases=%d tables=%d fields=%d (inserted=%d)"
-                       (count db-id-map) (count tbl-id-map) (count fld-id-map) (count inserted))
-            (when fv-file
-              (log/infof "metadata-file-import: loading field values from %s" fv-path)
-              (load-field-values! fv-file fld-id-map))))
+      (let [metadata-file (assert-file-readable! metadata-path)
+            fv-file       (when fv-path (assert-file-readable! fv-path))]
+        (log/infof "metadata-file-import: loading metadata from %s" metadata-path)
+        (let [db-id-map             (load-databases! metadata-file)
+              tbl-id-map            (load-tables! metadata-file db-id-map)
+              [fld-id-map inserted] (load-fields-insert! metadata-file tbl-id-map)]
+          (load-fields-finalize! metadata-file fld-id-map inserted)
+          (log/infof "metadata-file-import: databases=%d tables=%d fields=%d (inserted=%d)"
+                     (count db-id-map) (count tbl-id-map) (count fld-id-map) (count inserted))
+          (when fv-file
+            (log/infof "metadata-file-import: loading field values from %s" fv-path)
+            (load-field-values! fv-file fld-id-map)))
         :ok))))
