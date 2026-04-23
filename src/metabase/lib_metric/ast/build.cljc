@@ -243,6 +243,13 @@
   (fn [agg-type _mbql-clause] agg-type)
   :hierarchy #'mbql-agg-hierarchy)
 
+(defn- field-ref->column-node
+  "Build an AST column node from a simple [:field opts id] ref, preserving
+  `:source-field` so implicit-join metrics compile to queries the QP can resolve."
+  [[_field opts field-id]]
+  (cond-> (column-node field-id)
+    (:source-field opts) (assoc :source-field (:source-field opts))))
+
 (defmethod mbql-aggregation->node* :count
   [_ mbql-clause]
   (let [[_agg-type _opts & args] mbql-clause
@@ -251,8 +258,7 @@
       {:node/type :aggregation/count}
       (if (simple-field-ref? first-arg)
         {:node/type :aggregation/count
-         :column    (let [[_field _opts field-id] first-arg]
-                      (column-node field-id))}
+         :column    (field-ref->column-node first-arg)}
         {:node/type :aggregation/mbql
          :clause    mbql-clause}))))
 
@@ -262,8 +268,7 @@
         first-arg (first args)]
     (if (simple-field-ref? first-arg)
       {:node/type (keyword "aggregation" (name agg-type))
-       :column    (let [[_field _opts field-id] first-arg]
-                    (column-node field-id))}
+       :column    (field-ref->column-node first-arg)}
       {:node/type :aggregation/mbql
        :clause    mbql-clause})))
 
