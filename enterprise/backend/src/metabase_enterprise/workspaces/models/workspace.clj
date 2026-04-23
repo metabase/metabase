@@ -48,6 +48,14 @@
   (when-let [ws (t2/select-one :model/Workspace :id id)]
     (t2/hydrate ws :creator :databases)))
 
+(defn get-workspace-by-name
+  "Return the Workspace with the given name and its `:databases` + `:creator` hydrated,
+  or nil if none exists. Workspace names are not unique at the schema level, so this
+  returns the lowest-id match."
+  [workspace-name]
+  (when-let [ws (t2/select-one :model/Workspace :name workspace-name {:order-by [[:id :asc]]})]
+    (t2/hydrate ws :creator :databases)))
+
 (defn- with-workspace-database-defaults
   "Fill server-managed columns that are NOT NULL in the DB with their defaults when callers omit them."
   [wsd workspace-id]

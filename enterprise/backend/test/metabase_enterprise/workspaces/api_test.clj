@@ -430,6 +430,84 @@
   (testing "GET /:id/config/:format with an unknown id returns 404"
     (mt/user-http-request :crowberto :get 404 (str "ee/workspace/" Integer/MAX_VALUE "/config/json"))))
 
+(deftest get-workspace-bootstrap-happy-path-test
+  (testing "GET /ee/workspace/bootstrap/:name returns an executable bash script with the config inlined"
+    (mt/with-temp [:model/Database          {db-id :id} {:name    "dw"
+                                                         :engine  :postgres
+                                                         :details {:host "h" :port 5432 :dbname "d"}}
+                   :model/Workspace         {id :id}    {:name "boot ws"}
+                   :model/WorkspaceDatabase _           {:workspace_id     id
+                                                         :database_id      db-id
+                                                         :database_details {:user "u" :password "p"}
+                                                         :output_schema    "s"
+                                                         :input_schemas    ["raw"]
+                                                         :status           :provisioned}]
+      (let [resp (mt/user-http-request :crowberto :get 200 "ee/workspace/bootstrap/boot%20ws")]
+        (is (string? resp))
+        (testing "is a bash script"
+          (is (clojure.string/starts-with? resp "#!/usr/bin/env bash")))
+        (testing "references the workspace by name"
+          (is (re-find #"workspace \"boot ws\"" resp)))
+        (testing "defaults JAR to /tmp/metabase.jar"
+          (is (re-find #"MB_CHILD_JAR:-/tmp/metabase.jar" resp)))
+        (testing "derives the workdir from the slug"
+          (is (re-find #"\.metabase-workspaces/boot-ws" resp)))
+        (testing "inlines the config.yml contents"
+          (is (re-find #"(?m)^version: 1" resp))
+          (is (re-find #"name: boot ws" resp))
+          (is (re-find #"workspace@workspace\.local" resp)))
+        (testing "requires PARENT_URL and MB_API_KEY so it can fetch from the parent"
+          (is (re-find #"PARENT_URL:\?" resp))
+          (is (re-find #"MB_API_KEY:\?" resp)))
+        (testing "requires MB_PREMIUM_EMBEDDING_TOKEN — :config-text-file is premium-gated"
+          (is (re-find #"MB_PREMIUM_EMBEDDING_TOKEN:\?" resp)))
+        (testing "unsets host MB_DB_* vars so the child uses its own H2 app db"
+          (is (re-find #"compgen -e \| grep -E '\^MB_DB_'" resp))
+          (is (re-find #"unset \"\$_name\"" resp)))
+        (testing "points MB_CONFIG_FILE_PATH at the workspace workdir"
+          (is (re-find #"export MB_CONFIG_FILE_PATH=\"\$WORKDIR/config.yml\"" resp)))
+        (testing "fetches metadata.json and field_values.json from the parent"
+          (is (re-find #"\$PARENT_URL/api/database/metadata" resp))
+          (is (re-find #"\$PARENT_URL/api/database/field-values" resp)))
+        (testing "hands both files to the child via the file-import env vars"
+          (is (re-find #"export MB_TABLE_METADATA_PATH=\"\$WORKDIR/metadata.json\"" resp))
+          (is (re-find #"export MB_FIELD_VALUES_PATH=\"\$WORKDIR/field_values.json\"" resp)))
+        (testing "sets MB_JETTY_PORT so jetty binds to the chosen host port"
+          (is (re-find #"export MB_JETTY_PORT=\"\$PORT\"" resp)))
+        (testing "uses its own H2 app db under the workspace workdir"
+          (is (re-find #"export MB_DB_TYPE=h2" resp))
+          (is (re-find #"export MB_DB_FILE=\"\$WORKDIR/metabase.db\"" resp)))
+        (testing "launches the jar as a backgrounded nohup process, tracked via pidfile"
+          (is (re-find #"nohup java -jar \"\$JAR\"" resp))
+          (is (re-find #"\$WORKDIR/metabase.log" resp))
+          (is (re-find #"\$WORKDIR/metabase.pid" resp)))
+        (testing "stops any previous child recorded in the pidfile before starting"
+          (is (re-find #"kill \"\$OLD_PID\"" resp)))
+        (testing "does NOT use docker"
+          (is (not (re-find #"docker run" resp)))
+          (is (not (re-find #"--network host" resp))))))))
+
+(deftest get-workspace-bootstrap-404-on-unknown-name-test
+  (testing "GET /ee/workspace/bootstrap/:name with an unknown name returns 404"
+    (mt/user-http-request :crowberto :get 404 "ee/workspace/bootstrap/no-such-workspace-name-xyz")))
+
+(deftest get-workspace-bootstrap-409-on-non-provisioned-test
+  (testing "GET /ee/workspace/bootstrap/:name returns 409 if any WorkspaceDatabase is not :provisioned"
+    (mt/with-temp [:model/Workspace         {id :id} {:name "bootstrap-partial"}
+                   :model/WorkspaceDatabase _ {:workspace_id     id
+                                               :database_id      (mt/id)
+                                               :database_details {}
+                                               :output_schema    ""
+                                               :input_schemas    ["public"]
+                                               :status           :unprovisioned}]
+      (is (some? id))
+      (mt/user-http-request :crowberto :get 409 "ee/workspace/bootstrap/bootstrap-partial"))))
+
+(deftest get-workspace-bootstrap-requires-superuser-test
+  (testing "Non-superusers get 403 from GET /ee/workspace/bootstrap/:name"
+    (mt/with-temp [:model/Workspace _ {:name "bootstrap-guarded"}]
+      (mt/user-http-request :rasta :get 403 "ee/workspace/bootstrap/bootstrap-guarded"))))
+
 (deftest get-table-remappings-returns-rows-test
   (testing "GET /ee/workspace/remappings returns every row in the table_remapping table"
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details {}}

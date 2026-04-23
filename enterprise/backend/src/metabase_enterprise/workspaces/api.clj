@@ -1,5 +1,6 @@
 (ns metabase-enterprise.workspaces.api
   (:require
+   [metabase-enterprise.workspaces.bootstrap :as bootstrap]
    [metabase-enterprise.workspaces.config :as config]
    [metabase-enterprise.workspaces.core :as ws-core]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
@@ -192,6 +193,25 @@
       :yaml {:status  200
              :headers {"Content-Type" "application/yaml"}
              :body    (config/config->yaml result)})))
+
+(api.macros/defendpoint :get "/bootstrap/:name"
+  "Return a self-contained bash script that starts a child Metabase instance
+  preloaded with this Workspace's config. The script pulls the docker image,
+  inlines the config.yml as a heredoc, runs the container, and polls
+  `/api/health`. Designed to be piped into bash:
+
+    curl -H \"x-api-key: $MB_API_KEY\" $PARENT_URL/api/ee/workspace/bootstrap/$WORKSPACE_NAME | bash
+
+  Returns 404 if no Workspace has the given name, or 409 if any of its
+  databases is not `:provisioned`."
+  [{:keys [name]} :- [:map [:name ms/NonBlankString]]]
+  (api/check-superuser)
+  (let [ws     (api/check-404 (workspace/get-workspace-by-name name))
+        script (bootstrap/build-bootstrap-script ws)]
+    {:status  200
+     :headers {"Content-Type"        "text/x-shellscript"
+               "Content-Disposition" (str "attachment; filename=\"bootstrap-" name ".sh\"")}
+     :body    script}))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace` routes"
