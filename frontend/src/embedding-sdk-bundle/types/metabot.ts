@@ -5,7 +5,7 @@ import type { StaticQuestionProps } from "embedding-sdk-bundle/components/public
 
 // User messages
 
-type MetabotUserTextMessage = {
+export type MetabotUserTextMessage = {
   id: string;
   role: "user";
   type: "text";
@@ -14,14 +14,14 @@ type MetabotUserTextMessage = {
 
 // Agent messages
 
-type MetabotAgentTextMessage = {
+export type MetabotAgentTextMessage = {
   id: string;
   role: "agent";
   type: "text";
   message: string;
 };
 
-type MetabotAgentChartMessage = {
+export type MetabotAgentChartMessage = {
   id: string;
   role: "agent";
   type: "chart";
@@ -31,12 +31,15 @@ type MetabotAgentChartMessage = {
   Chart: React.ComponentType<MetabotChartProps>;
 };
 
+
 // Internal variants intentionally omitted. `use-metabot.tsx` filters these out before mapping:
 // - `tool_call`: debug-only, gated on metabot's `debugMode`.
 // - `edit_suggestion`: targets the in-app Transform editor, which the SDK does not render.
 // - `action`: unused in shipped code.
 // - `todo_list`: only reachable via the `codegen/transforms` profile, not the SDK.
-type MetabotAgentMessage = MetabotAgentTextMessage | MetabotAgentChartMessage;
+export type MetabotAgentMessage =
+  | MetabotAgentTextMessage
+  | MetabotAgentChartMessage;
 
 export type MetabotMessage = MetabotUserTextMessage | MetabotAgentMessage;
 
