@@ -97,9 +97,7 @@ export function DatabaseMappingSection({
       >
         {mappings.length === 0 ? (
           <Box p="xl">
-            <ListEmptyState
-              label={t`Add at least one database to create this workspace.`}
-            />
+            <ListEmptyState label={t`Add at least one database.`} />
           </Box>
         ) : (
           <DatabaseMappingList

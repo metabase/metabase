@@ -2,11 +2,14 @@ import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Group, Text } from "metabase/ui";
+import { Button, Group, Icon, Text } from "metabase/ui";
+import { openSaveDialog } from "metabase/utils/dom";
 import {
+  useLazyGetWorkspaceConfigYamlQuery,
   useProvisionWorkspaceMutation,
   useUnprovisionWorkspaceMutation,
 } from "metabase-enterprise/api";
+import type { WorkspaceId } from "metabase-types/api";
 
 import type { WorkspaceInfo } from "../../../types";
 import {
@@ -26,21 +29,59 @@ export function WorkspaceStatusSection({
   workspace,
 }: WorkspaceStatusSectionProps) {
   const workspaceId = workspace.id;
+  if (workspaceId == null) {
+    return null;
+  }
+
+  const isProvisioned = workspace.databases.every(isDatabaseProvisioned);
+
+  return (
+    <TitleSection
+      label={t`Status`}
+      description={t`Provision to enable transforms in this workspace.`}
+    >
+      <Group p="md" justify="space-between" wrap="nowrap">
+        <WorkspaceStatus workspace={workspace} />
+        <Group gap="sm" wrap="nowrap">
+          {isProvisioned && <DownloadConfigButton workspaceId={workspaceId} />}
+          {isProvisioned ? (
+            <UnprovisionButton
+              workspace={workspace}
+              workspaceId={workspaceId}
+            />
+          ) : (
+            <ProvisionButton workspace={workspace} workspaceId={workspaceId} />
+          )}
+        </Group>
+      </Group>
+    </TitleSection>
+  );
+}
+
+function WorkspaceStatus({ workspace }: { workspace: WorkspaceInfo }) {
+  return (
+    <Group gap="sm" wrap="nowrap">
+      {getStatusIcon(workspace)}
+      <Text>{getStatusMessage(workspace)}</Text>
+    </Group>
+  );
+}
+
+type StatusButtonProps = {
+  workspace: WorkspaceInfo;
+  workspaceId: WorkspaceId;
+};
+
+function ProvisionButton({ workspace, workspaceId }: StatusButtonProps) {
   const [provisionWorkspace] = useProvisionWorkspaceMutation();
-  const [unprovisionWorkspace] = useUnprovisionWorkspaceMutation();
   const { modalContent, show } = useConfirmation();
   const { sendErrorToast } = useMetadataToasts();
 
-  const isProvisioning = workspace.databases.some(isDatabaseProvisioning);
-  const isUnprovisioning = workspace.databases.some(isDatabaseUnprovisioning);
-  const isProvisioned = workspace.databases.every(isDatabaseProvisioned);
-  const isInProgress = isProvisioning || isUnprovisioning;
+  const isInProgress =
+    workspace.databases.some(isDatabaseProvisioning) ||
+    workspace.databases.some(isDatabaseUnprovisioning);
 
   const handleProvision = () => {
-    if (workspaceId == null) {
-      return;
-    }
-
     show({
       title: t`Provision this workspace?`,
       message: t`Provisioning creates a temporary schema in each database to run transforms in isolation, and creates a user with read-only access to the selected schemas and write access to the workspace schema.`,
@@ -55,11 +96,30 @@ export function WorkspaceStatusSection({
     });
   };
 
-  const handleUnprovision = () => {
-    if (workspaceId == null) {
-      return;
-    }
+  return (
+    <>
+      <Button
+        variant="filled"
+        disabled={isInProgress}
+        onClick={handleProvision}
+      >
+        {getButtonLabel(workspace)}
+      </Button>
+      {modalContent}
+    </>
+  );
+}
 
+function UnprovisionButton({ workspace, workspaceId }: StatusButtonProps) {
+  const [unprovisionWorkspace] = useUnprovisionWorkspaceMutation();
+  const { modalContent, show } = useConfirmation();
+  const { sendErrorToast } = useMetadataToasts();
+
+  const isInProgress =
+    workspace.databases.some(isDatabaseProvisioning) ||
+    workspace.databases.some(isDatabaseUnprovisioning);
+
+  const handleUnprovision = () => {
     show({
       title: t`Unprovision this workspace?`,
       message: t`Unprovisioning deletes the workspace user and the temporary schema from each database.`,
@@ -75,24 +135,40 @@ export function WorkspaceStatusSection({
   };
 
   return (
-    <TitleSection
-      label={t`Status`}
-      description={t`Provision the workspace to make it available for transforms.`}
-    >
-      <Group p="md" justify="space-between" wrap="nowrap">
-        <Group gap="sm" wrap="nowrap">
-          {getStatusIcon(workspace)}
-          <Text>{getStatusMessage(workspace)}</Text>
-        </Group>
-        <Button
-          variant={isProvisioned ? "default" : "filled"}
-          disabled={isInProgress}
-          onClick={isProvisioned ? handleUnprovision : handleProvision}
-        >
-          {getButtonLabel(workspace)}
-        </Button>
-      </Group>
+    <>
+      <Button
+        variant="default"
+        disabled={isInProgress}
+        onClick={handleUnprovision}
+      >
+        {getButtonLabel(workspace)}
+      </Button>
       {modalContent}
-    </TitleSection>
+    </>
+  );
+}
+
+function DownloadConfigButton({ workspaceId }: { workspaceId: WorkspaceId }) {
+  const [fetchConfig] = useLazyGetWorkspaceConfigYamlQuery();
+  const { sendErrorToast } = useMetadataToasts();
+
+  const handleDownload = async () => {
+    const { data, error } = await fetchConfig(workspaceId);
+    if (error || data == null) {
+      sendErrorToast(t`Failed to download config file`);
+      return;
+    }
+    const blob = new Blob([data], { type: "application/yaml" });
+    openSaveDialog("config.yml", blob);
+  };
+
+  return (
+    <Button
+      variant="filled"
+      leftSection={<Icon name="download" />}
+      onClick={handleDownload}
+    >
+      {t`Download config file`}
+    </Button>
   );
 }
