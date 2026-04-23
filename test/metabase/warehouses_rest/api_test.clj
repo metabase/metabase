@@ -1368,16 +1368,17 @@
                 {:old_id 901 :new_id db-b}]
                resp))))))
 
-(deftest post-metadata-databases-fast-fail-test
-  (testing "POST /api/database/metadata/databases — no_match terminates the stream; same-batch successes are discarded"
-    (mt/with-temp [:model/Database _ {:name "ff-db-a" :engine :h2}]
+(deftest post-metadata-databases-no-match-per-row-test
+  (testing "POST /api/database/metadata/databases — no_match emits a per-row error and the stream continues"
+    (mt/with-temp [:model/Database {db-a :id} {:name "ff-db-a" :engine :h2}]
       (let [resp (ndjson-post :crowberto "database/metadata/databases"
                               [{:id 900 :name "ff-db-a" :engine "h2"}
                                {:id 901 :name "does-not-exist" :engine "h2"}
                                {:id 902 :name "ff-db-a" :engine "h2"}])]
-        (testing "exactly one line is written — the error for line 2"
-          (is (= 1 (count resp)))
-          (is (=? {:error "no_match" :line 2 :old_id 901} (first resp))))))))
+        (is (=? [{:old_id 900 :new_id db-a}
+                 {:old_id 901 :error "no_match" :line 2 :detail string?}
+                 {:old_id 902 :new_id db-a}]
+                resp))))))
 
 (deftest post-metadata-databases-batched-test
   (testing "POST /api/database/metadata/databases — > import-batch-size rows stream successfully"

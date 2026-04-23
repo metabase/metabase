@@ -1203,9 +1203,11 @@
                     [:new_id {:optional true} :int]
                     [:error  {:optional true} :string]]])
   "Match incoming databases against target databases by `(name, engine)`. Request body is NDJSON,
-  one database per line; response is NDJSON, one line per input line with `{old_id, new_id}` on
-  success. On any error (including a `no_match` row) the stream terminates after emitting a
-  single `{error, detail, line}` record.
+  one database per line; response is NDJSON, one line per input line. Matched rows get
+  `{old_id, new_id}`; rows whose database does not exist on the target get
+  `{old_id, error: \"no_match\", detail, line}` and the stream continues — the CLI is expected
+  to skip dependent tables/fields for those `old_id`s. Malformed input or an unexpected server
+  error still terminates the stream after emitting a single error record.
 
   Databases are never auto-created. The CLI uses this response to rewrite `db_id` on tables
   before calling `POST /metadata/tables`. Superuser only."

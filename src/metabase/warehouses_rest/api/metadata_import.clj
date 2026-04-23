@@ -147,12 +147,11 @@
                                    :name   name
                                    :engine (engine-name engine))]
       (.add buffer {:old_id id :new_id (:id match)})
-      (throw (ex-info "no_match"
-                      {:kind :no_match
-                       :line line-num
-                       :old_id id
-                       :detail (format "No database with name=%s engine=%s"
-                                       (pr-str name) (pr-str (engine-name engine)))})))
+      (.add buffer {:old_id id
+                    :error  "no_match"
+                    :line   line-num
+                    :detail (format "No database with name=%s engine=%s"
+                                    (pr-str name) (pr-str (engine-name engine)))}))
     (catch Throwable e
       (throw (ndjson-import/wrap-row-error e line-num {:old_id id})))))
 
