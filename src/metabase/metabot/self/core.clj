@@ -2,6 +2,7 @@
   (:require
    [clj-http.client :as http]
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [metabase.llm.settings :as llm]
    [metabase.premium-features.core :as premium-features]
@@ -269,10 +270,16 @@
                                     :result     (or output "")}
                              error (assoc :error (json/encode error)))))))
 
+(defn- format-usage
+  "Convert internal usage map to the format expected by benchmarks."
+  [usage]
+  (update-vals usage #(set/rename-keys % {:promptTokens :prompt :completionTokens :completion})))
+
 (defn format-finish-line
   "Format finish part as AI SDK line: d:{\"finishReason\":\"stop\",\"usage\":{...}}"
   [error? usage]
-  (str "d:" (json/encode {:finishReason (if error? "error" "stop") :usage (or usage {})})))
+  (str "d:" (json/encode {:finishReason (if error? "error" "stop")
+                          :usage        (format-usage (or usage {}))})))
 
 (defn format-start-line
   "Format start part as AI SDK line: f:{\"messageId\":...}"
@@ -300,7 +307,7 @@
   ([{:keys [emit-usage?]}]
    (fn [rf]
      (let [error? (volatile! false)
-           usage  (volatile! nil)]
+           usage  (volatile! {})]
        (fn
          ([] (rf))
          ([result]
@@ -320,7 +327,7 @@
             :start       (rf result (format-start-line part))
             :finish      result ;; Don't emit here, we emit in completion arity
             :usage       (do
-                           (vreset! usage (:usage part))
+                           (vswap! usage assoc (:model part) (:usage part))
                            result)
             ;; Pass through unknown types as data
             (rf result (format-data-line part)))))))))
