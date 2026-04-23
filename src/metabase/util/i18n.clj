@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.util.i18n.common :as i18n.common]
    [metabase.util.i18n.impl :as i18n.impl]
+   [metabase.util.i18n.validation :as i18n.validation]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [net.cgrand.macrovich :as macros]
@@ -62,13 +63,36 @@
   ^Locale []
   (locale (user-locale-string)))
 
+(def ^:private test-only-locales
+  "Locales that are hidden from language pickers unless `MB_ENABLE_TEST_LOCALES=true`.
+  Currently just the `en_ZZ` pseudo-locale. See UXW-3460."
+  #{"en_ZZ"})
+
+(def ^:private locale-display-name-overrides
+  "Custom display names for locales whose JVM default is confusing. The JVM renders `en_ZZ` as
+  \"English (Unknown Region)\" because it has no CLDR data for the user-assigned region code `ZZ`. We override it to
+  \"English (ZZ)\" which is clearer for developers choosing it in the language picker."
+  {"en_ZZ" "English (ZZ)"})
+
+(defn- show-test-locales?
+  "Whether test-only pseudo-locales like `en_ZZ` should appear in language pickers.
+  True when the `MB_ENABLE_TEST_LOCALES` env var is explicitly set to `\"true\"`
+  (e.g. by the Cypress runner or local dev environment)."
+  []
+  (= "true" (System/getenv "MB_ENABLE_TEST_LOCALES")))
+
 (defn available-locales-with-names
   "Returns all locale abbreviations and their full names"
   []
-  (for [locale-name (i18n.impl/available-locale-names)]
-    ;; Abbreviation must be normalized or the language picker will show incorrect saved value
-    ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
-    [(normalized-locale-string locale-name) (.getDisplayName (locale locale-name))]))
+  ;; Test-only pseudo-locales (e.g. `en_ZZ`) are hidden unless `MB_ENABLE_TEST_LOCALES=true`.
+  (let [show-test? (show-test-locales?)]
+    (for [locale-name (i18n.impl/available-locale-names)
+          ;; Abbreviation must be normalized or the language picker will show incorrect saved value
+          ;; because the locale is normalized before saving (metabase#15657, metabase#16654)
+          :let [normalized (normalized-locale-string locale-name)]
+          :when (or show-test?
+                    (not (contains? test-only-locales normalized)))]
+      [normalized (get locale-display-name-overrides normalized (.getDisplayName (locale locale-name)))])))
 
 (def ^:private included-locales
   (delay (set (map normalized-locale-string (i18n.impl/available-locale-names)))))
@@ -141,10 +165,10 @@
         message-format             (MessageFormat. format-string)
         ;; number of {n} placeholders in format string including any you may have skipped. e.g. "{0} {2}" -> 3
         expected-num-args-by-index (count (.getFormatsByArgumentIndex message-format))
-        ;; number of {n} placeholders in format string *not* including ones you make have skipped. e.g. "{0} {2}" -> 2
+        ;; number of {n} placeholders in format string *not* including ones you may have skipped. e.g. "{0} {2}" -> 2
         expected-num-args          (count (.getFormats message-format))
         actual-num-args            (count args)]
-    (assert (= expected-num-args expected-num-args-by-index)
+    (assert (not (i18n.validation/skipped-arg-index? format-string))
             (format "(deferred-)trs/tru with format string %s is missing some {} placeholders. Expected %s. Did you skip any?"
                     (pr-str (.toPattern message-format))
                     (str/join ", " (map (partial format "{%d}") (range expected-num-args-by-index)))))

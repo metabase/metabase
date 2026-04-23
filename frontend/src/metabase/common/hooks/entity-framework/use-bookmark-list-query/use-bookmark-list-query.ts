@@ -13,7 +13,7 @@ import { useEntityListQuery } from "../use-entity-list-query";
 export const useBookmarkListQuery = (
   props: UseEntityListQueryProps = {},
 ): UseEntityListQueryResult<Bookmark> => {
-  return useEntityListQuery(props, {
+  return useEntityListQuery<Bookmark>(props, {
     fetchList: Bookmarks.actions.fetchList,
     getError: Bookmarks.selectors.getError,
     getList: Bookmarks.selectors.getList,

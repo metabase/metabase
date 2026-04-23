@@ -8,6 +8,7 @@ import { Box } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { useSdkQuestionContext } from "../../../context";
+import { LAST_STAGE_INDEX } from "../../../utils/stages";
 import type { SDKFilterItem } from "../hooks/use-filter-data";
 import { useFilterHandlers } from "../hooks/use-filter-handlers";
 
@@ -76,7 +77,6 @@ export const FilterPicker = ({
   };
 
   const query = question.query();
-  const stageIndex = -1;
 
   return (
     <FilterPickerInner
@@ -86,7 +86,7 @@ export const FilterPicker = ({
       onClose={onClose}
       onBack={onBack}
       query={query}
-      stageIndex={stageIndex}
+      stageIndex={LAST_STAGE_INDEX}
       onQueryChange={onQueryChange}
     />
   );
