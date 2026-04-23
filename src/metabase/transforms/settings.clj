@@ -17,6 +17,16 @@
   :encryption :no
   :audit      :getter)
 
+(setting/defsetting transform-job-concurrency
+  (deferred-tru "Maximum number of transforms a single transform-job run may execute in parallel.")
+  :type       :integer
+  :visibility :internal
+  :default    1
+  :feature    :transforms-basic
+  :export?    false
+  :encryption :no
+  :audit      :getter)
+
 (setting/defsetting transforms-enabled
   (deferred-tru "Enable transforms for instances that have not explicitly purchased the transform add-on.")
   :type       :boolean

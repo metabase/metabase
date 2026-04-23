@@ -16,6 +16,7 @@
    [metabase.transforms.jobs :as jobs]
    [metabase.transforms.models.job-run :as transforms.job-run]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.settings :as transforms.settings]
    [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.test-util :refer [with-transform-cleanup!]]
    [metabase.transforms.util :as transforms.u]
@@ -519,3 +520,62 @@
                                        (deref fut2 30000 {:error :timeout})]]
                           (is (every? #(= :succeeded (-> % :result ::jobs/status)) results)
                               "Both threads should succeed"))))))))))))))
+
+(deftest run-transforms-parallel-dispatch-test
+  (mt/with-premium-features #{:transforms-basic}
+    (testing "Independent transforms dispatch concurrently up to the configured limit"
+      (let [plan     [{:id 1 :name "a"} {:id 2 :name "b"} {:id 3 :name "c"} {:id 4 :name "d"}]
+            deps     {1 #{} 2 #{} 3 #{} 4 #{}}
+            live     (atom 0)
+            max-live (atom 0)
+            bump     (fn [] (let [n (swap! live inc)] (swap! max-live max n)))]
+        (mt/with-temporary-setting-values [transforms.settings/transform-job-concurrency 4]
+          (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
+                        jobs/run-transform! (fn [_run-id _run-method _user-id _transform]
+                                              (bump)
+                                              (Thread/sleep 150)
+                                              (swap! live dec))]
+            (let [result (jobs/run-transforms! 0 #{1 2 3 4} {:run-method :manual})]
+              (is (= {::jobs/status :succeeded} result))
+              (is (= 4 @max-live) "all four independents should be in flight at once"))))))
+
+    (testing "Dependents wait for their dependencies even when concurrency > 1"
+      (let [plan  [{:id 1 :name "a"} {:id 2 :name "b"}]
+            deps  {1 #{} 2 #{1}}
+            order (atom [])]
+        (mt/with-temporary-setting-values [transforms.settings/transform-job-concurrency 4]
+          (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
+                        jobs/run-transform! (fn [_ _ _ transform]
+                                              (when (= 1 (:id transform))
+                                                (Thread/sleep 100))
+                                              (swap! order conj (:id transform)))]
+            (jobs/run-transforms! 0 #{1 2} {:run-method :manual})
+            (is (= [1 2] @order) "a must complete before b starts")))))
+
+    (testing "Dependents of a failed transform are skipped transitively"
+      (let [plan [{:id 1 :name "a"} {:id 2 :name "b"} {:id 3 :name "c"}]
+            deps {1 #{} 2 #{1} 3 #{2}}]
+        (mt/with-temporary-setting-values [transforms.settings/transform-job-concurrency 4]
+          (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
+                        jobs/run-transform! (fn [_ _ _ transform]
+                                              (when (= 1 (:id transform))
+                                                (throw (ex-info "boom" {}))))]
+            (let [result (jobs/run-transforms! 0 #{1 2 3} {:run-method :manual})]
+              (is (= :failed (::jobs/status result)))
+              (is (= #{1 2 3} (set (map (comp :id ::jobs/transform) (::jobs/failures result))))
+                  "a failed, b & c skipped as dep-failed"))))))
+
+    (testing "Concurrency is capped by the setting"
+      (let [plan     (mapv (fn [i] {:id i :name (str i)}) (range 1 9))
+            deps     (into {} (map (fn [i] [i #{}]) (range 1 9)))
+            live     (atom 0)
+            max-live (atom 0)
+            bump     (fn [] (let [n (swap! live inc)] (swap! max-live max n)))]
+        (mt/with-temporary-setting-values [transforms.settings/transform-job-concurrency 2]
+          (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
+                        jobs/run-transform! (fn [_ _ _ _]
+                                              (bump)
+                                              (Thread/sleep 50)
+                                              (swap! live dec))]
+            (jobs/run-transforms! 0 (set (range 1 9)) {:run-method :manual})
+            (is (= 2 @max-live) "should never exceed the concurrency setting")))))))

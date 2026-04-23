@@ -107,29 +107,86 @@
             (recur))))
       (transforms.job-run/add-run-activity! run-id))))
 
+(defn- submit-transform!
+  [^java.util.concurrent.ExecutorService executor
+   ^java.util.concurrent.BlockingQueue completions
+   run-id run-method user-id transform]
+  ;; `bound-fn` propagates dynamic bindings (e.g. *current-user-id*, QP bindings) to the worker
+  ;; thread. Worker puts its result on the completion queue; exceptions are translated to a
+  ;; failure payload so the coordinator loop never blocks forever on a lost completion.
+  (let [task (bound-fn []
+               (let [result (try
+                              (run-transform! run-id run-method user-id transform)
+                              {::status :succeeded}
+                              (catch Throwable t
+                                {::status :failed
+                                 ::message (or (ex-message t) (str t))}))]
+                 (.put completions (assoc result ::transform transform))))]
+    (.submit executor ^Runnable task)))
+
 (defn run-transforms!
   "Run a series of transforms and their dependencies.
+
+  Transforms are dispatched concurrently up to `transform-job-concurrency`, respecting the DAG:
+  a transform is only started once all of its dependencies have succeeded. If a dependency
+  failed, dependents are recorded as failures (transitively) without being executed.
 
   Updates the transform-job-run specified by run-id after every completion.
   Returns a map with :status and a collection of :failures if failed."
   [run-id transform-ids-to-run {:keys [run-method start-promise user-id]}]
   (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
-        successful (volatile! #{})
-        failures (volatile! [])]
+        n           (max 1 (transforms.settings/transform-job-concurrency))
+        successful  (atom #{})
+        failed-ids  (atom #{})
+        failures    (atom [])
+        pending     (atom (vec plan))
+        in-flight   (atom 0)
+        completions (java.util.concurrent.LinkedBlockingQueue.)
+        executor    (java.util.concurrent.Executors/newFixedThreadPool n)
+        record-dep-failure!
+        (fn [t]
+          (swap! failed-ids conj (:id t))
+          (swap! failures conj {::transform t
+                                ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")}))
+        try-dispatch!
+        (fn []
+          ;; Cascade-skip any pending transform whose deps have failed. Loop because skipping one
+          ;; transform may reveal further dependents that can be skipped.
+          (loop []
+            (let [failed? @failed-ids
+                  to-skip (filterv #(some failed? (get deps (:id %))) @pending)]
+              (when (seq to-skip)
+                (let [skip-ids (set (map :id to-skip))]
+                  (doseq [t to-skip] (record-dep-failure! t))
+                  (reset! pending (filterv #(not (skip-ids (:id %))) @pending))
+                  (recur)))))
+          (let [success?  @successful
+                ready     (filterv #(every? success? (get deps (:id %))) @pending)
+                ready-ids (set (map :id ready))
+                waiting   (filterv #(not (ready-ids (:id %))) @pending)
+                capacity  (- n @in-flight)
+                [to-dispatch held] (split-at capacity ready)]
+            (reset! pending (vec (concat waiting held)))
+            (doseq [t to-dispatch]
+              (swap! in-flight inc)
+              (submit-transform! executor completions run-id run-method user-id t))))]
     (when start-promise
       (deliver start-promise :started))
-
-    (doseq [transform plan]
-      (if (every? @successful (get deps (:id transform)))
-        (try
-          (run-transform! run-id run-method user-id transform)
-          (vswap! successful conj (:id transform))
-          (catch Exception e
-            (vswap! failures conj {::transform transform
-                                   ::message (.getMessage e)})))
-        (vswap! failures conj {::transform transform
-                               ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")})))
-
+    (try
+      (try-dispatch!)
+      (while (pos? @in-flight)
+        (let [completion (.take completions)
+              t          (::transform completion)
+              status     (::status completion)
+              message    (::message completion)]
+          (swap! in-flight dec)
+          (case status
+            :succeeded (swap! successful conj (:id t))
+            :failed    (do (swap! failed-ids conj (:id t))
+                           (swap! failures conj {::transform t ::message message})))
+          (try-dispatch!)))
+      (finally
+        (.shutdown executor)))
     (if (seq @failures)
       {::status :failed
        ::failures @failures}
