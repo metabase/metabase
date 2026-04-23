@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
-import { Button, Group, Icon } from "metabase/ui";
+import { Box, Button, Code, Divider, Group, Icon } from "metabase/ui";
 import { downloadFromUrl } from "metabase/utils/dom";
 
+import { DOCKER_RUN_COMMAND } from "../../../constants";
 import type { WorkspaceInfo } from "../../../types";
 import { TitleSection } from "../../TitleSection";
 
@@ -25,6 +26,13 @@ export function SetupSection({ workspace }: SetupSectionProps) {
         <DownloadMetadataButton />
         <DownloadFieldValuesButton />
       </Group>
+      <Divider />
+      <Box p="md" pb="0">
+        {t`After downloading the files, run the following command to start a development instance with the exported configuration:`}
+      </Box>
+      <Code block p="md" m="md" mt="sm">
+        {DOCKER_RUN_COMMAND}
+      </Code>
     </TitleSection>
   );
 }
