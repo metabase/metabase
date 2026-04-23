@@ -358,6 +358,14 @@
     embedding-model (assoc "embedding_model_provider" (:provider embedding-model)
                            "embedding_model_name"     (:model-name embedding-model))))
 
+(def ^:private max-error-length
+  "Matches the Snowplow schema's `error` maxLength — a pathological exception message
+  must not fail validation and drop the whole event."
+  1024)
+
+(defn- truncate-error [s]
+  (cond-> s (< max-error-length (count s)) (subs 0 max-error-length)))
+
 (defn- emit-snowplow!
   "Submits Snowplow events for every score, every group aggregation, and the grand total.
   Returns true when they are all successfully delivered.
@@ -374,7 +382,7 @@
                                                     :key         (dotted-key (component->group component) component)
                                                     :score       (:score sub)
                                                     :measurement (:measurement sub))
-                                       (:error sub) (assoc :error (:error sub))))
+                                       (:error sub) (assoc :error (truncate-error (:error sub)))))
                                    (for [[group entries] (group-by #(component->group (key %)) (:components result))]
                                      ;; group total
                                      (assoc base

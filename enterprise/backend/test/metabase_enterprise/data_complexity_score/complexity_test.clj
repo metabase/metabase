@@ -683,6 +683,24 @@
             ;; when ambiguity falls through. Catches a regression where the cascade goes too far.
             (is (number? (get-in by-key ["size.total" "score"])))))))))
 
+(deftest ^:sequential emit-snowplow-truncates-error-to-schema-max-test
+  (testing "a pathologically long exception message is truncated so it doesn't fail schema validation"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                  (constantly {:library  [(entity :name "customers")
+                                                          (entity :name "clients")]
+                                               :universe []
+                                               :metabot  []})]
+        (snowplow-test/pop-event-data-and-user-id!)
+        (let [huge (apply str (repeat 5000 "x"))]
+          (complexity/complexity-scores :embedder (fn [_] (throw (ex-info huge {}))))
+          (let [err (->> (complexity-events!)
+                         (filter #(= "ambiguity.synonym_pairs" (get % "key")))
+                         first
+                         (#(get % "error")))]
+            (is (= 1024 (count err))
+                "error is clipped to the schema's maxLength of 1024")))))))
+
 (deftest ^:sequential emit-snowplow-includes-embedding-model-meta-test
   (testing "every event's parameters carry embedding_model_provider/name when the search-index embedder is active"
     (snowplow-test/with-fake-snowplow-collector
