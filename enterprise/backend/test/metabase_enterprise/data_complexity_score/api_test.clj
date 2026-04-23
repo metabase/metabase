@@ -4,8 +4,12 @@
    [metabase-enterprise.data-complexity-score.api :as api]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.models.data-complexity-score :as data-complexity-score]
+   [metabase-enterprise.data-complexity-score.settings :as data-complexity-score.settings]
+   [metabase-enterprise.data-complexity-score.task.complexity-score :as task.complexity-score]
    [metabase.metabot.config :as metabot.config]
    [metabase.test :as mt]
+   [metabase.util :as m.util]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent CountDownLatch TimeUnit)))
@@ -15,6 +19,7 @@
 (comment api/keep-me)
 
 (def ^:private endpoint "ee/data-complexity-score/complexity")
+(def ^:private refresh-endpoint "ee/data-complexity-score/complexity/refresh")
 
 (defn- internal-metabot-id
   "Primary key of the internal Metabot row — used by the tests that temporarily tweak its
@@ -32,44 +37,110 @@
     (is (= "You don't have permissions to do that."
            (mt/user-http-request :rasta :get 403 endpoint)))))
 
-(deftest complexity-endpoint-superuser-gets-consistent-totals-test
-  (testing "check invariants not covered by schema"
-    (let [resp (mt/user-http-request :crowberto :get 200 endpoint)
-          measurement      (fn [cat k] (get-in resp [cat :components k :measurement]))
-          component-score  (fn [cat k] (get-in resp [cat :components k :score]))
-          ;; NOTE: `:synonym-pairs` is intentionally included here even though it's *theoretically*
-          ;; non-monotonic — `score-synonym-pairs` dedupes by normalized name and keeps whichever
-          ;; embedding `search-index-embedder` happens to pick for that name, so adding
-          ;; universe-only entities that collide on normalized name with a library entity could in
-          ;; principle flip which vector wins and drop the pair count below library's. Reviewers
-          ;; (human or AI) sometimes want to carve it out on that basis — don't. In every realistic
-          ;; configuration (prod, dev, the fixture that backs this endpoint's hermetic path in
-          ;; complexity_test.clj) the invariant holds, and asserting it keeps us honest about
-          ;; regressions in the common case. If the edge case ever actually trips this, *that* is
-          ;; the surprising thing we want to see and we'll deal with it then.
-          component-keys   [:entity-count :name-collisions :synonym-pairs
-                            :field-count :repeated-measures]]
-      (testing ":total equals the sum of its component :score values"
-        (doseq [catalog [:library :universe :metabot]
-                :let [{:keys [total components]} (get resp catalog)]]
-          (is (= total (reduce + (map :score (vals components))))
-              (format "%s :total should equal sum of component :score values" catalog))))
-      (testing "universe is a superset of library: every measurement and score ≥ library's"
-        (doseq [k      component-keys
-                getter [measurement component-score]
-                :let   [lib (getter :library k)
-                        uni (getter :universe k)]]
-          (is (>= uni lib)
-              (format "universe %s (%s) should be ≥ library's (%s)" k uni lib))))
-      (testing ":synonym-pairs can't exceed the number of distinct-name pairs possible"
-        (doseq [catalog [:library :universe :metabot]
-                :let [n-entities (measurement catalog :entity-count)
-                      syn-pairs  (measurement catalog :synonym-pairs)
-                      max-pairs  (/ (* n-entities (dec n-entities)) 2)]]
-          (is (<= syn-pairs max-pairs)
-              (format "%s :synonym-pairs (%s) can't exceed n*(n-1)/2 for n=%s" catalog syn-pairs n-entities)))))))
+(deftest complexity-refresh-endpoint-requires-superuser-test
+  (testing "non-superusers cannot trigger a forced recomputation"
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :rasta :post 403 refresh-endpoint)))))
 
-(deftest complexity-endpoint-metabot-catalog-test
+(def ^:private sample-score
+  {:library  {:total 18
+              :components {:entity-count      {:measurement 1.0 :score 10}
+                           :name-collisions   {:measurement 0.0 :score 0}
+                           :synonym-pairs     {:measurement 0.0 :score 0}
+                           :field-count       {:measurement 8.0 :score 8}
+                           :repeated-measures {:measurement 0.0 :score 0}}}
+   :universe {:total 54
+              :components {:entity-count      {:measurement 2.0 :score 20}
+                           :name-collisions   {:measurement 0.0 :score 0}
+                           :synonym-pairs     {:measurement 0.0 :score 0}
+                           :field-count       {:measurement 24.0 :score 24}
+                           :repeated-measures {:measurement 5.0 :score 10}}}
+   :metabot  {:total 30
+              :components {:entity-count      {:measurement 1.0 :score 10}
+                           :name-collisions   {:measurement 0.0 :score 0}
+                           :synonym-pairs     {:measurement 0.0 :score 0}
+                           :field-count       {:measurement 20.0 :score 20}
+                           :repeated-measures {:measurement 0.0 :score 0}}}
+   :meta     {:formula-version 3
+              :synonym-threshold 0.9}})
+
+(deftest complexity-endpoint-returns-latest-stored-score-test
+  (testing "superusers read the latest persisted score snapshot instead of recomputing it on demand"
+    (mt/with-dynamic-fn-redefs [data-complexity-score/latest-score (constantly sample-score)]
+      (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
+        (is (= (m.util/deep-snake-keys sample-score) resp))
+        (is (contains? (:meta resp) :formula_version))
+        (is (not (contains? (:meta resp) :formula-version)))
+        (is (contains? (get-in resp [:library :components]) :entity_count))
+        (is (not (contains? (get-in resp [:library :components]) :entity-count)))))))
+
+(deftest complexity-endpoint-404s-when-no-score-has-been-persisted-yet-test
+  (testing "the endpoint 404s until the background scorer has produced its first snapshot"
+    (mt/with-dynamic-fn-redefs [data-complexity-score/latest-score (constantly nil)]
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 endpoint))))))
+
+(deftest complexity-refresh-endpoint-returns-fresh-score-test
+  (testing "superusers can trigger the expensive recompute path on demand"
+    (let [persisted? (atom nil)]
+      (with-redefs [metabot-scope/internal-metabot-scope      (constantly {})
+                    task.complexity-score/current-fingerprint (constantly "api-test-fp")
+                    complexity/complexity-scores              (fn [& _] sample-score)
+                    data-complexity-score/record-score!       (fn [fingerprint stored-score]
+                                                                (reset! persisted? [fingerprint stored-score]))]
+        (is (= (m.util/deep-snake-keys sample-score)
+               (mt/user-http-request :crowberto :post 200 refresh-endpoint)))
+        (is (= ["api-test-fp" sample-score] @persisted?))))))
+
+(deftest complexity-refresh-endpoint-runs-when-scheduled-scoring-disabled-test
+  (testing "manual refresh does not reuse the scheduled scorer's enabled gate"
+    (mt/with-temporary-setting-values [data-complexity-scoring-enabled false]
+      (with-redefs [metabot-scope/internal-metabot-scope      (constantly {})
+                    task.complexity-score/current-fingerprint (constantly "api-test-fp")
+                    complexity/complexity-scores              (fn [& _] sample-score)
+                    data-complexity-score/record-score!       (fn [& _] nil)]
+        (is (= (m.util/deep-snake-keys sample-score)
+               (mt/user-http-request :crowberto :post 200 refresh-endpoint)))))))
+
+(deftest ^:sequential complexity-refresh-endpoint-superuser-gets-consistent-totals-test
+  (testing "check invariants not covered by schema"
+    (with-redefs [data-complexity-score/record-score! (fn [& _] nil)]
+      (let [resp             (mt/user-http-request :crowberto :post 200 refresh-endpoint)
+            measurement      (fn [cat k] (get-in resp [cat :components k :measurement]))
+            component-score  (fn [cat k] (get-in resp [cat :components k :score]))
+            ;; NOTE: `:synonym_pairs` is intentionally included here even though it's *theoretically*
+            ;; non-monotonic — `score-synonym-pairs` dedupes by normalized name and keeps whichever
+            ;; embedding `search-index-embedder` happens to pick for that name, so adding
+            ;; universe-only entities that collide on normalized name with a library entity could in
+            ;; principle flip which vector wins and drop the pair count below library's. Reviewers
+            ;; (human or AI) sometimes want to carve it out on that basis — don't. In every realistic
+            ;; configuration (prod, dev, the fixture that backs this endpoint's hermetic path in
+            ;; complexity_test.clj) the invariant holds, and asserting it keeps us honest about
+            ;; regressions in the common case. If the edge case ever actually trips this, *that* is
+            ;; the surprising thing we want to see and we'll deal with it then.
+            component-keys   [:entity_count :name_collisions :synonym_pairs
+                              :field_count :repeated_measures]]
+        (testing ":total equals the sum of its component :score values"
+          (doseq [catalog [:library :universe :metabot]
+                  :let [{:keys [total components]} (get resp catalog)]]
+            (is (= total (reduce + (map :score (vals components))))
+                (format "%s :total should equal sum of component :score values" catalog))))
+        (testing "universe is a superset of library: every measurement and score >= library's"
+          (doseq [k      component-keys
+                  getter [measurement component-score]
+                  :let   [lib (getter :library k)
+                          uni (getter :universe k)]]
+            (is (>= uni lib)
+                (format "universe %s (%s) should be >= library's (%s)" k uni lib))))
+        (testing ":synonym_pairs can't exceed the number of distinct-name pairs possible"
+          (doseq [catalog [:library :universe :metabot]
+                  :let [n-entities (measurement catalog :entity_count)
+                        syn-pairs  (measurement catalog :synonym_pairs)
+                        max-pairs  (/ (* n-entities (dec n-entities)) 2)]]
+            (is (<= syn-pairs max-pairs)
+                (format "%s :synonym_pairs (%s) can't exceed n*(n-1)/2 for n=%s" catalog syn-pairs n-entities))))))))
+
+(deftest ^:sequential complexity-refresh-endpoint-metabot-catalog-test
   (testing ":metabot mirrors :universe when neither content-verification nor use_verified_content is active"
     ;; Pin both gates explicitly instead of relying on test-env defaults — the reused-verbatim path
     ;; is only exercised when the scope is empty, and we want this assertion to keep passing even
@@ -77,8 +148,9 @@
     (mt/with-premium-features #{}
       (mt/with-temp-vals-in-db :model/Metabot (internal-metabot-id)
                                {:use_verified_content false :collection_id nil}
-        (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
-          (is (= (:universe resp) (:metabot resp)))))))
+        (with-redefs [data-complexity-score/record-score! (fn [& _] nil)]
+          (let [resp (mt/user-http-request :crowberto :post 200 refresh-endpoint)]
+            (is (= (:universe resp) (:metabot resp))))))))
   (testing ":metabot is scored separately when :content-verification + use_verified_content are both active"
     ;; Positive path: verified-only filtering restricts Cards to those with an active verified
     ;; moderation review. We inject a fresh unverified Card so the assertion doesn't depend on
@@ -91,12 +163,13 @@
                                                  :archived    false}]
         (mt/with-temp-vals-in-db :model/Metabot (internal-metabot-id)
                                  {:use_verified_content true :collection_id nil}
-          (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
-            (is (< (get-in resp [:metabot  :components :entity-count :measurement])
-                   (get-in resp [:universe :components :entity-count :measurement]))
-                ":metabot entity-count must be strictly < :universe when verified-only filters out the injected Card")))))))
+          (with-redefs [data-complexity-score/record-score! (fn [& _] nil)]
+            (let [resp (mt/user-http-request :crowberto :post 200 refresh-endpoint)]
+              (is (< (get-in resp [:metabot  :components :entity_count :measurement])
+                     (get-in resp [:universe :components :entity_count :measurement]))
+                  ":metabot entity-count must be strictly < :universe when verified-only filters out the injected Card"))))))))
 
-(deftest complexity-endpoint-metabot-collection-scope-test
+(deftest ^:sequential complexity-refresh-endpoint-metabot-collection-scope-test
   (testing ":metabot is scoped to the internal Metabot's collection_id subtree (root + descendants)"
     ;; Fixture shape — exercises both halves of `metabot-collection-scope-ids`:
     ;;   parent     ← Metabot's collection_id; holds a Card directly (catches root-omitted regressions)
@@ -137,9 +210,10 @@
                                   (mt/with-temp-vals-in-db :model/Metabot (internal-metabot-id)
                                                            {:use_verified_content false
                                                             :collection_id cid}
-                                    (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
-                                      {:metabot  (get-in resp [:metabot  :components :entity-count :measurement])
-                                       :universe (get-in resp [:universe :components :entity-count :measurement])})))
+                                    (with-redefs [data-complexity-score/record-score! (fn [& _] nil)]
+                                      (let [resp (mt/user-http-request :crowberto :post 200 refresh-endpoint)]
+                                        {:metabot  (get-in resp [:metabot  :components :entity_count :measurement])
+                                         :universe (get-in resp [:universe :components :entity_count :measurement])}))))
               empty-counts   (counts-with-scope empty-id)
               parent-counts  (counts-with-scope parent-id)
               sibling-counts (counts-with-scope sibling-id)
@@ -178,7 +252,27 @@
   {:library empty-catalog :universe empty-catalog :metabot empty-catalog
    :meta {:formula-version 1 :synonym-threshold 0.0}})
 
-(deftest ^:sequential complexity-endpoint-rejects-concurrent-requests-test
+(deftest ^:sequential complexity-refresh-endpoint-allows-active-scheduled-claim-test
+  (testing "manual API refresh does not share the cron/boot scoring claim"
+    (let [active-claim (pr-str {:fingerprint "older-fingerprint"
+                                :claimed-at  (System/currentTimeMillis)
+                                :owner       "scheduled-owner"})
+          scoring-ran? (atom false)]
+      (mt/with-temporary-setting-values [data-complexity-scoring-claim active-claim]
+        (with-redefs [metabot-scope/internal-metabot-scope      (constantly {})
+                      task.complexity-score/current-fingerprint (constantly "api-test-fp")
+                      data-complexity-score/record-score!       (fn [& _] nil)
+                      complexity/complexity-scores
+                      (fn [& _]
+                        (reset! scoring-ran? true)
+                        stub-scores)]
+          (is (= (m.util/deep-snake-keys stub-scores)
+                 (mt/user-http-request :crowberto :post 200 refresh-endpoint)))
+          (is (true? @scoring-ran?)
+              "refresh endpoint should compute independently of scheduled claims")
+          (is (= active-claim (data-complexity-score.settings/data-complexity-scoring-claim))))))))
+
+(deftest ^:sequential complexity-refresh-endpoint-rejects-concurrent-requests-test
   (testing "a second concurrent request fast-fails with 409 instead of running a duplicate scoring pass"
     ;; Block the stubbed scoring call on a latch so the second request is guaranteed to land
     ;; while the guard is held. Plain `with-redefs` (not `with-dynamic-fn-redefs`) because
@@ -186,19 +280,22 @@
     (let [release-scoring (CountDownLatch. 1)
           scoring-started (CountDownLatch. 1)
           call-count      (atom 0)]
-      (with-redefs [complexity/complexity-scores
+      (with-redefs [metabot-scope/internal-metabot-scope      (constantly {})
+                    task.complexity-score/current-fingerprint (constantly "api-test-fp")
+                    data-complexity-score/record-score!       (fn [& _] nil)
+                    complexity/complexity-scores
                     (fn [& _]
                       (swap! call-count inc)
                       (.countDown scoring-started)
                       (.await release-scoring 10 TimeUnit/SECONDS)
                       stub-scores)]
-        (let [first-request (future (mt/user-http-request :crowberto :get 200 endpoint))]
+        (let [first-request (future (mt/user-http-request :crowberto :post 200 refresh-endpoint))]
           (try
             (is (.await scoring-started 10 TimeUnit/SECONDS)
                 "first request must reach the guarded section before we fire the second")
             (testing "concurrent superuser request is rejected with 409"
               (is (= "Data Complexity Score calculation already in progress"
-                     (mt/user-http-request :crowberto :get 409 endpoint))))
+                     (mt/user-http-request :crowberto :post 409 refresh-endpoint))))
             (finally
               (.countDown release-scoring)
               ;; Drain the in-flight request so the guard is released before the next test
@@ -207,7 +304,7 @@
         (testing "only the first request actually ran scoring; the second short-circuited"
           (is (= 1 @call-count)))
         (testing "guard is released after the in-flight request finishes — a follow-up request succeeds"
-          (mt/user-http-request :crowberto :get 200 endpoint)
+          (mt/user-http-request :crowberto :post 200 refresh-endpoint)
           (is (= 2 @call-count)))))))
 
 (deftest internal-metabot-scope-test
