@@ -145,6 +145,7 @@
            config
            events
            models
+           request
            util}
    :model-imports #{:model/Card
                     :model/Collection
