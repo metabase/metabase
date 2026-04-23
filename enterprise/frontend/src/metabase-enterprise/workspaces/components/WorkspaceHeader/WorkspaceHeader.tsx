@@ -7,8 +7,7 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import * as Urls from "metabase/utils/urls";
 import type { Workspace } from "metabase-types/api";
 
-import { WorkspaceMoreMenu } from "../WorkspaceMoreMenu";
-
+import { WorkspaceMoreMenu } from "./WorkspaceMoreMenu";
 import { WorkspaceNameInput } from "./WorkspaceNameInput";
 import { WorkspaceTabs } from "./WorkspaceTabs";
 

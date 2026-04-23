@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
@@ -9,13 +10,16 @@ import * as Urls from "metabase/utils/urls";
 import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
-import { isDatabaseUnprovisioned } from "../../utils";
+import { isDatabaseUnprovisioned } from "../../../utils";
+
+import { WorkspaceConfigModal } from "./WorkspaceConfigModal";
 
 type WorkspaceMoreMenuProps = {
   workspace: Workspace;
 };
 
 export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
+  const [isConfigOpened, setIsConfigOpened] = useState(false);
   const { modalContent, show } = useConfirmation();
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
@@ -51,6 +55,12 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
+          <Menu.Item
+            leftSection={<Icon name="code_block" />}
+            onClick={() => setIsConfigOpened(true)}
+          >
+            {t`Configuration file`}
+          </Menu.Item>
           <Tooltip
             label={t`Unprovision this workspace before deleting.`}
             disabled={isFullyUnprovisioned}
@@ -65,6 +75,11 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
           </Tooltip>
         </Menu.Dropdown>
       </Menu>
+      <WorkspaceConfigModal
+        workspace={workspace}
+        opened={isConfigOpened}
+        onClose={() => setIsConfigOpened(false)}
+      />
       {modalContent}
     </>
   );

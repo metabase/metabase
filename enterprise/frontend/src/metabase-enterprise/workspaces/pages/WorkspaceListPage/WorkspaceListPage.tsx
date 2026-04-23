@@ -9,7 +9,7 @@ import { Button, Flex, Icon, Stack } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 import { useListWorkspacesQuery } from "metabase-enterprise/api";
 
-import { WorkspaceList } from "../../components/WorkspaceList";
+import { WorkspaceList } from "./WorkspaceList";
 
 export function WorkspaceListPage() {
   const { data: workspaces = [], error, isLoading } = useListWorkspacesQuery();

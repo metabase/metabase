@@ -107,19 +107,18 @@ export function DatabaseMappingSection({
           />
         )}
       </TitleSection>
-      {isModalOpened && (
-        <DatabaseMappingModal
-          mapping={selectedMapping}
-          databases={
-            selectedMapping != null
-              ? selectedAvailableDatabases
-              : newAvailableDatabases
-          }
-          onSubmit={selectedMapping != null ? handleUpdate : handleAdd}
-          onDelete={selectedMapping != null ? handleDelete : undefined}
-          onClose={handleClose}
-        />
-      )}
+      <DatabaseMappingModal
+        opened={isModalOpened}
+        mapping={selectedMapping}
+        databases={
+          selectedMapping != null
+            ? selectedAvailableDatabases
+            : newAvailableDatabases
+        }
+        onSubmit={selectedMapping != null ? handleUpdate : handleAdd}
+        onDelete={selectedMapping != null ? handleDelete : undefined}
+        onClose={handleClose}
+      />
     </>
   );
 }

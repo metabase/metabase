@@ -11,13 +11,13 @@ import {
 } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
+import { TitleSection } from "../../../components/TitleSection";
 import {
   isDatabaseProvisioned,
   isDatabaseProvisioning,
   isDatabaseUnprovisioned,
   isDatabaseUnprovisioning,
-} from "../../utils";
-import { TitleSection } from "../TitleSection";
+} from "../../../utils";
 
 type WorkspaceStatusSectionProps = {
   workspace: Workspace;

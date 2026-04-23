@@ -34,6 +34,7 @@ const VALIDATION_SCHEMA = Yup.object({
 type DatabaseMappingModalProps = {
   mapping?: WorkspaceDatabaseDraft;
   databases: Database[];
+  opened: boolean;
   onSubmit: (mapping: WorkspaceDatabaseDraft) => void;
   onDelete?: (mapping: WorkspaceDatabaseDraft) => void;
   onClose: () => void;
@@ -42,6 +43,7 @@ type DatabaseMappingModalProps = {
 export function DatabaseMappingModal({
   mapping,
   databases,
+  opened,
   onSubmit,
   onDelete,
   onClose,
@@ -51,7 +53,7 @@ export function DatabaseMappingModal({
   return (
     <Modal
       title={isNew ? t`Add database` : t`Edit database configuration`}
-      opened
+      opened={opened}
       padding="xl"
       onClose={onClose}
     >

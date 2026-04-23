@@ -4,8 +4,9 @@ import { Center, Stack } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
 
 import { WorkspaceHeader } from "../../components/WorkspaceHeader";
-import { WorkspaceStatusSection } from "../../components/WorkspaceStatusSection";
 import { useFetchWorkspace } from "../../hooks/use-fetch-workspace";
+
+import { WorkspaceStatusSection } from "./WorkspaceStatusSection";
 
 type WorkspaceOverviewPageParams = {
   workspaceId: string;
