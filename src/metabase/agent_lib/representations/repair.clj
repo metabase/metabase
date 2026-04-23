@@ -119,6 +119,72 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
+;;;
+;;; MBQL 5 requires `:expressions` to be a `[:sequential ...]` where each entry is an
+;;; expression clause carrying `:lib/expression-name` in its options map. LLMs naturally
+;;; want to write a map-shape `expressions: {Name: [op, {}, ...]}` (with the expression
+;;; name as the map key), which is far more readable. We accept both shapes here and
+;;; normalise to the canonical sequential form, stamping `lib/expression-name` into each
+;;; clause's options from the map key.
+;;;
+;;; If the author already wrote the sequential form, we leave the expression-name alone
+;;; (authoritative in options). If both a map key AND `lib/expression-name` exist and
+;;; disagree, the options-map wins (we don't overwrite authored metadata).
+;;; ============================================================
+
+(defn- expression-clause?
+  "An expression definition clause: a vector whose position-1 element is a map (options).
+  Anything else — a literal value, a non-vector, an empty vector — we leave alone and let
+  schema validation complain."
+  [x]
+  (and (vector? x)
+       (>= (count x) 2)
+       (map? (nth x 1))))
+
+(defn- stamp-expression-name
+  "If the clause doesn't already have `\"lib/expression-name\"` in its options, stamp the
+  given name. Otherwise leave the clause alone."
+  [clause expr-name]
+  (let [opts (nth clause 1)]
+    (if (contains? opts "lib/expression-name")
+      clause
+      (assoc clause 1 (assoc opts "lib/expression-name" expr-name)))))
+
+(defn- normalize-stage-expressions
+  [stage]
+  (let [exprs (get stage "expressions")]
+    (cond
+      ;; Map-shape: {Name clause, ...} -> [clause-with-name ...]
+      (map? exprs)
+      (assoc stage "expressions"
+             (into []
+                   (keep (fn [[expr-name clause]]
+                           (when (expression-clause? clause)
+                             (stamp-expression-name clause expr-name))))
+                   exprs))
+
+      ;; Sequential: leave as-is (name lives in each clause's options; schema enforces).
+      (sequential? exprs)
+      stage
+
+      ;; Missing or something we don't understand: leave alone.
+      :else
+      stage)))
+
+(defn- normalize-expressions-shape*
+  "Walk the query and, for every map that has an `\"expressions\"` key, convert a map-shape
+  expressions block into the canonical sequential shape with `lib/expression-name` stamped
+  from the map key. Idempotent: sequential input passes through unchanged."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (and (map? node) (contains? node "expressions"))
+       (normalize-stage-expressions node)
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 2 -- fill in missing `lib/type` markers
 ;;; ============================================================
 
@@ -580,6 +646,7 @@
   [parsed]
   (-> parsed
       ensure-clause-options*
+      normalize-expressions-shape*
       ensure-lib-types*))
 
 (defn repair
@@ -587,6 +654,9 @@
 
   Passes:
     1. ensure every clause vector has an options map at position 2;
+    1.5. normalise `expressions:` shape — accept map form `{Name: clause, …}` or the
+       canonical sequential form, always output sequential with `lib/expression-name`
+       stamped into each clause's options from the map key when missing;
     2. fill in missing `\"lib/type\"` markers on the query and stages;
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the

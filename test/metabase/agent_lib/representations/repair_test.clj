@@ -606,3 +606,111 @@
           ;; is tested against a real application DB in construct_representations_test.
           opts (get-in repaired ["stages" 1 "filters" 0 2 1])]
       (is (= "type/Integer" (get opts "base-type"))))))
+
+;;; ============================================================
+;;; Pass 1.5 — expressions shape normalisation (repr-plan step 9)
+;;; ============================================================
+
+(deftest expressions-map-shape-normalised-to-sequential-test
+  (testing "map-form `expressions:` is converted to a vector of clauses with `lib/expression-name` stamped from the key"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"   "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "expressions" {"Subtotal" ["+" {}
+                                                     ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                                     ["field" {} ["Sample" "PUBLIC" "ORDERS" "TAX"]]]}}]}
+          repaired (repair/repair trivial-mp q)
+          exprs    (get-in repaired ["stages" 0 "expressions"])]
+      (is (vector? exprs))
+      (is (= 1 (count exprs)))
+      (let [clause (first exprs)
+            opts   (nth clause 1)]
+        (is (= "+" (first clause)))
+        (is (= "Subtotal" (get opts "lib/expression-name")))))))
+
+(deftest expressions-sequential-shape-passes-through-test
+  (testing "sequential-form `expressions:` is left alone when each clause already carries `lib/expression-name`"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"   "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "expressions" [["+" {"lib/expression-name" "Subtotal"}
+                                          ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                          ["field" {} ["Sample" "PUBLIC" "ORDERS" "TAX"]]]]}]}
+          repaired (repair/repair trivial-mp q)]
+      (is (= (get-in q ["stages" 0 "expressions"])
+             (get-in repaired ["stages" 0 "expressions"]))))))
+
+(deftest expressions-sequential-without-name-left-alone-test
+  (testing (str "sequential-form without `lib/expression-name` is left as-is; schema\n"
+                "validation will surface the missing-name error rather than us making one up.")
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"   "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "expressions" [["+" {}
+                                          ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                          ["field" {} ["Sample" "PUBLIC" "ORDERS" "TAX"]]]]}]}
+          repaired (repair/repair trivial-mp q)
+          opts     (get-in repaired ["stages" 0 "expressions" 0 1])]
+      (is (not (contains? opts "lib/expression-name"))))))
+
+(deftest expressions-map-with-existing-name-in-options-preserved-test
+  (testing (str "if a map-form entry's clause already has `lib/expression-name` in its options,\n"
+                "authored metadata wins and we don't overwrite it.")
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"   "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "expressions" {"FromKey" ["+"
+                                                    {"lib/expression-name" "FromOpts"}
+                                                    ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                                    1]}}]}
+          repaired (repair/repair trivial-mp q)
+          clause   (get-in repaired ["stages" 0 "expressions" 0])]
+      (is (= "FromOpts" (get-in clause [1 "lib/expression-name"]))))))
+
+(deftest expressions-absent-no-op-test
+  (testing "stages without `expressions:` are left alone"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]}]}
+          repaired (repair/repair trivial-mp q)]
+      (is (= (get-in q ["stages" 0])
+             (get-in repaired ["stages" 0]))))))
+
+(deftest expressions-idempotent-test
+  (testing "repair is idempotent on expressions: applying twice equals applying once"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "expressions"  {"Subtotal" ["+" {}
+                                                      ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                                      ["field" {} ["Sample" "PUBLIC" "ORDERS" "TAX"]]]}}]}
+          once  (repair/repair trivial-mp q)
+          twice (repair/repair trivial-mp once)]
+      (is (= once twice)))))
+
+(deftest expressions-multi-stage-test
+  (testing "expression-name stamping works across multiple stages independently"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "expressions"  {"Subtotal" ["+" {}
+                                                      ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                                      ["field" {} ["Sample" "PUBLIC" "ORDERS" "TAX"]]]}
+                          "aggregation"  [["sum" {} ["expression" {} "Subtotal"]]]}
+                         {"lib/type"     "mbql.stage/mbql"
+                          "expressions"  {"Doubled" ["*" {}
+                                                     ["field" {"base-type" "type/Integer"} "sum"]
+                                                     2]}}]}
+          repaired (repair/repair trivial-mp q)]
+      (is (= "Subtotal"
+             (get-in repaired ["stages" 0 "expressions" 0 1 "lib/expression-name"])))
+      (is (= "Doubled"
+             (get-in repaired ["stages" 1 "expressions" 0 1 "lib/expression-name"]))))))

@@ -459,3 +459,76 @@
           (catch clojure.lang.ExceptionInfo e
             (let [d (ex-data e)]
               (is (true? (:agent-error? d))))))))))
+
+;;; ============================================================
+;;; Step-9 contract: expressions (custom columns)
+;;; ============================================================
+
+(deftest expression-map-shape-end-to-end-test
+  (testing (str "The LLM-friendly `expressions: {Name: clause, …}` map shape is normalised\n"
+                "to the canonical sequential MBQL 5 form with `lib/expression-name` stamped,\n"
+                "and the resolved query carries the expression in its pMBQL.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-yaml
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "expressions"  {"Doubled" ["*" {}
+                                                                ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                                                2]}
+                                     "aggregation"  [["sum" {} ["expression" {} "Doubled"]]]}]}))
+              q      (get-in result [:structured-output :query])
+              exprs  (get-in q [:stages 0 :expressions])]
+          (is (vector? exprs))
+          (is (= 1 (count exprs)))
+          (let [[op opts] (first exprs)]
+            (is (= :* op))
+            (is (= "Doubled" (:lib/expression-name opts))))
+          (testing "expression is referenced in aggregation"
+            (let [agg (get-in q [:stages 0 :aggregation 0])]
+              (is (= :sum (first agg)))
+              (is (= :expression (first (nth agg 2))))
+              (is (= "Doubled" (nth (nth agg 2) 2))))))))))
+
+(deftest expression-sequential-shape-end-to-end-test
+  (testing (str "Canonical sequential `expressions:` form with `lib/expression-name`\n"
+                "already in options also works end-to-end.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-yaml
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "expressions"  [["+" {"lib/expression-name" "Plus10"}
+                                                      ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                                      10]]
+                                     "aggregation"  [["sum" {} ["expression" {} "Plus10"]]]}]}))
+              q      (get-in result [:structured-output :query])
+              exprs  (get-in q [:stages 0 :expressions])]
+          (is (= 1 (count exprs)))
+          (is (= "Plus10" (get-in (first exprs) [1 :lib/expression-name]))))))))
+
+(deftest expression-in-breakout-end-to-end-test
+  (testing "Expression can be referenced in `breakout:` — MBQL 5 accepts `[:expression ... name]` as a grouping key."
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-yaml
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "expressions"  {"HalfTotal" ["/" {}
+                                                                  ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]
+                                                                  2]}
+                                     "breakout"     [["expression" {} "HalfTotal"]]
+                                     "aggregation"  [["count" {}]]}]}))
+              q      (get-in result [:structured-output :query])
+              b      (get-in q [:stages 0 :breakout 0])]
+          (is (= :expression (first b)))
+          (is (= "HalfTotal" (nth b 2))))))))

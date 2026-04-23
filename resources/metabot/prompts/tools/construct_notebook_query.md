@@ -237,6 +237,54 @@ No explicit `joins:` entry needed. Internally, Metabase rewrites the breakout fi
 
 **Tip:** Use the `entity_details` tool to discover FK columns. FK columns return a `fk_target_portable_fk` pointing to the target field — that tells you which column to use as the `source-field` when disambiguating.
 
+### Expressions (custom columns)
+
+Define a custom column inside a stage using `expressions:` and reference it by name with `[expression, {}, "<Name>"]` anywhere a field reference is allowed (`aggregation`, `breakout`, `filter`, `order-by`, `fields`).
+
+The easiest form is a map keyed by the expression name:
+
+```yaml
+lib/type: mbql/query
+database: Sample
+stages:
+  - lib/type: mbql.stage/mbql
+    source-table: [Sample, PUBLIC, ORDERS]
+    expressions:
+      Subtotal:
+        - '+'
+        - {}
+        - [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]
+        - [field, {}, [Sample, PUBLIC, ORDERS, TAX]]
+    aggregation:
+      - [sum, {}, [expression, {}, Subtotal]]
+```
+
+String concatenation example:
+
+```yaml
+stages:
+  - lib/type: mbql.stage/mbql
+    source-table: [Sample, PUBLIC, PEOPLE]
+    expressions:
+      FullName:
+        - concat
+        - {}
+        - [field, {}, [Sample, PUBLIC, PEOPLE, FIRST_NAME]]
+        - ' '
+        - [field, {}, [Sample, PUBLIC, PEOPLE, LAST_NAME]]
+    breakout:
+      - [expression, {}, FullName]
+    aggregation:
+      - [count, {}]
+```
+
+**Rules:**
+
+- The expression name is a string. Keep it short and descriptive — it becomes the column's display name in the result.
+- You don't need to write `lib/expression-name` yourself — the tool stamps it from the map key.
+- Arithmetic operators must be quoted when they are YAML special characters: `'+'`, `'-'`, `'*'`, `'/'`. `concat`, `coalesce`, `case`, `substring`, etc. don't need quotes.
+- Reference the expression with `[expression, {}, "<Name>"]` — the same three-element shape as a field reference, but with `expression` as the clause head and the name (not a FK path) as the last slot.
+
 ## Rules and common mistakes
 
 - **Always include `{}` options in every clause**, even when empty. `[count]` is wrong — it must be `[count, {}]`.
@@ -251,7 +299,6 @@ No explicit `joins:` entry needed. Internally, Metabase rewrites the breakout fi
 
 These are not yet available in this tool version; ignore them for now:
 - `source-card` (querying a saved question / model as a source)
-- Custom expressions (`expressions:` clause) and `expression-ref` references
 - Aggregation references with UUIDs
 
 If the user asks for something that requires one of these, explain the limitation and offer to construct a simpler version instead.
