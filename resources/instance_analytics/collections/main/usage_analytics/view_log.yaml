@@ -62,6 +62,9 @@ dataset_query:
       - [Internal Metabase Database, public, v_view_log, sanitized_user_agent]
     - - field
       - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, ip_address]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
       - [Internal Metabase Database, public, v_view_log, context]
     order-by:
     - - desc
@@ -297,6 +300,21 @@ result_metadata:
   id: [Internal Metabase Database, public, v_view_log, sanitized_user_agent]
   name: sanitized_user_agent
   semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: IP Address
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, ip_address]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, ip_address]
+  name: ip_address
+  semantic_type: type/Category
   settings: null
   visibility_type: normal
 - base_type: type/Text
