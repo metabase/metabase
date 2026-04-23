@@ -2,6 +2,7 @@
   "/api/dataset endpoints."
   (:refer-clojure :exclude [not-empty get-in])
   (:require
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.driver :as driver]
@@ -9,8 +10,10 @@
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.walk.util :as lib.walk.util]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
    [metabase.models.visualization-settings :as mb.viz]
@@ -26,7 +29,9 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.request.core :as request]
    [metabase.server.core :as server]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -205,6 +210,112 @@
           compiled (qp.compile/compile-with-inline-parameters query)]
       (cond-> compiled
         pretty (update :query prettify)))))
+
+;; Hackathon code imitating a subset of metabase-enterprise.dependencies.native-validation.
+
+(def ^:private source-parse-card-placeholder
+  "Placeholder prefix for card template tags (`{{#42}}`) before compiling a native query for source
+  extraction. Using a placeholder keeps `compile-with-inline-parameters` from inlining the card's SQL —
+  otherwise the SQL parser would report that card's underlying tables as sources of this query."
+  "mb_qp_src_card_")
+
+(def ^:private source-parse-table-placeholder
+  "Placeholder prefix for table template tags."
+  "mb_qp_src_table_")
+
+(defn- substitute-source-template-tags
+  "Replace `:type :card` and `:type :table` template tags in a native first stage with placeholder
+  identifiers, and drop those tags from `:template-tags`. Returns nil if the SQL already contains a
+  placeholder prefix (collision guard)."
+  [query]
+  (let [stage      (first (:stages query))
+        sql        (:native stage)
+        ttags      (:template-tags stage)
+        card-tags  (into {} (filter #(= (:type (val %)) :card)) ttags)
+        table-tags (into {} (filter #(= (:type (val %)) :table)) ttags)]
+    (when-not (or (str/includes? sql source-parse-card-placeholder)
+                  (str/includes? sql source-parse-table-placeholder))
+      (let [sql'           (reduce (fn [s [tag-name tag]]
+                                     (str/replace s (str "{{" tag-name "}}")
+                                                  (str source-parse-card-placeholder (:card-id tag))))
+                                   sql card-tags)
+            sql'           (reduce (fn [s [tag-name tag]]
+                                     (str/replace s (str "{{" tag-name "}}")
+                                                  (str source-parse-table-placeholder (:table-id tag))))
+                                   sql' table-tags)
+            remaining-tags (into {} (remove #(#{:card :table} (:type (val %)))) ttags)]
+        (-> query
+            (assoc-in [:stages 0 :native] sql')
+            (assoc-in [:stages 0 :template-tags] remaining-tags))))))
+
+(defn- compile-for-source-parsing
+  "Compile `query` to a `::lib.schema/native-only-query` suitable for passing to
+  `sql-tools/referenced-tables`. Only runs on queries whose first stage is native — for pure MBQL the
+  structural walkers in `lib.walk.util` cover every source. Returns nil if the query can't be prepared."
+  [query]
+  (let [stage0 (first (:stages query))]
+    (when (= (:lib/type stage0) :mbql.stage/native)
+      (let [ttags               (:template-tags stage0)
+            has-card-or-table?  (some #(#{:card :table} (:type %)) (vals ttags))
+            substituted         (if has-card-or-table?
+                                  (substitute-source-template-tags query)
+                                  query)]
+        (when substituted
+          (let [with-params (lib/add-parameters-for-template-tags substituted)
+                compiled    (qp.compile/compile-with-inline-parameters with-params)]
+            (lib/native-query with-params (:query compiled))))))))
+
+(defn- native-source-table-ids
+  "Extract source table IDs from native SQL (including compiled template-tag substitutions). Returns a
+  set of Metabase table IDs. Returns `#{}` for pure MBQL queries and when parsing fails."
+  [driver pmbql]
+  (try
+    (if-let [native-only (compile-for-source-parsing pmbql)]
+      (into #{} (keep :table) (sql-tools/referenced-tables driver native-only))
+      #{})
+    (catch Throwable e
+      (log/warnf e "query-sources: native SQL parsing failed; returning structural sources only")
+      #{})))
+
+(def ^:private source-entry-schema
+  [:map
+   [:id           ms/PositiveInt]
+   [:name         :string]
+   [:display_name :string]])
+
+(api.macros/defendpoint :post "/query-sources"
+  :- [:map
+      [:tables [:sequential source-entry-schema]]
+      [:cards  [:sequential source-entry-schema]]]
+  "Return every source table and source card referenced in a query, across all stages. MBQL stages
+  contribute via `:source-table` / `:source-card`; native stages contribute via template tags and via
+  raw-SQL table references parsed out of the compiled query."
+  [_route-params
+   _query-params
+   query :- [:map
+             [:database ms/PositiveInt]]]
+  (api/read-check :model/Database (:database query))
+  (request/as-admin
+    (lib-be/with-metadata-provider-cache
+      (let [mp        (lib-be/application-database-metadata-provider (:database query))
+            driver    (driver.u/database->driver (:database query))
+            pmbql     (lib/query mp query)
+            table-ids (into #{}
+                            cat
+                            [(lib.walk.util/all-source-table-ids pmbql)
+                             (lib.walk.util/all-template-tag-table-ids pmbql)
+                             (native-source-table-ids driver pmbql)])
+            card-ids  (lib.walk.util/all-source-card-ids pmbql)]
+        {:tables (vec
+                  (for [t (when (seq table-ids) (lib.metadata/bulk-metadata mp :metadata/table table-ids))]
+                    {:id           (:id t)
+                     :name         (:name t)
+                     :display_name (or (:display-name t) (:name t))}))
+         :cards  (vec
+                  (for [c (when (seq card-ids) (lib.metadata/bulk-metadata mp :metadata/card card-ids))]
+                    {:id           (:id c)
+                     :name         (:name c)
+                     :display_name (:name c)}))}))))
 
 (api.macros/defendpoint :post "/pivot"
   :- (server/streaming-response-schema ::qp.schema/query-result)
