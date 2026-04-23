@@ -41,13 +41,16 @@
             "maxLength": 64
         },
         "score": {
-            "description": "Weighted score for this key.",
-            "type": "integer",
+            "description": "Weighted score for this key. Null when the sub-score (or any sub-score it aggregates) couldn't be computed.",
+            "type": [
+                "integer",
+                "null"
+            ],
             "minimum": 0,
             "maximum": 2147483647
         },
         "measurement": {
-            "description": "Raw pre-score measurement (absent for aggregate totals). Number, not integer, to future-proof density-style metrics.",
+            "description": "Raw pre-score measurement (absent on aggregates; null on uncomputed leaves). Number, not integer, to future-proof density-style metrics.",
             "type": [
                 "number",
                 "null"
@@ -56,7 +59,7 @@
             "maximum": 9007199254740991
         },
         "error": {
-            "description": "Present only on `synonym_pairs` when the embedder fell back to 0.",
+            "description": "Failure message on the originating leaf when its sub-score couldn't be computed; aggregates carry null `score` instead.",
             "type": [
                 "string",
                 "null"

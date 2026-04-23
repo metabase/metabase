@@ -3175,6 +3175,7 @@
            app-db
            audit-app
            collections
+           config
            metabot
            premium-features
            settings

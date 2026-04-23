@@ -2,10 +2,15 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.semantic-layer.api :as api]
+   [metabase-enterprise.semantic-layer.complexity :as complexity]
    [metabase-enterprise.semantic-layer.metabot-scope :as metabot-scope]
    [metabase.metabot.config :as metabot.config]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.util.concurrent CountDownLatch TimeUnit)))
+
+(set! *warn-on-reflection* true)
 
 (comment api/keep-me)
 
@@ -161,6 +166,49 @@
                    (:universe parent-counts)
                    (:universe sibling-counts))
                 ":universe must be unscoped regardless of Metabot.collection_id")))))))
+
+(def ^:private empty-catalog
+  {:total 0 :components {:entity-count      {:measurement 0.0 :score 0}
+                         :name-collisions   {:measurement 0.0 :score 0}
+                         :synonym-pairs     {:measurement 0.0 :score 0}
+                         :field-count       {:measurement 0.0 :score 0}
+                         :repeated-measures {:measurement 0.0 :score 0}}})
+
+(def ^:private stub-scores
+  {:library empty-catalog :universe empty-catalog :metabot empty-catalog
+   :meta {:formula-version 1 :synonym-threshold 0.0}})
+
+(deftest ^:sequential complexity-endpoint-rejects-concurrent-requests-test
+  (testing "a second concurrent request fast-fails with 409 instead of running a duplicate scoring pass"
+    ;; Block the stubbed scoring call on a latch so the second request is guaranteed to land
+    ;; while the guard is held. Plain `with-redefs` (not `with-dynamic-fn-redefs`) because
+    ;; the dynamic variant binds thread-locally and the futures we spawn here wouldn't see it.
+    (let [release-scoring (CountDownLatch. 1)
+          scoring-started (CountDownLatch. 1)
+          call-count      (atom 0)]
+      (with-redefs [complexity/complexity-scores
+                    (fn [& _]
+                      (swap! call-count inc)
+                      (.countDown scoring-started)
+                      (.await release-scoring 10 TimeUnit/SECONDS)
+                      stub-scores)]
+        (let [first-request (future (mt/user-http-request :crowberto :get 200 endpoint))]
+          (try
+            (is (.await scoring-started 10 TimeUnit/SECONDS)
+                "first request must reach the guarded section before we fire the second")
+            (testing "concurrent superuser request is rejected with 409"
+              (is (= "Data Complexity Score calculation already in progress"
+                     (mt/user-http-request :crowberto :get 409 endpoint))))
+            (finally
+              (.countDown release-scoring)
+              ;; Drain the in-flight request so the guard is released before the next test
+              ;; (failed assertions above shouldn't leak a stuck scoring call into other tests).
+              (deref first-request 10000 ::timeout))))
+        (testing "only the first request actually ran scoring; the second short-circuited"
+          (is (= 1 @call-count)))
+        (testing "guard is released after the in-flight request finishes — a follow-up request succeeds"
+          (mt/user-http-request :crowberto :get 200 endpoint)
+          (is (= 2 @call-count)))))))
 
 (deftest internal-metabot-scope-test
   (testing ":verified-only? is true only when the premium feature + use_verified_content both apply"

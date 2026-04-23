@@ -23,8 +23,8 @@
   :export?    false
   :doc        false)
 
-(defsetting data-complexity-scoring-boot-claim
-  (deferred-tru "Internal bookkeeping: edn-encoded claim marking an in-progress boot-time emission so sibling nodes skip duplicate work. Cleared after the run; a TTL on the claim timestamp lets the next boot retry if the claimant crashed.")
+(defsetting data-complexity-scoring-claim
+  (deferred-tru "Internal bookkeeping: edn-encoded claim marking an in-progress scoring run (shared by the boot-time hook and the daily cron) so other nodes/paths skip duplicate work. Cleared after the run; a TTL on the claim timestamp lets the next boot or cron retry if the claimant crashed.")
   :encryption :no
   :visibility :internal
   :default    ""

@@ -317,9 +317,11 @@
        :value-doesnt-matter))))
 
 (defn- score-synonym-pairs
-  "Compute the synonym sub-score for `entities` using `embedder`. Returns zero (with a warning
-   logged) if the embedder yields no vectors or throws. A nil `embedder` naturally produces an empty
-   lookup and falls through to zero."
+  "Compute the synonym sub-score for `entities` using `embedder`. On embedder failure, returns
+   `{:measurement nil :score nil :error \"...\"}` so the failure cascades through `score-catalog`'s
+   `:total` and through Snowplow's group/grand-total rollups — distinguishing 'we couldn't compute
+   it' from 'we computed and got zero pairs'. A nil `embedder` naturally produces an empty lookup
+   and scores zero (a real zero, not a failure)."
   [entities embedder]
   (try
     (let [name->vec     (or (and embedder (embedder entities)) {})
@@ -332,12 +334,19 @@
           pairs         (synonym-pair-count known-vectors synonym-similarity-threshold)]
       (component-score :synonym-pair pairs))
     (catch Throwable t
-      (log/warn t "Complexity score: synonym detection failed; falling back to 0")
+      (log/warn t "Complexity score: synonym detection failed; cascading nil through aggregates")
       (let [msg (some-> (.getMessage t) str/trim)
             err (if (str/blank? msg)
                   (or (some-> (class t) .getName) "synonym detection failed")
                   msg)]
-        (assoc (component-score :synonym-pair 0) :error err)))))
+        {:measurement nil :score nil :error err}))))
+
+(defn- nil-safe-sum
+  "Sum `xs` (numbers and/or nils). Returns nil if any element is nil — used to cascade an
+   uncomputed sub-score through aggregates instead of silently low-biasing the total with zeros."
+  [xs]
+  (when (every? some? xs)
+    (reduce + xs)))
 
 (defn score-catalog
   "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`."
@@ -347,7 +356,7 @@
                     :synonym-pairs     (score-synonym-pairs entities embedder)
                     :field-count       (score-field-count entities)
                     :repeated-measures (score-repeated-measures entities)}]
-    {:total      (reduce + (map (comp :score val) components))
+    {:total      (nil-safe-sum (map (comp :score val) components))
      :components components}))
 
 ;;; ----------------------------------- public API ------------------------------------
@@ -380,7 +389,10 @@
 
 (defn- emit-snowplow!
   "One Snowplow event per (catalog × dotted-key) — grand `total`, one `<group>.total` per thematic
-  group, and one `<group>.<component>` leaf per sub-score."
+  group, and one `<group>.<component>` leaf per sub-score. Aggregate `:score` is nil when any
+  contributing leaf couldn't be computed (today: synonym embedder failures); the schema permits
+  null scores on aggregates so consumers see an explicit 'unknown' instead of a silently low-
+  biased total."
   [{:keys [library universe metabot meta]}]
   (let [base {:event           :data_complexity_scoring
               :formula_version (:formula-version meta)
@@ -397,7 +409,7 @@
          (assoc base
                 :catalog catalog
                 :key     (dotted-key group :total)
-                :score   (reduce + (map (comp :score val) entries)))))
+                :score   (nil-safe-sum (map (comp :score val) entries)))))
       ;; leaves
       (doseq [[component sub] (:components result)
               :let [group (component->group component)]]

@@ -10,8 +10,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private SubScore
-  "Raw `:measurement` (double, future-proofs non-integer metrics) + weighted `:score`.
-  `:error` is present only on `:synonym-pairs` when the embedder threw and we fell back to 0."
+  "Raw `:measurement` + weighted `:score`.
+   Includes :error if something went wrong and we're using a fallback."
   [:map
    [:measurement number?]
    [:score       nat-int?]
@@ -30,7 +30,7 @@
      [:repeated-measures SubScore]]]])
 
 (def ^:private EmbeddingModelMeta
-  "Identifies the embedding model backing the synonym axis, so benchmark consumers can pin to it.
+  "Identifies the embedding model backing the synonym calculations, so benchmark consumers can pin to it.
   `nil` when semantic search isn't configured on this instance."
   [:maybe
    [:map
@@ -49,12 +49,28 @@
      [:synonym-threshold number?]
      [:embedding-model {:optional true} EmbeddingModelMeta]]]])
 
+;; JVM-level single-flight guard for the /complexity endpoint. Each scoring run walks the entire
+;; app-db catalog and emits Snowplow events, so concurrent superuser requests would just multiply
+;; load and noise without producing different results — fast-fail with 409 instead. The Quartz job
+;; already has its own concurrency control (`DisallowConcurrentExecution` + cluster lock for boot
+;; emission), so we deliberately don't share this guard with the task path; a daily cron run that
+;; coincided with an API call shouldn't be cancelled.
+(defonce ^:private ^java.util.concurrent.atomic.AtomicBoolean api-scoring-running?
+  (java.util.concurrent.atomic.AtomicBoolean. false))
+
 (api.macros/defendpoint :get "/complexity" :- ComplexityScoresResponse
   "Return the current Data Complexity Score for this instance.
-  Superuser-only, and quite expensive."
+  Superuser-only, expensive, and emits Snowplow events for benchmark consumers. Concurrent
+  requests fast-fail with HTTP 409 — a scoring pass walks the full app-db catalog and one in-
+  flight run is enough."
   [_route _query _body]
   (api/check-superuser)
-  (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope)))
+  (when-not (.compareAndSet api-scoring-running? false true)
+    (throw (ex-info "Data Complexity Score calculation already in progress" {:status-code 409})))
+  (try
+    (complexity/complexity-scores :metabot-scope (metabot-scope/internal-metabot-scope))
+    (finally
+      (.set api-scoring-running? false))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/semantic-layer` routes."
