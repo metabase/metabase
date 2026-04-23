@@ -429,26 +429,21 @@
                              (get card :visualization_settings))
         {rendered-type :type content :content} (js.svg/*javascript-visualization* cards-with-data viz-settings
                                                                                   (custom-viz-bundles card))]
-    ;; If the custom viz plugin didn't define a StaticVisualizationComponent,
-    ;; RenderChart returns an empty string. Fall back to table rendering.
-    (if (and (render.util/custom-viz-display? (:display card))
-             (str/blank? content))
-      (render :table render-type _timezone-id card dashcard data)
-      (case rendered-type
-        :svg
-        (let [image-bundle (image-bundle/make-image-bundle
-                            render-type
-                            (js.svg/svg-string->bytes content))]
-          {:attachments
-           (when image-bundle
-             (image-bundle/image-bundle->attachment image-bundle))
+    (case rendered-type
+      :svg
+      (let [image-bundle (image-bundle/make-image-bundle
+                          render-type
+                          (js.svg/svg-string->bytes content))]
+        {:attachments
+         (when image-bundle
+           (image-bundle/image-bundle->attachment image-bundle))
 
-           :content
-           [:div
-            [:img {:style (style/style {:display :block :width :100%})
-                   :src   (:image-src image-bundle)}]]})
-        :html
-        {:content [:div content] :attachments nil}))))
+         :content
+         [:div
+          [:img {:style (style/style {:display :block :width :100%})
+                 :src   (:image-src image-bundle)}]]})
+      :html
+      {:content [:div content] :attachments nil})))
 
 (defn- smart-scalar-comparison-statement
   [unit value]

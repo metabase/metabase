@@ -7,7 +7,6 @@
    [metabase.channel.render.style :as style]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.urls :as urls]
-   [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util :as u]
@@ -105,11 +104,6 @@
               tyype)]
       (cond
 
-        (when-let [identifier (render.util/custom-viz-identifier display-type)]
-          (let [plugin (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
-            (some-> plugin custom-viz-plugin/resolve-bundle :content)))
-        (chart-type :javascript_visualization "display-type is a custom visualization with static support")
-
         (or (empty? rows)
             ;; Many aggregations result in [[nil]] if there are no rows to aggregate after filters
             (= [[nil]] (-> data :rows)))
@@ -149,9 +143,6 @@
            :bar
            :combo} display-type)
         (chart-type :javascript_visualization "display-type is javascript_visualization")
-
-        (render.util/custom-viz-display? display-type)
-        (chart-type :table "display-type is a custom visualization without static support, falling back to table")
 
         :else
         (chart-type :table "no other chart types match")))))
