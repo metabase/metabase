@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import type { Row } from "@tanstack/react-table";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -12,7 +13,10 @@ import type {
   LibrarySectionType,
   TreeItem,
 } from "metabase/data-studio/common/types";
-import { createEmptyStateItem } from "metabase/data-studio/common/utils";
+import {
+  createEmptyStateItem,
+  isEmptyStateData,
+} from "metabase/data-studio/common/utils";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { getIcon } from "metabase/utils/icon";
 import { useDispatch, useSelector } from "metabase/utils/redux";
@@ -23,7 +27,7 @@ import type {
   CollectionItem,
 } from "metabase-types/api";
 
-type ItemsByCollection = Map<CollectionId, CollectionItem[]>;
+// ── pure helpers ──
 
 function buildItemNode(item: CollectionItem): TreeItem {
   return {
@@ -36,160 +40,170 @@ function buildItemNode(item: CollectionItem): TreeItem {
   };
 }
 
-function buildCollectionNode(
-  collectionItem: CollectionItem,
-  itemsByCollectionId: ItemsByCollection,
-): TreeItem {
-  const childItems = itemsByCollectionId.get(collectionItem.id) ?? [];
-  const childCollections = childItems.filter((i) => i.model === "collection");
-  const leafItems = childItems.filter((i) => i.model !== "collection");
-
-  const children: TreeItem[] = [
-    ...childCollections.map((child) =>
-      buildCollectionNode(child, itemsByCollectionId),
-    ),
-    ...leafItems.map(buildItemNode),
-  ];
-
-  return {
-    name: collectionItem.name,
-    id: `collection:${collectionItem.id}`,
-    icon: "folder",
-    data: collectionItem,
-    model: "collection",
-    children: children.length > 0 ? children : undefined,
-  };
+function hasContent(item: CollectionItem): boolean {
+  return (
+    (item.here != null && item.here.length > 0) ||
+    (item.below != null && item.below.length > 0)
+  );
 }
 
-export const useBuildTreeForCollection = (
+/** Build children for a collection from its fetched items. Subcollections
+ *  that haven't been loaded yet get `children: []` (if they have content
+ *  according to `here`/`below`) so they render as expandable rows that
+ *  trigger a lazy load, or `undefined` if they're empty. */
+function buildChildren(
+  items: CollectionItem[],
+  loadedCollections: Map<CollectionId, CollectionItem[]>,
+): TreeItem[] {
+  const collections = items.filter((i) => i.model === "collection");
+  const leafItems = items.filter((i) => i.model !== "collection");
+
+  return [
+    ...collections.map((col): TreeItem => {
+      const childItems = loadedCollections.get(col.id);
+      let children: TreeItem[] | undefined;
+
+      if (childItems !== undefined) {
+        const built = buildChildren(childItems, loadedCollections);
+        children = built.length > 0 ? built : undefined;
+      } else if (hasContent(col)) {
+        children = [];
+      }
+
+      return {
+        name: col.name,
+        id: `collection:${col.id}`,
+        icon: "folder",
+        data: col,
+        model: "collection",
+        children,
+      };
+    }),
+    ...leafItems.map(buildItemNode),
+  ];
+}
+
+// ── hooks ──
+
+export function useLibraryCollectionTree(
   collection: Collection | undefined,
   sectionType: LibrarySectionType,
   metricCollectionId?: CollectionId,
-): {
-  isLoading: boolean;
-  tree: TreeItem[];
-  error?: unknown;
-} => {
+) {
   const dispatch = useDispatch();
 
+  // 1. Fetch top-level items
   const {
     data: topLevelItems,
-    isLoading: isLoadingTopLevel,
+    isLoading,
     error,
   } = useListCollectionItemsQuery(
     collection
       ? { id: collection.id, models: ["metric", "table", "collection"] }
       : skipToken,
   );
+
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
-  // Collect IDs of subcollections found in the top-level items response
-  const subcollectionIds = useMemo(() => {
-    if (!topLevelItems) {
-      return [];
-    }
-    return topLevelItems.data
-      .filter((item) => item.model === "collection")
-      .map((item) => item.id);
-  }, [topLevelItems]);
-
-  const [subcollectionItems, setSubcollectionItems] =
-    useState<ItemsByCollection>(new Map());
-  const [isLoadingSubcollections, setIsLoadingSubcollections] = useState(false);
+  // 2. Lazy-loaded subcollection items
+  const [loadedCollections, setLoadedCollections] = useState<
+    Map<CollectionId, CollectionItem[]>
+  >(new Map());
+  const loadingIds = useRef(new Set<string>());
 
   useEffect(() => {
-    if (subcollectionIds.length === 0) {
-      setSubcollectionItems(new Map());
-      return;
-    }
+    setLoadedCollections(new Map());
+    loadingIds.current = new Set();
+  }, [collection?.id]);
 
-    let cancelled = false;
-    setIsLoadingSubcollections(true);
-
-    Promise.all(
-      subcollectionIds.map(async (id) => {
-        const result = await dispatch(
-          collectionApi.endpoints.listCollectionItems.initiate({
-            id,
-            models: ["metric", "table", "collection"],
-          }),
-        );
-        return [id, result.data?.data ?? []] as const;
-      }),
-    ).then((results) => {
-      if (!cancelled) {
-        setSubcollectionItems(new Map(results));
-        setIsLoadingSubcollections(false);
+  const loadCollectionItems = useCallback(
+    async (collectionId: CollectionId) => {
+      const key = String(collectionId);
+      if (loadingIds.current.has(key)) {
+        return;
       }
-    });
+      loadingIds.current.add(key);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [subcollectionIds, dispatch]);
+      const result = await dispatch(
+        collectionApi.endpoints.listCollectionItems.initiate({
+          id: collectionId,
+          models: ["metric", "table", "collection"],
+        }),
+      );
+      const items = result.data?.data ?? [];
+      setLoadedCollections((prev) => new Map([...prev, [collectionId, items]]));
+    },
+    [dispatch],
+  );
 
-  const isLoading = isLoadingTopLevel || isLoadingSubcollections;
-
-  return useMemo(() => {
+  // 3. Build tree
+  const tree = useMemo((): TreeItem[] => {
     if (isLoading || !topLevelItems || !collection) {
-      return {
-        isLoading,
-        tree: [],
-        error,
-      };
+      return [];
     }
 
-    const allItemsByCollection: ItemsByCollection = new Map([
-      [collection.id, topLevelItems.data],
-      ...subcollectionItems,
-    ]);
+    const children = buildChildren(topLevelItems.data, loadedCollections);
+    const hasItems = children.length > 0;
 
-    const topItems = topLevelItems.data;
-    const topCollections = topItems.filter((i) => i.model === "collection");
-    const topLeafItems = topItems.filter((i) => i.model !== "collection");
-
-    const children: TreeItem[] = [
-      ...topCollections.map((child) =>
-        buildCollectionNode(child, allItemsByCollection),
-      ),
-      ...topLeafItems.map(buildItemNode),
+    return [
+      {
+        name: collection.name,
+        id: `collection:${collection.id}`,
+        icon: getIcon({ ...collection, model: "collection" }).name,
+        data: { ...collection, model: "collection" as const },
+        model: "collection",
+        children: hasItems
+          ? children
+          : [
+              createEmptyStateItem(
+                sectionType,
+                metricCollectionId,
+                isRemoteSyncReadOnly,
+              ),
+            ],
+      },
     ];
-
-    const hasContent = children.length > 0;
-
-    return {
-      isLoading,
-      error,
-      tree: [
-        {
-          name: collection.name,
-          id: `collection:${collection.id}`,
-          icon: getIcon({ ...collection, model: "collection" }).name,
-          data: { ...collection, model: "collection" as const },
-          model: "collection",
-          children: hasContent
-            ? children
-            : [
-                createEmptyStateItem(
-                  sectionType,
-                  metricCollectionId,
-                  isRemoteSyncReadOnly,
-                ),
-              ],
-        },
-      ],
-    };
   }, [
     isLoading,
     topLevelItems,
     collection,
-    subcollectionItems,
-    error,
+    loadedCollections,
     sectionType,
     metricCollectionId,
     isRemoteSyncReadOnly,
   ]);
-};
+
+  // 4. Watch rows for expanded-but-empty collections → trigger fetch
+  const watchRows = useCallback(
+    (rows: Row<TreeItem>[]) => {
+      for (const row of rows) {
+        const { original } = row;
+        if (
+          row.getIsExpanded() &&
+          row.getCanExpand() &&
+          original.model === "collection" &&
+          original.children?.length === 0 &&
+          !isEmptyStateData(original.data) &&
+          "id" in original.data
+        ) {
+          loadCollectionItems(original.data.id as number);
+        }
+      }
+    },
+    [loadCollectionItems],
+  );
+
+  // 5. isChildrenLoading for the spinner
+  const isChildrenLoading = useCallback(
+    (row: Row<TreeItem>): boolean =>
+      row.getIsExpanded() &&
+      row.getCanExpand() &&
+      row.original.children?.length === 0,
+    [],
+  );
+
+  return { tree, isLoading, error, watchRows, isChildrenLoading };
+}
 
 export const useErrorHandling = (_error: unknown) => {
   const error = useDebouncedValue(_error, 1000);

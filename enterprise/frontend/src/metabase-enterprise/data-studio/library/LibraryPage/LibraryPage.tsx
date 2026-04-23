@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
+// import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
@@ -20,10 +20,10 @@ import {
   isCollection,
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
-import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
+// import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import { useRouter } from "metabase/router";
+// import { useRouter } from "metabase/router";
 import {
   Anchor,
   Card,
@@ -48,7 +48,7 @@ import { LibraryEmptyState } from "../components/LibraryEmptyState";
 import { CreateMenu } from "./CreateMenu";
 import { PublishTableModal } from "./PublishTableModal";
 import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
-import { useBuildTreeForCollection, useErrorHandling } from "./hooks";
+import { useErrorHandling, useLibraryCollectionTree } from "./hooks";
 import { getAccessibleCollection, getWritableCollection } from "./utils";
 
 interface EmptyStateActionProps {
@@ -100,7 +100,7 @@ export function LibraryPage() {
 }
 
 function LibraryPageContent() {
-  const { location } = useRouter();
+  // const { location } = useRouter();
   const [editingCollection, setEditingCollection] = useState<Collection | null>(
     null,
   );
@@ -110,17 +110,17 @@ function LibraryPageContent() {
   const [isPublishTableModalOpen, setIsPublishTableModalOpen] = useState(false);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
-  const expandedIdsFromUrl = useMemo(() => {
-    const rawIds = location.query?.expandedId;
-    if (!rawIds) {
-      return null;
-    }
+  // const expandedIdsFromUrl = useMemo(() => {
+  //   const rawIds = location.query?.expandedId;
+  //   if (!rawIds) {
+  //     return null;
+  //   }
 
-    const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
-    return _.object(
-      ids.map((id) => [`collection:${id}`, true]),
-    ) as ExpandedState;
-  }, [location.query?.expandedId]);
+  //   const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
+  //   return _.object(
+  //     ids.map((id) => [`collection:${id}`, true]),
+  //   ) as ExpandedState;
+  // }, [location.query?.expandedId]);
 
   const { data: collections = [], isLoading: isLoadingCollections } =
     useListCollectionsTreeQuery({
@@ -175,12 +175,16 @@ function LibraryPageContent() {
     tree: tablesTree,
     isLoading: loadingTables,
     error: tablesError,
-  } = useBuildTreeForCollection(tableCollection, "data");
+    watchRows: watchTableRows,
+    isChildrenLoading: isTableChildrenLoading,
+  } = useLibraryCollectionTree(tableCollection, "data");
   const {
     tree: metricsTree,
     isLoading: loadingMetrics,
     error: metricsError,
-  } = useBuildTreeForCollection(
+    watchRows: watchMetricRows,
+    isChildrenLoading: isMetricChildrenLoading,
+  } = useLibraryCollectionTree(
     metricCollection,
     "metrics",
     metricCollection?.id,
@@ -201,31 +205,31 @@ function LibraryPageContent() {
 
   // Collections with only empty-state children should always be expanded
   // (even when navigating back via breadcrumbs which may collapse other sections)
-  const alwaysExpandedIds = useMemo(() => {
-    const ids: Record<string, boolean> = {};
-    combinedTree.forEach((node) => {
-      if (node.model === "collection" && node.children) {
-        const hasOnlyEmptyState = node.children.every(
-          (child) => child.model === "empty-state",
-        );
-        if (hasOnlyEmptyState) {
-          ids[node.id] = true;
-        }
-      }
-    });
-    return ids;
-  }, [combinedTree]);
+  // const alwaysExpandedIds = useMemo(() => {
+  //   const ids: Record<string, boolean> = {};
+  //   combinedTree.forEach((node) => {
+  //     if (node.model === "collection" && node.children) {
+  //       const hasOnlyEmptyState = node.children.every(
+  //         (child) => child.model === "empty-state",
+  //       );
+  //       if (hasOnlyEmptyState) {
+  //         ids[node.id] = true;
+  //       }
+  //     }
+  //   });
+  //   return ids;
+  // }, [combinedTree]);
 
   // Merge URL-based expansion with always-expanded empty sections
-  const effectiveExpandedState = useMemo(() => {
-    if (!expandedIdsFromUrl) {
-      return true; // Expand all by default
-    }
-    return {
-      ...expandedIdsFromUrl,
-      ...alwaysExpandedIds,
-    };
-  }, [expandedIdsFromUrl, alwaysExpandedIds]);
+  // const effectiveExpandedState = useMemo(() => {
+  //   if (!expandedIdsFromUrl) {
+  //     return true; // Expand all by default
+  //   }
+  //   return {
+  //     ...expandedIdsFromUrl,
+  //     ...alwaysExpandedIds,
+  //   };
+  // }, [expandedIdsFromUrl, alwaysExpandedIds]);
 
   const libraryHasContent = useMemo(
     () =>
@@ -337,12 +341,43 @@ function LibraryPageContent() {
     columns: libraryColumnDef,
     getSubRows: (node) => node.children,
     getNodeId: (node) => node.id,
+    getRowCanExpand: (row) => {
+      const { model, data, children } = row.original;
+      if (model !== "collection") {
+        return false;
+      }
+      // Already has children populated
+      if (children && children.length > 0) {
+        return true;
+      }
+      // Not loaded yet — check here/below from the API to know if expandable
+      if (!isEmptyStateData(data) && "here" in data) {
+        const item = data as { here?: string[]; below?: string[] };
+        return (
+          (item.here != null && item.here.length > 0) ||
+          (item.below != null && item.below.length > 0)
+        );
+      }
+      return false;
+    },
     globalFilter: searchQuery,
     onGlobalFilterChange: setSearchQuery,
     isFilterable: (node) =>
       node.model !== "collection" && node.model !== "empty-state",
-    defaultExpanded: effectiveExpandedState,
+    // defaultExpanded: effectiveExpandedState,
   });
+
+  // Lazy-load subcollection items when expanded
+  useEffect(() => {
+    watchTableRows(treeTableInstance.rows);
+    watchMetricRows(treeTableInstance.rows);
+  }, [treeTableInstance.rows, watchTableRows, watchMetricRows]);
+
+  const isChildrenLoading = useCallback(
+    (row: Parameters<typeof isTableChildrenLoading>[0]) =>
+      isTableChildrenLoading(row) || isMetricChildrenLoading(row),
+    [isTableChildrenLoading, isMetricChildrenLoading],
+  );
 
   let emptyMessage = null;
   if (!libraryHasContent) {
@@ -409,6 +444,7 @@ function LibraryPageContent() {
                       // Navigation for leaf nodes is handled by the link
                     }}
                     getRowHref={getRowHref}
+                    isChildrenLoading={isChildrenLoading}
                   />
                 )}
               </Card>
