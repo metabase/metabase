@@ -80,21 +80,18 @@
   "Returns embedding_hostname from the current request. Always collected (not PII)."
   []
   (when-let [request (request.current/current-request)]
-    (let [embed-referrer (get-in request [:headers "x-metabase-embed-referrer"])
-          origin         (or embed-referrer (get-in request [:headers "origin"]))]
-      {:embedding_hostname (extract-hostname origin)})))
+    {:embedding_hostname (extract-hostname (get-in request [:headers "x-metabase-embed-referrer"]))}))
 
 (defn- pii-fields
   "Returns PII fields from the current request when the `analytics-pii-retention-enabled` setting is true."
   []
   (when (analytics.settings/analytics-pii-retention-enabled)
     (when-let [request (request.current/current-request)]
-      (let [embed-referrer (get-in request [:headers "x-metabase-embed-referrer"])]
-        {:embedding_path       (extract-path (or embed-referrer (get-in request [:headers "referer"])))
-         :user_agent           (some-> (get-in request [:headers "user-agent"])
-                                       (subs 0 (min (count (get-in request [:headers "user-agent"])) 512)))
-         :sanitized_user_agent (request.user-agent/describe-user-agent (get-in request [:headers "user-agent"]))
-         :ip_address           (request.current/ip-address request)}))))
+      {:embedding_path       (extract-path (get-in request [:headers "x-metabase-embed-referrer"]))
+       :user_agent           (some-> (get-in request [:headers "user-agent"])
+                                     (subs 0 (min (count (get-in request [:headers "user-agent"])) 512)))
+       :sanitized_user_agent (request.user-agent/describe-user-agent (get-in request [:headers "user-agent"]))
+       :ip_address           (request.current/ip-address request)})))
 
 (mu/defn include-sdk-info :- :map
   "Adds the currently bound, or existing `*client*` and `*version*` to the given map, which is usually a row going
