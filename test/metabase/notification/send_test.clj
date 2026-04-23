@@ -476,10 +476,12 @@
                                         :done?       (fn [cnt] (= cnt %))
                                         :interval-ms 10
                                         :timeout-ms  1000})]
-      (mt/with-dynamic-fn-redefs [notification.send/send-notification-sync! (fn [notification]
+      ;; dispatcher spawns its own worker threads that don't inherit *local-redefs* —
+      ;; use with-redefs to swap the root so worker threads see the replacement.
+      (with-redefs [notification.send/send-notification-sync! (fn [notification]
                                                                 ;; fake latency
-                                                                              (Thread/sleep 20)
-                                                                              (swap! sent-notifications conj notification))]
+                                                                (Thread/sleep 20)
+                                                                (swap! sent-notifications conj notification))]
         (let [queue           (#'notification.send/create-dedup-priority-queue)
               test-dispatcher (:dispatch-fn (#'notification.send/create-notification-dispatcher 2 queue))]
           (testing "basic processing"
@@ -514,13 +516,14 @@
           (testing "error handling - worker errors don't crash the dispatcher"
             (reset! sent-notifications [])
             (let [error-thrown (atom false)]
-              (mt/with-dynamic-fn-redefs [notification.send/send-notification-sync!
-                                          (fn [notification]
-                                            (if (= "F" (:test-value notification))
-                                              (do
-                                                (reset! error-thrown true)
-                                                (throw (Exception. "Test exception")))
-                                              (swap! sent-notifications conj notification)))]
+              ;; dispatcher worker thread — see note above
+              (with-redefs [notification.send/send-notification-sync!
+                            (fn [notification]
+                              (if (= "F" (:test-value notification))
+                                (do
+                                  (reset! error-thrown true)
+                                  (throw (Exception. "Test exception")))
+                                (swap! sent-notifications conj notification)))]
                 (test-dispatcher {:id 1 :test-value "F"})
                 (test-dispatcher {:id 2 :test-value "G"})
                 (wait-for-processing 1)
@@ -741,11 +744,12 @@
           dispatcher              (#'notification.send/create-notification-dispatcher 2 queue)
           dispatch-fn             (:dispatch-fn dispatcher)
           shutdown-fn             (:shutdown-fn dispatcher)]
-      (mt/with-dynamic-fn-redefs [notification.send/send-notification-sync!
-                                  (fn [notification]
+      ;; dispatcher spawns worker threads without our dynamic binding
+      (with-redefs [notification.send/send-notification-sync!
+                    (fn [notification]
                       ;; Wait for the latch to be released before processing
-                                    (.await processing-latch)
-                                    (swap! processed-notifications conj notification))]
+                      (.await processing-latch)
+                      (swap! processed-notifications conj notification))]
 
         (testing "notifications are queued and processed during shutdown"
           (dispatch-fn {:id 1 :payload_type :notification/testing :test-value "A"})
