@@ -238,7 +238,7 @@ describe(
 
         cy.wait("@updateTheme").then((interception) => {
           const { settings } = interception.request.body;
-          expect(settings.colors?.brand).to.eq("#ff0000");
+          expect(settings.colors?.brand).to.eq("#ff0000ff");
         });
 
         H.undoToast().findByText("Theme saved").should("exist");
@@ -317,8 +317,8 @@ describe(
 
         cy.wait("@updateTheme").then((interception) => {
           const { settings } = interception.request.body;
-          expect(settings.colors?.border).to.eq("#ff5733");
-          expect(settings.colors?.filter).to.eq("#2d2d30");
+          expect(settings.colors?.border).to.eq("#ff5733ff");
+          expect(settings.colors?.filter).to.eq("#2d2d30ff");
         });
 
         H.undoToast().findByText("Theme saved").should("exist");
