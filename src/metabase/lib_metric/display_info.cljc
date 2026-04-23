@@ -108,10 +108,8 @@
 
 (defmethod display-info-method :metadata/segment
   [definition segment]
-  (let [group (:lib-metric/dimension-group segment)]
-    (cond-> (default-display-info definition segment)
-      (:filter-positions segment) (assoc :filter-positions (:filter-positions segment))
-      group                       (assoc :group group))))
+  (cond-> (default-display-info definition segment)
+    (:filter-positions segment) (assoc :filter-positions (:filter-positions segment))))
 
 ;;; -------------------------------------------------- Temporal Bucket --------------------------------------------------
 

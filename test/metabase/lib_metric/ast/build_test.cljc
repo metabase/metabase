@@ -3,7 +3,6 @@
    [clojure.test :refer [deftest is testing]]
    [malli.error :as me]
    [metabase.lib-metric.ast.build :as ast.build]
-   [metabase.lib-metric.ast.compile :as ast.compile]
    [metabase.lib-metric.ast.schema :as ast.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -560,57 +559,18 @@
       (doseq [child (get-in ast [:expression :children])]
         (is (= 1 (count (get-in child [:ast :group-by]))))))))
 
-;;; -------------------------------------------------- Segment Pre-expansion --------------------------------------------------
+;;; -------------------------------------------------- Segment filter passthrough --------------------------------------------------
 
-;; Segments that live on a joined (non-source) table need their filter clauses
-;; inlined at AST-build time and the contained field refs annotated with
-;; `:source-field` from the metric's dimension-mappings. Otherwise the compiled
-;; MBQL references a joined table's columns without a JOIN, and the QP's
-;; `add-implicit-joins` middleware has no way to recover the FK relationship.
-
-(def ^:private seg-cat-name-dim-uuid "cccccccc-0000-0000-0000-000000000001")
-
-(defn- sample-dimensions-with-joined []
-  (into (sample-dimensions)
-        [{:id seg-cat-name-dim-uuid :name "category_name"
-          :display-name "Category Name" :status :status/active}]))
-
-(defn- sample-mappings-with-joined []
-  (into (sample-mappings)
-        [{:type :table
-          :table-id (meta/id :categories)
-          :dimension-id seg-cat-name-dim-uuid
-          ;; Target is the implicitly-joinable column on categories, reached via
-          ;; venues.category-id as the FK (:source-field).
-          :target [:field {:lib/uuid "cccccccc-aaaa-0000-0000-000000000001"
-                           :source-field (meta/id :venues :category-id)
-                           :base-type :type/Text}
-                   (meta/id :categories :name)]}]))
-
-(defn- sample-metric-metadata-with-joined-dim []
-  (assoc (sample-metric-metadata)
-         :dimensions         (sample-dimensions-with-joined)
-         :dimension-mappings (sample-mappings-with-joined)))
-
-(defn- joined-segment []
-  ;; A segment authored on the joined `categories` table whose filter references
-  ;; `categories.name` with a bare `[:field]` ref — i.e. no `:source-field`.
-  {:lib/type   :metadata/segment
-   :id         500
-   :name       "widgets"
-   :table-id   (meta/id :categories)
-   :definition {:lib/type :mbql/query
-                :database (meta/id)
-                :stages   [{:lib/type :mbql.stage/mbql
-                            :source-table (meta/id :categories)
-                            :filters [[:= {:lib/uuid "eeeeeeee-0000-0000-0000-000000000001"}
-                                       [:field {:lib/uuid "eeeeeeee-0000-0000-0000-000000000002"}
-                                        (meta/id :categories :name)]
-                                       "Widgets"]]}]}})
+;; A `[:segment _ id]` filter clause is wrapped as a `:filter/mbql` passthrough
+;; AST node and compiled verbatim. The QP's `expand-macros` middleware then
+;; replaces it with the segment's own filter clauses at run time.
+;;
+;; Joined-table segment support (pre-expanding the segment clause at build
+;; time and annotating field refs with `:source-field`) lives in the follow-up
+;; branch `den/UXW-3754-segments-joined-tables`.
 
 (defn- source-table-segment []
-  ;; A segment authored directly on the metric's own source table (venues).
-  ;; No annotation should happen for these; they should pass through untouched.
+  ;; A segment authored on the metric's own source table (venues).
   {:lib/type   :metadata/segment
    :id         600
    :name       "expensive"
@@ -647,49 +607,8 @@
       (setting [_this setting-key]
         (lib.metadata.protocols/setting meta/metadata-provider setting-key)))))
 
-(deftest ^:parallel from-definition-expands-joined-table-segment-test
-  (testing "segment on a joined table is pre-expanded and field refs get :source-field annotated"
-    (let [provider   (make-test-provider-with-segments
-                      (sample-metric-metadata-with-joined-dim)
-                      (sample-measure-metadata)
-                      [(joined-segment)])
-          definition {:lib/type          :metric/definition
-                      :expression        [:metric {:lib/uuid expr-uuid} 42]
-                      :filters           [{:lib/uuid expr-uuid
-                                           :filter [:segment {:lib/uuid "11111111-0000-0000-0000-000000000001"} 500]}]
-                      :projections       []
-                      :metadata-provider provider}
-          ast        (ast.build/from-definition definition)
-          src-query  (get-in ast [:expression :ast])
-          filter-node (:filter src-query)]
-      (testing "valid AST"
-        (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
-      (testing "segment clause is no longer present in the AST"
-        (is (= :filter/mbql (:node/type filter-node)))
-        (is (not= :segment (first (:clause filter-node))))
-        (is (= := (first (:clause filter-node)))))
-      (testing "field ref inside expanded clause carries :source-field from the mapping"
-        (let [expanded (:clause filter-node)
-              field-ref (nth expanded 2)]
-          (is (= :field (first field-ref)))
-          (is (= (meta/id :venues :category-id) (:source-field (second field-ref))))
-          (is (= (meta/id :categories :name) (nth field-ref 2)))))
-      (testing "compiles into MBQL that carries :source-field through to the QP"
-        (let [mbql    (ast.compile/compile-to-mbql src-query)
-              stage   (first (:stages mbql))
-              filters (:filters stage)
-              filter-clause (first filters)
-              field-ref (nth filter-clause 2)]
-          (is (= 1 (count filters)))
-          (is (= := (first filter-clause)))
-          (is (= :field (first field-ref)))
-          (is (= (meta/id :venues :category-id)
-                 (:source-field (second field-ref)))
-              "the FK must survive to compiled MBQL so add-implicit-joins can inject the JOIN")
-          (is (= (meta/id :categories :name) (nth field-ref 2))))))))
-
 (deftest ^:parallel from-definition-preserves-source-table-segment-test
-  (testing "segment on the metric's source table is left as a raw :segment clause"
+  (testing "segment on the metric's source table is passed through as a raw :segment clause"
     (let [provider   (make-test-provider-with-segments
                       (sample-metric-metadata)
                       (sample-measure-metadata)
@@ -702,24 +621,9 @@
                       :metadata-provider provider}
           ast        (ast.build/from-definition definition)
           filter-node (get-in ast [:expression :ast :filter])]
+      (testing "valid AST"
+        (is (nil? (me/humanize (mr/explain ::ast.schema/ast ast)))))
       (testing "segment clause is passed through unchanged"
         (is (= :filter/mbql (:node/type filter-node)))
         (is (= :segment (first (:clause filter-node))))
         (is (= 600 (nth (:clause filter-node) 2)))))))
-
-(deftest ^:parallel from-definition-unresolvable-segment-passes-through-test
-  (testing "a segment id that the provider can't resolve falls through unchanged"
-    (let [provider   (make-test-provider-with-segments
-                      (sample-metric-metadata-with-joined-dim)
-                      (sample-measure-metadata)
-                      []) ; no segments seeded
-          definition {:lib/type          :metric/definition
-                      :expression        [:metric {:lib/uuid expr-uuid} 42]
-                      :filters           [{:lib/uuid expr-uuid
-                                           :filter [:segment {:lib/uuid "33333333-0000-0000-0000-000000000001"} 9999]}]
-                      :projections       []
-                      :metadata-provider provider}
-          ast        (ast.build/from-definition definition)
-          filter-node (get-in ast [:expression :ast :filter])]
-      (is (= :filter/mbql (:node/type filter-node)))
-      (is (= :segment (first (:clause filter-node)))))))

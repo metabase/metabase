@@ -801,62 +801,14 @@
         (is (= [] (:filter-positions dim)))))))
 
 ;;; -------------------------------------------------- available-segments --------------------------------------------------
-;;; These tests use a richer mock provider that exposes metrics, dimensions from
-;;; joined tables, and per-table segments.
-
-(def ^:private seg-source-group
-  {:id "group-source" :type "main" :display-name "Orders"})
-
-(def ^:private seg-joined-group
-  {:id "group-users" :type "connection" :display-name "User"})
+;;; These tests cover the source-table-only behavior. Joined-table segment
+;;; support lives in a follow-up PR (den/UXW-3754-segments-joined-tables).
 
 (def ^:private seg-source-metric-1
   {:lib/type :metadata/metric, :id 1, :name "revenue", :display-name "Revenue", :table-id 10})
 
 (def ^:private seg-source-metric-2
   {:lib/type :metadata/metric, :id 2, :name "orders", :display-name "Orders", :table-id 30})
-
-(def ^:private seg-source-dim
-  {:lib/type    :metadata/dimension
-   :id          "dddddddd-0000-0000-0000-000000000001"
-   :name        "status"
-   :display-name "Status"
-   :effective-type :type/Text
-   :dimension-mapping {:type         :table
-                       :table-id     10
-                       :dimension-id "dddddddd-0000-0000-0000-000000000001"
-                       :target       [:field {:lib/uuid "eeeeeeee-0000-0000-0000-000000001001"} 1001]}
-   :group       seg-source-group
-   :source-type :metric
-   :source-id   1})
-
-(def ^:private seg-joined-dim
-  {:lib/type    :metadata/dimension
-   :id          "dddddddd-0000-0000-0000-000000000002"
-   :name        "email"
-   :display-name "Email"
-   :effective-type :type/Text
-   :dimension-mapping {:type         :table
-                       :table-id     20
-                       :dimension-id "dddddddd-0000-0000-0000-000000000002"
-                       :target       [:field {:lib/uuid "eeeeeeee-0000-0000-0000-000000002001"} 2001]}
-   :group       seg-joined-group
-   :source-type :metric
-   :source-id   1})
-
-(def ^:private seg-source-dim-m2
-  {:lib/type    :metadata/dimension
-   :id          "dddddddd-0000-0000-0000-000000000003"
-   :name        "kind"
-   :display-name "Kind"
-   :effective-type :type/Text
-   :dimension-mapping {:type         :table
-                       :table-id     30
-                       :dimension-id "dddddddd-0000-0000-0000-000000000003"
-                       :target       [:field {:lib/uuid "eeeeeeee-0000-0000-0000-000000003001"} 3001]}
-   :group       {:id "group-source-2" :type "main" :display-name "Widgets"}
-   :source-type :metric
-   :source-id   2})
 
 (def ^:private seg-source-segment
   {:lib/type :metadata/segment, :id 100, :name "Big Orders", :table-id 10, :definition {}})
@@ -871,12 +823,6 @@
   (let [wanted (or id #{1 2})]
     (filterv #(contains? wanted (:id %)) [seg-source-metric-1 seg-source-metric-2])))
 
-(defn- seg-dimension-fetcher [{:keys [metric-id]}]
-  (case metric-id
-    1 [seg-source-dim seg-joined-dim]
-    2 [seg-source-dim-m2]
-    nil))
-
 (defn- seg-segment-fetcher [{:keys [table-id]}]
   (case table-id
     10 [seg-source-segment]
@@ -888,7 +834,7 @@
   (lib-metric.metadata.provider/metric-context-metadata-provider
    seg-metric-fetcher
    (constantly [])          ; measure-fetcher-fn
-   seg-dimension-fetcher    ; dimension-fetcher-fn
+   (constantly [])          ; dimension-fetcher-fn
    seg-segment-fetcher      ; segment-fetcher-fn
    (constantly nil)         ; table->db-fn
    (constantly nil)         ; db-provider-fn
@@ -905,39 +851,28 @@
    :projections       []
    :metadata-provider seg-mock-provider})
 
-(deftest ^:parallel available-segments-returns-source-and-joined-segments-test
-  (testing "available-segments returns segments from both source and joined tables"
+(deftest ^:parallel available-segments-returns-source-table-segments-test
+  (testing "available-segments returns only segments on the metric's source table"
     (let [segments (lib-metric.filter/available-segments seg-definition)
           by-id    (into {} (map (juxt :id identity)) segments)]
-      (is (= #{100 200} (set (keys by-id)))
-          "Both source-table segment (100) and joined-table segment (200) are returned")
-      (is (= seg-source-group
-             (:lib-metric/dimension-group (by-id 100)))
-          "Source segment is annotated with the source group")
-      (is (= seg-joined-group
-             (:lib-metric/dimension-group (by-id 200)))
-          "Joined segment is annotated with the joined-table group")
+      (is (= #{100} (set (keys by-id)))
+          "Only the source-table segment (100) is returned; joined-table segment (200) is not")
       (is (every? #(= seg-leaf-uuid-1 (:lib-metric/instance-uuid %)) segments)
           "All segments carry the expression leaf's instance-uuid"))))
 
 (deftest ^:parallel available-segments-dedupes-by-id-test
-  (testing "available-segments de-duplicates by :id when a segment is reachable via multiple leaves"
-    ;; Contrived: same segment id surfaces via two different tables (override fetcher).
-    (let [dup-fetcher (fn [{:keys [table-id]}]
-                        (case table-id
-                          10 [seg-source-segment]
-                          20 [(assoc seg-joined-segment :id 100)] ; same id as source segment
-                          []))
-          provider (lib-metric.metadata.provider/metric-context-metadata-provider
-                    seg-metric-fetcher (constantly []) seg-dimension-fetcher dup-fetcher
-                    (constantly nil) (constantly nil) (constantly nil) nil)
-          definition (assoc seg-definition :metadata-provider provider)
+  (testing "available-segments de-duplicates by :id when a segment surfaces for multiple leaves"
+    (let [definition (assoc seg-definition
+                            :expression
+                            [:+ {:lib/uuid "cccccccc-0000-0000-0000-000000000001"}
+                             [:metric {:lib/uuid seg-leaf-uuid-1} 1]
+                             [:metric {:lib/uuid seg-leaf-uuid-2} 1]])
           segments (lib-metric.filter/available-segments definition)]
       (is (= 1 (count segments)))
       (is (= 100 (:id (first segments)))))))
 
 (deftest ^:parallel available-segments-multi-leaf-expression-test
-  (testing "available-segments over a multi-leaf expression annotates each segment with its leaf's uuid"
+  (testing "available-segments over a multi-leaf expression returns each leaf's source-table segments"
     (let [definition (assoc seg-definition
                             :expression
                             [:+ {:lib/uuid "cccccccc-0000-0000-0000-000000000001"}
@@ -945,8 +880,7 @@
                              [:metric {:lib/uuid seg-leaf-uuid-2} 2]])
           segments (lib-metric.filter/available-segments definition)
           by-id (into {} (map (juxt :id identity)) segments)]
-      (is (= #{100 200 300} (set (keys by-id)))
-          "Segments from both leaves' tables are returned")
+      (is (= #{100 300} (set (keys by-id)))
+          "Segments from each leaf's own source table are returned")
       (is (= seg-leaf-uuid-1 (:lib-metric/instance-uuid (by-id 100))))
-      (is (= seg-leaf-uuid-1 (:lib-metric/instance-uuid (by-id 200))))
       (is (= seg-leaf-uuid-2 (:lib-metric/instance-uuid (by-id 300)))))))

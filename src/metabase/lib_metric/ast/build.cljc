@@ -370,178 +370,6 @@
   (when (expression-leaf? expression)
     (get (second expression) :lib/uuid)))
 
-;;; -------------------- Segment Pre-expansion --------------------
-;;;
-;;; When a user applies a segment whose table is not the metric's source
-;;; table (a joined table, e.g. filtering an Orders metric by a segment on
-;;; Products), the segment's stored `:definition` contains bare field refs
-;;; that are missing the `:source-field` (FK) metadata required by the QP's
-;;; `add-implicit-joins` middleware. If left alone, the compiled SQL references
-;;; `PRODUCTS.X` without a JOIN to PRODUCTS and the database errors out.
-;;;
-;;; We fix this at AST-build time: expand each `[:segment _ id]` filter clause
-;;; to the segment's own filter clauses, and annotate any `[:field opts col-id]`
-;;; ref with `:source-field` taken from a dimension-mapping whose `:table-id`
-;;; matches the field's table. Source-table segments (where no join is needed)
-;;; pass through unchanged so `expand-macros` handles them as before.
-
-(defn- segment-clause?
-  "True if `clause` is a raw `[:segment _opts id]` MBQL filter clause."
-  [clause]
-  (and (sequential? clause)
-       (= :segment (first clause))
-       (pos-int? (nth clause 2 nil))))
-
-(defn- field-ref?
-  "True if `x` is a raw `[:field opts field-id]` MBQL field ref."
-  [x]
-  (and (sequential? x)
-       (= :field (first x))
-       (map? (second x))
-       (pos-int? (nth x 2 nil))))
-
-(defn- segment-table-id
-  "Return the segment's table-id, preferring the metadata's `:table-id` and
-   falling back to the first stage's `:source-table` if necessary."
-  [segment]
-  (or (:table-id segment)
-      (perf/get-in segment [:definition :stages 0 :source-table])))
-
-(defn- segment-filter-clauses
-  "Return the segment's filter clauses (a seq of MBQL filter vectors) from its
-   MBQL 5 `:definition`. Returns nil if none."
-  [segment]
-  (seq (perf/get-in segment [:definition :stages 0 :filters])))
-
-(defn- dimension-mappings->table-annotations
-  "Build a `{table-id -> {:source-field FK :base-type BT}}` map from the
-   metric's dimension-mappings. First mapping per table wins (source-field is a
-   property of the FK, shared by every dimension on the same joined table)."
-  [dimension-mappings]
-  (reduce (fn [acc {:keys [table-id target]}]
-            (if (or (nil? table-id) (contains? acc table-id))
-              acc
-              (let [opts (second target)
-                    ann  (cond-> {}
-                           (:source-field opts) (assoc :source-field (:source-field opts))
-                           (:base-type opts)    (assoc :base-type (:base-type opts)))]
-                (if (seq ann)
-                  (assoc acc table-id ann)
-                  acc))))
-          {}
-          (or dimension-mappings [])))
-
-(defn- field-ids-in-clause
-  "Collect all field-ids referenced by `[:field _ id]` refs within `clause`."
-  [clause]
-  (let [ids (volatile! #{})]
-    (perf/prewalk
-     (fn [x]
-       (when (field-ref? x)
-         (vswap! ids conj (nth x 2)))
-       x)
-     clause)
-    @ids))
-
-(defn- fetch-field-table-ids
-  "Return a `{field-id -> table-id}` map for the given field ids using the
-   metadata provider."
-  [metadata-provider field-ids]
-  (when (seq field-ids)
-    (into {}
-          (map (juxt :id :table-id))
-          (lib.metadata.protocols/metadatas
-           metadata-provider
-           {:lib/type :metadata/column :id (set field-ids)}))))
-
-(defn- annotate-field-refs
-  "Walk `clause` and annotate each bare `[:field opts field-id]` ref with
-   `:source-field` / `:base-type` from `annotations-by-table`, using
-   `field-id->table-id` to route to the right entry. Refs that already carry
-   `:source-field` or `:join-alias` are left untouched — we only fill in the
-   missing case."
-  [clause field-id->table-id annotations-by-table]
-  (perf/prewalk
-   (fn [x]
-     (if (field-ref? x)
-       (let [[_field opts field-id] x
-             table-id (get field-id->table-id field-id)
-             ann      (get annotations-by-table table-id)]
-         (if (and ann
-                  (not (:source-field opts))
-                  (not (:join-alias opts)))
-           [:field (merge ann opts) field-id]
-           x))
-       x))
-   clause))
-
-(defn- expand-segment-clause
-  "Given a raw `[:segment _ id]` clause, look up the segment metadata, pull its
-   filter clauses, and annotate any field refs with `:source-field` from the
-   metric's dimension-mappings. Returns a single MBQL filter clause (possibly
-   wrapped in `:and`) or `nil` to signal 'leave the original clause alone'.
-
-   Callers should short-circuit on source-table segments before invoking this."
-  [metadata-provider annotations-by-table segment-clause]
-  (let [segment-id (nth segment-clause 2)
-        segment    (first (lib.metadata.protocols/metadatas
-                           metadata-provider
-                           {:lib/type :metadata/segment :id #{segment-id}}))
-        clauses    (some-> segment segment-filter-clauses)]
-    (when (seq clauses)
-      (let [field-ids         (reduce into #{} (map field-ids-in-clause clauses))
-            field-id->table   (fetch-field-table-ids metadata-provider field-ids)
-            annotated         (perf/mapv #(annotate-field-refs % field-id->table annotations-by-table)
-                                         clauses)]
-        (if (= 1 (count annotated))
-          (first annotated)
-          (into [:and {:lib/uuid (str (random-uuid))}] annotated))))))
-
-(defn- partition-filters-for-segment-expansion
-  "Walk the flat filter list and split it into two groups:
-
-   - `:normal-filters`   — non-segment clauses plus segment clauses on the
-     source table (which `expand-macros` handles correctly). These flow through
-     the usual `mbql-filter->ast-filter` pipeline.
-   - `:expanded-clauses` — MBQL filter clauses expanded from joined-table
-     segments, with field refs already annotated with `:source-field`. Each one
-     must be emitted as a `:filter/mbql` passthrough AST node — it contains
-     raw `[:field]` refs rather than `[:dimension]` refs and can't go through
-     the typed-filter pipeline.
-
-   Segments we can't resolve at all also stay in `:normal-filters`; the QP
-   will error out as it would have pre-fix."
-  [metadata-provider dimension-mappings source-table-id leaf-filters]
-  (let [annotations-by-table (dimension-mappings->table-annotations dimension-mappings)]
-    (reduce
-     (fn [acc clause]
-       (if-not (segment-clause? clause)
-         (update acc :normal-filters conj clause)
-         (let [segment-id (nth clause 2)
-               segment    (first (lib.metadata.protocols/metadatas
-                                  metadata-provider
-                                  {:lib/type :metadata/segment :id #{segment-id}}))
-               seg-table  (some-> segment segment-table-id)]
-           (if (and seg-table
-                    source-table-id
-                    (not= seg-table source-table-id))
-             (if-let [expanded (expand-segment-clause
-                                metadata-provider annotations-by-table clause)]
-               (update acc :expanded-clauses conj expanded)
-               (update acc :normal-filters conj clause))
-             (update acc :normal-filters conj clause)))))
-     {:normal-filters [] :expanded-clauses []}
-     leaf-filters)))
-
-(defn- resolve-source-table-id
-  "Return the metric's source table id — prefer the MBQL5 query's source-table
-   so we pick it up for metrics where the metadata map doesn't carry
-   `:table-id` at the top level (e.g. source-card-backed metrics, or our own
-   test fixtures)."
-  [metadata mbql5-query]
-  (or (lib.util/source-table-id mbql5-query)
-      (:table-id metadata)))
-
 (defn- build-leaf-ast
   "Build a complete single-source AST for one expression leaf.
    Extracted from from-definition for reuse in arithmetic expressions."
@@ -557,35 +385,17 @@
                              :metric  (:dataset-query metadata)
                              :measure (:definition metadata))
         mbql5-query        (ensure-mbql5 metadata-provider raw-query)
-        source-table-id    (resolve-source-table-id metadata mbql5-query)
         ;; Extract flat filters for this leaf's UUID
         leaf-filters       (into []
                                  (comp (filter #(= leaf-uuid (:lib/uuid %)))
                                        (map :filter))
                                  (or filters []))
-        ;; Pre-expand joined-table segment filters so their field refs pick up
-        ;; `:source-field` before the QP's `add-implicit-joins` middleware runs.
-        ;; Source-table and unresolvable segments pass through to
-        ;; `mbql-filter->ast-filter`'s existing `:segment` branch.
-        {:keys [normal-filters expanded-clauses]}
-        (partition-filters-for-segment-expansion
-         metadata-provider dimension-mappings source-table-id leaf-filters)
         ;; Extract flat projections for this leaf's :lib/uuid
         leaf-projections   (perf/some #(when (= leaf-uuid (:lib/uuid %))
                                          (:projection %))
                                       (or projections []))
         ;; Convert filters and projections to AST nodes
-        normal-ast-filter  (when (seq normal-filters) (mbql-filters->ast-filter normal-filters))
-        expanded-nodes     (perf/mapv (fn [clause] {:node/type :filter/mbql :clause clause})
-                                      expanded-clauses)
-        ast-filter         (cond
-                             (and normal-ast-filter (seq expanded-nodes))
-                             {:node/type :filter/and
-                              :children  (into [normal-ast-filter] expanded-nodes)}
-                             normal-ast-filter             normal-ast-filter
-                             (= 1 (count expanded-nodes))  (first expanded-nodes)
-                             (seq expanded-nodes)          {:node/type :filter/and
-                                                            :children  expanded-nodes})
+        ast-filter         (when (seq leaf-filters) (mbql-filters->ast-filter leaf-filters))
         ast-group-by       (when (seq leaf-projections) (perf/mapv dimension-ref->ast-dimension-ref leaf-projections))]
     {:node/type         :ast/source-query
      :source            (mbql5-query->source-node source-type leaf-id metadata mbql5-query)
