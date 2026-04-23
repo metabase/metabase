@@ -4,6 +4,22 @@ CLI and type definitions for creating custom visualizations for Metabase.
 
 ## Getting Started
 
+### Pick the right version
+
+`@metabase/custom-viz` is versioned to track the Metabase major you are targeting: MB `N` ↔ `@metabase/custom-viz@^0.N`. The npm dist-tags reflect this:
+
+| dist-tag        | what it points at                                          |
+| --------------- | ---------------------------------------------------------- |
+| `NN-stable`     | latest stable release for MB major `NN` (e.g. `61-stable`) |
+| `canary`        | rolling pre-release built from `master`                    |
+| `latest`        | current gold MB major — promoted manually                  |
+
+Install the tag matching your MB version, e.g.:
+
+```bash
+npx @metabase/custom-viz@61-stable init my-viz
+```
+
 ### 1. Scaffold a new visualization
 
 ```bash
