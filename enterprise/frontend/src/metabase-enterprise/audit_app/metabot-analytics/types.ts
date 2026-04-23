@@ -6,6 +6,7 @@ export type MetabotUserInfo = {
   email?: string;
   first_name?: string | null;
   last_name?: string | null;
+  tenant_id: number | null;
 };
 
 export type ConversationSummary = {
