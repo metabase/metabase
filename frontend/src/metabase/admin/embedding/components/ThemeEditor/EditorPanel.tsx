@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import type { EmbeddingThemeEditorResult } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   Collapse,
+  CopyButton,
   Flex,
   Icon,
   Select,
@@ -24,6 +25,7 @@ import {
   MORE_COLORS,
   PRIMARY_COLORS,
 } from "./constants";
+import { getThemeCodeSnippet } from "./get-theme-code-snippet";
 
 interface EditorPanelProps {
   editor: EmbeddingThemeEditorResult;
@@ -41,6 +43,11 @@ export function EditorPanel({
   const [moreColorsOpen, setMoreColorsOpen] = useState(false);
 
   const { currentTheme } = editor;
+  const themeCodeSnippet = useMemo(
+    () => getThemeCodeSnippet(currentTheme?.settings ?? {}),
+    [currentTheme?.settings],
+  );
+
   if (!currentTheme) {
     return null;
   }
@@ -64,7 +71,21 @@ export function EditorPanel({
       style={{ borderRight: "1px solid var(--mb-color-border)" }}
     >
       <Box flex={1} style={{ overflow: "auto" }} p="xl">
-        <Text fw={700} fz="xl" mb="xl">{t`Edit theme`}</Text>
+        <Flex align="center" justify="space-between" mb="xl">
+          <Text fw={700} fz="xl">{t`Edit theme`}</Text>
+          <CopyButton value={themeCodeSnippet}>
+            {({ copied, copy }) => (
+              <Button
+                variant="subtle"
+                size="compact-sm"
+                leftSection={<Icon name="copy" size={16} />}
+                onClick={copy}
+              >
+                {copied ? t`Copied!` : t`Copy code`}
+              </Button>
+            )}
+          </CopyButton>
+        </Flex>
 
         <Stack gap="lg">
           {/* Theme name */}
