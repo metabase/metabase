@@ -1,15 +1,12 @@
 import { t } from "ttag";
 
+import * as Urls from "metabase/utils/urls";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
   ClickActionPopoverProps,
   Drill,
   RegularClickAction,
 } from "metabase/visualizations/types/click-actions";
-import {
-  getAutomaticDashboardUrl,
-  getComparisonDashboardUrl,
-} from "metabase-lib/v1/urls";
 
 export const automaticInsightsDrill: Drill = ({
   question,
@@ -23,7 +20,7 @@ export const automaticInsightsDrill: Drill = ({
       section: "auto-popover",
       icon: "bolt",
       buttonType: "horizontal",
-      url: () => getAutomaticDashboardUrl(question, applyDrill(drill)),
+      url: () => Urls.automaticDashboard(question, applyDrill(drill)),
     },
     {
       name: "automatic-insights.compare",
@@ -31,7 +28,7 @@ export const automaticInsightsDrill: Drill = ({
       section: "auto-popover",
       icon: "segment",
       buttonType: "horizontal",
-      url: () => getComparisonDashboardUrl(question, applyDrill(drill)),
+      url: () => Urls.comparisonDashboard(question, applyDrill(drill)),
     },
   ];
 
