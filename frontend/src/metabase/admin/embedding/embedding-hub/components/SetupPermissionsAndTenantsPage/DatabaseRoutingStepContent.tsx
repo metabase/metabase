@@ -1,5 +1,3 @@
-/* eslint-disable metabase/no-unconditional-metabase-links-render */
-
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";

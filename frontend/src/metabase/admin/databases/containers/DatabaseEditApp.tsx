@@ -4,6 +4,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { ReturnToSetupGuideModal } from "metabase/admin/embedding/embedding-hub/components/ReturnToSetupGuideModal";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/admin/embedding/embedding-hub/constants";
 import {
   useGetDatabaseQuery,
   useGetDatabaseSettingsAvailableQuery,
@@ -13,8 +15,6 @@ import { GenericError } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
-import { ReturnToSetupGuideModal } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideModal";
-import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/embedding-hub/constants";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import {
   PLUGIN_DATABASE_REPLICATION,

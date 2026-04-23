@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { EMBEDDING_SETUP_GUIDE_PATH } from "metabase/embedding/embedding-hub/constants";
+import { EMBEDDING_SETUP_GUIDE_PATH } from "metabase/admin/embedding/embedding-hub/constants";
 import { useDispatch } from "metabase/redux";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 
