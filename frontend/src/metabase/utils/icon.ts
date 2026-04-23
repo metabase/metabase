@@ -38,6 +38,7 @@ export type ObjectWithModel = {
   effective_location?: Collection["location"];
   is_personal?: boolean;
   is_remote_synced?: boolean;
+  is_library_root?: boolean;
 };
 
 export const modelIconMap: Record<IconModel, IconName> = {
@@ -91,7 +92,7 @@ export const getIconBase = (item: ObjectWithModel): IconData => {
     return { name: "database" };
   }
 
-  if (item.model === "collection") {
+  if (item.model === "collection" && item.is_library_root === true) {
     switch (getLibraryCollectionType(item.type as CollectionType)) {
       case "root":
         return { name: "repository" };

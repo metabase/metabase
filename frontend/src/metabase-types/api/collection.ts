@@ -75,6 +75,7 @@ export interface Collection {
   personal_owner_id?: UserId;
   is_personal?: boolean;
   is_sample?: boolean; // true if the collection part of the sample content
+  is_library_root?: boolean;
 
   location: string | null;
   effective_location?: string; // location path containing only those collections that the user has permission to access
