@@ -22,7 +22,7 @@ export function getQuestionUrl(
 
   if (
     // the question is unsaved
-    !question.id() ||
+    !question.isSaved() ||
     // the question is a new question based on the original question
     (originalQuestion && question.isDirtyComparedTo(originalQuestion))
   ) {
