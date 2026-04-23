@@ -401,7 +401,7 @@
                        {:description "Number of failed semantic search DLQ retries"})
 
    ;; data-complexity-score timing
-   (prometheus/histogram :metabase-semantic-layer/complexity-score-duration-ms
+   (prometheus/histogram :metabase-data-complexity/scoring-duration-ms
                          {:description "Duration (ms) of complexity-score computation per phase (enumerate/score per catalog, plus total)."
                           :labels      [:phase]
                           ;; 1ms → 5min: sub-ms on tiny instances, minutes on huge ones.

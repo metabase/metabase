@@ -433,17 +433,21 @@
         (default), `:metabot` reuses the `:universe` score so the response shape is stable without
         paying for a redundant pass — callers loading entities from a representation file have no
         way to reconstruct Metabot's visibility filters and should either pass a pre-filtered
-        vector here or accept the universe approximation."
+        vector here or accept the universe approximation. In the fallback case the response
+        `:meta` includes `:metabot-source :universe-fallback` so benchmark consumers can tell an
+        approximated `:metabot` score apart from a properly-filtered one."
   [library-entities universe-entities embedder {:keys [embedding-model-meta metabot-entities]}]
-  (let [universe-score (score-catalog universe-entities embedder)]
+  (let [universe-score     (score-catalog universe-entities embedder)
+        metabot-fallback?  (nil? metabot-entities)]
     {:library  (score-catalog library-entities embedder)
      :universe universe-score
-     :metabot  (if metabot-entities
-                 (score-catalog metabot-entities embedder)
-                 universe-score)
+     :metabot  (if metabot-fallback?
+                 universe-score
+                 (score-catalog metabot-entities embedder))
      :meta     (cond-> {:formula-version   formula-version
                         :synonym-threshold synonym-similarity-threshold}
-                 embedding-model-meta (assoc :embedding-model embedding-model-meta))}))
+                 embedding-model-meta (assoc :embedding-model embedding-model-meta)
+                 metabot-fallback?    (assoc :metabot-source :universe-fallback))}))
 
 (defn- time-phase!
   "Run `f`, record duration under `phase` on the timing histogram, return its value."
@@ -452,7 +456,7 @@
     (try
       (f)
       (finally
-        (prometheus/observe! :metabase-semantic-layer/complexity-score-duration-ms
+        (prometheus/observe! :metabase-data-complexity/scoring-duration-ms
                              {:phase phase}
                              (u/since-ms timer))))))
 
@@ -514,7 +518,7 @@
           ;; (fingerprint advance) without leaking into the JSON API response shape.
           (with-meta result {::snowplow-published? published?})))
       (finally
-        (prometheus/observe! :metabase-semantic-layer/complexity-score-duration-ms
+        (prometheus/observe! :metabase-data-complexity/scoring-duration-ms
                              {:phase "total"}
                              (u/since-ms total-timer))))))
 
