@@ -25,6 +25,10 @@
   "Allowed string enum values for explicit joined-field selection."
   #{"all" "none"})
 
+(def binning-strategy-values
+  "Allowed string enum values for binning strategy."
+  #{"bin-width" "default" "num-bins"})
+
 (set! *warn-on-reflection* true)
 
 (defn keyword-enum
@@ -78,6 +82,17 @@
 
     "with-temporal-bucket"
     (update args 1 #(keyword-enum (conj path 2) "temporal bucket" % temporal-unit-values))
+
+    "with-binning"
+    (update args 1 (fn [binning]
+                     (if (and (map? binning)
+                              (some? (:strategy binning)))
+                       (update binning :strategy
+                               #(keyword-enum (conj path 2 :strategy)
+                                              "binning strategy"
+                                              %
+                                              binning-strategy-values))
+                       binning)))
 
     "interval"
     (update args 1 #(keyword-enum (conj path 2) "interval unit" % temporal-unit-values))
