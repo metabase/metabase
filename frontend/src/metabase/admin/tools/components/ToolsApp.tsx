@@ -41,6 +41,12 @@ export function ToolsApp({ location, children }: ToolsAppProps) {
             location={location}
           />
           <ToolsNavItem
+            label={t`Schedule`}
+            path={Urls.adminToolsSchedule()}
+            icon="calendar"
+            location={location}
+          />
+          <ToolsNavItem
             label={t`Logs`}
             path={Urls.adminToolsLogs()}
             icon="audit"

@@ -122,9 +122,31 @@
   (testing "Superusers could get task info"
     (is (malli= [:map
                  [:scheduler :any]
-                 [:jobs      [:sequential
-                              [:map-of :any :any]]]]
+                 [:jobs      :any]]
                 (mt/user-http-request :crowberto :get 200 "task/info")))))
+
+(deftest fetch-info-firings-window-test
+  (testing "firings query requires both start and end"
+    (is (string? (mt/user-http-request :crowberto :get 400 "task/info" :start "2025-01-01T00:00:00Z"))))
+  (testing "firings query rejects start after end"
+    (is (string? (mt/user-http-request :crowberto :get 400 "task/info"
+                                       :start "2025-01-10T00:00:00Z"
+                                       :end   "2025-01-01T00:00:00Z"))))
+  (testing "firings query rejects windows longer than 14 days"
+    (is (string? (mt/user-http-request :crowberto :get 400 "task/info"
+                                       :start "2025-01-01T00:00:00Z"
+                                       :end   "2025-01-20T00:00:00Z"))))
+  (testing "firings query returns firings and meta for a valid window"
+    (let [resp (mt/user-http-request :crowberto :get 200 "task/info"
+                                     :start "2025-06-01T00:00:00Z"
+                                     :end   "2025-06-08T00:00:00Z")]
+      (is (sequential? (:firings resp)))
+      (is (malli= [:map
+                   [:truncations             [:sequential :any]]
+                   [:global_cap_exhausted    :boolean]
+                   [:max_firings_per_trigger :int]
+                   [:max_firings_global      :int]]
+                  (:firings_meta resp))))))
 
 (deftest ^:synchronized single-filter-test
   (testing "Check that paging information is applied when provided and included in the response"

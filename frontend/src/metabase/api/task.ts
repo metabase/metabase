@@ -7,6 +7,7 @@ import type {
   RunEntity,
   Task,
   TaskInfo,
+  TaskInfoScheduleParams,
   TaskRunExtended,
 } from "metabase-types/api";
 
@@ -45,10 +46,11 @@ export const taskApi = Api.injectEndpoints({
       }),
       providesTags: (task) => (task ? provideTaskTags(task) : []),
     }),
-    getTasksInfo: builder.query<TaskInfo, void>({
-      query: () => ({
+    getTasksInfo: builder.query<TaskInfo, TaskInfoScheduleParams | void>({
+      query: (params) => ({
         method: "GET",
         url: "/api/task/info",
+        params: params ?? {},
       }),
     }),
     listTaskRuns: builder.query<

@@ -60,7 +60,7 @@ export const JobTriggersModal = ({
   params,
   onClose,
 }: JobTriggersModalProps) => {
-  const { data, error, isFetching } = useGetTasksInfoQuery();
+  const { data, error, isFetching } = useGetTasksInfoQuery(undefined);
 
   const { jobKey } = params;
   const jobs = data?.jobs;

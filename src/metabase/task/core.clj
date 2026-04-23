@@ -25,6 +25,7 @@
   schedule-task!
   scheduler
   scheduler-info
+  scheduled-firings-between
   start-scheduler!
   stop-scheduler!
   trigger-now!])

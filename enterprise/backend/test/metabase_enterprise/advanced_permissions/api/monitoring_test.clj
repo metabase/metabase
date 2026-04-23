@@ -17,28 +17,37 @@
                   (mt/user-http-request user :get status (format "task/%d" (:id task))))
                 (get-task-info [user status]
                   (testing (format "get task info with %s user" (mt/user-descriptor user))
-                    (mt/user-http-request user :get status "task/info")))]
+                    (mt/user-http-request user :get status "task/info")))
+                (get-task-info-with-firings [user status]
+                  (testing (format "get task info with firings with %s user" (mt/user-descriptor user))
+                    (mt/user-http-request user :get status "task/info"
+                                          :start "2025-06-01T00:00:00Z"
+                                          :end   "2025-06-08T00:00:00Z")))]
           (testing "if `advanced-permissions` is disabled, require admins"
             (mt/with-premium-features #{}
               (get-tasks user 403)
               (get-single-task user 403)
               (get-task-info user 403)
+              (get-task-info-with-firings user 403)
               (get-tasks :crowberto 200)
               (get-single-task :crowberto 200)
-              (get-task-info :crowberto 200)))
+              (get-task-info :crowberto 200)
+              (get-task-info-with-firings :crowberto 200)))
 
           (testing "if `advanced-permissions` is enabled"
             (mt/with-premium-features #{:advanced-permissions}
               (testing "still fail if user's group doesn't have `monitoring` permission"
                 (get-tasks user 403)
                 (get-single-task user 403)
-                (get-task-info user 403))
+                (get-task-info user 403)
+                (get-task-info-with-firings user 403))
 
               (testing "allowed if user's group has `monitoring` permission"
                 (perms/grant-application-permissions! group :monitoring)
                 (get-tasks user 200)
                 (get-single-task user 200)
-                (get-task-info user 200)))))))))
+                (get-task-info user 200)
+                (get-task-info-with-firings user 200)))))))))
 
 (deftest logs-permissions-test
   (testing "GET /api/logger/logs"
