@@ -1,4 +1,4 @@
-/* eslint-disable metabase/no-unconditional-metabase-links-render, metabase/no-literal-metabase-strings, i18next/no-literal-string -- admin-only page */
+/* eslint-disable i18next/no-literal-string -- admin-only page */
 
 import { c, t } from "ttag";
 
