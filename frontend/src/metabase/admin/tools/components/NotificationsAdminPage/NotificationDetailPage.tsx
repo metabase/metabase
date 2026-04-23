@@ -61,7 +61,8 @@ type RouteParams = {
 export const NotificationDetailPage = ({
   params,
 }: WithRouterProps<RouteParams>) => {
-  const notificationId = Number(params.notificationId);
+  const parsedId = Number(params.notificationId);
+  const isValidId = Number.isInteger(parsedId) && parsedId > 0;
   const dispatch = useDispatch();
   const [isChangeOwnerOpen, setIsChangeOwnerOpen] = useState(false);
 
@@ -71,7 +72,7 @@ export const NotificationDetailPage = ({
     data: notification,
     error,
     isLoading,
-  } = useAdminNotificationDetailQuery(notificationId);
+  } = useAdminNotificationDetailQuery(parsedId, { skip: !isValidId });
 
   const [bulkAction, { isLoading: isBulkLoading }] =
     useBulkNotificationActionMutation();
@@ -156,12 +157,15 @@ export const NotificationDetailPage = ({
     [bulkAction, dispatch, notification],
   );
 
-  if (isLoading || error || !notification) {
+  if (!isValidId || isLoading || error || !notification) {
     return (
       <SettingsPageWrapper>
         <SettingsSection>
           <BackLink />
-          <LoadingAndErrorWrapper loading={isLoading} error={error} />
+          <LoadingAndErrorWrapper
+            loading={isLoading}
+            error={!isValidId ? t`Invalid notification id.` : error}
+          />
         </SettingsSection>
       </SettingsPageWrapper>
     );

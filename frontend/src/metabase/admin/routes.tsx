@@ -296,11 +296,11 @@ export const getRoutes = (
               )}
             </Route>
             <Route path="tasks">{getTasksRoutes()}</Route>
-            <Route path="notifications" component={NotificationsAdminPage} />
             <Route
               path="notifications/:notificationId"
               component={NotificationDetailPage}
             />
+            <Route path="notifications" component={NotificationsAdminPage} />
             <Route path="jobs" component={JobInfoApp}>
               <ModalRoute
                 path=":jobKey"

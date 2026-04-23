@@ -6,13 +6,15 @@
   WHERE clause, so the filter and the response field can't drift."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [java-time.api :as t]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as mdb]
+   [metabase.models.interface :as mi]
    [metabase.notification.api :as notification-api]
    [metabase.notification.models :as models.notification]
    [metabase.request.core :as request]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -30,12 +32,12 @@
    [:id           ms/PositiveInt]
    [:active       :boolean]
    [:creator_id   [:maybe ms/PositiveInt]]
-   [:created_at   :any]
-   [:updated_at   :any]
+   [:created_at   ms/TemporalInstant]
+   [:updated_at   ms/TemporalInstant]
    [:payload_type :keyword]
    [:payload_id   [:maybe ms/PositiveInt]]
    [:health       ::health-state]
-   [:last_sent_at [:maybe :any]]])
+   [:last_sent_at [:maybe ms/TemporalInstant]]])
 
 (mr/def ::list-response
   [:map
@@ -85,8 +87,8 @@
               :where  [:and
                        [:= :run_type "alert"]
                        [:= :entity_type "card"]
-                       [:> :started_at (t/minus (t/offset-date-time)
-                                                (t/days health-lookback-days))]]}
+                       [:> :started_at (h2x/add-interval-honeysql-form
+                                        (mdb/db-type) (mi/now) (- health-lookback-days) :day)]]}
              :sub]]
    :where  [:= :sub.rn 1]})
 
@@ -159,7 +161,7 @@
   [{:keys [health] :as filters}]
   (cond-> (base-list-query (dissoc filters :health))
     health (sql.helpers/where (health-where health))
-    true   (assoc :order-by [[:notification.updated_at :desc]])))
+    true   (assoc :order-by [[:notification.updated_at :desc] [:notification.id :desc]])))
 
 (defn- count-query
   [filters]
@@ -278,5 +280,5 @@
     (doseq [b    before
             :let [a (get after (:id b))]
             :when a]
-      (notification-api/publish-notification-update! a b)))
-  {:updated (count notification_ids)})
+      (notification-api/publish-notification-update! a b))
+    {:updated (count before)}))

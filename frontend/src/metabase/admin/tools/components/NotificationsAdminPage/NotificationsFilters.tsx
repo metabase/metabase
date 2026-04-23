@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -128,12 +128,21 @@ const RecipientEmailInput = ({ value, onChange }: RecipientEmailInputProps) => {
   const [email, setEmail] = useState(value);
   const debounced = useDebouncedValue(email, SEARCH_DEBOUNCE_DURATION);
   const onChangeRef = useLatest(onChange);
+  const lastPushedRef = useRef(value);
 
   useEffect(() => {
-    if (debounced !== value) {
+    if (debounced !== lastPushedRef.current) {
+      lastPushedRef.current = debounced;
       onChangeRef.current(debounced);
     }
-  }, [debounced, value, onChangeRef]);
+  }, [debounced, onChangeRef]);
+
+  useEffect(() => {
+    if (value !== lastPushedRef.current) {
+      lastPushedRef.current = value;
+      setEmail(value);
+    }
+  }, [value]);
 
   return (
     <TextInput

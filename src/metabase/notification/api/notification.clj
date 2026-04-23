@@ -249,7 +249,9 @@
    _query
    body :- ::NotificationApiInput]
   (check-no-resource-templates! (:handlers body))
-  (let [existing-notification (get-notification id)]
+  ;; Ownership is reassigned only via the admin bulk endpoint.
+  (let [body                  (dissoc body :creator_id)
+        existing-notification (get-notification id)]
     (api/update-check existing-notification body)
     (models.notification/update-notification! existing-notification body)
     (u/prog1 (get-notification id)
