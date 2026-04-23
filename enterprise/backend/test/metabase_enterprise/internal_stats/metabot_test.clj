@@ -194,10 +194,10 @@
             (cleanup! conv-id)))))))
 
 (deftest metabot-stats-falls-back-to-conversation-user-for-legacy-rows-test
-  (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
-        yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
-        rasta-id  (mt/user->id :rasta)
-        lucky-id  (mt/user->id :lucky)
+  (let [clock      (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+        yesterday  (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+        rasta-id   (mt/user->id :rasta)
+        lucky-id   (mt/user->id :lucky)
         ;; `:user_id` on the messages is intentionally omitted — this is the legacy
         ;; scenario from before messages stamped their author.
         legacy-msg #(hash-map :conversation_id % :created_at yesterday :role "user"

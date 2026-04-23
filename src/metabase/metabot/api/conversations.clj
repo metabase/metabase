@@ -77,33 +77,33 @@
   message); legacy conversations created before message authors were stamped
   fall back to the conversation originator."
   []
-  (let [user-id (api/check-404 api/*current-user-id*)
-        limit   (or (request/limit) default-limit)
-        offset  (or (request/offset) default-offset)
+  (let [user-id         (api/check-404 api/*current-user-id*)
+        limit           (or (request/limit) default-limit)
+        offset          (or (request/offset) default-offset)
         visible-to-user (participation-clause user-id)
         ;; Aggregates are per-row correlated subqueries so pagination stays on the
         ;; outer `metabot_conversation` scan and only runs the subquery 50× per page.
         ;; Participation is defined by message authorship, not deletion state, so
         ;; soft-deleted messages still count. Legacy rows fall back to
         ;; `metabot_conversation.user_id`.
-        rows    (t2/select :model/MetabotConversation
-                           {:select   [:id :created_at :summary :user_id
-                                       [{:select [[[:count :*]]]
-                                         :from   [:metabot_message]
-                                         :where  [:and
-                                                  [:= :conversation_id :metabot_conversation.id]
-                                                  [:= :deleted_at nil]]}
-                                        :message_count]
-                                       [{:select [[[:max :created_at]]]
-                                         :from   [:metabot_message]
-                                         :where  [:and
-                                                  [:= :conversation_id :metabot_conversation.id]
-                                                  [:= :deleted_at nil]]}
-                                        :last_message_at]]
-                            :where    visible-to-user
-                            :order-by [[:created_at :desc] [:id :asc]]
-                            :limit    limit
-                            :offset   offset})]
+        rows            (t2/select :model/MetabotConversation
+                                   {:select   [:id :created_at :summary :user_id
+                                               [{:select [[[:count :*]]]
+                                                 :from   [:metabot_message]
+                                                 :where  [:and
+                                                          [:= :conversation_id :metabot_conversation.id]
+                                                          [:= :deleted_at nil]]}
+                                                :message_count]
+                                               [{:select [[[:max :created_at]]]
+                                                 :from   [:metabot_message]
+                                                 :where  [:and
+                                                          [:= :conversation_id :metabot_conversation.id]
+                                                          [:= :deleted_at nil]]}
+                                                :last_message_at]]
+                                    :where    visible-to-user
+                                    :order-by [[:created_at :desc] [:id :asc]]
+                                    :limit    limit
+                                    :offset   offset})]
     {:data   (mapv #(-> %
                         (select-keys [:created_at :summary :user_id :message_count :last_message_at])
                         (assoc :conversation_id (:id %)))
