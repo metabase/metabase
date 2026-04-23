@@ -8,6 +8,15 @@
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
 
+(def ^:private default-user
+  "The single admin user bundled into the exported config — lets a fresh Metabase
+  instance bootstrap from this file and log in immediately. Callers are expected
+  to change the password after import."
+  {:first_name "Workspace"
+   :last_name  "Admin"
+   :email      "workspace@workspace.local"
+   :password   "password1"})
+
 (defn- database-entry [wsd db]
   {:name    (:name db)
    :engine  (:engine db)
@@ -21,13 +30,18 @@
                :output_schema (:output_schema wsd)}])
 
 (defn build-workspace-config
-  "Return a downloadable config map for `workspace-id`, merging each
-  WorkspaceDatabase's override credentials on top of the underlying
-  `metabase_database.details` and appending `schema-filters-*` keys derived
-  from `:input_schemas`. Returns nil when the workspace does not exist.
+  "Return a downloadable config.yml-shaped map for `workspace-id`:
+
+    {:version 1
+     :config  {:databases [...]
+               :users     [<default-user>]
+               :workspace {...}}}
+
+  Each database entry merges the underlying `metabase_database.details` with the
+  WorkspaceDatabase's override credentials and adds `schema-filters-*` keys
+  derived from `:input_schemas`. Returns nil when the workspace does not exist.
   Throws a 409 `ex-info` if any of the workspace's databases is not
-  `:provisioned` — the config can only be built once every row has live
-  credentials."
+  `:provisioned`."
   [workspace-id]
   (when-let [ws (workspace/get-workspace workspace-id)]
     (let [wsds (:databases ws)]
@@ -42,9 +56,11 @@
             pairs     (for [wsd wsds
                             :let [db (get dbs-by-id (:database_id wsd))]]
                         [wsd db])]
-        {:databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
-         :workspace {:name      (:name ws)
-                     :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}))))
+        {:version 1
+         :config  {:databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
+                   :users     [default-user]
+                   :workspace {:name      (:name ws)
+                               :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

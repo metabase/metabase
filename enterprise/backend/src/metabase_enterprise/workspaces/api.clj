@@ -171,9 +171,10 @@
   {:id id :deleted true})
 
 (api.macros/defendpoint :get "/:id/config/:format"
-  "Return a downloadable config fragment for this Workspace in the requested
-  format (`json` or `yaml`). Returns 409 if any of the Workspace's databases is
-  still uninitialized."
+  "Return a downloadable config.yml-shaped config file for this Workspace in the
+  requested format (`json` or `yaml`). Bundles the workspace's databases, a single
+  default admin user, and the workspace mapping. Returns 409 if any of the
+  Workspace's databases is not `:provisioned`."
   [{:keys [id format]} :- [:map
                            [:id     ms/PositiveInt]
                            [:format (ms/enum-decode-keyword [:json :yaml])]]]

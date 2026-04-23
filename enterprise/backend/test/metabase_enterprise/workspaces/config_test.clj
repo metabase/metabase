@@ -5,7 +5,7 @@
    [metabase.test :as mt]))
 
 (deftest build-workspace-config-happy-path-test
-  (testing "build-workspace-config merges DB details with workspace overrides and adds schema-filters"
+  (testing "build-workspace-config returns a {:version 1 :config {...}} structure matching config.yml"
     (mt/with-temp [:model/Database {db-id :id}
                    {:name    "Analytics Data Warehouse"
                     :engine  :postgres
@@ -22,9 +22,12 @@
                     :input_schemas    ["raw_github"]
                     :status           :provisioned}]
       (let [cfg (config/build-workspace-config ws-id)]
+        (testing "outer shape matches config.yml (version + config block)"
+          (is (= 1 (:version cfg)))
+          (is (every? #(contains? (:config cfg) %) [:databases :users :workspace])))
         (testing "databases entry"
-          (is (= 1 (count (:databases cfg))))
-          (let [db (first (:databases cfg))]
+          (is (= 1 (count (-> cfg :config :databases))))
+          (let [db (first (-> cfg :config :databases))]
             (is (= "Analytics Data Warehouse" (:name db)))
             (is (= :postgres (:engine db)))
             (testing "original details are preserved, workspace overrides win, schema-filters appended"
@@ -36,12 +39,18 @@
                       :schema-filters-type     "inclusion"
                       :schema-filters-patterns "raw_github"}
                      (:details db))))))
+        (testing "bundles a single default admin user"
+          (is (= [{:first_name "Workspace"
+                   :last_name  "Admin"
+                   :email      "workspace@workspace.local"
+                   :password   "password1"}]
+                 (-> cfg :config :users))))
         (testing "workspace entry"
-          (is (= "github" (-> cfg :workspace :name)))
+          (is (= "github" (-> cfg :config :workspace :name)))
           (is (= {"Analytics Data Warehouse"
                   {:input_schemas ["raw_github"]
                    :output_schema "mb_isolation_github"}}
-                 (-> cfg :workspace :databases))))))))
+                 (-> cfg :config :workspace :databases))))))))
 
 (deftest build-workspace-config-joins-multiple-input-schemas-test
   (testing "Multiple input schemas are comma-joined in schema-filters-patterns"
@@ -57,7 +66,7 @@
                     :status           :provisioned}]
       (let [cfg (config/build-workspace-config ws-id)]
         (is (= "schema_a,schema_b,schema_c"
-               (-> cfg :databases first :details :schema-filters-patterns)))))))
+               (-> cfg :config :databases first :details :schema-filters-patterns)))))))
 
 (deftest build-workspace-config-rejects-non-provisioned-test
   (testing "Any non-:provisioned WorkspaceDatabase causes a 409"
@@ -72,12 +81,14 @@
            (config/build-workspace-config ws-id))))))
 
 (deftest build-workspace-config-empty-workspace-test
-  (testing "A workspace with no databases produces empty databases arrays/maps"
+  (testing "A workspace with no databases still produces the version+config outer shape with a default user"
     (mt/with-temp [:model/Workspace {ws-id :id} {:name "Empty"}]
       (let [cfg (config/build-workspace-config ws-id)]
-        (is (= "Empty" (-> cfg :workspace :name)))
-        (is (= []       (:databases cfg)))
-        (is (= {}       (-> cfg :workspace :databases)))))))
+        (is (= 1 (:version cfg)))
+        (is (= "Empty" (-> cfg :config :workspace :name)))
+        (is (= [] (-> cfg :config :databases)))
+        (is (= {} (-> cfg :config :workspace :databases)))
+        (is (= 1 (count (-> cfg :config :users))))))))
 
 (deftest build-workspace-config-missing-workspace-returns-nil-test
   (testing "A missing workspace returns nil"
