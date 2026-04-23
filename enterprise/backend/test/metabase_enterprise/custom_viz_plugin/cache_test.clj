@@ -116,6 +116,7 @@
                                                       :status       :error}]
         (with-redefs [rs.git/git-source      (constantly nil)
                       rs.git/snapshot-at-ref  (constantly {:version "abc123"})
+                      rs.git/file-size        (constantly 100)
                       rs.git/read-file        (fn [_snapshot path]
                                                 (case path
                                                   "dist/index.js"          "console.log('hi')"
@@ -139,6 +140,7 @@
       (mt/with-model-cleanup [:model/CustomVizPlugin]
         (with-redefs [rs.git/git-source      (constantly nil)
                       rs.git/snapshot-at-ref  (constantly {:version "abc123"})
+                      rs.git/file-size        (constantly 100)
                       rs.git/read-file        (fn [_snapshot path]
                                                 (case path
                                                   "dist/index.js"        "console.log('hi')"
@@ -186,6 +188,7 @@
                                                       :status       :active}]
         (with-redefs [rs.git/git-source      (constantly nil)
                       rs.git/snapshot-at-ref  (constantly {:version "abc123"})
+                      rs.git/file-size        (constantly 100)
                       rs.git/read-file        (fn [_snapshot path]
                                                 (case path
                                                   "dist/index.js"        "console.log('hi')"
