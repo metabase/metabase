@@ -9,6 +9,23 @@
    keep this set small to minimise false positives — unrecognised shapes are left alone."
   '#{fn fn* constantly partial comp complement identity})
 
+(def ^:private multimethod-targets
+  "Unqualified names of vars known to be multimethods. with-dynamic-fn-redefs refuses to proxy
+   these at runtime (dispatch breaks and the JVM is polluted for other tests), so the nudge
+   would be wrong. Hook can only see unqualified names reliably, so we match on name alone —
+   this is a small, hand-curated list; extend it as new multimethod targets appear in tests."
+  '#{send! can-read? can-query?})
+
+(defn- multimethod-lhs?
+  "Does any LHS in this binding list name a known multimethod?"
+  [pairs]
+  (some (fn [[lhs _rhs]]
+          (and (hooks/token-node? lhs)
+               (symbol? (hooks/sexpr lhs))
+               (contains? multimethod-targets
+                          (symbol (name (hooks/sexpr lhs))))))
+        pairs))
+
 (defn- fn-shaped?
   "Heuristic: does this rewrite-clj node look like it evaluates to a function?
 
@@ -34,7 +51,8 @@
     (when (hooks/vector-node? bindings-vec)
       (let [pairs (partition-all 2 (:children bindings-vec))]
         (when (and (seq pairs)
-                   (every? (fn [[_lhs rhs]] (and rhs (fn-shaped? rhs))) pairs))
+                   (every? (fn [[_lhs rhs]] (and rhs (fn-shaped? rhs))) pairs)
+                   (not (multimethod-lhs? pairs)))
           (hooks/reg-finding!
            (assoc (meta node)
                   :message (str "Every binding here replaces a function — prefer "

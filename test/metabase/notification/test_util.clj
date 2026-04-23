@@ -67,8 +67,8 @@
   (with-javascript-visualization-stub
     (with-send-notification-sync
       (let [channel-messages (atom {})]
-        (mt/with-dynamic-fn-redefs [channel/send! (fn [channel message]
-                                                    (swap! channel-messages update (:type channel) u/conjv message))]
+        (with-redefs [channel/send! (fn [channel message]
+                                      (swap! channel-messages update (:type channel) u/conjv message))]
           (thunk)
           @channel-messages)))))
 

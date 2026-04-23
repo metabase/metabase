@@ -156,7 +156,7 @@
                                 (if (= @retry-count 1)
                                   (throw (Exception. "test-exception"))
                                   (reset! send-args args)))]
-              (mt/with-dynamic-fn-redefs [channel/send! send!]
+              (with-redefs [channel/send! send!]
                 (#'notification.send/send-notification-sync! n))
               (is (some? @send-args))
               (is (=? {:task "channel-send"
@@ -306,7 +306,7 @@
                                                  :max-interval-millis     30000}}
             send!                #(#'notification.send/channel-send-retrying! pulse-id :notification/card {:channel_type :channel/slack} fake-slack-notification)]
         (testing "channel send task history task details include retry config"
-          (mt/with-dynamic-fn-redefs [channel/send! (constantly true)]
+          (with-redefs [channel/send! (constantly true)]
             (send!)
             (is (=? {:task         "channel-send"
                      :db_id        nil

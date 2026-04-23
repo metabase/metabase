@@ -32,8 +32,8 @@
         (mt/with-temp [:model/Channel {chn-id :id} {:type :channel/metabase-test}]
           (notification.tu/with-captured-channel-send!
             (let [captured-messages (atom [])]
-              (mt/with-dynamic-fn-redefs [channel/send! (fn [& args]
-                                                          (swap! captured-messages conj args))]
+              (with-redefs [channel/send! (fn [& args]
+                                            (swap! captured-messages conj args))]
                 (let [noti (models.notification/create-notification!
                             {:payload_type :notification/testing}
                             [{:type :notification-subscription/cron

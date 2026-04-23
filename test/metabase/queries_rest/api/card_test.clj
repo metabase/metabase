@@ -4013,10 +4013,10 @@
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
     (let [original-can-read? mi/can-read?]
       (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
-        (mt/with-dynamic-fn-redefs [mi/can-read? (fn [& args]
-                                                   (if (= :model/Table (apply mi/dispatch-on-model args))
-                                                     false
-                                                     (apply original-can-read? args)))]
+        (with-redefs [mi/can-read? (fn [& args]
+                                     (if (= :model/Table (apply mi/dispatch-on-model args))
+                                       false
+                                       (apply original-can-read? args)))]
           (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card))))))))))
 
 (deftest pivot-tables-with-model-sources-show-row-totals

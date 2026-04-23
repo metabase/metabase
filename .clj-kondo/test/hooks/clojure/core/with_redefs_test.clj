@@ -35,6 +35,15 @@
                                  bar (fn [] 2)]
                      (foo)))))))
 
+(deftest ^:parallel exempts-known-multimethod-targets-test
+  (testing "channel/send! is a multimethod — don't nudge even with fn-shaped RHS"
+    (is (= [] (lint '(with-redefs [channel/send! (fn [& _] nil)] :body)))))
+  (testing "mi/can-read? and mi/can-query? likewise"
+    (is (= [] (lint '(with-redefs [mi/can-read? (constantly true)] :body))))
+    (is (= [] (lint '(with-redefs [mi/can-query? (constantly false)] :body)))))
+  (testing "matching is on unqualified name, so any namespace alias works"
+    (is (= [] (lint '(with-redefs [some.other.ns/send! (constantly nil)] :body))))))
+
 (deftest ^:parallel ignores-non-fn-rhs-test
   (testing "literal value"
     (is (= [] (lint '(with-redefs [timeout-ms 200] :body)))))

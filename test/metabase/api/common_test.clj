@@ -107,10 +107,10 @@
 
   (try
     (binding [api/*current-user-id* 1]
-      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly false)
-                                  mi/can-write? (constantly false)
-                                  mi/can-update? (constantly false)
-                                  mi/can-create? (constantly false)]
+      (with-redefs [mi/can-read? (constantly false)
+                    mi/can-write? (constantly false)
+                    mi/can-update? (constantly false)
+                    mi/can-create? (constantly false)]
         (mt/with-temp [:model/Card card {}]
           (testing "write-check"
             (binding [*events* (atom [])]
@@ -142,13 +142,13 @@
 (deftest query-check-returns-object-when-user-has-query-permissions-test
   (testing "query-check returns object when user has query permissions"
     (mt/with-temp [:model/Card card {}]
-      (mt/with-dynamic-fn-redefs [mi/can-query? (constantly true)]
+      (with-redefs [mi/can-query? (constantly true)]
         (is (= card (api/query-check card)))))))
 
 (deftest query-check-throws-403-when-user-lacks-query-permissions-test
   (testing "query-check throws 403 when user lacks query permissions"
     (mt/with-temp [:model/Card card {}]
-      (mt/with-dynamic-fn-redefs [mi/can-query? (constantly false)]
+      (with-redefs [mi/can-query? (constantly false)]
         (is (thrown-with-msg? ExceptionInfo #"permissions"
                               (api/query-check card)))))))
 
