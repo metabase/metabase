@@ -24,6 +24,7 @@
    [metabase-enterprise.embedding-hub.api]
    [metabase-enterprise.gsheets.api :as gsheets.api]
    [metabase-enterprise.library.api]
+   [metabase-enterprise.metabot-analytics.api]
    [metabase-enterprise.metabot.api]
    [metabase-enterprise.metabot.api.routes]
    [metabase-enterprise.permission-debug.api]
@@ -120,6 +121,7 @@
    "/library"                      (premium-handler metabase-enterprise.library.api/routes :library)
    "/logs"                         (premium-handler 'metabase-enterprise.advanced-config.api.logs :audit-app)
    "/metabot"                      (premium-handler 'metabase-enterprise.metabot.api :metabot-v3)
+   "/metabot-analytics"            (premium-handler metabase-enterprise.metabot-analytics.api/routes :audit-app)
    "/permission_debug"             (premium-handler metabase-enterprise.permission-debug.api/routes :advanced-permissions)
    ;; TODO (Ngoc 2026-03-25) -- use :transforms-advanced feature flag once it exists
    "/transforms"                   (premium-handler metabase-enterprise.transforms.api/routes :transforms-python)

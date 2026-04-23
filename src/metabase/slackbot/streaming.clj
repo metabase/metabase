@@ -11,10 +11,8 @@
    [metabase.metabot.core :as metabot]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.persistence :as metabot.persistence]
-   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
-   [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
    [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
@@ -170,9 +168,18 @@
    - req-slack-msg-id: The Slack message ts for the user's incoming message
    - get-res-slack-msg-id: Function that returns the Slack message ts for the bot's response"
   [conversation-id prompt thread bot-user-id channel-id extra-history
-   {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id request-prompt stored-msg-id]}]
-  (let [data-idx        (volatile! -1)
-        message         (metabot.envelope/user-message prompt)
+   {:keys [on-text on-tool-start on-tool-end on-data req-slack-msg-id get-res-slack-msg-id
+           request-prompt stored-msg-id team-id thread-ts]}]
+  (let [message         (metabot.envelope/user-message prompt)
+        ai-proxy?       (metabot/metabase-provider? (metabot.settings/llm-metabot-provider))
+        ;; Persist the user message before setup so failed conversations are captured.
+        _               (metabot.persistence/store-message! conversation-id "slackbot" [message]
+                                                            :channel-id      channel-id
+                                                            :slack-team-id   team-id
+                                                            :slack-thread-ts thread-ts
+                                                            :slack-msg-id    req-slack-msg-id
+                                                            :ai-proxy?       ai-proxy?)
+        data-idx        (volatile! -1)
         request-message (metabot.envelope/user-message (or request-prompt prompt))
         capabilities    (compute-capabilities)
         thread-history  (thread->history thread bot-user-id conversation-id)
@@ -182,10 +189,6 @@
                           :capabilities               capabilities
                           :slack_channel_id           channel-id})
         messages        (conj (vec history) request-message)
-        _               (metabot.persistence/store-message! conversation-id "slackbot" [message]
-                                                            :channel-id   channel-id
-                                                            :slack-msg-id req-slack-msg-id
-                                                            :ai-proxy?    (metabot/metabase-provider? (metabot.settings/llm-metabot-provider)))
         parts-atom      (atom [])
         dispatch-xf     (comp
                          (u/tee-xf parts-atom)
@@ -217,23 +220,31 @@
 
                                    nil)
                                  nil)))]
-    (transduce dispatch-xf (constantly nil) nil
-               (agent/run-agent-loop
-                {:messages   messages
-                 :state      {}
-                 :profile-id :slackbot
-                 :context    context}))
-    (let [parts     @parts-atom
-          lines     (into [] (self.core/aisdk-line-xf) parts)
-          pk        (metabot.persistence/store-message!
-                     conversation-id "slackbot"
-                     (metabot.u/aisdk->messages :assistant lines)
-                     :channel-id   channel-id
-                     :slack-msg-id (when get-res-slack-msg-id (get-res-slack-msg-id))
-                     :user-id      api/*current-user-id*
-                     :ai-proxy?   (metabot/metabase-provider? (metabot.settings/llm-metabot-provider)))]
-      (when stored-msg-id
-        (reset! stored-msg-id pk)))))
+    (try
+      (transduce dispatch-xf (constantly nil) nil
+                 (agent/run-agent-loop
+                  {:messages      messages
+                   :state         {}
+                   :profile-id    :slackbot
+                   :context       context
+                   :tracking-opts {:source "slackbot"}}))
+      (finally
+        ;; Persist whatever parts we collected, even if the pipeline threw.
+        ;; Stores raw native parts (not the lossy AI-SDK-message round-trip) so
+        ;; tool-output :structured-output survives for analytics extraction.
+        (let [parts @parts-atom]
+          (when (seq parts)
+            (let [pk (metabot.persistence/store-native-parts!
+                      conversation-id "slackbot"
+                      (into [] (metabot.persistence/combine-text-parts-xf) parts)
+                      :channel-id      channel-id
+                      :slack-team-id   team-id
+                      :slack-thread-ts thread-ts
+                      :slack-msg-id    (when get-res-slack-msg-id (get-res-slack-msg-id))
+                      :user-id         api/*current-user-id*
+                      :ai-proxy?       ai-proxy?)]
+              (when stored-msg-id
+                (reset! stored-msg-id pk)))))))))
 
 (def ^:private viz-data-types
   "DATA part types that represent visualizations."
@@ -533,6 +544,8 @@
                           :on-tool-start        on-tool-start
                           :on-tool-end          on-tool-end
                           :on-data              on-data
+                          :team-id              (:team_id auth-info)
+                          :thread-ts            thread-ts
                           :req-slack-msg-id     (:ts event)
                           :get-res-slack-msg-id (fn [] (:stream_ts @stream-state))})]
         (request-flush! true)

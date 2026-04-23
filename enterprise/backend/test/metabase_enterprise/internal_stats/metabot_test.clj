@@ -380,7 +380,7 @@
             ;; Example question generation (no conversation)
             (generate-example-questions! tables model 300 100)
             (t2/update! :model/AiUsageLog {:id [:> baseline]
-                                           :source "example-question-generation"}
+                                           :source "example_question_generation_batch"}
                         {:created_at yesterday}))
 
           (testing "metabot-stats includes both chat and example question generation"

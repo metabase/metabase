@@ -60,6 +60,23 @@
                       :metabot-slack-signing-secret nil})
   nil)
 
+(defn conversation-permalink
+  "Best-effort Slack permalink for a message in a conversation thread."
+  [channel ts]
+  (when (and channel
+             ts
+             (channel.settings/slack-configured?))
+    (try
+      (let [client {:token (channel.settings/unobfuscated-slack-app-token)}
+            {:keys [ok permalink]} (slackbot.client/get-permalink client
+                                                                  {:channel channel
+                                                                   :ts      ts})]
+        (when ok
+          permalink))
+      (catch Exception e
+        (log/warn e "Unable to fetch Slack permalink for metabot conversation")
+        nil))))
+
 ;; ------------------------- VALIDATION ----------------------------------
 
 (defn- assert-valid-slack-req

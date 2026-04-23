@@ -14,12 +14,19 @@
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.plugins.core :as plugins]
+   [metabase.sync.sync :as sync]
    [metabase.sync.task.sync-databases :as task.sync-databases]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.nio.charset StandardCharsets)
+   (java.nio.file Files OpenOption)
+   (java.util.jar JarEntry JarOutputStream)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :plugins))
 
@@ -173,6 +180,66 @@
     (is (not (#'ee-audit/should-load-audit? false 3 5))))
   (testing "load-analytics-content is false + checksums do not match  => do not load"
     (is (not (#'ee-audit/should-load-audit? false 1 3)))))
+
+(deftest views-checksum-works-for-jar-resources-test
+  (let [jar-path (Files/createTempFile "instance-analytics-views" ".jar" (make-array java.nio.file.attribute.FileAttribute 0))
+        resource "migrations/instance_analytics_views"
+        entries  [["users/v1/postgres-users.sql"           "select 1;"]
+                  ["dashboards/v1/postgres-dashboards.sql" "select 2;"]]
+        jar-url  (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))
+        expected (hash (sort-by first (mapv (fn [[rel sql]] [rel sql]) entries)))]
+    (try
+      (with-open [out (-> jar-path
+                          (Files/newOutputStream (into-array OpenOption []))
+                          io/output-stream
+                          JarOutputStream.)]
+        (doseq [[rel sql] entries]
+          (.putNextEntry out (JarEntry. (str resource "/" rel)))
+          (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
+          (.closeEntry out)))
+      (with-redefs [io/resource (fn [path]
+                                  (when (= path resource)
+                                    jar-url))]
+        (is (= expected (#'ee-audit/views-checksum))))
+      (finally
+        (Files/deleteIfExists jar-path)))))
+
+(deftest views-checksum-detects-rename-test
+  (testing "renaming a file changes the checksum (path is part of the hash)"
+    (let [make-jar (fn [entries]
+                     (let [jar-path (Files/createTempFile "instance-analytics-views" ".jar"
+                                                          (make-array java.nio.file.attribute.FileAttribute 0))
+                           resource "migrations/instance_analytics_views"]
+                       (with-open [out (-> jar-path
+                                           (Files/newOutputStream (into-array OpenOption []))
+                                           io/output-stream
+                                           JarOutputStream.)]
+                         (doseq [[rel sql] entries]
+                           (.putNextEntry out (JarEntry. (str resource "/" rel)))
+                           (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
+                           (.closeEntry out)))
+                       [jar-path (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))]))
+          [jar-a url-a] (make-jar [["a.sql" "select 1;"]])
+          [jar-b url-b] (make-jar [["b.sql" "select 1;"]])]
+      (try
+        (let [checksum-a (with-redefs [io/resource (constantly url-a)]
+                           (#'ee-audit/views-checksum))
+              checksum-b (with-redefs [io/resource (constantly url-b)]
+                           (#'ee-audit/views-checksum))]
+          (is (not= checksum-a checksum-b)))
+        (finally
+          (Files/deleteIfExists jar-a)
+          (Files/deleteIfExists jar-b))))))
+
+(deftest views-checksum-not-recorded-when-sync-fails-test
+  (mt/with-temp [:model/Database audit-db {:engine "h2" :is_audit true}]
+    (let [checksum 12345]
+      (ee.audit.settings/last-analytics-views-checksum! 0)
+      (with-redefs [ee-audit/views-checksum (constantly checksum)
+                    sync/sync-database! (fn [& _]
+                                          (throw (Exception. "sync failed")))]
+        (is (nil? (#'ee-audit/maybe-sync-audit-db! audit-db false)))
+        (is (= 0 (ee.audit.settings/last-analytics-views-checksum)))))))
 
 (deftest adjust-audit-db-to-source-test
   (testing "adjust-audit-db-to-source! correctly handles tables and fields with mixed case"

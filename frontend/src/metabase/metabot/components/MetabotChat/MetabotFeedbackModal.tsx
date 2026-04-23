@@ -2,18 +2,18 @@ import { useFormikContext } from "formik";
 import { c, t } from "ttag";
 import * as Yup from "yup";
 
-import { useSetting } from "metabase/common/hooks";
 import { Form, FormProvider } from "metabase/forms";
 import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
 import { useMetabotName } from "metabase/metabot/hooks";
-import { getMetabotId, getMetabotState } from "metabase/metabot/state";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import { getMetabotId } from "metabase/metabot/state";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { useSelector } from "metabase/utils/redux";
-import type { MetabotFeedback } from "metabase-types/api";
+import type { MetabotFeedback, MetabotIssueType } from "metabase-types/api";
+
+import { issueTypeOptions } from "./feedback-issue-types";
 
 // Issue types that require free text feedback
 const ISSUE_TYPES_REQUIRING_FREEFORM = ["ui-bug", "other"] as const;
@@ -63,31 +63,28 @@ export const MetabotFeedbackModal = ({
   positive,
 }: MetabotFeedbackModalProps) => {
   const applicationName = useSelector(getApplicationName);
-  const isAdmin = useSelector(getUserIsAdmin);
-  const version = useSetting("version");
   const metabotName = useMetabotName();
-
   const metabotId = useSelector(getMetabotId);
-  const metabotState = useSelector(getMetabotState);
 
-  const handleSubmit = (
-    values: Pick<
-      MetabotFeedback["feedback"],
-      "issue_type" | "freeform_feedback"
-    >,
-  ) =>
-    onSubmit({
-      version,
+  const handleSubmit = (values: {
+    freeform_feedback: string;
+    issue_type?: MetabotIssueType | "";
+  }) => {
+    const base = {
       metabot_id: metabotId,
-      feedback: {
-        message_id: messageId,
-        positive,
-        ...values,
-      },
-      conversation_data: metabotState,
-      is_admin: isAdmin,
-      submission_time: new Date().toISOString(),
-    });
+      message_id: messageId,
+      freeform_feedback: values.freeform_feedback,
+    };
+    onSubmit(
+      positive
+        ? { ...base, positive: true }
+        : {
+            ...base,
+            positive: false,
+            issue_type: values.issue_type || undefined,
+          },
+    );
+  };
 
   return (
     <Modal
@@ -113,24 +110,7 @@ export const MetabotFeedbackModal = ({
                 <FormSelect
                   name="issue_type"
                   placeholder={t`Select issue type`}
-                  data={[
-                    { label: t`UI bug`, value: "ui-bug" },
-                    {
-                      label: t`Took incorrect actions`,
-                      value: "took-incorrect-actions",
-                    },
-                    { label: t`Overall refusal`, value: "overall-refusal" },
-                    {
-                      label: t`Did not follow request`,
-                      value: "did-not-follow-request",
-                    },
-                    { label: t`Not factually correct`, value: "not-factual" },
-                    {
-                      label: t`Incomplete response`,
-                      value: "incomplete-response",
-                    },
-                    { label: t`Other`, value: "other" },
-                  ]}
+                  data={issueTypeOptions}
                 />
               </Stack>
             )}
@@ -150,7 +130,7 @@ export const MetabotFeedbackModal = ({
               />
             </Stack>
 
-            <Text size="sm" color="text-secondary">
+            <Text size="sm" c="text-secondary">
               {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- this is a translation context string, not shown to users */}
               {c("{0} is the name of the application, usually 'Metabase'")
                 .t`Please submit this report to ${applicationName}. Note that it may contain sensitive data from your conversation.`}

@@ -59,6 +59,7 @@
     :model/LoginHistory
     :model/FieldValues
     :model/MetabotConversation
+    :model/MetabotFeedback
     :model/MetabotGroupLimit
     :model/MetabotInstanceLimit
     :model/MetabotMessage

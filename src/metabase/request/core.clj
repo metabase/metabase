@@ -57,7 +57,8 @@
   geocode-ip-addresses
   https?
   ip-address
-  public?])
+  public?
+  referer])
 
 (defn enabled-session-timeout-seconds
   "Return the session timeout in seconds if the session-timeout-config premium feature is enabled and a timeout is

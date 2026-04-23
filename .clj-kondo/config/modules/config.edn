@@ -1073,8 +1073,8 @@
               lib-be              ;; BE-specific extension of lib; tight coupling is acceptable.
               query-processor     ;; Necessarily manipulates MBQL; better to pull most logic into a new module.
               source-swap         ;; Manipulates MBQL queries; tight coupling with lib is expected.
-              enterprise/sandbox  ;; Really part of the QP, though its lives in the enterprise/ tree.
-              }}
+              enterprise/sandbox}}  ;; Really part of the QP, though its lives in the enterprise/ tree.
+
 
   lib-be
   {:team "Querying Platform"
@@ -1199,6 +1199,7 @@
               metabase.metabot.settings}
    :friends #{agent-api
               enterprise/metabot
+              enterprise/metabot-analytics
               slackbot}
    :uses    #{activity-feed
               agent-lib
@@ -1238,7 +1239,11 @@
               transforms-base
               util
               warehouses}
-   :model-exports #{:model/AiUsageLog :model/Metabot :model/MetabotMessage}
+   :model-exports #{:model/AiUsageLog
+                    :model/Metabot
+                    :model/MetabotConversation
+                    :model/MetabotFeedback
+                    :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
@@ -3031,6 +3036,18 @@
                     :model/PermissionsGroup
                     :model/PermissionsGroupMembership
                     :model/Transform}}
+
+  enterprise/metabot-analytics
+  {:team "Metabot"
+   :api  #{metabase-enterprise.metabot-analytics.api}
+   :uses #{api
+           driver
+           metabot
+           request
+           slackbot
+           sql-tools
+           util}
+   :model-imports #{:model/MetabotConversation :model/MetabotFeedback :model/MetabotMessage}}
 
   enterprise/permission-debug
   {:team "UX West"

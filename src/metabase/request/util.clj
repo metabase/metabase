@@ -84,6 +84,12 @@
             ;; strip out non-ip-address characters like square brackets which we get sometimes
             (str/replace #"[^0-9a-fA-F.:]" ""))))
 
+(defn referer
+  "The `Referer` header from a Ring `request`, or nil. Best-effort — browsers may strip it under
+  `Referrer-Policy: no-referrer` or cross-origin restrictions."
+  [request]
+  (get-in request [:headers "referer"]))
+
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
   [:map {:closed true}
