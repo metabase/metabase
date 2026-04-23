@@ -15,6 +15,7 @@ module.exports = defineConfig({
       FAIL_FAST: isFailFastEnabled,
     },
     retries: 0,
+    videoCompression: false,
   },
   component: {
     ...embeddingSdkComponentTestConfig,
@@ -23,5 +24,6 @@ module.exports = defineConfig({
       FAIL_FAST: isFailFastEnabled,
     },
     retries: 0,
+    videoCompression: false,
   },
 });
