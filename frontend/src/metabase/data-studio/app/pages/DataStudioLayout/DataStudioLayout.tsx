@@ -13,6 +13,7 @@ import {
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   canAccessTransforms as canAccessTransformsSelector,
   getTransformsFeatureAvailable,
@@ -90,6 +91,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel,
   );
   const canAccessTransforms = useSelector(canAccessTransformsSelector);
+  const isAdmin = useSelector(getUserIsAdmin);
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
