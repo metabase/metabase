@@ -21,7 +21,7 @@
   (deferred-tru "Maximum number of transforms a single transform-job run may execute in parallel.")
   :type       :integer
   :visibility :internal
-  :default    1
+  :default    3
   :feature    :transforms-basic
   :export?    false
   :encryption :no
