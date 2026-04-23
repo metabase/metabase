@@ -26,19 +26,6 @@
 
 ;;; ------------------------------------------------ Schema ------------------------------------------------
 
-(def construct-program-schema
-  "Schema for the program parameter of construct_notebook_query (legacy sexp-in-array format).
-  Intentionally loose — agent-lib validates and repairs internally.
-
-  Still consumed by `slackbot-construct-notebook-query-tool` during the migration; will be
-  removed in Phase 3 once slackbot is moved to representations."
-  [:map
-   [:source [:map
-             [:type :string]
-             [:id {:optional true} [:maybe :int]]
-             [:ref {:optional true} [:maybe :string]]]]
-   [:operations [:sequential [:sequential :any]]]])
-
 (def ^:private construct-visualization-schema
   [:map {:closed true}
    [:chart_type :string]])
@@ -116,6 +103,18 @@
                          :error        :ambiguous-database-name
                          :database     db-name
                          :database-ids (vec (sort ids))}))))))
+
+;;; --------------------------- Legacy sexp-pipeline scaffolding (step 15 delete) ---------------------------
+;;;
+;;; Everything from here down to (and including) `execute-program` is sexp-only: it's used
+;;; solely by the HTTP `/v2/construct-query` endpoint in `metabase.agent-api.api`. That
+;;; endpoint migrates in `repr-plan.md` step 15; at that point this entire block goes away
+;;; along with `construct-program` from the endpoint body schema.
+;;;
+;;; The repr pipeline (`execute-representations-query`, `resolve-database-id-from-yaml`,
+;;; `resolve-source-database-id`, the result-column helpers, the main tool) lives above and
+;;; below this block.
+;;; -----------------------------------------------------------------------------------------
 
 (defn- source-entity->model-str
   "Map source_entity type to the model string used by agent-lib evaluation context."
@@ -205,8 +204,8 @@
 (defn execute-program
   "Execute a legacy sexp-in-array structured program via agent-lib.
 
-  Still used by `slackbot-construct-notebook-query-tool` during the migration.
-  `construct-notebook-query-tool` now uses [[execute-representations-query]] instead."
+  Post-step-14: the only remaining caller is the HTTP `/v2/construct-query` endpoint in
+  `metabase.agent-api.api`. Will be deleted in step 15 along with the endpoint migration."
   [source-entity referenced-entities program]
   (let [database-id (resolve-source-database-id source-entity)
         mp          (lib-be/application-database-metadata-provider database-id)
