@@ -39,9 +39,12 @@
    Synchronous throws are turned into failed futures by yhocuspocus's
    `runHooks`, so no manual wrapping is needed here."
   ^Extension []
-  (proxy [Extension] []
-    (getName [] "metabase.documents.collab.authz")
-    (onAuthenticate [^OnAuthenticatePayload payload]
+  ;; `proxy` doesn't dispatch to interface default methods, so we'd have to
+  ;; implement every hook (onConnect, onDestroy, onChange, …). `reify` does
+  ;; inherit default methods on Clojure 1.10+, so we implement only the two
+  ;; hooks we care about and let the rest pass through as no-ops.
+  (reify Extension
+    (^CompletableFuture onAuthenticate [_ ^OnAuthenticatePayload payload]
       (let [ctx      (.getContext payload)
             doc-name (.getDocumentName payload)
             user-id  (.get ctx "userId")]

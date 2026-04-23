@@ -66,6 +66,7 @@ import {
   setHasUnsavedChanges,
   setIsHistorySidebarOpen,
 } from "../documents.slice";
+import { useCollabProvider } from "../hooks/use-collab-provider";
 import { useDocumentState } from "../hooks/use-document-state";
 import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
 import { useScrollToAnchor } from "../hooks/use-scroll-to-anchor";
@@ -153,6 +154,15 @@ export const DocumentPage = ({
 
   const canWrite =
     !documentData?.archived && (isNewDocument || documentData?.can_write);
+
+  // Collab session: built synchronously when the user has write perms and an
+  // entity-id exists. Backend gates the feature flag; if disabled the upgrade
+  // 404s, the provider stays disconnected, and the editor stays on the
+  // non-collab JSON path.
+  const collabSession = useCollabProvider(
+    documentData?.entity_id,
+    Boolean(canWrite),
+  );
 
   useEffect(() => {
     if (error) {
@@ -507,6 +517,8 @@ export const DocumentPage = ({
               editable={canWrite && !isSaving}
               isLoading={isDocumentLoading}
               editorContainerRef={editorContainerRef}
+              ydoc={collabSession?.ydoc}
+              provider={collabSession?.provider}
             />
           </Box>
         </Box>

@@ -35,7 +35,8 @@ User-facing docs live elsewhere.
 | `server.clj`        | Lazy `YHocuspocus` singleton + `stop!` lifecycle hook.                   |
 | `persistence.clj`   | `DatabaseExtension` — dual-writes `document.ydoc` + `document.document`. |
 | `authz.clj`         | `Extension#onAuthenticate` — per-document read/write permission check.   |
-| `prose_mirror.clj`  | Schema-free `YXmlFragment` ↔ ProseMirror JSON walker.                    |
+| `prose_mirror.clj`  | Typed `YXmlFragment` ↔ ProseMirror JSON conversion via yprosemirror.     |
+| `prose_mirror_schema.clj` | JVM ProseMirror schema mirroring Metabase's TipTap extensions.     |
 
 ## Doc naming
 
@@ -49,10 +50,16 @@ dashboards) can claim their own prefixes; unknown prefixes throw
 
 Binary Y-CRDT state lives in `document.ydoc` (`bytea` / `blob`). The existing
 ProseMirror JSON in the `document.document` column is kept in sync on every
-save — `saveToDatabase` derives PM JSON from the post-edit YDoc via the
-schema-free walker in `prose_mirror.clj` and writes both columns in one
-transaction. Viewers of `GET /api/document/:id` therefore always see the
-latest state without needing to know about collab.
+save — `saveToDatabase` derives PM JSON from the post-edit YDoc via
+yprosemirror's typed converter (`prose_mirror.clj` + `prose_mirror_schema.clj`)
+and writes both columns in one transaction. Viewers of `GET /api/document/:id`
+therefore always see the latest state without needing to know about collab.
+
+Node/mark attrs survive as strings through the Y-CRDT wire format
+(`YXmlElement.setAttribute` is String-typed; this matches
+`@tiptap/extension-collaboration`'s browser-side behaviour). TipTap's own
+schema re-types attrs via each node's `parseHTML` handler on load, so
+clients see typed attrs even though the server stores strings.
 
 When a document that has existing JSON but no ydoc connects for the first
 time, `loadFromDatabase` hydrates bytes from the JSON so the collab session
@@ -83,3 +90,25 @@ The `authz.clj` `Extension` runs on the yhocuspocus executor. Its
 - the handler returns 404 for `/api/document/collab`
 - `server/get-server` returns `nil` (no `YHocuspocus` ever built)
 - `server/stop!` is a no-op
+
+## Manual browser verification
+
+Until the follow-up task `collab-cypress-two-user-e2e` lands, these are
+the smoke checks before flipping the flag on in any shared environment:
+
+1. Start the dev server with `MB_ENABLE_DOCUMENT_COLLAB=true`.
+2. Open the same document in two browser profiles (different logged-in
+   users with write perms).
+3. Type in profile A — profile B should see the characters appear within
+   ~1 second. Cursors should render with per-user stable colors.
+4. Read-only user: a user with only read perms loads the same document
+   URL — the WS connects (server accepts) but `setReadOnly(true)` is
+   applied; local edits don't propagate.
+5. No-perm user: load returns 403 on the standard API; the collab WS
+   upgrade itself is attempted but rejected with a close frame via the
+   authz extension.
+6. Reload both tabs — content persists (ydoc + PM JSON dual-write).
+7. Stop the dev server, start it back up — the document reopens with
+   state intact (`loadFromDatabase` returns the persisted bytes).
+8. Disable the flag and reload — the WS upgrade 404s and the editor
+   falls back to the existing non-collab path with no console errors.

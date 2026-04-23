@@ -32,6 +32,15 @@
   (update ws-listener :on-open
           (fn [orig] (fn [sock] (orig sock) (f sock)))))
 
+(defn- wrap-on-close
+  "Compose a new `:on-close` that runs the listener's existing `:on-close`
+   first, then invokes `f` with the close-code."
+  [ws-listener f]
+  (update ws-listener :on-close
+          (fn [orig] (fn [sock code reason]
+                       (orig sock code reason)
+                       (f code)))))
+
 (defn- make-context
   "Build the `Map<String,Object>` context yhocuspocus surfaces to extension
    hooks. Keys are co-located here so future additions (e.g. tenant) stay
@@ -55,16 +64,20 @@
         user-id  api/*current-user-id*
         ^YHocuspocus server (collab.server/get-server)
         [^Transport transport ws-listener] (collab.transport/create-ring-transport conn-id remote)
-        listener (if server
-                   (wrap-on-open ws-listener
-                                 (fn on-server-ready [_sock]
-                                   (call-handle-connection! server transport (make-context conn-id remote user-id))))
-                   (wrap-on-open ws-listener
-                                 (fn on-no-server [sock]
+        listener (cond-> ws-listener
+                   server
+                   (wrap-on-open (fn on-server-ready [_sock]
+                                   (log/infof "collab: connection open %s user=%s remote=%s"
+                                              conn-id user-id remote)
+                                   (call-handle-connection! server transport
+                                                            (make-context conn-id remote user-id))))
+                   (not server)
+                   (wrap-on-open (fn on-no-server [sock]
                                    (log/warn "collab: rejecting connection — server unavailable")
-                                   (ring.ws/close sock 1011 "document-collab server unavailable"))))]
-    (log/debugf "collab upgrade accepted: %s from %s (user=%s server=%s)"
-                conn-id remote user-id (some? server))
+                                   (ring.ws/close sock 1011 "document-collab server unavailable")))
+                   true
+                   (wrap-on-close (fn on-close [code]
+                                    (log/infof "collab: connection closed %s code=%s" conn-id code))))]
     {::ring.ws/listener listener}))
 
 (defn routes
