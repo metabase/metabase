@@ -32,7 +32,7 @@
 (defenterprise db-workspace-schema
   "Return the workspace-isolated schema name configured for `db-id`, or nil
    when no workspace is configured for that database."
-  :feature :workspaces
+  :feature :none
   :fallback :oss
   [db-id]
   (get-in @workspaces-config [:databases db-id :output_schema]))
