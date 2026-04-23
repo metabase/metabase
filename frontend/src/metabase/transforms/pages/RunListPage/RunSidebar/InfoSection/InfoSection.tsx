@@ -51,7 +51,7 @@ export function InfoSection({ run }: InfoSectionProps) {
         </InfoSectionItem>
       )}
       {formatSchemaTable(run.workspace_schema, run.workspace_table) != null && (
-        <InfoSectionItem label={t`Workspace`}>
+        <InfoSectionItem label={t`Workspace target`}>
           {formatSchemaTable(run.workspace_schema, run.workspace_table)}
         </InfoSectionItem>
       )}
