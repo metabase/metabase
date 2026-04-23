@@ -69,9 +69,6 @@ describe("admin > custom visualizations", () => {
           .should("be.visible")
           .click();
 
-        H.main()
-          .findByRole("heading", { name: "Custom visualizations" })
-          .should("be.visible");
         H.getAddVisualizationLink().should("be.visible");
 
         H.main()
@@ -80,8 +77,11 @@ describe("admin > custom visualizations", () => {
         H.popover().findByText("Deactivate custom visualizations").click();
 
         H.main()
-          .findByRole("heading", { name: "Custom visualizations" })
+          .findByRole("heading", { name: "Add a new visualization" })
           .should("not.exist");
+        H.main()
+          .findByRole("heading", { name: "Build custom visualizations" })
+          .should("be.visible");
       });
 
       it('should not show custom visualizations page to non-admins with "Settings access" permission', () => {
