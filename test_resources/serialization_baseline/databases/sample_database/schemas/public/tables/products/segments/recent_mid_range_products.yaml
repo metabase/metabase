@@ -51,10 +51,6 @@ definition:
 description: Products created in last year, priced 20-100, not null rating
 entity_id: wdYkSSArR5ymVGa0pvb47
 name: Recent Mid-Range Products
-table_id:
-- Sample Database
-- PUBLIC
-- PRODUCTS
 serdes/meta:
 - id: wdYkSSArR5ymVGa0pvb47
   label: recent_mid_range_products

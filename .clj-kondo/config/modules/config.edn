@@ -1652,7 +1652,6 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
-                    :model/Table
                     :model/User}}
 
   queries-rest

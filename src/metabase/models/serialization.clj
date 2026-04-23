@@ -1066,6 +1066,13 @@
                              "Table"    "tables"
                              "Field"    "fields"})
 
+(defn serialized-query-source-table
+  "Given a serialized query (with portable references), returns the portable reference of the table it is based
+  on. Measures and segments use this to omit the table_id property when it is derivable from the query. This should be
+  an mbql query and not a native query."
+  [serialized-query]
+  (some-> serialized-query :stages (get 0) :source-table))
+
 (defn storage-path-prefixes
   "The [[serdes/storage-path]] for Table is a bit tricky, and shared with Fields and FieldValues, so it's
   factored out here.

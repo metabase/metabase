@@ -14,10 +14,6 @@ definition:
   lib/type: mbql/query
 entity_id: DBap2523KuN4Lt-cYrUjF
 name: Order Count
-table_id:
-- Sample Database
-- PUBLIC
-- ORDERS
 serdes/meta:
 - id: DBap2523KuN4Lt-cYrUjF
   label: order_count
