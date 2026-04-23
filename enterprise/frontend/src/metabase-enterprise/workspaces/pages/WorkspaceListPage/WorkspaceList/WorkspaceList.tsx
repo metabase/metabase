@@ -18,11 +18,13 @@ import { COLUMN_WIDTHS, getColumns } from "./utils";
 
 type WorkspaceListProps = {
   workspaces: Workspace[];
+  isFiltered?: boolean;
   isLoading?: boolean;
 };
 
 export function WorkspaceList({
   workspaces,
+  isFiltered = false,
   isLoading = false,
 }: WorkspaceListProps) {
   const dispatch = useDispatch();
@@ -42,6 +44,8 @@ export function WorkspaceList({
     onRowActivate: handleRowActivate,
   });
 
+  const emptyLabel = isFiltered ? t`No workspaces found` : t`No workspaces yet`;
+
   return (
     <Card flex="0 1 auto" mih={0} p={0} withBorder data-testid="workspace-list">
       {isLoading ? (
@@ -49,7 +53,7 @@ export function WorkspaceList({
       ) : (
         <TreeTable
           instance={treeTableInstance}
-          emptyState={<ListEmptyState label={t`No workspaces yet`} />}
+          emptyState={<ListEmptyState label={emptyLabel} />}
           onRowClick={handleRowActivate}
         />
       )}

@@ -105,7 +105,7 @@ export function DatabaseMappingSection({
         ) : (
           <DatabaseMappingList
             mappings={mappings}
-            onRowClick={isReadOnly ? undefined : handleOpenEdit}
+            onRowClick={handleOpenEdit}
           />
         )}
       </TitleSection>
@@ -118,6 +118,7 @@ export function DatabaseMappingSection({
           selectedDatabaseId,
         )}
         canDelete={isNew || mappings.length > 1}
+        isReadOnly={isReadOnly}
         onSubmit={selectedMapping != null ? handleUpdate : handleAdd}
         onDelete={selectedMapping != null ? handleDelete : undefined}
         onClose={handleClose}

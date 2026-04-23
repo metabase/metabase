@@ -56,6 +56,21 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
+      onQueryStarted: async (
+        { id, ...patch },
+        { dispatch, queryFulfilled },
+      ) => {
+        const patchResult = dispatch(
+          workspaceApi.util.updateQueryData("getWorkspace", id, (draft) => {
+            Object.assign(draft, patch);
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     deleteWorkspace: builder.mutation<void, WorkspaceId>({
       query: (id) => ({
@@ -72,6 +87,21 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
+      onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+        const patchResult = dispatch(
+          workspaceApi.util.updateQueryData("getWorkspace", id, (draft) => {
+            draft.databases = draft.databases.map((database) => ({
+              ...database,
+              status: "provisioning",
+            }));
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     unprovisionWorkspace: builder.mutation<Workspace, WorkspaceId>({
       query: (id) => ({
@@ -80,6 +110,21 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       }),
       invalidatesTags: (_, error, id) =>
         invalidateTags(error, [listTag("workspace"), idTag("workspace", id)]),
+      onQueryStarted: async (id, { dispatch, queryFulfilled }) => {
+        const patchResult = dispatch(
+          workspaceApi.util.updateQueryData("getWorkspace", id, (draft) => {
+            draft.databases = draft.databases.map((database) => ({
+              ...database,
+              status: "unprovisioning",
+            }));
+          }),
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
   }),
 });

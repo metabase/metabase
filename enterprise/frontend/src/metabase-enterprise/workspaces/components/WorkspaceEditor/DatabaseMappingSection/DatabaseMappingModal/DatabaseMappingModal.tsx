@@ -36,6 +36,7 @@ type DatabaseMappingModalProps = {
   databases: Database[];
   opened: boolean;
   canDelete?: boolean;
+  isReadOnly?: boolean;
   onSubmit: (mapping: WorkspaceDatabaseDraft) => void;
   onDelete?: (mapping: WorkspaceDatabaseDraft) => void;
   onClose: () => void;
@@ -46,6 +47,7 @@ export function DatabaseMappingModal({
   databases,
   opened,
   canDelete = true,
+  isReadOnly = false,
   onSubmit,
   onDelete,
   onClose,
@@ -63,6 +65,7 @@ export function DatabaseMappingModal({
         mapping={mapping}
         databases={databases}
         canDelete={canDelete}
+        isReadOnly={isReadOnly}
         onSubmit={onSubmit}
         onDelete={onDelete}
         onClose={onClose}
@@ -75,6 +78,7 @@ type DatabaseMappingFormProps = {
   mapping?: WorkspaceDatabaseDraft;
   databases: Database[];
   canDelete: boolean;
+  isReadOnly: boolean;
   onSubmit: (mapping: WorkspaceDatabaseDraft) => void;
   onDelete?: (mapping: WorkspaceDatabaseDraft) => void;
   onClose: () => void;
@@ -84,6 +88,7 @@ function DatabaseMappingForm({
   mapping,
   databases,
   canDelete,
+  isReadOnly,
   onSubmit,
   onDelete,
   onClose,
@@ -128,21 +133,27 @@ function DatabaseMappingForm({
                 placeholder={t`Select a database`}
                 data={getDatabaseOptions(databases)}
                 searchable
+                readOnly={isReadOnly}
                 onChange={handleDatabaseChange}
               />
               {databaseId != null && (
-                <DatabaseSchemasSelect databaseId={databaseId} />
+                <DatabaseSchemasSelect
+                  databaseId={databaseId}
+                  isReadOnly={isReadOnly}
+                />
               )}
               <Group>
                 {hasDelete && (
                   <Tooltip
-                    label={t`A workspace must have at least one database.`}
-                    disabled={canDelete}
+                    label={getDeleteButtonLabel(isReadOnly, canDelete) ?? ""}
+                    disabled={
+                      getDeleteButtonLabel(isReadOnly, canDelete) == null
+                    }
                   >
                     <Button
                       variant="subtle"
                       color="error"
-                      disabled={!canDelete}
+                      disabled={isReadOnly || !canDelete}
                       onClick={handleDelete}
                     >
                       {t`Delete`}
@@ -153,10 +164,16 @@ function DatabaseMappingForm({
                   <FormErrorMessage />
                 </Box>
                 <Button onClick={onClose}>{t`Cancel`}</Button>
-                <FormSubmitButton
-                  label={isNew ? t`Add database` : t`Save`}
-                  variant="filled"
-                />
+                <Tooltip
+                  label={t`Unprovision this workspace before editing.`}
+                  disabled={!isReadOnly}
+                >
+                  <FormSubmitButton
+                    label={isNew ? t`Add database` : t`Save`}
+                    variant="filled"
+                    disabled={isReadOnly}
+                  />
+                </Tooltip>
               </Group>
             </Stack>
           </Form>
@@ -166,11 +183,27 @@ function DatabaseMappingForm({
   );
 }
 
+function getDeleteButtonLabel(
+  isReadOnly: boolean,
+  canDelete: boolean,
+): string | undefined {
+  if (isReadOnly) {
+    return t`Unprovision this workspace before editing.`;
+  }
+  if (!canDelete) {
+    return t`A workspace must have at least one database.`;
+  }
+}
+
 type DatabaseSchemasSelectProps = {
   databaseId: DatabaseId;
+  isReadOnly: boolean;
 };
 
-function DatabaseSchemasSelect({ databaseId }: DatabaseSchemasSelectProps) {
+function DatabaseSchemasSelect({
+  databaseId,
+  isReadOnly,
+}: DatabaseSchemasSelectProps) {
   const { data: schemas = [] } = useListDatabaseSchemasQuery(
     databaseId != null ? { id: databaseId, include_hidden: true } : skipToken,
   );
@@ -183,6 +216,7 @@ function DatabaseSchemasSelect({ databaseId }: DatabaseSchemasSelectProps) {
       placeholder={t`Select schemas`}
       data={schemas}
       searchable
+      readOnly={isReadOnly}
     />
   );
 }
