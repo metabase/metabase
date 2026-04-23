@@ -39,7 +39,7 @@ export function nonPersonalOrArchivedCollection(
 }
 
 export function isRootPersonalCollection(
-  collection: Partial<Collection> | CollectionItem,
+  collection: Pick<Collection, "personal_owner_id">,
 ): boolean {
   return typeof collection.personal_owner_id === "number";
 }
