@@ -279,5 +279,11 @@
                      (count db-id-map) (count tbl-id-map) (count fld-id-map) (count inserted))
           (when fv-file
             (log/infof "metadata-file-import: loading field values from %s" fv-path)
-            (load-field-values! fv-file fld-id-map)))
+            (load-field-values! fv-file fld-id-map))
+          ;; Mark every matched target DB's initial sync complete — the UI hides tables for
+          ;; databases still in `initial_sync_status='incomplete'`, and with `disable-sync` the
+          ;; normal sync pipeline never flips it for us.
+          (when-some [target-db-ids (seq (vals db-id-map))]
+            (t2/update! :model/Database :id [:in target-db-ids]
+                        {:initial_sync_status "complete"})))
         :ok))))

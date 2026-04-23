@@ -20,6 +20,7 @@
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouses-rest.api.metadata-schemas :as md-schemas]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -87,42 +88,6 @@
   [engine]
   (when engine (name engine)))
 
-;;; ============================== Malli schemas ==============================
-
-(mr/def ::database-line
-  [:map
-   [:id     :int]
-   [:name   :string]
-   [:engine [:or :string :keyword]]])
-
-(mr/def ::table-line
-  [:map
-   [:id    :int]
-   [:db_id :int]
-   [:name  :string]])
-
-(mr/def ::field-insert-line
-  [:map
-   [:id            :int]
-   [:table_id      :int]
-   [:name          :string]
-   [:base_type     :string]
-   [:database_type :string]])
-
-(mr/def ::finalize-line
-  [:map
-   [:id                 :int]
-   [:parent_id          {:optional true} [:maybe :int]]
-   [:fk_target_field_id {:optional true} [:maybe :int]]])
-
-(mr/def ::field-values-line
-  [:map
-   [:field_id :int]
-   ;; Accept both `clojure.lang.PersistentVector` (cheshire-decoded NDJSON) and
-   ;; `java.util.ArrayList` (Jackson-decoded from the file loader) — both are `java.util.List`.
-   [:values   [:fn {:error/message "must be an array"}
-               #(instance? java.util.List %)]]])
-
 ;;; ============================== databases (per-line) ==============================
 
 (defn process-databases-line!
@@ -132,7 +97,7 @@
   `no_match` entries and skip dependent tables/fields for those `old_id`s."
   [^ArrayList buffer line-num {:keys [id name engine] :as line}]
   (try
-    (validate-line! ::database-line line-num line {:old_id id})
+    (validate-line! ::md-schemas/database-info line-num line {:old_id id})
     (if-some [match (t2/select-one [:model/Database :id]
                                    :name   name
                                    :engine (engine-name engine))]
@@ -201,7 +166,7 @@
   batch order. Matched rows with a non-nil `description` get a per-row UPDATE."
   [batch ^ArrayList buffer]
   (doseq [[ln line] batch]
-    (validate-line! ::table-line ln line {:old_id (:id line)}))
+    (validate-line! ::md-schemas/table-info ln line {:old_id (:id line)}))
   (let [lines     (mapv second batch)
         match-idx (match-tables-batch lines)
         unmatched (filterv (fn [{:keys [db_id schema name]}]
@@ -278,7 +243,7 @@
   (new row to bulk-insert); throws `ex-info` on validation failure or missing target table."
   [line-num {:keys [id table_id name] :as line}]
   (try
-    (validate-line! ::field-insert-line line-num line {:old_id id})
+    (validate-line! ::md-schemas/field-info line-num line {:old_id id})
     (if-some [existing (match-root-field table_id name)]
       (let [patch (matched-field-patch line)]
         (when (seq patch)
@@ -315,7 +280,7 @@
 (defn- validate-finalize-line!
   "Validate one finalize line and return `[line-num id parent_id fk_target_field_id]`."
   [line-num {:keys [id parent_id fk_target_field_id] :as line}]
-  (validate-line! ::finalize-line line-num line {:id id})
+  (validate-line! ::md-schemas/field-finalize-info line-num line {:id id})
   [line-num id parent_id fk_target_field_id])
 
 (defn- finalize-batch-sql+params
@@ -384,7 +349,7 @@
 
 (defn- validate-field-values-line!
   [line-num {:keys [field_id values has_more_values human_readable_values] :as line}]
-  (validate-line! ::field-values-line line-num line {:field_id field_id})
+  (validate-line! ::md-schemas/field-values-info line-num line {:field_id field_id})
   {:line                  line-num
    :field_id              field_id
    :values                (or values [])
