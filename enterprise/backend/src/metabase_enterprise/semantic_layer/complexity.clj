@@ -39,13 +39,8 @@
 (set! *warn-on-reflection* true)
 
 (def formula-version
-  "Bump when the scoring formula changes in a way that would break historical comparisons.
-  v2 raised the synonym-similarity threshold from 0.30 to 0.90, so pre-v2 and v2+ synonym-pair
-  sub-scores are not directly comparable.
-  v3 narrowed the `:metabot` catalog: tables are filtered to Metabot/search-visible tables
-  (excluding hidden, routed-database, and audit-DB tables) and `:metabot` is always scored
-  separately from `:universe`, so pre-v3 and v3+ `:metabot` scores are not directly comparable."
-  3)
+  "Bump when the scoring formula changes in a way that would break historical comparisons."
+  1)
 
 (def ^:private weights
   {:entity           10
@@ -458,7 +453,7 @@
      {:library  {:total n :components {...}}
       :universe {:total n :components {...}}
       :metabot  {:total n :components {...}}
-      :meta     {:formula-version 3
+      :meta     {:formula-version 1
                  :synonym-threshold 0.90
                  :embedding-model {...}}}
 
