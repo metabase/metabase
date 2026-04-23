@@ -25,7 +25,10 @@ import type {
 import { closeSidebar } from "../documents.slice";
 import { useCardData } from "../hooks/use-card-data";
 import { getCurrentDocument, getSelectedEmbedIndex } from "../selectors";
-import { updateCardEmbedNodeId } from "../utils/editorNodeUtils";
+import {
+  stampCardEmbedUpdated,
+  updateCardEmbedNodeId,
+} from "../utils/editorNodeUtils";
 import { useVisualizationOptions } from "../utils/visualizationUtils";
 
 import S from "./EmbedQuestionSettingsSidebar.module.css";
@@ -65,6 +68,7 @@ export const EmbedQuestionSettingsSidebar = ({
       try {
         if (isDocOwned) {
           await updateCard({ id: card.id, ...patch }).unwrap();
+          stampCardEmbedUpdated(editorInstance, selectedEmbedIndex);
         } else {
           const created = await createDocumentCard({
             document_id: document.id,

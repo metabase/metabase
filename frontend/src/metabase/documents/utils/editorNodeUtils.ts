@@ -28,6 +28,47 @@ export function updateCardEmbedNodeId(
         tr.setNodeMarkup(pos, undefined, {
           ...node.attrs,
           id: newDraftId,
+          updatedAt: Date.now(),
+        });
+        updated = true;
+        return false;
+      }
+      nodeCount++;
+    }
+  });
+
+  if (tr.docChanged) {
+    editorInstance.view.dispatch(tr);
+  }
+}
+
+/**
+ * Bumps a card embed node's `updatedAt` attribute. Used to notify other
+ * collaborators (via Yjs attribute sync) that the embedded card's underlying
+ * data has changed and their RTK Query cache should be invalidated.
+ */
+export function stampCardEmbedUpdated(
+  editorInstance: Editor | null | undefined,
+  selectedEmbedIndex: number | null,
+): void {
+  if (!editorInstance || selectedEmbedIndex === null) {
+    return;
+  }
+
+  const { doc } = editorInstance.state;
+  const tr = editorInstance.state.tr;
+  let nodeCount = 0;
+  let updated = false;
+
+  doc.descendants((node: ProseMirrorNode, pos: number) => {
+    if (updated) {
+      return false;
+    }
+    if (node.type.name === "cardEmbed") {
+      if (nodeCount === selectedEmbedIndex) {
+        tr.setNodeMarkup(pos, undefined, {
+          ...node.attrs,
+          updatedAt: Date.now(),
         });
         updated = true;
         return false;

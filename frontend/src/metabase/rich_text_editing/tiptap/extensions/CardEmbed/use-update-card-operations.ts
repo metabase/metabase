@@ -5,7 +5,10 @@ import { useUpdateCardMutation } from "metabase/api/card";
 import { useCreateDocumentCardMutation } from "metabase/api/document";
 import { navigateToCardFromDocument } from "metabase/documents/actions";
 import type { UseCardDataResult } from "metabase/documents/hooks/use-card-data";
-import { updateCardEmbedNodeId } from "metabase/documents/utils/editorNodeUtils";
+import {
+  stampCardEmbedUpdated,
+  updateCardEmbedNodeId,
+} from "metabase/documents/utils/editorNodeUtils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import Question from "metabase-lib/v1/Question";
@@ -93,6 +96,7 @@ export const useUpdateCardOperations = ({
             id: card.id,
             visualization_settings: nextSettings,
           }).unwrap();
+          stampCardEmbedUpdated(editor, embedIndex);
         } else {
           const created = await createDocumentCard({
             document_id: document.id,
