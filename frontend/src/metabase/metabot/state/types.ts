@@ -1,3 +1,4 @@
+import type { MetabotProfileId } from "metabase/metabot/constants";
 import type {
   MetabotCodeEdit,
   MetabotHistory,
@@ -109,7 +110,7 @@ export interface MetabotConverstationState {
   history: MetabotHistory;
   state: any;
   activeToolCalls: MetabotToolCall[];
-  profileOverride: string | undefined;
+  profileOverride: MetabotProfileId | undefined;
   pendingMessageExternalId: string | undefined;
   experimental: {
     developerMessage: string;

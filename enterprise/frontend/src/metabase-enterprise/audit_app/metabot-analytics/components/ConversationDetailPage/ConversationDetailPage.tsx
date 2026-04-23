@@ -20,6 +20,7 @@ import {
   Messages,
 } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
+import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import type {
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
@@ -171,7 +172,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                 <Flex gap="xs" align="center">
                   <Icon name="metabot" size={16} c="text-tertiary" />
                   <Text size="md" c="text-secondary">
-                    {firstProfile}
+                    {renderMetabotProfileLabel(firstProfile)}
                   </Text>
                 </Flex>
               )}
