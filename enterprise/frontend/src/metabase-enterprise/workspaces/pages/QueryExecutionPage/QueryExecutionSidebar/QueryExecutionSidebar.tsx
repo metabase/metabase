@@ -30,6 +30,7 @@ export const QueryExecutionSidebar = memo(function QueryExecutionSidebar({
   return (
     <SidebarResizableBox
       containerWidth={containerWidth}
+      defaultWidth={720}
       onResizeStart={onResizeStart}
       onResizeStop={onResizeStop}
     >

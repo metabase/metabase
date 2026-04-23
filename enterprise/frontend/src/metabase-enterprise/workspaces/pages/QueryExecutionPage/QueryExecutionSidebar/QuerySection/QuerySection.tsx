@@ -20,12 +20,7 @@ export function QuerySection({ item }: QuerySectionProps) {
         <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
       ) : (
         <Card p={0} shadow="none" withBorder>
-          <CodeEditor
-            value={data.query}
-            language="sql"
-            lineNumbers={false}
-            readOnly
-          />
+          <CodeEditor value={data.query} language="sql" readOnly />
         </Card>
       )}
     </Stack>
