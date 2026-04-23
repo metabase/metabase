@@ -21,9 +21,7 @@
                 ip-address (assoc :ip_address ip-address))))
 
 (defn- insert-message!
-  [{:keys [conversation-id user-id created-at role profile-id total-tokens data deleted-at]}]
-  ;; `:user-id` is optional so tests can cover both new rows (stamped message
-  ;; authors) and legacy rows that only have `metabot_conversation.user_id`.
+  [{:keys [conversation-id created-at role profile-id total-tokens data deleted-at]}]
   (first (t2/insert-returning-pks!
           :model/MetabotMessage
           (cond-> {:conversation_id conversation-id
@@ -32,7 +30,6 @@
                    :total_tokens    total-tokens
                    :data            data
                    :external_id     (str (random-uuid))}
-            user-id    (assoc :user_id user-id)
             created-at (assoc :created_at created-at)
             deleted-at (assoc :deleted_at deleted-at)))))
 
@@ -206,124 +203,6 @@
     (fn [{:keys [response-path]}]
       (is (some? (:errors (mt/user-http-request :crowberto :get 400
                                                 (format "%s&sort-by=drop_table" response-path))))))))
-
-(deftest list-conversations-user-id-compat-alias-supports-legacy-originators-and-new-participants-test
-  (mt/with-premium-features #{:audit-app}
-    (mt/with-temp [:model/User {filtered-user-id :id} {:email      "metabot-analytics-filter@metabase.com"
-                                                       :first_name "Filter"
-                                                       :last_name  "User"}]
-      (let [legacy-convo (str (random-uuid))
-            shared-convo (str (random-uuid))
-            other-user-id (mt/user->id :rasta)
-            jan-1       (offset-date-time "2026-02-01T00:00:00Z")
-            jan-2       (offset-date-time "2026-02-02T00:00:00Z")]
-        (try
-          (insert-conversation! {:conversation-id legacy-convo
-                                 :user-id         filtered-user-id
-                                 :created-at      jan-1
-                                 :summary         "legacy"})
-          (insert-message! {:conversation-id legacy-convo
-                            :created-at      jan-1
-                            :role            "assistant"
-                            :profile-id      "legacy-model"
-                            :total-tokens    5
-                            :data            [{:role "assistant" :content "legacy"}]})
-          (insert-conversation! {:conversation-id shared-convo
-                                 :user-id         other-user-id
-                                 :created-at      jan-2
-                                 :summary         "shared"})
-          (insert-message! {:conversation-id shared-convo
-                            :user-id         filtered-user-id
-                            :created-at      jan-2
-                            :role            "assistant"
-                            :profile-id      "participant-model"
-                            :total-tokens    7
-                            :data            [{:role "assistant" :content "shared"}]})
-          (let [alias-response     (mt/user-http-request :crowberto :get 200
-                                                         (format "ee/metabot-analytics/conversations?user-id=%s"
-                                                                 filtered-user-id))
-                preferred-response (mt/user-http-request :crowberto :get 200
-                                                         "ee/metabot-analytics/conversations"
-                                                         :participant-user-id filtered-user-id)
-                alias-ids          (set (map :conversation_id (:data alias-response)))
-                preferred-ids      (set (map :conversation_id (:data preferred-response)))]
-            (is (= #{legacy-convo shared-convo} alias-ids))
-            (is (= alias-ids preferred-ids)))
-          (finally
-            (delete-conversations! [legacy-convo shared-convo])))))))
-
-(deftest list-conversations-participant-user-ids-filter-supports-multiple-users-test
-  (mt/with-premium-features #{:audit-app}
-    (mt/with-temp [:model/User {first-user-id :id} {:email      "metabot-analytics-first-filter@metabase.com"
-                                                    :first_name "First"
-                                                    :last_name  "Filter"}]
-      (mt/with-temp [:model/User {second-user-id :id} {:email      "metabot-analytics-second-filter@metabase.com"
-                                                       :first_name "Second"
-                                                       :last_name  "Filter"}]
-        (let [originator-a-convo (str (random-uuid))
-              originator-b-convo (str (random-uuid))
-              shared-convo       (str (random-uuid))
-              unrelated-convo    (str (random-uuid))
-              other-user-id      (mt/user->id :crowberto)
-              jan-1              (offset-date-time "2026-03-01T00:00:00Z")
-              jan-2              (offset-date-time "2026-03-02T00:00:00Z")
-              jan-3              (offset-date-time "2026-03-03T00:00:00Z")
-              jan-4              (offset-date-time "2026-03-04T00:00:00Z")]
-          (try
-            (insert-conversation! {:conversation-id originator-a-convo
-                                   :user-id         first-user-id
-                                   :created-at      jan-1
-                                   :summary         "originator-a"})
-            (insert-message! {:conversation-id originator-a-convo
-                              :created-at      jan-1
-                              :role            "assistant"
-                              :profile-id      "legacy-model-a"
-                              :total-tokens    5
-                              :data            [{:role "assistant" :content "legacy-a"}]})
-            (insert-conversation! {:conversation-id originator-b-convo
-                                   :user-id         second-user-id
-                                   :created-at      jan-2
-                                   :summary         "originator-b"})
-            (insert-message! {:conversation-id originator-b-convo
-                              :created-at      jan-2
-                              :role            "assistant"
-                              :profile-id      "legacy-model-b"
-                              :total-tokens    6
-                              :data            [{:role "assistant" :content "legacy-b"}]})
-            (insert-conversation! {:conversation-id shared-convo
-                                   :user-id         other-user-id
-                                   :created-at      jan-3
-                                   :summary         "shared"})
-            (insert-message! {:conversation-id shared-convo
-                              :user-id         second-user-id
-                              :created-at      jan-3
-                              :role            "assistant"
-                              :profile-id      "participant-model"
-                              :total-tokens    7
-                              :data            [{:role "assistant" :content "shared"}]})
-            (insert-conversation! {:conversation-id unrelated-convo
-                                   :user-id         other-user-id
-                                   :created-at      jan-4
-                                   :summary         "unrelated"})
-            (insert-message! {:conversation-id unrelated-convo
-                              :user-id         other-user-id
-                              :created-at      jan-4
-                              :role            "assistant"
-                              :profile-id      "other-model"
-                              :total-tokens    8
-                              :data            [{:role "assistant" :content "other"}]})
-            (let [preferred-response (mt/user-http-request :crowberto :get 200
-                                                           "ee/metabot-analytics/conversations"
-                                                           :participant-user-ids [first-user-id second-user-id])
-                  alias-response     (mt/user-http-request :crowberto :get 200
-                                                           "ee/metabot-analytics/conversations"
-                                                           :user-ids [first-user-id second-user-id])
-                  preferred-ids      (set (map :conversation_id (:data preferred-response)))
-                  alias-ids          (set (map :conversation_id (:data alias-response)))]
-              (is (= #{originator-a-convo originator-b-convo shared-convo} preferred-ids))
-              (is (= preferred-ids alias-ids)))
-            (finally
-              (delete-conversations! [originator-a-convo originator-b-convo shared-convo unrelated-convo]))))))))
 
 (deftest get-conversation-detail-test
   (mt/with-premium-features #{:audit-app}

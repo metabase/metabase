@@ -61,8 +61,7 @@
 (defn- row->summary
   "Reshape a raw list-query row into the response shape the frontend expects:
    renames the conversation's `:id` to `:conversation_id`, trims the hydrated
-   originator user, and keeps only the aggregate fields the summary payload
-   needs."
+   user, and keeps only the aggregate fields the summary payload needs."
   [row]
   {:conversation_id         (:id row)
    :created_at              (:created_at row)
@@ -98,34 +97,14 @@
                                    msgs analytics.queries/new-query-tool-names))))
          rows)))
 
-(defn- participant-user-filter-clause
-  "Match conversations relevant to any of `participant-user-ids`.
-
-  New rows match via `metabot_message.user_id`; legacy rows created before that
-  field was stamped fall back to the conversation originator."
-  [participant-user-ids]
-  (let [participant-user-ids (vec participant-user-ids)
-        participation-exists [:exists {:select [[[:inline 1]]]
-                                       :from   [[:metabot_message :mu]]
-                                       :where  [:and
-                                                [:= :mu.conversation_id :c.id]
-                                                [:in :mu.user_id participant-user-ids]]}]]
-    [:or
-     [:in :c.user_id participant-user-ids]
-     participation-exists]))
-
 (defn list-conversations
   "Return a paginated `{:data :total :limit :offset}` map of conversation
-   summaries. Supports optional participant filtering by one or more user IDs
-   while returning the conversation originator in `:user`, and sorting by an
+   summaries. Supports optional filtering by `user-id` and sorting by an
    allow-listed `sort-by` column in either direction (defaults to newest-first)."
-  [{:keys [limit offset participant-user-ids sort-by sort-dir]}]
+  [{:keys [limit offset user-id sort-by sort-dir]}]
   (let [limit     (or limit default-limit)
         offset    (or offset default-offset)
-        ;; Prefer message authorship for new rows, but keep legacy originator rows
-        ;; visible until older `metabot_message.user_id` values are backfilled.
-        where     (when (seq participant-user-ids)
-                    (participant-user-filter-clause participant-user-ids))
+        where     (when user-id [:= :c.user_id user-id])
         sort-col  (get sort-columns sort-by :c.created_at)
         direction (if (= sort-dir "asc") :asc :desc)
         total     (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]
