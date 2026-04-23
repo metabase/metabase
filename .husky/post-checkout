@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+# Global post-checkout hook: detects when a new git worktree is being added
+# (as opposed to a regular branch checkout in an existing worktree) and
+# delegates to a local hook at .husky/local/post-worktree-add in the main repo.
+#
+# Args from git:
+#   $1 = previous HEAD
+#   $2 = new HEAD
+#   $3 = branch flag (1 = branch checkout, 0 = file checkout)
+#
+# On `git worktree add`, git invokes this hook with $1 set to the zero SHA
+# (40 zeros) since there is no previous HEAD in the freshly-created worktree.
+# We use that to distinguish a worktree-add from a regular checkout.
+
+PREV_HEAD="$1"
+NEW_HEAD="$2"
+BRANCH_FLAG="$3"
+
+# Ignore file checkouts (e.g., `git checkout -- somefile`)
+if [ "$BRANCH_FLAG" != "1" ]; then
+  exit 0
+fi
+
+# Only fire for worktree-add (PREV_HEAD is all zeros)
+ZERO_SHA="0000000000000000000000000000000000000000"
+if [ "$PREV_HEAD" != "$ZERO_SHA" ]; then
+  exit 0
+fi
+
+WORKTREE_DIR="$(git rev-parse --show-toplevel)"
+MAIN_DIR="$(git rev-parse --git-common-dir | sed 's|/\.git$||')"
+LOCAL_HOOK="$MAIN_DIR/.husky/local/post-worktree-add"
+
+if [ -x "$LOCAL_HOOK" ]; then
+  echo "husky post-checkout: running $LOCAL_HOOK (worktree-add detected)"
+  WORKTREE_DIR="$WORKTREE_DIR" MAIN_DIR="$MAIN_DIR" "$LOCAL_HOOK" "$@"
+  echo "husky post-checkout: finished (exit $?)"
+fi
