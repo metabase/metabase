@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -40,6 +40,7 @@ import { useMiniPickerContext } from "../context";
 import type {
   MiniPickerCollectionItem,
   MiniPickerDatabaseItem,
+  MiniPickerMeasureItem,
   MiniPickerPickableItem,
   MiniPickerSchemaItem,
   MiniPickerTableItem,
@@ -50,10 +51,10 @@ import { MiniPickerItem } from "./MiniPickerItem";
 import styles from "./MiniPickerItem.module.css";
 
 export function MiniPickerItemList() {
-  const { path, searchQuery } = useMiniPickerContext();
+  const { path, searchQuery, forceSearch } = useMiniPickerContext();
 
-  if (searchQuery) {
-    return <SearchItemList query={searchQuery} />;
+  if (searchQuery || forceSearch) {
+    return <SearchItemList query={searchQuery ?? ""} />;
   }
 
   if (path.length === 0) {
@@ -320,22 +321,25 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
 }
 
 function SearchItemList({ query }: { query: string }) {
-  const { onChange, models, isHidden } = useMiniPickerContext();
+  const { onChange, models, isHidden, searchParams, onSearchResults } =
+    useMiniPickerContext();
   const debouncedQuery = useDebouncedValue(query, 500);
 
   const makeQueryArgs = (
     query: string,
     models: MiniPickerPickableItem["model"][],
+    searchParams?: Partial<SearchRequest>,
   ): SearchRequest => ({
     q: query,
     models: models as SearchModel[],
     limit: 50,
     // FIXME: optionally pass table_db_id so we filter on the backend to valid joins
+    ...(searchParams || {}),
   });
 
   const rawQueryArgs = useMemo(
-    () => makeQueryArgs(query, models),
-    [query, models],
+    () => makeQueryArgs(query, models, searchParams),
+    [query, models, searchParams],
   );
 
   const cachedSearch = useSelector(
@@ -345,17 +349,22 @@ function SearchItemList({ query }: { query: string }) {
 
   const effectiveQuery = hasCachedResults ? query : debouncedQuery;
   const searchQueryArgs = useMemo(
-    () => makeQueryArgs(effectiveQuery, models),
-    [effectiveQuery, models],
+    () => makeQueryArgs(effectiveQuery, models, searchParams),
+    [effectiveQuery, models, searchParams],
   );
 
   const { data: searchResponse, isFetching } = useSearchQuery(searchQueryArgs);
 
   const isSearching =
     isFetching || (!hasCachedResults && query !== debouncedQuery);
-  const searchResults: MiniPickerPickableItem[] = (
-    searchResponse?.data ?? []
-  ).filter((i) => !isHidden(i));
+
+  const searchResults: MiniPickerPickableItem[] = useMemo(() => {
+    return (searchResponse?.data ?? []).filter((i) => !isHidden(i));
+  }, [searchResponse, isHidden]);
+
+  useEffect(() => {
+    onSearchResults?.(searchResults);
+  }, [searchResults, onSearchResults]);
 
   return (
     <ItemList>
@@ -400,6 +409,10 @@ export const MiniPickerListLoader = () => (
   </Stack>
 );
 
+const ItemList = ({ children }: { children: React.ReactNode[] }) => {
+  return <VirtualizedList extraPadding={2}>{children}</VirtualizedList>;
+};
+
 const isTableInDb = (
   item: MiniPickerPickableItem,
 ): item is MiniPickerTableItem => {
@@ -412,27 +425,37 @@ const isTableInDb = (
   );
 };
 
-const ItemList = ({ children }: { children: React.ReactNode[] }) => {
-  return <VirtualizedList extraPadding={2}>{children}</VirtualizedList>;
+const isMeasure = (
+  item: MiniPickerPickableItem,
+): item is MiniPickerMeasureItem => {
+  return item.model === "measure";
+};
+
+const getLocationDetails = (item: MiniPickerPickableItem) => {
+  if (isTableInDb(item)) {
+    return {
+      itemText: `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`,
+      iconProps: null,
+    };
+  } else if (isMeasure(item)) {
+    return {
+      itemText: item.table_display_name ?? item.table_name,
+      iconProps: { name: "table" as const },
+    };
+  } else {
+    return {
+      itemText: item?.collection?.name ?? t`Our analytics`,
+      iconProps: getIcon({ ...item.collection, model: "collection" }),
+    };
+  }
 };
 
 const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
-  const isTable = isTableInDb(item);
-
-  const itemText = isTable
-    ? `${item.database_name}${item.table_schema ? ` (${item.table_schema})` : ""}`
-    : (item?.collection?.name ?? t`Our analytics`);
+  const { itemText, iconProps } = getLocationDetails(item);
 
   if (!itemText) {
     return null;
   }
-
-  const iconProps = isTable
-    ? null
-    : getIcon({
-        ...item.collection,
-        model: "collection",
-      });
 
   return (
     <Flex gap="xs" align="center" ml="auto" style={{ overflow: "hidden" }}>

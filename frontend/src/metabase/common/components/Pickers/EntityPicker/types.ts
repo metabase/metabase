@@ -8,6 +8,8 @@ import type {
   CollectionNamespace,
   DashboardId,
   DatabaseId,
+  Measure,
+  MeasureId,
   NativeQuerySnippet,
   RecentContexts,
   RegularCollectionId,
@@ -25,6 +27,7 @@ export type EntityPickerOptions = {
   hasRootCollection?: boolean;
   hasPersonalCollections?: boolean; // other users personal collections
   getItemTooltip?: (item: OmniPickerItem) => string | undefined;
+  disableSearchScope?: boolean;
 
   // options to customize the button bar
   hasConfirmButtons?: boolean;
@@ -128,6 +131,7 @@ export type OmniPickerTableItem = {
   schema?: SchemaName;
   name: string;
   is_published?: boolean;
+  measures?: Measure[];
 };
 
 export type OmniPickerQuestionItem = Omit<
@@ -144,6 +148,14 @@ export type OmniPickerDatabaseItem = {
   name: string;
 };
 
+export type OmniPickerMeasureItem = {
+  model: "measure";
+  id: MeasureId;
+  name: string;
+  table_name?: string;
+  table_display_name?: string;
+};
+
 export type OmniPickerSnippetItem = Pick<NativeQuerySnippet, "id" | "name"> & {
   model: "snippet";
 };
@@ -151,6 +163,7 @@ export type OmniPickerSnippetItem = Pick<NativeQuerySnippet, "id" | "name"> & {
 export enum OmniPickerFolderModel {
   Database = "database",
   Schema = "schema",
+  Table = "table",
   Collection = "collection",
   Dashboard = "dashboard",
 }
@@ -158,13 +171,15 @@ export enum OmniPickerFolderModel {
 export type DbTreeItem =
   | OmniPickerDatabaseItem
   | OmniPickerSchemaItem
-  | OmniPickerTableItem;
+  | OmniPickerTableItem
+  | OmniPickerMeasureItem;
 
 export const isInDbTree = (item: OmniPickerItem): item is DbTreeItem => {
   return (
     item.model === "database" ||
     item.model === "schema" ||
-    item.model === "table"
+    item.model === "table" ||
+    item.model === "measure"
   );
 };
 
@@ -173,7 +188,8 @@ export type OmniPickerItem =
   | OmniPickerCollectionItem
   | OmniPickerSchemaItem
   | OmniPickerTableItem
-  | OmniPickerDatabaseItem;
+  | OmniPickerDatabaseItem
+  | OmniPickerMeasureItem;
 
 export type OmniPickerDbValue = Pick<DbTreeItem, "model" | "id">;
 export type OmniPickerTableValue = Pick<OmniPickerTableItem, "model" | "id">;
@@ -188,6 +204,7 @@ export type OmniPickerValue = OmniPickerDbValue | OmniPickerCollectionItemValue;
 export type OmniPickerFolderItem =
   | OmniPickerDatabaseItem
   | OmniPickerSchemaItem
+  | OmniPickerTableItem // can be a parent of measures
   | OmniPickerDashboardItem
   | (OmniPickerCollectionItem & { model: "collection" });
 
@@ -195,7 +212,8 @@ export type OmniPickerFolderItem =
 export type SearchableOmniPickerItem =
   | OmniPickerCollectionItem
   | OmniPickerTableItem
-  | OmniPickerDatabaseItem;
+  | OmniPickerDatabaseItem
+  | OmniPickerMeasureItem;
 
 // used to find only or exclude items in personal collections, usually when adding items to a dashboard
 // so that you don't end up with personal items in a public dashboard

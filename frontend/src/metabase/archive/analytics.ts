@@ -11,7 +11,8 @@ type MoveToTrashEventDetail =
   | "snippet"
   | "document"
   | "table"
-  | "transform";
+  | "transform"
+  | "measure";
 
 type MoveToTrashTriggeredFrom = "collection" | "detail_page" | "cleanup_modal";
 

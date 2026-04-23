@@ -3,7 +3,7 @@ import { useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
-import { Button, Flex, Icon, Popover } from "metabase/ui";
+import { Button, Flex, Icon } from "metabase/ui";
 import type { ProjectionClause } from "metabase-lib/metric";
 
 import type {
@@ -22,7 +22,10 @@ import {
 } from "../../../utils/source-ids";
 import { MetricExpressionPill } from "../MetricExpressionPill";
 import { MetricPill } from "../MetricPill";
-import { MetricSearchDropdown } from "../MetricSearchDropdown";
+import {
+  MetricSearchDropdown,
+  type MetricSearchDropdownRef,
+} from "../MetricSearchDropdown";
 
 import S from "./MetricSearchInput.module.css";
 import { buildEditorExtensions } from "./editorExtensions";
@@ -60,6 +63,7 @@ export function MetricSearchInput({
 }: MetricSearchInputProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ReactCodeMirrorRef>(null);
+  const dropdownRef = useRef<MetricSearchDropdownRef>(null);
 
   const {
     metricNames,
@@ -94,10 +98,8 @@ export function MetricSearchInput({
     handleContainerClick,
     handleEditorClick,
     handleEditorKeyDown,
-    handleDropdownHasSelectionChange,
     handleRun,
     handleRunRef,
-    isOpenRef,
     dropdownHasSelectionRef,
   } = useFormulaEditor({
     formulaEntities,
@@ -109,6 +111,7 @@ export function MetricSearchInput({
     handleRemoveMetric,
     editorRef,
     containerRef,
+    dropdownRef,
   });
 
   const editorExtensions = useMemo(
@@ -116,9 +119,14 @@ export function MetricSearchInput({
       buildEditorExtensions(formulaEntities.length, {
         dropdownHasSelectionRef,
         handleRunRef,
-        isOpenRef,
+        dropdownRef,
       }),
-    [formulaEntities.length, dropdownHasSelectionRef, handleRunRef, isOpenRef],
+    [
+      formulaEntities.length,
+      dropdownHasSelectionRef,
+      handleRunRef,
+      dropdownRef,
+    ],
   );
 
   const isCollapsed = !isFocused && formulaEntities.length > 0;
@@ -226,43 +234,16 @@ export function MetricSearchInput({
                 data-testid="metrics-viewer-search-input"
               />
             </div>
-            <Popover
-              opened={isOpen}
-              onChange={setIsOpen}
-              position="bottom-start"
-              shadow="md"
-              withinPortal
-            >
-              <Popover.Target>
-                <span
-                  aria-hidden
-                  style={{
-                    position: "fixed",
-                    left: anchorRect.left,
-                    top: anchorRect.top,
-                    width: 0,
-                    height: 0,
-                    pointerEvents: "none",
-                  }}
-                />
-              </Popover.Target>
-              <Popover.Dropdown
-                p={0}
-                miw="19rem"
-                maw="25rem"
-                onMouseDown={(e) => e.preventDefault()}
-              >
-                {isOpen && (
-                  <MetricSearchDropdown
-                    onSelect={handleSelect}
-                    externalSearchText={currentWord}
-                    onHasSelectionChange={handleDropdownHasSelectionChange}
-                    onClose={() => setIsOpen(false)}
-                    setSearchMetricNames={setSearchMetricNames}
-                  />
-                )}
-              </Popover.Dropdown>
-            </Popover>
+            {isOpen && (
+              <MetricSearchDropdown
+                anchorRect={anchorRect}
+                onSelect={handleSelect}
+                externalSearchText={currentWord}
+                onClose={() => setIsOpen(false)}
+                ref={dropdownRef}
+                setSearchMetricNames={setSearchMetricNames}
+              />
+            )}
           </>
         )}
       </Flex>

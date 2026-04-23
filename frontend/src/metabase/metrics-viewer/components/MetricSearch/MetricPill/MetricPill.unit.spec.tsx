@@ -91,8 +91,6 @@ describe("MetricPill action menu", () => {
     await openMenu();
     await userEvent.click(screen.getByText("Replace"));
 
-    expect(
-      await screen.findByPlaceholderText("Search for metrics..."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Browse all")).toBeInTheDocument();
   });
 });

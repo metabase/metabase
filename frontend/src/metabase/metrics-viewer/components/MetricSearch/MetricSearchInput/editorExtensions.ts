@@ -3,6 +3,8 @@ import type { Extension } from "@codemirror/state";
 import { keymap, placeholder } from "@codemirror/view";
 import { t } from "ttag";
 
+import type { MetricSearchDropdownRef } from "../MetricSearchDropdown";
+
 import { errorHighlight } from "./errorHighlight";
 import { metricTokenHighlight } from "./metricTokenHighlight";
 import { operatorHighlight } from "./operatorHighlight";
@@ -10,7 +12,7 @@ import { operatorHighlight } from "./operatorHighlight";
 type EditorExtensionRefs = {
   dropdownHasSelectionRef: { current: boolean };
   handleRunRef: { current: () => void };
-  isOpenRef: { current: boolean };
+  dropdownRef: React.RefObject<MetricSearchDropdownRef>;
 };
 
 export function buildEditorExtensions(
@@ -32,27 +34,23 @@ export function buildEditorExtensions(
       {
         key: "Enter",
         run: () => {
-          if (!refs.dropdownHasSelectionRef.current) {
-            refs.handleRunRef.current();
-          }
+          // if (!refs.dropdownHasSelectionRef.current) {
+          //   refs.handleRunRef.current();
+          // }
+          refs.handleRunRef.current();
           return true;
         },
       },
       // don't move the cursor when using the arrow keys to navigate the dropdown
       {
         key: "ArrowDown",
-        run: () => {
-          if (refs.isOpenRef.current) {
-            return true;
-          }
-          return false;
-        },
+        run: () => refs.dropdownRef.current?.onArrowDown() ?? false,
       },
       {
         key: "ArrowUp",
         run: () => {
-          if (refs.isOpenRef.current) {
-            return true;
+          if (refs.dropdownRef.current) {
+            return refs.dropdownRef.current.onArrowUp();
           }
           return false;
         },
