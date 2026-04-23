@@ -23,12 +23,14 @@
 
 (defn- current-fingerprint
   "String capturing everything that changes the meaning of an emitted score — mirror of the Snowplow
-  `formula_version` + `parameters` fields."
+  `formula_version` + `parameters` fields. Includes `weights` so re-tuning forces a re-score
+  without bumping `formula-version`; only structural changes to the scoring algorithm need that."
   []
   (let [embedding-model (semantic-search/active-embedding-model)]
     (pr-str (into (sorted-map)
                   (cond-> {:formula-version   complexity/formula-version
-                           :synonym-threshold complexity/synonym-similarity-threshold}
+                           :synonym-threshold complexity/synonym-similarity-threshold
+                           :weights           complexity/weights}
                     embedding-model (assoc :embedding-model embedding-model))))))
 
 (defn- run-scoring!

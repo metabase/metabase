@@ -22,7 +22,10 @@
   "Bump when the scoring formula changes in a way that would break historical comparisons."
   1)
 
-(def ^:private weights
+(def weights
+  "Per-axis weights applied to raw measurements. Public because they're part of the scoring
+  fingerprint — a tuning change must force a re-score and be visible to Snowplow consumers
+  without bumping `formula-version`."
   {:entity           10
    :name-collision   100
    :synonym-pair     50
@@ -68,12 +71,10 @@
   [table-ids]
   (if (empty? table-ids)
     {}
-    (->> (t2/select [:model/Measure :table_id :name]
-                    :archived false
-                    :table_id [:in table-ids])
-         (reduce (fn [acc {:keys [table_id name]}]
-                   (update acc table_id (fnil conj []) name))
-                 {}))))
+    (u/group-by :table_id :name
+                (t2/select [:model/Measure :table_id :name]
+                           :archived false
+                           :table_id [:in table-ids]))))
 
 (defn- ->card-entity
   "Shape a Card row into an entity map for scoring. Cards don't contribute to `:field-count` in
@@ -119,22 +120,17 @@
    `metabot-scope` requests verified-only filtering — avoids a `moderation_review` join on the
    universe Card select by pushing the check into a small auxiliary lookup."
   []
-  (into #{}
-        (map :moderated_item_id)
-        (t2/reducible-select :model/ModerationReview
-                             :moderated_item_type "card"
-                             :most_recent         true
-                             :status              "verified")))
+  (t2/select-fn-set :moderated_item_id :model/ModerationReview
+                    :moderated_item_type "card"
+                    :most_recent         true
+                    :status              "verified"))
 
 (defn- routed-child-database-id-set
   "Set of database ids whose `router_database_id` is non-nil — the routed child databases whose
    tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
    catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
   []
-  (into #{}
-        (map :id)
-        (t2/reducible-select [:model/Database :id]
-                             :router_database_id [:not= nil])))
+  (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
 
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
@@ -239,7 +235,7 @@
   (component-score :name-collision (repeated-names (map :name entities))))
 
 (defn- score-field-count [entities]
-  (component-score :field (reduce + (map #(or (:field-count %) 0) entities))))
+  (component-score :field (reduce + (keep :field-count entities))))
 
 (defn- score-repeated-measures [entities]
   (component-score :repeated-measure (repeated-names (mapcat :measure-names entities))))
@@ -341,16 +337,6 @@
                  #_{:clj-kondo/ignore [:discouraged-var]}
                  (with-out-str (pprint/pprint result)))))
 
-(defn- parameters-map
-  "Sorted-map of scoring inputs likely to evolve, published as a JSON object on each event.
-  String keys so they round-trip unchanged — Snowplow's `payload` only snake-cases top-level keys,
-  and Cheshire would serialize nested keyword keys with their leading colon.
-  Excludes `formula_version` — that stays top-level as the primary cross-version filter."
-  [{:keys [synonym-threshold embedding-model]}]
-  (cond-> (sorted-map "synonym_threshold" synonym-threshold)
-    embedding-model (assoc "embedding_model_provider" (:provider embedding-model)
-                           "embedding_model_name"     (:model-name embedding-model))))
-
 (defn- snake ^String [x]
   (str/replace (name x) "-" "_"))
 
@@ -358,6 +344,19 @@
   "Join `parts` with `.` after snake-casing each. `(dotted-key :size :entity-count)` → `\"size.entity_count\"`."
   [& parts]
   (str/join "." (map snake parts)))
+
+(defn- parameters-map
+  "Sorted-map of scoring inputs likely to evolve, published as a JSON object on each event.
+  String keys (top-level and nested) so they round-trip unchanged — Snowplow's `payload` only
+  snake-cases top-level keys, and Cheshire would serialize nested keyword keys with their leading
+  colon. Excludes `formula_version` — that stays top-level as the primary cross-version filter."
+  [{:keys [synonym-threshold embedding-model weights]}]
+  (cond-> (sorted-map "synonym_threshold" synonym-threshold
+                      "weights"           (into (sorted-map)
+                                                (map (fn [[k v]] [(snake k) v]))
+                                                weights))
+    embedding-model (assoc "embedding_model_provider" (:provider embedding-model)
+                           "embedding_model_name"     (:model-name embedding-model))))
 
 (defn- emit-snowplow!
   "Submits Snowplow events for every score, every group aggregation, and the grand total.
@@ -417,7 +416,8 @@
                  universe-score
                  (score-catalog metabot-entities embedder))
      :meta     (cond-> {:formula-version   formula-version
-                        :synonym-threshold synonym-similarity-threshold}
+                        :synonym-threshold synonym-similarity-threshold
+                        :weights           weights}
                  embedding-model-meta (assoc :embedding-model embedding-model-meta)
                  metabot-fallback?    (assoc :metabot-source :universe-fallback))}))
 
