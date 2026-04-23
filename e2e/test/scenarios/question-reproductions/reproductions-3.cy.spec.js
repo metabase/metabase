@@ -1100,9 +1100,9 @@ describe("issue 44532", () => {
       cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
-      cy.findByText("January 2023").should("exist");
-      cy.findByText("January 2024").should("exist");
-      cy.findByText("January 2025").should("exist");
+      cy.findByText("January 2026").should("exist");
+      cy.findByText("January 2027").should("exist");
+      cy.findByText("January 2028").should("exist");
 
       // previous x-axis values
       cy.findByText("Doohickey").should("not.exist");
@@ -1126,9 +1126,9 @@ describe("issue 44532", () => {
       cy.findByText("Created At: Month").should("exist"); // x-axis
 
       // x-axis values
-      cy.findByText("January 2023").should("exist");
-      cy.findByText("January 2024").should("exist");
-      cy.findByText("January 2025").should("exist");
+      cy.findByText("January 2026").should("exist");
+      cy.findByText("January 2027").should("exist");
+      cy.findByText("January 2028").should("exist");
 
       // previous x-axis values
       cy.findByText("Doohickey").should("not.exist");
@@ -1173,7 +1173,7 @@ describe("issue 31960", () => {
     },
   };
 
-  // the dot that corresponds to July 10–16, 2022
+  // the dot that corresponds to July 10–16, 2025
   const dotIndex = 10;
   const rowCount = 11;
 
@@ -1194,10 +1194,8 @@ describe("issue 31960", () => {
       H.cartesianChartCircle().eq(dotIndex).realHover();
     });
     H.assertEChartsTooltip({
-      header: "July 10–16, 2022",
-      rows: [
-        { name: "Count", value: String(rowCount), secondaryValue: "+10%" },
-      ],
+      header: "July 13–19, 2025", // expect this to break when we shift years in the Sample Database
+      rows: [{ name: "Count", value: String(rowCount), secondaryValue: "0%" }],
     });
     H.getDashboardCard().within(() => {
       // eslint-disable-next-line no-unsafe-element-filtering
@@ -1206,7 +1204,7 @@ describe("issue 31960", () => {
 
     H.popover().findByText("See these Orders").click();
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Jul 10–16, 2022")
+      .findByText("Created At is Jul 13–19, 2025")
       .should("be.visible");
     H.assertQueryBuilderRowCount(rowCount);
   });
@@ -1342,18 +1340,18 @@ describe("issue 43057", () => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Fixed date range…").click();
       cy.findByText("On").click();
-      cy.findByLabelText("Date").clear().type("November 18, 2024");
+      cy.findByLabelText("Date").clear().type("November 18, 2027");
       cy.button("Add filter").click();
     });
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(16);
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is on Nov 18, 2024")
+      .findByText("Created At is on Nov 18, 2027")
       .should("be.visible");
 
     cy.log("set time to 00:00 and verify the filter and results");
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is on Nov 18, 2024")
+      .findByText("Created At is on Nov 18, 2027")
       .click();
     H.popover().within(() => {
       cy.button("Add time").click();
@@ -1363,12 +1361,12 @@ describe("issue 43057", () => {
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(1);
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Nov 18, 2024, 12:00 AM")
+      .findByText("Created At is Nov 18, 2027, 12:00 AM")
       .should("be.visible");
 
     cy.log("remove time and verify the filter and results");
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is Nov 18, 2024, 12:00 AM")
+      .findByText("Created At is Nov 18, 2027, 12:00 AM")
       .click();
     H.popover().within(() => {
       cy.findByLabelText("Time").should("have.value", "00:00");
@@ -1378,7 +1376,7 @@ describe("issue 43057", () => {
     cy.wait("@dataset");
     H.assertQueryBuilderRowCount(16);
     cy.findByTestId("qb-filters-panel")
-      .findByText("Created At is on Nov 18, 2024")
+      .findByText("Created At is on Nov 18, 2027")
       .should("be.visible");
   });
 });
@@ -2206,7 +2204,7 @@ describe("issue 36027", () => {
       cy.findByText("Count").should("be.visible"); // y-axis
 
       // x-axis values
-      ["January 2023", "January 2024", "January 2025", "January 2026"].forEach(
+      ["January 2026", "January 2027", "January 2028", "January 2029"].forEach(
         (state) => {
           cy.findByText(state).should("be.visible");
         },

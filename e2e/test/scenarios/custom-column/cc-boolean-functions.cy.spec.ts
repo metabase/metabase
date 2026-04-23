@@ -186,9 +186,9 @@ describe("scenarios > custom column > boolean functions", () => {
         questionDetails: dateQuestionDetails,
         questionColumns: dateQuestionColumns,
         newExpression: 'interval([Created At], -30, "year")',
-        newExpressionRows: [["April 30, 2022, 6:56 PM", "true"]],
+        newExpressionRows: [["April 30, 2025, 6:56 PM", "true"]],
         modifiedExpression: 'interval([Created At], 2, "month")',
-        modifiedExpressionRows: [["April 30, 2022, 6:56 PM", "false"]],
+        modifiedExpressionRows: [["April 30, 2025, 6:56 PM", "false"]],
       });
     });
   });

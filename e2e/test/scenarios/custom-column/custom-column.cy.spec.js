@@ -596,8 +596,8 @@ describe("scenarios > question > custom column", () => {
     H.popover().within(() => {
       cy.findByText("Filter by this column").click();
       cy.findByText("Fixed date range…").click();
-      cy.findByLabelText("Start date").clear().type("12/10/2024");
-      cy.findByLabelText("End date").clear().type("01/05/2025");
+      cy.findByLabelText("Start date").clear().type("12/10/2027");
+      cy.findByLabelText("End date").clear().type("01/05/2028");
       cy.button("Add filter").click();
     });
 

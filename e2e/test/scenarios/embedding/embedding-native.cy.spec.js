@@ -87,11 +87,11 @@ describe("scenarios > embedding > native questions", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Twitter").should("not.exist");
 
-      // Created At: Q2 2023
+      // Created At: Q2 2026
       H.filterWidget().contains("Created At").click();
       H.popover().within(() => {
         cy.findByText(/20\d+/).click();
-        cy.contains("2023").click();
+        cy.contains("2026").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q2").click();
@@ -114,7 +114,7 @@ describe("scenarios > embedding > native questions", () => {
 
       // Let's try to remove one filter
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q2 2023")
+      cy.findByText("Q2 2026")
         .closest("fieldset")
         .within(() => {
           cy.icon("close").click();
@@ -128,7 +128,7 @@ describe("scenarios > embedding > native questions", () => {
       cy.findAllByRole("row").should("have.length", 1);
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("December 29, 2024, 4:54 AM");
+      cy.findByText("December 29, 2027, 4:54 AM");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("CO");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -255,13 +255,13 @@ describe("scenarios > embedding > native questions", () => {
         };
 
         H.visitEmbeddedPage(payload, {
-          setFilters: { created_at: "Q2-2025", source: "Organic", state: "OR" },
+          setFilters: { created_at: "Q2-2028", source: "Organic", state: "OR" },
         });
 
         H.filterWidget()
           .should("have.length", 4)
           .and("contain", "OR")
-          .and("contain", "Q2 2025");
+          .and("contain", "Q2 2028");
         // Why do we use input field in one filter widget but a simple `span` in the other one?
         cy.findByDisplayValue("Organic");
 
@@ -302,7 +302,7 @@ describe("scenarios > embedding > native questions", () => {
             id: [92, 96, 102, 104],
             product_id: [140],
             state: ["AK", "TX"],
-            created_at: "Q3-2024",
+            created_at: "Q3-2027",
             total: [10],
             source: ["Organic"],
           },

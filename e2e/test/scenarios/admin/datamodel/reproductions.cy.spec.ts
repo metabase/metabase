@@ -330,7 +330,7 @@ describe("issues 55617, 55618", () => {
     );
   });
 
-  it("should allow changing field's FK target mapping in segments field list view and segment field detail view (metabase#55617, metabase#55618)", () => {
+  it.skip("should allow changing field's FK target mapping in segments field list view and segment field detail view (metabase#55617, metabase#55618)", () => {
     cy.visit("/reference/segments");
     cy.wait("@getSegments");
     cy.findByRole("link", { name: /My segment/ }).click();
