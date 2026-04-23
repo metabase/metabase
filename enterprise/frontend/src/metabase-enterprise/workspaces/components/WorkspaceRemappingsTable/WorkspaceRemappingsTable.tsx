@@ -1,8 +1,8 @@
-import { useMemo } from "react";
+import type { Row } from "@tanstack/react-table";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { DateTime } from "metabase/common/components/DateTime";
-import { Link } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import CS from "metabase/css/core/index.css";
 import {
@@ -15,37 +15,46 @@ import {
   type TreeTableColumnDef,
   useTreeTableInstance,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
 import type {
   Database,
   DatabaseId,
-  TableId,
   WorkspaceInstance,
   WorkspaceRemapping,
+  WorkspaceRemappingId,
 } from "metabase-types/api";
-
-import S from "./WorkspaceRemappingsTable.module.css";
 
 type WorkspaceRemappingsTableProps = {
   remappings: WorkspaceRemapping[];
   databasesById: Map<DatabaseId, Database>;
   workspaceDatabases: WorkspaceInstance["databases"];
+  selectedRemappingId: WorkspaceRemappingId | undefined;
+  onRemappingSelect: (remapping: WorkspaceRemapping) => void;
 };
 
 export function WorkspaceRemappingsTable({
   remappings,
   databasesById,
   workspaceDatabases,
+  selectedRemappingId,
+  onRemappingSelect,
 }: WorkspaceRemappingsTableProps) {
   const columns = useMemo(
     () => getColumns({ databasesById, workspaceDatabases }),
     [databasesById, workspaceDatabases],
   );
 
+  const handleRowClick = useCallback(
+    (row: Row<WorkspaceRemapping>) => onRemappingSelect(row.original),
+    [onRemappingSelect],
+  );
+
   const treeTableInstance = useTreeTableInstance<WorkspaceRemapping>({
     data: remappings,
     columns,
     getNodeId: (remapping) => String(remapping.id),
+    selectedRowId:
+      selectedRemappingId != null ? String(selectedRemappingId) : undefined,
+    onRowActivate: handleRowClick,
   });
 
   return (
@@ -62,86 +71,42 @@ export function WorkspaceRemappingsTable({
         instance={treeTableInstance}
         emptyState={<ListEmptyState label={t`No remappings yet`} />}
         ariaLabel={t`Workspace remappings`}
+        onRowClick={handleRowClick}
       />
     </Card>
   );
 }
 
 type SchemaTableCellProps = {
-  database: Database | undefined;
   schema: string;
   tableName: string;
-  tableId: TableId | null;
 };
 
-function SchemaTableCell({
-  database,
-  schema,
-  tableName,
-  tableId,
-}: SchemaTableCellProps) {
-  const schemaHref =
-    database != null
-      ? Urls.browseSchema({ db_id: database.id, schema_name: schema })
-      : undefined;
-  const tableHref =
-    tableId != null && database != null
-      ? Urls.tableRowsQuery(database.id, tableId)
-      : undefined;
-
+function SchemaTableCell({ schema, tableName }: SchemaTableCellProps) {
   return (
     <Group align="center" gap="sm" miw={0} wrap="nowrap">
       <FixedSizeIcon name="table2" />
       <Ellipsified tooltipProps={{ openDelay: 300 }}>
-        <MaybeLink href={schemaHref}>{schema}</MaybeLink>
+        {schema}
         <Text component="span" c="text-primary" mx={2}>
           /
         </Text>
-        <MaybeLink href={tableHref}>{tableName}</MaybeLink>
+        {tableName}
       </Ellipsified>
     </Group>
   );
 }
 
 type DatabaseCellProps = {
-  database: Database | undefined;
-  fallbackName: string;
+  name: string;
 };
 
-function DatabaseCell({ database, fallbackName }: DatabaseCellProps) {
-  const name = database?.name ?? fallbackName;
-  const href =
-    database != null
-      ? Urls.browseDatabase({ id: database.id, name: database.name })
-      : undefined;
-
+function DatabaseCell({ name }: DatabaseCellProps) {
   return (
     <Group align="center" gap="sm" miw={0} wrap="nowrap">
       <FixedSizeIcon name="database" />
-      <Ellipsified tooltipProps={{ openDelay: 300 }}>
-        <MaybeLink href={href}>{name}</MaybeLink>
-      </Ellipsified>
+      <Ellipsified tooltipProps={{ openDelay: 300 }}>{name}</Ellipsified>
     </Group>
-  );
-}
-
-type MaybeLinkProps = {
-  href: string | undefined;
-  children: string;
-};
-
-function MaybeLink({ href, children }: MaybeLinkProps) {
-  if (href == null) {
-    return <span className={S.link}>{children}</span>;
-  }
-  return (
-    <Link
-      to={href}
-      className={S.link}
-      onClick={(event) => event.stopPropagation()}
-    >
-      {children}
-    </Link>
   );
 }
 
@@ -153,11 +118,9 @@ type GetColumnsParams = {
 function getSchemaTableColumn(
   id: "from" | "to",
   header: string,
-  databasesById: Map<DatabaseId, Database>,
 ): TreeTableColumnDef<WorkspaceRemapping> {
   const schemaField = `${id}_schema` as const;
   const tableNameField = `${id}_table_name` as const;
-  const tableIdField = `${id}_table_id` as const;
 
   return {
     id,
@@ -167,10 +130,8 @@ function getSchemaTableColumn(
       `${remapping[schemaField]}.${remapping[tableNameField]}`,
     cell: ({ row }) => (
       <SchemaTableCell
-        database={databasesById.get(row.original.database_id)}
         schema={row.original[schemaField]}
         tableName={row.original[tableNameField]}
-        tableId={row.original[tableIdField]}
       />
     ),
   };
@@ -181,24 +142,20 @@ function getColumns({
   workspaceDatabases,
 }: GetColumnsParams): TreeTableColumnDef<WorkspaceRemapping>[] {
   return [
-    getSchemaTableColumn("from", t`From table`, databasesById),
-    getSchemaTableColumn("to", t`To table`, databasesById),
+    getSchemaTableColumn("from", t`Table`),
+    getSchemaTableColumn("to", t`Mapped to`),
     {
       id: "database",
       header: t`Database`,
       width: "auto",
-      accessorFn: (remapping) => {
-        const database = databasesById.get(remapping.database_id);
-        return (
-          database?.name ??
-          workspaceDatabases[remapping.database_id]?.name ??
-          t`Database ${remapping.database_id}`
-        );
-      },
+      accessorFn: (remapping) =>
+        databasesById.get(remapping.database_id)?.name ??
+        workspaceDatabases[remapping.database_id]?.name ??
+        t`Database ${remapping.database_id}`,
       cell: ({ row }) => (
         <DatabaseCell
-          database={databasesById.get(row.original.database_id)}
-          fallbackName={
+          name={
+            databasesById.get(row.original.database_id)?.name ??
             workspaceDatabases[row.original.database_id]?.name ??
             t`Database ${row.original.database_id}`
           }

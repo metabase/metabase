@@ -1,0 +1,11 @@
+.sidebar {
+  flex: 1 1 auto;
+  overflow: auto;
+  border-left: 1px solid var(--mb-color-border);
+}
+
+.section {
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--mb-color-border);
+  }
+}

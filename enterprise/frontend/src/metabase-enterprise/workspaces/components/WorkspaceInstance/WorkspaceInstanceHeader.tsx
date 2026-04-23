@@ -18,9 +18,16 @@ export const WorkspaceInstanceHeader = memo(function WorkspaceInstanceHeader({
 }: WorkspaceInstanceHeaderProps) {
   const tabs: PaneHeaderTab[] = [
     {
+      label: t`Overview`,
+      to: Urls.workspaceInstanceOverview(),
+    },
+    {
       label: t`Table Remappings`,
       to: Urls.workspaceInstanceRemappings(),
-      icon: "table2",
+    },
+    {
+      label: t`Transform Runs`,
+      to: Urls.workspaceInstanceRuns(),
     },
   ];
 

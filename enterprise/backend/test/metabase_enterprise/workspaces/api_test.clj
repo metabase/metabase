@@ -485,13 +485,21 @@
     (mt/user-http-request :rasta :get 403 "ee/workspace/remappings")))
 
 (deftest get-current-returns-config-test
-  (testing "GET /ee/workspace/current returns whatever core/get-config returns"
+  (testing "GET /ee/workspace/current enriches core/get-config with :remappings_count"
     (let [cfg {:name      "github"
                :databases {2 {:name          "Analytics Data Warehouse"
                               :input_schemas ["raw_github"]
                               :output_schema "mb__isolation_754bd_github"}}}]
-      (with-redefs [ws-core/get-config (constantly cfg)]
-        (is (= cfg (mt/user-http-request :crowberto :get 200 "ee/workspace/current")))))))
+      (with-redefs [ws-core/get-config (constantly cfg)
+                    t2/count            (fn [& _args] 7)]
+        (is (= (assoc cfg :remappings_count 7)
+               (mt/user-http-request :crowberto :get 200 "ee/workspace/current")))))))
+
+(deftest get-current-remappings-count-no-databases-test
+  (testing "GET /ee/workspace/current returns :remappings_count 0 when the config has no databases"
+    (with-redefs [ws-core/get-config (constantly {:name "empty" :databases {}})]
+      (is (= {:name "empty" :databases {} :remappings_count 0}
+             (mt/user-http-request :crowberto :get 200 "ee/workspace/current"))))))
 
 (deftest get-current-returns-nil-when-no-config-test
   (testing "GET /ee/workspace/current returns 204 (empty body) when no workspace is active"

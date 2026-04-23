@@ -10,6 +10,7 @@ export type WorkspaceInstanceDatabase = {
 export type WorkspaceInstance = {
   name: string;
   databases: Record<DatabaseId, WorkspaceInstanceDatabase>;
+  remappings_count: number;
 };
 
 export type WorkspaceRemappingId = number;

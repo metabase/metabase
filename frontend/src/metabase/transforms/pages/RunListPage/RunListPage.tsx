@@ -1,7 +1,13 @@
 import { useDisclosure, useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import type { Location } from "history";
-import { useCallback, useLayoutEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from "react";
 import { replace } from "react-router-redux";
 import { t } from "ttag";
 
@@ -41,9 +47,10 @@ const EMPTY_RUNS: TransformRun[] = [];
 
 type RunListPageProps = {
   location: Location;
+  header?: ReactNode;
 };
 
-export function RunListPage({ location }: RunListPageProps) {
+export function RunListPage({ location, header }: RunListPageProps) {
   usePageTitle(t`Runs`);
   const params = getParsedParams(location);
   const { page = 0 } = params;
@@ -159,11 +166,15 @@ export function RunListPage({ location }: RunListPageProps) {
       data-testid="transforms-run-list"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
-        <PaneHeader
-          breadcrumbs={<DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>}
-          py={0}
-          showMetabotButton
-        />
+        {header ?? (
+          <PaneHeader
+            breadcrumbs={
+              <DataStudioBreadcrumbs>{t`Runs`}</DataStudioBreadcrumbs>
+            }
+            py={0}
+            showMetabotButton
+          />
+        )}
         {!data || isLoading || error != null ? (
           <Center h="100%">
             <LoadingAndErrorWrapper loading={isLoading} error={error} />

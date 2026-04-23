@@ -1,4 +1,6 @@
-import { useMemo } from "react";
+import { useDisclosure, useElementSize } from "@mantine/hooks";
+import cx from "classnames";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
@@ -9,8 +11,13 @@ import {
   useGetCurrentWorkspaceQuery,
   useListWorkspaceRemappingsQuery,
 } from "metabase-enterprise/api";
-import type { Database, DatabaseId } from "metabase-types/api";
+import type {
+  Database,
+  DatabaseId,
+  WorkspaceRemappingId,
+} from "metabase-types/api";
 
+import { WorkspaceRemappingSidebar } from "../WorkspaceRemappingSidebar";
 import { WorkspaceRemappingsTable } from "../WorkspaceRemappingsTable";
 
 import S from "./WorkspaceInstance.module.css";
@@ -18,6 +25,12 @@ import { WorkspaceInstanceHeader } from "./WorkspaceInstanceHeader";
 
 export function WorkspaceInstance() {
   usePageTitle(t`Workspace`);
+
+  const { ref: containerRef, width: containerWidth } = useElementSize();
+  const [isResizing, { open: startResizing, close: stopResizing }] =
+    useDisclosure();
+  const [selectedRemappingId, setSelectedRemappingId] =
+    useState<WorkspaceRemappingId>();
 
   const {
     data: workspace,
@@ -46,8 +59,24 @@ export function WorkspaceInstance() {
     isLoadingWorkspace || isLoadingRemappings || isLoadingDatabases;
   const error = workspaceError ?? remappingsError ?? databasesError;
 
+  const selectedRemapping = remappings.find(
+    (remapping) => remapping.id === selectedRemappingId,
+  );
+
+  useLayoutEffect(() => {
+    if (selectedRemappingId != null && selectedRemapping == null) {
+      setSelectedRemappingId(undefined);
+    }
+  }, [selectedRemappingId, selectedRemapping]);
+
   return (
-    <Flex h="100%" wrap="nowrap" data-testid="workspace-instance">
+    <Flex
+      className={cx({ [S.resizing]: isResizing })}
+      ref={containerRef}
+      h="100%"
+      wrap="nowrap"
+      data-testid="workspace-instance"
+    >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
         <WorkspaceInstanceHeader workspaceName={workspace?.name} />
         {isLoading || error != null || workspace == null ? (
@@ -59,9 +88,22 @@ export function WorkspaceInstance() {
             remappings={remappings}
             databasesById={databasesById}
             workspaceDatabases={workspace.databases}
+            selectedRemappingId={selectedRemappingId}
+            onRemappingSelect={(remapping) =>
+              setSelectedRemappingId(remapping.id)
+            }
           />
         )}
       </Stack>
+      {selectedRemapping != null && (
+        <WorkspaceRemappingSidebar
+          remapping={selectedRemapping}
+          containerWidth={containerWidth}
+          onResizeStart={startResizing}
+          onResizeStop={stopResizing}
+          onClose={() => setSelectedRemappingId(undefined)}
+        />
+      )}
     </Flex>
   );
 }

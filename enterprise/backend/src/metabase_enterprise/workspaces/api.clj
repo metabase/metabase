@@ -109,10 +109,17 @@
    (t2/select :model/TableRemapping {:order-by [[:id :asc]]})))
 
 (api.macros/defendpoint :get "/current"
-  "Return the currently active workspace config (or null if no workspace is active)."
+  "Return the currently active workspace config (or null if no workspace is active).
+  Enriches the config with `:remappings_count` — the total number of
+  `table_remapping` rows whose `database_id` belongs to this workspace."
   []
   (api/check-superuser)
-  (ws-core/get-config))
+  (when-let [config (ws-core/get-config)]
+    (let [db-ids           (keys (:databases config))
+          remappings-count (if (seq db-ids)
+                             (t2/count :model/TableRemapping :database_id [:in db-ids])
+                             0)]
+      (assoc config :remappings_count remappings-count))))
 
 (api.macros/defendpoint :get "/:id" :- WorkspaceResponse
   "Get a single Workspace by id."

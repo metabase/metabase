@@ -23,6 +23,14 @@ export function workspaceInstance() {
   return WORKSPACE_INSTANCE_URL;
 }
 
+export function workspaceInstanceOverview() {
+  return `${WORKSPACE_INSTANCE_URL}/overview`;
+}
+
 export function workspaceInstanceRemappings() {
   return `${WORKSPACE_INSTANCE_URL}/remappings`;
+}
+
+export function workspaceInstanceRuns() {
+  return `${WORKSPACE_INSTANCE_URL}/runs`;
 }
