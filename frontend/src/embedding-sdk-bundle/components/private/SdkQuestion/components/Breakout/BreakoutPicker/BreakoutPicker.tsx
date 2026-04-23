@@ -68,7 +68,7 @@ export const BreakoutPicker = ({
 }) => {
   const {
     question,
-    updateQuestion,
+    updateAndNormalizeQuestion,
     lastVisibleStageIndex: stageIndex,
   } = useSdkQuestionContext();
 
@@ -80,7 +80,7 @@ export const BreakoutPicker = ({
 
   const onQueryChange = (nextQuery: Lib.Query) => {
     if (question) {
-      updateQuestion(question.setQuery(nextQuery), { run: true });
+      updateAndNormalizeQuestion(question.setQuery(nextQuery), { run: true });
     }
   };
 

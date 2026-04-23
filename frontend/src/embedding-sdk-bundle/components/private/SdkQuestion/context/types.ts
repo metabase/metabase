@@ -165,6 +165,7 @@ export type SdkQuestionContextType = Omit<
     originalId: SdkQuestionId | null;
     token: EntityToken | null | undefined;
     lastVisibleStageIndex: number;
+    updateAndNormalizeQuestion: LoadQuestionHookResult["updateQuestion"];
     resetQuestion: () => void;
     onReset: () => void;
     onCreate: (question: Question) => Promise<Question>;

@@ -22,7 +22,7 @@ export const SummarizePicker = ({
 } & Pick<AggregationPickerProps, "className" | "onClose" | "onBack">) => {
   const {
     question,
-    updateQuestion,
+    updateAndNormalizeQuestion,
     lastVisibleStageIndex: stageIndex,
   } = useSdkQuestionContext();
 
@@ -32,7 +32,7 @@ export const SummarizePicker = ({
 
   const query = question.query();
   const onQueryChange = (newQuery: Lib.Query) => {
-    updateQuestion(question.setQuery(newQuery), { run: true });
+    updateAndNormalizeQuestion(question.setQuery(newQuery), { run: true });
   };
 
   return (

@@ -17,14 +17,14 @@ export interface SDKBreakoutItem extends BreakoutListItem {
 
 export const useBreakoutData = (): SDKBreakoutItem[] => {
   const {
-    updateQuestion,
+    updateAndNormalizeQuestion,
     lastVisibleStageIndex: stageIndex,
     ...interactiveQuestionContext
   } = useSdkQuestionContext();
   const question = interactiveQuestionContext.question as Question;
   const onQueryChange = (nextQuery: Lib.Query) => {
     if (question) {
-      updateQuestion(question.setQuery(nextQuery), { run: true });
+      updateAndNormalizeQuestion(question.setQuery(nextQuery), { run: true });
     }
   };
 

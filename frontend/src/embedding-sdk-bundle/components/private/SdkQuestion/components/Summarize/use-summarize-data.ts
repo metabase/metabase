@@ -19,7 +19,7 @@ export interface SDKAggregationItem extends AggregationItem {
 export const useSummarizeData = () => {
   const {
     question,
-    updateQuestion,
+    updateAndNormalizeQuestion,
     lastVisibleStageIndex: stageIndex,
   } = useSdkQuestionContext();
   const tc = useTranslateContent();
@@ -30,10 +30,10 @@ export const useSummarizeData = () => {
   const onQueryChange = useCallback(
     (newQuery: Lib.Query) => {
       if (question) {
-        updateQuestion(question.setQuery(newQuery), { run: true });
+        updateAndNormalizeQuestion(question.setQuery(newQuery), { run: true });
       }
     },
-    [question, updateQuestion],
+    [question, updateAndNormalizeQuestion],
   );
 
   const aggregationItems: SDKAggregationItem[] = useMemo(
