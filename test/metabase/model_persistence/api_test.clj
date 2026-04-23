@@ -103,7 +103,7 @@
                                        (.setProperty "org.quartz.threadPool.threadCount" "6")
                                        (.setProperty "org.quartz.threadPool.class" "org.quartz.simpl.SimpleThreadPool"))))]
     ;; a binding won't work since we need to cross thread boundaries
-    (mt/with-dynamic-fn-redefs [task/scheduler (constantly sched)]
+    (with-redefs [task/scheduler (constantly sched)]
       (try
         (qs/standby sched)
         (#'task.persist-refresh/job-init!)
