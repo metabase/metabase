@@ -1,9 +1,11 @@
 (ns metabase.login-history.models.login-history
   (:require
    [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
    [metabase.login-history.settings :as login-history.settings]
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -76,7 +78,7 @@
           count
           (= 1)))
 
-(def ^:private new-device-email-rate-limit-window (t/hours 24))
+(def ^:private new-device-email-rate-limit-window-hours 24)
 
 (defn too-many-new-device-emails-recently?
   "Per-user circuit breaker — true if this user has already triggered
@@ -84,7 +86,8 @@
    window. Over-counts first-login-ever rows (those never email) — safe direction for a
    breaker."
   [user-id]
-  (let [cutoff (t/minus (t/offset-date-time) new-device-email-rate-limit-window)]
+  (let [cutoff [:inline (h2x/add-interval-honeysql-form
+                         (mdb/db-type) :%now (- new-device-email-rate-limit-window-hours) :hour)]]
     (> (t2/count :model/LoginHistory
                  {:where [:and
                           [:= :user_id user-id]
