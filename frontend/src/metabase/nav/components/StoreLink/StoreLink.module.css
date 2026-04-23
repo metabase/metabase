@@ -4,8 +4,8 @@
 }
 
 .iconWrapper {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--mantine-radius-xs);
   cursor: pointer;
   color: color-mix(
@@ -17,10 +17,7 @@
 
   &:hover {
     color: var(--mb-color-text-primary-inverse);
-    background-color: light-dark(
-      hsl(from var(--mb-color-admin-navbar) h s calc(l * 0.75)),
-      hsl(from var(--mb-color-admin-navbar-inverse) h s calc(l * 0.75))
-    );
+    background-color: var(--mb-color-admin-navbar-inverse);
   }
 
   @media (prefers-reduced-motion) {
