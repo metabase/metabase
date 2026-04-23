@@ -71,6 +71,10 @@ export type UseMetabotResult = {
   messages: MetabotMessage[];
   /** Errors are conversation-level, not attached to individual messages. */
   errorMessages: MetabotErrorMessage[];
+  /**
+   * `true` from the moment a message is submitted until the response
+   * completes — including success, error, or cancellation.
+   */
   isProcessing: boolean;
 
   /**
