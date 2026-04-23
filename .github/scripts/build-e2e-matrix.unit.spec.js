@@ -34,7 +34,9 @@ describe("buildMatrix", () => {
     );
 
     regularTests.forEach((test, index) => {
-      expect(test.name).toBe(`e2e-group-${index + 1}`);
+      expect(test.name).toBe(
+        `e2e-group-${String(index + 1).padStart(2, "0")}`,
+      );
     });
   });
 
@@ -92,6 +94,6 @@ describe("buildMatrix", () => {
     const result = testBuildMatrix("test1.cy.spec.js,test2.cy.spec.js", 50);
 
     expect(result.config.length).toBe(1);
-    expect(result.config[0].name).toBe("e2e-group-1");
+    expect(result.config[0].name).toBe("e2e-group-01");
   });
 });
