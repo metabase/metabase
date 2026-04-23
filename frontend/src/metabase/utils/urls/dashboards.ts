@@ -2,11 +2,16 @@ import slugg from "slugg";
 
 import { stringifyHashOptions } from "metabase/utils/browser";
 import MetabaseSettings from "metabase/utils/settings";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import { isTransientCardId } from "metabase-lib/v1/Question";
 import type {
   DashCardId,
   DashboardId,
   DashboardTabId,
 } from "metabase-types/api";
+
+import { utf8_to_b64url } from "../encoding";
 
 import { appendSlug } from "./utils";
 
@@ -51,4 +56,45 @@ export function dashboard(
 export function publicDashboard(uuid: string) {
   const siteUrl = MetabaseSettings.get("site-url");
   return `${siteUrl}/public/dashboard/${uuid}`;
+}
+
+export function comparisonDashboard(
+  question: Question,
+  questionWithFilters: Question,
+) {
+  const questionId = question.id();
+  const tableId = Lib.sourceTableOrCardId(question.query());
+  const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
+  const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
+  const cellQuery = filter
+    ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}`
+    : "";
+
+  const query = question.datasetQuery();
+  if (questionId != null && !isTransientCardId(questionId)) {
+    return `auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
+  } else {
+    const adHocQuery = utf8_to_b64url(JSON.stringify(query));
+    return `auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
+  }
+}
+
+export function automaticDashboard(
+  question: Question,
+  questionWithFilters: Question,
+) {
+  const questionId = question.id();
+  const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
+  const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
+  const cellQuery = filter
+    ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}`
+    : "";
+
+  const query = question.datasetQuery();
+  if (questionId != null && !isTransientCardId(questionId)) {
+    return `auto/dashboard/question/${questionId}${cellQuery}`;
+  } else {
+    const adHocQuery = utf8_to_b64url(JSON.stringify(query));
+    return `auto/dashboard/adhoc/${adHocQuery}${cellQuery}`;
+  }
 }

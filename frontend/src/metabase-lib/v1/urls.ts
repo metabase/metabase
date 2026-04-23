@@ -1,7 +1,5 @@
-import { utf8_to_b64url } from "metabase/utils/encoding";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
-import { isTransientCardId } from "metabase-lib/v1/Question";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { remapParameterValuesToTemplateTags } from "metabase-lib/v1/parameters/utils/template-tags";
@@ -92,45 +90,4 @@ export function getUrlWithParameters(
     ),
     includeDisplayIsLocked,
   });
-}
-
-export function getAutomaticDashboardUrl(
-  question: Question,
-  questionWithFilters: Question,
-) {
-  const questionId = question.id();
-  const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
-  const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
-  const cellQuery = filter
-    ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}`
-    : "";
-
-  const query = question.datasetQuery();
-  if (questionId != null && !isTransientCardId(questionId)) {
-    return `auto/dashboard/question/${questionId}${cellQuery}`;
-  } else {
-    const adHocQuery = utf8_to_b64url(JSON.stringify(query));
-    return `auto/dashboard/adhoc/${adHocQuery}${cellQuery}`;
-  }
-}
-
-export function getComparisonDashboardUrl(
-  question: Question,
-  questionWithFilters: Question,
-) {
-  const questionId = question.id();
-  const tableId = Lib.sourceTableOrCardId(question.query());
-  const filterQuery = Lib.toLegacyQuery(questionWithFilters.query());
-  const filter = filterQuery.type === "query" ? filterQuery.query.filter : null;
-  const cellQuery = filter
-    ? `/cell/${utf8_to_b64url(JSON.stringify(filter))}`
-    : "";
-
-  const query = question.datasetQuery();
-  if (questionId != null && !isTransientCardId(questionId)) {
-    return `auto/dashboard/question/${questionId}${cellQuery}/compare/table/${tableId}`;
-  } else {
-    const adHocQuery = utf8_to_b64url(JSON.stringify(query));
-    return `auto/dashboard/adhoc/${adHocQuery}${cellQuery}/compare/table/${tableId}`;
-  }
 }
