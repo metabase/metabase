@@ -1,0 +1,32 @@
+.tooltipTable {
+  border-collapse: collapse;
+  margin: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+}
+
+.tableBody.hasBottomSpacing::after {
+  line-height: 0.5rem;
+  content: " ";
+  display: block;
+}
+
+.tableCell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 240px;
+  padding: 2px 1px;
+
+  &:first-of-type {
+    padding: 2px var(--mantine-spacing-sm) 2px 1px;
+  }
+}
+
+.tableFooter {
+  border-top: 1px solid var(--mb-color-background-secondary-inverse);
+
+  &::before {
+    line-height: 0.5rem;
+    content: " ";
+    display: block;
+  }
+}

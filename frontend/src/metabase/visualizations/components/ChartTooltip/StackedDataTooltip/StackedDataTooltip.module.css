@@ -1,0 +1,38 @@
+.tableRowSpacing::after {
+  line-height: 0.5rem;
+  content: " ";
+  display: block;
+}
+
+.dataPointRoot {
+  padding-top: var(--mantine-spacing-md);
+  display: flex;
+  flex-direction: column;
+}
+
+.dataPointHeader {
+  text-transform: uppercase;
+  font-size: var(--mantine-font-size-sm);
+  padding: 0 1.5rem var(--mantine-spacing-xs) 1.5rem;
+}
+
+.dataPointTable {
+  border-collapse: collapse;
+  margin: 0 0.75rem 0.75rem 0.75rem;
+}
+
+.dataPointTableBody {
+  border-top: 1px solid var(--mb-color-background-secondary-inverse);
+}
+
+.dataPointTableBody::before {
+  line-height: 0.5rem;
+  content: " ";
+  display: block;
+}
+
+.dataPointTableFooter::before {
+  line-height: 0.5rem;
+  content: " ";
+  display: block;
+}

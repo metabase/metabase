@@ -1,0 +1,12 @@
+.timelineEventList {
+  max-width: 300px;
+
+  li:not(:first-of-type) {
+    margin-top: var(--mantine-spacing-sm);
+  }
+}
+
+.timelineEventDate {
+  font-size: var(--mantine-font-size-sm);
+  margin-top: 1px;
+}

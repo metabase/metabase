@@ -1,15 +1,9 @@
+import { DateTime } from "metabase/common/components/DateTime";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Flex, Icon, Stack, Text } from "metabase/ui";
 import type { HoveredTimelineEvent } from "metabase/visualizations/types";
 
-import {
-  TimelineEventDate,
-  TimelineEventIconContainer,
-  TimelineEventInfoContainer,
-  TimelineEventList,
-  TimelineEventName,
-  TimelineEventRow,
-} from "./TimelineEventTooltip.styled";
+import S from "./TimelineEventTooltip.module.css";
 
 export interface TimelineEventTooltipProps {
   hovered: HoveredTimelineEvent;
@@ -20,24 +14,27 @@ const TimelineEventTooltip = (props: TimelineEventTooltipProps) => {
   const { timelineEvents } = hovered;
 
   return (
-    <TimelineEventList>
+    <ul className={S.timelineEventList}>
       {timelineEvents.map((event) => (
         <li key={event.id}>
-          <TimelineEventRow>
-            <TimelineEventIconContainer>
+          <Flex>
+            <Flex justify="center" align="center" pl="xs" pr="0.75rem">
               <Icon name={event.icon as unknown as IconName} />
-            </TimelineEventIconContainer>
-            <TimelineEventInfoContainer>
-              <TimelineEventName>{event.name}</TimelineEventName>
-              <TimelineEventDate
+            </Flex>
+            <Stack gap={0}>
+              <Text component="span" fz="md" fw="bold">
+                {event.name}
+              </Text>
+              <DateTime
+                className={S.timelineEventDate}
                 value={event.timestamp}
                 unit={event.time_matters ? "default" : "day"}
               />
-            </TimelineEventInfoContainer>
-          </TimelineEventRow>
+            </Stack>
+          </Flex>
         </li>
       ))}
-    </TimelineEventList>
+    </ul>
   );
 };
 

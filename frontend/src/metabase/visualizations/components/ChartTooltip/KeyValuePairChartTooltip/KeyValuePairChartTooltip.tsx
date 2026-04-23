@@ -14,12 +14,7 @@ import type { DatasetColumn } from "metabase-types/api";
 
 import { formatValueForTooltip } from "../utils";
 
-import {
-  TableBody,
-  TableCell,
-  TableFooter,
-  TooltipTable,
-} from "./KeyValuePairChartTooltip.styled";
+import S from "./KeyValuePairChartTooltip.module.css";
 
 export interface StackedDataTooltipProps {
   hovered: HoveredObject;
@@ -37,8 +32,8 @@ const KeyValuePairChartTooltip = ({
   const showFooter = footerRows && footerRows.length > 0;
 
   return (
-    <TooltipTable>
-      <TableBody hasBottomSpacing={showFooter}>
+    <table className={S.tooltipTable}>
+      <tbody className={cx(S.tableBody, { [S.hasBottomSpacing]: showFooter })}>
         {rows.map(({ key, value, col }, index) => (
           <TooltipRow
             key={index}
@@ -49,9 +44,9 @@ const KeyValuePairChartTooltip = ({
             isAlreadyScaled={isAlreadyScaled}
           />
         ))}
-      </TableBody>
+      </tbody>
       {showFooter && (
-        <TableFooter>
+        <tfoot className={S.tableFooter}>
           {footerRows.map(({ key, value, col }, index) => (
             <TooltipRow
               key={index}
@@ -61,9 +56,9 @@ const KeyValuePairChartTooltip = ({
               settings={settings}
             />
           ))}
-        </TableFooter>
+        </tfoot>
       )}
-    </TooltipTable>
+    </table>
   );
 };
 
@@ -84,17 +79,17 @@ const TooltipRow = ({
 }: TooltipRowProps) => (
   <tr>
     {name ? (
-      <TableCell className={cx(CS.textTooltipSecondary, CS.textRight)}>
+      <td className={cx(S.tableCell, CS.textTooltipSecondary, CS.textRight)}>
         {name}:
-      </TableCell>
+      </td>
     ) : (
-      <TableCell />
+      <td className={S.tableCell} />
     )}
-    <TableCell className={cx(CS.textBold, CS.textLeft)}>
+    <td className={cx(S.tableCell, CS.textBold, CS.textLeft)}>
       {isValidElement(value)
         ? value
         : formatValueForTooltip({ value, column, settings, isAlreadyScaled })}
-    </TableCell>
+    </td>
   </tr>
 );
 
