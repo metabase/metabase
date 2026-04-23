@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import {
   ActionIcon,
   Box,
@@ -16,7 +17,7 @@ import {
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type {
-  CardDisplayType,
+  VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -55,7 +56,7 @@ export const EmbedQuestionSettingsSidebar = ({
   } = useCardData({ id: cardId });
 
   const { sensibleItems, nonsensibleItems, selectedElem } =
-    useVisualizationOptions(dataset, card?.display as CardDisplayType);
+    useVisualizationOptions(dataset, card?.display);
 
   const { ensureDraftCard } = useDraftCardOperations(
     draftCard,
@@ -85,7 +86,7 @@ export const EmbedQuestionSettingsSidebar = ({
     }
   };
 
-  const handleVisualizationTypeChange = (display: CardDisplayType) => {
+  const handleVisualizationTypeChange = (display: VisualizationDisplay) => {
     if (selectedEmbedIndex !== null) {
       if (!draftCard) {
         const actualCardId = ensureDraftCard({ display }, true);
@@ -134,8 +135,11 @@ export const EmbedQuestionSettingsSidebar = ({
                   disabled={!selectedElem}
                   rightSection={<Icon ml="xs" size={10} name="chevrondown" />}
                   leftSection={
-                    selectedElem?.iconName ? (
-                      <Icon name={selectedElem.iconName} />
+                    selectedElem?.iconName || selectedElem?.iconUrl ? (
+                      <EntityIcon
+                        name={selectedElem.iconName ?? undefined}
+                        iconUrl={selectedElem.iconUrl}
+                      />
                     ) : null
                   }
                   justify="space-between"
@@ -144,26 +148,40 @@ export const EmbedQuestionSettingsSidebar = ({
                 </Button>
               </Menu.Target>
               <Menu.Dropdown>
-                {sensibleItems.map(({ iconName, label, value }, index) => (
-                  <Menu.Item
-                    key={`${value}/${index}`}
-                    onClick={() => handleVisualizationTypeChange(value)}
-                    leftSection={iconName ? <Icon name={iconName} /> : null}
-                  >
-                    {label}
-                  </Menu.Item>
-                ))}
+                {sensibleItems.map(
+                  ({ iconName, iconUrl, label, value }, index) => (
+                    <Menu.Item
+                      key={`${value}/${index}`}
+                      onClick={() => handleVisualizationTypeChange(value)}
+                      leftSection={
+                        iconName || iconUrl ? (
+                          <EntityIcon
+                            name={iconName ?? undefined}
+                            iconUrl={iconUrl}
+                          />
+                        ) : null
+                      }
+                    >
+                      {label}
+                    </Menu.Item>
+                  ),
+                )}
 
                 {nonsensibleItems.length > 0 && (
                   <>
                     <Menu.Label>{t`More charts`}</Menu.Label>
                     {nonsensibleItems.map(
-                      ({ iconName, label, value }, index) => (
+                      ({ iconName, iconUrl, label, value }, index) => (
                         <Menu.Item
                           key={`${value}/${index}`}
                           onClick={() => handleVisualizationTypeChange(value)}
                           leftSection={
-                            iconName ? <Icon name={iconName} /> : null
+                            iconName || iconUrl ? (
+                              <EntityIcon
+                                name={iconName ?? undefined}
+                                iconUrl={iconUrl}
+                              />
+                            ) : null
                           }
                         >
                           {label}

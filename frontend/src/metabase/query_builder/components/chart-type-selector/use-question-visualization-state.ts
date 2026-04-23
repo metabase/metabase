@@ -5,10 +5,12 @@ import visualizations from "metabase/visualizations";
 import { sanitizeResultData } from "metabase/visualizations/shared/utils/data";
 import type Question from "metabase-lib/v1/Question";
 import {
-  type CardDisplayType,
   type Dataset,
+  type QueryVisualizationDisplayType,
+  type VisualizationDisplay,
   isCardDisplayType,
 } from "metabase-types/api";
+import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 
 import { groupVisualizationsBySensibility } from "./sensibility-grouping";
 import { DEFAULT_VIZ_ORDER } from "./viz-order";
@@ -25,7 +27,7 @@ export const useQuestionVisualizationState = ({
   const selectedVisualization = question?.display() ?? "table";
 
   const updateQuestionVisualization = useCallback(
-    (display: CardDisplayType) => {
+    (display: VisualizationDisplay) => {
       if (!question || selectedVisualization === display) {
         return;
       }
@@ -52,13 +54,23 @@ export type GetSensibleVisualizationsProps = {
   result: Dataset | null;
 };
 
+const isSupportedVisualization = (
+  display: string,
+): display is QueryVisualizationDisplayType =>
+  isCardDisplayType(display) || isCustomVizDisplay(display);
+
 export const getSensibleVisualizations = ({
   result,
 }: GetSensibleVisualizationsProps) => {
-  const availableVizTypes = Array.from(visualizations.entries())
-    .filter(([_display, config]) => !config.hidden)
-    .map(([vizType]) => vizType)
-    .filter(isCardDisplayType);
+  const availableVizTypes = Array.from(visualizations.entries()).reduce<
+    QueryVisualizationDisplayType[]
+  >((types, [vizType, config]) => {
+    if (!config.hidden && isSupportedVisualization(vizType)) {
+      types.push(vizType);
+    }
+
+    return types;
+  }, []);
 
   const orderedVizTypes = _.union(DEFAULT_VIZ_ORDER, availableVizTypes);
 

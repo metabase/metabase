@@ -212,6 +212,7 @@ export const Questions = createEntity({
     "collection_preview",
     "result_metadata",
     "delete_old_dashcards",
+    "size",
   ],
 
   getAnalyticsMetadata([object], { action }, getState) {

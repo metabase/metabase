@@ -1,17 +1,14 @@
-import type { IconName } from "metabase/ui";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
+import type { IconData } from "metabase/utils/icon";
 
 import { HomeCard } from "../HomeCard";
 
-import { CardIcon, CardTitle } from "./HomeModelCard.styled";
+import { CardTitle } from "./HomeModelCard.styled";
 
 interface HomeModelCardProps {
   title: string;
-  icon: HomeModelIconProps;
+  icon: IconData;
   url: string;
-}
-
-export interface HomeModelIconProps {
-  name: IconName;
 }
 
 export const HomeModelCard = ({
@@ -21,7 +18,11 @@ export const HomeModelCard = ({
 }: HomeModelCardProps): JSX.Element => {
   return (
     <HomeCard url={url}>
-      <CardIcon {...icon} />
+      <EntityIcon
+        {...icon}
+        color="brand"
+        style={{ display: "block", flex: "0 0 auto" }}
+      />
       <CardTitle>{title}</CardTitle>
     </HomeCard>
   );

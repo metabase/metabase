@@ -1,9 +1,12 @@
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
 import {
   Box,
@@ -14,7 +17,6 @@ import {
   SegmentedControl,
   Text,
 } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
 
 import type { OmniPickerItem, OmniPickerTableItem, SearchScope } from "../..";
 import { useOmniPickerContext } from "../../context";
@@ -22,7 +24,7 @@ import {
   useCurrentSearchScope,
   useGetLastCollection,
 } from "../../hooks/use-current-search-scope";
-import { getEntityPickerIcon, isSelectedItem } from "../../utils";
+import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 
 export const SearchResults = ({
   searchResults,
@@ -38,6 +40,7 @@ export const SearchResults = ({
   const { path, setPath, isDisabledItem, isSelectableItem, options, onChange } =
     useOmniPickerContext();
   const selectedItem = path?.[path.length - 1];
+  const getEntityPickerIcon = useGetEntityPickerIcon();
 
   if (isLoading || error) {
     return (
@@ -97,9 +100,9 @@ export const SearchResults = ({
               }
               active={isSelected}
               leftSection={
-                <Icon
+                <EntityIcon
                   {...getEntityPickerIcon(item, { isSelected })}
-                  size={16}
+                  size="1rem"
                 />
               }
               onClick={(e: React.MouseEvent) => {
@@ -150,21 +153,6 @@ const getItemText = (item: OmniPickerItem) => {
     : (item?.collection?.name ?? t`Our analytics`);
 };
 
-const getLocationIcon = (item: OmniPickerItem) => {
-  if (
-    item.model === "table" ||
-    item.model === "schema" ||
-    item.model === "database"
-  ) {
-    return null;
-  }
-
-  return getIcon({
-    ...item,
-    model: "collection",
-  });
-};
-
 const LocationInfo = ({
   item,
   isSelected,
@@ -172,13 +160,21 @@ const LocationInfo = ({
   item: OmniPickerItem;
   isSelected: boolean;
 }) => {
+  const getIcon = useGetIcon();
   const itemText = getItemText(item);
 
   if (!itemText) {
     return null;
   }
 
-  const iconProps = getLocationIcon(item);
+  const iconProps = match(item.model)
+    .with("table", "schema", "database", () => null)
+    .otherwise(() =>
+      getIcon({
+        ...item,
+        model: "collection",
+      }),
+    );
 
   return (
     <Flex gap="xs" align="center">

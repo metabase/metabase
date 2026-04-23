@@ -133,6 +133,11 @@
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
                                  ["'self'"
+                                  ;; for custom viz plugin bundles loaded via fetch + inline <script> with nonce.
+                                  ;; In dev mode 'unsafe-inline' covers this; adding a nonce there would
+                                  ;; cause the browser to ignore 'unsafe-inline' per the CSP spec.
+                                  (when (and nonce (not config/is-dev?))
+                                    (format "'nonce-%s'" nonce))
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
                                   (when (analytics/anon-tracking-enabled)

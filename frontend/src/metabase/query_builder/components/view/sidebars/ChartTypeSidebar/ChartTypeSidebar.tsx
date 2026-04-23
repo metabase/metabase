@@ -1,9 +1,11 @@
 import cx from "classnames";
-import { useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
+import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { updateQuestion } from "metabase/query_builder/actions";
 import {
   ChartTypeSettings,
@@ -20,7 +22,7 @@ import {
 import { useDispatch } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { CardDisplayType } from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 export type ChartTypeSidebarProps = Pick<
   UseQuestionVisualizationStateProps,
@@ -33,6 +35,44 @@ export const ChartTypeSidebar = ({
   result,
 }: ChartTypeSidebarProps) => {
   const dispatch = useDispatch();
+  const [sendToast] = useToast();
+  const { plugins: customVizPlugins } = PLUGIN_CUSTOM_VIZ.useCustomVizPlugins();
+  const [pluginsLoaded, setPluginsLoaded] = useState(false);
+
+  const onInfo = useCallback(
+    (message: string) => sendToast({ message }),
+    [sendToast],
+  );
+
+  // Eagerly load all custom viz plugins so they register in the
+  // visualizations Map and can be rendered by ChartTypeOption.
+  useEffect(() => {
+    if (!customVizPlugins) {
+      // Plugin list query still loading — don't mark loaded yet, otherwise
+      // the later setPluginsLoaded(true) after bundles resolve is a no-op
+      // and the picker never recomputes to include custom viz.
+      return;
+    }
+    if (customVizPlugins.length === 0) {
+      setPluginsLoaded(true);
+      return;
+    }
+
+    let cancelled = false;
+    Promise.all(
+      customVizPlugins.map((plugin) =>
+        PLUGIN_CUSTOM_VIZ.loadCustomVizPlugin(plugin, undefined, onInfo),
+      ),
+    ).then(() => {
+      if (!cancelled) {
+        setPluginsLoaded(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [customVizPlugins, onInfo]);
 
   const onUpdateQuestion = (newQuestion: Question) => {
     if (question) {
@@ -49,7 +89,8 @@ export const ChartTypeSidebar = ({
   const initialResultRef = useRef(result);
   const { sensibleVisualizations, nonSensibleVisualizations } = useMemo(
     () => getSensibleVisualizations({ result: initialResultRef.current }),
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recompute after plugins are loaded
+    [result, pluginsLoaded],
   );
 
   const { selectedVisualization, updateQuestionVisualization } =
@@ -58,7 +99,7 @@ export const ChartTypeSidebar = ({
       onUpdateQuestion,
     });
 
-  const handleSelectVisualization = (display: CardDisplayType) => {
+  const handleSelectVisualization = (display: VisualizationDisplay) => {
     updateQuestionVisualization(display);
   };
 

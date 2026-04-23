@@ -10,6 +10,7 @@ import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import { Search } from "metabase/entities/search";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { trackSearchClick } from "metabase/search/analytics";
 import {
@@ -21,7 +22,6 @@ import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, Text } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import { getIcon } from "metabase/utils/icon";
 import { getName } from "metabase/utils/name";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
@@ -43,6 +43,7 @@ export const useCommandPalette = ({
   disabled: boolean;
   locationQuery: Query;
 }) => {
+  const getIcon = useGetIcon();
   const dispatch = useDispatch();
   const docsUrl = useSelector((state) => getDocsUrl(state, {}));
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -188,6 +189,7 @@ export const useCommandPalette = ({
             name: result.name,
             subtitle: result.description || "",
             icon: icon.name,
+            iconUrl: icon.iconUrl,
             section: "search",
             keywords: debouncedSearchText,
             priority: Priority.NORMAL - index,
@@ -235,6 +237,7 @@ export const useCommandPalette = ({
     locationQuery,
     isSearchTypeaheadEnabled,
     searchRequestId,
+    getIcon,
   ]);
 
   useRegisterActions(searchResultActions, [searchResultActions]);
@@ -251,6 +254,7 @@ export const useCommandPalette = ({
           id: `recent-item-${getName(item)}-${item.model}-${item.id}`,
           name: getName(item),
           icon: icon.name,
+          iconUrl: icon.iconUrl,
           section: "recent",
           perform: () => {},
           extra: {
@@ -264,7 +268,7 @@ export const useCommandPalette = ({
         };
       }) || []
     );
-  }, [disabled, recentItems]);
+  }, [disabled, recentItems, getIcon]);
 
   useRegisterActions(hasQuery ? [] : recentItemsActions, [
     recentItemsActions,

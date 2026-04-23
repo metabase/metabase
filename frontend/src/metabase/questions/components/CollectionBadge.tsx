@@ -2,10 +2,10 @@ import type { ComponentType, PropsWithChildren } from "react";
 
 import { Badge } from "metabase/common/components/Badge";
 import { Collections } from "metabase/entities/collections";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import { getIcon } from "metabase/utils/icon";
 import { modelToUrl } from "metabase/utils/urls/modelToUrl";
 import type {
   CollectionId,
@@ -36,6 +36,7 @@ const CollectionBadgeInner = ({
   onClick,
 }: CollectionBadgeProps) => {
   const tc = useTranslateContent();
+  const getIcon = useGetIcon();
 
   if (!collection) {
     return null;

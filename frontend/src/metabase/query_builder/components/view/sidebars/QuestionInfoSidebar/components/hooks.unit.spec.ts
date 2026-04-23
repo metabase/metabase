@@ -1,4 +1,7 @@
+import { renderHook } from "@testing-library/react";
+
 import { createMockMetadata } from "__support__/metadata";
+import type { IconModel } from "metabase/utils/icon";
 import Question from "metabase-lib/v1/Question";
 import { createMockCard } from "metabase-types/api/mocks";
 import {
@@ -6,7 +9,17 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import { getJoinedTablesWithIcons } from "./utils";
+import { useGetJoinedTablesWithIcons } from "./hooks";
+
+jest.mock("metabase/hooks/use-icon", () => {
+  const { modelIconMap } = jest.requireActual("metabase/utils/icon");
+  return {
+    useGetIcon: () =>
+      jest.fn((item: { model: IconModel }) => ({
+        name: modelIconMap[item.model] ?? "unknown",
+      })),
+  };
+});
 
 const joinedCard = createMockCard({
   name: "Joined Card",
@@ -58,10 +71,11 @@ const questionWithJoins = new Question(cardWithJoins, metadata);
 
 const questionWithoutJoins = new Question(cardWithoutJoins, metadata);
 
-describe("QuestionInfoSidebar component utils", () => {
-  describe("getJoinedTablesWithIcons", () => {
+describe("QuestionInfoSidebar component hooks", () => {
+  describe("useGetJoinedTablesWithIcons", () => {
     it("retrieves one joined table", () => {
-      const actual = getJoinedTablesWithIcons(questionWithJoins);
+      const { result } = renderHook(() => useGetJoinedTablesWithIcons());
+      const actual = result.current(questionWithJoins);
       expect(actual).toEqual([
         {
           name: "Joined Card",
@@ -72,7 +86,8 @@ describe("QuestionInfoSidebar component utils", () => {
     });
 
     it("returns [] if there are no joined tables", () => {
-      const actual = getJoinedTablesWithIcons(questionWithoutJoins);
+      const { result } = renderHook(() => useGetJoinedTablesWithIcons());
+      const actual = result.current(questionWithoutJoins);
       expect(actual).toEqual([]);
     });
   });

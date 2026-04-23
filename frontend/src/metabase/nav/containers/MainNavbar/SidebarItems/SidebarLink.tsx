@@ -2,8 +2,10 @@ import type { MouseEvent, ReactNode } from "react";
 import { isValidElement, useCallback, useMemo } from "react";
 import _ from "underscore";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { TreeNode } from "metabase/common/components/tree/TreeNode";
 import type { IconName, IconProps } from "metabase/ui";
+import type { IconData } from "metabase/utils/icon";
 
 import {
   FullWidthButton,
@@ -19,7 +21,7 @@ import {
 interface SidebarLinkProps {
   children: string;
   url?: string;
-  icon?: IconName | IconProps;
+  icon?: IconName | IconProps | IconData;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
   left?: ReactNode;
@@ -31,7 +33,9 @@ type ContentProps = {
   children: ReactNode;
 };
 
-function isIconPropsObject(icon: string | IconProps): icon is IconProps {
+function isIconPropsObject(
+  icon: string | IconProps | IconData,
+): icon is IconProps | IconData {
   return _.isObject(icon);
 }
 
@@ -62,9 +66,20 @@ function SidebarLink({
       return icon;
     }
     const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
+    const hasIconUrl = "iconUrl" in iconProps && iconProps.iconUrl;
+
     return (
       <TreeNode.IconContainer transparent={false}>
-        <SidebarIcon {...iconProps} isSelected={isSelected} />
+        {hasIconUrl ? (
+          <EntityIcon
+            name={iconProps.name}
+            iconUrl={iconProps.iconUrl}
+            size="1rem"
+            color="brand"
+          />
+        ) : (
+          <SidebarIcon {...iconProps} isSelected={isSelected} />
+        )}
       </TreeNode.IconContainer>
     );
   }, [icon, isSelected]);

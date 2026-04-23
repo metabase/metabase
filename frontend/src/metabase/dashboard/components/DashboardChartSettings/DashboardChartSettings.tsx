@@ -6,10 +6,12 @@ import { Divider, Flex } from "metabase/ui";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings/BaseChartSettings";
 import { ChartSettingsVisualization } from "metabase/visualizations/components/ChartSettings/ChartSettingsVisualization";
-import { useChartSettingsState } from "metabase/visualizations/components/ChartSettings/hooks";
+import {
+  useChartSettingsState,
+  useSettingsWidgets,
+} from "metabase/visualizations/components/ChartSettings/hooks";
 import { getClickBehaviorSettings } from "metabase/visualizations/lib/settings";
 import { sanitizeDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
-import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import type { DashboardChartSettingsProps } from "./types";
@@ -19,7 +21,6 @@ export const DashboardChartSettings = ({
   onChange,
   series,
   onClose,
-  widgets: propWidgets,
   settings,
 }: DashboardChartSettingsProps) => {
   const { dashboard } = useDashboardContext();
@@ -71,17 +72,18 @@ export const DashboardChartSettings = ({
       ? handleResetSettings
       : null;
 
-  const widgets = useMemo(
-    () =>
-      propWidgets ||
-      getSettingsWidgetsForSeries(
-        transformedSeries,
-        handleChangeSettings,
-        true,
-        { dashboardId: dashboard?.id },
-      ),
-    [propWidgets, transformedSeries, handleChangeSettings, dashboard?.id],
+  const extra = useMemo(
+    () => ({ dashboardId: dashboard?.id }),
+    [dashboard?.id],
   );
+
+  const widgets = useSettingsWidgets({
+    series,
+    transformedSeries,
+    handleChangeSettings,
+    isDashboard: true,
+    extra,
+  });
 
   return (
     <Flex justify="unset" align="unset" wrap="nowrap" h="100%">

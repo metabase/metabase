@@ -1,11 +1,11 @@
 import type { HTMLAttributes, ReactNode } from "react";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import type { IconName } from "metabase/ui";
 import { Group, Tooltip } from "metabase/ui";
 
 import {
   SkeletonDescription,
-  SkeletonIcon,
   SkeletonIconContainer,
   SkeletonRoot,
   SkeletonTitle,
@@ -23,6 +23,7 @@ export interface StaticSkeletonProps extends HTMLAttributes<HTMLDivElement> {
 
 export interface StaticSkeletonIconProps {
   name: IconName;
+  iconUrl?: string;
 }
 
 const StaticSkeleton = ({
@@ -40,7 +41,15 @@ const StaticSkeleton = ({
       {icon && (
         <Tooltip label={tooltip} disabled={!tooltip}>
           <SkeletonIconContainer>
-            <SkeletonIcon {...icon} />
+            <EntityIcon
+              {...icon}
+              size="1.5rem"
+              // Use the raw CSS var rather than the `text-secondary` ColorName
+              // so Loki visual snapshots resolve it via stylesheets instead of
+              // inlining a theme value that differs between runs.
+              color="var(--mb-color-text-secondary)"
+              style={{ display: "block" }}
+            />
             {tooltip && (
               <SkeletonTooltipIconContainer>
                 <SkeletonTooltipIcon name="eye_crossed_out" />

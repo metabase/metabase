@@ -119,6 +119,12 @@ sources: &sources
   - *frontend_sources
   - *backend_sources
 
+custom_viz_all:
+  - ".github/workflows/run-tests.yml"
+  - ".github/workflows/frontend.yml"
+  - ".github/actions/prepare-node-bun/**"
+  - "enterprise/frontend/src/custom-viz/**"
+
 e2e_ci: &e2e_ci
   - *shared_ci
   - ".github/actions/prepare-uberjar-artifact/**"

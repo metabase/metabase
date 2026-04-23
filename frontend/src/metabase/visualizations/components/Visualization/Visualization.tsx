@@ -20,6 +20,7 @@ import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { ContentTranslationFunction } from "metabase/i18n/types";
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { getIsDownloadingToImage } from "metabase/redux/downloads";
 import type { Dispatch, State } from "metabase/redux/store";
 import { getTokenFeature } from "metabase/setup/selectors";
@@ -1036,6 +1037,14 @@ export default _.compose(
 )(
   forwardRef<HTMLDivElement, VisualizationProps>(
     function VisualizationForwardRef(props, ref) {
+      const display = props.rawSeries?.[0]?.card?.display;
+      const { loading: customVizLoading } =
+        PLUGIN_CUSTOM_VIZ.useAutoLoadCustomVizPlugin(display);
+
+      if (customVizLoading) {
+        return <LoadingView isSlow={undefined} />;
+      }
+
       return <VisualizationMemoized {...props} forwardedRef={ref} />;
     },
   ),

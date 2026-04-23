@@ -204,6 +204,7 @@
    :model-imports #{:model/CacheConfig
                     :model/Card
                     :model/Collection
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/DashboardCard
                     :model/Database
@@ -349,6 +350,7 @@
                     :model/Channel
                     :model/Collection
                     :model/Comment
+                    :model/CustomVizPlugin
                     :model/Dashboard
                     :model/Database
                     :model/Document
@@ -464,6 +466,7 @@
            appearance
            collections
            config
+           custom-viz-plugin
            dashboards
            driver
            events
@@ -484,7 +487,8 @@
            types
            util}
    :model-exports #{:model/Channel :model/ChannelTemplate}
-   :model-imports #{:model/Dashboard
+   :model-imports #{:model/CustomVizPlugin
+                    :model/Dashboard
                     :model/Database
                     :model/PulseChannel
                     :model/User}}
@@ -652,6 +656,12 @@
   {:team "UX West"
    :api  #{}
    :uses :any}
+
+  custom-viz-plugin
+  {:team "Gadget"
+   :api  #{metabase.custom-viz-plugin.core}
+   :uses #{premium-features}
+   :friends #{enterprise/custom-viz-plugin}}
 
   dashboards
   {:team "UX West"
@@ -2810,6 +2820,21 @@
    :api  #{metabase-enterprise.core.init}
    :uses :any}
 
+  enterprise/custom-viz-plugin
+  {:team "Gadget"
+   :api  #{metabase-enterprise.custom-viz-plugin.api
+           metabase-enterprise.custom-viz-plugin.init}
+   :uses #{api
+           config
+           events
+           models
+           premium-features
+           server
+           settings
+           util
+           enterprise/remote-sync}
+   :model-exports #{:model/CustomVizPlugin}}
+
   enterprise/dashboard-subscription-filters
   {:team "Graphy"
    :api  #{}
@@ -3053,7 +3078,8 @@
   {:team "UX West"
    :api  #{metabase-enterprise.remote-sync.api
            metabase-enterprise.remote-sync.core
-           metabase-enterprise.remote-sync.init}
+           metabase-enterprise.remote-sync.init
+           metabase-enterprise.remote-sync.source.git}
    :uses #{analytics
            api
            app-db

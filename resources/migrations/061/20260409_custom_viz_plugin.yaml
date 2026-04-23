@@ -1,0 +1,112 @@
+## Create and configure custom_viz_plugin table for custom visualization plugins
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+  - changeSet:
+      id: v61.2026-04-09T10:00:00
+      author: sgavrylov
+      comment: Create custom_viz_plugin table for custom visualization plugins
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - tableExists:
+                tableName: custom_viz_plugin
+      changes:
+        - createTable:
+            tableName: custom_viz_plugin
+            remarks: Stores registered custom visualization plugin repositories
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: repo_url
+                  type: varchar(512)
+                  remarks: Git repository URL
+                  constraints:
+                    unique: true
+                    nullable: false
+              - column:
+                  name: access_token
+                  type: ${text.type}
+                  remarks: Encrypted access token for private repositories
+                  constraints:
+                    nullable: true
+              - column:
+                  name: display_name
+                  type: varchar(254)
+                  remarks: Human-readable name from the plugin manifest
+                  constraints:
+                    nullable: false
+              - column:
+                  name: identifier
+                  type: varchar(254)
+                  remarks: Unique identifier used as visualization display type
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: status
+                  type: varchar(32)
+                  remarks: Plugin status - active or error
+                  constraints:
+                    nullable: false
+              - column:
+                  name: error_message
+                  type: ${text.type}
+                  remarks: Last error message if status is error
+                  constraints:
+                    nullable: true
+              - column:
+                  name: pinned_version
+                  type: varchar(254)
+                  remarks: Git ref (branch, tag, or commit SHA) to pin the plugin to
+                  constraints:
+                    nullable: true
+              - column:
+                  name: resolved_commit
+                  type: varchar(64)
+                  remarks: Resolved commit SHA of the currently cached version
+                  constraints:
+                    nullable: true
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the plugin was registered
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp when the plugin was last updated
+                  constraints:
+                    nullable: false
+              - column:
+                  name: enabled
+                  type: ${boolean.type}
+                  defaultValueBoolean: true
+                  remarks: Whether the plugin is enabled for use in dashboards and questions
+                  constraints:
+                    nullable: false
+              - column:
+                  name: icon
+                  type: varchar(254)
+                  remarks: Icon from plugin manifest - asset path resolved to a URL
+                  constraints:
+                    nullable: true
+              - column:
+                  name: manifest
+                  type: ${text.type}
+                  remarks: JSON manifest from metabase-plugin.json in the plugin repository
+              - column:
+                  name: metabase_version
+                  type: varchar(254)
+                  remarks: Metabase version range requirement from manifest (e.g. ">=1.59 <1.62")
+              - column:
+                  name: dev_bundle_url
+                  type: varchar(1024)
+                  remarks: Dev server URL for hot-reload development (e.g. http://localhost:5174)

@@ -55,6 +55,7 @@
   enable-config-text-file?
   enable-content-translation?
   enable-content-verification?
+  enable-custom-viz?
   enable-dashboard-subscription-filters?
   enable-database-auth-providers?
   enable-database-routing?

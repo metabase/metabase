@@ -13,7 +13,7 @@ export interface SelectListItemProps extends Omit<
   "children"
 > {
   name: string;
-  icon?: string | IconProps;
+  icon?: string | IconProps | (IconProps & { iconUrl?: string });
   rightIcon?: string | IconProps;
   children?: React.ReactNode;
   classNames?: {
@@ -36,6 +36,8 @@ export function SelectListItem({
 }: SelectListItemProps) {
   const iconProps = getIconProps(icon);
   const rightIconProps = getIconProps(rightIcon);
+  const iconUrl =
+    _.isObject(icon) && "iconUrl" in icon ? icon.iconUrl : undefined;
 
   return (
     <BaseSelectListItem
@@ -47,7 +49,13 @@ export function SelectListItem({
       hasLeftIcon={!!icon}
       hasRightIcon={!!rightIcon}
     >
-      {icon && <ItemIcon className={classNames.icon} {...iconProps} />}
+      {icon && (
+        <ItemIcon
+          iconUrl={iconUrl}
+          className={classNames.icon}
+          {...iconProps}
+        />
+      )}
       <ItemTitle
         className={classNames.label}
         fw="bold"

@@ -195,6 +195,19 @@
               (recur (conj files (.getPathString tree-walk)))
               files)))))
 
+(defn read-file-bytes
+  "Reads the contents of a specific file from the git snapshot as a byte array.
+
+  Takes a GitSnapshot containing a :git Git instance and :version specifying which commit to read from, and a path
+  string indicating the relative path to the file from the repository root.
+
+  Returns the file contents as a byte array, or nil if the file does not exist at the specified path."
+  ^bytes [{:keys [^Git git ^String version]} ^String path]
+  (let [repo (.getRepository git)]
+    (when-let [object-id (.resolve repo (str version ":" path))]
+      (let [loader (.open repo object-id)]
+        (.getBytes loader)))))
+
 (defn read-file
   "Reads the contents of a specific file from the git snapshot.
 
@@ -202,11 +215,19 @@
   string indicating the relative path to the file from the repository root.
 
   Returns the file contents as a UTF-8 string, or nil if the file does not exist at the specified path."
-  [{:keys [^Git git ^String version]} ^String path]
+  [snapshot ^String path]
+  (when-let [bytes (read-file-bytes snapshot path)]
+    (String. ^bytes bytes "UTF-8")))
+
+(defn file-size
+  "Returns the size in bytes of `path` in the git snapshot, or nil if the file
+  does not exist. Reads the blob size from the object header without loading
+  the full contents into memory, so it is safe to use for size-limit checks
+  against untrusted repositories."
+  ^Long [{:keys [^Git git ^String version]} ^String path]
   (let [repo (.getRepository git)]
     (when-let [object-id (.resolve repo (str version ":" path))]
-      (let [loader (.open repo object-id)]
-        (String. (.getBytes loader) "UTF-8")))))
+      (.getSize (.open repo object-id)))))
 
 (defn push-branch!
   "Pushes a local branch to the remote repository.
@@ -407,6 +428,9 @@
   (read-file [this path]
     (read-file this path))
 
+  (read-file-bytes [this path]
+    (read-file-bytes this path))
+
   (write-files! [this message files]
     (write-files! this message files))
 
@@ -416,9 +440,12 @@
 (def ^:private jgit (atom {}))
 
 (defn- stale-cache-error?
-  "Returns true if the exception indicates a stale git cache (e.g., after a force-push on the remote)."
+  "Returns true if the exception indicates a stale git cache, e.g. 'Missing commit' after a force-push, or
+  'Cannot resolve ref' when the cached Git instance's HEAD points at a ref no longer present locally."
   [^Exception e]
-  (some-> (ex-message e) (str/includes? "Missing commit")))
+  (when-let [msg (ex-message e)]
+    (or (str/includes? msg "Missing commit")
+        (str/includes? msg "Cannot resolve ref"))))
 
 (defn- clear-cached-repo!
   "Clears a cached git repository from memory and disk."
@@ -426,6 +453,13 @@
   (log/info "Clearing stale git cache" {:repo-path (str repo-path)})
   (swap! jgit dissoc (.getPath repo-path))
   (FileUtils/deleteDirectory repo-path))
+
+(defn purge-cached-repo!
+  "Purges a cached git repository from memory and disk given the remote URL and token.
+   Intended for cleanup when a plugin is deleted."
+  [^String remote-url ^String token]
+  (let [path (repo-path {:remote-url remote-url :token token})]
+    (clear-cached-repo! path)))
 
 (defn- get-jgit [^File path {:keys [remote-url token] :as args}]
   (if-let [obj (get @jgit (.getPath path))]
@@ -439,18 +473,22 @@
 
 (defn- snapshot*
   "Internal snapshot implementation. Returns a GitSnapshot or throws."
-  [source]
+  [source ref]
   (fetch! source)
-  (let [version (commit-sha source (:branch source))]
-    (if version
-      (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source) (:managed-dirs source))
-      (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
+  (if-let [version (commit-sha source ref)]
+    (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source) (:managed-dirs source))
+    (throw (ex-info (str "Cannot resolve ref: " (:branch source)) {}))))
 
-(defn- snapshot
-  "Creates a snapshot, recovering from stale cache errors by re-cloning."
-  [{:keys [remote-url token] :as source}]
+(defn snapshot-at-ref
+  "Creates a snapshot at a specific ref (branch, tag, commit SHA, or \"HEAD\").
+
+  Fetches latest refs from remote, then resolves the given ref-str to a commit SHA
+  and returns a GitSnapshot. Recovers from stale cache errors by clearing the cached
+  repository and retrying once. Throws if the ref cannot be resolved after retry."
+
+  [{:keys [remote-url token] :as source} ref]
   (try
-    (snapshot* source)
+    (snapshot* source ref)
     (catch Exception e
       (if (stale-cache-error? e)
         (let [path (repo-path {:remote-url remote-url :token token})]
@@ -458,7 +496,7 @@
           (let [fresh-git (get-jgit path {:remote-url remote-url :token token})
                 fresh-source (assoc source :git fresh-git)]
             (log/info "Retrying snapshot after clearing stale cache")
-            (snapshot* fresh-source)))
+            (snapshot* fresh-source ref)))
         (throw e)))))
 
 (defrecord GitSource [git remote-url branch token managed-dirs]
@@ -472,7 +510,7 @@
     (default-branch this))
 
   (snapshot [this]
-    (snapshot this)))
+    (snapshot-at-ref this (:branch this))))
 
 (defn git-source
   "Creates a new GitSource instance for a git repository.

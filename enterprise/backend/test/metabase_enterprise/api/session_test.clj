@@ -61,6 +61,7 @@
                               :upload-management
                               :whitelabel
                               :collection-cleanup
+                              :custom-viz
                               :database-routing
                               :tenants
                               :cloud-custom-smtp
@@ -110,6 +111,8 @@
             :upload_management              true
             :whitelabel                     true
             :collection_cleanup             true
+            :custom-viz                     true
+            :custom-viz-available           true
             :database_routing               true
             :tenants                        true
             :cloud_custom_smtp              true
@@ -117,13 +120,15 @@
             :etl_connections_pg             false
             :dependencies                   false
             :writable_connection            true}
-           (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))
+           (mt/with-temporary-setting-values [custom-viz-enabled true]
+             (:token-features (mt/user-http-request :crowberto :get 200 "session/properties")))))))
 
 (deftest security-center-token-feature-test
   (testing "admin_security_center is true for self-hosted with the feature flag"
     (mt/with-premium-features #{:admin-security-center}
       (is (true? (:admin_security_center
                   (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))))
+
 ;;; ---------------------------------------- server-side session timeout tests -----------------------------------------
 
 (deftest session-timeout-enforces-last-active-at-test

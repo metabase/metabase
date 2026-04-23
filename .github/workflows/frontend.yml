@@ -9,6 +9,9 @@ on:
       skip-lint:
         type: boolean
         default: false
+      skip-custom-viz:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       skip:
@@ -17,6 +20,10 @@ on:
         default: false
       skip-lint:
         description: "Skip linting jobs (oxfmt, eslint, css variables check)"
+        type: boolean
+        default: false
+      skip-custom-viz:
+        description: "Skip custom-viz package tests"
         type: boolean
         default: false
 
@@ -121,12 +128,37 @@ jobs:
       - name: Run frontend timezones tests
         run: bun run test-timezones
 
+  # The custom-viz package is an isolated Bun workspace under
+  # enterprise/frontend/src/custom-viz
+  fe-custom-viz:
+    if: ${{ !inputs.skip-custom-viz }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: enterprise/frontend/src/custom-viz
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare Node + Bun environment
+        uses: ./.github/actions/prepare-node-bun
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Type-check
+        run: bun run type-check
+      - name: Lint
+        run: bun run lint
+      - name: Build CLI
+        run: bun run build
+      - name: Run tests
+        run: bun run test
+
   fe-tests-result:
     needs:
       - fe-lint
       - fe-type-check
       - fe-tests-unit
       - fe-tests-timezones
+      - fe-custom-viz
     if: always() && !cancelled()
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5

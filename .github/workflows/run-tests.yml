@@ -37,6 +37,7 @@ jobs:
       embedding_sdk_components: ${{ steps.changes.outputs.embedding_sdk_components }}
       embedding_sdk_host_sample_apps: ${{ steps.changes.outputs.embedding_sdk_host_sample_apps }}
       embedding_sdk_ci: ${{ steps.changes.outputs.embedding_sdk_ci }}
+      custom_viz_all: ${{ steps.changes.outputs.custom_viz_all }}
     steps:
       - uses: actions/checkout@v4
       - name: Test which files changed
@@ -90,6 +91,7 @@ jobs:
     with:
       skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
       skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_all != 'true' }}
+      skip-custom-viz: ${{ needs.files-changed.outputs.custom_viz_all != 'true' }}
 
   e2e-tests:
     needs: [files-changed, uberjar]

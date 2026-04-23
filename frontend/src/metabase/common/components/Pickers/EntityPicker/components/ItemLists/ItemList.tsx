@@ -1,6 +1,7 @@
 import type React from "react";
 import { useMemo } from "react";
 
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -19,7 +20,7 @@ import { useSelector } from "metabase/utils/redux";
 
 import { useOmniPickerContext } from "../../context";
 import type { OmniPickerItem } from "../../types";
-import { getEntityPickerIcon, isSelectedItem } from "../../utils";
+import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 import { ItemListLoader } from "../LoadingSpinner";
 
 const PickerColumn = ({
@@ -67,6 +68,7 @@ export function ItemList({
   }, [items, isHiddenItem]);
   const isCurrentLevel = path.length - 2 === pathIndex;
   const isTenantUser = useSelector(getIsTenantUser);
+  const getEntityPickerIcon = useGetEntityPickerIcon();
 
   const activeItemIndex = useMemo(() => {
     if (!filteredItems || !selectedItem) {
@@ -138,7 +140,7 @@ export function ItemList({
                   </Flex>
                 }
                 active={isSelected}
-                leftSection={<Icon {...icon} />}
+                leftSection={<EntityIcon {...icon} />}
                 onClick={(e: React.MouseEvent) => {
                   e.preventDefault(); // prevent form submission
                   e.stopPropagation(); // prevent parent onClick

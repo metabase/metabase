@@ -12,6 +12,7 @@
    [metabase.channel.render.table-data :as table-data]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.settings :as channel.settings]
+   [metabase.custom-viz-plugin.core :as custom-viz-plugin]
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -22,7 +23,8 @@
    [metabase.util.i18n :refer [deferred-trs trs tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (java.net URL)
    (java.text DecimalFormat DecimalFormatSymbols)))
@@ -388,6 +390,32 @@
        (map add-dashcard-timeline-events)
        (m/distinct-by #(get-in % [:card :id]))))
 
+(defn- asset->data-uri
+  "Convert an asset's bytes to a data: URI string."
+  [^String asset-name ^bytes asset-bytes]
+  (let [content-type (or (custom-viz-plugin/asset-content-type asset-name)
+                         "application/octet-stream")]
+    (str "data:" content-type ";base64,"
+         (.encodeToString (java.util.Base64/getEncoder) asset-bytes))))
+
+(defn- custom-viz-bundles
+  "If the card has a custom:* display type, resolve the plugin's bundle and assets for static rendering.
+   Assets are included as a map of `{name -> data-uri}` so the static viz JS context
+   can resolve `getAssetUrl` calls without HTTP."
+  [card]
+  (when-let [identifier (render.util/custom-viz-identifier (:display card))]
+    (let [{:keys [manifest] :as plugin} (t2/select-one :model/CustomVizPlugin :identifier identifier :enabled true)]
+      (when-let [content (some-> plugin
+                                 custom-viz-plugin/resolve-bundle
+                                 :content)]
+        (let [asset-names (some-> manifest custom-viz-plugin/asset-paths)
+              assets      (into {}
+                                (keep (fn [asset-name]
+                                        (when-let [bytes (custom-viz-plugin/resolve-asset plugin asset-name)]
+                                          [asset-name (asset->data-uri asset-name bytes)])))
+                                asset-names)]
+          [{:identifier identifier :source content :assets assets}])))))
+
 ;; the `:javascript_visualization` render method
 ;; is and will continue to handle more and more 'isomorphic' chart types.
 ;; Isomorphic in this context just means the frontend Code is mostly shared between the app and the static-viz
@@ -399,7 +427,8 @@
   (let [cards-with-data  (series-cards-with-data dashcard card data)
         viz-settings     (or (get dashcard :visualization_settings)
                              (get card :visualization_settings))
-        {rendered-type :type content :content} (js.svg/*javascript-visualization* cards-with-data viz-settings)]
+        {rendered-type :type content :content} (js.svg/*javascript-visualization* cards-with-data viz-settings
+                                                                                  (custom-viz-bundles card))]
     (case rendered-type
       :svg
       (let [image-bundle (image-bundle/make-image-bundle

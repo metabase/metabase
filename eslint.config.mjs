@@ -75,10 +75,12 @@ const configs = [
     ignores: [
       "frontend/src/cljs/**",
       "frontend/src/cljs_release/**",
+      "**/*.d.ts",
       "e2e/support/cypress_sample_database.js",
       "e2e/support/cypress_sample_instance_data.js",
+      "e2e/support/assets/**",
       "e2e/embedding-sdk-host-apps/**",
-      "frontend/src/metabase-types/openapi/types.gen.ts",
+      "frontend/test/__support__/custom-viz-fixtures/**/*.js",
       "node_modules/**",
       "**/dist/**",
       "**/target/**",
@@ -969,6 +971,23 @@ const configs = [
     },
   },
   {
+    files: ["frontend/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "custom-viz",
+              allowTypeImports: true,
+              message: "Please use only type-only imports from 'custom-viz'.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["enterprise/frontend/src/embedding-sdk-package/bin/**/*"],
     rules: {
       "metabase/no-literal-metabase-strings": "off",
@@ -981,6 +1000,13 @@ const configs = [
       "metabase/no-literal-metabase-strings": "off",
       "metabase/no-color-literals": "off",
       "no-console": "off",
+    },
+  },
+  {
+    files: ["enterprise/frontend/src/custom-viz/src/templates/index.tsx"],
+    rules: {
+      "import/no-default-export": "off",
+      "metabase/no-color-literals": "off",
     },
   },
   {

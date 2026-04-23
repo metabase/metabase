@@ -1,10 +1,10 @@
 import { Grid } from "metabase/ui";
-import type { CardDisplayType } from "metabase-types/api";
+import type { VisualizationDisplay } from "metabase-types/api";
 
 import { ChartTypeOption, type ChartTypeOptionProps } from "../ChartTypeOption";
 
 export type ChartTypeListProps = {
-  visualizationList: CardDisplayType[];
+  visualizationList: VisualizationDisplay[];
   "data-testid"?: string;
 } & Pick<
   ChartTypeOptionProps,

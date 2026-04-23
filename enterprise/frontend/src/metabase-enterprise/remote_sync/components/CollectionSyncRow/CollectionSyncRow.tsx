@@ -18,8 +18,9 @@ export const CollectionSyncRow = ({
   onToggle,
   isReadOnly,
 }: CollectionSyncRowProps) => {
+  const getIcon = PLUGIN_COLLECTIONS.useGetIcon();
   const canWrite = collection.can_write ?? false;
-  const icon = PLUGIN_COLLECTIONS.getIcon({
+  const icon = getIcon({
     model: "collection",
     type: collection.type,
     is_remote_synced: isChecked,

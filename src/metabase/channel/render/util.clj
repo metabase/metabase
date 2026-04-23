@@ -3,11 +3,28 @@
    [clojure.string :as str]
    [hiccup.core :refer [html]]
    [metabase.channel.render.style :as style]
+   [metabase.config.core :as config]
    [metabase.parameters.shared :as shared.params]
+   [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
    [metabase.util :as u]))
 
 ;;; --------------------------------------------------- Helpers ---------------------------------------------------
+
+(defn custom-viz-display?
+  "Returns true if `display-type` (keyword or string) is a custom visualization (prefixed with `custom:`)."
+  [display-type]
+  (some-> display-type name (str/starts-with? "custom:")))
+
+(defn custom-viz-identifier
+  "If `display-type` is a custom visualization and the custom-viz feature is enabled,
+   returns the plugin identifier (the part after `custom:`). Returns nil otherwise."
+  [display-type]
+  (when (and config/ee-available? (premium-features/enable-custom-viz?)
+             (custom-viz-display? display-type))
+    (subs (name display-type) (count "custom:"))))
+
+;;; ---------------------------------------------------
 
 (defn- extract-value-sources
   "Extracts column references from mappings that aren't strings"

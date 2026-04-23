@@ -1,3 +1,4 @@
+import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { registerStaticVisualizations } from "metabase/static-viz/register";
 import { getVisualizationTransformed } from "metabase/visualizations";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -61,6 +62,25 @@ export const StaticVisualization = ({
     case "row":
       // TODO: replace with an ECharts implementation
       return <StaticRowChart {...props} />;
+  }
+
+  if (typeof display === "string" && display.startsWith("custom:")) {
+    const customViz = PLUGIN_CUSTOM_VIZ.customVizRegistry.get(display);
+    if (customViz?.StaticVisualizationComponent) {
+      const { StaticVisualizationComponent } = customViz;
+      return (
+        <StaticVisualizationComponent
+          series={rawSeries}
+          renderingContext={renderingContext}
+          settings={settings}
+          isStorybook={isStorybook}
+          hasDevWatermark={hasDevWatermark}
+        />
+      );
+    }
+    // Plugin registered but has no StaticVisualizationComponent.
+    // Return null so the Clojure side gets an empty string and falls back to table.
+    return null;
   }
 
   throw new Error(`Unsupported display type: ${display}`);

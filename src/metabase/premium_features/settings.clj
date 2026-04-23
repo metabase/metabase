@@ -3,6 +3,7 @@
   (:require
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
+   [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
 
@@ -321,6 +322,13 @@
   "Should we offer users the Metabase-managed AI provider?"
   :offer-metabase-ai-managed)
 
+(defenterprise enable-custom-viz?
+  "Should we enable custom visualizations? OSS falls back to `false`; the EE implementation checks the
+  `custom-viz-enabled` setting and the `:custom-viz` premium feature."
+  metabase-enterprise.custom-viz-plugin.settings
+  []
+  false)
+
 (define-premium-feature enable-writable-connection?
   "Should we allow admins to configure separate write connection credentials?"
   :writable-connection)
@@ -341,6 +349,8 @@
    :config_text_file               (enable-config-text-file?)
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
+   :custom-viz                     (enable-custom-viz?)
+   :custom-viz-available           (has-feature? :custom-viz)
    :dashboard_subscription_filters (enable-dashboard-subscription-filters?)
    :database_auth_providers        (enable-database-auth-providers?)
    :database_routing               (enable-database-routing?)

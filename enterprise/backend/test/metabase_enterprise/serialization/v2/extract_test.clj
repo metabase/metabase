@@ -2632,6 +2632,33 @@
           (testing "has no dependencies"
             (is (empty? (serdes/dependencies ser)))))))))
 
+(deftest custom-viz-plugin-test
+  (mt/with-empty-h2-app-db!
+    (t2/delete! :model/CustomVizPlugin)
+    (ts/with-temp-dpc [:model/CustomVizPlugin {plugin-id :id} {:repo_url     "https://github.com/example/test-viz-plugin"
+                                                               :display_name "Test Plugin"
+                                                               :identifier   "test-plugin"
+                                                               :status       :active
+                                                               :manifest     "{}"}]
+      ;; Uncomment to regenerate baseline:
+      ;; (round-trip-test/add-to-baseline!)
+      (testing "custom viz plugin extraction"
+        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
+          (is (=? {:serdes/meta [{:model "CustomVizPlugin"
+                                  :id    "test-plugin"}]
+                   :repo_url     "https://github.com/example/test-viz-plugin"
+                   :display_name "Test Plugin"
+                   :identifier   "test-plugin"
+                   :manifest     {}
+                   :created_at   string?}
+                  ser))
+          (is (not (contains? ser :id)))
+          (is (not (contains? ser :status)))
+          (is (not (contains? ser :access_token)))
+
+          (testing "has no dependencies"
+            (is (empty? (serdes/dependencies ser)))))))))
+
 (deftest ^:parallel export-parameters-sorts-by-id-test
   (let [params [{:id "zebra" :name "Z param" :type :category}
                 {:id "alpha" :name "A param" :type :category}

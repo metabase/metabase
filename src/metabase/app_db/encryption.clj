@@ -41,6 +41,19 @@
         (t2/update! :conn conn :secret
                     {:id id}
                     {:value (encrypt-bytes-fn value)}))
+      ;; `custom_viz_plugin.access_token` is declared on an enterprise model, so we can't reference the
+      ;; model keyword from this OSS namespace. Read and write via the raw table instead, decrypting and
+      ;; re-encrypting the stored ciphertext directly — we don't need the JSON round-trip because the
+      ;; value is opaque to this code.
+      (doseq [{:keys [id access_token]} (t2/select [:custom_viz_plugin :id :access_token])]
+        (when access_token
+          (let [plaintext (encryption/maybe-decrypt access_token)]
+            (when (encryption/possibly-encrypted-string? plaintext)
+              (throw (ex-info (trs "Can''t decrypt custom_viz_plugin.access_token with MB_ENCRYPTION_SECRET_KEY")
+                              {:custom-viz-plugin-id id})))
+            (t2/update! :conn conn :custom_viz_plugin
+                        {:id id}
+                        {:access_token (encrypt-str-fn plaintext)}))))
       (t2/delete! :conn conn :model/QueryCache))))
 
 (defn encrypt-db

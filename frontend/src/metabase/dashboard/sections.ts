@@ -3,14 +3,13 @@ import { t } from "ttag";
 import { GRID_WIDTH } from "metabase/utils/dashboard_grid";
 import type {
   DashboardCardLayoutAttrs,
+  DashboardCardPosition,
+  DashboardCardSize,
   VirtualCard,
   VirtualDashboardCard,
 } from "metabase-types/api";
 
 import { createVirtualCard } from "./utils";
-
-type Position = Pick<DashboardCardLayoutAttrs, "col" | "row">;
-type Size = Pick<DashboardCardLayoutAttrs, "size_x" | "size_y">;
 
 type SectionDashboardCardAttrs = Partial<VirtualDashboardCard> &
   DashboardCardLayoutAttrs & {
@@ -18,7 +17,9 @@ type SectionDashboardCardAttrs = Partial<VirtualDashboardCard> &
     visualization_settings: { virtual_card: VirtualCard };
   };
 
-type LayoutFn = (position: Position) => Array<SectionDashboardCardAttrs>;
+type LayoutFn = (
+  position: DashboardCardPosition,
+) => Array<SectionDashboardCardAttrs>;
 
 // Note: these values are used in analytics and should not be changed
 export type SectionId =
@@ -67,7 +68,9 @@ function createPlaceholderDashCard(
 }
 
 function createScalarDashCardPlaceholder(
-  opts: Partial<VirtualDashboardCard> & Position & Partial<Size>,
+  opts: Partial<VirtualDashboardCard> &
+    DashboardCardPosition &
+    Partial<DashboardCardSize>,
 ): SectionDashboardCardAttrs {
   return createPlaceholderDashCard({
     size_x: SCALAR_CARD_WIDTH,

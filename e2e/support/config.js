@@ -15,6 +15,10 @@ import {
   verifyDownloadTasks,
 } from "./commands/downloads/downloadUtils";
 import * as dbTasks from "./db_tasks";
+import {
+  startCustomVizDevServer,
+  stopCustomVizDevServer,
+} from "./helpers/e2e-custom-viz-dev-server-tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
 import {
   startMockLlmServer,
@@ -142,6 +146,8 @@ const defaultConfig = {
       signJwt,
       startMockLlmServer,
       stopMockLlmServer,
+      startCustomVizDevServer,
+      stopCustomVizDevServer,
     });
 
     /********************************************************************

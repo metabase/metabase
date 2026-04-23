@@ -1,11 +1,11 @@
 import { render, screen } from "__support__/ui";
+import type { IconData } from "metabase/utils/icon";
 
-import type { HomeModelIconProps } from "./HomeModelCard";
 import { HomeModelCard } from "./HomeModelCard";
 
 interface SetupOpts {
   title: string;
-  icon: HomeModelIconProps;
+  icon: IconData;
   url: string;
 }
 

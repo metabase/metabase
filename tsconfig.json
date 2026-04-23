@@ -13,7 +13,8 @@
       ],
       "build-configs/*": ["./frontend/build/*"],
       "cljs/*": ["./target/cljs_dev/*"],
-      "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"]
+      "sdk-ee-plugins": ["./frontend/src/metabase/plugins/noop"],
+      "custom-viz": ["./enterprise/frontend/src/custom-viz/src/index.ts"]
     },
     "plugins": [
       {
@@ -33,6 +34,10 @@
   ],
   "exclude": [
     "node_modules",
+    "enterprise/frontend/src/custom-viz",
+    // Vendored custom-viz plugin bundles (pre-built UMD) — opaque to
+    // type-checking; the surrounding story/helper handles the typing.
+    "frontend/test/__support__/custom-viz-fixtures/**/*.js",
     // The following files will load `frontend/src/metabase/app` which will conflict with
     // `frontend/src/metabase/App.tsx`, since now we're loading both JS and TS files.
     "frontend/src/metabase/app-main.js",

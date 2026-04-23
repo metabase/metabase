@@ -4,6 +4,10 @@
   "Default width of a dashboard"
   24)
 
+(def default-card-size
+  "Fallback card size used when a visualization type has no entry in `card-size-defaults`"
+  {:width 4 :height 4})
+
 (def card-size-defaults
   "Default card sizes per visualization type"
   {:table       {:min {:width 4 :height 3} :default {:width 12 :height 9}}
@@ -35,3 +39,7 @@
 #?(:cljs (def ^:export CARD_SIZE_DEFAULTS_JSON
            "Default card sizes per visualization type as a json object suitable for the FE"
            (clj->js card-size-defaults)))
+
+#?(:cljs (def ^:export DEFAULT_CARD_SIZE_JSON
+           "Fallback card size as a json object suitable for the FE"
+           (clj->js default-card-size)))

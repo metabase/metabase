@@ -22,11 +22,13 @@ import {
   isPreviewShown,
 } from "metabase/collections/utils";
 import { CheckBox } from "metabase/common/components/CheckBox";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { EntityMenu } from "metabase/common/components/EntityMenu";
 import { Swapper } from "metabase/common/components/Swapper";
 import CS from "metabase/css/core/index.css";
 import type { IconName, IconProps } from "metabase/ui";
-import { Ellipsified, Icon } from "metabase/ui";
+import { Ellipsified } from "metabase/ui";
+import type { IconData } from "metabase/utils/icon";
 import * as Urls from "metabase/utils/urls";
 import type { CollectionItem } from "metabase-types/api";
 
@@ -40,7 +42,7 @@ import {
 
 type EntityIconCheckBoxProps = {
   variant?: string;
-  icon: IconProps;
+  icon: IconProps | IconData;
   pinned?: boolean;
   selectable?: boolean;
   selected?: boolean;
@@ -78,9 +80,9 @@ const EntityIconCheckBox = ({
       {selectable ? (
         <Swapper
           defaultElement={
-            <Icon
-              name={icon.name}
-              c={icon.color ?? "inherit"}
+            <EntityIcon
+              {...icon}
+              color={icon.color ?? "inherit"}
               size={iconSize}
             />
           }
@@ -88,7 +90,7 @@ const EntityIconCheckBox = ({
           isSwapped={selected || showCheckbox}
         />
       ) : (
-        <Icon name={icon.name} c={icon.color ?? "inherit"} size={iconSize} />
+        <EntityIcon {...icon} color={icon.color ?? "inherit"} size={iconSize} />
       )}
     </EntityIconWrapper>
   );

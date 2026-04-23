@@ -14,6 +14,7 @@ import { canonicalCollectionId } from "metabase/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
 import { useToast } from "metabase/common/hooks";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -26,7 +27,6 @@ import {
   Switch,
   Text,
 } from "metabase/ui";
-import { getIcon } from "metabase/utils/icon";
 import type {
   Collection,
   CollectionEssentials,
@@ -256,6 +256,7 @@ const CollectionDisplay = ({
 }: {
   collection: CollectionEssentials;
 }) => {
+  const getIcon = useGetIcon();
   const icon = getIcon({ model: "collection", ...collection });
   return (
     <Flex align="center" gap="sm">

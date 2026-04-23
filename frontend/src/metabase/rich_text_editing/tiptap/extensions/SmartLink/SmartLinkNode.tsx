@@ -20,19 +20,17 @@ import {
   useGetTransformQuery,
   useListMentionsQuery,
 } from "metabase/api";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { Link } from "metabase/common/components/Link";
 import { updateMentionsCache } from "metabase/documents/documents.slice";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import {
   METABSE_PROTOCOL_MD_LINK,
   parseMetabaseProtocolMarkdownLink,
 } from "metabase/metabot/utils/links";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { Icon } from "metabase/ui";
-import {
-  type IconModel,
-  type ObjectWithModel,
-  getIcon,
-} from "metabase/utils/icon";
+import type { IconModel, ObjectWithModel } from "metabase/utils/icon";
 import { useDispatch } from "metabase/utils/redux";
 import { modelToUrl } from "metabase/utils/urls/modelToUrl";
 import { extractEntityId } from "metabase/utils/urls/utils";
@@ -441,6 +439,7 @@ export const useEntityData = (
 
 export const SmartLinkComponent = memo(
   ({ node, updateAttributes }: NodeViewProps) => {
+    const getIcon = useGetIcon();
     const { entityId, model, label } = node.attrs;
 
     const {
@@ -532,7 +531,7 @@ export const SmartLinkComponent = memo(
           className={styles.smartLink}
         >
           <span className={styles.smartLinkInner}>
-            <Icon name={iconData.name} className={styles.icon} />
+            <EntityIcon {...iconData} className={styles.icon} />
             {getName(entity)}
           </span>
         </Link>

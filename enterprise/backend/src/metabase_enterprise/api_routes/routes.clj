@@ -15,6 +15,7 @@
    [metabase-enterprise.cloud-proxy.api]
    [metabase-enterprise.content-translation.routes]
    [metabase-enterprise.content-verification.api.routes]
+   [metabase-enterprise.custom-viz-plugin.api]
    [metabase-enterprise.data-complexity-score.api]
    [metabase-enterprise.data-studio.api]
    [metabase-enterprise.database-replication.api :as database-replication.api]
@@ -53,6 +54,7 @@
    :audit-app                  (deferred-tru "Audit app")
    :collection-cleanup         (deferred-tru "Collection Cleanup")
    :content-translation        (deferred-tru "Content translation")
+   :custom-viz                 (deferred-tru "Custom Visualizations")
    :library                    (deferred-tru "Library")
    :dependencies               (deferred-tru "Dependency Tracking")
    :embedding                  (deferred-tru "Embedding")
@@ -98,6 +100,7 @@
    "/audit-app"                    (premium-handler metabase-enterprise.audit-app.api.routes/routes :audit-app)
    "/billing"                      metabase-enterprise.billing.api.routes/routes
    "/content-translation"          (premium-handler metabase-enterprise.content-translation.routes/routes :content-translation)
+   "/custom-viz-plugin"            (premium-handler metabase-enterprise.custom-viz-plugin.api/routes :custom-viz)
    "/cloud-add-ons"                metabase-enterprise.cloud-add-ons.api/routes
    "/cloud-proxy"                  metabase-enterprise.cloud-proxy.api/routes
    ;; No premium-handler gate yet — we haven't settled on the feature flag name or final API shape.
