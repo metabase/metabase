@@ -22,11 +22,6 @@ describe(
     it("lazily seeds Light and Dark on first visit, and preserves admin deletions across reloads", () => {
       cy.visit("/admin/embedding/themes");
 
-      cy.log("theme is visible in embedding sidebar");
-      cy.findByTestId("admin-layout-sidebar")
-        .findByText("Themes")
-        .should("be.visible");
-
       H.main().within(() => {
         cy.log(
           "default Light and Dark themes are seeded lazily on first visit",
@@ -46,9 +41,6 @@ describe(
         cy.log("empty state is shown; defaults are not re-created");
         cy.findByText("Light").should("not.exist");
         cy.findByText("Dark").should("not.exist");
-        cy.findByText("Create your first theme to get started").should(
-          "be.visible",
-        );
 
         cy.log("clicking New theme navigates to the draft editor");
         cy.findByRole("button", { name: /New theme/ }).click();

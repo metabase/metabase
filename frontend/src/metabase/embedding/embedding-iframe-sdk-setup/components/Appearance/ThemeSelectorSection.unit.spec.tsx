@@ -154,7 +154,7 @@ describe("ThemeSelectorSection", () => {
         "data-selected",
         "true",
       );
-      expect(screen.getByTestId("theme-card-Default Theme")).toHaveAttribute(
+      expect(screen.getByTestId("theme-card-Instance theme")).toHaveAttribute(
         "data-selected",
         "false",
       );
