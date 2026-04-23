@@ -30,7 +30,3 @@ export function workspaceInstanceOverview() {
 export function workspaceInstanceRemappings() {
   return `${WORKSPACE_INSTANCE_URL}/remappings`;
 }
-
-export function workspaceInstanceRuns() {
-  return `${WORKSPACE_INSTANCE_URL}/runs`;
-}

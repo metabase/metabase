@@ -22,10 +22,6 @@ export const WorkspaceInstanceHeader = memo(function WorkspaceInstanceHeader({
       to: Urls.workspaceInstanceOverview(),
     },
     {
-      label: t`Transform Runs`,
-      to: Urls.workspaceInstanceRuns(),
-    },
-    {
       label: t`Table Remappings`,
       to: Urls.workspaceInstanceRemappings(),
     },
