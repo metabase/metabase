@@ -366,9 +366,7 @@ export const CardEmbedComponent = memo(
             isDraftCard ? { ...card, id: null } : card,
             metadata,
           );
-          const url = getQuestionUrl(question, {
-            includeDisplayIsLocked: true,
-          });
+          const url = getQuestionUrl(question);
           dispatch(navigateToCardFromDocument(url, document));
         } catch (error) {
           console.error("Failed to navigate to question:", error);

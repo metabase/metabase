@@ -59,7 +59,7 @@ export const useUpdateCardOperations = ({
         // Remove the ID so getUrl creates an adhoc question URL instead of navigating to saved question
         const adhocCard = { ...nextCard, id: null };
         const question = new Question(adhocCard, metadata);
-        const url = getQuestionUrl(question, { includeDisplayIsLocked: true });
+        const url = getQuestionUrl(question);
         dispatch(navigateToCardFromDocument(url, document));
       } catch (error) {
         console.error("Failed to create question URL:", error);
