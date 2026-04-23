@@ -17,6 +17,7 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.remapping-ledger :as ledger]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.table-remapping.model]
    [toucan2.core :as t2]))
 
@@ -35,6 +36,17 @@
                                     :from_schema from-schema
                                     :from_table_name from-table-name)]
     [(:to_schema mapping) (:to_table_name mapping)]))
+
+(defenterprise workspace-remap-schema+name
+  "Enterprise impl of the sync hook. Returns `[to-schema to-name]` for the
+   isolated warehouse table when a `TableRemapping` row exists — sync asks the
+   driver there, while app-db rows keep their logical identity. Deliberately
+   ungated on premium features: if rows exist they must be respected, regardless
+   of current token state (matches the rationale for
+   `reconcile-workspace-database-refs-before-delete!`)."
+  :feature :none
+  [db-id schema table-name]
+  (remap-table db-id schema table-name))
 
 (defn- unique-violation?
   "True if `e` or any cause is a SQL unique-constraint violation. Handles Postgres and H2
