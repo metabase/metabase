@@ -13,6 +13,8 @@
   (:import
    (java.io File)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- write-temp-json!

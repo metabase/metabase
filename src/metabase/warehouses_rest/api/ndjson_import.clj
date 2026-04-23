@@ -122,6 +122,6 @@
             (write-line! writer record))
           (.flush writer)))
       (catch Throwable t
-        (log/debugf t "NDJSON import failed")
+        (log/debug t "NDJSON import failed")
         (write-line! writer (classify-throwable t))
         (.flush writer)))))

@@ -16,6 +16,7 @@
    [clojure.string :as str]
    [environ.core :as env]
    [metabase.util.log :as log]
+   [metabase.util.performance :as perf]
    [metabase.warehouses-rest.metadata-import-core :as core]
    [metabase.warehouses.settings :as warehouses.settings]
    [toucan2.core :as t2])
@@ -48,16 +49,6 @@
 ;;; ============================ Streaming JSON reader ============================
 
 (def ^:private ^ObjectMapper object-mapper (ObjectMapper.))
-
-(defn- keywordize
-  "Convert a `java.util.Map` parsed by Jackson into a Clojure map with keyword keys. Nested
-  values (`java.util.List`/`java.util.Map`) are left as-is — consumers only need keyword access
-  on the top-level entry, which is what the core processors expect."
-  [^LinkedHashMap m]
-  (persistent!
-   (reduce (fn [acc [k v]] (assoc! acc (keyword k) v))
-           (transient {})
-           m)))
 
 (defn- advance-to-array!
   "Advance `parser` from start-of-input through a top-level JSON object until we enter the array
@@ -110,8 +101,11 @@
               (flush! (persistent! batch)))
 
             (= t JsonToken/START_OBJECT)
+            ;; `perf/keywordize-keys` guards on `(map? x)`, which returns false for
+            ;; java.util.LinkedHashMap — the `(into {} raw)` step first coerces to a Clojure map
+            ;; (with string keys) so the shared utility can then rewrite the keys as keywords.
             (let [raw        (.readValueAs parser LinkedHashMap)
-                  item       (keywordize raw)
+                  item       (perf/keywordize-keys (into {} raw))
                   ln         (inc line-num)
                   next-batch (conj! batch [ln item])]
               (if (>= (count next-batch) batch-size)

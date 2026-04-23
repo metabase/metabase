@@ -16,8 +16,10 @@
   it into in-memory id maps for the next phase."
   (:require
    [clojure.string :as str]
+   [malli.error :as me]
    [metabase.models.humanization :as humanization]
    [metabase.models.interface :as mi]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
@@ -51,16 +53,18 @@
             (recur (.getCause cause))))
       :else (recur (.getCause cause)))))
 
-(defn bad-input!
-  "Throw an `ex-info` classified as `:invalid_input`. `line-num` may be nil when the caller
-  doesn't track line numbers (file path synthesizes 1-indexed array positions for the same slot)."
-  [line-num field-name detail & extras]
-  (throw (ex-info (format "invalid_input: %s" field-name)
-                  (apply hash-map
-                         :kind :invalid_input
-                         :line line-num
-                         :detail detail
-                         extras))))
+(defn validate-line!
+  "Validate `line` against the registered Malli `schema-ref`. Succeeds silently when `line` is
+  valid (cached validator — fast path); on failure throws an `ex-info` with `:kind :invalid_input`,
+  `:line`, a humanized `:detail`, and `extras` merged into the ex-data for echo-key attribution."
+  [schema-ref line-num line extras]
+  (when-not (mr/validate schema-ref line)
+    (let [humanized (me/humanize (mr/explain schema-ref line))]
+      (throw (ex-info (format "invalid_input: %s" (name schema-ref))
+                      (merge extras
+                             {:kind   :invalid_input
+                              :line   line-num
+                              :detail (pr-str humanized)}))))))
 
 (defn wrap-row-error
   "Tag an exception from a per-row processor with `:line` and echo-extras so the caller can
@@ -83,6 +87,42 @@
   [engine]
   (when engine (name engine)))
 
+;;; ============================== Malli schemas ==============================
+
+(mr/def ::database-line
+  [:map
+   [:id     :int]
+   [:name   :string]
+   [:engine [:or :string :keyword]]])
+
+(mr/def ::table-line
+  [:map
+   [:id    :int]
+   [:db_id :int]
+   [:name  :string]])
+
+(mr/def ::field-insert-line
+  [:map
+   [:id            :int]
+   [:table_id      :int]
+   [:name          :string]
+   [:base_type     :string]
+   [:database_type :string]])
+
+(mr/def ::finalize-line
+  [:map
+   [:id                 :int]
+   [:parent_id          {:optional true} [:maybe :int]]
+   [:fk_target_field_id {:optional true} [:maybe :int]]])
+
+(mr/def ::field-values-line
+  [:map
+   [:field_id :int]
+   ;; Accept both `clojure.lang.PersistentVector` (cheshire-decoded NDJSON) and
+   ;; `java.util.ArrayList` (Jackson-decoded from the file loader) — both are `java.util.List`.
+   [:values   [:fn {:error/message "must be an array"}
+               #(instance? java.util.List %)]]])
+
 ;;; ============================== databases (per-line) ==============================
 
 (defn process-databases-line!
@@ -90,14 +130,9 @@
   Appends one response map per call — either `{:old_id :new_id}` on match or
   `{:old_id :error \"no_match\" :line :detail}` when no target database is found. Callers log the
   `no_match` entries and skip dependent tables/fields for those `old_id`s."
-  [^ArrayList buffer line-num {:keys [id name engine]}]
+  [^ArrayList buffer line-num {:keys [id name engine] :as line}]
   (try
-    (when-not (int? id)
-      (bad-input! line-num "id" "id is required and must be an integer"))
-    (when-not (string? name)
-      (bad-input! line-num "name" "name is required and must be a string" :old_id id))
-    (when-not (or (string? engine) (keyword? engine))
-      (bad-input! line-num "engine" "engine is required" :old_id id))
+    (validate-line! ::database-line line-num line {:old_id id})
     (if-some [match (t2/select-one [:model/Database :id]
                                    :name   name
                                    :engine (engine-name engine))]
@@ -111,15 +146,6 @@
       (throw (wrap-row-error e line-num {:old_id id})))))
 
 ;;; ============================== tables (batch) ==============================
-
-(defn- validate-tables-line!
-  [line-num {:keys [id db_id name] :as _line}]
-  (when-not (int? id)
-    (bad-input! line-num "id" "id is required and must be an integer"))
-  (when-not (int? db_id)
-    (bad-input! line-num "db_id" "db_id is required and must be an integer" :old_id id))
-  (when-not (string? name)
-    (bad-input! line-num "name" "name is required and must be a string" :old_id id)))
 
 (defn- match-tables-batch
   "Look up every existing `(db_id, schema, name)` match for the batch in one SELECT, scoped to
@@ -175,10 +201,7 @@
   batch order. Matched rows with a non-nil `description` get a per-row UPDATE."
   [batch ^ArrayList buffer]
   (doseq [[ln line] batch]
-    (try
-      (validate-tables-line! ln line)
-      (catch Throwable e
-        (throw (wrap-row-error e ln {:old_id (:id line)})))))
+    (validate-line! ::table-line ln line {:old_id (:id line)}))
   (let [lines     (mapv second batch)
         match-idx (match-tables-batch lines)
         unmatched (filterv (fn [{:keys [db_id schema name]}]
@@ -253,18 +276,9 @@
 (defn- classify-fields-line!
   "Classify a field line as `[:match echo]` (already present on target) or `[:insert row echo]`
   (new row to bulk-insert); throws `ex-info` on validation failure or missing target table."
-  [line-num {:keys [id table_id name base_type database_type] :as line}]
+  [line-num {:keys [id table_id name] :as line}]
   (try
-    (when-not (int? id)
-      (bad-input! line-num "id" "id is required and must be an integer"))
-    (when-not (int? table_id)
-      (bad-input! line-num "table_id" "table_id is required and must be an integer" :old_id id))
-    (when-not (string? name)
-      (bad-input! line-num "name" "name is required and must be a string" :old_id id))
-    (when-not (string? base_type)
-      (bad-input! line-num "base_type" "base_type is required and must be a string" :old_id id))
-    (when-not (string? database_type)
-      (bad-input! line-num "database_type" "database_type is required and must be a string" :old_id id))
+    (validate-line! ::field-insert-line line-num line {:old_id id})
     (if-some [existing (match-root-field table_id name)]
       (let [patch (matched-field-patch line)]
         (when (seq patch)
@@ -300,13 +314,8 @@
 
 (defn- validate-finalize-line!
   "Validate one finalize line and return `[line-num id parent_id fk_target_field_id]`."
-  [line-num {:keys [id parent_id fk_target_field_id] :as _line}]
-  (when-not (int? id)
-    (bad-input! line-num "id" "id is required and must be an integer"))
-  (when-not (or (nil? parent_id) (int? parent_id))
-    (bad-input! line-num "parent_id" "parent_id must be an integer or null" :id id))
-  (when-not (or (nil? fk_target_field_id) (int? fk_target_field_id))
-    (bad-input! line-num "fk_target_field_id" "fk_target_field_id must be an integer or null" :id id))
+  [line-num {:keys [id parent_id fk_target_field_id] :as line}]
+  (validate-line! ::finalize-line line-num line {:id id})
   [line-num id parent_id fk_target_field_id])
 
 (defn- finalize-batch-sql+params
@@ -374,14 +383,8 @@
   ["sandbox" "linked-filter"])
 
 (defn- validate-field-values-line!
-  [line-num {:keys [field_id values has_more_values human_readable_values] :as _line}]
-  (when-not (int? field_id)
-    (bad-input! line-num "field_id" "field_id is required and must be an integer"))
-  ;; Accept both `clojure.lang.PersistentVector` (cheshire-decoded NDJSON) and
-  ;; `java.util.ArrayList` (Jackson-decoded from the file loader) — both are `java.util.List`.
-  (when-not (instance? java.util.List values)
-    (bad-input! line-num "values" "values is required and must be an array"
-                :field_id field_id))
+  [line-num {:keys [field_id values has_more_values human_readable_values] :as line}]
+  (validate-line! ::field-values-line line-num line {:field_id field_id})
   {:line                  line-num
    :field_id              field_id
    :values                (or values [])

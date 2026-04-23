@@ -15,8 +15,7 @@
   [^java.io.InputStream in ^java.io.OutputStream out]
   (ndjson-import/stream-import!
    in out core/import-batch-size
-   (fn [batch buffer]
-     (core/process-field-values-batch! batch buffer))))
+   core/process-field-values-batch!))
 
 (defn import-databases-ndjson!
   "Read NDJSON `in`, match each line against `:model/Database` by `(name, engine)`, write NDJSON
@@ -34,8 +33,7 @@
   [^java.io.InputStream in ^java.io.OutputStream out]
   (ndjson-import/stream-import!
    in out core/import-batch-size
-   (fn [batch buffer]
-     (core/process-tables-batch! batch buffer))))
+   core/process-tables-batch!))
 
 (defn import-fields-ndjson!
   "Read NDJSON `in`, insert fields with `is_defective_duplicate = true` (and `parent_id = NULL`,
@@ -44,8 +42,7 @@
   [^java.io.InputStream in ^java.io.OutputStream out]
   (ndjson-import/stream-import!
    in out core/import-batch-size
-   (fn [batch buffer]
-     (core/process-fields-batch! batch buffer))))
+   core/process-fields-batch!))
 
 (defn import-fields-finalize-ndjson!
   "Read NDJSON `in`, apply one batched UPDATE per batch setting `parent_id`, `fk_target_field_id`,
@@ -53,5 +50,4 @@
   [^java.io.InputStream in ^java.io.OutputStream out]
   (ndjson-import/stream-import!
    in out core/import-batch-size
-   (fn [batch buffer]
-     (core/process-finalize-batch! batch buffer))))
+   core/process-finalize-batch!))
