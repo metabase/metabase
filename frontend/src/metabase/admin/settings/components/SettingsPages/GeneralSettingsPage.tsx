@@ -5,6 +5,7 @@ import {
   SettingsSection,
 } from "metabase/admin/components/SettingsSection";
 import { CollectUserDataInput } from "metabase/admin/settings/components/widgets/UsageTracking/CollectUserDataInput";
+import { DeleteCollectedDataModal } from "metabase/admin/settings/components/widgets/UsageTracking/DeleteCollectedDataModal";
 import { UpsellDevInstances } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
@@ -90,6 +91,8 @@ export function GeneralSettingsPage() {
         {enableAnonymousTracking && <AnonymousTrackingInput />}
 
         <CollectUserDataInput />
+
+        <DeleteCollectedDataModal />
       </SettingsSection>
 
       <UpsellDevInstances location="settings-general" />
