@@ -24,7 +24,7 @@ export function setIsStaticEmbedding() {
    * This header is only used for analytics and for checking if we want to disable some features in the
    * embedding iframe (only for Documents at the time of this comment)
    */
-  if (!getIsEmbedPreview()) {
+  if (!isEmbedPreview()) {
     api.requestClient = "embedding-iframe-static";
   }
   EMBEDDING_CONFIG.isStaticEmbedding = true;
