@@ -77,7 +77,7 @@ export function WorkspaceInstance() {
       wrap="nowrap"
       data-testid="workspace-instance"
     >
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="md">
+      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="lg">
         <WorkspaceInstanceHeader workspaceName={workspace?.name} />
         {isLoading || error != null || workspace == null ? (
           <Center h="100%">
