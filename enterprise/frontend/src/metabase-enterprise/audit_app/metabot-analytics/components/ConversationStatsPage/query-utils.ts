@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import type { DateFilterValue } from "metabase/querying/common/types";
@@ -32,14 +33,43 @@ const METRIC_COLUMN_NAME: Record<UsageStatsMetric, string> = {
   messages: "sum",
 };
 
+export type TokenSeriesSettings = Pick<
+  VisualizationSettings,
+  "series_settings" | "graph.metrics"
+>;
+
 export function getMetricSeriesSettings(
   metric: UsageStatsMetric,
-): Pick<VisualizationSettings, "series_settings"> {
-  return {
-    series_settings: {
-      [METRIC_COLUMN_NAME[metric]]: { color: color(METRIC_ACCENT[metric]) },
-    },
-  };
+  aggregationColumnNames?: string[],
+  options?: { dualAxis?: boolean },
+): TokenSeriesSettings {
+  return match({ metric, cols: aggregationColumnNames })
+    .with(
+      { metric: "tokens", cols: [P.string, P.string] as const },
+      ({ cols: [inputCol, outputCol] }) => ({
+        series_settings: {
+          [inputCol]: {
+            color: color("accent2"),
+            title: t`Input tokens`,
+            ...(options?.dualAxis && { axis: "left" }),
+          },
+          [outputCol]: {
+            color: color("accent3"),
+            title: t`Output tokens`,
+            ...(options?.dualAxis && { axis: "right" }),
+          },
+        },
+        "graph.metrics": [inputCol, outputCol],
+      }),
+    )
+    .otherwise(({ cols }) => {
+      const colName = cols?.[0] ?? METRIC_COLUMN_NAME[metric];
+      return {
+        series_settings: {
+          [colName]: { color: color(METRIC_ACCENT[metric]) },
+        },
+      };
+    });
 }
 
 /**
@@ -103,13 +133,10 @@ export function addSumAggregation(query: Query, columnName: string): Query {
   return Lib.aggregate(query, 0, clause);
 }
 
-/**
- * Apply the aggregation corresponding to the selected metric.
- */
 export function applyUsageStatsAggregation(
   query: Query,
   metric: UsageStatsMetric,
-): { query: Query; orderColumnName: string } {
+): { query: Query; orderColumnName: string | null } {
   switch (metric) {
     case "conversations":
       return {
@@ -121,11 +148,11 @@ export function applyUsageStatsAggregation(
         query: addSumAggregation(query, "message_count"),
         orderColumnName: "sum",
       };
-    case "tokens":
-      return {
-        query: addSumAggregation(query, "total_tokens"),
-        orderColumnName: "sum",
-      };
+    case "tokens": {
+      const withInput = addSumAggregation(query, "prompt_tokens");
+      const withBoth = addSumAggregation(withInput, "completion_tokens");
+      return { query: withBoth, orderColumnName: null };
+    }
   }
 }
 

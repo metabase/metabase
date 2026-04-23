@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import type { DateFilterValue } from "metabase/querying/common/types";
@@ -75,9 +76,11 @@ export function BreakoutChart({
       q = Lib.breakout(q, 0, col);
     }
 
-    const orderCol = findColumn(q, orderColumnName, Lib.orderableColumns);
-    if (orderCol) {
-      q = Lib.orderBy(q, 0, orderCol, "desc");
+    if (orderColumnName) {
+      const orderCol = findColumn(q, orderColumnName, Lib.orderableColumns);
+      if (orderCol) {
+        q = Lib.orderBy(q, 0, orderCol, "desc");
+      }
     }
 
     return q;
@@ -93,11 +96,21 @@ export function BreakoutChart({
     if (!data?.data || !jsQuery) {
       return null;
     }
-    const cols = data.data.cols as Array<{ source?: string }>;
+    const cols = data.data.cols as Array<{ source?: string; name?: string }>;
     const dimensionIndex = cols.findIndex((c) => c.source === "breakout");
-    const metricIndex = cols.findIndex((c) => c.source === "aggregation");
+    const metricIndices = cols
+      .map((c, i) => (c.source === "aggregation" ? i : -1))
+      .filter((i) => i >= 0);
+    const aggregationColumnNames = metricIndices.map((i) => cols[i].name ?? "");
+
+    const rowMetricTotal = (row: (typeof data.data.rows)[number]) =>
+      metricIndices.reduce((s, i) => s + (Number(row[i]) || 0), 0);
 
     let rows = data.data.rows;
+
+    if (metricIndices.length > 1) {
+      rows = _.sortBy(rows, (row) => -rowMetricTotal(row));
+    }
 
     if (nullLabel != null && dimensionIndex >= 0) {
       rows = rows.map((row) => {
@@ -113,18 +126,19 @@ export function BreakoutChart({
     if (
       maxCategories != null &&
       dimensionIndex >= 0 &&
-      metricIndex >= 0 &&
+      metricIndices.length > 0 &&
       rows.length > maxCategories
     ) {
       const keep = rows.slice(0, maxCategories - 1);
       const overflow = rows.slice(maxCategories - 1);
-      const otherTotal = overflow.reduce(
-        (sum, row) => sum + (Number(row[metricIndex]) || 0),
-        0,
-      );
       const otherRow: unknown[] = new Array(cols.length).fill(null);
       otherRow[dimensionIndex] = otherLabel;
-      otherRow[metricIndex] = otherTotal;
+      for (const i of metricIndices) {
+        otherRow[i] = overflow.reduce(
+          (sum, row) => sum + (Number(row[i]) || 0),
+          0,
+        );
+      }
       rows = [...keep, otherRow as (typeof rows)[number]];
     }
 
@@ -139,7 +153,7 @@ export function BreakoutChart({
             ...(display === "bar" && {
               "graph.x_axis.axis_enabled": "compact",
             }),
-            ...getMetricSeriesSettings(metric),
+            ...getMetricSeriesSettings(metric, aggregationColumnNames),
           },
         }),
         data: { ...data.data, rows },

@@ -79,18 +79,26 @@ export function ConversationsByDayChart({
     if (!data?.data || !jsQuery) {
       return null;
     }
+    const cols = data.data.cols as Array<{ source?: string; name?: string }>;
+    const aggregationColumnNames = cols
+      .filter((c) => c.source === "aggregation")
+      .map((c) => c.name ?? "");
+    const isMultiSeriesTokens =
+      metric === "tokens" && aggregationColumnNames.length === 2;
     return [
       {
         card: createMockCard({
           dataset_query: jsQuery as any,
-          display: "area",
+          display: isMultiSeriesTokens ? "line" : "area",
           visualization_settings: {
             "graph.x_axis.scale": "timeseries",
             "graph.x_axis.title_text": "",
             "graph.y_axis.title_text": "",
             "line.interpolate": "cardinal",
             "line.marker_enabled": false,
-            ...getMetricSeriesSettings(metric),
+            ...getMetricSeriesSettings(metric, aggregationColumnNames, {
+              dualAxis: true,
+            }),
           },
         }),
         data: data.data,
