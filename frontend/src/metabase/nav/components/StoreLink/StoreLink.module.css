@@ -4,15 +4,11 @@
 }
 
 .iconWrapper {
-  width: 32px;
-  height: 32px;
+  width: 2rem;
+  height: 2rem;
   border-radius: var(--mantine-radius-xs);
   cursor: pointer;
-  color: color-mix(
-    in srgb,
-    var(--mb-color-text-primary-inverse),
-    transparent 35%
-  );
+  color: var(--mb-color-text-secondary-inverse);
   transition: all 300ms ease-in-out;
 
   &:hover {
