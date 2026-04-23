@@ -493,3 +493,116 @@
     ;; trivial-mp has only a Database, no tables. Source-table resolution fails silently.
     (let [out (repair/repair trivial-mp base-query)]
       (is (= {} (get-in out ["stages" 0 "breakout" 0 1]))))))
+
+;;; ============================================================
+;;; Pass 4 -- cross-stage field-type inference (repr-plan step 8)
+;;;
+;;; When a later stage references a column from an earlier stage by name
+;;; (`["field" {} "<column-name>"]`), the `lib.schema/query` validator requires the options
+;;; map to carry `"base-type"` (and, by convention, `"effective-type"`). LLMs routinely
+;;; forget this. This pass resolves the earlier stages enough to learn each column's name
+;;; and base-type, then stamps the inferred types into the options map of every string-named
+;;; cross-stage field ref in later stages.
+;;; ============================================================
+
+(def ^:private multi-stage-base-query
+  "Two-stage query: aggregate orders by product id in stage 0, filter on count in stage 1.
+  The stage-1 filter references the aggregation output by name (`count`) \u2014 an LLM that
+  knows it has to filter an aggregate will typically write this shape and forget the
+  `base-type`."
+  {"lib/type" "mbql/query"
+   "database" "Sample"
+   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                "aggregation"  [["count" {}]]
+                "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]}
+               {"lib/type" "mbql.stage/mbql"
+                "filters"  [[">" {} ["field" {} "count"] 10]]}]})
+
+(deftest cross-stage-field-type-inference-happy-path-test
+  (testing "String-named cross-stage field ref gets `base-type` + `effective-type` inferred
+           from the previous stage's `lib/returned-columns`."
+    (let [out (repair/repair mp-fks multi-stage-base-query)
+          field-clause (get-in out ["stages" 1 "filters" 0 2])
+          opts (nth field-clause 1)]
+      (testing "base-type / effective-type are populated"
+        (is (= "type/Integer" (get opts "base-type")))
+        (is (= "type/Integer" (get opts "effective-type"))))
+      (testing "the string column name in position 2 is preserved"
+        (is (= "count" (nth field-clause 2)))))))
+
+(deftest cross-stage-field-type-preserves-existing-base-type-test
+  (testing "If the LLM actually wrote `base-type`, we don't overwrite it."
+    (let [q (assoc-in multi-stage-base-query
+                      ["stages" 1 "filters" 0 2 1]
+                      {"base-type" "type/Text" "effective-type" "type/Text"})
+          out (repair/repair mp-fks q)
+          opts (get-in out ["stages" 1 "filters" 0 2 1])]
+      (is (= "type/Text" (get opts "base-type")))
+      (is (= "type/Text" (get opts "effective-type"))))))
+
+(deftest cross-stage-field-type-breakout-column-test
+  (testing "A later stage can reference a BREAKOUT column from the previous stage by name;
+           repair infers its base-type from the source column's metadata."
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]}
+                         {"lib/type"  "mbql.stage/mbql"
+                          "order-by" [["asc" {} ["field" {} "ID"]]]}]}
+          out (repair/repair mp-fks q)
+          opts (get-in out ["stages" 1 "order-by" 0 2 1])]
+      (is (= "type/Integer" (get opts "base-type"))))))
+
+(deftest cross-stage-field-type-leaves-vector-field-fks-alone-test
+  (testing "A field clause that uses a portable FK path (vector in position 2) is a normal
+           cross-table reference, not a cross-stage one \u2014 do not touch it."
+    (let [out (repair/repair mp-fks multi-stage-base-query)
+          stage-0-breakout-field (get-in out ["stages" 0 "breakout" 0])]
+      (testing "stage-0 breakout is untouched by the cross-stage pass"
+        ;; It may or may not have been touched by implicit-join; but the base-type should
+        ;; NOT have been stamped in by the cross-stage pass (different code path).
+        (is (vector? (nth stage-0-breakout-field 2)))))))
+
+(deftest cross-stage-field-type-no-previous-stage-test
+  (testing "String-named field in stage 0 has no previous stage to look at \u2014 we can't
+           infer, so we leave the clause alone (the schema validator will surface the error)."
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type" "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "filters" [[">" {} ["field" {} "count"] 10]]}]}
+          out (repair/repair mp-fks q)
+          opts (get-in out ["stages" 0 "filters" 0 2 1])]
+      (is (not (contains? opts "base-type"))))))
+
+(deftest cross-stage-field-type-unknown-column-name-test
+  (testing "If the referenced name isn't produced by the previous stage, leave the clause
+           alone (the resolver will surface :unknown-column or similar with a better message)."
+    (let [q (assoc-in multi-stage-base-query
+                      ["stages" 1 "filters" 0 2 2] "no_such_column")
+          out (repair/repair mp-fks q)
+          opts (get-in out ["stages" 1 "filters" 0 2 1])]
+      (is (not (contains? opts "base-type"))))))
+
+(deftest cross-stage-field-type-idempotent-test
+  (testing "cross-stage field-type inference is idempotent"
+    (let [once  (repair/repair mp-fks multi-stage-base-query)
+          twice (repair/repair mp-fks once)]
+      (is (= once twice)))))
+
+(deftest cross-stage-field-type-end-to-end-resolve-test
+  (testing (str "End-to-end: a multi-stage YAML with a stage-1 cross-stage ref lacking\n"
+                "base-type is repaired and then `resolve-query` + `lib/query` accept the\n"
+                "result without a validation error.")
+    ;; This is the exact failure mode that motivated this pass: pre-repair, lib/query throws
+    ;; "Invalid output: {:stages [nil {:filters [[nil nil [nil {:base-type ...missing...}]]]}]}"
+    (let [repaired (repair/repair mp-fks multi-stage-base-query)
+          ;; We can't run the resolver on `mp-fks` (it's a lib mock, not an application-DB MP),
+          ;; but we CAN assert that the stage-1 cross-stage ref now carries a base-type \u2014
+          ;; that's the structural repair the downstream needs. The actual end-to-end resolve
+          ;; is tested against a real application DB in construct_representations_test.
+          opts (get-in repaired ["stages" 1 "filters" 0 2 1])]
+      (is (= "type/Integer" (get opts "base-type"))))))

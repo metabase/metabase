@@ -352,3 +352,110 @@
               (is (true? (:agent-error? d)))
               (is (= :unknown-table (:error d)))
               (is (re-find #"OtherDB" (ex-message e))))))))))
+
+;;; ============================================================
+;;; Step-8 contract: multi-stage queries
+;;; ============================================================
+
+(deftest multi-stage-post-aggregation-filter-end-to-end-test
+  (testing (str "Two-stage query: aggregate orders by product id in stage 0, filter where\n"
+                "`count > 10` in stage 1. The stage-1 filter references the aggregation output\n"
+                "by string name (`count`) without `base-type` \u2014 a recurring LLM mistake \u2014\n"
+                "and the cross-stage field-type inference pass (per `repr-plan.md` step 8)\n"
+                "silently fills it in so the resolver + lib/query accept the query.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-yaml
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["count" {}]]
+                                     "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                                    {"lib/type" "mbql.stage/mbql"
+                                     "filters"  [[">" {} ["field" {} "count"] 10]]}]}))
+              q (get-in result [:structured-output :query])]
+          (testing "two-stage shape preserved"
+            (is (= 2 (count (:stages q))))
+            (is (= 10 (get-in q [:stages 0 :source-table])))
+            (is (nil? (get-in q [:stages 1 :source-table]))))
+          (testing "stage-1 filter resolved into a real `:>` clause whose field carries types"
+            (let [filter-clause (get-in q [:stages 1 :filters 0])
+                  field-clause  (nth filter-clause 2)
+                  field-opts    (nth field-clause 1)]
+              (is (= :> (first filter-clause)))
+              (is (= :field (first field-clause)))
+              (is (= "count" (nth field-clause 2)))
+              (is (= :type/Integer (:base-type field-opts)))
+              (is (= :type/Integer (:effective-type field-opts)))))
+          (testing "result-columns reflect the post-filter stage's output"
+            (is (= #{"PRODUCT_ID" "count"}
+                   (set (mapv :name (get-in result [:structured-output :result-columns])))))))))))
+
+(deftest multi-stage-respects-explicit-base-type-test
+  (testing (str "If the LLM happens to write `base-type` on a cross-stage ref already, repair\n"
+                "leaves it alone. Confirms the inference pass is additive, not overwriting.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-yaml
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["count" {}]]
+                                     "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                                    {"lib/type" "mbql.stage/mbql"
+                                     "filters"  [[">" {} ["field" {"base-type" "type/Integer"} "count"] 10]]}]}))
+              q (get-in result [:structured-output :query])
+              field-opts (get-in q [:stages 1 :filters 0 2 1])]
+          (is (= :type/Integer (:base-type field-opts))))))))
+
+(deftest multi-stage-three-stage-chain-test
+  (testing (str "A three-stage query: aggregate \u2192 filter (stage 1, references `count`) \u2192\n"
+                "order-by (stage 2, references `count` again). Verifies that the cross-stage\n"
+                "inference pass walks all stages, not just stage 1.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-yaml
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["count" {}]]
+                                     "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                                    {"lib/type" "mbql.stage/mbql"
+                                     "filters"  [[">" {} ["field" {} "count"] 10]]}
+                                    {"lib/type" "mbql.stage/mbql"
+                                     "order-by" [["desc" {} ["field" {} "count"]]]}]}))
+              q (get-in result [:structured-output :query])]
+          (is (= 3 (count (:stages q))))
+          (testing "stage 1's cross-stage filter ref carries inferred base-type"
+            (is (= :type/Integer (get-in q [:stages 1 :filters 0 2 1 :base-type]))))
+          (testing "stage 2's cross-stage order-by ref also carries inferred base-type"
+            (is (= :type/Integer (get-in q [:stages 2 :order-by 0 2 1 :base-type])))))))))
+
+(deftest multi-stage-unknown-cross-stage-column-surfaces-error-test
+  (testing (str "If the LLM references a column name that the previous stage doesn't produce,\n"
+                "repair leaves the clause alone (no `base-type` to infer) and the lib-schema\n"
+                "validator surfaces the missing-key error \u2014 reflagged as :agent-error?\n"
+                "by `execute-representations-query`'s catch.")
+    (with-mp-and-stubs!
+      (fn []
+        (try
+          (construct/execute-representations-query
+           (query-yaml
+            {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                         {"lib/type" "mbql.stage/mbql"
+                          "filters"  [[">" {} ["field" {} "no_such_column"] 10]]}]}))
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d))))))))))

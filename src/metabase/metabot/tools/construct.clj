@@ -246,22 +246,25 @@
                                         (assoc (ex-data e) :agent-error? true)
                                         e))))
         database-id (resolve-database-id-from-yaml parsed)
-        mp          (lib-be/application-database-metadata-provider database-id)
-        pmbql-query (try
-                      (->> parsed
-                           (repr.repair/repair mp)
-                           repr/validate-query
-                           (repr.resolve/resolve-query mp))
-                      (catch clojure.lang.ExceptionInfo e
-                        (let [d (ex-data e)]
-                          (throw (ex-info (ex-message e)
-                                          (assoc d :agent-error? true)
-                                          e)))))
-        query-id    (u/generate-nano-id)]
-    {:structured-output {:query-id       query-id
-                         :query          pmbql-query
-                         :result-columns (result-columns-for-query pmbql-query mp)}
-     :instructions      (instructions/query-created-instructions-for query-id)}))
+        mp          (lib-be/application-database-metadata-provider database-id)]
+    ;; Everything after the MP is built can surface LLM-input errors (lib.schema validation
+    ;; in resolve, missing-column complaints from lib/query in `result-columns-for-query`,
+    ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
+    ;; them reach the tool wrapper with the flag set.
+    (try
+      (let [pmbql-query (->> parsed
+                             (repr.repair/repair mp)
+                             repr/validate-query
+                             (repr.resolve/resolve-query mp))
+            query-id    (u/generate-nano-id)]
+        {:structured-output {:query-id       query-id
+                             :query          pmbql-query
+                             :result-columns (result-columns-for-query pmbql-query mp)}
+         :instructions      (instructions/query-created-instructions-for query-id)})
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e)
+                        (assoc (ex-data e) :agent-error? true)
+                        e))))))
 
 ;;; ---------------------------------------- Chart helpers ----------------------------------------
 

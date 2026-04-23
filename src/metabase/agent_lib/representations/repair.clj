@@ -32,10 +32,13 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -430,7 +433,11 @@
           (contains? stage "joins") (assoc "joins" joins))))))
 
 (defn- resolve-implicit-joins*
-  "Top-level implicit-join pass. Phase 1 handles `stages[0]` only."
+  "Top-level implicit-join pass. Only `stages[0]` participates: implicit-join `source-field`
+  inference is a relationship from a stage's `source-table` to a sibling table via a single FK,
+  and only the first stage of a query has a `source-table` of its own. Stages 1+ feed off the
+  previous stage's output, where field references are by string name (handled by
+  [[infer-cross-stage-field-types*]] further down)."
   [query mp]
   (if-not (and mp (map? query) (vector? (get query "stages")) (seq (get query "stages")))
     query
@@ -438,6 +445,131 @@
           export-resolver (resolve.mp/export-resolver mp)]
       (update-in query ["stages" 0] resolve-implicit-joins-in-stage
                  mp import-resolver export-resolver))))
+
+;;; ============================================================
+;;; Pass 4 -- infer base-type / effective-type on cross-stage field references
+;;;
+;;; A cross-stage field reference looks like `["field" {opts} "<column-name>"]` where the
+;;; third element is a **string** (the column's name in the previous stage's output) rather
+;;; than a portable FK vector. The lib-schema for `:mbql.clause/field` requires the options
+;;; map to carry `:base-type` whenever the id-or-name argument is a string \u2014 and LLMs
+;;; routinely forget this, even though they're great at picking the right column name.
+;;;
+;;; Strategy:
+;;;   * Walk stages left-to-right.
+;;;   * Before processing stage `i` (i ≥ 1), build a mini-query consisting of stages[0..i-1]
+;;;     and resolve it. Call `lib/returned-columns` on the result; index by `:name`.
+;;;   * Walk stage[i] (skipping descent into `joins` subtrees \u2014 those have their own
+;;;     resolution context). For every `["field" opts <string>]` clause:
+;;;       - If `opts` already has `"base-type"`, leave it alone (idempotent).
+;;;       - If the name is unknown to the previous stage, leave it alone (the resolver will
+;;;         report the real error with a better message).
+;;;       - Otherwise, stamp `"base-type"` (and `"effective-type"` when present) into the
+;;;         options map.
+;;;   * If the prefix can't be resolved (bad source-table, etc.), skip the rest of the pass
+;;;     \u2014 again, the resolver will surface the structural problem.
+;;;
+;;; The mini-resolve is potentially O(N) over stages, but in practice N ≤ a handful, the MP
+;;; is cached, and we only do this for queries that actually have multiple stages.
+;;; ============================================================
+
+(defn- string-cross-stage-field-clause?
+  "`[\"field\" <opts-map> <string>]` \u2014 a cross-stage column reference by name. We require
+  the opts map to be a real map and the third element to be a non-blank string. Anything else
+  (FK vector, missing slot, non-map opts) is left to [[field-clause?]] / the resolver."
+  [v]
+  (and (vector? v)
+       (not (map-entry? v))
+       (= 3 (count v))
+       (= "field" (nth v 0))
+       (map? (nth v 1))
+       (non-blank-string? (nth v 2))))
+
+(defn- types-from-column
+  "Pull `\"base-type\"` (and optionally `\"effective-type\"`) off a `lib/returned-columns`
+  metadata map, in the string-keyed form that matches the rest of the repair pipeline.
+  Returns `nil` if the column has no `:base-type` we can use."
+  [col]
+  (when-let [bt (:base-type col)]
+    (let [bt-str (if (keyword? bt) (subs (str bt) 1) (str bt))]
+      (cond-> {"base-type" bt-str}
+        (:effective-type col)
+        (assoc "effective-type" (let [et (:effective-type col)]
+                                  (if (keyword? et) (subs (str et) 1) (str et))))))))
+
+(defn- mini-resolved-columns-by-name
+  "Resolve `stages[0..idx-1]` as a self-contained query, run it through `lib/query`, and return
+  a `{column-name → {\"base-type\" ..., \"effective-type\" ...}}` map for the columns the
+  prefix returns.
+
+  Returns `nil` (logged at debug) if anything in the resolve / lib/query path throws. The
+  enclosing pass treats `nil` as 'skip this stage's repairs and let downstream surface the real
+  error'."
+  [mp query stage-idx]
+  (try
+    (let [prefix-stages (subvec (get query "stages") 0 stage-idx)
+          prefix-query  (assoc query "stages" prefix-stages)
+          resolved      (repr.resolve/resolve-query mp prefix-query)
+          lib-q         (lib/query mp resolved)
+          cols          (lib/returned-columns lib-q)]
+      (into {}
+            (keep (fn [col]
+                    (when-let [types (types-from-column col)]
+                      [(:name col) types])))
+            cols))
+    (catch Exception e
+      (log/debugf e "[repr-repair] mini-resolve of stages[0..%d] failed; skipping cross-stage type inference for stage %d"
+                  (dec stage-idx) stage-idx)
+      nil)))
+
+(defn- maybe-fill-cross-stage-types
+  "Given a cross-stage field clause and a name→types map, return the clause with `base-type`
+  / `effective-type` filled in (when missing and known)."
+  [clause name->types]
+  (let [opts (nth clause 1)
+        col-name (nth clause 2)]
+    (if (contains? opts "base-type")
+      clause
+      (if-let [types (get name->types col-name)]
+        (assoc clause 1 (merge opts types))
+        clause))))
+
+(defn- infer-cross-stage-field-types-in-stage
+  "Walk one stage and stamp inferred types into every string-named field reference that lacks
+  `\"base-type\"`. Skips descent into `\"joins\"` subtrees \u2014 join stages have their own
+  resolution context (the join's own `stages`) and shouldn't reach into their parent stage's
+  previous-stage columns."
+  [stage name->types]
+  (let [joins  (get stage "joins")
+        stage' (cond-> stage (contains? stage "joins") (dissoc "joins"))
+        walked (walk/postwalk
+                (fn [node]
+                  (if (string-cross-stage-field-clause? node)
+                    (maybe-fill-cross-stage-types node name->types)
+                    node))
+                stage')]
+    (cond-> walked
+      (contains? stage "joins") (assoc "joins" joins))))
+
+(defn- infer-cross-stage-field-types*
+  "Top-level cross-stage field-type inference pass. No-op when the query has fewer than two
+  stages or `mp` is nil."
+  [query mp]
+  (if-not (and mp
+               (map? query)
+               (vector? (get query "stages"))
+               (>= (count (get query "stages")) 2))
+    query
+    (let [n (count (get query "stages"))]
+      (loop [i 1
+             q query]
+        (if (>= i n)
+          q
+          (let [name->types (mini-resolved-columns-by-name mp q i)
+                q'          (if name->types
+                              (update-in q ["stages" i] infer-cross-stage-field-types-in-stage name->types)
+                              q)]
+            (recur (inc i) q')))))))
 
 ;;; ============================================================
 ;;; Top-level entry point
@@ -460,12 +592,17 @@
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
        referenced aggregation's `lib/uuid` if needed);
     4. auto-wire `source-field` on field clauses that reference a foreign table via a single
-       unambiguous FK on the source table (implicit-join resolution).
+       unambiguous FK on the source table (implicit-join resolution);
+    5. infer `base-type` / `effective-type` on cross-stage field references
+       (`[\"field\" {} \"<column-name>\"]` in a non-first stage), by mini-resolving the
+       prefix of stages and reading the returned columns' metadata.
 
-  Pass 4 requires `mp` (a `MetadataProvider`); it is a best-effort no-op when `mp` can't
-  resolve the relevant pieces (so the subsequent validate/resolve stages can surface the real
-  error with their own, better messages). Hard FK errors (`:no-fk-path`, `:ambiguous-fk`) are
-  raised as `:agent-error?` ex-info so the tool wrapper can relay them to the LLM.
+  Pass 4 and Pass 5 require `mp` (a `MetadataProvider`); they are best-effort no-ops when `mp`
+  can't resolve the relevant pieces (so the subsequent validate/resolve stages can surface the
+  real error with their own, better messages). Hard FK errors from Pass 4 (`:no-fk-path`,
+  `:ambiguous-fk`) are raised as `:agent-error?` ex-info so the tool wrapper can relay them to
+  the LLM. Pass 5 never throws on its own \u2014 if the prefix can't be resolved, it just leaves
+  the cross-stage clauses alone and lets the schema validator complain.
 
   Note: the database-name normalisation pass (\"Pass 2.5\") that previously lived here was
   removed in `repr-plan.md` step 13. Database identity is now derived from the YAML's
@@ -475,9 +612,11 @@
   Guaranteed to be **idempotent**: `(= (repair mp q) (repair mp (repair mp q)))`. Pass 3
   satisfies idempotency by stamping a deterministic-once UUID into the matching aggregation
   (subsequent runs reuse it) and by leaving existing `[\"aggregation\" {} \"<uuid>\"]` refs
-  alone."
+  alone. Pass 5 is idempotent because it skips any cross-stage clause whose options already
+  contain `\"base-type\"`."
   [mp parsed]
   (-> parsed
       normalize-shape*
       rewrite-order-by-inline-aggs*
-      (resolve-implicit-joins* mp)))
+      (resolve-implicit-joins* mp)
+      (infer-cross-stage-field-types* mp)))
