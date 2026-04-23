@@ -1,11 +1,13 @@
 const { H } = cy;
 
-import { useMetabot } from "@metabase/embedding-sdk-react";
+import { MetabaseProvider, useMetabot } from "@metabase/embedding-sdk-react";
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
+  DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
   mountSdk,
   mountSdkContent,
 } from "e2e/support/helpers/embedding-sdk-component-testing";
@@ -177,29 +179,44 @@ describe("scenarios > embedding-sdk > use-metabot hook", () => {
     });
   });
 
-  it("returns null from useMetabot() before MetabaseProvider finishes initialization", () => {
+  it("returns null from useMetabot() before MetabaseProvider mounts its subscriber", () => {
     H.mockMetabotResponse({
       statusCode: 200,
       body: buildNavigateToResponse(adHocQuestionPathOrders),
     });
 
-    cy.intercept("GET", "/api/user/current", (request) => {
-      request.on("response", (response) => {
-        response.setDelay(1500);
-      });
-    }).as("getUserDelayed");
+    // Gate the provider behind a delayed state flip. While `ready` is false,
+    // the consumer renders without a MetabaseProvider above it, so the
+    // metabot-state-channel stays null and `useMetabot()` returns null.
+    const GatedProvider = ({ children }: { children: ReactNode }) => {
+      const [ready, setReady] = useState(false);
+      useEffect(() => {
+        const id = setTimeout(() => setReady(true), 800);
+        return () => clearTimeout(id);
+      }, []);
+      if (!ready) {
+        return <>{children}</>;
+      }
+      return (
+        <MetabaseProvider authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}>
+          {children}
+        </MetabaseProvider>
+      );
+    };
 
-    mountSdkContent(<MetabotConsumer />, { waitForUser: false });
+    mountSdk(
+      <GatedProvider>
+        <MetabotConsumer />
+      </GatedProvider>,
+    );
 
     getSdkRoot().within(() => {
       cy.findByTestId("metabot-loading").should("exist");
       cy.findByTestId("metabot-consumer").should("not.exist");
     });
 
-    cy.wait("@getUserDelayed", { timeout: 20_000 });
-
     getSdkRoot().within(() => {
-      cy.findByTestId("metabot-consumer").should("exist");
+      cy.findByTestId("metabot-consumer", { timeout: 20_000 }).should("exist");
       cy.findByTestId("metabot-loading").should("not.exist");
     });
   });
