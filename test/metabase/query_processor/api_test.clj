@@ -1141,17 +1141,20 @@
   (set (map :id (get result k))))
 
 (deftest query-sources-shape-test
-  (testing "POST /api/dataset/query-sources returns {:tables [...], :cards [...]} with :id, :name, :display_name"
+  (testing "POST /api/dataset/query-sources returns {:tables [...], :cards [...]}"
     (let [result (mt/user-http-request :crowberto :post 200 "dataset/query-sources"
                                        (mt/mbql-query orders))]
       (is (contains? result :tables))
       (is (contains? result :cards))
       (is (= [(mt/id :orders)] (map :id (:tables result))))
       (is (= [] (:cards result)))
-      (let [orders-entry (first (:tables result))]
-        (is (= #{:id :name :display_name} (set (keys orders-entry))))
-        (is (string? (:name orders-entry)))
-        (is (string? (:display_name orders-entry)))))))
+      (testing "table entries include :id :db_id :schema :name :display_name"
+        (let [orders-entry (first (:tables result))]
+          (is (= #{:id :db_id :schema :name :display_name} (set (keys orders-entry))))
+          (is (= (mt/id) (:db_id orders-entry)))
+          (is (or (nil? (:schema orders-entry)) (string? (:schema orders-entry))))
+          (is (string? (:name orders-entry)))
+          (is (string? (:display_name orders-entry))))))))
 
 (deftest query-sources-mbql-test
   (testing "MBQL query with source-table returns that table"

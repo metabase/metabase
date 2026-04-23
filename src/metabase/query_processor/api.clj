@@ -277,7 +277,15 @@
       (log/warnf e "query-sources: native SQL parsing failed; returning structural sources only")
       #{})))
 
-(def ^:private source-entry-schema
+(def ^:private table-source-schema
+  [:map
+   [:id           ms/PositiveInt]
+   [:db_id        ms/PositiveInt]
+   [:schema       [:maybe :string]]
+   [:name         :string]
+   [:display_name :string]])
+
+(def ^:private card-source-schema
   [:map
    [:id           ms/PositiveInt]
    [:name         :string]
@@ -285,8 +293,8 @@
 
 (api.macros/defendpoint :post "/query-sources"
   :- [:map
-      [:tables [:sequential source-entry-schema]]
-      [:cards  [:sequential source-entry-schema]]]
+      [:tables [:sequential table-source-schema]]
+      [:cards  [:sequential card-source-schema]]]
   "Return every source table and source card referenced in a query, across all stages. MBQL stages
   contribute via `:source-table` / `:source-card`; native stages contribute via template tags and via
   raw-SQL table references parsed out of the compiled query."
@@ -309,6 +317,8 @@
         {:tables (vec
                   (for [t (when (seq table-ids) (lib.metadata/bulk-metadata mp :metadata/table table-ids))]
                     {:id           (:id t)
+                     :db_id        (:db-id t)
+                     :schema       (:schema t)
                      :name         (:name t)
                      :display_name (or (:display-name t) (:name t))}))
          :cards  (vec
