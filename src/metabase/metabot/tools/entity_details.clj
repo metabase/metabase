@@ -287,6 +287,9 @@
                                  (u.humanization/name->human-readable-name :simple))
           :database_id database-id
           :database_engine database-engine
+          ;; Portable entity id matching the representations-format expectation: LLM uses this
+          ;; string as the value of `source-card:` in a representations query stage.
+          :portable_entity_id (:entity_id base)
           :verified (verified-review? id "card")}
          (m/assoc-some
           :description (:description base)

@@ -282,3 +282,42 @@
               (let [segment (first segments)]
                 (is (= segment-id (:id segment)))
                 (is (= "Large Orders" (:name segment)))))))))))
+
+;;; ============================================================
+;;; Portable entity_id in card details (step 11.2)
+;;; ============================================================
+
+(deftest get-entity-details-question-exposes-portable-entity-id-test
+  (testing "card details (question) expose :portable_entity_id for the agent to use in source-card"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id card-eid :entity_id}
+                       {:database_id  (mt/id)
+                        :type         :question
+                        :name         "My Saved Q"
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :venues)}}}]
+          (let [result (entity-details/get-table-details {:entity-type :question :entity-id card-id})
+                output (:structured-output result)]
+            (is (= :question (:type output)))
+            (is (= card-id (:id output)))
+            (is (= card-eid (:portable_entity_id output)))
+            (is (string? (:portable_entity_id output)))))))))
+
+(deftest get-entity-details-model-exposes-portable-entity-id-test
+  (testing "card details (model) also expose :portable_entity_id"
+    (mt/test-driver :h2
+      (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-temp [:model/Card {card-id :id card-eid :entity_id}
+                       {:database_id  (mt/id)
+                        :type         :model
+                        :name         "My Model"
+                        :dataset_query {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :venues)}}}]
+          (let [result (entity-details/get-table-details {:entity-type :model :entity-id card-id})
+                output (:structured-output result)]
+            (is (= :model (:type output)))
+            (is (= card-id (:id output)))
+            (is (= card-eid (:portable_entity_id output)))))))))
