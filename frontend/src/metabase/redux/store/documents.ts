@@ -1,4 +1,4 @@
-import type { Card, Document } from "metabase-types/api";
+import type { Document } from "metabase-types/api";
 
 export interface CardEmbedRef {
   id: number;
@@ -15,7 +15,6 @@ export interface DocumentsState {
   selectedEmbedIndex: number | null;
   cardEmbeds: CardEmbedRef[];
   currentDocument: Document | null;
-  draftCards: Record<number, Card>;
   mentionsCache: Record<string, MentionCacheItem>;
   isCommentSidebarOpen: boolean;
   childTargetId: string | undefined;

@@ -1,14 +1,22 @@
 import { Api } from "metabase/api/api";
-import { idTag, listTag } from "metabase/api/tags";
+import { idTag, invalidateTags, listTag } from "metabase/api/tags";
 import type {
+  Card,
   CopyDocumentRequest,
+  CreateCardRequest,
   CreateDocumentRequest,
   DeleteDocumentRequest,
   Document,
+  DocumentId,
   GetDocumentRequest,
   GetPublicDocument,
   UpdateDocumentRequest,
 } from "metabase-types/api";
+
+export type CreateDocumentCardRequest = { document_id: DocumentId } & Omit<
+  CreateCardRequest,
+  "document_id" | "collection_id" | "dashboard_id" | "dashboard_tab_id"
+>;
 
 export const documentApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -66,6 +74,18 @@ export const documentApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error, { id }) =>
         !error ? [listTag("document"), idTag("document", id)] : [],
+    }),
+    createDocumentCard: builder.mutation<Card, CreateDocumentCardRequest>({
+      query: ({ document_id, ...body }) => ({
+        method: "POST",
+        url: `/api/document/${document_id}/card`,
+        body,
+      }),
+      invalidatesTags: (_card, error, { document_id }) =>
+        invalidateTags(error, [
+          listTag("card"),
+          idTag("document", document_id),
+        ]),
     }),
     copyDocument: builder.mutation<Document, CopyDocumentRequest>({
       query: ({ id, ...body }) => ({
@@ -137,6 +157,7 @@ export const {
   useUpdateDocumentMutation,
   useDeleteDocumentMutation,
   useCopyDocumentMutation,
+  useCreateDocumentCardMutation,
   useListPublicDocumentsQuery,
   useCreateDocumentPublicLinkMutation,
   useDeleteDocumentPublicLinkMutation,

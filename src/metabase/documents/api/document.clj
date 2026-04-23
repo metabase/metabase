@@ -6,19 +6,17 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.card-ops :as card-ops]
    [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.public-sharing.validation :as public-sharing.validation]
-   [metabase.queries.core :as card]
-   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -41,8 +39,7 @@
    [:name m.document/DocumentName]
    [:document :any]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
-   [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:cards {:optional true} [:maybe [:map-of [:int {:max -1}] CardCreateSchema]]]])
+   [:collection_position {:optional true} [:maybe ms/PositiveInt]]])
 
 (def ^:private DocumentUpdateOptions
   [:map
@@ -50,85 +47,7 @@
    [:document {:optional true} :any]
    [:collection_id {:optional true} [:maybe ms/PositiveInt]]
    [:collection_position {:optional true} [:maybe ms/PositiveInt]]
-   [:cards {:optional true} [:maybe [:map-of :int CardCreateSchema]]]
    [:archived {:optional true} [:maybe :boolean]]])
-
-(defn- create-card!
-  "Checks that the query is runnable by the current user then saves"
-  [{query :dataset_query :as card} creator]
-  (query-perms/check-run-permissions-for-query query)
-  (card/create-card! (assoc card :type :question :dashboard_id nil) creator))
-
-(mu/defn- update-cards-in-ast :- [:map [:document :any]
-                                  [:content_type :string]]
-
-  [document :- [:map
-                [:document :any]
-                [:content_type :string]]
-   card-id-map :- [:maybe [:map-of :int ms/PositiveInt]]]
-  (cond-> document
-    (map? document)
-    (prose-mirror/update-ast (fn match-card-to-update [{:keys [type attrs]}]
-                               (and (= type prose-mirror/card-embed-type)
-                                    (contains? card-id-map (:id attrs))))
-                             (fn update-card-id [embed]
-                               (update-in embed [:attrs :id] card-id-map)))))
-
-(mu/defn- create-cards-for-document! :- [:map-of ms/NegativeInt ms/PositiveInt]
-  "Creates cards for a document from the cards map.
-   Returns a mapping from the original negative integer keys to the newly created card IDs.
-
-   Args:
-   - cards-to-create: Map of negative-int -> CardCreateSchema data
-   - document-id: ID of the document these cards belong to
-   - document-collection-id: Collection ID of the document (for inheritance)
-   - creator: User creating the cards
-
-   Returns:
-   - Map of negative-int -> actual-card-id"
-  [cards-to-create :- [:map-of [:int {:max -1}] CardCreateSchema]
-   document-id :- ms/PositiveInt
-   document-collection-id :- [:or :nil ms/PositiveInt]
-   creator :- [:map [:id ms/PositiveInt]]]
-  (when (seq cards-to-create)
-    (reduce-kv
-     (fn [result-map original-key card-data]
-       (let [;; Merge document info into card data
-             ;; Cards inherit document's collection_id if not explicitly specified
-             merged-card-data (-> card-data
-                                  (assoc :document_id document-id)
-                                  (cond-> (nil? (:collection_id card-data))
-                                    (assoc :collection_id document-collection-id)))
-             ;; Create the card using the queries core function
-             new-card (create-card! merged-card-data creator)]
-         (assoc result-map original-key (:id new-card))))
-     {}
-     cards-to-create)))
-
-(mu/defn- clone-cards-in-document! :- [:map-of ms/PositiveInt ms/PositiveInt]
-  "Finds all cards in the document that are not associated with the document and clones the cards.
-
-  Args:
-  - document: the document model to clone cards within
-
-  Returns:
-  - map of old-card-id -> cloned-card-id"
-  [{:keys [id collection_id] :as document}]
-  (let [card-ids (prose-mirror/collect-ast document #(when (and (= prose-mirror/card-embed-type (:type %))
-                                                                (pos? (-> % :attrs :id)))
-                                                       (-> % :attrs :id)))
-        to-clone (when (seq card-ids)
-                   (t2/select :model/Card {:where [:and [:in :id card-ids]
-                                                   [:or [:<> :document_id id]
-                                                    [:= :document_id nil]]]}))]
-    (reduce (fn [accum card]
-              (api/read-check card)
-              (assoc accum
-                     (:id card)
-                     (:id (create-card! (assoc card :document_id id :collection_id collection_id)
-                                        @api/*current-user*))))
-            {}
-            to-clone)))
 
 (defn get-document
   "Get document by id checking if the current user has permission to access and if the document exists."
@@ -161,7 +80,7 @@
   "Create a new `Document`."
   [_route-params
    _query-params
-   {:keys [name document collection_id collection_position cards]} :- DocumentCreateOptions]
+   {:keys [name document collection_id collection_position]} :- DocumentCreateOptions]
   (api/create-check :model/Document {:collection_id collection_id})
   (let [created-document (t2/with-transaction [_conn]
                            (when collection_position
@@ -173,15 +92,14 @@
                                                                                        :document document
                                                                                        :content_type prose-mirror/prose-mirror-content-type
                                                                                        :creator_id api/*current-user-id*})
-                                 cards-to-update-in-ast (merge (clone-cards-in-document! {:id document-id
-                                                                                          :collection_id collection_id
-                                                                                          :document document
-                                                                                          :content_type prose-mirror/prose-mirror-content-type})
-                                                               (when-not (empty? cards)
-                                                                 (create-cards-for-document! cards document-id collection_id @api/*current-user*)))]
+                                 cards-to-update-in-ast (card-ops/clone-cards-in-document!
+                                                         {:id document-id
+                                                          :collection_id collection_id
+                                                          :document document
+                                                          :content_type prose-mirror/prose-mirror-content-type})]
                              (when (seq cards-to-update-in-ast)
                                (t2/update! :model/Document :id document-id
-                                           (update-cards-in-ast
+                                           (card-ops/update-cards-in-ast
                                             {:document document
                                              :content_type prose-mirror/prose-mirror-content-type}
                                             cards-to-update-in-ast)))
@@ -212,7 +130,7 @@
   [{:keys [document-id]} :- [:map
                              [:document-id ms/PositiveInt]]
    _query-params
-   {:keys [name document collection_id collection_position cards] :as body} :- DocumentUpdateOptions]
+   {:keys [name document collection_id collection_position] :as body} :- DocumentUpdateOptions]
   (let [existing-document (api/check-404 (get-document document-id))]
     (when-not (contains? body :archived)
       (api/check-not-archived existing-document))
@@ -221,7 +139,7 @@
       (m.document/validate-collection-move-permissions (:collection_id existing-document) collection_id))
 
     ;; Handle archiving logic
-    (let [document-updates (dissoc (api/updates-with-archived-directly existing-document body) :cards)]
+    (let [document-updates (api/updates-with-archived-directly existing-document body)]
       (t2/with-transaction [_conn]
         (when collection_position
           (api/maybe-reconcile-collection-position! existing-document {:collection_id (if (contains? body :collection_id)
@@ -230,12 +148,10 @@
                                                                        :collection_position collection_position}))
         (t2/update! :model/Document document-id
                     (cond-> document-updates
-                      document (merge (update-cards-in-ast
+                      document (merge (card-ops/update-cards-in-ast
                                        {:document document
                                         :content_type (:content_type existing-document)}
-                                       (merge
-                                        (clone-cards-in-document! (assoc existing-document :document document))
-                                        (when-not (empty? cards) (create-cards-for-document! cards document-id collection_id @api/*current-user*)))))
+                                       (card-ops/clone-cards-in-document! (assoc existing-document :document document))))
                       name (assoc :name name)
                       (contains? body :collection_id) (assoc :collection_id collection_id)))
         (collections/check-for-remote-sync-update existing-document))
@@ -270,35 +186,6 @@
 
 ;;; ---------------------------------------------------- Copy --------------------------------------------------------
 
-(mu/defn- copy-cards-for-document! :- [:map-of ms/PositiveInt ms/PositiveInt]
-  "Copies all cards that belong to the source document to the new document.
-
-  Args:
-  - source-document-id: ID of the document being copied
-  - new-document-id: ID of the newly created document
-  - new-collection-id: Collection ID for the new cards
-
-  Returns:
-  - Map of old-card-id -> new-card-id"
-  [source-document-id :- ms/PositiveInt
-   new-document-id :- ms/PositiveInt
-   new-collection-id :- [:or :nil ms/PositiveInt]]
-  (let [cards-to-copy (t2/select :model/Card :document_id source-document-id)]
-    (reduce (fn [accum card]
-              (let [new-card (create-card! (-> card
-                                               (dissoc :id :entity_id :created_at :updated_at :creator_id
-                                                       :public_uuid :made_public_by_id :cache_invalidated_at)
-                                               (assoc :document_id new-document-id
-                                                      :collection_id new-collection-id))
-                                           @api/*current-user*)]
-                (when (or (:archived card) (:archived_directly card))
-                  (t2/update! :model/Card (:id new-card)
-                              {:archived          (boolean (:archived card))
-                               :archived_directly (boolean (:archived_directly card))}))
-                (assoc accum (:id card) (:id new-card))))
-            {}
-            cards-to-copy)))
-
 (api.macros/defendpoint :post "/:from-document-id/copy" :- ::documents.schema/document
   "Copy a Document."
   [{:keys [from-document-id]} :- [:map
@@ -322,10 +209,10 @@
                        (when collection_position
                          (api/maybe-reconcile-collection-position! document-data))
                        (let [new-document-id (t2/insert-returning-pk! :model/Document document-data)
-                             card-id-map (copy-cards-for-document! from-document-id new-document-id collection_id)]
+                             card-id-map (card-ops/copy-cards-for-document! from-document-id new-document-id collection_id)]
                          (when (seq card-id-map)
                            (t2/update! :model/Document :id new-document-id
-                                       (update-cards-in-ast
+                                       (card-ops/update-cards-in-ast
                                         {:document (:document existing-document)
                                          :content_type (:content_type existing-document)}
                                         card-id-map)))
@@ -407,6 +294,35 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+
+;;; ------------------------------------------------ Card Create ----------------------------------------------------
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/:document-id/card"
+  "Create a `Card` owned by a `Document`.
+
+  Materializes a card immediately under the document — no client-side draft pathway. Collab
+  clients insert `cardEmbed` nodes with the returned card id so collaborators can fetch the card
+  via the normal `/api/card/:id` route.
+
+  The document's `collection_id` is inherited onto the card automatically and any `collection_id`
+  in the request body is ignored; updates to the document's collection re-sync via
+  `sync-document-cards-collection!`.
+
+  Permissions: the user must have write access to the document."
+  [{:keys [document-id]} :- [:map [:document-id ms/PositiveInt]]
+   _query-params
+   card :- CardCreateSchema]
+  (let [document (api/check-404 (t2/select-one :model/Document :id document-id))]
+    (api/check-not-archived document)
+    (api/write-check document)
+    (card-ops/create-card! (assoc card
+                                  :document_id   document-id
+                                  :collection_id (:collection_id document))
+                           @api/*current-user*)))
 
 ;;; ------------------------------------------------ Card Downloads --------------------------------------------------
 

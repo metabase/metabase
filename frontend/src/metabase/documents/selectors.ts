@@ -1,7 +1,7 @@
 import { createSelector } from "@reduxjs/toolkit";
 
 import type { State } from "metabase/redux/store";
-import type { Card, CardId } from "metabase-types/api";
+import type { CardId } from "metabase-types/api";
 
 import { initialState } from "./documents.slice";
 
@@ -42,33 +42,6 @@ export const getSelectedEmbedIndex = createSelector(
 export const getCurrentDocument = createSelector(
   getDocumentsState,
   (documents) => documents?.currentDocument || null,
-);
-
-// Get all draft cards
-export const getDraftCards = createSelector(
-  getDocumentsState,
-  (documents) => documents?.draftCards ?? {},
-);
-
-// Get a specific draft card by ID
-export const getDraftCardById = createSelector(
-  [getDraftCards, (_state, cardId: number) => cardId],
-  (draftCards, cardId) => draftCards[cardId],
-);
-
-export const getCardWithDraft = createSelector(
-  [
-    getDraftCards,
-    (_state, cardId: CardId) => cardId,
-    (_state, _cardId: CardId, card?: Card) => card,
-  ],
-  (draftCards, cardId, card) => {
-    const draftCard = draftCards[cardId];
-    if (draftCard) {
-      return draftCard;
-    }
-    return card;
-  },
 );
 
 export const getMentionsCache = createSelector(

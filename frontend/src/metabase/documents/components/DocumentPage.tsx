@@ -1,6 +1,5 @@
 import { useForceUpdate } from "@mantine/hooks";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/core";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import dayjs from "dayjs";
 import type { Location } from "history";
 import {
@@ -44,11 +43,7 @@ import { Box } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import { extractEntityId } from "metabase/utils/urls";
 import * as Urls from "metabase/utils/urls";
-import type {
-  Card,
-  CollectionId,
-  RegularCollectionId,
-} from "metabase-types/api";
+import type { CollectionId, RegularCollectionId } from "metabase-types/api";
 
 import {
   trackDocumentBookmark,
@@ -58,7 +53,6 @@ import {
   trackDocumentUpdated,
 } from "../analytics";
 import {
-  clearDraftCards,
   openVizSettingsSidebar,
   resetDocuments,
   setChildTargetId,
@@ -71,7 +65,6 @@ import { useDocumentState } from "../hooks/use-document-state";
 import { useRegisterDocumentMetabotContext } from "../hooks/use-register-document-metabot-context";
 import { useScrollToAnchor } from "../hooks/use-scroll-to-anchor";
 import {
-  getDraftCards,
   getHasUnsavedChanges,
   getIsHistorySidebarOpen,
   getSelectedEmbedIndex,
@@ -105,7 +98,6 @@ export const DocumentPage = ({
   const dispatch = useDispatch();
   const selectedQuestionId = useSelector(getSelectedQuestionId);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
-  const draftCards = useSelector(getDraftCards);
   const isHistorySidebarOpen = useSelector(getIsHistorySidebarOpen);
   const [editorInstance, setEditorInstance] = useState<TiptapEditor | null>(
     null,
@@ -235,25 +227,14 @@ export const DocumentPage = ({
     // when comparing saved with current titles, we need to use unmofidied values
     const titleChanged = documentTitle !== originalTitle;
 
-    // Check if there are any draft cards
-    const hasDraftCards = Object.keys(draftCards).length > 0;
-
-    // For new documents, show Save if there's title or editor changes or draft cards
+    // For new documents, show Save if there's title or editor changes
     if (isNewDocument) {
-      return (
-        currentTitle.length > 0 || hasUnsavedEditorChanges || hasDraftCards
-      );
+      return currentTitle.length > 0 || hasUnsavedEditorChanges;
     }
 
     // For existing documents, use simple change tracking
-    return titleChanged || hasUnsavedEditorChanges || hasDraftCards;
-  }, [
-    documentTitle,
-    isNewDocument,
-    documentData,
-    hasUnsavedEditorChanges,
-    draftCards,
-  ]);
+    return titleChanged || hasUnsavedEditorChanges;
+  }, [documentTitle, isNewDocument, documentData, hasUnsavedEditorChanges]);
 
   const isSaving = isCreating || isUpdating;
   const showSaveButton = hasUnsavedChanges() && canWrite && !isSaving;
@@ -315,22 +296,6 @@ export const DocumentPage = ({
       }
 
       try {
-        const cardsToSave: Record<number, Card> = {};
-        const processedCardIds = new Set<number>();
-
-        editorInstance.state.doc.descendants((node: ProseMirrorNode) => {
-          if (node.type.name === "cardEmbed") {
-            const cardId = node.attrs.id;
-            if (!processedCardIds.has(cardId)) {
-              processedCardIds.add(cardId);
-
-              if (cardId < 0 && draftCards[cardId]) {
-                cardsToSave[cardId] = draftCards[cardId];
-              }
-            }
-          }
-        });
-
         const documentAst = editorInstance.getJSON();
         const name =
           documentTitle ||
@@ -339,7 +304,6 @@ export const DocumentPage = ({
         const newDocumentData = {
           name,
           document: documentAst,
-          cards: Object.keys(cardsToSave).length > 0 ? cardsToSave : undefined,
         };
 
         const result = await (documentData?.id
@@ -373,7 +337,6 @@ export const DocumentPage = ({
           sendToast({
             message: documentData?.id ? t`Document saved` : t`Document created`,
           });
-          dispatch(clearDraftCards());
           // Mark document as clean
           dispatch(setHasUnsavedChanges(false));
           return {
@@ -394,7 +357,6 @@ export const DocumentPage = ({
       editorInstance,
       isSaving,
       documentTitle,
-      draftCards,
       documentData?.id,
       updateDocument,
       createDocument,

@@ -2,6 +2,8 @@ import type { Editor } from "@tiptap/react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useUpdateCardMutation } from "metabase/api/card";
+import { useCreateDocumentCardMutation } from "metabase/api/document";
 import {
   ActionIcon,
   Box,
@@ -20,14 +22,10 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-import {
-  closeSidebar,
-  updateVisualizationType,
-  updateVizSettings,
-} from "../documents.slice";
+import { closeSidebar } from "../documents.slice";
 import { useCardData } from "../hooks/use-card-data";
-import { useDraftCardOperations } from "../hooks/use-draft-card-operations";
-import { getSelectedEmbedIndex } from "../selectors";
+import { getCurrentDocument, getSelectedEmbedIndex } from "../selectors";
+import { updateCardEmbedNodeId } from "../utils/editorNodeUtils";
 import { useVisualizationOptions } from "../utils/visualizationUtils";
 
 import S from "./EmbedQuestionSettingsSidebar.module.css";
@@ -42,58 +40,67 @@ export const EmbedQuestionSettingsSidebar = ({
   editorInstance,
 }: EmbedQuestionSettingsSidebarProps) => {
   const dispatch = useDispatch();
+  const document = useSelector(getCurrentDocument);
   const selectedEmbedIndex = useSelector(getSelectedEmbedIndex);
 
-  const {
-    card,
-    dataset,
-    isLoading,
-    series,
-    question,
-    draftCard,
-    regularDataset,
-  } = useCardData({ id: cardId });
+  const { card, dataset, isLoading, series, question } = useCardData({
+    id: cardId,
+  });
 
   const { sensibleItems, nonsensibleItems, selectedElem } =
     useVisualizationOptions(dataset, card?.display as CardDisplayType);
 
-  const { ensureDraftCard } = useDraftCardOperations(
-    draftCard,
-    card,
-    cardId,
-    editorInstance,
-    selectedEmbedIndex,
-    regularDataset,
+  const [updateCard] = useUpdateCardMutation();
+  const [createDocumentCard] = useCreateDocumentCardMutation();
+
+  const persistCardChange = useCallback(
+    async (patch: {
+      display?: CardDisplayType;
+      visualization_settings?: VisualizationSettings;
+    }) => {
+      if (!card || !document || selectedEmbedIndex === null) {
+        return;
+      }
+      const isDocOwned = card.document_id === document.id && card.id != null;
+      try {
+        if (isDocOwned) {
+          await updateCard({ id: card.id, ...patch }).unwrap();
+        } else {
+          const created = await createDocumentCard({
+            document_id: document.id,
+            name: card.name,
+            dataset_query: card.dataset_query,
+            display: patch.display ?? (card.display as CardDisplayType),
+            visualization_settings:
+              patch.visualization_settings ?? card.visualization_settings ?? {},
+          }).unwrap();
+          updateCardEmbedNodeId(editorInstance, selectedEmbedIndex, created.id);
+        }
+      } catch (error) {
+        console.error("Failed to persist card change:", error);
+      }
+    },
+    [
+      card,
+      document,
+      selectedEmbedIndex,
+      editorInstance,
+      updateCard,
+      createDocumentCard,
+    ],
   );
 
   const handleSettingsChange = (settings: VisualizationSettings) => {
-    if (selectedEmbedIndex !== null) {
-      if (!draftCard) {
-        const baseCard = card;
-        const newSettings = {
-          ...baseCard?.visualization_settings,
-          ...settings,
-        };
-        const actualCardId = ensureDraftCard(
-          { visualization_settings: newSettings },
-          true,
-        );
-        dispatch(updateVizSettings({ cardId: actualCardId, settings }));
-      } else {
-        dispatch(updateVizSettings({ cardId, settings }));
-      }
-    }
+    persistCardChange({
+      visualization_settings: {
+        ...card?.visualization_settings,
+        ...settings,
+      },
+    });
   };
 
   const handleVisualizationTypeChange = (display: CardDisplayType) => {
-    if (selectedEmbedIndex !== null) {
-      if (!draftCard) {
-        const actualCardId = ensureDraftCard({ display }, true);
-        dispatch(updateVisualizationType({ cardId: actualCardId, display }));
-      } else {
-        dispatch(updateVisualizationType({ cardId, display }));
-      }
-    }
+    persistCardChange({ display });
   };
 
   const handleDone = useCallback(() => {

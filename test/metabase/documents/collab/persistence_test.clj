@@ -1,12 +1,14 @@
 (ns metabase.documents.collab.persistence-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api.common :as api]
    [metabase.documents.collab.persistence :as collab.persistence]
    [metabase.documents.collab.prose-mirror :as collab.prose-mirror]
    [metabase.events.core :as events]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
+   (net.carcdr.ycrdt UpdateObserver YBindingFactory YDoc)
    (net.carcdr.yhocuspocus.extension DatabaseExtension)))
 
 (set! *warn-on-reflection* true)
@@ -115,3 +117,158 @@
           (is (some? bytes))
           (let [round-tripped (collab.prose-mirror/ydoc-bytes->pm-json bytes)]
             (is (= "prehydrated" (get-in round-tripped [:content 0 :content 0 :text])))))))))
+
+;;; ---------------------------------------------------------------
+;;; onStoreDocument card-cloning tests
+;;; ---------------------------------------------------------------
+
+(defn- ^YDoc ydoc-from-pm [pm]
+  (let [binding (YBindingFactory/auto)
+        doc     (.createDoc binding)]
+    (.applyUpdate doc (collab.prose-mirror/pm-json->ydoc-bytes pm))
+    doc))
+
+(defn- ast-card-ids [doc-map]
+  (->> (get-in doc-map [:content])
+       (keep #(get-in % [:attrs :id]))))
+
+(deftest save-with-cloning-clones-unowned-card-test
+  (testing "save-with-cloning! clones a referenced card that isn't owned by the doc and rewrites the id in both the PM JSON column and the ydoc bytes"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {source-card-id :id} {:name "Source"
+                                                       :collection_id coll-id
+                                                       :dataset_query (mt/mbql-query venues)}
+                     :model/Document {doc-id :id, entity-id :entity_id}
+                     {:name "Clone target"
+                      :collection_id coll-id
+                      :document {:type "doc"
+                                 :content [{:type "cardEmbed"
+                                            :attrs {:id source-card-id :name nil}}]}}]
+        (let [ydoc (ydoc-from-pm {:type "doc"
+                                  :content [{:type "cardEmbed"
+                                             :attrs {:id source-card-id :name nil}}]})]
+          (try
+            (@#'collab.persistence/save-with-cloning! entity-id (mt/user->id :crowberto) ydoc)
+            (finally (.close ydoc))))
+        (let [owned (t2/select :model/Card :document_id doc-id)
+              row   (t2/select-one [:model/Document :document :ydoc] :id doc-id)
+              new-id (:id (first owned))]
+          (is (= 1 (count owned))
+              "exactly one card row now belongs to the document")
+          (is (not= source-card-id new-id)
+              "the clone has a new id, leaving the original untouched")
+          (is (= [new-id] (ast-card-ids (:document row)))
+              "saved PM JSON references the clone")
+          (is (= [new-id]
+                 (ast-card-ids (collab.prose-mirror/ydoc-bytes->pm-json (:ydoc row))))
+              "saved ydoc bytes decode to the clone id"))))))
+
+(deftest save-with-cloning-no-op-when-no-embeds-test
+  (testing "pure-text YDocs skip cloning and behave identically to save-snapshot!"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Document {doc-id :id, entity-id :entity_id}
+                     {:name "Plain text" :document {:type "doc" :content []}}]
+        (let [ydoc (ydoc-from-pm {:type "doc"
+                                  :content [{:type "paragraph"
+                                             :content [{:type "text" :text "just words"}]}]})]
+          (try
+            (@#'collab.persistence/save-with-cloning! entity-id (mt/user->id :crowberto) ydoc)
+            (finally (.close ydoc))))
+        (is (zero? (t2/count :model/Card :document_id doc-id))
+            "no cards were created")
+        (is (= "just words"
+               (-> (t2/select-one [:model/Document :document] :id doc-id)
+                   :document
+                   (get-in [:content 0 :content 0 :text])))
+            "PM JSON persisted unchanged")))))
+
+(deftest save-with-cloning-skips-unreadable-cards-test
+  (testing "a per-card read-check failure is skipped and logged, not aborted; other embeds still clone"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {readable-id :id} {:name "Readable"
+                                                    :collection_id coll-id
+                                                    :dataset_query (mt/mbql-query venues)}
+                     :model/Card {forbidden-id :id} {:name "Forbidden"
+                                                     :collection_id coll-id
+                                                     :dataset_query (mt/mbql-query users)}
+                     :model/Document {doc-id :id, entity-id :entity_id}
+                     {:name "Mixed"
+                      :collection_id coll-id
+                      :document {:type "doc"
+                                 :content [{:type "cardEmbed" :attrs {:id readable-id :name nil}}
+                                           {:type "cardEmbed" :attrs {:id forbidden-id :name nil}}]}}]
+        (let [orig api/read-check]
+          (with-redefs [api/read-check (fn [& args]
+                                         (let [obj (first args)]
+                                           (if (and (map? obj)
+                                                    (= forbidden-id (:id obj))
+                                                    (:dataset_query obj))
+                                             (throw (ex-info "denied" {:status-code 403}))
+                                             (apply orig args))))]
+            (let [ydoc (ydoc-from-pm {:type "doc"
+                                      :content [{:type "cardEmbed"
+                                                 :attrs {:id readable-id :name nil}}
+                                                {:type "cardEmbed"
+                                                 :attrs {:id forbidden-id :name nil}}]})]
+              (try
+                (@#'collab.persistence/save-with-cloning! entity-id (mt/user->id :crowberto) ydoc)
+                (finally (.close ydoc))))))
+        (let [owned (t2/select :model/Card :document_id doc-id)
+              saved (-> (t2/select-one [:model/Document :document] :id doc-id)
+                        :document
+                        ast-card-ids
+                        set)]
+          (is (= 1 (count owned))
+              "only the readable card was cloned")
+          (is (contains? saved forbidden-id)
+              "forbidden embed still points at the original card")
+          (is (contains? saved (:id (first owned)))
+              "readable embed now points at its clone"))))))
+
+(deftest save-with-cloning-is-idempotent-test
+  (testing "once cloned, a second save finds no unowned cards and creates nothing new"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Card {source-card-id :id} {:name "Source"
+                                                       :collection_id coll-id
+                                                       :dataset_query (mt/mbql-query venues)}
+                     :model/Document {doc-id :id, entity-id :entity_id}
+                     {:name "Idempotent"
+                      :collection_id coll-id
+                      :document {:type "doc"
+                                 :content [{:type "cardEmbed"
+                                            :attrs {:id source-card-id :name nil}}]}}]
+        (let [ydoc (ydoc-from-pm {:type "doc"
+                                  :content [{:type "cardEmbed"
+                                             :attrs {:id source-card-id :name nil}}]})]
+          (try
+            (@#'collab.persistence/save-with-cloning! entity-id (mt/user->id :crowberto) ydoc)
+            (@#'collab.persistence/save-with-cloning! entity-id (mt/user->id :crowberto) ydoc)
+            (finally (.close ydoc))))
+        (is (= 1 (t2/count :model/Card :document_id doc-id))
+            "second save is a no-op — the first clone already owns the embed")))))
+
+(deftest ^:parallel rewrite-card-embed-ids-single-broadcast-test
+  (testing "rewriting N cardEmbed ids inside one YTransaction fires observeUpdateV1 once"
+    (let [pm {:type "doc"
+              :content [{:type "cardEmbed" :attrs {:id 10 :name nil}}
+                        {:type "cardEmbed" :attrs {:id 20 :name nil}}
+                        {:type "cardEmbed" :attrs {:id 30 :name nil}}]}
+          ydoc (ydoc-from-pm pm)
+          fires (atom 0)
+          sub   (.observeUpdateV1 ydoc
+                                  (reify UpdateObserver
+                                    (onUpdate [_ _update _origin]
+                                      (swap! fires inc))))]
+      (try
+        (@#'collab.persistence/rewrite-card-embed-ids! ydoc {10 100, 20 200, 30 300})
+        (is (= 1 @fires) "one broadcast for the whole batch")
+        (is (= [100 200 300]
+               (sort (ast-card-ids (collab.prose-mirror/ydoc-bytes->pm-json
+                                    (.encodeStateAsUpdate ydoc)))))
+            "all three ids were rewritten")
+        (finally
+          (.close sub)
+          (.close ydoc))))))

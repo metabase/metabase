@@ -55,27 +55,21 @@
 ;; ---------------------------------------------------------------
 ;; Typed-attr round-trip notes
 ;; ---------------------------------------------------------------
-;; Y-CRDT's YXmlElement stores attrs as strings (`.setAttribute(String,
-;; String)`), so numeric PM attrs come back as strings after a round trip
-;; through the YDoc. This is the SAME behavior TipTap's
-;; @tiptap/extension-collaboration produces — the frontend's TipTap schema
-;; recovers types on parse via each node's `parseHTML` handler. Our server
-;; never re-types attrs because it only shuffles the YDoc state through.
-;;
-;; The value of the schema port is NOT typed attrs — it's that unknown
-;; node types fail loudly instead of silently dropping, and that content
-;; models get validated.
+;; ycrdt v0.2+ preserves attribute runtime types through the YDoc round
+;; trip: integers stay `Long`, floats stay `Double`, strings stay `String`.
+;; Prior (v0.1.x) versions coerced every attribute to `String` on read,
+;; which forced clients to re-type via TipTap's `parseHTML`; that coercion
+;; is gone. Numeric attrs now come back as integers directly.
 
 (deftest ^:parallel heading-level-round-trip-test
-  (testing "heading.level survives the YDoc round trip (as string, per wire format)"
+  (testing "heading.level survives the YDoc round trip as an integer"
     (let [doc {:type "doc"
                :content [{:type    "heading"
                           :attrs   {:level 2}
                           :content [{:type "text" :text "Title"}]}]}
           rt  (round-trip doc)]
       (is (= "heading" (get-in rt [:content 0 :type])))
-      ;; Numeric attrs come back as strings — TipTap re-types on the client.
-      (is (= "2" (get-in rt [:content 0 :attrs :level]))))))
+      (is (= 2 (get-in rt [:content 0 :attrs :level]))))))
 
 (deftest ^:parallel ordered-list-start-round-trip-test
   (let [doc {:type "doc"
@@ -85,7 +79,7 @@
                                    :content [{:type "paragraph"
                                               :content [{:type "text" :text "three"}]}]}]}]}
         rt (round-trip doc)]
-    (is (= "3" (get-in rt [:content 0 :attrs :start])))))
+    (is (= 3 (get-in rt [:content 0 :attrs :start])))))
 
 (deftest ^:parallel card-embed-round-trip-test
   (testing "cardEmbed node with id + name survives the round trip"
@@ -94,7 +88,7 @@
                           :attrs {:id 42 :name "My card"}}]}
           rt  (round-trip doc)]
       (is (= "cardEmbed" (get-in rt [:content 0 :type])))
-      (is (= "42" (get-in rt [:content 0 :attrs :id])))
+      (is (= 42 (get-in rt [:content 0 :attrs :id])))
       (is (= "My card" (get-in rt [:content 0 :attrs :name]))))))
 
 (deftest ^:parallel smart-link-round-trip-test
@@ -107,7 +101,7 @@
           rt     (round-trip doc)
           node   (get-in rt [:content 0 :content 0])]
       (is (= "smartLink" (:type node)))
-      (is (= "7" (get-in node [:attrs :entityId])))
+      (is (= 7 (get-in node [:attrs :entityId])))
       (is (= "card" (get-in node [:attrs :model])))
       (is (= "Sales" (get-in node [:attrs :label])))
       (is (= "/card/7" (get-in node [:attrs :href]))))))
@@ -119,8 +113,8 @@
                         :content [{:type  "cardEmbed"
                                    :attrs {:id 1 :name "x"}}]}]}
         rt  (round-trip doc)]
-    (is (= "500" (get-in rt [:content 0 :attrs :height])))
-    (is (= "300" (get-in rt [:content 0 :attrs :minHeight])))))
+    (is (= 500 (get-in rt [:content 0 :attrs :height])))
+    (is (= 300 (get-in rt [:content 0 :attrs :minHeight])))))
 
 (deftest ^:parallel json-string-input-accepted-test
   (testing "pm-json->ydoc-bytes accepts both maps and JSON strings"

@@ -12,13 +12,10 @@ import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { useLazyMetabotGenerateContentQuery } from "metabase/api";
+import { useCreateDocumentCardMutation } from "metabase/api/document";
 import CS from "metabase/css/core/index.css";
 import { trackDocumentAskMetabot } from "metabase/documents/analytics";
-import {
-  createDraftCard,
-  generateDraftCardId,
-  loadMetadataForDocumentCard,
-} from "metabase/documents/documents.slice";
+import { loadMetadataForDocumentCard } from "metabase/documents/documents.slice";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
@@ -158,6 +155,7 @@ export const MetabotComponent = memo(
     const [isLoading, setIsLoading] = useState(false);
     const [errorText, setErrorText] = useState("");
     const [queryMetabot] = useLazyMetabotGenerateContentQuery();
+    const [createDocumentCard] = useCreateDocumentCardMutation();
     const { canUseMetabot: isMetabotEnabled } = useUserMetabotPermissions();
     const metabotName = useMetabotName();
 
@@ -198,52 +196,34 @@ export const MetabotComponent = memo(
         return;
       }
 
-      const newCardId = generateDraftCardId();
-      const card: Card = {
-        ...data.draft_card,
-        id: newCardId,
-        entity_id: "entity_id" as Card["entity_id"],
-        created_at: "",
-        updated_at: "",
-        name: data.draft_card.name || t`Exploration`,
-        description: null,
-        type: "question",
-        public_uuid: null,
-        enable_embedding: false,
-        embedding_params: null,
-        can_write: false,
-        can_restore: false,
-        can_delete: false,
-        can_manage_db: false,
-        initially_published_at: null,
-        collection_id: null,
-        collection_position: null,
-        dashboard: null,
-        dashboard_id: null,
-        dashboard_count: null,
-        result_metadata: [],
-        last_query_start: null,
-        average_query_time: null,
-        cache_ttl: null,
-        archived: false,
-      };
+      if (!document) {
+        setErrorText(t`Could not find the current document`);
+        return;
+      }
 
       trackDocumentAskMetabot(document);
-      await dispatch(loadMetadataForDocumentCard(card));
 
-      dispatch(
-        createDraftCard({
-          originalCard: card,
-          modifiedData: {},
-          draftId: newCardId,
-        }),
-      );
+      let createdCard: Card;
+      try {
+        createdCard = await createDocumentCard({
+          document_id: document.id,
+          name: data.draft_card.name || t`Exploration`,
+          dataset_query: data.draft_card.dataset_query,
+          display: data.draft_card.display,
+          visualization_settings: data.draft_card.visualization_settings,
+        }).unwrap();
+      } catch (err) {
+        setErrorText(t`Failed to save the ${metabotName} question`);
+        return;
+      }
+
+      await dispatch(loadMetadataForDocumentCard(createdCard));
 
       editor.commands.insertContentAt(nodePosition, [
         wrapCardEmbed({
           type: "cardEmbed",
           attrs: {
-            id: newCardId,
+            id: createdCard.id,
           },
         }),
         {

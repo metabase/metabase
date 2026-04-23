@@ -59,6 +59,25 @@
   [^YHocuspocus server ^Transport transport ^HashMap ctx]
   (.handleConnection server transport ctx))
 
+(defn- on-server-ready-fn
+  "Build the `:on-open` callback used when the yhocuspocus server is
+   available — dispatches the connection to the server under the resolved
+   user context."
+  [^YHocuspocus server ^Transport transport conn-id remote user-id]
+  (fn [_sock]
+    (log/infof "collab: connection open %s user=%s remote=%s"
+               conn-id user-id remote)
+    (call-handle-connection! server transport
+                             (make-context conn-id remote user-id))))
+
+(defn- on-no-server-fn
+  "Build the `:on-open` callback used when the yhocuspocus server is
+   unavailable — log and close the socket with a 1011 status."
+  []
+  (fn [sock]
+    (log/warn "collab: rejecting connection — server unavailable")
+    (ring.ws/close sock 1011 "document-collab server unavailable")))
+
 (defn- ws-response [request]
   (let [conn-id  (str (random-uuid))
         remote   (:remote-addr request)
@@ -67,17 +86,13 @@
         [^Transport transport ws-listener] (collab.transport/create-ring-transport conn-id remote)
         listener (cond-> ws-listener
                    server
-                   (wrap-on-open (fn on-server-ready [_sock]
-                                   (log/infof "collab: connection open %s user=%s remote=%s"
-                                              conn-id user-id remote)
-                                   (call-handle-connection! server transport
-                                                            (make-context conn-id remote user-id))))
+                   (wrap-on-open (on-server-ready-fn server transport conn-id remote user-id))
+
                    (not server)
-                   (wrap-on-open (fn on-no-server [sock]
-                                   (log/warn "collab: rejecting connection — server unavailable")
-                                   (ring.ws/close sock 1011 "document-collab server unavailable")))
+                   (wrap-on-open (on-no-server-fn))
+
                    true
-                   (wrap-on-close (fn on-close [code]
+                   (wrap-on-close (fn [code]
                                     (log/infof "collab: connection closed %s user=%s code=%s"
                                                conn-id user-id code))))]
     {::ring.ws/listener listener}))

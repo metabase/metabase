@@ -3,7 +3,6 @@ import {
   createAsyncThunk,
   createSlice,
 } from "@reduxjs/toolkit";
-import _ from "underscore";
 
 import { loadMetadataForCard } from "metabase/questions/actions";
 import type {
@@ -11,22 +10,14 @@ import type {
   DocumentsState,
   MentionCacheItem,
 } from "metabase/redux/store/documents";
-import type {
-  Card,
-  CardDisplayType,
-  Document,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { Card, Document } from "metabase-types/api";
 
 import { getMentionsCacheKey } from "./utils/mentionsUtils";
-
-let nextDraftCardId = -1;
 
 export const loadMetadataForDocumentCard = createAsyncThunk(
   "documents/loadMetadataForDocumentCard",
   async (card: Card, { dispatch }) => {
-    const cardForMetadata = card.id < 0 ? _.omit(card, "id") : card;
-    await dispatch(loadMetadataForCard(cardForMetadata));
+    await dispatch(loadMetadataForCard(card));
   },
 );
 
@@ -34,7 +25,6 @@ export const initialState: DocumentsState = {
   selectedEmbedIndex: null,
   cardEmbeds: [],
   currentDocument: null,
-  draftCards: {},
   mentionsCache: {},
   isCommentSidebarOpen: false,
   childTargetId: undefined,
@@ -53,30 +43,6 @@ const documentsSlice = createSlice({
     ) => {
       state.selectedEmbedIndex = action.payload.embedIndex;
     },
-    updateVizSettings: (
-      state,
-      action: PayloadAction<{
-        cardId: number;
-        settings: VisualizationSettings;
-      }>,
-    ) => {
-      const { cardId, settings } = action.payload;
-      if (state.draftCards[cardId]) {
-        state.draftCards[cardId].visualization_settings = {
-          ...state.draftCards[cardId].visualization_settings,
-          ...settings,
-        };
-      }
-    },
-    updateVisualizationType: (
-      state,
-      action: PayloadAction<{ cardId: number; display: CardDisplayType }>,
-    ) => {
-      const { cardId, display } = action.payload;
-      if (state.draftCards[cardId]) {
-        state.draftCards[cardId].display = display;
-      }
-    },
     closeSidebar: (state) => {
       state.selectedEmbedIndex = null;
     },
@@ -90,24 +56,6 @@ const documentsSlice = createSlice({
     },
     resetDocuments: () => {
       return initialState;
-    },
-    createDraftCard: (
-      state,
-      action: PayloadAction<{
-        originalCard: Card | undefined;
-        modifiedData: Partial<Card>;
-        draftId: number;
-      }>,
-    ) => {
-      const { originalCard, modifiedData, draftId } = action.payload;
-      state.draftCards[draftId] = {
-        ...originalCard,
-        ...modifiedData,
-        id: draftId,
-      } as Card;
-    },
-    clearDraftCards: (state) => {
-      state.draftCards = {};
     },
     updateMentionsCache: (
       state,
@@ -138,14 +86,10 @@ const documentsSlice = createSlice({
 
 export const {
   openVizSettingsSidebar,
-  updateVizSettings,
-  updateVisualizationType,
   closeSidebar,
   setCardEmbeds,
   setCurrentDocument,
   resetDocuments,
-  createDraftCard,
-  clearDraftCards,
   updateMentionsCache,
   setIsCommentSidebarOpen,
   setChildTargetId,
@@ -153,11 +97,5 @@ export const {
   setHasUnsavedChanges,
   setIsHistorySidebarOpen,
 } = documentsSlice.actions;
-
-export const generateDraftCardId = (): number => {
-  const draftId = nextDraftCardId;
-  nextDraftCardId -= 1;
-  return draftId;
-};
 
 export const documentsReducer = documentsSlice.reducer;
