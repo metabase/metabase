@@ -4,11 +4,11 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 import { t } from "ttag";
 
-import { Revision } from "metabase/admin/datamodel/components/revisions/Revision";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import S from "metabase/common/components/List/List.module.css";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
+import { Revision } from "metabase/querying/segments/components/revisions/Revision";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { getShallowTables as getTables } from "metabase/selectors/metadata";

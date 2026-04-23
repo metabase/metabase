@@ -38,7 +38,10 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
             withGlobalClasses: withGlobalClasses ?? isInstanceToRender,
           }}
         >
-          <ThemeProvider theme={themeOverride}>
+          <ThemeProvider
+            theme={themeOverride}
+            cssVariablesSelector=".mb-wrapper"
+          >
             {isInstanceToRender && <GlobalSdkCssVariables />}
 
             {children}

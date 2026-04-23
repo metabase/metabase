@@ -20,7 +20,6 @@ import {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
   PLUGIN_TABLE_EDITING,
-  PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
 import { connect, useSelector } from "metabase/redux";
@@ -132,12 +131,6 @@ function DatabaseEditAppInner({
                   />
 
                   <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
-                    database={database}
-                    settingsAvailable={settingsAvailable?.settings}
-                    updateDatabase={updateDatabase}
-                  />
-
-                  <PLUGIN_WORKSPACES.AdminDatabaseWorkspacesSection
                     database={database}
                     settingsAvailable={settingsAvailable?.settings}
                     updateDatabase={updateDatabase}
