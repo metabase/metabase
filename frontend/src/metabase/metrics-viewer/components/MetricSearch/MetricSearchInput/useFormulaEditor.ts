@@ -75,12 +75,9 @@ export type UseFormulaEditorResult = {
   handleContainerClick: (e: React.MouseEvent) => void;
   handleEditorClick: () => void;
   handleEditorKeyDown: (e: React.KeyboardEvent) => void;
-  handleDropdownHasSelectionChange: (hasSelection: boolean) => void;
   handleRun: () => void;
   // Refs needed by editorExtensions builder
   handleRunRef: MutableRefObject<() => void>;
-  isOpenRef: MutableRefObject<boolean>;
-  dropdownHasSelectionRef: MutableRefObject<boolean>;
 };
 
 export function useFormulaEditor({
@@ -100,8 +97,6 @@ export function useFormulaEditor({
   // currentWord is the word under the cursor, used as the dropdown search query
   const [currentWord, setCurrentWord] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const isOpenRef = useRef(isOpen);
-  isOpenRef.current = isOpen;
   const [isFocused, setIsFocused] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   // Pixel position (viewport-relative) of the current word's left edge and
@@ -127,9 +122,6 @@ export function useFormulaEditor({
   // handleInputFocus initializes the session; set back to false in commitAndCollapse.
   // Used to prevent autoFocus / view.focus() re-entrancy from reinitializing text.
   const isEditingSessionActiveRef = useRef(false);
-  // Tracks whether the dropdown has a keyboard-highlighted item.
-  // When true, Enter should select from the dropdown, not run the expression.
-  const dropdownHasSelectionRef = useRef(false);
 
   const handleRunRef = useRef<() => void>(() => {});
   // Text captured at focus time — used to detect whether the user actually
@@ -442,7 +434,6 @@ export function useFormulaEditor({
 
       setCurrentWord("");
       setIsOpen(false);
-      dropdownHasSelectionRef.current = false;
 
       // Return focus to the editor after dropdown closes
       setTimeout(() => {
@@ -578,13 +569,6 @@ export function useFormulaEditor({
     }
   }, []);
 
-  const handleDropdownHasSelectionChange = useCallback(
-    (hasSelection: boolean) => {
-      dropdownHasSelectionRef.current = hasSelection;
-    },
-    [],
-  );
-
   /** Validate the expression and either show an error or commit + run the query. */
   const handleRun = useCallback(() => {
     const view = editorRef.current?.view;
@@ -641,10 +625,7 @@ export function useFormulaEditor({
     handleContainerClick,
     handleEditorClick,
     handleEditorKeyDown,
-    handleDropdownHasSelectionChange,
     handleRun,
     handleRunRef,
-    isOpenRef,
-    dropdownHasSelectionRef,
   };
 }

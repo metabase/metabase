@@ -100,7 +100,6 @@ export function MetricSearchInput({
     handleEditorKeyDown,
     handleRun,
     handleRunRef,
-    dropdownHasSelectionRef,
   } = useFormulaEditor({
     formulaEntities,
     onFormulaEntitiesChange,
@@ -117,16 +116,10 @@ export function MetricSearchInput({
   const editorExtensions = useMemo(
     () =>
       buildEditorExtensions(formulaEntities.length, {
-        dropdownHasSelectionRef,
         handleRunRef,
         dropdownRef,
       }),
-    [
-      formulaEntities.length,
-      dropdownHasSelectionRef,
-      handleRunRef,
-      dropdownRef,
-    ],
+    [formulaEntities.length, handleRunRef, dropdownRef],
   );
 
   const isCollapsed = !isFocused && formulaEntities.length > 0;

@@ -1,1 +1,0 @@
-export { MetricResultItem } from "./MetricResultItem";

@@ -3,7 +3,6 @@ import type {
   RowValues,
 } from "metabase-types/api";
 import { createMockColumn } from "metabase-types/api/mocks";
-import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 import { createMockSingleSeries } from "metabase-types/api/mocks/series";
 
 import type { ExpressionDimensionItem } from "../components/DimensionPillBar";
@@ -471,7 +470,7 @@ describe("getSelectedMetricsInfo", () => {
   });
 
   describe("measure definition", () => {
-    it("extracts measure id, name, tableId, and sourceType", () => {
+    it("extracts measure id, name, and sourceType", () => {
       const sourceId: MetricSourceId = `measure:${TOTAL_MEASURE.id}`;
       const result = getSelectedMetricsInfo(
         [{ id: sourceId, definition: measureDefinition }],
@@ -484,7 +483,6 @@ describe("getSelectedMetricsInfo", () => {
           sourceType: "measure",
           name: "Total Revenue",
           isLoading: false,
-          tableId: ORDERS_ID,
         },
       ]);
     });
@@ -514,7 +512,6 @@ describe("getSelectedMetricsInfo", () => {
         sourceType: "measure",
         name: "Total Revenue",
         isLoading: false,
-        tableId: ORDERS_ID,
       },
     ]);
   });
@@ -543,7 +540,6 @@ describe("getSelectedMetricsInfo", () => {
         sourceType: "measure",
         name: "Total Revenue",
         isLoading: true,
-        tableId: ORDERS_ID,
       },
     ]);
   });

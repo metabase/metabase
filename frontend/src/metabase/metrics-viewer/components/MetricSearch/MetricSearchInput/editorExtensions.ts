@@ -10,7 +10,6 @@ import { metricTokenHighlight } from "./metricTokenHighlight";
 import { operatorHighlight } from "./operatorHighlight";
 
 type EditorExtensionRefs = {
-  dropdownHasSelectionRef: { current: boolean };
   handleRunRef: { current: () => void };
   dropdownRef: React.RefObject<MetricSearchDropdownRef>;
 };
@@ -26,17 +25,12 @@ export function buildEditorExtensions(
     metricTokenHighlight,
     placeholder(formulaEntityCount === 0 ? t`Search for metrics...` : ""),
     // Prevent Enter from creating newlines; trigger run when dirty.
-    // If the dropdown has a keyboard-highlighted item, skip running —
-    // let the dropdown's Enter handler select the item instead.
     keymap.of([
       { key: "Mod-z", run: undo, preventDefault: true },
       { key: "Mod-Shift-z", run: redo, preventDefault: true },
       {
         key: "Enter",
         run: () => {
-          // if (!refs.dropdownHasSelectionRef.current) {
-          //   refs.handleRunRef.current();
-          // }
           refs.handleRunRef.current();
           return true;
         },
