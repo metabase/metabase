@@ -24,4 +24,4 @@
   :visibility :internal
   :setter     :none
   :export?    false
-  :default    30)
+  :default    10)
