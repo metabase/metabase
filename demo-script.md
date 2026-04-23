@@ -28,11 +28,90 @@
 
 1. have a metabase instance locally with the github_raw data loaded on it. This is the parent. You'll need an api key to fetch metadata.
 
-   - ```shell
-MB_CONFIG_FILE_PATH=./parent_config.yml;MB_DB_CONNECTION_URI="postgres://localhost:5433/metabase?user=metabase&password=password";MB_PREMIUM_EMBEDDING_TOKEN=<token> clojure -M:dev:ee:ee-dev:drivers:drivers-dev:run
+Run postgres locally to host both the app db and DWH.
+
+```shell
+# Download from https://drive.google.com/file/d/10rhqV-xfwuUB6i2zJx9AAuHXa__2b5ar/view?usp=drive_link
+brew services start postgresql
+psql postgres
+create database montreal_demo_dwh;
+\c montreal_demo_dwh
+\i ~/Downloads/github_raw.sql
 ```
-1. create a workspace on parent, add the github data
-1. download config.yaml
+
+```shell
+cat > ./parent_config.yml <<EOF
+version: 1
+config:
+  users:
+    - first_name: Crowberto
+      last_name: C
+      email: crowberto@metabase.com
+      password: blackjet
+      is_superuser: true
+  databases:
+    - name: montreal_demo_dwh
+      engine: postgres
+      details:
+        host: localhost
+        port: 5432
+        user: $(whoami)
+        password:
+        dbname: montreal_demo_dwh
+        schema-filters-type: inclusion
+        schema-filters-patterns: raw_github
+EOF
+```
+
+```shell
+MB_CONFIG_FILE_PATH=./parent_config.yml \
+MB_DB_CONNECTION_URI="postgres://localhost:5432/metabase?user=metabase&password=password" \
+MB_PREMIUM_EMBEDDING_TOKEN=<token> \
+clojure -M:dev:ee:ee-dev:drivers:drivers-dev:run
+```
+
+1. create a workspace on parent through the UI
+1. download config.yaml It should look like this:
+
+```shell
+cat > ./child_config.yml <<EOF
+version: 1
+config:
+  api-keys:
+    - name: "Claude API key"
+      group: admin
+      creator: crowberto@metabase.com
+      key: mb_adminapikey
+  databases:
+  - name: montreal_demo_dwh (postgres)
+    engine: postgres
+    details:
+      host: localhost
+      port: 5432
+      timezone: America/Los_Angeles
+      db: montreal_demo_dwh
+      user: <user from ws init>
+      password: <pw from ws init>
+      schema-filters-type: inclusion
+      schema-filters-patterns: raw_github
+  users:
+  - first_name: Workspace
+    last_name: Admin
+    email: workspace@workspace.local
+    password: password1
+  workspace:
+    name: New workspace
+    databases:
+      test-data (postgres):
+        input_schemas:
+        - raw_github
+        output_schema: <schema from ws init>
+EOF
+```
+1. Download metadata.json. It should look like this:
+
+1. Download field values.json. It should look like this:
+
 1. create an empty github, add a single empty file to it and comit
 1. start up local instance with config.yaml, add repo from above `file:///tmp/repo`
 1. open up claude code in git repo directory. tell it url of local instance and api key to local instance

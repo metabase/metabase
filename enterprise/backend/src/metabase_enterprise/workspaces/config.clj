@@ -3,6 +3,8 @@
    [clojure.string :as str]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase.api-keys.core :as api-key]
+   [metabase.util.secret :as u.secret]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
@@ -10,12 +12,35 @@
 
 (def ^:private default-user
   "The single admin user bundled into the exported config — lets a fresh Metabase
-  instance bootstrap from this file and log in immediately. Callers are expected
-  to change the password after import."
-  {:first_name "Workspace"
-   :last_name  "Admin"
-   :email      "workspace@workspace.local"
-   :password   "password1"})
+  instance bootstrap from this file and log in immediately. Also the `creator`
+  for the bundled api-key (that section requires the creator's email to resolve
+  to a superuser on import). Callers are expected to change the password after
+  import."
+  {:first_name   "Workspace"
+   :last_name    "Admin"
+   :email        "workspace@workspace.local"
+   :password     "password1"
+   :is_superuser true})
+
+(defn- generate-api-key-string
+  "Return a fresh plaintext API key string in the `mb_...` format the import
+  handler expects. The key is never persisted in the source instance; it only
+  takes effect when the target instance processes the imported config."
+  []
+  (u.secret/expose (api-key/generate-key)))
+
+(def ^:private api-key-name
+  "Fixed name for the bundled API key. Metabase's api-keys config importer is
+  idempotent by name, so a fresh key generated per export import-skips on a
+  target that already has this key — the existing key stays active. That's the
+  intended behavior: import once, reuse forever."
+  "Workspace API Key")
+
+(defn- api-key-entry []
+  {:name    api-key-name
+   :key     (generate-api-key-string)
+   :group   "admin"
+   :creator (:email default-user)})
 
 (defn- database-entry [wsd db]
   {:name    (:name db)
@@ -59,6 +84,7 @@
         {:version 1
          :config  {:databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
                    :users     [default-user]
+                   :api-keys  [(api-key-entry)]
                    :workspace {:name      (:name ws)
                                :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
 
