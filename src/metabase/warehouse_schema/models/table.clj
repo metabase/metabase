@@ -438,7 +438,7 @@
 
 (defn delete-orphaned-provisional-table!
   "If `table-id` points at an inactive provisional table that is not referenced by any other
-   transform or workspace row (excluding `exclude-transform-id`), delete it."
+   transform (excluding `exclude-transform-id`), delete it."
   [table-id exclude-transform-id]
   (when table-id
     (when-let [table (t2/select-one :model/Table :id table-id
@@ -446,29 +446,17 @@
                                     :data_source :metabase-transform)]
       (let [referenced?
             (seq
-             (t2/query {:union
-                        (cons
-                         {:select [[[:inline 1] :ref]]
-                          :from   [:transform]
-                          :where  [:and
-                                   [:= :target_table_id (:id table)]
-                                   [:not= :id exclude-transform-id]]}
-                         (for [[table-name column-name]
-                               [["workspace_input" "table_id"]
-                                ["workspace_output" "global_table_id"]
-                                ["workspace_output" "isolated_table_id"]
-                                ["workspace_output_external" "global_table_id"]
-                                ["workspace_output_external" "isolated_table_id"]
-                                ["workspace_input_external" "table_id"]]]
-                           {:select [[[:inline 1] :ref]]
-                            :from   [(keyword table-name)]
-                            :where  [:= (keyword column-name) (:id table)]}))}))]
+             (t2/query {:select [[[:inline 1] :ref]]
+                        :from   [:transform]
+                        :where  [:and
+                                 [:= :target_table_id (:id table)]
+                                 [:not= :id exclude-transform-id]]}))]
         (when-not referenced?
           (t2/delete! :model/Table :id (:id table)))))))
 
 (defn gc-transform-target-tables!
   "Deletes provisional table rows (created by [[upsert-transform-target-table!]]) that are no longer
-   referenced by any Transform or workspace table. Safe because these rows were never active,
+   referenced by any Transform. Safe because these rows were never active,
    so they have no child records.
 
    Note: this only handles *inactive* provisional tables. Active tables that were previously
@@ -485,20 +473,11 @@
       (let [referenced-ids
             (into #{}
                   (map :id)
-                  (t2/query {:union
-                             (for [[table-name column-name]
-                                   [["transform" "target_table_id"]
-                                    ["workspace_input" "table_id"]
-                                    ["workspace_output" "global_table_id"]
-                                    ["workspace_output" "isolated_table_id"]
-                                    ["workspace_output_external" "global_table_id"]
-                                    ["workspace_output_external" "isolated_table_id"]
-                                    ["workspace_input_external" "table_id"]]]
-                               {:select [[(keyword column-name) :id]]
-                                :from   [(keyword table-name)]
-                                :where  [:and
-                                         [:not= (keyword column-name) nil]
-                                         [:in (keyword column-name) candidate-ids]]})}))
+                  (t2/query {:select [[:target_table_id :id]]
+                             :from   [:transform]
+                             :where  [:and
+                                      [:not= :target_table_id nil]
+                                      [:in :target_table_id candidate-ids]]}))
             dead-ids (into [] (remove referenced-ids) candidate-ids)]
         (when (seq dead-ids)
           (log/infof "Deleting %d orphaned transform target table(s)" (count dead-ids))
@@ -708,7 +687,7 @@
                :archived_at    (serdes/date)
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
-               :db_id          (serdes/fk :model/Database :name)
+               :db_id          (serdes/fk :model/Database)
                :collection_id  (serdes/fk :model/Collection)
                :transform_id   (serdes/fk :model/Transform)}
    :defaults {:is_defective_duplicate  false

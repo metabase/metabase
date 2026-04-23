@@ -170,7 +170,6 @@ config:
     jwt-attribute-tenant: '@tenant'
     jwt-attribute-tenant-attributes: '@tenant.attributes'
     jwt-enabled: false
-    jwt-enabled-and-configured: false
     jwt-group-mappings: {}
     jwt-group-sync: false
     jwt-identity-provider-uri: null
@@ -285,6 +284,7 @@ config:
     slack-connect-client-id: null
     slack-connect-client-secret: null
     slack-connect-enabled: false
+    slack-connect-signing-secret-version: 0
     slack-connect-user-provisioning-enabled: true
     smtp-override-enabled: false
     source-address-header: X-Forwarded-For

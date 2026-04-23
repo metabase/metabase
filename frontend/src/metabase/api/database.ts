@@ -5,8 +5,6 @@ import type {
   AutocompleteSuggestion,
   CardAutocompleteRequest,
   CardAutocompleteSuggestion,
-  CheckWorkspacePermissionsRequest,
-  CheckWorkspacePermissionsResponse,
   CreateDatabaseRequest,
   Database,
   DatabaseId,
@@ -277,18 +275,6 @@ export const databaseApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [tag("field-values"), tag("parameter-values")]),
     }),
-    checkWorkspacePermissions: builder.mutation<
-      CheckWorkspacePermissionsResponse,
-      CheckWorkspacePermissionsRequest
-    >({
-      query: ({ id, cached = true }) => ({
-        method: "POST",
-        url: `/api/database/${id}/permission/workspace/check`,
-        body: { cached },
-      }),
-      invalidatesTags: (_, error, { id }) =>
-        invalidateTags(error, [idTag("database", id)]),
-    }),
     addSampleDatabase: builder.mutation<Database, void>({
       query: () => ({
         method: "POST",
@@ -346,7 +332,6 @@ export const {
   useSyncDatabaseSchemaMutation,
   useRescanDatabaseFieldValuesMutation,
   useDiscardDatabaseFieldValuesMutation,
-  useCheckWorkspacePermissionsMutation,
   useListAutocompleteSuggestionsQuery,
   useLazyListAutocompleteSuggestionsQuery,
   useAddSampleDatabaseMutation,

@@ -182,8 +182,7 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
         GET(tileUrl, {
           fetch: true,
           signal: controller.signal,
-          transformResponse: ({ response }: { response: Response }) => response,
-          // TODO: Remove  casting after api.js is migrated to TS
+          transformResponse: ({ response }) => response,
         })() as Promise<Response>
       )
         .then((response) => response.blob())

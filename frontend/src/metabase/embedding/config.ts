@@ -1,7 +1,6 @@
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { getIsEmbedPreview } from "metabase/get-is-embed-preview";
 import api from "metabase/utils/api";
-import { isWithinIframe } from "metabase/utils/iframe";
+import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 type InternalEmbeddingConfig = {
   isPublicEmbedding: boolean;
@@ -25,7 +24,7 @@ export function setIsStaticEmbedding() {
    * This header is only used for analytics and for checking if we want to disable some features in the
    * embedding iframe (only for Documents at the time of this comment)
    */
-  if (!getIsEmbedPreview()) {
+  if (!isEmbedPreview()) {
     api.requestClient = "embedding-iframe-static";
   }
   EMBEDDING_CONFIG.isStaticEmbedding = true;
@@ -41,4 +40,12 @@ export function isStaticEmbedding() {
 
 export function isEmbedding() {
   return isWithinIframe() || isEmbeddingSdk();
+}
+
+/**
+ * Detect if this page is embedded in itself, i.e. it's an embed preview.
+ * It will need to do something different if we ever embed Metabase in itself for another reason.
+ */
+export function isEmbedPreview() {
+  return IFRAMED_IN_SELF;
 }

@@ -3,10 +3,10 @@ import { Route } from "react-router";
 
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { createMockState } from "metabase/redux/store/mocks/state";
 import { dataStudioArchivedSnippets } from "metabase/utils/urls";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks/state";
 
 import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
 

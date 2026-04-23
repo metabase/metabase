@@ -892,7 +892,7 @@ describe("scenarios > search", () => {
         cy.wait("@search");
 
         cy.findByTestId("verified-search-filter")
-          .findByText("Verified items only")
+          .findByLabelText("Verified items only")
           .click();
 
         cy.wait("@search");
@@ -910,7 +910,7 @@ describe("scenarios > search", () => {
         cy.wait("@search");
 
         cy.findByTestId("verified-search-filter")
-          .findByText("Verified items only")
+          .findByLabelText("Verified items only")
           .click();
         cy.url().should("not.include", "verified=true");
 
@@ -975,7 +975,7 @@ describe("scenarios > search", () => {
         });
 
         cy.findByTestId("search_native_query-search-filter")
-          .findByText("Search the contents of native queries")
+          .findByLabelText("Search the contents of native queries")
           .click();
 
         cy.url().should("include", "search_native_query=true");
@@ -996,7 +996,7 @@ describe("scenarios > search", () => {
         });
 
         cy.findByTestId("search_native_query-search-filter")
-          .findByText("Search the contents of native queries")
+          .findByLabelText("Search the contents of native queries")
           .click();
 
         expectSearchResultItemNameContent({
@@ -1091,7 +1091,7 @@ describe("scenarios > search", () => {
           .should("exist");
 
         cy.findByTestId("archived-search-filter")
-          .findByText("Search items in trash")
+          .findByLabelText("Search items in trash")
           .click();
         cy.findAllByTestId("search-result-item").should("have.length", 0);
 
