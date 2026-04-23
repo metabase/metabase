@@ -70,21 +70,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd release && tsx ./src/release-log-run.ts $VERSION > v$VERSION.html
-      - name: generate release channel log
-        run: cd release && tsx ./src/release-channel-log.ts > channels.html
       - name: upload release log to the web
         run: |
           aws s3 cp \
           release/v$VERSION.html \
           s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/v$VERSION.html
-      - name: upload release channel log to the web
-        run: |
-          aws s3 cp \
-          release/channels.html \
-          s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/channels.html
 
       - name: Create cloudfront invalidation
         run: |
           aws cloudfront create-invalidation \
           --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
-          --paths "/release-log/v$VERSION.html" "/release-log/channels.html"
+          --paths "/release-log/v$VERSION.html"
