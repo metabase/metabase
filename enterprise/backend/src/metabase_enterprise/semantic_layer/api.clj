@@ -53,9 +53,11 @@
      [:synonym-threshold number?]
      [:embedding-model {:optional true} EmbeddingModelMeta]]]])
 
-;; JVM-level single-flight guard for the /complexity endpoint. Each scoring run walks the entire
-;; app-db catalog and emits Snowplow events, so concurrent superuser requests would just multiply
-;; load and noise without producing different results — fast-fail with 409 instead. The Quartz job
+;; Per-JVM single-flight guard for the /complexity endpoint. Each scoring run walks the entire
+;; app-db catalog and emits Snowplow events, so concurrent superuser requests on the same node
+;; would just multiply load and noise without producing different results — fast-fail with 409
+;; instead. In a clustered deployment the guard is per-node, so up to one pass per node can still
+;; run concurrently; we accept that since superuser API traffic is low-volume. The Quartz job
 ;; already has its own concurrency control (`DisallowConcurrentExecution` + cluster lock for boot
 ;; emission), so we deliberately don't share this guard with the task path; a daily cron run that
 ;; coincided with an API call shouldn't be cancelled.
@@ -65,8 +67,9 @@
 (api.macros/defendpoint :get "/complexity" :- ComplexityScoresResponse
   "Return the current Data Complexity Score for this instance.
   Superuser-only, expensive, and emits Snowplow events for benchmark consumers. Concurrent
-  requests fast-fail with HTTP 409 — a scoring pass walks the full app-db catalog and one in-
-  flight run is enough."
+  requests on the same JVM fast-fail with HTTP 409 — a scoring pass walks the full app-db
+  catalog and one in-flight run per node is enough. The guard is per-JVM, so in a clustered
+  deployment each node can still run one pass concurrently."
   [_route _query _body]
   (api/check-superuser)
   (when-not (.compareAndSet api-scoring-running? false true)
