@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.util.i18n.common :as i18n.common]
    [metabase.util.i18n.impl :as i18n.impl]
+   [metabase.util.i18n.validation :as i18n.validation]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [net.cgrand.macrovich :as macros]
@@ -164,10 +165,10 @@
         message-format             (MessageFormat. format-string)
         ;; number of {n} placeholders in format string including any you may have skipped. e.g. "{0} {2}" -> 3
         expected-num-args-by-index (count (.getFormatsByArgumentIndex message-format))
-        ;; number of {n} placeholders in format string *not* including ones you make have skipped. e.g. "{0} {2}" -> 2
+        ;; number of {n} placeholders in format string *not* including ones you may have skipped. e.g. "{0} {2}" -> 2
         expected-num-args          (count (.getFormats message-format))
         actual-num-args            (count args)]
-    (assert (= expected-num-args expected-num-args-by-index)
+    (assert (not (i18n.validation/skipped-arg-index? format-string))
             (format "(deferred-)trs/tru with format string %s is missing some {} placeholders. Expected %s. Did you skip any?"
                     (pr-str (.toPattern message-format))
                     (str/join ", " (map (partial format "{%d}") (range expected-num-args-by-index)))))
