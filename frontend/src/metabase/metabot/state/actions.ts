@@ -405,6 +405,12 @@ export const sendAgentRequest = createAsyncThunk<
                 dispatch(setNavigateToPath(part.value));
 
                 if (isEmbeddingSdk()) {
+                  if (pendingChartMessage) {
+                    console.warn("Overwriting pending navigate_to: ", {
+                      previous: pendingChartMessage.navigateTo,
+                      next: part.value,
+                    });
+                  }
                   pendingChartMessage = {
                     type: "chart",
                     navigateTo: part.value,
