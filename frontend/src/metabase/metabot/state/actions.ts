@@ -391,13 +391,6 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
-                if (isEmbeddingSdk()) {
-                  pendingChartMessage = {
-                    type: "chart",
-                    navigateTo: part.value,
-                  };
-                }
-
                 if (!isEmbeddingSdk()) {
                   dispatch(push(part.value) as UnknownAction);
                 }

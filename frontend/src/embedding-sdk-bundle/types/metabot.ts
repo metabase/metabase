@@ -40,7 +40,7 @@ export type MetabotChartProps =
 
 export type MetabotErrorMessage = {
   /** `"alert"` renders with a warning icon and error color; `"message"` renders as plain text. */
-  type: "message" | "alert";
+  type: "message" | "alert" | "locked";
   message: string;
 };
 
