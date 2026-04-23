@@ -1,7 +1,5 @@
 (ns metabase-enterprise.semantic-layer.metabot-scope
-  "Resolves the internal Metabot's retrieval scope for the `:metabot` catalog.
-  Separate ns so the scoring code stays free of settings/feature-flag/Metabot-row reads.
-  Shared by the HTTP endpoint and the scheduled job."
+  "Resolves the internal Metabot's retrieval scope for the `:metabot` catalog."
   (:require
    [metabase.metabot.config :as metabot.config]
    [metabase.premium-features.core :as premium-features]

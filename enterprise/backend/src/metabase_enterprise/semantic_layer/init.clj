@@ -1,6 +1,6 @@
 (ns metabase-enterprise.semantic-layer.init
   "Loader + startup wiring for semantic-layer tasks.
-   Ensures boot-time Data Complexity Score publishing runs regardless of `MB_DISABLE_SCHEDULER`."
+  Ensures boot-time Data Complexity Score publishing runs regardless of `MB_DISABLE_SCHEDULER`."
   (:require
    [metabase-enterprise.semantic-layer.settings]
    [metabase-enterprise.semantic-layer.task.complexity-score :as task.complexity-score]

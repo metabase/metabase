@@ -139,11 +139,15 @@
 (defn- pick-by-row
   "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
    reference identity on the kept entity maps so library/metabot vectors share map instances
-   with the universe vector rather than allocating fresh ones."
+   with the universe vector rather than allocating fresh ones.
+   A nil `row-pred` short-circuits to `[]` — callers whose filter is statically empty (e.g. no
+   Library collections on this instance) pass nil to skip enumeration entirely."
   [row-pred rows entities]
-  (into []
-        (keep-indexed (fn [i row] (when (row-pred row) (nth entities i))))
-        rows))
+  (if row-pred
+    (into []
+          (keep-indexed (fn [i row] (when (row-pred row) (nth entities i))))
+          rows)
+    []))
 
 (defn- enumerate-catalogs
   "One-pass enumeration of all three scoring catalogs. Returns
@@ -182,18 +186,20 @@
         measure-names     (table-measure-names (mapv :id universe-tables))
         card-entities     (mapv ->card-entity universe-cards)
         table-entities    (mapv #(->table-entity field-counts measure-names %) universe-tables)
-        in-library-card?  (fn [{:keys [collection_id]}]
-                            (and (seq library-cids)
-                                 (contains? library-cids collection_id)))
-        in-library-table? (fn [{:keys [collection_id is_published]}]
-                            (and (seq library-cids)
-                                 is_published
-                                 (contains? library-cids collection_id)))
-        in-metabot-card?  (fn [{:keys [collection_id id]}]
-                            (and (or (nil? metabot-cids)
-                                     (contains? metabot-cids collection_id))
-                                 (or (not verified-only?)
-                                     (contains? verified-ids id))))
+        in-library-card?  (when (seq library-cids)
+                            (fn [{:keys [collection_id]}]
+                              (contains? library-cids collection_id)))
+        in-library-table? (when (seq library-cids)
+                            (fn [{:keys [collection_id is_published]}]
+                              (and is_published
+                                   (contains? library-cids collection_id))))
+        in-metabot-card?  (when (and (or (nil? metabot-cids) (seq metabot-cids))
+                                     (or (not verified-only?) (seq verified-ids)))
+                            (fn [{:keys [collection_id id]}]
+                              (and (or (nil? metabot-cids)
+                                       (contains? metabot-cids collection_id))
+                                   (or (not verified-only?)
+                                       (contains? verified-ids id)))))
         in-metabot-table? (fn [{:keys [visibility_type db_id]}]
                             (and (nil? visibility_type)
                                  (not (contains? routed-db-ids db_id))))]

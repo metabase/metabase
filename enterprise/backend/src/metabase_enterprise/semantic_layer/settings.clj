@@ -1,6 +1,5 @@
 (ns metabase-enterprise.semantic-layer.settings
-  "Settings for the semantic-layer module.
-  Kept out of the scoring namespace so analysis code stays free of settings reads."
+  "Settings for the semantic-layer module."
   (:require
    [metabase.settings.core :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -15,7 +14,7 @@
   :doc        false)
 
 (defsetting data-complexity-scoring-last-fingerprint
-  (deferred-tru "Internal bookkeeping: Fingerprint of the last successful calculation. Used to prevent needless re-calculations.")
+  (deferred-tru "Internal bookkeeping: Fingerprint of last successful run, to prevent needless re-calculations.")
   :encryption :no
   :visibility :internal
   :default    ""
@@ -24,7 +23,7 @@
   :doc        false)
 
 (defsetting data-complexity-scoring-claim
-  (deferred-tru "Internal bookkeeping: EDN metadata for in-progress run so other nodes/paths skip duplicate work, with TTL.")
+  (deferred-tru "Internal bookkeeping: EDN metadata with TTL for in-progress run, to skip duplicate work.")
   :encryption :no
   :visibility :internal
   :default    ""

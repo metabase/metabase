@@ -1,15 +1,7 @@
 (ns metabase-enterprise.semantic-search.embedders
-  "Embedders that expose the pgvector semantic-search index as a name → vector lookup for other features
-  (initially the complexity score's synonym axis).
-
-  An embedder takes a seq of entity maps `{:id :name :kind}` and returns a `{normalized-name → ^floats
-  vector}` map, omitting entities the index doesn't know about.
-  This lets callers fold reuse of the indexed embeddings into their own pipelines without having to know
-  about the pgvector datasource, index metadata, or row shapes.
-
-  The indexed text combines name + description + other search fields, so the similarity signal is closer
-  to *\"semantically overlapping entities\"* than *\"synonymous names\"*.
-  Good enough when the alternative is paying to embed every entity name from scratch."
+  "Embedders that expose the pgvector semantic-search index as a name → vector lookup.
+  An embedder takes entity maps `{:id :name :kind}` and returns `{normalized-name → ^floats vector}`,
+  omitting entities not in the index."
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
@@ -117,7 +109,9 @@
       (log/debug t "Semantic-search index not available; search-index embedder will return {}"))))
 
 (defn search-index-embedder
-  "Embedder that reads vectors from the active semantic-search pgvector index.
+  "Embedder that reads vectors from the active semantic-search pgvector index. The indexed text
+  combines name + description + other search fields, so the similarity signal reflects semantic
+  overlap rather than name-only synonymy.
   Returns `{}` when the index isn't available (premium feature off, not yet initialized, datasource
   unreachable).
 

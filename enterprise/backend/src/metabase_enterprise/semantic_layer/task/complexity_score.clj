@@ -1,10 +1,5 @@
 (ns metabase-enterprise.semantic-layer.task.complexity-score
-  "Daily Quartz job that computes and publishes the Data Complexity Score.
-  Shared jobstore + `DisallowConcurrentExecution` keeps the cron to at most one run per cluster per
-  tick. A cluster-wide scoring-claim (see [[claim-scoring-run!]]) additionally serializes the cron
-  against the boot-time run driven by the startup hook in `metabase-enterprise.semantic-layer.init`
-  — without it a restart coinciding with the 03:17 UTC tick could have both paths computing and
-  publishing in parallel."
+  "Daily Quartz job that computes and publishes the Data Complexity Score."
   (:require
    [clojure.edn :as edn]
    [clojurewerkz.quartzite.jobs :as jobs]
