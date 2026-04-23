@@ -13,7 +13,6 @@ import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { getIsWorkspace } from "metabase/selectors/routing";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { createAsyncThunk } from "metabase/utils/redux";
@@ -366,7 +365,6 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const isWorkspace = getIsWorkspace(getState());
     const { agentId, ...request } = payload;
 
     try {
@@ -405,7 +403,7 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbeddingSdk() && !isWorkspace) {
+                if (!isEmbeddingSdk()) {
                   dispatch(push(part.value) as UnknownAction);
                 }
                 pushDataPart({ type: "data_part", part });

@@ -2,7 +2,6 @@
   background-color: var(--mb-color-background-secondary);
   display: flex;
   flex-direction: column;
-  /* Very crude solution to integrate editor to Workspace Transform Tab */
   flex: var(--native-query-editor-flex, none);
   width: 100%;
 }

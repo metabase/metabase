@@ -1,5 +1,7 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
+import { setupSearchEndpoints } from "__support__/server-mocks";
 import { renderWithProviders } from "__support__/ui";
 
 import type {
@@ -21,6 +23,7 @@ function setup({
   metric: SelectedMetric;
   definitionEntry?: MetricsViewerDefinitionEntry;
 }) {
+  setupSearchEndpoints([]);
   renderWithProviders(
     <MetricPill
       metric={metric}
@@ -32,35 +35,39 @@ function setup({
   );
 }
 
-function openContextMenu() {
+async function openMenu() {
   const pill = screen.getByTestId("metrics-viewer-search-pill");
-  fireEvent.contextMenu(pill);
+  await userEvent.click(pill);
 }
 
-describe("MetricPill context menu", () => {
-  it("should not show bottom menu items for a measure", () => {
+describe("MetricPill action menu", () => {
+  it("should show only 'Replace' for a measure with no dimensions", async () => {
     setup({
       metric: { id: 1, name: "Revenue", sourceType: "measure" },
     });
-    openContextMenu();
+    await openMenu();
 
+    expect(screen.getByText("Replace")).toBeInTheDocument();
     expect(screen.queryByRole("separator")).not.toBeInTheDocument();
+    expect(screen.queryByText("Break out")).not.toBeInTheDocument();
     expect(
       screen.queryByText("Go to metric home page"),
     ).not.toBeInTheDocument();
   });
 
-  it("should show 'Go to metric home page' without separator when no breakout items", () => {
+  it("should show 'Replace' + 'Go to metric home page' for a metric without dimensions", async () => {
     setup({
       metric: { id: 1, name: "Revenue", sourceType: "metric" },
     });
-    openContextMenu();
+    await openMenu();
 
-    expect(screen.queryByRole("separator")).not.toBeInTheDocument();
+    expect(screen.getByText("Replace")).toBeInTheDocument();
     expect(screen.getByText("Go to metric home page")).toBeInTheDocument();
+    // No separator when there are no breakout items between them.
+    expect(screen.queryByRole("separator")).not.toBeInTheDocument();
   });
 
-  it("should show separator between breakout items and 'Go to metric home page'", () => {
+  it("should show 'Replace', 'Break out', and 'Go to metric home page' with a separator when dimensions exist", async () => {
     const metadata = createMetricMetadata([REVENUE_METRIC]);
     const definition = setupDefinition(metadata, REVENUE_METRIC.id);
 
@@ -68,10 +75,24 @@ describe("MetricPill context menu", () => {
       metric: { id: REVENUE_METRIC.id, name: "Revenue", sourceType: "metric" },
       definitionEntry: { id: "metric:1", definition },
     });
-    openContextMenu();
+    await openMenu();
 
-    expect(screen.getByRole("separator")).toBeInTheDocument();
+    expect(screen.getByText("Replace")).toBeInTheDocument();
     expect(screen.getByText("Break out")).toBeInTheDocument();
     expect(screen.getByText("Go to metric home page")).toBeInTheDocument();
+    // One separator between breakout items and 'Go to metric home page'.
+    expect(screen.getAllByRole("separator")).toHaveLength(1);
+  });
+
+  it("should open the MetricSearchDropdown when Replace is clicked", async () => {
+    setup({
+      metric: { id: 1, name: "Revenue", sourceType: "metric" },
+    });
+    await openMenu();
+    await userEvent.click(screen.getByText("Replace"));
+
+    expect(
+      await screen.findByPlaceholderText("Search for metrics..."),
+    ).toBeInTheDocument();
   });
 });

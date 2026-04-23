@@ -186,7 +186,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
               )}
               {tenant && (
                 <Flex gap="xs" align="center">
-                  <Icon name="globe" size={16} c="text-tertiary" />
+                  <Icon name="company" size={16} c="text-tertiary" />
                   <Anchor
                     component={ForwardRefLink}
                     to={EnterpriseUrls.editTenant(tenant.id)}
