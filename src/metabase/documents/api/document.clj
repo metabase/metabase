@@ -12,6 +12,7 @@
    [metabase.documents.schema :as documents.schema]
    [metabase.events.core :as events]
    [metabase.public-sharing.validation :as public-sharing.validation]
+   [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
    [metabase.util :as u]
@@ -297,11 +298,7 @@
 
 ;;; ------------------------------------------------ Card Create ----------------------------------------------------
 
-;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
-;; use our API + we will need it when we make auto-TypeScript-signature generation happen
-;;
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/:document-id/card"
+(api.macros/defendpoint :post "/:document-id/card" :- ::queries.schema/card
   "Create a `Card` owned by a `Document`.
 
   Materializes a card immediately under the document — no client-side draft pathway. Collab
