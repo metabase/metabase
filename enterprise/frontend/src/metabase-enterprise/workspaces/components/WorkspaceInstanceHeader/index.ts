@@ -1,0 +1,1 @@
+export { WorkspaceInstanceHeader } from "./WorkspaceInstanceHeader";

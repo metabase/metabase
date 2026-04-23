@@ -11,19 +11,16 @@ import {
   useGetCurrentWorkspaceQuery,
   useListWorkspaceRemappingsQuery,
 } from "metabase-enterprise/api";
-import type {
-  Database,
-  DatabaseId,
-  WorkspaceRemappingId,
-} from "metabase-types/api";
+import type { WorkspaceRemappingId } from "metabase-types/api";
 
-import { WorkspaceRemappingSidebar } from "../WorkspaceRemappingSidebar";
-import { WorkspaceRemappingsTable } from "../WorkspaceRemappingsTable";
+import { WorkspaceInstanceHeader } from "../../components/WorkspaceInstanceHeader";
+import { WorkspaceRemappingSidebar } from "../../components/WorkspaceRemappingSidebar";
+import { WorkspaceRemappingsTable } from "../../components/WorkspaceRemappingsTable";
+import { toDatabasesById } from "../../utils";
 
-import S from "./WorkspaceInstance.module.css";
-import { WorkspaceInstanceHeader } from "./WorkspaceInstanceHeader";
+import S from "./WorkspaceInstanceRemappingsPage.module.css";
 
-export function WorkspaceInstance() {
+export function WorkspaceInstanceRemappingsPage() {
   usePageTitle(t`Workspace`);
 
   const { ref: containerRef, width: containerWidth } = useElementSize();
@@ -75,7 +72,7 @@ export function WorkspaceInstance() {
       ref={containerRef}
       h="100%"
       wrap="nowrap"
-      data-testid="workspace-instance"
+      data-testid="workspace-instance-remappings"
     >
       <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap="lg">
         <WorkspaceInstanceHeader workspaceName={workspace?.name} />
@@ -106,12 +103,4 @@ export function WorkspaceInstance() {
       )}
     </Flex>
   );
-}
-
-function toDatabasesById(databases: Database[]): Map<DatabaseId, Database> {
-  const map = new Map<DatabaseId, Database>();
-  for (const database of databases) {
-    map.set(database.id, database);
-  }
-  return map;
 }

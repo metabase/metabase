@@ -4,13 +4,15 @@ import { RunListPage } from "metabase/transforms/pages/RunListPage";
 import { Box } from "metabase/ui";
 import { useGetCurrentWorkspaceQuery } from "metabase-enterprise/api";
 
-import { WorkspaceInstanceHeader } from "./WorkspaceInstanceHeader";
+import { WorkspaceInstanceHeader } from "../../components/WorkspaceInstanceHeader";
 
-type WorkspaceInstanceRunsProps = {
+type WorkspaceInstanceRunsPageProps = {
   location: Location;
 };
 
-export function WorkspaceInstanceRuns({ location }: WorkspaceInstanceRunsProps) {
+export function WorkspaceInstanceRunsPage({
+  location,
+}: WorkspaceInstanceRunsPageProps) {
   const { data: workspace } = useGetCurrentWorkspaceQuery();
 
   return (
