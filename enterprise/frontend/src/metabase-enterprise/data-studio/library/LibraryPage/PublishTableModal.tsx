@@ -40,10 +40,9 @@ export function PublishTableModal({
 
   const handlePublish = () => {
     if (selectedTable) {
-      const table = selectedTable;
       setSelectedTable(null);
       onClose();
-      onPublished(table);
+      onPublished(selectedTable);
     }
   };
 
