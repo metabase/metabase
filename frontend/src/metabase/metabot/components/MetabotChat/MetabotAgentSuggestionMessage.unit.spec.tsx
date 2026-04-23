@@ -41,15 +41,17 @@ const createMockTransformInfo = (
   ...overrides,
 });
 
-const createMockSuggestionMessage = ({
-  suggestedTransform,
-  editorTransform,
-}: {
-  suggestedTransform?: Partial<MetabotSuggestedTransform>;
-  editorTransform?: MetabotTransformInfo;
-} = {}): SuggestionMessage => {
-  const merged = createMockSuggestedTransform(suggestedTransform ?? {});
-  const { active: _active, suggestionId, ...value } = merged;
+const createMockTransformSuggestionMessage = (overrides: {
+  payload: {
+    editorTransform: MetabotTransformInfo | undefined;
+    suggestedTransform: MetabotSuggestedTransform;
+  };
+}): SuggestionMessage => {
+  const {
+    active: _active,
+    suggestionId,
+    ...value
+  } = overrides.payload.suggestedTransform;
   return {
     id: "msg-123",
     role: "agent",
@@ -59,7 +61,10 @@ const createMockSuggestionMessage = ({
       version: 1,
       value: value as SuggestedTransform,
     },
-    metadata: { editorTransform, suggestionId },
+    metadata: {
+      editorTransform: overrides.payload.editorTransform,
+      suggestionId,
+    },
   };
 };
 
@@ -79,15 +84,17 @@ const setup = (message: SuggestionMessage, readonly = false) => {
 describe("AgentSuggestionMessage", () => {
   it("should show proposal for new transforms", async () => {
     setup(
-      createMockSuggestionMessage({
-        editorTransform: undefined,
-        suggestedTransform: createMockSuggestedTransform({
-          id: undefined,
-          source: {
-            type: "query",
-            query: createMockNativeDatasetQuery(),
-          },
-        }),
+      createMockTransformSuggestionMessage({
+        payload: {
+          editorTransform: undefined,
+          suggestedTransform: createMockSuggestedTransform({
+            id: undefined,
+            source: {
+              type: "query",
+              query: createMockNativeDatasetQuery(),
+            },
+          }),
+        },
       }),
     );
 
@@ -100,19 +107,21 @@ describe("AgentSuggestionMessage", () => {
 
   it("should show diff view for edited transforms", async () => {
     setup(
-      createMockSuggestionMessage({
-        editorTransform: createMockTransformInfo({
-          id: 123,
-          source: createMockPythonTransformSource({
-            body: "# Original code\nprint('original')",
+      createMockTransformSuggestionMessage({
+        payload: {
+          editorTransform: createMockTransformInfo({
+            id: 123,
+            source: createMockPythonTransformSource({
+              body: "# Original code\nprint('original')",
+            }),
           }),
-        }),
-        suggestedTransform: createMockSuggestedTransform({
-          id: 123,
-          source: createMockPythonTransformSource({
-            body: "# Updated code\nprint('updated')",
+          suggestedTransform: createMockSuggestedTransform({
+            id: 123,
+            source: createMockPythonTransformSource({
+              body: "# Updated code\nprint('updated')",
+            }),
           }),
-        }),
+        },
       }),
     );
 
@@ -128,15 +137,17 @@ describe("AgentSuggestionMessage", () => {
 
   it("should disable the action button and show a read-only tooltip when readonly", async () => {
     setup(
-      createMockSuggestionMessage({
-        editorTransform: undefined,
-        suggestedTransform: createMockSuggestedTransform({
-          id: undefined,
-          source: {
-            type: "query",
-            query: createMockNativeDatasetQuery(),
-          },
-        }),
+      createMockTransformSuggestionMessage({
+        payload: {
+          editorTransform: undefined,
+          suggestedTransform: createMockSuggestedTransform({
+            id: undefined,
+            source: {
+              type: "query",
+              query: createMockNativeDatasetQuery(),
+            },
+          }),
+        },
       }),
       true,
     );
@@ -150,12 +161,14 @@ describe("AgentSuggestionMessage", () => {
 
   it("should be collapsible", async () => {
     setup(
-      createMockSuggestionMessage({
-        editorTransform: undefined,
-        suggestedTransform: createMockSuggestedTransform({
-          id: undefined, // Make sure this is a new transform
-          name: "Test Transform",
-        }),
+      createMockTransformSuggestionMessage({
+        payload: {
+          editorTransform: undefined,
+          suggestedTransform: createMockSuggestedTransform({
+            id: undefined, // Make sure this is a new transform
+            name: "Test Transform",
+          }),
+        },
       }),
     );
 
