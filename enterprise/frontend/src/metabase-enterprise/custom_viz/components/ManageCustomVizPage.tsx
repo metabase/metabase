@@ -52,7 +52,7 @@ export function ManageCustomVizPage() {
       value: false,
       toast: false,
     });
-    setTimeout(() => window.location.reload(), 1000);
+    window.location.reload();
   }, [updateSetting]);
 
   const handleDelete = useCallback(

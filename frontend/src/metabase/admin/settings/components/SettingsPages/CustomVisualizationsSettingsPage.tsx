@@ -1,9 +1,6 @@
-import { useEffect } from "react";
-import { usePrevious } from "react-use";
 import { jt, t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { UpsellCustomViz } from "metabase/admin/upsells";
 import { useAdminSetting } from "metabase/api/utils";
 import { useHasTokenFeature } from "metabase/common/hooks";
@@ -25,8 +22,6 @@ import {
 export function CustomVisualizationsManagePage() {
   const customVizLoaded = useHasTokenFeature("custom-viz");
   const customVizAvailable = useHasTokenFeature("custom-viz-available");
-
-  useCustomVizEnabledSetting();
 
   if (!customVizAvailable) {
     return (
@@ -50,7 +45,6 @@ export function CustomVisualizationsFormPage({
 }) {
   const customVizFeatureLoaded = useHasTokenFeature("custom-viz");
   const hasCustomVizAvailable = useHasTokenFeature("custom-viz-available");
-  useCustomVizEnabledSetting();
 
   if (!hasCustomVizAvailable) {
     return (
@@ -70,7 +64,6 @@ export function CustomVisualizationsFormPage({
 export function CustomVisualizationsDevelopmentPage() {
   const hasCustomVizAvailable = useHasTokenFeature("custom-viz-available");
   const customVizFeatureLoaded = useHasTokenFeature("custom-viz");
-  useCustomVizEnabledSetting();
 
   if (!hasCustomVizAvailable) {
     return (
@@ -94,12 +87,13 @@ function CustomVizEmptyState() {
     CUSTOM_VIZ_ENABLED_SETTING,
   );
 
-  const handleEnable = () => {
-    updateSetting({
+  const handleEnable = async () => {
+    await updateSetting({
       key: CUSTOM_VIZ_ENABLED_SETTING,
       value: true,
       toast: false,
     });
+    window.location.reload();
   };
 
   return (
@@ -113,11 +107,10 @@ function CustomVizEmptyState() {
                 {t`Extend Metabase with chart types tailored to your data. Build visualization plugins using the Custom Viz SDK and link them from a Git repository.`}
               </Text>
 
-              <Text c="text-secondary" maw="40rem"></Text>
               <Alert
                 color="warning"
                 icon={<Icon name="warning" />}
-                title="Risks"
+                title={t`Risks`}
               >{jt`Be aware that custom visualizations ${<strong key="arbitrary-code">{t`can execute arbitrary code`}</strong>} and should only be added from trusted sources.`}</Alert>
             </Stack>
             <Group gap="sm">
@@ -180,46 +173,4 @@ function FeatureCard({ icon, title, description }: FeatureCardProps) {
       </Group>
     </Paper>
   );
-}
-
-export function CustomVizEnableSwitch() {
-  const { value: customVizEnabledSetting } = useAdminSetting(
-    CUSTOM_VIZ_ENABLED_SETTING,
-  );
-
-  const description = customVizEnabledSetting
-    ? t`Should custom visualizations be enabled for this instance? Disabling this will reload the page.`
-    : t`Should custom visualizations be enabled for this instance? Enabling this will reload the page.`;
-
-  return (
-    <AdminSettingInput
-      name={CUSTOM_VIZ_ENABLED_SETTING}
-      title={t`Enable Custom Visualizations`}
-      inputType="boolean"
-      description={description}
-    />
-  );
-}
-
-function useCustomVizEnabledSetting() {
-  const { value: customVizEnabledSetting } = useAdminSetting(
-    CUSTOM_VIZ_ENABLED_SETTING,
-  );
-  const customVizEnabledSettingPrev = usePrevious(customVizEnabledSetting);
-
-  useEffect(() => {
-    if (
-      customVizEnabledSettingPrev === undefined ||
-      customVizEnabledSetting === undefined
-    ) {
-      return;
-    }
-
-    if (customVizEnabledSetting !== customVizEnabledSettingPrev) {
-      setTimeout(() => {
-        window.location.reload();
-        // timeout helps to render the UI consistently when toggling feature
-      }, 1000);
-    }
-  }, [customVizEnabledSetting, customVizEnabledSettingPrev]);
 }
