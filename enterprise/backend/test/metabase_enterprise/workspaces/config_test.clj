@@ -103,3 +103,42 @@
 (deftest build-workspace-config-missing-workspace-returns-nil-test
   (testing "A missing workspace returns nil"
     (is (nil? (config/build-workspace-config Integer/MAX_VALUE)))))
+
+(deftest build-workspace-config-includes-remote-sync-settings-test
+  (testing "Remote-sync settings are copied from the source instance into :config :settings"
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name "dw" :engine :postgres :details {:host "h" :port 5432}}
+                   :model/Workspace {ws-id :id} {:name "synced"}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "p"}
+                    :output_schema    "out"
+                    :input_schemas    ["raw"]
+                    :status           :provisioned}]
+      (mt/with-temporary-setting-values [remote-sync-url    "https://github.com/metabase/stats-remote-sync"
+                                         remote-sync-type   :read-write
+                                         remote-sync-branch "main"
+                                         remote-sync-token  "not-real"]
+        (let [cfg (config/build-workspace-config ws-id)]
+          (is (= {:remote-sync-url    "https://github.com/metabase/stats-remote-sync"
+                  :remote-sync-type   :read-write
+                  :remote-sync-branch "main"
+                  :remote-sync-token  "not-real"}
+                 (-> cfg :config :settings))))))))
+
+(deftest build-workspace-config-omits-settings-when-url-blank-test
+  (testing "Without remote-sync-url, the :settings section is omitted entirely"
+    (mt/with-temp [:model/Database {db-id :id}
+                   {:name "dw" :engine :postgres :details {:host "h" :port 5432}}
+                   :model/Workspace {ws-id :id} {:name "nosync"}
+                   :model/WorkspaceDatabase _
+                   {:workspace_id     ws-id
+                    :database_id      db-id
+                    :database_details {:user "u" :password "p"}
+                    :output_schema    "out"
+                    :input_schemas    ["raw"]
+                    :status           :provisioned}]
+      (mt/with-temporary-setting-values [remote-sync-url ""]
+        (let [cfg (config/build-workspace-config ws-id)]
+          (is (not (contains? (:config cfg) :settings))))))))
