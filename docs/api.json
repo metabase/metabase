@@ -13956,95 +13956,83 @@
           "required" : [ "enabled" ]
         }
       },
+      "metabase.warehouses-rest.api.database-info" : {
+        "type" : "object",
+        "properties" : {
+          "engine" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "name", "engine" ]
+      },
       "metabase.warehouses-rest.api.databases-metadata-response" : {
         "type" : "object",
         "properties" : {
           "databases" : {
             "type" : "array",
             "items" : {
-              "type" : "object",
-              "properties" : {
-                "engine" : {
-                  "type" : "string"
-                },
-                "id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                },
-                "name" : {
-                  "type" : "string"
-                }
-              },
-              "required" : [ "id", "name", "engine" ]
+              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.database-info"
             }
           },
           "fields" : {
             "type" : "array",
             "items" : {
-              "type" : "object",
-              "properties" : {
-                "base_type" : {
-                  "type" : "string"
-                },
-                "id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-                },
-                "coercion_strategy" : {
-                  "type" : "string"
-                },
-                "name" : {
-                  "type" : "string"
-                },
-                "semantic_type" : {
-                  "type" : "string"
-                },
-                "table_id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-                },
-                "effective_type" : {
-                  "type" : "string"
-                },
-                "parent_id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-                },
-                "database_type" : {
-                  "type" : "string"
-                },
-                "description" : {
-                  "type" : "string"
-                },
-                "fk_target_field_id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-                }
-              },
-              "required" : [ "id", "table_id", "name", "base_type" ]
+              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.field-info"
             }
           },
           "tables" : {
             "type" : "array",
             "items" : {
-              "type" : "object",
-              "properties" : {
-                "db_id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
-                },
-                "description" : {
-                  "type" : "string"
-                },
-                "id" : {
-                  "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-                },
-                "name" : {
-                  "type" : "string"
-                },
-                "schema" : {
-                  "type" : "string"
-                }
-              },
-              "required" : [ "id", "db_id", "name" ]
+              "$ref" : "#/components/schemas/metabase.warehouses-rest.api.table-info"
             }
           }
         },
         "required" : [ "databases", "tables", "fields" ]
+      },
+      "metabase.warehouses-rest.api.field-info" : {
+        "type" : "object",
+        "properties" : {
+          "base_type" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "coercion_strategy" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "semantic_type" : {
+            "type" : "string"
+          },
+          "table_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          },
+          "effective_type" : {
+            "type" : "string"
+          },
+          "parent_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          },
+          "database_type" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "fk_target_field_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
+          }
+        },
+        "required" : [ "id", "table_id", "name", "base_type" ]
       },
       "metabase.warehouses-rest.api.metadata-import-report" : {
         "type" : "object",
@@ -14052,6 +14040,13 @@
           "databases" : {
             "type" : "object",
             "properties" : {
+              "failed" : {
+                "type" : "array",
+                "items" : {
+                  "type" : "object",
+                  "properties" : { }
+                }
+              },
               "matched" : {
                 "type" : "integer"
               },
@@ -14105,6 +14100,27 @@
           }
         },
         "required" : [ "databases", "tables", "fields" ]
+      },
+      "metabase.warehouses-rest.api.table-info" : {
+        "type" : "object",
+        "properties" : {
+          "db_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "schema" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "db_id", "name" ]
       },
       "metabase.xrays.api.automagic-dashboards.base-64-encoded-json" : {
         "description" : "form-encoded base-64-encoded JSON"
@@ -14845,22 +14861,32 @@
                 "properties" : {
                   "semantic_queries" : {
                     "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
+                      "anyOf" : [ {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      }, {
                         "type" : "string",
                         "minLength" : 1
-                      }
+                      } ]
                     }, {
                       "type" : "null"
                     } ]
                   },
                   "term_queries" : {
                     "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
+                      "anyOf" : [ {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      }, {
                         "type" : "string",
                         "minLength" : 1
-                      }
+                      } ]
                     }, {
                       "type" : "null"
                     } ]
@@ -21192,7 +21218,7 @@
       "get" : {
         "operationId" : "get-api-database-metadata",
         "summary" : "GET /api/database/metadata",
-        "description" : "Get metadata (databases, tables, and fields) for all databases visible to the current user.\n  Returns a flat structure with three arrays: databases, tables, and fields.\n  Response is streamed for efficiency with large schemas.",
+        "description" : "Get metadata (databases, tables, and fields) for all databases visible to the current user.\n  Returns a flat structure with three arrays: databases, tables, and fields.\n  Response is streamed for efficiency with large schemas.\n\n  Requires `View data` → `Can view` and `Create queries` → `Query builder only` (or\n  `Query builder and native`) permissions on each database and table.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -21217,7 +21243,7 @@
       "post" : {
         "operationId" : "post-api-database-metadata",
         "summary" : "POST /api/database/metadata",
-        "description" : "Import database/table/field metadata previously exported from `GET /api/database/metadata`.\n\n  Entities are matched by natural key — databases by `(name, engine)`, tables by\n  `(database, schema, name)`, fields by `(table, parent-path, name)` — so the numeric ids\n  in the payload are only used to link fields to their tables within the request.\n\n  Tables and fields that don't exist on the target are created when their parent\n  (database for tables; table for fields) is present on the target. Databases are\n  not auto-created — missing databases are reported instead. Field `fk_target_field_id`\n  is re-resolved through the natural-key lookup after all fields exist.\n\n  For matched entities, only user-editable metadata is written: table `description`;\n  field `description`, `semantic_type`, `coercion_strategy`, `effective_type`, and\n  `fk_target_field_id`. For newly-created fields, `base_type` and `database_type` are\n  also populated from the payload. Keys absent from the payload (including null values)\n  are left untouched on matched entities.\n\n  Returns counts of matched + created entities per type plus a list of entities in the\n  payload that could not be placed (their parent was missing on the target).",
+        "description" : "Import database/table/field metadata previously exported from `GET /api/database/metadata`.\n\n  Entities are matched by natural key — databases by `(name, engine)`, tables by\n  `(database, schema, name)`, fields by `(table, parent-path, name)` — so the numeric ids\n  in the payload are only used to link fields to their tables within the request.\n\n  Tables and fields that don't exist on the target are created when their parent\n  (database for tables; table for fields) is present on the target. Databases are\n  not auto-created — missing databases are reported instead. Field `fk_target_field_id`\n  is re-resolved through the natural-key lookup after all fields exist.\n\n  For matched entities, only user-editable metadata is written: table `description`;\n  field `description`, `semantic_type`, `coercion_strategy`, `effective_type`, and\n  `fk_target_field_id`. For newly-created fields, `base_type` and `database_type` are\n  also populated from the payload. Keys absent from the payload (including null values)\n  are left untouched on matched entities.\n\n  Processing is isolated per target database: each matched DB imports in its own\n  transaction so a failure on one DB does not roll back the others. DBs whose\n  transaction failed appear under `databases.failed` in the response along with\n  the error message; every other DB's tables, fields, and same-DB `fk_target_field_id`\n  references still commit. Cross-database `fk_target_field_id` references are\n  resolved in a final pass after all per-DB transactions have committed.\n\n  Returns counts of matched + created entities per type, a list of entities in the\n  payload that could not be placed (their parent was missing on the target), and,\n  when any DB failed, a `databases.failed` list naming each failed DB.",
         "parameters" : [ ],
         "responses" : {
           "2XX" : {
@@ -24477,6 +24503,46 @@
           }
         },
         "tags" : [ "/api/ee/cloud-add-ons" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-cloud-add-ons-product-type",
+        "summary" : "DELETE /api/ee/cloud-add-ons/{product-type}",
+        "description" : "Remove an add-on.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "product-type",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "enum" : [ "metabase-ai", "metabase-ai-tiered", "metabase-ai-managed", "python-execution", "transforms", "transforms-basic", "transforms-advanced", "transforms-basic-metered", "transforms-advanced-metered" ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "body" : { },
+                    "status" : {
+                      "type" : "integer"
+                    }
+                  },
+                  "required" : [ "status", "body" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/cloud-add-ons" ]
       }
     },
     "/api/ee/cloud-proxy/{operation-id}" : {
@@ -26067,6 +26133,13 @@
                 "schema" : {
                   "type" : "object",
                   "properties" : {
+                    "is_locked" : {
+                      "oneOf" : [ {
+                        "type" : "boolean"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
                     "tokens" : {
                       "oneOf" : [ {
                         "type" : "integer"
@@ -26074,7 +26147,7 @@
                         "type" : "null"
                       } ]
                     },
-                    "updated-at" : {
+                    "updated_at" : {
                       "oneOf" : [ {
                         "type" : "string"
                       }, {
@@ -26082,7 +26155,7 @@
                       } ]
                     }
                   },
-                  "required" : [ "tokens", "updated-at" ]
+                  "required" : [ "is_locked", "tokens", "updated_at" ]
                 }
               }
             }
