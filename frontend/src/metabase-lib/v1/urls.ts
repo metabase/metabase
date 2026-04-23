@@ -6,6 +6,7 @@ import { remapParameterValuesToTemplateTags } from "metabase-lib/v1/parameters/u
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
 import type Question from "./Question";
+import { isTransientCardId } from "./Question";
 import type NativeQuery from "./queries/NativeQuery";
 
 type UrlBuilderOpts = {
@@ -23,6 +24,8 @@ export function getQuestionUrl(
   if (
     // the question is unsaved
     !question.isSaved() ||
+    // the question is transient (so not saved)
+    isTransientCardId(question.id()) ||
     // the question is a new question based on the original question
     (originalQuestion && question.isDirtyComparedTo(originalQuestion))
   ) {
