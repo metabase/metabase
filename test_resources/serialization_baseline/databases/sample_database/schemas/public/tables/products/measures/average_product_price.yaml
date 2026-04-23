@@ -20,10 +20,6 @@ definition:
   lib/type: mbql/query
 entity_id: xK7mPqR2sT4uVwXyZ9a1b
 name: Average Product Price
-table_id:
-- Sample Database
-- PUBLIC
-- PRODUCTS
 serdes/meta:
 - id: xK7mPqR2sT4uVwXyZ9a1b
   label: average_product_price

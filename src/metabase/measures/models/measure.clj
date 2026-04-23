@@ -195,25 +195,39 @@
     table_id (conj (serdes/table->path table_id))))
 
 (defmethod serdes/storage-path "Measure" [measure _ctx]
-  (into (-> measure :table_id serdes/table->path serdes/storage-path-prefixes)
-        [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}]))
+  (let [table-path (or (:table_id measure)
+                       (-> measure :definition serdes/serialized-query-source-table))]
+    (into (serdes/storage-path-prefixes (serdes/table->path table-path))
+          [{:label "measures"} {:label (:name measure) :key (:entity_id measure)}])))
 
 (defn- import-measure-definition
   "Import a measure definition from serialization format.
   Converts portable IDs back to numeric IDs, then converts MBQL4 to MBQL5."
   [exported]
   (let [with-ids (serdes/import-mbql exported)]
-    (when (seq with-ids)
-      (lib-be/normalize-query with-ids))))
+    (if (seq with-ids)
+      (lib-be/normalize-query with-ids)
+      with-ids)))
 
 (defmethod serdes/make-spec "Measure" [_model-name _opts]
   {:copy [:name :archived :description :entity_id]
    :skip [;; dimensions are computed from the query and reconciled on read, not serialized
           :dimensions :dimension_mappings]
    :transform {:created_at (serdes/date)
-               :table_id (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import import-measure-definition}}
+               :definition {:export serdes/export-mbql :import import-measure-definition}
+               ;; table_id is usually derivable from definition, but must be kept when the
+               ;; definition is broken/empty and table_id is the only reference.
+               :table_id   (let [{:keys [import]} (serdes/fk :model/Table)]
+                             {::serdes/fk true
+                              :export-with-context
+                              (fn [{:keys [definition table_id]} _k _v]
+                                (if (try (lib/primary-source-table-id definition)
+                                         (catch Exception _ nil))
+                                  ::serdes/skip
+                                  (when table_id
+                                    (serdes/*export-table-fk* table_id))))
+                              :import import})}
    :defaults {:archived false}})
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------

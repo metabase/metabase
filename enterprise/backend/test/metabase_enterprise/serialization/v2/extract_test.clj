@@ -335,7 +335,6 @@
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c1-id))]
           (is (=? {:serdes/meta   [{:model "Card" :id c1-eid :label "some_question"}]
-                   :table_id      ["My Database" nil "Schemaless Table"]
                    :creator_id    "mark@direstrai.ts"
                    :collection_id coll-eid
                    :dataset_query {:stages   [{:source-table ["My Database" nil "Schemaless Table"]
@@ -348,7 +347,7 @@
                   ser))
           (is (not (contains? ser :id)))
 
-          (testing "cards depend on their Table and Collection, and also anything referenced in the query"
+          (testing "cards depend on their Collection, and anything referenced in the query (including :database)"
             (is (= #{[{:model "Database" :id "My Database"}]
                      [{:model "Database" :id "My Database"}
                       {:model "Table" :id "Schemaless Table"}]
@@ -360,7 +359,6 @@
 
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c2-id))]
           (is (=? {:serdes/meta        [{:model "Card" :id c2-eid :label "second_question"}]
-                   :table_id           ["My Database" "PUBLIC" "Schema'd Table"]
                    :creator_id         "mark@direstrai.ts"
                    :collection_id      coll-eid
                    :dataset_query      {}
@@ -371,12 +369,11 @@
                    :created_at         string?}
                   ser))
           (is (not (contains? ser :id)))
+          (is (not (contains? ser :table_id)) "table_id always skipped for cards — re-derived on import")
+          (is (contains? ser :database_id) "database_id kept when query is empty")
 
-          (testing "cards depend on their Database, Table and Collection, and any fields in their parameter_mappings"
+          (testing "cards depend on their Database (kept because query is empty), Collection, and parameter_mappings refs"
             (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Schema" :id "PUBLIC"}
-                      {:model "Table" :id "Schema'd Table"}]
                      [{:model "Collection" :id coll-eid}]
                      [{:model "Card" :id c1-eid}]
                      [{:model "Database" :id "My Database"}
@@ -390,7 +387,6 @@
 
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c3-id))]
           (is (=? {:serdes/meta   [{:model "Card" :id c3-eid :label "third_question"}]
-                   :table_id      ["My Database" "PUBLIC" "Schema'd Table"]
                    :creator_id    "mark@direstrai.ts"
                    :collection_id coll-eid
                    :dataset_query {}
@@ -419,11 +415,8 @@
                   ser))
           (is (not (contains? ser :id)))
 
-          (testing "cards depend on their Database, Table and Collection, and any fields in their visualization_settings"
+          (testing "cards depend on their Database (kept, query empty), Collection, and visualization_settings refs"
             (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Schema" :id "PUBLIC"}
-                      {:model "Table" :id "Schema'd Table"}]
                      [{:model "Collection" :id coll-eid}]
                      [{:model "Database" :id "My Database"}
                       {:model "Table" :id "Schemaless Table"}
@@ -437,7 +430,6 @@
       (testing "Cards can be based on other cards"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c5-id))]
           (is (=? {:serdes/meta   [{:model "Card" :id c5-eid :label "dependent_question"}]
-                   :table_id      ["My Database" nil "Schemaless Table"]
                    :creator_id    "mark@direstrai.ts"
                    :collection_id coll-eid
                    :dataset_query {:stages   [{:source-card c4-eid
@@ -446,11 +438,11 @@
                    :created_at    string?}
                   ser))
           (is (not (contains? ser :id)))
+          (is (not (contains? ser :table_id)) "table_id stripped")
+          (is (not (contains? ser :database_id)) "database_id stripped — derivable from query")
 
-          (testing "and depend on their Database, Table and Collection, and the upstream Card"
+          (testing "and depend on their Collection, Database (from query), and the upstream Card"
             (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Database" :id "My Database"}
-                      {:model "Table" :id "Schemaless Table"}]
                      [{:model "Collection" :id coll-eid}]
                      [{:model "Card" :id c4-eid}]}
                    (set (serdes/dependencies ser)))))))
@@ -900,7 +892,6 @@
       (testing "segment"
         (let [ser (serdes/extract-one "Segment" {} (t2/select-one :model/Segment :id s1-id))]
           (is (=? {:serdes/meta [{:model "Segment" :id s1-eid :label "my_segment"}]
-                   :table_id    ["My Database" nil "Schemaless Table"]
                    :creator_id  "ann@heart.band"
                    :definition  {:database "My Database",
                                  :lib/type :mbql/query
@@ -949,7 +940,6 @@
           (testing "measure"
             (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure :id m1-id))]
               (is (=? {:serdes/meta [{:model "Measure" :id m1-eid :label "my_measure"}]
-                       :table_id    ["My Database" nil "Schemaless Table"]
                        :creator_id  "ann@heart.band"
                        :definition  {:database "My Database"
                                      :lib/type :mbql/query
@@ -999,7 +989,6 @@
               (testing "measure referencing another measure"
                 (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure :id m2-id))]
                   (is (=? {:serdes/meta [{:model "Measure" :id m2-eid :label "derived_measure"}]
-                           :table_id    ["My Database" nil "My Table"]
                            :creator_id  "ann@heart.band"
                            :definition  {:database "My Database"
                                          :lib/type :mbql/query
@@ -1042,7 +1031,6 @@
           (testing "measure referencing a segment"
             (let [ser (serdes/extract-one "Measure" {} (t2/select-one :model/Measure :id m-id))]
               (is (=? {:serdes/meta [{:model "Measure" :id m-eid :label "expensive_item_count"}]
-                       :table_id    ["My Database" nil "My Table"]
                        :creator_id  "ann@heart.band"
                        :definition  {:database "My Database"
                                      :lib/type :mbql/query
@@ -1309,8 +1297,6 @@
                  (:parameters ser)))
           (is (= #{[{:model "Database"   :id "My Database"}]
                    [{:model "Collection" :id coll-eid-2}]
-                   [{:model "Database"   :id "My Database"}
-                    {:model "Table"      :id "Schemaless Table"}]
                    [{:model "Card"       :id card-eid-1}]
                    [{:model "Database"   :id "My Database"}
                     {:model "Table"      :id "Schemaless Table"}
@@ -2776,3 +2762,103 @@
         (let [ser (ts/extract-one "Channel" http-id)]
           (is (= [{:label "channels"} {:label "HTTP Channel" :key "HTTP Channel"}]
                  (serdes/storage-path ser {}))))))))
+
+;;; ===========================================================================
+;;; Redundant field stripping tests
+;;;
+;;; Fields derivable from dataset_query (table_id, database_id, query_type,
+;;; source_card_id) should be omitted from export.
+;;; ===========================================================================
+
+(defn- mbql5-query
+  "Create a simple MBQL 5 query for the given database and table."
+  [db-id table-id]
+  (let [metadata-provider (lib-be/application-database-metadata-provider db-id)
+        table (lib.metadata/table metadata-provider table-id)]
+    (lib/query metadata-provider table)))
+
+(deftest card-export-strips-redundant-fields-test
+  (testing "Card export omits table_id, query_type, source_card_id when derivable from query"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database {db-id :id} {:name "Test DB"}
+                         :model/Table {table-id :id} {:name "orders" :db_id db-id}
+                         :model/Field _ {:name "id" :table_id table-id}
+                         :model/Card {card-id :id} {:name "MBQL Card"
+                                                    :dataset_query (mbql5-query db-id table-id)
+                                                    :display :table}]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))]
+          (is (not (contains? ser :table_id))
+              "table_id should be omitted — derivable from dataset_query")
+          (is (not (contains? ser :query_type))
+              "query_type should be omitted — derivable from dataset_query")
+          (is (not (contains? ser :source_card_id))
+              "source_card_id should be omitted — derivable from dataset_query")
+          (is (not (contains? ser :database_id))
+              "database_id should be omitted when derivable from dataset_query"))))))
+
+(deftest card-export-keeps-database-id-when-query-empty-test
+  (testing "Card export keeps database_id when dataset_query has no :database key"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database {db-id :id} {:name "Test DB"}
+                         :model/Card {card-id :id} {:name "Empty Query Card"
+                                                    :database_id db-id
+                                                    :dataset_query {}
+                                                    :display :table}]
+        (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))]
+          (is (= "Test DB" (:database_id ser))
+              "database_id should be kept when query is empty"))))))
+
+(deftest card-export-deps-come-from-query-test
+  (testing "Card dependencies come from dataset_query, not from stripped FK fields"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database {db-id :id} {:name "Test DB"}
+                         :model/Table {table-id :id} {:name "orders" :db_id db-id}
+                         :model/Field _ {:name "id" :table_id table-id}
+                         :model/Card {card-id :id} {:name "MBQL Card"
+                                                    :dataset_query (mbql5-query db-id table-id)
+                                                    :display :table}]
+        (let [ser  (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))
+              deps (serdes/dependencies ser)]
+          ;; Database dep comes from mbql-deps on the query's :database key
+          (is (contains? (set deps) [{:model "Database" :id "Test DB"}])
+              "Database dependency should come from the query")
+          ;; Table dep comes from mbql-deps on the query's :source-table
+          (is (some #(some (fn [step] (= "Table" (:model step))) %) deps)
+              "Table dependency should come from the query"))))))
+
+(deftest segment-export-strips-table-id-test
+  (testing "Segment export omits table_id — derivable from definition"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database {db-id :id} {:name "Test DB"}
+                         :model/Table {table-id :id} {:name "orders" :db_id db-id}
+                         :model/Field {field-id :id} {:name "total" :table_id table-id}
+                         :model/Segment _ {:name "Big Orders"
+                                           :table_id table-id
+                                           :definition (let [mp (lib-be/application-database-metadata-provider db-id)
+                                                             table (lib.metadata/table mp table-id)
+                                                             query (lib/query mp table)
+                                                             field (lib.metadata/field mp field-id)]
+                                                         (lib/filter query (lib/> field 100)))}]
+        (let [ser (first (by-model "Segment" (extract/extract {})))]
+          (is (some? ser))
+          (is (not (contains? ser :table_id))
+              "table_id should be omitted — derivable from definition"))))))
+
+(deftest measure-export-strips-table-id-test
+  (testing "Measure export omits table_id — derivable from definition"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database {db-id :id} {:name "Test DB"}
+                         :model/Table {table-id :id} {:name "orders" :db_id db-id}
+                         :model/Field {field-id :id} {:name "total" :table_id table-id
+                                                      :base_type :type/Float}
+                         :model/Measure _ {:name "Total Sales"
+                                           :table_id table-id
+                                           :definition (let [mp (lib-be/application-database-metadata-provider db-id)
+                                                             table (lib.metadata/table mp table-id)
+                                                             query (lib/query mp table)
+                                                             field (lib.metadata/field mp field-id)]
+                                                         (lib/aggregate query (lib/sum field)))}]
+        (let [ser (first (by-model "Measure" (extract/extract {})))]
+          (is (some? ser))
+          (is (not (contains? ser :table_id))
+              "table_id should be omitted — derivable from definition"))))))

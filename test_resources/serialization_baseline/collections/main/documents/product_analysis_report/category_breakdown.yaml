@@ -4,12 +4,6 @@ created_at: '2025-01-15T10:00:00Z'
 creator_id: internal@metabase.com
 display: bar
 collection_id: cOlDoCuMeNtS0ExAmPlx2
-query_type: query
-database_id: Sample Database
-table_id:
-- Sample Database
-- PUBLIC
-- PRODUCTS
 parameters: []
 parameter_mappings: []
 dataset_query:

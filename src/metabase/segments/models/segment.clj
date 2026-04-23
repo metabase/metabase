@@ -222,16 +222,29 @@
     table_id (conj (serdes/table->path table_id))))
 
 (defmethod serdes/storage-path "Segment" [segment _ctx]
-  (into (-> segment :table_id serdes/table->path serdes/storage-path-prefixes)
-        [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}]))
+  (let [table-path (or (:table_id segment)
+                       (-> segment :definition serdes/serialized-query-source-table))]
+    (into (serdes/storage-path-prefixes (serdes/table->path table-path))
+          [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}])))
 
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
   {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
    :skip      []
    :transform {:created_at (serdes/date)
-               :table_id   (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import serdes/import-mbql}}
+               :definition {:export serdes/export-mbql :import serdes/import-mbql}
+               ;; table_id is usually derivable from definition, but must be kept when the
+               ;; definition is broken/empty and table_id is the only reference.
+               :table_id   (let [{:keys [import]} (serdes/fk :model/Table)]
+                             {::serdes/fk true
+                              :export-with-context
+                              (fn [{:keys [definition table_id]} _k _v]
+                                (if (try (lib/primary-source-table-id definition)
+                                         (catch Exception _ nil))
+                                  ::serdes/skip
+                                  (when table_id
+                                    (serdes/*export-table-fk* table_id))))
+                              :import import})}
    :defaults {:archived false :show_in_getting_started false}})
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------

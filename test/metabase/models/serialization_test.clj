@@ -15,6 +15,30 @@
       (is (= [:field {} :metabase.models.serialization-test/field-id]
              (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000002"} 1]))))))
 
+(deftest ^:parallel drop-mbql-5-uuids-from-string-id-refs-test
+  (testing "field refs with string column names (e.g. source-card joins) should still have lib/uuid stripped"
+    (is (= [:field {} "name"]
+           (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} "name"])))
+    (testing "and other opts are preserved"
+      (is (= [:field {:base-type :type/Integer} "count"]
+             (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"
+                                                :base-type :type/Integer} "count"])))))
+  (testing "metric/segment/measure refs with non-integer ids (e.g. after re-export) still strip lib/uuid"
+    (is (= [:metric {} "already-exported-eid"]
+           (#'serdes/export-mbql-ref [:metric {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                                      "already-exported-eid"])))
+    (is (= [:segment {} "already-exported-eid"]
+           (#'serdes/export-mbql-ref [:segment {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                                      "already-exported-eid"])))
+    (is (= [:measure {} "already-exported-eid"]
+           (#'serdes/export-mbql-ref [:measure {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                                      "already-exported-eid"]))))
+  (testing "required lib/uuids are preserved even for string-id refs"
+    (binding [serdes/*required-lib-uuids-for-export* #{"00000000-0000-0000-0000-000000000001"}]
+      (is (= [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"} "name"]
+             (#'serdes/export-mbql-ref [:field {:lib/uuid "00000000-0000-0000-0000-000000000001"}
+                                        "name"]))))))
+
 (deftest ^:parallel drop-mbql-5-uuids-on-export-test-2
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
                   (lib/filter (lib/= (meta/field-metadata :venues :id) 1))

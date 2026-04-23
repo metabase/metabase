@@ -1066,6 +1066,13 @@
                              "Table"    "tables"
                              "Field"    "fields"})
 
+(defn serialized-query-source-table
+  "Given a serialized query (with portable references), returns the portable reference of the table it is based
+  on. Measures and segments use this to omit the table_id property when it is derivable from the query. This should be
+  an mbql query and not a native query."
+  [serialized-query]
+  (some-> serialized-query :stages (get 0) :source-table))
+
 (defn storage-path-prefixes
   "The [[serdes/storage-path]] for Table is a bit tricky, and shared with Fields and FieldValues, so it's
   factored out here.
@@ -1215,6 +1222,9 @@
     [:field (opts :guard map?) (id :guard pos-int?)]
     [:field (export-mbql-map opts) (*export-field-fk* id)]
 
+    [:field (opts :guard map?) id]
+    [:field (export-mbql-map opts) id]
+
     ;; legacy (MBQL 4) field refs are still supported in parameter targets and in result metadata `field_ref`...
     [:field (id :guard pos-int?) (opts :guard (some-fn map? nil?))]
     [:field (*export-field-fk* id) (export-mbql-map opts)]
@@ -1229,11 +1239,20 @@
     [:metric opts (id :guard pos-int?)]
     [:metric (export-mbql-map opts) (*export-fk* id 'Card)]
 
+    [:metric opts id]
+    [:metric (export-mbql-map opts) id]
+
     [:segment opts (id :guard pos-int?)]
     [:segment (export-mbql-map opts) (*export-fk* id 'Segment)]
 
+    [:segment opts id]
+    [:segment (export-mbql-map opts) id]
+
     [:measure opts (id :guard pos-int?)]
-    [:measure (export-mbql-map opts) (*export-fk* id 'Measure)]))
+    [:measure (export-mbql-map opts) (*export-fk* id 'Measure)]
+
+    [:measure opts id]
+    [:measure (export-mbql-map opts) id]))
 
 (defn export-mbql
   "Given an MBQL expression, convert it to an EDN structure and turn the non-portable Database, Table and Field IDs
