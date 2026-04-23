@@ -91,13 +91,7 @@ jobs:
     with:
       skip: ${{ needs.files-changed.outputs.frontend_all != 'true' }}
       skip-lint: ${{ needs.files-changed.outputs.frontend_all != 'true' && needs.files-changed.outputs.e2e_all != 'true' }}
-
-  custom-viz-tests:
-    needs: files-changed
-    uses: ./.github/workflows/custom-viz.yml
-    secrets: inherit
-    with:
-      skip: ${{ needs.files-changed.outputs.custom_viz_all != 'true' }}
+      skip-custom-viz: ${{ needs.files-changed.outputs.custom_viz_all != 'true' }}
 
   e2e-tests:
     needs: [files-changed, uberjar]

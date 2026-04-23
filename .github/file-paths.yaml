@@ -120,8 +120,9 @@ sources: &sources
   - *backend_sources
 
 custom_viz_all:
-  - *shared_ci
-  - ".github/workflows/custom-viz.yml"
+  - ".github/workflows/run-tests.yml"
+  - ".github/workflows/frontend.yml"
+  - ".github/actions/prepare-node-bun/**"
   - "enterprise/frontend/src/custom-viz/**"
 
 e2e_ci: &e2e_ci
