@@ -423,7 +423,7 @@ export const dashcardData = createReducer(
       })
       .addCase(fetchCardDataAction.fulfilled, (state, action) => {
         const { dashcard_id, card_id, result } = action.payload ?? {};
-        if (dashcard_id && card_id) {
+        if (dashcard_id && card_id && result != null) {
           return assocIn(state, [dashcard_id, card_id], result);
         }
       })
