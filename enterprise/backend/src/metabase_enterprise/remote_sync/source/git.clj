@@ -219,6 +219,16 @@
   (when-let [bytes (read-file-bytes snapshot path)]
     (String. ^bytes bytes "UTF-8")))
 
+(defn file-size
+  "Returns the size in bytes of `path` in the git snapshot, or nil if the file
+  does not exist. Reads the blob size from the object header without loading
+  the full contents into memory, so it is safe to use for size-limit checks
+  against untrusted repositories."
+  ^Long [{:keys [^Git git ^String version]} ^String path]
+  (let [repo (.getRepository git)]
+    (when-let [object-id (.resolve repo (str version ":" path))]
+      (.getSize (.open repo object-id)))))
+
 (defn push-branch!
   "Pushes a local branch to the remote repository.
 
