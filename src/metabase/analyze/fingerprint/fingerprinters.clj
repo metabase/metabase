@@ -289,16 +289,16 @@
     t))
 
 (defn- temporal->weekday
-  "Return 1-7 for Monday-Sunday, or nil if the Temporal has no day-of-week."
+  "Return 1-7 for Monday-Sunday, or nil if `t` is nil or the Temporal has no day-of-week."
   [t]
-  (let [^Temporal z (temporal->zoned t)]
+  (when-let [^Temporal z (some-> t temporal->zoned)]
     (when (.isSupported z ChronoField/DAY_OF_WEEK)
       (.get z ChronoField/DAY_OF_WEEK))))
 
 (defn- temporal->hour
-  "Return 0-23 for hour-of-day, or nil if the Temporal has no hour."
+  "Return 0-23 for hour-of-day, or nil if `t` is nil or the Temporal has no hour."
   [t]
-  (let [^Temporal z (temporal->zoned t)]
+  (when-let [^Temporal z (some-> t temporal->zoned)]
     (when (.isSupported z ChronoField/HOUR_OF_DAY)
       (.get z ChronoField/HOUR_OF_DAY))))
 
