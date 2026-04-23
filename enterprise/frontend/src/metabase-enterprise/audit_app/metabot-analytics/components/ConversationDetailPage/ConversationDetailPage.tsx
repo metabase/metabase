@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { WithRouterProps } from "react-router";
-import { jt, t } from "ttag";
+import { t } from "ttag";
 
 import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
@@ -13,7 +13,7 @@ import {
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { DateTime } from "metabase/common/components/DateTime";
-import { ForwardRefLink, Link } from "metabase/common/components/Link";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import {
@@ -29,6 +29,7 @@ import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
+  ActionIcon,
   Anchor,
   Badge,
   Box,
@@ -42,6 +43,7 @@ import {
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
 import { useSelector } from "metabase/utils/redux";
@@ -120,19 +122,22 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
 
         <Flex justify="space-between" align="flex-start" gap="md">
           <Stack gap="sm">
-            <Title order={2}>
-              {conversation.user
-                ? jt`Conversation with ${(
-                    <Link
-                      key="user"
-                      to={Urls.editUser(conversation.user)}
-                      variant="brandBold"
-                    >
-                      {userName}
-                    </Link>
-                  )}`
-                : t`Conversation with ${userName}`}
-            </Title>
+            <Flex align="baseline">
+              <Title order={2}>{t`Conversation with ${userName}`}</Title>
+              {conversation.user && (
+                <Tooltip label={t`View user`}>
+                  <ActionIcon
+                    component={ForwardRefLink}
+                    to={Urls.editUser(conversation.user)}
+                    variant="subtle"
+                    color="text-secondary"
+                    aria-label={t`Open user profile`}
+                  >
+                    <Icon name="external" size={16} />
+                  </ActionIcon>
+                </Tooltip>
+              )}
+            </Flex>
             <Flex gap="lg" align="center" wrap="wrap">
               <Flex gap="xs" align="center">
                 <Icon name="calendar" size={16} c="text-tertiary" />
