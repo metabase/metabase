@@ -115,7 +115,7 @@ function DatabaseMappingForm({
       validationSchema={VALIDATION_SCHEMA}
       onSubmit={handleSubmit}
     >
-      {({ values, setFieldValue }) => {
+      {({ values, setFieldValue, dirty }) => {
         const databaseId = values.database_id
           ? getDatabaseId(values.database_id)
           : null;
@@ -140,6 +140,7 @@ function DatabaseMappingForm({
               {databaseId != null && (
                 <DatabaseSchemasSelect
                   databaseId={databaseId}
+                  selectedSchemas={values.input_schemas}
                   isReadOnly={isReadOnly}
                 />
               )}
@@ -174,7 +175,7 @@ function DatabaseMappingForm({
                   <FormSubmitButton
                     label={isNew ? t`Add database` : t`Save`}
                     variant="filled"
-                    disabled={isReadOnly}
+                    disabled={isReadOnly || (!isNew && !dirty)}
                   />
                 </Tooltip>
               </Group>
@@ -200,24 +201,29 @@ function getDeleteButtonLabel(
 
 type DatabaseSchemasSelectProps = {
   databaseId: DatabaseId;
+  selectedSchemas: string[];
   isReadOnly: boolean;
 };
 
 function DatabaseSchemasSelect({
   databaseId,
+  selectedSchemas,
   isReadOnly,
 }: DatabaseSchemasSelectProps) {
-  const { data: schemas = [] } = useListDatabaseSchemasQuery(
+  const { data: availableSchemas = [] } = useListDatabaseSchemasQuery(
     databaseId != null ? { id: databaseId, include_hidden: true } : skipToken,
   );
+  const isAllSelected =
+    availableSchemas.length > 0 &&
+    selectedSchemas.length === availableSchemas.length;
 
   return (
     <FormMultiSelect
       name="input_schemas"
       label={t`Readable schemas`}
       description={t`Tables in these schemas are readable in this workspace.`}
-      placeholder={t`Select schemas`}
-      data={schemas}
+      placeholder={isAllSelected ? t`All schemas selected` : t`Select schemas`}
+      data={availableSchemas}
       searchable
       readOnly={isReadOnly}
     />
