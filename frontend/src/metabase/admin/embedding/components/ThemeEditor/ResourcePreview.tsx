@@ -6,8 +6,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { match } from "ts-pattern";
 
-import { useSearchQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
 import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embed";
@@ -16,6 +16,7 @@ import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Box, Center, Loader } from "metabase/ui";
 
 import S from "./PreviewPanel.module.css";
+import type { PreviewResource } from "./types";
 
 declare global {
   interface Window {
@@ -25,31 +26,12 @@ declare global {
   }
 }
 
-export function DashboardPreviewLoader({ theme }: { theme: MetabaseTheme }) {
-  const { data: searchResults } = useSearchQuery({
-    models: ["dashboard"],
-    limit: 1,
-  });
-
-  const dashboardId = searchResults?.data?.[0]?.id as number | undefined;
-
-  if (!dashboardId) {
-    return (
-      <Center h="100%">
-        <Loader />
-      </Center>
-    );
-  }
-
-  return <DashboardPreview theme={theme} dashboardId={dashboardId} />;
-}
-
-function DashboardPreview({
+export function ResourcePreview({
   theme,
-  dashboardId,
+  resource,
 }: {
   theme: MetabaseTheme;
-  dashboardId: number;
+  resource: PreviewResource;
 }) {
   const [isLoading, setIsLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,10 +75,12 @@ function DashboardPreview({
     [],
   );
 
+  const { componentName, attributes } = getResourceElement(resource);
+
   // Track loading state via the "ready" event on the web component
   useEffect(() => {
     if (containerRef.current) {
-      const embed = containerRef.current.querySelector("metabase-dashboard");
+      const embed = containerRef.current.querySelector(componentName);
       const handleReady = () => setIsLoading(false);
 
       if (embed) {
@@ -105,7 +89,7 @@ function DashboardPreview({
         return () => embed.removeEventListener("ready", handleReady);
       }
     }
-  }, [dashboardId]);
+  }, [componentName, resource.id]);
 
   return (
     <Box
@@ -115,9 +99,7 @@ function DashboardPreview({
       pos="relative"
       style={{ backgroundColor: theme?.colors?.background }}
     >
-      {createElement("metabase-dashboard", {
-        "dashboard-id": String(dashboardId),
-      })}
+      {createElement(componentName, attributes)}
 
       {isLoading && (
         <Box
@@ -136,3 +118,20 @@ function DashboardPreview({
     </Box>
   );
 }
+
+const getResourceElement = (
+  resource: PreviewResource,
+): {
+  componentName: "metabase-dashboard" | "metabase-question";
+  attributes: Record<string, string>;
+} =>
+  match(resource)
+    .with({ model: "dashboard" }, ({ id }) => ({
+      componentName: "metabase-dashboard" as const,
+      attributes: { "dashboard-id": String(id) },
+    }))
+    .with({ model: "card" }, ({ id }) => ({
+      componentName: "metabase-question" as const,
+      attributes: { "question-id": String(id) },
+    }))
+    .exhaustive();
