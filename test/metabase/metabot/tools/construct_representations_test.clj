@@ -17,6 +17,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.models.serialization :as serdes]
    [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
@@ -582,3 +583,109 @@
               (is (true? (:agent-error? d)))
               (is (= :aggregation-ref-out-of-range (:error d)))
               (is (re-find #"count at 0" (ex-message e))))))))))
+
+;;; ============================================================
+;;; source-card end-to-end (repr-plan step 11)
+;;; ============================================================
+
+(def ^:private card-entity-id
+  "A valid 21-char NanoID — matches `serdes/entity-id?` regex so `import-mbql` actually picks
+  up the `source-card` branch."
+  "aBc123_456DefGhI789_K")
+
+(def ^:private mp-with-card
+  "Same warehouse shape as `mp` plus a saved-question Card whose result-metadata carries the
+  column types the repair pass needs for field-reference inference."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample"}
+    :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
+               {:id 20 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 101 :name "TOTAL"      :table-id 10 :base-type :type/Float}
+               {:id 102 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer
+                :fk-target-field-id 200}
+               {:id 200 :name "ID"         :table-id 20 :base-type :type/Integer}
+               {:id 201 :name "CATEGORY"   :table-id 20 :base-type :type/Text}]
+    :cards    [{:id            500
+                :name          "Saved Orders"
+                :database-id   1
+                :type          :question
+                :entity-id     card-entity-id
+                :dataset-query {:lib/type :mbql/query
+                                :database 1
+                                :stages   [{:lib/type     :mbql.stage/mbql
+                                            :source-table 10}]}
+                :result-metadata [{:name "ID"    :base-type :type/Integer}
+                                  {:name "TOTAL" :base-type :type/Float}]}]}))
+
+(defn- lookup-card-stub [model eid]
+  (when (and (or (= model 'Card) (= model :model/Card))
+             (= eid card-entity-id))
+    {:id 500 :database_id 1 :entity_id eid}))
+
+(defn- with-card-mp-and-stubs! [f]
+  (with-redefs [lib-be/application-database-metadata-provider (fn [_] mp-with-card)
+                construct/resolve-database-id-from-yaml       (fn [_] 1)
+                serdes/lookup-by-id                           lookup-card-stub]
+    (f)))
+
+(deftest source-card-end-to-end-test
+  (testing "`source-card: <entity_id>` resolves to the card's numeric id and field references\nget their base-type stamped from the card's result-metadata"
+    (with-card-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-yaml
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                     "source-card" card-entity-id
+                                     "fields"      [["field" {} "TOTAL"]]
+                                     "limit"       5}]}))
+              q         (get-in result [:structured-output :query])
+              stage     (get-in q [:stages 0])
+              field-ref (get-in stage [:fields 0])]
+          (testing "source-card resolved to numeric id"
+            (is (= 500 (:source-card stage))))
+          (testing "no leftover source-table"
+            (is (not (contains? stage :source-table))))
+          (testing "field reference kept the string name and got types from the card"
+            (is (= :field (first field-ref)))
+            (is (= "TOTAL" (nth field-ref 2)))
+            (is (= :type/Float (get-in field-ref [1 :base-type])))))))))
+
+(deftest source-card-unknown-entity-id-surfaces-agent-error-test
+  (testing "a valid-shaped entity_id that does not resolve to any card returns :unknown-card with :agent-error? true"
+    (with-card-mp-and-stubs!
+      (fn []
+        (try
+          (construct/execute-representations-query
+           (query-yaml
+            {"lib/type" "mbql/query"
+             "database" "Sample"
+             ;; 21-char NanoID-shape so the serdes resolver actually dispatches on the
+             ;; `source-card` branch; stub returns nil for this id so we exercise the
+             ;; :unknown-card ex-info path.
+             "stages"   [{"lib/type"    "mbql.stage/mbql"
+                          "source-card" "zzzNotAReal0EntityId_"
+                          "fields"      [["field" {"base-type" "type/Float"} "TOTAL"]]}]}))
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :unknown-card (:error d))))))))))
+
+(deftest source-card-schema-rejects-non-string-value-test
+  (testing "`source-card:` must be a string entity_id; integer and other types are rejected at validation"
+    (with-card-mp-and-stubs!
+      (fn []
+        (try
+          (construct/execute-representations-query
+           (query-yaml
+            {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"    "mbql.stage/mbql"
+                          "source-card" 500
+                          "fields"      [["field" {"base-type" "type/Float"} "TOTAL"]]}]}))
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (is (true? (:agent-error? (ex-data e))))))))))

@@ -17,7 +17,7 @@
 
   Phase 1 MVP subset (see `repr-plan.md`):
 
-    * `source-table` only (no `source-card` yet);
+    * `source-table` and `source-card` (the latter as a portable entity_id string);
     * single-stage queries (no multi-stage);
     * top-level stage operations: `filters`, `aggregation`, `breakout`, `order-by`, `limit`,
       `fields`;
@@ -125,6 +125,7 @@
                {:closed false}
                ["lib/type"     [:= "mbql.stage/mbql"]]
                ["source-table" {:optional true} [:ref ::table-fk]]
+               ["source-card"  {:optional true} :string]
                ["joins"        {:optional true} [:sequential [:ref ::join]]]
                ["filters"      {:optional true} [:sequential [:ref ::clause]]]
                ["aggregation"  {:optional true} [:sequential [:ref ::clause]]]

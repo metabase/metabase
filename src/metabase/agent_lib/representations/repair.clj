@@ -785,6 +785,62 @@
     (cond-> walked
       (contains? stage "joins") (assoc "joins" joins))))
 
+(defn- mini-resolved-columns-for-source-card
+  "Resolve a single-stage query consisting only of `{:source-card <entity-id>}` (plus the
+  outer `mbql/query` wrapper and the warehouse database name), then return the
+  `lib/returned-columns` output as a `name → types` map in the same shape as
+  [[mini-resolved-columns-by-name]]. Used by [[infer-source-card-field-types*]] to stamp
+  `base-type` onto `[field, {}, \"<col>\"]` clauses in a stage whose source is a saved
+  question / model.
+
+  Returns `nil` if anything in the resolve path throws — the resolver will surface the real
+  error on the main pipeline. Logged at debug."
+  [mp query stage-idx]
+  (let [stage (get-in query ["stages" stage-idx])]
+    (when-let [source-card (get stage "source-card")]
+      (try
+        (let [bare-stage {"lib/type"    "mbql.stage/mbql"
+                          "source-card" source-card}
+              bare-query {"lib/type" "mbql/query"
+                          "database" (get query "database")
+                          "stages"   [bare-stage]}
+              resolved   (repr.resolve/resolve-query mp bare-query)
+              lib-q      (lib/query mp resolved)
+              cols       (lib/returned-columns lib-q)]
+          (into {}
+                (keep (fn [col]
+                        (when-let [types (types-from-column col)]
+                          [(:name col) types])))
+                cols))
+        (catch Exception e
+          (log/debugf e "[repr-repair] source-card resolve of stage %d failed; skipping field-type inference"
+                      stage-idx)
+          nil)))))
+
+(defn- infer-source-card-field-types*
+  "Stamp `base-type` / `effective-type` onto `[field, opts, \"<col>\"]` clauses in any stage
+  whose source is a `source-card:` entity. Uses the card's resolved `returned-columns` as the
+  type oracle.
+
+  Idempotent and silently no-ops when `mp` is nil, the query shape is off, the card can't be
+  resolved, or the column name isn't one the card produces (resolver will report the real
+  error downstream)."
+  [query mp]
+  (if-not (and mp (map? query) (vector? (get query "stages")))
+    query
+    (let [n (count (get query "stages"))]
+      (loop [i 0
+             q query]
+        (if (>= i n)
+          q
+          (let [stage (get-in q ["stages" i])
+                q'    (if (and (map? stage) (get stage "source-card"))
+                        (if-let [name->types (mini-resolved-columns-for-source-card mp q i)]
+                          (update-in q ["stages" i] infer-cross-stage-field-types-in-stage name->types)
+                          q)
+                        q)]
+            (recur (inc i) q')))))))
+
 (defn- infer-cross-stage-field-types*
   "Top-level cross-stage field-type inference pass. No-op when the query has fewer than two
   stages or `mp` is nil."
@@ -837,13 +893,16 @@
     5. infer `base-type` / `effective-type` on cross-stage field references
        (`[\"field\" {} \"<column-name>\"]` in a non-first stage), by mini-resolving the
        prefix of stages and reading the returned columns' metadata.
+    5.5. infer `base-type` / `effective-type` on field references in a stage whose source is
+       a saved question / model (`source-card:`), using the card's resolved returned columns.
 
-  Pass 4 and Pass 5 require `mp` (a `MetadataProvider`); they are best-effort no-ops when `mp`
-  can't resolve the relevant pieces (so the subsequent validate/resolve stages can surface the
-  real error with their own, better messages). Hard FK errors from Pass 4 (`:no-fk-path`,
-  `:ambiguous-fk`) are raised as `:agent-error?` ex-info so the tool wrapper can relay them to
-  the LLM. Pass 5 never throws on its own \u2014 if the prefix can't be resolved, it just leaves
-  the cross-stage clauses alone and lets the schema validator complain.
+  Pass 4, Pass 5, and Pass 5.5 require `mp` (a `MetadataProvider`); they are best-effort
+  no-ops when `mp` can't resolve the relevant pieces (so the subsequent validate/resolve
+  stages can surface the real error with their own, better messages). Hard FK errors from
+  Pass 4 (`:no-fk-path`, `:ambiguous-fk`) are raised as `:agent-error?` ex-info so the tool
+  wrapper can relay them to the LLM. Pass 5 and Pass 5.5 never throw on their own \u2014 if a
+  prefix / source-card can't be resolved, they just leave the affected clauses alone and let
+  the schema validator complain.
 
   Note: the database-name normalisation pass (\"Pass 2.5\") that previously lived here was
   removed in `repr-plan.md` step 13. Database identity is now derived from the YAML's
@@ -861,4 +920,5 @@
       rewrite-order-by-inline-aggs*
       resolve-aggregation-ref-indexes*
       (resolve-implicit-joins* mp)
-      (infer-cross-stage-field-types* mp)))
+      (infer-cross-stage-field-types* mp)
+      (infer-source-card-field-types* mp)))

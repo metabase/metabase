@@ -113,11 +113,33 @@ fields:
   - [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]
 ```
 
+### Querying a saved question or model
+
+Instead of `source-table:` you can use `source-card:` to query the result of an existing saved question or model. The value is the card's **portable entity id** — a short opaque string reported by `entity_details` under `portable_entity_id` (do **not** use the numeric id).
+
+```yaml
+lib/type: mbql/query
+database: Sample
+stages:
+  - lib/type: mbql.stage/mbql
+    source-card: T4wA_GPFwGb6R4FxIDGTo   # entity_id of a saved question / model
+    filters:
+      - ['>', {}, [field, {}, total], 100]   # reference card columns by their output name
+    limit: 50
+```
+
+When a stage uses `source-card:`:
+
+- Reference columns produced by the card the same way you reference columns from a previous stage in a multi-stage query — `[field, {}, "<column-name>"]` with the column's **output name** (the string reported by the card's `fields` in `entity_details`) in the third slot, **not** a portable FK path.
+- Use `entity_details` (entity-type `question` or `model`) to discover a card's columns and pick the correct name.
+- A single stage has **either** `source-table:` **or** `source-card:`, never both.
+- The card must live in the same database as this query (same `database:` name at the top level). Cross-database queries are not supported.
+
 ### Multi-stage queries
 
 A query can have more than one stage. Every stage after the first consumes the previous stage's output as its source — so you can aggregate, then filter on the aggregate; or aggregate, then group the aggregate by something else; or rank results and then `limit` to the top N.
 
-Only the **first** stage has a `source-table:` (or will soon have `source-card:`); later stages omit it — their source is implicitly the previous stage.
+Only the **first** stage has a `source-table:` (or `source-card:`); later stages omit it — their source is implicitly the previous stage.
 
 Within a later stage, a field reference that points to a column produced by the previous stage uses the column's **name as a string** in the third slot instead of a portable FK vector:
 
@@ -326,7 +348,4 @@ stages:
 
 ## Phase 1 scope — what's not yet supported
 
-These are not yet available in this tool version; ignore them for now:
-- `source-card` (querying a saved question / model as a source)
-
-If the user asks for something that requires one of these, explain the limitation and offer to construct a simpler version instead.
+All the features described above are implemented. If the user's request requires something that isn't covered here, explain the limitation and offer to construct a simpler version instead.
