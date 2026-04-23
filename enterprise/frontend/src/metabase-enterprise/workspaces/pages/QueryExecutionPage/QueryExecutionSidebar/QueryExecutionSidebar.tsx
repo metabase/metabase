@@ -8,10 +8,11 @@ import type { Database, QueryExecution } from "metabase-types/api";
 import { InfoSection } from "./InfoSection";
 import S from "./QueryExecutionSidebar.module.css";
 import { QuerySection } from "./QuerySection";
+import { QuerySourcesSection } from "./QuerySourcesSection";
 import { SidebarHeader } from "./SidebarHeader";
 
 type QueryExecutionSidebarProps = {
-  item: QueryExecution;
+  execution: QueryExecution;
   database: Database | undefined;
   containerWidth: number;
   onResizeStart: () => void;
@@ -20,7 +21,7 @@ type QueryExecutionSidebarProps = {
 };
 
 export const QueryExecutionSidebar = memo(function QueryExecutionSidebar({
-  item,
+  execution,
   database,
   containerWidth,
   onResizeStart,
@@ -42,8 +43,9 @@ export const QueryExecutionSidebar = memo(function QueryExecutionSidebar({
         data-testid="query-execution-sidebar"
       >
         <SidebarHeader title={t`Query execution`} onClose={onClose} />
-        <InfoSection item={item} database={database} />
-        <QuerySection item={item} />
+        <InfoSection execution={execution} database={database} />
+        <QuerySourcesSection execution={execution} />
+        <QuerySection execution={execution} />
       </Stack>
     </SidebarResizableBox>
   );

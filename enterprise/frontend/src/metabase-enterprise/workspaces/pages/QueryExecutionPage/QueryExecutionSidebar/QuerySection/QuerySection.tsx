@@ -7,11 +7,11 @@ import { Card, Stack, Title } from "metabase/ui";
 import type { QueryExecution } from "metabase-types/api";
 
 type QuerySectionProps = {
-  item: QueryExecution;
+  execution: QueryExecution;
 };
 
-export function QuerySection({ item }: QuerySectionProps) {
-  const { data, isLoading, error } = useGetNativeDatasetQuery(item.query);
+export function QuerySection({ execution }: QuerySectionProps) {
+  const { data, isLoading, error } = useGetNativeDatasetQuery(execution.query);
 
   return (
     <Stack role="region" aria-label={t`Query`}>

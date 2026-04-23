@@ -25,9 +25,9 @@ export function getColumns({
       width: "auto",
       minWidth: 160,
       enableSorting: true,
-      accessorFn: (item) =>
-        databasesById.get(item.database_id)?.name ??
-        t`Database ${item.database_id}`,
+      accessorFn: (execution) =>
+        databasesById.get(execution.database_id)?.name ??
+        t`Database ${execution.database_id}`,
       cell: ({ getValue }) => (
         <Group align="center" gap="sm" miw={0} wrap="nowrap">
           <FixedSizeIcon name="database" />

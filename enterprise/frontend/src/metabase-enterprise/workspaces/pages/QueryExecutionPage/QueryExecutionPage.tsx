@@ -35,9 +35,9 @@ export function QueryExecutionPage() {
   } = useGetCurrentWorkspaceQuery();
 
   const {
-    data: items = [],
-    isLoading: isLoadingItems,
-    error: itemsError,
+    data: executions = [],
+    isLoading: isLoadingExecutions,
+    error: executionsError,
   } = useListQueryExecutionsQuery();
 
   const {
@@ -51,10 +51,13 @@ export function QueryExecutionPage() {
     [databasesResponse],
   );
 
-  const isLoading = isLoadingWorkspace || isLoadingItems || isLoadingDatabases;
-  const error = workspaceError ?? itemsError ?? databasesError;
+  const isLoading =
+    isLoadingWorkspace || isLoadingExecutions || isLoadingDatabases;
+  const error = workspaceError ?? executionsError ?? databasesError;
 
-  const selectedItem = items.find((item) => item.id === selectedId);
+  const selectedExecution = executions.find(
+    (execution) => execution.id === selectedId,
+  );
 
   return (
     <Flex
@@ -72,17 +75,17 @@ export function QueryExecutionPage() {
           </Center>
         ) : (
           <QueryExecutionTable
-            items={items}
+            executions={executions}
             databasesById={databasesById}
             selectedId={selectedId}
-            onSelect={(item) => setSelectedId(item.id)}
+            onSelect={(execution) => setSelectedId(execution.id)}
           />
         )}
       </Stack>
-      {selectedItem != null && (
+      {selectedExecution != null && (
         <QueryExecutionSidebar
-          item={selectedItem}
-          database={databasesById.get(selectedItem.database_id)}
+          execution={selectedExecution}
+          database={databasesById.get(selectedExecution.database_id)}
           containerWidth={containerWidth}
           onResizeStart={startResizing}
           onResizeStop={stopResizing}

@@ -15,14 +15,14 @@ import type {
 import { getColumns } from "./utils";
 
 type QueryExecutionTableProps = {
-  items: QueryExecution[];
+  executions: QueryExecution[];
   databasesById: Map<DatabaseId, Database>;
   selectedId: QueryExecutionId | undefined;
-  onSelect: (item: QueryExecution) => void;
+  onSelect: (execution: QueryExecution) => void;
 };
 
 export function QueryExecutionTable({
-  items,
+  executions,
   databasesById,
   selectedId,
   onSelect,
@@ -35,9 +35,9 @@ export function QueryExecutionTable({
   );
 
   const treeTableInstance = useTreeTableInstance<QueryExecution>({
-    data: items,
+    data: executions,
     columns,
-    getNodeId: (item) => String(item.id),
+    getNodeId: (execution) => String(execution.id),
     selectedRowId: selectedId != null ? String(selectedId) : undefined,
     onRowActivate: handleRowClick,
   });

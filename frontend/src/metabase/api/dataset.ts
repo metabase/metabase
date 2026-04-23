@@ -4,6 +4,7 @@ import type {
   CardQueryMetadata,
   Dataset,
   DatasetQuery,
+  DatasetQuerySourceInfo,
   FieldValue,
   GetRemappedParameterValueRequest,
   NativeDatasetResponse,
@@ -81,6 +82,15 @@ export const datasetApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getDatasetQuerySources: builder.query<DatasetQuerySourceInfo, DatasetQuery>(
+      {
+        query: (body) => ({
+          method: "POST",
+          url: "/api/dataset/query-sources",
+          body,
+        }),
+      },
+    ),
     getRemappedParameterValue: builder.query<
       FieldValue,
       GetRemappedParameterValueRequest
@@ -103,5 +113,6 @@ export const {
   useGetAdhocQueryMetadataQuery,
   useLazyGetAdhocQueryMetadataQuery,
   useGetNativeDatasetQuery,
+  useGetDatasetQuerySourcesQuery,
   useGetRemappedParameterValueQuery,
 } = datasetApi;
