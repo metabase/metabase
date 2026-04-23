@@ -320,7 +320,7 @@
 (deftest ^:parallel startup-logic-registered-test
   (testing "loading the data-complexity-score init namespace registers a startup-logic method"
     (is (contains? (methods startup/def-startup-logic!)
-                   :metabase-enterprise.data-complexity-score.init/PrintSemanticComplexityScore))))
+                   :metabase-enterprise.data-complexity-score.init/EmitComplexityScoreIfStale))))
 
 (deftest ^:parallel search-index-embedder-degrades-gracefully-test
   (testing "returns {} when semantic-search index isn't available (no throw)"
@@ -433,26 +433,26 @@
 (defn- complexity-events! []
   (->> (snowplow-test/pop-event-data-and-user-id!)
        (map :data)
-       (filter #(= "data_complexity_scored" (get % "event")))))
+       (filter #(= "data_complexity_scoring" (get % "event")))))
 
 (defn- raw-complexity-events []
   (->> @snowplow-test/*snowplow-collector*
        (map #(get-in % [:properties "data"]))
-       (filter #(= "iglu:com.metabase/semantic_complexity/jsonschema/2-0-0"
+       (filter #(= "iglu:com.metabase/data_complexity/jsonschema/1-0-0"
                    (get % "schema")))))
 
-(def ^:private semantic-complexity-schema
+(def ^:private data-complexity-schema
   (delay
-    (-> "snowplow/iglu-client-embedded/schemas/com.metabase/semantic_complexity/jsonschema/2-0-0"
+    (-> "snowplow/iglu-client-embedded/schemas/com.metabase/data_complexity/jsonschema/1-0-0"
         slurp
         json/decode+kw)))
 
 (defn- schema-enum
   [prop]
-  (set (get-in @semantic-complexity-schema [:properties prop :enum])))
+  (set (get-in @data-complexity-schema [:properties prop :enum])))
 
 (deftest ^:sequential emit-snowplow-publishes-totals-and-variables-test
-  (testing "one event per catalog-total + one per (catalog × dimension × variable)"
+  (testing "one `key=total` event per catalog + one `key=<dim>.<var>` event per variable"
     (snowplow-test/with-fake-snowplow-collector
       (mt/with-dynamic-fn-redefs [complexity/library-catalog  (fn [] (catalog [(entity :name "a")
                                                                                (entity :name "b")]))
@@ -463,24 +463,20 @@
         (complexity/complexity-scores :embedder nil)
         (let [events (complexity-events!)
               by-cat (group-by #(get % "catalog") events)
-              axis-of #(set (map (fn [e] (get e "axis")) %))]
-          (testing "every event carries event name + formula version + level"
+              keys-of #(set (map (fn [e] (get e "key")) %))]
+          (testing "every event carries event name + formula version + parameters.level"
             (is (every? (fn [e]
-                          (and (= "data_complexity_scored" (get e "event"))
+                          (and (= "data_complexity_scoring" (get e "event"))
                                (integer? (get e "formula_version"))
-                               (integer? (get e "level"))))
+                               (integer? (get-in e ["parameters" "level"]))))
                         events)))
-          (testing "each catalog emits a :total event (no :dimension key) plus variable events"
+          (testing "each catalog emits a `key=total` event plus dotted-key variable events"
             (doseq [cat ["library" "universe" "metabot"]]
-              (is (contains? (axis-of (get by-cat cat)) "total")
-                  (format "%s has a :axis=total event" cat))
-              (is (some #(and (= "total" (get % "axis"))
-                              (not (contains? % "dimension")))
-                        (get by-cat cat))
-                  (format "%s :total event omits :dimension" cat))))
-          (testing "variable events carry :dimension"
-            (let [var-events (filter #(not= "total" (get % "axis")) events)]
-              (is (every? #(string? (get % "dimension")) var-events)))))))))
+              (is (contains? (keys-of (get by-cat cat)) "total")
+                  (format "%s has a key=total event" cat))))
+          (testing "variable events carry a dotted `<dimension>.<variable>` key"
+            (let [var-events (filter #(not= "total" (get % "key")) events)]
+              (is (every? #(re-matches #"[a-z_]+\.[a-z_]+" (get % "key")) var-events)))))))))
 
 (deftest ^:sequential emit-snowplow-includes-measurement-test
   (testing "scored variable events carry their raw pre-score measurement"
@@ -492,29 +488,29 @@
                                   complexity/universe-catalog (fn [] (catalog []))]
         (snowplow-test/pop-event-data-and-user-id!)
         (complexity/complexity-scores :embedder nil)
-        (let [by-axis (->> (complexity-events!)
-                           (filter #(= "library" (get % "catalog")))
-                           (into {} (map (juxt #(get % "axis") identity))))]
-          (is (= 3 (get-in by-axis ["entity_count" "measurement"])))
-          (is (= 5 (get-in by-axis ["field_count"  "measurement"])))
-          (is (= 1 (get-in by-axis ["name_collisions" "measurement"])))
+        (let [by-key (->> (complexity-events!)
+                          (filter #(= "library" (get % "catalog")))
+                          (into {} (map (juxt #(get % "key") identity))))]
+          (is (= 3 (get-in by-key ["scale.entity_count"    "measurement"])))
+          (is (= 5 (get-in by-key ["scale.field_count"     "measurement"])))
+          (is (= 1 (get-in by-key ["nominal.name_collisions" "measurement"])))
           (testing "the aggregate total has no measurement key"
-            (is (not (contains? (get by-axis "total") "measurement")))))))))
+            (is (not (contains? (get by-key "total") "measurement")))))))))
 
 (deftest ^:sequential emit-snowplow-propagates-error-on-embedder-failure-test
-  (testing ":synonym_pairs event carries the embedder error string; other axes do not"
+  (testing ":semantic.synonym_pairs event carries the embedder error string; other keys do not"
     (snowplow-test/with-fake-snowplow-collector
       (mt/with-dynamic-fn-redefs [complexity/library-catalog  (fn [] (catalog [(entity :name "customers")
                                                                                (entity :name "clients")]))
                                   complexity/universe-catalog (fn [] (catalog []))]
         (snowplow-test/pop-event-data-and-user-id!)
         (complexity/complexity-scores :embedder (fn [_] (throw (ex-info "embedder boom" {}))))
-        (let [by-axis (->> (complexity-events!)
-                           (filter #(= "library" (get % "catalog")))
-                           (into {} (map (juxt #(get % "axis") identity))))]
-          (is (= "embedder boom" (get-in by-axis ["synonym_pairs" "error"])))
+        (let [by-key (->> (complexity-events!)
+                          (filter #(= "library" (get % "catalog")))
+                          (into {} (map (juxt #(get % "key") identity))))]
+          (is (= "embedder boom" (get-in by-key ["semantic.synonym_pairs" "error"])))
           (is (not-any? #(contains? % "error")
-                        (vals (dissoc by-axis "synonym_pairs")))))))))
+                        (vals (dissoc by-key "semantic.synonym_pairs")))))))))
 
 (deftest ^:sequential emit-snowplow-truncates-error-to-schema-max-test
   (testing "a pathologically long exception message is truncated so it doesn't fail schema validation"
@@ -527,16 +523,16 @@
           (complexity/complexity-scores :embedder (fn [_] (throw (ex-info huge {}))))
           (let [err (->> (complexity-events!)
                          (filter #(and (= "library" (get % "catalog"))
-                                       (= "synonym_pairs" (get % "axis"))))
+                                       (= "semantic.synonym_pairs" (get % "key"))))
                          first
                          (#(get % "error")))]
             (is (= 1024 (count err))
                 "error is clipped to the schema's maxLength of 1024")))))))
 
-(deftest ^:sequential emit-snowplow-schema-2-0-0-payload-shape-test
+(deftest ^:sequential emit-snowplow-schema-payload-shape-test
   (snowplow-test/with-fake-snowplow-collector
     (doseq [level [0 1 2]]
-      (testing (format "level %d events match schema 2-0-0 payload expectations" level)
+      (testing (format "level %d events match schema 1-0-0 payload expectations" level)
         (snowplow-test/pop-event-data-and-user-id!)
         (let [result (complexity/score-from-entities
                       (catalog [(entity :name "orders" :field-count 2)
@@ -549,72 +545,64 @@
                                       "facts"  [0.0 1.0]})
                       {:level level})]
           (#'complexity/emit-snowplow! result)
-          (let [raw-events            (raw-complexity-events)
-                events                (complexity-events!)
-                expected-axes         (set
-                                       (mapcat
-                                        (fn [[catalog {:keys [dimensions]}]]
-                                          (cons ["total" nil (name catalog)]
-                                                (for [[dimension {:keys [variables]}] dimensions
-                                                      axis                         (keys variables)]
-                                                  [(#'complexity/axis-name axis)
-                                                   (name dimension)
-                                                   (name catalog)])))
-                                        [[:library (:library result)]
-                                         [:universe (:universe result)]
-                                         [:metabot (:metabot result)]]))
-                emitted-axes          (set (map (juxt #(get % "axis")
-                                                      #(get % "dimension")
-                                                      #(get % "catalog"))
-                                                events))
-                total                 (first (filter #(and (= "library" (get % "catalog"))
-                                                           (= "total" (get % "axis")))
-                                                     events))
-                fields-per-entity     (first (filter #(and (= "library" (get % "catalog"))
-                                                           (= "fields_per_entity" (get % "axis")))
-                                                     events))
-                description-coverage  (first (filter #(and (= "universe" (get % "catalog"))
-                                                           (= "description_coverage" (get % "axis")))
-                                                     events))
-                name-collisions       (first (filter #(and (= "library" (get % "catalog"))
-                                                           (= "name_collisions" (get % "axis")))
-                                                     events))
-                synonym-edge-density  (first (filter #(and (= "library" (get % "catalog"))
-                                                           (= "synonym_edge_density" (get % "axis")))
-                                                     events))]
-            (is (seq raw-events) "sanity: semantic complexity events were emitted")
+          (let [raw-events           (raw-complexity-events)
+                events               (complexity-events!)
+                expected-keys        (set
+                                      (mapcat
+                                       (fn [[catalog {:keys [dimensions]}]]
+                                         (cons ["total" (name catalog)]
+                                               (for [[dimension {:keys [variables]}] dimensions
+                                                     axis                         (keys variables)]
+                                                 [(#'complexity/dotted-key dimension axis)
+                                                  (name catalog)])))
+                                       [[:library (:library result)]
+                                        [:universe (:universe result)]
+                                        [:metabot (:metabot result)]]))
+                emitted-keys         (set (map (juxt #(get % "key") #(get % "catalog")) events))
+                total                (first (filter #(and (= "library" (get % "catalog"))
+                                                          (= "total" (get % "key")))
+                                                    events))
+                fields-per-entity    (first (filter #(and (= "library" (get % "catalog"))
+                                                          (= "scale.fields_per_entity" (get % "key")))
+                                                    events))
+                description-coverage (first (filter #(and (= "universe" (get % "catalog"))
+                                                          (= "metadata.description_coverage" (get % "key")))
+                                                    events))
+                name-collisions      (first (filter #(and (= "library" (get % "catalog"))
+                                                          (= "nominal.name_collisions" (get % "key")))
+                                                    events))
+                synonym-edge-density (first (filter #(and (= "library" (get % "catalog"))
+                                                          (= "semantic.synonym_edge_density" (get % "key")))
+                                                    events))]
+            (is (seq raw-events) "sanity: data_complexity events were emitted")
             (is (= (count raw-events) (count events)))
-            (is (every? #(= "iglu:com.metabase/semantic_complexity/jsonschema/2-0-0"
+            (is (every? #(= "iglu:com.metabase/data_complexity/jsonschema/1-0-0"
                             (get % "schema"))
                         raw-events))
-            (is (every? #(= level (get % "level")) events))
-            (is (= expected-axes emitted-axes))
-            (is (every? #(contains? (schema-enum :axis) (get % "axis")) events))
+            (is (every? #(contains? % "score") events)
+                "score is required on every event (nullable for uncomputed leaves)")
+            (is (every? #(= level (get-in % ["parameters" "level"])) events))
+            (is (= expected-keys emitted-keys))
+            (is (every? #(contains? (schema-enum :event) (get % "event")) events))
             (is (every? #(contains? (schema-enum :catalog) (get % "catalog")) events))
-            (is (every? #(contains? (schema-enum :dimension) (get % "dimension")) events))
             (if (zero? level)
               (do
-                (is (every? #(not (contains? % "synonym_threshold")) events))
-                (is (every? #(= "total" (get % "axis")) events)))
+                (is (every? #(not (contains? (get % "parameters") "synonym_threshold")) events))
+                (is (every? #(= "total" (get % "key")) events)))
               (do
-                (is (= "scale" (get fields-per-entity "dimension")))
                 (is (contains? fields-per-entity "measurement"))
-                (is (not (contains? fields-per-entity "score")))
-                (is (= "metadata" (get description-coverage "dimension")))
+                (is (nil? (get fields-per-entity "score")))
                 (is (contains? description-coverage "measurement"))
-                (is (not (contains? description-coverage "score")))
-                (is (= "nominal" (get name-collisions "dimension")))
+                (is (nil? (get description-coverage "score")))
                 (is (= 100 (get name-collisions "score")))
                 (is (= 1 (get name-collisions "measurement")))
                 (if (= 2 level)
                   (do
-                    (is (every? #(contains? % "synonym_threshold") events))
-                    (is (= "semantic" (get synonym-edge-density "dimension")))
+                    (is (every? #(contains? (get % "parameters") "synonym_threshold") events))
                     (is (contains? synonym-edge-density "measurement"))
-                    (is (not (contains? synonym-edge-density "score"))))
-                  (is (every? #(not (contains? % "synonym_threshold")) events)))))
-            (is (contains? total "score"))
-            (is (not (contains? total "dimension")))
+                    (is (nil? (get synonym-edge-density "score"))))
+                  (is (every? #(not (contains? (get % "parameters") "synonym_threshold")) events)))))
+            (is (integer? (get total "score")))
             (is (not (contains? total "measurement")))))))))
 
 (deftest ^:sequential emit-snowplow-includes-embedding-model-meta-test
@@ -631,8 +619,8 @@
           (complexity/complexity-scores :embedder semantic-search/search-index-embedder)
           (let [events (complexity-events!)]
             (is (seq events) "sanity: events were emitted")
-            (is (every? #(= "openai" (get % "embedding_model_provider")) events))
-            (is (every? #(= "text-embedding-3-small" (get % "embedding_model_name")) events))))))))
+            (is (every? #(= "openai" (get-in % ["parameters" "embedding_model_provider"])) events))
+            (is (every? #(= "text-embedding-3-small" (get-in % ["parameters" "embedding_model_name"])) events))))))))
 
 (deftest ^:sequential emit-snowplow-failure-is-swallowed-test
   (testing "Snowplow emission failure is caught; complexity-scores still returns the score"
@@ -671,36 +659,34 @@
     ;;    concurrent-scoring bug.
     (let [submitted?    (atom false)
           scored?       (atom false)
-          score-args    (atom nil)
           lock-opts     (atom nil)
           locked-during-score? (atom false)]
-      (with-redefs [quick-task/submit-task!         (fn [task]
-                                                      (reset! submitted? true)
-                                                      (task)
-                                                      nil)
-                    cluster-lock/do-with-cluster-lock (fn [opts thunk]
-                                                        (reset! lock-opts opts)
-                                                        (thunk))
-                    complexity/complexity-scores    (fn [& args]
-                                                      (reset! scored? true)
-                                                      (reset! score-args args)
-                                                      (reset! locked-during-score?
-                                                              (some? @lock-opts))
-                                                      {})
-                    analytics/track-event!          (fn [& _] nil)
-                    semantic-search/search-index-embedder (constantly {})]
-        (startup/def-startup-logic! ::init/PublishSemanticComplexityScore)
-        (is (true? @submitted?) "the startup hook must schedule its work via quick-task/submit-task!")
-        (is (true? @scored?)    "the scheduled task must invoke complexity/complexity-scores")
-        (is (empty? @score-args) "the startup hook calls complexity-scores with no args")
-        (is (true? @locked-during-score?)
-            "scoring must run inside cluster-lock/with-cluster-lock")
-        (is (=? {:lock :metabase-enterprise.data-complexity-score.init/publish-complexity-score-lock
-                 :timeout-seconds pos-int?
-                 :retry-config {:max-retries pos-int?
-                                :delay-ms    pos-int?}}
-                @lock-opts)
-            "the cluster lock must use an explicit timeout/retry budget, not the bare-keyword defaults")))))
+      (mt/with-temporary-setting-values [data-complexity-scoring-enabled        true
+                                         data-complexity-scoring-last-fingerprint ""
+                                         data-complexity-scoring-claim           ""]
+        (with-redefs [quick-task/submit-task!         (fn [task]
+                                                        (reset! submitted? true)
+                                                        (task)
+                                                        nil)
+                      cluster-lock/do-with-cluster-lock (fn [opts thunk]
+                                                          (reset! lock-opts opts)
+                                                          (thunk))
+                      complexity/complexity-scores    (fn [& _args]
+                                                        (reset! scored? true)
+                                                        (reset! locked-during-score?
+                                                                (some? @lock-opts))
+                                                        (with-meta {} {::complexity/snowplow-published? true}))
+                      analytics/track-event!          (fn [& _] nil)
+                      semantic-search/search-index-embedder (constantly {})]
+          (startup/def-startup-logic! ::init/EmitComplexityScoreIfStale)
+          (is (true? @submitted?) "the startup hook must schedule its work via quick-task/submit-task!")
+          (is (true? @scored?)    "the scheduled task must invoke complexity/complexity-scores")
+          (is (true? @locked-during-score?)
+              "scoring claim must be acquired inside cluster-lock/with-cluster-lock")
+          (is (=? {:lock :metabase-enterprise.data-complexity-score.task.complexity-score/complexity-score-run
+                   :timeout-seconds pos-int?}
+                  @lock-opts)
+              "the cluster lock must use an explicit timeout, not the bare-keyword default"))))))
 
 ;;; ------------------------ hermetic library DB test -----------------------------
 

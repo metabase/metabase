@@ -257,8 +257,15 @@
                  #_{:clj-kondo/ignore [:discouraged-var]}
                  (with-out-str (pprint/pprint result)))))
 
-(defn- axis-name [k]
-  (-> k name (.replace "-" "_")))
+(defn- snake ^String [x]
+  (-> x name (.replace "-" "_")))
+
+(defn- dotted-key
+  "Identifier for a slice in the `data_complexity` schema's `:key` field — `\"total\"` at the
+  catalog level, `\"<dimension>.<variable>\"` per leaf. Free-form string per the schema, so new
+  variables can be added without a schema bump."
+  ([] "total")
+  ([dim var] (str (snake dim) "." (snake var))))
 
 (defn- measurement-of
   "Publish the raw pre-score measurement alongside each variable event so downstream can track
@@ -275,33 +282,38 @@
 (defn- truncate-error [s]
   (cond-> s (< max-error-length (count s)) (subs 0 max-error-length)))
 
+(defn- parameters-map
+  "Sorted-map of scoring inputs likely to evolve, published as a JSON object on each event.
+  String keys (top-level and nested) so they round-trip unchanged — Snowplow's `payload` only
+  snake-cases top-level keys, and Cheshire would serialize nested keyword keys with their leading
+  colon. `formula_version` stays top-level as the primary cross-version filter."
+  [{:keys [level synonym-threshold embedding-model]}]
+  (cond-> (sorted-map "level" level)
+    synonym-threshold (assoc "synonym_threshold" synonym-threshold)
+    embedding-model   (assoc "embedding_model_provider" (:provider embedding-model)
+                             "embedding_model_name"     (:model-name embedding-model))))
+
 (defn- emit-catalog-snowplow!
-  "Emit Snowplow events for one catalog. One event per (catalog × axis) — `axis=total` at the
-  catalog level, then one per `(dimension, variable)` below. Events conform to
-  `data_complexity` schema 2-0-0."
+  "Emit Snowplow events for one catalog. One `key=\"total\"` event for the catalog total, then one
+  per `(dimension, variable)` leaf. Events conform to `data_complexity` schema 1-0-0."
   [catalog {:keys [dimensions total]} base]
   (analytics/track-event!
    :snowplow/data_complexity
-   (assoc base :catalog catalog :axis :total :score total))
+   (assoc base :catalog catalog :key (dotted-key) :score total))
   (doseq [[dim {:keys [variables]}] dimensions
           [var-k var-map]           variables
           :let [payload (cond-> (assoc base
                                        :catalog catalog
-                                       :dimension (name dim)
-                                       :axis (axis-name var-k))
-                          (contains? var-map :score) (assoc :score (:score var-map))
-                          (measurement-of var-map)   (assoc :measurement (measurement-of var-map))
-                          (:error var-map)           (assoc :error (truncate-error (:error var-map))))]]
+                                       :key     (dotted-key dim var-k)
+                                       :score   (:score var-map))
+                          (measurement-of var-map) (assoc :measurement (measurement-of var-map))
+                          (:error var-map)         (assoc :error (truncate-error (:error var-map))))]]
     (analytics/track-event! :snowplow/data_complexity payload)))
 
 (defn- emit-snowplow! [{:keys [library universe metabot meta]}]
-  (let [{:keys [formula-version synonym-threshold embedding-model level]} meta
-        base (cond-> {:event           :data_complexity_scored
-                      :formula_version formula-version
-                      :level           level}
-               synonym-threshold (assoc :synonym_threshold synonym-threshold)
-               embedding-model   (assoc :embedding_model_provider (:provider embedding-model)
-                                        :embedding_model_name     (:model-name embedding-model)))]
+  (let [base {:event           :data_complexity_scoring
+              :formula_version (:formula-version meta)
+              :parameters      (parameters-map meta)}]
     (doseq [[catalog result] [[:library library] [:universe universe] [:metabot metabot]]]
       (emit-catalog-snowplow! catalog result base))))
 
