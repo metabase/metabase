@@ -1,0 +1,689 @@
+[
+  {
+    "data_sources": [
+      "customerio_data.bounces"
+    ],
+    "sql": "SELECT bounce_type, COUNT(*) as bounce_count, ROUND(COUNT(*)::numeric / (SELECT COUNT(*) FROM customerio_data.bounces) * 100, 2) as percentage FROM customerio_data.bounces GROUP BY bounce_type ORDER BY bounce_count DESC",
+    "question": "What types of email bounces are we seeing and how common is each?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.bounces"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', timestamp) as day, COUNT(*) as daily_bounces FROM customerio_data.bounces WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "Show me our daily email bounce trend for the last month"
+  },
+  {
+    "data_sources": [
+      "customerio_data.bounces"
+    ],
+    "sql": "SELECT reason, COUNT(*) as occurrences FROM customerio_data.bounces WHERE timestamp >= DATE '2024-12-31' - INTERVAL '90 days' GROUP BY reason ORDER BY occurrences DESC LIMIT 10",
+    "question": "What are the main reasons emails are bouncing?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.bounces"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', timestamp) as week, COUNT(*) as bounces, SUM(CASE WHEN bounce_type = 'hard' THEN 1 ELSE 0 END) as hard_bounces FROM customerio_data.bounces WHERE timestamp >= DATE '2024-12-31' - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "Show me weekly bounce trends including hard bounces"
+  },
+  {
+    "data_sources": [
+      "customerio_data.bounces"
+    ],
+    "sql": "SELECT COUNT(*) as hard_bounces FROM customerio_data.bounces WHERE bounce_type = 'hard' AND timestamp >= DATE '2024-12-31' - INTERVAL '30 days'",
+    "question": "How many hard bounces have we had in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.bounces"
+    ],
+    "sql": "SELECT bounce_type, AVG(EXTRACT(EPOCH FROM (TIMESTAMP '2024-12-31 23:59:59' - timestamp)) / 86400) as avg_days_ago FROM customerio_data.bounces GROUP BY bounce_type",
+    "question": "How recent are our email bounces by type?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.bounces"
+    ],
+    "sql": "SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as bounce_count FROM customerio_data.bounces WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY hour ORDER BY hour",
+    "question": "What time of day do emails typically bounce?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.bounces"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', timestamp) as month, COUNT(*) as bounces FROM customerio_data.bounces WHERE timestamp >= DATE '2024-12-31' - INTERVAL '6 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly email bounce trend?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.bounces"
+    ],
+    "sql": "SELECT bounce_type, COUNT(DISTINCT delivery_id) as unique_deliveries FROM customerio_data.bounces GROUP BY bounce_type",
+    "question": "How many unique emails bounced by bounce type?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.bounces"
+    ],
+    "sql": "SELECT reason FROM customerio_data.bounces WHERE bounce_type = 'hard' GROUP BY reason ORDER BY COUNT(*) DESC LIMIT 5",
+    "question": "What are the top reasons for hard bounces?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign"
+    ],
+    "sql": "SELECT state, COUNT(*) as campaign_count FROM customerio_data.campaign GROUP BY state ORDER BY campaign_count DESC",
+    "question": "Break down our email campaigns by status"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM customerio_data.campaign WHERE state = 'active' GROUP BY type",
+    "question": "What types of active campaigns are we running?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign"
+    ],
+    "sql": "SELECT name, created FROM customerio_data.campaign ORDER BY created DESC LIMIT 10",
+    "question": "What are our most recently launched campaigns?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created) as month, COUNT(*) as campaigns_launched FROM customerio_data.campaign WHERE created >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "How many campaigns have we launched each month?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign"
+    ],
+    "sql": "SELECT name, updated FROM customerio_data.campaign WHERE updated >= DATE '2024-12-31' - INTERVAL '7 days' ORDER BY updated DESC",
+    "question": "Which campaigns were modified this week?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign"
+    ],
+    "sql": "SELECT type, state, COUNT(*) as count FROM customerio_data.campaign GROUP BY type, state ORDER BY count DESC",
+    "question": "Show me campaign distribution by type and status"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign"
+    ],
+    "sql": "SELECT name, EXTRACT(EPOCH FROM (updated - created)) / 86400 as days_active FROM customerio_data.campaign WHERE state = 'active' ORDER BY days_active DESC LIMIT 10",
+    "question": "Which active campaigns have been running the longest?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign"
+    ],
+    "sql": "SELECT COUNT(*) as draft_campaigns FROM customerio_data.campaign WHERE state = 'draft'",
+    "question": "How many draft campaigns do we have?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign"
+    ],
+    "sql": "SELECT EXTRACT(QUARTER FROM created) as quarter, EXTRACT(YEAR FROM created) as year, COUNT(*) as campaigns FROM customerio_data.campaign GROUP BY year, quarter ORDER BY year DESC, quarter DESC LIMIT 4",
+    "question": "Show me our quarterly campaign launch activity"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign"
+    ],
+    "sql": "SELECT state, MIN(created) as first_campaign, MAX(created) as latest_campaign FROM customerio_data.campaign GROUP BY state",
+    "question": "When were the first and latest campaigns created for each status?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign_action"
+    ],
+    "sql": "SELECT type, COUNT(*) as action_count FROM customerio_data.campaign_action GROUP BY type ORDER BY action_count DESC",
+    "question": "What types of campaign actions do we use most?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign_action"
+    ],
+    "sql": "SELECT campaign_id, COUNT(*) as actions FROM customerio_data.campaign_action GROUP BY campaign_id ORDER BY actions DESC LIMIT 10",
+    "question": "Which campaigns have the most actions configured?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign_action"
+    ],
+    "sql": "SELECT name, type FROM customerio_data.campaign_action ORDER BY created DESC LIMIT 10",
+    "question": "What are our most recently added campaign actions?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign_action"
+    ],
+    "sql": "SELECT type, COUNT(DISTINCT campaign_id) as campaigns_using FROM customerio_data.campaign_action GROUP BY type ORDER BY campaigns_using DESC",
+    "question": "Which action types are used across the most campaigns?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign_action"
+    ],
+    "sql": "SELECT campaign_id, COUNT(*) as action_count FROM customerio_data.campaign_action GROUP BY campaign_id HAVING COUNT(*) > 5 ORDER BY action_count DESC",
+    "question": "Which campaigns have complex action sequences?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign_action"
+    ],
+    "sql": "SELECT AVG(action_count) as avg_actions_per_campaign FROM (SELECT campaign_id, COUNT(*) as action_count FROM customerio_data.campaign_action GROUP BY campaign_id) subquery",
+    "question": "What's the average number of actions per campaign?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign_action"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM customerio_data.campaign_action WHERE created >= DATE '2024-12-31' - INTERVAL '90 days' GROUP BY type ORDER BY count DESC",
+    "question": "What types of actions have we been adding to campaigns recently?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign_action"
+    ],
+    "sql": "SELECT name, created FROM customerio_data.campaign_action WHERE type = 'email' ORDER BY created DESC LIMIT 10",
+    "question": "What are our most recently configured email actions?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign_action"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created) as month, COUNT(*) as actions_added FROM customerio_data.campaign_action WHERE created >= DATE '2024-12-31' - INTERVAL '6 months' GROUP BY month ORDER BY month",
+    "question": "How many campaign actions have we configured each month?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.campaign_action"
+    ],
+    "sql": "SELECT COUNT(DISTINCT campaign_id) as campaigns_with_actions FROM customerio_data.campaign_action",
+    "question": "How many campaigns have actions configured?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.clicks"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', timestamp) as day, COUNT(*) as clicks FROM customerio_data.clicks WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "Show me our daily email click trends for the last month"
+  },
+  {
+    "data_sources": [
+      "customerio_data.clicks"
+    ],
+    "sql": "SELECT link_url, COUNT(*) as click_count FROM customerio_data.clicks WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY link_url ORDER BY click_count DESC LIMIT 10",
+    "question": "What are the most clicked links in our emails?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.clicks"
+    ],
+    "sql": "SELECT COUNT(DISTINCT delivery_id) as emails_clicked FROM customerio_data.clicks WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days'",
+    "question": "How many emails got clicks in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.clicks"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', timestamp) as week, COUNT(*) as clicks FROM customerio_data.clicks WHERE timestamp >= DATE '2024-12-31' - INTERVAL '12 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly email click trend?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.clicks"
+    ],
+    "sql": "SELECT delivery_id, COUNT(*) as clicks FROM customerio_data.clicks GROUP BY delivery_id ORDER BY clicks DESC LIMIT 10",
+    "question": "Which emails are getting the most engagement?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.clicks"
+    ],
+    "sql": "SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as clicks FROM customerio_data.clicks WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY hour ORDER BY hour",
+    "question": "When do people typically click links in our emails?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.clicks"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', timestamp) as month, COUNT(*) as clicks, COUNT(DISTINCT delivery_id) as emails_clicked FROM customerio_data.clicks WHERE timestamp >= DATE '2024-12-31' - INTERVAL '6 months' GROUP BY month ORDER BY month",
+    "question": "Show me monthly click activity and email engagement"
+  },
+  {
+    "data_sources": [
+      "customerio_data.clicks"
+    ],
+    "sql": "SELECT link_url, COUNT(DISTINCT delivery_id) as emails_with_link FROM customerio_data.clicks GROUP BY link_url ORDER BY emails_with_link DESC LIMIT 10",
+    "question": "Which links appear in the most emails?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.clicks"
+    ],
+    "sql": "SELECT AVG(clicks_per_email) as avg_clicks FROM (SELECT delivery_id, COUNT(*) as clicks_per_email FROM customerio_data.clicks GROUP BY delivery_id) subquery",
+    "question": "What's the average number of clicks per email?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.clicks"
+    ],
+    "sql": "SELECT COUNT(*) as total_clicks, COUNT(DISTINCT delivery_id) as unique_emails, ROUND(COUNT(*)::numeric / COUNT(DISTINCT delivery_id), 2) as clicks_per_email FROM customerio_data.clicks WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days'",
+    "question": "What's our overall email engagement rate for the last month?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as active_subscribers, SUM(CASE WHEN unsubscribed = true THEN 1 ELSE 0 END) as unsubscribed, ROUND(SUM(CASE WHEN unsubscribed = true THEN 1 ELSE 0 END)::numeric / COUNT(*) * 100, 2) as unsubscribe_rate FROM customerio_data.customer",
+    "question": "What's our subscriber base and unsubscribe rate?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.customer"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as new_subscribers FROM customerio_data.customer WHERE created_at >= DATE '2024-12-31' - INTERVAL '12 weeks' GROUP BY week ORDER BY week",
+    "question": "Show me our weekly subscriber growth"
+  },
+  {
+    "data_sources": [
+      "customerio_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as new_subscribers FROM customerio_data.customer WHERE created_at >= DATE '2024-12-31' - INTERVAL '30 days' AND unsubscribed = false",
+    "question": "How many new active subscribers did we add in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.customer"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as subscribers_added FROM customerio_data.customer WHERE created_at >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly subscriber acquisition trend?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as recently_updated FROM customerio_data.customer WHERE updated_at >= DATE '2024-12-31' - INTERVAL '7 days'",
+    "question": "How many subscriber profiles were updated this week?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.customer"
+    ],
+    "sql": "SELECT COUNT(*) as total_subscribers, COUNT(*) FILTER (WHERE created_at >= DATE '2024-12-31' - INTERVAL '30 days') as new_last_month, COUNT(*) FILTER (WHERE created_at >= DATE '2024-12-31' - INTERVAL '90 days') as new_last_quarter FROM customerio_data.customer WHERE unsubscribed = false",
+    "question": "How is our subscriber base growing?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.customer"
+    ],
+    "sql": "SELECT EXTRACT(YEAR FROM created_at) as year, COUNT(*) as subscribers_added FROM customerio_data.customer GROUP BY year ORDER BY year",
+    "question": "How many subscribers have we added each year?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.unsubscribes",
+      "customerio_data.customer"
+    ],
+    "sql": "SELECT AVG(EXTRACT(EPOCH FROM (u.timestamp - c.created_at)) / 86400) as avg_days_subscribed FROM customerio_data.unsubscribes u JOIN customerio_data.customer c ON u.customer_id = c.id",
+    "question": "How long do people typically stay subscribed before unsubscribing?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.deliveries"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', created_at) as day, COUNT(*) as emails_sent FROM customerio_data.deliveries WHERE created_at >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "Show me our daily email send volume"
+  },
+  {
+    "data_sources": [
+      "customerio_data.deliveries"
+    ],
+    "sql": "SELECT campaign_id, COUNT(*) as sends FROM customerio_data.deliveries WHERE created_at >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY campaign_id ORDER BY sends DESC LIMIT 10",
+    "question": "Which campaigns are sending the most emails?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.deliveries"
+    ],
+    "sql": "SELECT COUNT(DISTINCT customer_id) as unique_recipients FROM customerio_data.deliveries WHERE created_at >= DATE '2024-12-31' - INTERVAL '30 days'",
+    "question": "How many unique people received emails in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.deliveries"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as emails_sent FROM customerio_data.deliveries WHERE created_at >= DATE '2024-12-31' - INTERVAL '12 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly email volume trend?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.deliveries"
+    ],
+    "sql": "SELECT newsletter_id, COUNT(*) as sends FROM customerio_data.deliveries WHERE newsletter_id IS NOT NULL GROUP BY newsletter_id ORDER BY sends DESC LIMIT 10",
+    "question": "Which newsletters have the highest send volume?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.deliveries"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as emails_sent, COUNT(DISTINCT customer_id) as unique_recipients FROM customerio_data.deliveries WHERE created_at >= DATE '2024-12-31' - INTERVAL '6 months' GROUP BY month ORDER BY month",
+    "question": "Show me monthly email sends and unique recipient counts"
+  },
+  {
+    "data_sources": [
+      "customerio_data.deliveries"
+    ],
+    "sql": "SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as emails_sent FROM customerio_data.deliveries WHERE created_at >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY hour ORDER BY hour",
+    "question": "What time of day do we typically send emails?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.deliveries"
+    ],
+    "sql": "SELECT customer_id, COUNT(*) as emails_received FROM customerio_data.deliveries WHERE created_at >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY customer_id HAVING COUNT(*) > 10 ORDER BY emails_received DESC LIMIT 10",
+    "question": "Who is receiving the most emails from us?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.deliveries"
+    ],
+    "sql": "SELECT AVG(daily_volume) as avg_daily_sends FROM (SELECT DATE_TRUNC('day', created_at) as day, COUNT(*) as daily_volume FROM customerio_data.deliveries WHERE created_at >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY day) subquery",
+    "question": "What's our average daily email send volume?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.deliveries"
+    ],
+    "sql": "SELECT COUNT(*) as sends_this_month, COUNT(DISTINCT customer_id) as reach FROM customerio_data.deliveries WHERE created_at >= DATE_TRUNC('month', DATE '2024-12-31')",
+    "question": "How many emails have we sent this month and to how many people?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.newsletter"
+    ],
+    "sql": "SELECT name, created FROM customerio_data.newsletter ORDER BY created DESC",
+    "question": "Show me all our newsletters"
+  },
+  {
+    "data_sources": [
+      "customerio_data.newsletter"
+    ],
+    "sql": "SELECT name, updated FROM customerio_data.newsletter ORDER BY updated DESC LIMIT 5",
+    "question": "Which newsletters were recently updated?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.newsletter"
+    ],
+    "sql": "SELECT COUNT(*) as total_newsletters FROM customerio_data.newsletter",
+    "question": "How many newsletters do we have?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.newsletter"
+    ],
+    "sql": "SELECT name FROM customerio_data.newsletter ORDER BY created DESC LIMIT 5",
+    "question": "What are our most recently launched newsletters?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.newsletter"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created) as month, COUNT(*) as newsletters_created FROM customerio_data.newsletter GROUP BY month ORDER BY month DESC",
+    "question": "When have we launched new newsletters?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.newsletter"
+    ],
+    "sql": "SELECT name, EXTRACT(EPOCH FROM (updated - created)) / 86400 as days_active FROM customerio_data.newsletter ORDER BY days_active DESC",
+    "question": "How long have our newsletters been running?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.newsletter"
+    ],
+    "sql": "SELECT name, created FROM customerio_data.newsletter WHERE created >= DATE '2024-12-31' - INTERVAL '90 days'",
+    "question": "Which newsletters were launched in the last quarter?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.newsletter"
+    ],
+    "sql": "SELECT EXTRACT(YEAR FROM created) as year, COUNT(*) as newsletters_launched FROM customerio_data.newsletter GROUP BY year ORDER BY year",
+    "question": "How many newsletters have we launched each year?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.newsletter"
+    ],
+    "sql": "SELECT name FROM customerio_data.newsletter WHERE updated >= DATE '2024-12-31' - INTERVAL '30 days' ORDER BY updated DESC",
+    "question": "Which newsletters have we modified recently?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.newsletter"
+    ],
+    "sql": "SELECT name, created FROM customerio_data.newsletter ORDER BY created ASC LIMIT 1",
+    "question": "What was our first newsletter?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.opens"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', timestamp) as day, COUNT(*) as opens FROM customerio_data.opens WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "Show me our daily email open trends"
+  },
+  {
+    "data_sources": [
+      "customerio_data.opens"
+    ],
+    "sql": "SELECT COUNT(DISTINCT delivery_id) as emails_opened FROM customerio_data.opens WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days'",
+    "question": "How many emails were opened in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.opens"
+    ],
+    "sql": "SELECT delivery_id, COUNT(*) as opens FROM customerio_data.opens GROUP BY delivery_id ORDER BY opens DESC LIMIT 10",
+    "question": "Which emails are being opened the most?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.opens"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', timestamp) as week, COUNT(*) as opens FROM customerio_data.opens WHERE timestamp >= DATE '2024-12-31' - INTERVAL '12 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly email open trend?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.opens"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', timestamp) as month, COUNT(*) as opens, COUNT(DISTINCT delivery_id) as emails_opened FROM customerio_data.opens WHERE timestamp >= DATE '2024-12-31' - INTERVAL '6 months' GROUP BY month ORDER BY month",
+    "question": "Show me monthly email open activity"
+  },
+  {
+    "data_sources": [
+      "customerio_data.opens"
+    ],
+    "sql": "SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as opens FROM customerio_data.opens WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY hour ORDER BY hour",
+    "question": "When do people typically open our emails?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.opens"
+    ],
+    "sql": "SELECT AVG(opens_per_email) as avg_opens FROM (SELECT delivery_id, COUNT(*) as opens_per_email FROM customerio_data.opens GROUP BY delivery_id) subquery",
+    "question": "What's the average number of opens per email?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.opens"
+    ],
+    "sql": "SELECT COUNT(*) as total_opens, COUNT(DISTINCT delivery_id) as unique_emails, ROUND(COUNT(*)::numeric / COUNT(DISTINCT delivery_id), 2) as opens_per_email FROM customerio_data.opens WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days'",
+    "question": "What's our email open rate for the last month?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.opens"
+    ],
+    "sql": "SELECT delivery_id, COUNT(*) as reopen_count FROM customerio_data.opens GROUP BY delivery_id HAVING COUNT(*) > 2 ORDER BY reopen_count DESC LIMIT 10",
+    "question": "Which emails are people reopening multiple times?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.opens"
+    ],
+    "sql": "SELECT DATE_TRUNC('quarter', timestamp) as quarter, COUNT(*) as opens FROM customerio_data.opens GROUP BY quarter ORDER BY quarter DESC LIMIT 4",
+    "question": "Show me our quarterly email open volume"
+  },
+  {
+    "data_sources": [
+      "customerio_data.spam_complaints"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', timestamp) as week, COUNT(*) as complaints FROM customerio_data.spam_complaints WHERE timestamp >= DATE '2024-12-31' - INTERVAL '12 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly spam complaint trend?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.spam_complaints"
+    ],
+    "sql": "SELECT COUNT(*) as complaints_last_month FROM customerio_data.spam_complaints WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days'",
+    "question": "How many spam complaints did we get in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.spam_complaints"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', timestamp) as month, COUNT(*) as complaints FROM customerio_data.spam_complaints WHERE timestamp >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "Show me our monthly spam complaint trend for the past year"
+  },
+  {
+    "data_sources": [
+      "customerio_data.spam_complaints"
+    ],
+    "sql": "SELECT COUNT(DISTINCT delivery_id) as emails_reported FROM customerio_data.spam_complaints",
+    "question": "How many unique emails have been reported as spam?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.spam_complaints"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', timestamp) as day, COUNT(*) as complaints FROM customerio_data.spam_complaints WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "Show me daily spam complaints for the last month"
+  },
+  {
+    "data_sources": [
+      "customerio_data.spam_complaints"
+    ],
+    "sql": "SELECT COUNT(*) as complaints_this_quarter FROM customerio_data.spam_complaints WHERE timestamp >= DATE '2024-12-31' - INTERVAL '90 days'",
+    "question": "How many spam complaints did we receive this quarter?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.spam_complaints"
+    ],
+    "sql": "SELECT delivery_id FROM customerio_data.spam_complaints GROUP BY delivery_id ORDER BY COUNT(*) DESC LIMIT 10",
+    "question": "Which emails are getting the most spam complaints?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.spam_complaints"
+    ],
+    "sql": "SELECT EXTRACT(YEAR FROM timestamp) as year, COUNT(*) as complaints FROM customerio_data.spam_complaints GROUP BY year ORDER BY year",
+    "question": "How many spam complaints have we gotten each year?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.spam_complaints"
+    ],
+    "sql": "SELECT AVG(daily_complaints) as avg_per_day FROM (SELECT DATE_TRUNC('day', timestamp) as day, COUNT(*) as daily_complaints FROM customerio_data.spam_complaints WHERE timestamp >= DATE '2024-12-31' - INTERVAL '90 days' GROUP BY day) subquery",
+    "question": "What's our average daily spam complaint rate?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.spam_complaints"
+    ],
+    "sql": "SELECT DATE_TRUNC('quarter', timestamp) as quarter, COUNT(*) as complaints FROM customerio_data.spam_complaints GROUP BY quarter ORDER BY quarter DESC",
+    "question": "Show me our quarterly spam complaint trends"
+  },
+  {
+    "data_sources": [
+      "customerio_data.unsubscribes"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', timestamp) as day, COUNT(*) as unsubscribes FROM customerio_data.unsubscribes WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "Show me our daily unsubscribe trend for the last month"
+  },
+  {
+    "data_sources": [
+      "customerio_data.unsubscribes"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', timestamp) as week, COUNT(*) as unsubscribes FROM customerio_data.unsubscribes WHERE timestamp >= DATE '2024-12-31' - INTERVAL '12 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly unsubscribe pattern?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.unsubscribes"
+    ],
+    "sql": "SELECT COUNT(DISTINCT customer_id) as people_unsubscribed FROM customerio_data.unsubscribes WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days'",
+    "question": "How many people unsubscribed in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.unsubscribes"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', timestamp) as month, COUNT(*) as unsubscribes FROM customerio_data.unsubscribes WHERE timestamp >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "Show me our monthly unsubscribe trend for the past year"
+  },
+  {
+    "data_sources": [
+      "customerio_data.unsubscribes"
+    ],
+    "sql": "SELECT COUNT(DISTINCT delivery_id) as emails_causing_unsubscribes FROM customerio_data.unsubscribes",
+    "question": "How many different emails have led to unsubscribes?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.unsubscribes"
+    ],
+    "sql": "SELECT delivery_id, COUNT(*) as unsubscribes FROM customerio_data.unsubscribes GROUP BY delivery_id ORDER BY unsubscribes DESC LIMIT 10",
+    "question": "Which emails are causing the most unsubscribes?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.unsubscribes"
+    ],
+    "sql": "SELECT COUNT(*) as unsubscribes_this_quarter FROM customerio_data.unsubscribes WHERE timestamp >= DATE '2024-12-31' - INTERVAL '90 days'",
+    "question": "How many people have unsubscribed this quarter?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.unsubscribes"
+    ],
+    "sql": "SELECT EXTRACT(HOUR FROM timestamp) as hour, COUNT(*) as unsubscribes FROM customerio_data.unsubscribes WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY hour ORDER BY hour",
+    "question": "What time of day do people typically unsubscribe?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.unsubscribes"
+    ],
+    "sql": "SELECT AVG(daily_unsubscribes) as avg_per_day FROM (SELECT DATE_TRUNC('day', timestamp) as day, COUNT(*) as daily_unsubscribes FROM customerio_data.unsubscribes WHERE timestamp >= DATE '2024-12-31' - INTERVAL '30 days' GROUP BY day) subquery",
+    "question": "What's our average daily unsubscribe rate?"
+  },
+  {
+    "data_sources": [
+      "customerio_data.unsubscribes"
+    ],
+    "sql": "SELECT DATE_TRUNC('quarter', timestamp) as quarter, COUNT(*) as unsubscribes FROM customerio_data.unsubscribes GROUP BY quarter ORDER BY quarter DESC LIMIT 4",
+    "question": "Show me our quarterly unsubscribe trends"
+  }
+]

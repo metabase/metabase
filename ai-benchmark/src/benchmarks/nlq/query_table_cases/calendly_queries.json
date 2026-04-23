@@ -1,0 +1,702 @@
+[
+  {
+    "data_sources": [
+      "calendly_data.event"
+    ],
+  "sql": "SELECT DATE_TRUNC('day', start_time) as day, COUNT(*) as meeting_count FROM calendly_data.event WHERE start_time >= DATE '2022-01-03' AND start_time < DATE '2022-01-10' AND status = 'active' GROUP BY day ORDER BY day",
+  "question": "Show me the daily distribution of scheduled meetings for the week of January 3, 2022"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event"
+    ],
+    "sql": "SELECT location_type, COUNT(*) as event_count FROM calendly_data.event WHERE status = 'active' GROUP BY location_type ORDER BY event_count DESC",
+    "question": "Break down our upcoming meetings by location type"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event"
+    ],
+  "sql": "SELECT event_type_uri, COUNT(*) as booking_count FROM calendly_data.event WHERE start_time >= DATE '2021-12-01' AND start_time < DATE '2022-02-01' GROUP BY event_type_uri ORDER BY booking_count DESC LIMIT 10",
+  "question": "Which event types were most popular during December 2021 and January 2022?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event"
+    ],
+    "sql": "SELECT cancellation_reason, COUNT(*) as cancellation_count FROM calendly_data.event WHERE canceled_at IS NOT NULL AND canceled_at >= CURRENT_DATE - INTERVAL '90 days' GROUP BY cancellation_reason ORDER BY cancellation_count DESC",
+    "question": "What are the most common cancellation reasons in the last quarter?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event"
+    ],
+  "sql": "SELECT DATE_TRUNC('week', start_time) as week, COUNT(*) as meetings_held FROM calendly_data.event WHERE start_time >= DATE '2021-10-01' AND start_time < DATE '2022-01-01' AND canceled_at IS NULL GROUP BY week ORDER BY week",
+  "question": "Show me the weekly trend of completed meetings for Q4 2021"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event"
+    ],
+    "sql": "SELECT status, location_type, COUNT(*) as event_count FROM calendly_data.event GROUP BY status, location_type ORDER BY event_count DESC",
+    "question": "Break down all events by status and location type"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event"
+    ],
+  "sql": "SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as meetings_count FROM calendly_data.event WHERE created_at >= TIMESTAMP '2024-10-01' AND created_at < TIMESTAMP '2025-01-01' AND canceled_at IS NULL GROUP BY hour ORDER BY hour",
+  "question": "What time of day do meetings typically get booked during Q4 2024?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event"
+    ],
+  "sql": "SELECT COUNT(*) as total_meetings, COUNT(CASE WHEN canceled_at IS NOT NULL THEN 1 END) as canceled_meetings, ROUND(COUNT(CASE WHEN canceled_at IS NOT NULL THEN 1 END)::numeric / COUNT(*) * 100, 2) as cancellation_rate FROM calendly_data.event WHERE start_time >= DATE '2021-12-01' AND start_time < DATE '2022-02-01'",
+  "question": "What's our meeting cancellation rate for December 2021 and January 2022?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event"
+    ],
+    "sql": "SELECT name, AVG(EXTRACT(EPOCH FROM (end_time - start_time)) / 60) as avg_duration_minutes FROM calendly_data.event WHERE canceled_at IS NULL GROUP BY name ORDER BY avg_duration_minutes DESC",
+    "question": "What's the average duration for each event type?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event"
+    ],
+  "sql": "SELECT DATE_TRUNC('month', start_time) as month, COUNT(*) as meetings_scheduled FROM calendly_data.event WHERE start_time >= DATE '2022-01-01' AND start_time < DATE '2023-01-01' GROUP BY month ORDER BY month",
+  "question": "Show me the monthly meeting volume trend across 2022"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_membership"
+    ],
+    "sql": "SELECT user_uri, COUNT(*) as events_hosted FROM calendly_data.event_membership GROUP BY user_uri ORDER BY events_hosted DESC LIMIT 10",
+    "question": "Which users are hosting the most events?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_membership"
+    ],
+    "sql": "SELECT COUNT(DISTINCT user_uri) as total_hosts FROM calendly_data.event_membership",
+    "question": "How many unique users are hosting events?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_membership"
+    ],
+    "sql": "SELECT event_uri, COUNT(*) as host_count FROM calendly_data.event_membership GROUP BY event_uri HAVING COUNT(*) > 1 ORDER BY host_count DESC LIMIT 10",
+    "question": "Which events have multiple hosts?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_membership"
+    ],
+  "sql": "SELECT user_uri, COUNT(*) as events_count FROM calendly_data.event_membership WHERE event_uri IN (SELECT uri FROM calendly_data.event WHERE start_time >= DATE '2021-12-01' AND start_time < DATE '2022-02-01') GROUP BY user_uri ORDER BY events_count DESC",
+  "question": "Who hosted the most events scheduled for December 2021 and January 2022?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_membership"
+    ],
+    "sql": "SELECT user_uri, COUNT(DISTINCT event_uri) as unique_events FROM calendly_data.event_membership GROUP BY user_uri ORDER BY unique_events DESC LIMIT 5",
+    "question": "Show me the top 5 users by number of unique events they host"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_membership"
+    ],
+    "sql": "SELECT AVG(host_count) as avg_hosts_per_event FROM (SELECT event_uri, COUNT(*) as host_count FROM calendly_data.event_membership GROUP BY event_uri) subquery",
+    "question": "What's the average number of hosts per event?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_membership"
+    ],
+    "sql": "SELECT user_uri FROM calendly_data.event_membership GROUP BY user_uri HAVING COUNT(*) = 1",
+    "question": "Which users have only hosted one event?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_membership"
+    ],
+    "sql": "SELECT COUNT(*) as single_host_events FROM (SELECT event_uri FROM calendly_data.event_membership GROUP BY event_uri HAVING COUNT(*) = 1) subquery",
+    "question": "How many events have exactly one host?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_membership"
+    ],
+    "sql": "SELECT user_uri, COUNT(*) as events_hosted FROM calendly_data.event_membership WHERE event_uri IN (SELECT uri FROM calendly_data.event WHERE canceled_at IS NULL) GROUP BY user_uri ORDER BY events_hosted DESC LIMIT 10",
+    "question": "Who is hosting the most non-canceled events?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_membership"
+    ],
+    "sql": "SELECT MAX(event_count) as max_events, MIN(event_count) as min_events, AVG(event_count) as avg_events FROM (SELECT user_uri, COUNT(*) as event_count FROM calendly_data.event_membership GROUP BY user_uri) subquery",
+    "question": "What are the min, max, and average events hosted per user?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_type"
+    ],
+    "sql": "SELECT name, duration, active FROM calendly_data.event_type WHERE active = true ORDER BY duration DESC",
+    "question": "Show me all our active event types sorted by duration"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_type"
+    ],
+    "sql": "SELECT kind, COUNT(*) as type_count, AVG(duration) as avg_duration FROM calendly_data.event_type WHERE active = true GROUP BY kind",
+    "question": "Break down our active event types by kind with average durations"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_type"
+    ],
+    "sql": "SELECT AVG(duration) as avg_duration_minutes FROM calendly_data.event_type WHERE active = true",
+    "question": "What's the average duration of our active event types?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_type"
+    ],
+    "sql": "SELECT duration, COUNT(*) as type_count FROM calendly_data.event_type WHERE active = true GROUP BY duration ORDER BY duration",
+    "question": "What are the common durations for our event types?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_type"
+    ],
+    "sql": "SELECT name, scheduling_url, duration FROM calendly_data.event_type WHERE active = true ORDER BY created_at DESC LIMIT 5",
+    "question": "What are our most recently created active event types?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_type"
+    ],
+    "sql": "SELECT MAX(duration) as longest, MIN(duration) as shortest FROM calendly_data.event_type WHERE active = true",
+    "question": "What are our shortest and longest event durations?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_type"
+    ],
+    "sql": "SELECT active, COUNT(*) as type_count, AVG(duration) as avg_duration FROM calendly_data.event_type GROUP BY active",
+    "question": "Compare active vs inactive event types by count and average duration"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_type"
+    ],
+    "sql": "SELECT name, color FROM calendly_data.event_type WHERE active = true AND duration >= 60 ORDER BY duration DESC",
+    "question": "Show me all active event types that are an hour or longer"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_type"
+    ],
+    "sql": "SELECT COUNT(*) as active_types, SUM(CASE WHEN duration <= 30 THEN 1 ELSE 0 END) as short_meetings, SUM(CASE WHEN duration > 30 THEN 1 ELSE 0 END) as long_meetings FROM calendly_data.event_type WHERE active = true",
+    "question": "How many of our active event types are short vs long meetings?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.event_type"
+    ],
+  "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as types_created FROM calendly_data.event_type WHERE created_at >= DATE '2024-01-01' AND created_at < DATE '2025-01-01' GROUP BY month ORDER BY month",
+  "question": "Show me the monthly trend of event type creation across 2024"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee"
+    ],
+    "sql": "SELECT timezone, COUNT(*) as invitee_count FROM calendly_data.invitee WHERE canceled = false GROUP BY timezone ORDER BY invitee_count DESC LIMIT 10",
+    "question": "What are the most common timezones for our invitees?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee"
+    ],
+    "sql": "SELECT status, COUNT(*) as count, SUM(CASE WHEN canceled = true THEN 1 ELSE 0 END) as canceled_count FROM calendly_data.invitee GROUP BY status",
+    "question": "Break down our invitees by status with cancellation counts"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee"
+    ],
+  "sql": "SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as bookings FROM calendly_data.invitee WHERE canceled = false AND created_at >= TIMESTAMP '2024-11-01' AND created_at < TIMESTAMP '2025-01-01' GROUP BY week ORDER BY week",
+  "question": "Show me the weekly trend of confirmed bookings for November and December 2024"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee"
+    ],
+    "sql": "SELECT cancellation_reason, COUNT(*) as reason_count FROM calendly_data.invitee WHERE canceled = true GROUP BY cancellation_reason ORDER BY reason_count DESC",
+    "question": "What are the most common cancellation reasons from invitees?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee"
+    ],
+  "sql": "SELECT COUNT(DISTINCT email) as unique_invitees FROM calendly_data.invitee WHERE created_at >= TIMESTAMP '2024-12-01' AND created_at < TIMESTAMP '2025-01-01'",
+  "question": "How many unique people booked meetings in December 2024?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee"
+    ],
+    "sql": "SELECT email, COUNT(*) as booking_count FROM calendly_data.invitee WHERE canceled = false GROUP BY email HAVING COUNT(*) > 2 ORDER BY booking_count DESC LIMIT 10",
+    "question": "Which people have booked multiple meetings?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee"
+    ],
+  "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as bookings, COUNT(CASE WHEN canceled = true THEN 1 END) as cancellations FROM calendly_data.invitee WHERE created_at >= TIMESTAMP '2024-07-01' AND created_at < TIMESTAMP '2025-01-01' GROUP BY month ORDER BY month",
+  "question": "Show me monthly booking and cancellation trends for the second half of 2024"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee"
+    ],
+  "sql": "SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as bookings_made FROM calendly_data.invitee WHERE created_at >= TIMESTAMP '2024-12-01' AND created_at < TIMESTAMP '2025-01-01' GROUP BY hour ORDER BY hour",
+  "question": "What time of day did people book meetings in December 2024?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee"
+    ],
+  "sql": "SELECT COUNT(*) as total_bookings, COUNT(CASE WHEN canceled = true THEN 1 END) as canceled, ROUND(COUNT(CASE WHEN canceled = true THEN 1 END)::numeric / COUNT(*) * 100, 2) as cancellation_rate FROM calendly_data.invitee WHERE created_at >= TIMESTAMP '2024-10-01' AND created_at < TIMESTAMP '2025-01-01'",
+  "question": "What's our invitee cancellation rate for Q4 2024?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee"
+    ],
+    "sql": "SELECT timezone, COUNT(*) as bookings, SUM(CASE WHEN canceled = true THEN 1 ELSE 0 END) as cancellations FROM calendly_data.invitee GROUP BY timezone ORDER BY bookings DESC LIMIT 10",
+    "question": "Which timezones have the most bookings and cancellations?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee_question_answer"
+    ],
+    "sql": "SELECT question, COUNT(*) as response_count FROM calendly_data.invitee_question_answer GROUP BY question ORDER BY response_count DESC",
+    "question": "Which questions are most commonly answered in booking forms?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee_question_answer"
+    ],
+    "sql": "SELECT COUNT(DISTINCT invitee_uri) as invitees_who_answered FROM calendly_data.invitee_question_answer",
+    "question": "How many invitees have answered booking questions?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee_question_answer"
+    ],
+    "sql": "SELECT COUNT(DISTINCT question) as unique_questions FROM calendly_data.invitee_question_answer",
+    "question": "How many unique questions are being asked in booking forms?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee_question_answer"
+    ],
+    "sql": "SELECT question, COUNT(DISTINCT answer) as unique_answers FROM calendly_data.invitee_question_answer GROUP BY question ORDER BY unique_answers DESC",
+    "question": "Show me the variety of answers for each question"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee_question_answer"
+    ],
+    "sql": "SELECT invitee_uri, COUNT(*) as questions_answered FROM calendly_data.invitee_question_answer GROUP BY invitee_uri ORDER BY questions_answered DESC LIMIT 10",
+    "question": "Which invitees answered the most questions?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee_question_answer"
+    ],
+    "sql": "SELECT AVG(answer_count) as avg_questions_per_invitee FROM (SELECT invitee_uri, COUNT(*) as answer_count FROM calendly_data.invitee_question_answer GROUP BY invitee_uri) subquery",
+    "question": "What's the average number of questions answered per invitee?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee_question_answer"
+    ],
+    "sql": "SELECT question, AVG(LENGTH(answer)) as avg_answer_length FROM calendly_data.invitee_question_answer WHERE answer IS NOT NULL GROUP BY question ORDER BY avg_answer_length DESC",
+    "question": "Which questions get the longest responses on average?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee_question_answer"
+    ],
+    "sql": "SELECT COUNT(*) as responses_with_content FROM calendly_data.invitee_question_answer WHERE answer IS NOT NULL AND LENGTH(answer) > 0",
+    "question": "How many booking questions have non-empty answers?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee_question_answer"
+    ],
+    "sql": "SELECT question FROM calendly_data.invitee_question_answer GROUP BY question ORDER BY COUNT(*) DESC LIMIT 5",
+    "question": "What are the top 5 most common questions in our booking forms?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.invitee_question_answer"
+    ],
+    "sql": "SELECT COUNT(*) as long_responses FROM calendly_data.invitee_question_answer WHERE LENGTH(answer) > 100",
+    "question": "How many question responses are longer than 100 characters?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.organization"
+    ],
+    "sql": "SELECT name, created_at FROM calendly_data.organization ORDER BY created_at DESC",
+    "question": "Show me all our organizations sorted by creation date"
+  },
+  {
+    "data_sources": [
+      "calendly_data.organization"
+    ],
+    "sql": "SELECT name, created_at FROM calendly_data.organization ORDER BY created_at ASC LIMIT 1",
+    "question": "What was the first organization created?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.organization"
+    ],
+    "sql": "SELECT name, updated_at FROM calendly_data.organization ORDER BY updated_at DESC",
+    "question": "Which organizations were most recently updated?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.organization"
+    ],
+    "sql": "SELECT COUNT(*) as total_orgs FROM calendly_data.organization",
+    "question": "How many organizations are set up?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.organization"
+    ],
+    "sql": "SELECT name, EXTRACT(EPOCH FROM (updated_at - created_at)) / 86400 as days_since_created FROM calendly_data.organization ORDER BY days_since_created DESC",
+    "question": "How long has each organization been active?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.organization"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as orgs_created FROM calendly_data.organization GROUP BY month ORDER BY month",
+    "question": "What's the monthly trend of organization creation?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.organization"
+    ],
+  "sql": "SELECT name FROM calendly_data.organization WHERE updated_at >= TIMESTAMP '2024-10-01' AND updated_at < TIMESTAMP '2025-01-01' ORDER BY updated_at DESC",
+  "question": "Which organizations were updated in Q4 2024?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.organization"
+    ],
+    "sql": "SELECT name, uri FROM calendly_data.organization ORDER BY name",
+    "question": "List all organizations alphabetically"
+  },
+  {
+    "data_sources": [
+      "calendly_data.organization"
+    ],
+    "sql": "SELECT EXTRACT(YEAR FROM created_at) as year, COUNT(*) as orgs_created FROM calendly_data.organization GROUP BY year ORDER BY year",
+    "question": "How many organizations were created each year?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.organization"
+    ],
+    "sql": "SELECT name, created_at, updated_at FROM calendly_data.organization WHERE created_at = updated_at",
+    "question": "Which organizations haven't been updated since creation?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form"
+    ],
+    "sql": "SELECT status, COUNT(*) as form_count FROM calendly_data.routing_form GROUP BY status",
+    "question": "Break down our routing forms by status"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form"
+    ],
+    "sql": "SELECT name, status, created_at FROM calendly_data.routing_form ORDER BY created_at DESC",
+    "question": "Show me all our routing forms sorted by creation date"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form"
+    ],
+  "sql": "SELECT name FROM calendly_data.routing_form WHERE status = 'active' ORDER BY name",
+  "question": "List all our active routing forms"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form"
+    ],
+  "sql": "SELECT name, created_at FROM calendly_data.routing_form WHERE created_at >= TIMESTAMP '2024-10-01' AND created_at < TIMESTAMP '2025-01-01' ORDER BY created_at DESC",
+  "question": "Which routing forms were created in Q4 2024?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form"
+    ],
+  "sql": "SELECT name, updated_at FROM calendly_data.routing_form WHERE updated_at >= TIMESTAMP '2024-12-01' AND updated_at < TIMESTAMP '2025-01-01' ORDER BY updated_at DESC",
+  "question": "Which routing forms were modified in December 2024?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form"
+    ],
+  "sql": "SELECT name, created_at FROM calendly_data.routing_form WHERE status = 'active' ORDER BY created_at ASC",
+  "question": "When were our active routing forms created?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form"
+    ],
+    "sql": "SELECT name, created_at FROM calendly_data.routing_form ORDER BY created_at ASC LIMIT 1",
+    "question": "What was the first routing form created?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form"
+    ],
+    "sql": "SELECT status, AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 86400) as avg_days_to_update FROM calendly_data.routing_form WHERE updated_at != created_at GROUP BY status",
+    "question": "How long on average before routing forms are updated after creation?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form"
+    ],
+  "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as forms_created FROM calendly_data.routing_form WHERE created_at >= DATE '2024-01-01' AND created_at < DATE '2025-01-01' GROUP BY month ORDER BY month",
+  "question": "Show me the monthly trend of routing form creation across 2024"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form"
+    ],
+  "sql": "SELECT COUNT(*) as active_forms FROM calendly_data.routing_form WHERE status = 'active'",
+  "question": "How many active routing forms do we have?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form_submission"
+    ],
+    "sql": "SELECT routing_form_uri, COUNT(*) as submission_count FROM calendly_data.routing_form_submission GROUP BY routing_form_uri ORDER BY submission_count DESC",
+    "question": "Which routing forms are getting the most submissions?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form_submission"
+    ],
+  "sql": "SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as submissions FROM calendly_data.routing_form_submission WHERE created_at >= TIMESTAMP '2024-11-01' AND created_at < TIMESTAMP '2025-01-01' GROUP BY week ORDER BY week",
+  "question": "Show me the weekly trend of routing form submissions for November and December 2024"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form_submission"
+    ],
+    "sql": "SELECT COUNT(DISTINCT submitter_email) as unique_submitters FROM calendly_data.routing_form_submission",
+    "question": "How many unique people have submitted routing forms?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form_submission"
+    ],
+    "sql": "SELECT result_event_type_uri, COUNT(*) as selection_count FROM calendly_data.routing_form_submission GROUP BY result_event_type_uri ORDER BY selection_count DESC",
+    "question": "Which event types are most commonly selected through routing forms?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form_submission"
+    ],
+  "sql": "SELECT DATE_TRUNC('day', created_at) as day, COUNT(*) as daily_submissions FROM calendly_data.routing_form_submission WHERE created_at >= TIMESTAMP '2024-12-25' AND created_at < TIMESTAMP '2025-01-01' GROUP BY day ORDER BY day",
+  "question": "Show me daily routing form submissions for the final week of 2024"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form_submission"
+    ],
+    "sql": "SELECT submitter_email, COUNT(*) as submission_count FROM calendly_data.routing_form_submission GROUP BY submitter_email HAVING COUNT(*) > 1 ORDER BY submission_count DESC",
+    "question": "Which people have submitted multiple routing forms?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form_submission"
+    ],
+  "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as submissions, COUNT(DISTINCT submitter_email) as unique_submitters FROM calendly_data.routing_form_submission WHERE created_at >= TIMESTAMP '2024-07-01' AND created_at < TIMESTAMP '2025-01-01' GROUP BY month ORDER BY month",
+  "question": "Show me monthly submission trends with unique submitter counts for the last half of 2024"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form_submission"
+    ],
+    "sql": "SELECT routing_form_uri, COUNT(DISTINCT result_event_type_uri) as event_types_selected FROM calendly_data.routing_form_submission GROUP BY routing_form_uri ORDER BY event_types_selected DESC",
+    "question": "Which routing forms lead to the most diverse event type selections?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form_submission"
+    ],
+  "sql": "SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as submissions FROM calendly_data.routing_form_submission WHERE created_at >= TIMESTAMP '2024-12-01' AND created_at < TIMESTAMP '2025-01-01' GROUP BY hour ORDER BY hour",
+  "question": "What time of day did people submit routing forms in December 2024?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.routing_form_submission"
+    ],
+  "sql": "SELECT AVG(daily_submissions) as avg_per_day FROM (SELECT DATE_TRUNC('day', created_at) as day, COUNT(*) as daily_submissions FROM calendly_data.routing_form_submission WHERE created_at >= TIMESTAMP '2024-12-01' AND created_at < TIMESTAMP '2025-01-01' GROUP BY day) subquery",
+  "question": "What's the average number of routing form submissions per day in December 2024?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.user"
+    ],
+    "sql": "SELECT timezone, COUNT(*) as user_count FROM calendly_data.user GROUP BY timezone ORDER BY user_count DESC",
+    "question": "What timezones are our users in?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.user"
+    ],
+    "sql": "SELECT name, email, scheduling_url FROM calendly_data.user ORDER BY created_at DESC LIMIT 10",
+    "question": "Show me our 10 most recently added users"
+  },
+  {
+    "data_sources": [
+      "calendly_data.user"
+    ],
+    "sql": "SELECT name, email FROM calendly_data.user ORDER BY name",
+    "question": "List all our users alphabetically"
+  },
+  {
+    "data_sources": [
+      "calendly_data.user"
+    ],
+    "sql": "SELECT name, updated_at FROM calendly_data.user ORDER BY updated_at DESC LIMIT 5",
+    "question": "Which user profiles were most recently updated?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.user"
+    ],
+  "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as users_added FROM calendly_data.user WHERE created_at >= DATE '2024-01-01' AND created_at < DATE '2025-01-01' GROUP BY month ORDER BY month",
+  "question": "Show me the monthly trend of user creation across 2024"
+  },
+  {
+    "data_sources": [
+      "calendly_data.user"
+    ],
+    "sql": "SELECT name, created_at FROM calendly_data.user ORDER BY created_at ASC LIMIT 1",
+    "question": "Who was the first user created?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.user"
+    ],
+  "sql": "SELECT COUNT(*) as users_added_in_2024 FROM calendly_data.user WHERE created_at >= DATE '2024-01-01' AND created_at < DATE '2025-01-01'",
+  "question": "How many users were added in 2024?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.user"
+    ],
+    "sql": "SELECT timezone, COUNT(*) as user_count, MIN(created_at) as first_user FROM calendly_data.user GROUP BY timezone ORDER BY user_count DESC",
+    "question": "Show me user distribution by timezone with first user date"
+  },
+  {
+    "data_sources": [
+      "calendly_data.user"
+    ],
+  "sql": "SELECT name, email FROM calendly_data.user WHERE updated_at >= TIMESTAMP '2024-12-01' AND updated_at < TIMESTAMP '2025-01-01' ORDER BY updated_at DESC",
+  "question": "Which users had profile updates during December 2024?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.user"
+    ],
+    "sql": "SELECT EXTRACT(YEAR FROM created_at) as year, COUNT(*) as users_added FROM calendly_data.user GROUP BY year ORDER BY year",
+    "question": "How many users were added each year?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.webhook_subscription"
+    ],
+    "sql": "SELECT state, COUNT(*) as subscription_count FROM calendly_data.webhook_subscription GROUP BY state",
+    "question": "Break down our webhook subscriptions by state"
+  },
+  {
+    "data_sources": [
+      "calendly_data.webhook_subscription"
+    ],
+    "sql": "SELECT scope, COUNT(*) as subscription_count FROM calendly_data.webhook_subscription GROUP BY scope ORDER BY subscription_count DESC",
+    "question": "What are our webhook subscriptions listening for?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.webhook_subscription"
+    ],
+    "sql": "SELECT callback_url, state, scope FROM calendly_data.webhook_subscription ORDER BY created_at DESC",
+    "question": "Show me all our webhook subscriptions sorted by creation date"
+  },
+  {
+    "data_sources": [
+      "calendly_data.webhook_subscription"
+    ],
+    "sql": "SELECT state, scope, COUNT(*) as count FROM calendly_data.webhook_subscription GROUP BY state, scope ORDER BY count DESC",
+    "question": "Break down webhook subscriptions by state and scope"
+  },
+  {
+    "data_sources": [
+      "calendly_data.webhook_subscription"
+    ],
+    "sql": "SELECT callback_url FROM calendly_data.webhook_subscription WHERE state = 'active' ORDER BY callback_url",
+    "question": "What are the callback URLs for our active webhooks?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.webhook_subscription"
+    ],
+    "sql": "SELECT scope, COUNT(*) as active_webhooks FROM calendly_data.webhook_subscription WHERE state = 'active' GROUP BY scope",
+    "question": "How many active webhooks do we have for each event scope?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.webhook_subscription"
+    ],
+  "sql": "SELECT callback_url, created_at FROM calendly_data.webhook_subscription WHERE created_at >= TIMESTAMP '2024-09-01' AND created_at < TIMESTAMP '2025-01-01' ORDER BY created_at DESC",
+  "question": "Which webhook subscriptions were created in the last four months of 2024?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.webhook_subscription"
+    ],
+    "sql": "SELECT callback_url, updated_at FROM calendly_data.webhook_subscription ORDER BY updated_at DESC LIMIT 5",
+    "question": "Which webhook subscriptions were most recently updated?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.webhook_subscription"
+    ],
+    "sql": "SELECT callback_url, created_at FROM calendly_data.webhook_subscription ORDER BY created_at ASC LIMIT 1",
+    "question": "What was the first webhook subscription created?"
+  },
+  {
+    "data_sources": [
+      "calendly_data.webhook_subscription"
+    ],
+  "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as webhooks_created FROM calendly_data.webhook_subscription WHERE created_at >= DATE '2024-01-01' AND created_at < DATE '2025-01-01' GROUP BY month ORDER BY month",
+  "question": "Show me the monthly trend of webhook subscription creation across 2024"
+  }
+]

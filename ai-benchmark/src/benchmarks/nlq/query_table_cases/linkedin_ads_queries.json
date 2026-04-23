@@ -1,0 +1,632 @@
+[
+  {
+    "data_sources": [
+      "linkedin_ads_data.account"
+    ],
+    "sql": "SELECT COUNT(*) as total_accounts, COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) as active_accounts FROM linkedin_ads_data.account",
+    "question": "How many advertising accounts do we have and how many are active?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account"
+    ],
+    "sql": "SELECT currency, COUNT(*) as account_count FROM linkedin_ads_data.account GROUP BY currency ORDER BY account_count DESC",
+    "question": "What currencies are our ad accounts using?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account"
+    ],
+    "sql": "SELECT status, COUNT(*) as count FROM linkedin_ads_data.account GROUP BY status",
+    "question": "What's the status breakdown of our ad accounts?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM linkedin_ads_data.account WHERE status = 'ACTIVE' GROUP BY type",
+    "question": "What types of active ad accounts do we have?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account"
+    ],
+    "sql": "SELECT name, last_modified_time FROM linkedin_ads_data.account WHERE status = 'ACTIVE' ORDER BY last_modified_time DESC LIMIT 5",
+    "question": "Which ad accounts were most recently updated?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account"
+    ],
+    "sql": "SELECT COUNT(*) as new_accounts FROM linkedin_ads_data.account WHERE created_time >= CURRENT_DATE - INTERVAL '180 days'",
+    "question": "How many ad accounts were set up in the last 6 months?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account"
+    ],
+    "sql": "SELECT name, currency, status FROM linkedin_ads_data.account ORDER BY name",
+    "question": "List all our ad accounts with their currencies and status"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - created_time)) / 86400), 0) as avg_age_days FROM linkedin_ads_data.account WHERE status = 'ACTIVE'",
+    "question": "How old are our active ad accounts on average?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account"
+    ],
+    "sql": "SELECT COUNT(*) as total_accounts FROM linkedin_ads_data.account",
+    "question": "How many ad accounts do we manage in total?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account"
+    ],
+    "sql": "SELECT name, created_time FROM linkedin_ads_data.account ORDER BY created_time DESC LIMIT 5",
+    "question": "What are our most recently created ad accounts?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account_user"
+    ],
+    "sql": "SELECT COUNT(DISTINCT user_person_id) as unique_users FROM linkedin_ads_data.account_user",
+    "question": "How many people have access to our ad accounts?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account_user"
+    ],
+    "sql": "SELECT role, COUNT(*) as user_count FROM linkedin_ads_data.account_user GROUP BY role ORDER BY user_count DESC",
+    "question": "What's the breakdown of user access roles?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account_user"
+    ],
+    "sql": "SELECT user_person_id, COUNT(DISTINCT account_id) as account_count FROM linkedin_ads_data.account_user GROUP BY user_person_id ORDER BY account_count DESC LIMIT 10",
+    "question": "Which users have access to the most ad accounts?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account_user"
+    ],
+    "sql": "SELECT account_id, COUNT(*) as user_count FROM linkedin_ads_data.account_user GROUP BY account_id ORDER BY user_count DESC LIMIT 10",
+    "question": "Which ad accounts have the most users with access?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account_user"
+    ],
+    "sql": "SELECT COUNT(*) as new_access_grants FROM linkedin_ads_data.account_user WHERE created_time >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "How many people were granted ad account access this quarter?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account_user"
+    ],
+    "sql": "SELECT role, COUNT(DISTINCT user_person_id) as user_count FROM linkedin_ads_data.account_user GROUP BY role",
+    "question": "How many users have each role type?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account_user"
+    ],
+    "sql": "SELECT COUNT(*) as account_manager_access FROM linkedin_ads_data.account_user WHERE role = 'ACCOUNT_MANAGER'",
+    "question": "How many account manager access grants do we have across all accounts?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account_user"
+    ],
+    "sql": "SELECT COUNT(DISTINCT account_id) as accounts_with_users FROM linkedin_ads_data.account_user",
+    "question": "How many ad accounts have user access configured?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account_user"
+    ],
+    "sql": "SELECT ROUND(COUNT(*)::numeric / COUNT(DISTINCT account_id), 2) as avg_users_per_account FROM linkedin_ads_data.account_user",
+    "question": "What's the average number of users per ad account?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.account_user"
+    ],
+    "sql": "SELECT COUNT(*) as recent_grants FROM linkedin_ads_data.account_user WHERE created_time >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many new access grants were made in the last month?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_campaign"
+    ],
+    "sql": "SELECT SUM(cost_in_local_currency) as total_spend, SUM(impressions) as total_impressions, SUM(clicks) as total_clicks, ROUND(SUM(clicks)::numeric / NULLIF(SUM(impressions), 0) * 100, 2) as ctr FROM linkedin_ads_data.ad_analytics_by_campaign WHERE day >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "What's our overall ad performance for the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_campaign"
+    ],
+    "sql": "SELECT campaign_id, SUM(leads) as total_leads, SUM(cost_in_local_currency) as spend, ROUND(SUM(cost_in_local_currency) / NULLIF(SUM(leads), 0), 2) as cost_per_lead FROM linkedin_ads_data.ad_analytics_by_campaign WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY campaign_id ORDER BY total_leads DESC LIMIT 10",
+    "question": "Which campaigns are generating the most leads and at what cost?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_campaign"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', day) as week, SUM(cost_in_local_currency) as spend FROM linkedin_ads_data.ad_analytics_by_campaign WHERE day >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "How has our weekly ad spend been trending?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_campaign"
+    ],
+    "sql": "SELECT campaign_id, ROUND(SUM(clicks)::numeric / NULLIF(SUM(impressions), 0) * 100, 2) as ctr FROM linkedin_ads_data.ad_analytics_by_campaign WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY campaign_id ORDER BY ctr DESC LIMIT 10",
+    "question": "Which campaigns have the best click-through rates?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_campaign"
+    ],
+    "sql": "SELECT SUM(external_website_conversions) as total_conversions, SUM(cost_in_local_currency) as total_spend, ROUND(SUM(cost_in_local_currency) / NULLIF(SUM(external_website_conversions), 0), 2) as cost_per_conversion FROM linkedin_ads_data.ad_analytics_by_campaign WHERE day >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "What's our cost per conversion for the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_campaign"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', day) as date, SUM(leads) as daily_leads FROM linkedin_ads_data.ad_analytics_by_campaign WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY date ORDER BY date",
+    "question": "What's our daily lead generation trend over the last month?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_campaign"
+    ],
+    "sql": "SELECT campaign_id, SUM(video_views) as total_views, ROUND(SUM(cost_in_local_currency) / NULLIF(SUM(video_views), 0), 4) as cost_per_view FROM linkedin_ads_data.ad_analytics_by_campaign WHERE day >= CURRENT_DATE - INTERVAL '30 days' AND video_views > 0 GROUP BY campaign_id ORDER BY total_views DESC LIMIT 10",
+    "question": "Which video campaigns are getting the most views and what's the cost per view?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_campaign"
+    ],
+    "sql": "SELECT SUM(cost_in_local_currency) as month_to_date_spend FROM linkedin_ads_data.ad_analytics_by_campaign WHERE day >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How much have we spent on ads so far this month?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_campaign"
+    ],
+    "sql": "SELECT campaign_id, SUM(impressions) as total_impressions, ROUND(SUM(cost_in_local_currency) / NULLIF(SUM(impressions), 0) * 1000, 2) as cpm FROM linkedin_ads_data.ad_analytics_by_campaign WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY campaign_id ORDER BY total_impressions DESC LIMIT 10",
+    "question": "Which campaigns are driving the most reach and what's the CPM?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_campaign"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', day) as month, SUM(leads) as total_leads FROM linkedin_ads_data.ad_analytics_by_campaign WHERE day >= CURRENT_DATE - INTERVAL '6 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly lead generation trend over the last 6 months?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_creative"
+    ],
+    "sql": "SELECT creative_id, SUM(impressions) as impressions, SUM(clicks) as clicks, ROUND(SUM(clicks)::numeric / NULLIF(SUM(impressions), 0) * 100, 2) as ctr FROM linkedin_ads_data.ad_analytics_by_creative WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY creative_id ORDER BY ctr DESC LIMIT 10",
+    "question": "Which ad creatives have the best click-through rates?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_creative"
+    ],
+    "sql": "SELECT creative_id, SUM(leads) as total_leads, ROUND(SUM(cost_in_local_currency) / NULLIF(SUM(leads), 0), 2) as cost_per_lead FROM linkedin_ads_data.ad_analytics_by_creative WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY creative_id ORDER BY total_leads DESC LIMIT 10",
+    "question": "Which ad creatives are generating the most leads?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_creative"
+    ],
+    "sql": "SELECT creative_id, SUM(cost_in_local_currency) as spend, SUM(impressions) as impressions FROM linkedin_ads_data.ad_analytics_by_creative WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY creative_id ORDER BY spend DESC LIMIT 10",
+    "question": "Where is most of our ad budget going in terms of creatives?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_creative"
+    ],
+    "sql": "SELECT COUNT(DISTINCT creative_id) as active_creatives FROM linkedin_ads_data.ad_analytics_by_creative WHERE day >= CURRENT_DATE - INTERVAL '7 days' AND impressions > 0",
+    "question": "How many ad creatives ran this week?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_creative"
+    ],
+    "sql": "SELECT creative_id, SUM(video_views) as total_views, ROUND(SUM(video_views)::numeric / NULLIF(SUM(impressions), 0) * 100, 2) as view_rate FROM linkedin_ads_data.ad_analytics_by_creative WHERE day >= CURRENT_DATE - INTERVAL '30 days' AND video_views > 0 GROUP BY creative_id ORDER BY view_rate DESC LIMIT 10",
+    "question": "Which video ads have the best view rates?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_creative"
+    ],
+    "sql": "SELECT creative_id, SUM(external_website_conversions) as conversions FROM linkedin_ads_data.ad_analytics_by_creative WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY creative_id ORDER BY conversions DESC LIMIT 10",
+    "question": "Which ad creatives are driving the most website conversions?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_creative"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', day) as week, SUM(impressions) as impressions FROM linkedin_ads_data.ad_analytics_by_creative WHERE day >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "How has our weekly ad impression volume been trending?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_creative"
+    ],
+    "sql": "SELECT creative_id, ROUND(SUM(cost_in_local_currency) / NULLIF(SUM(clicks), 0), 2) as cpc FROM linkedin_ads_data.ad_analytics_by_creative WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY creative_id ORDER BY cpc LIMIT 10",
+    "question": "Which ad creatives have the lowest cost per click?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_creative"
+    ],
+    "sql": "SELECT SUM(external_website_conversions) as total_conversions FROM linkedin_ads_data.ad_analytics_by_creative WHERE day >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many website conversions have our ads driven this month?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.ad_analytics_by_creative"
+    ],
+    "sql": "SELECT creative_id, SUM(clicks) as total_clicks FROM linkedin_ads_data.ad_analytics_by_creative WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY creative_id ORDER BY total_clicks DESC LIMIT 10",
+    "question": "Which ad creatives are getting the most clicks?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign"
+    ],
+    "sql": "SELECT COUNT(*) as total_campaigns, COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) as active_campaigns FROM linkedin_ads_data.campaign",
+    "question": "How many campaigns do we have and how many are currently running?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign"
+    ],
+    "sql": "SELECT objective_type, COUNT(*) as campaign_count FROM linkedin_ads_data.campaign WHERE status = 'ACTIVE' GROUP BY objective_type ORDER BY campaign_count DESC",
+    "question": "What are the objectives of our active campaigns?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign"
+    ],
+    "sql": "SELECT status, COUNT(*) as count FROM linkedin_ads_data.campaign GROUP BY status ORDER BY count DESC",
+    "question": "What's the status breakdown of all our campaigns?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign"
+    ],
+    "sql": "SELECT SUM(daily_budget_amount) as total_daily_budget FROM linkedin_ads_data.campaign WHERE status = 'ACTIVE' AND daily_budget_amount IS NOT NULL",
+    "question": "What's our total daily budget across all active campaigns?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign"
+    ],
+    "sql": "SELECT name, daily_budget_amount FROM linkedin_ads_data.campaign WHERE status = 'ACTIVE' AND daily_budget_amount IS NOT NULL ORDER BY daily_budget_amount DESC LIMIT 10",
+    "question": "Which campaigns have the highest daily budgets?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign"
+    ],
+    "sql": "SELECT cost_type, COUNT(*) as campaign_count FROM linkedin_ads_data.campaign WHERE status = 'ACTIVE' GROUP BY cost_type",
+    "question": "What bidding strategies are we using across our campaigns?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign"
+    ],
+    "sql": "SELECT COUNT(*) as new_campaigns FROM linkedin_ads_data.campaign WHERE created_time >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many campaigns have we launched in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM linkedin_ads_data.campaign WHERE status = 'ACTIVE' GROUP BY type",
+    "question": "What types of campaigns are we currently running?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign"
+    ],
+    "sql": "SELECT ROUND(AVG(daily_budget_amount), 2) as avg_daily_budget FROM linkedin_ads_data.campaign WHERE status = 'ACTIVE' AND daily_budget_amount IS NOT NULL",
+    "question": "What's the average daily budget per campaign?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign"
+    ],
+    "sql": "SELECT COUNT(*) as recently_modified FROM linkedin_ads_data.campaign WHERE last_modified_time >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many campaigns were updated this week?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_demographics"
+    ],
+    "sql": "SELECT country, SUM(impressions) as impressions, SUM(clicks) as clicks, SUM(cost_in_local_currency) as spend FROM linkedin_ads_data.campaign_demographics WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY country ORDER BY impressions DESC LIMIT 10",
+    "question": "Which countries are we reaching most with our ads?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_demographics"
+    ],
+    "sql": "SELECT seniority, SUM(clicks) as clicks, ROUND(SUM(clicks)::numeric / NULLIF(SUM(impressions), 0) * 100, 2) as ctr FROM linkedin_ads_data.campaign_demographics WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY seniority ORDER BY clicks DESC",
+    "question": "Which seniority levels are most engaged with our ads?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_demographics"
+    ],
+    "sql": "SELECT job_function, SUM(impressions) as impressions, SUM(cost_in_local_currency) as spend FROM linkedin_ads_data.campaign_demographics WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY job_function ORDER BY impressions DESC LIMIT 10",
+    "question": "Which job functions are we targeting most?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_demographics"
+    ],
+    "sql": "SELECT country, ROUND(SUM(cost_in_local_currency) / NULLIF(SUM(clicks), 0), 2) as cpc FROM linkedin_ads_data.campaign_demographics WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY country ORDER BY SUM(cost_in_local_currency) DESC LIMIT 10",
+    "question": "What's our cost per click in different countries?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_demographics"
+    ],
+    "sql": "SELECT seniority, SUM(cost_in_local_currency) as spend, ROUND(SUM(cost_in_local_currency)::numeric / SUM(SUM(cost_in_local_currency)) OVER () * 100, 2) as spend_percentage FROM linkedin_ads_data.campaign_demographics WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY seniority ORDER BY spend DESC",
+    "question": "How is our ad spend distributed across seniority levels?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_demographics"
+    ],
+    "sql": "SELECT job_function, ROUND(SUM(clicks)::numeric / NULLIF(SUM(impressions), 0) * 100, 2) as ctr FROM linkedin_ads_data.campaign_demographics WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY job_function ORDER BY ctr DESC LIMIT 10",
+    "question": "Which job functions have the highest engagement rates?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_demographics"
+    ],
+    "sql": "SELECT COUNT(DISTINCT country) as countries_reached FROM linkedin_ads_data.campaign_demographics WHERE day >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many countries have we reached with our ads in the last month?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_demographics"
+    ],
+    "sql": "SELECT country, job_function, SUM(clicks) as clicks FROM linkedin_ads_data.campaign_demographics WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY country, job_function ORDER BY clicks DESC LIMIT 10",
+    "question": "What are our top performing country and job function combinations?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_demographics"
+    ],
+    "sql": "SELECT job_function, SUM(cost_in_local_currency) as spend FROM linkedin_ads_data.campaign_demographics WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY job_function ORDER BY spend DESC LIMIT 10",
+    "question": "Which job functions are getting most of our ad budget?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_demographics"
+    ],
+    "sql": "SELECT seniority, COUNT(DISTINCT campaign_id) as campaign_count FROM linkedin_ads_data.campaign_demographics WHERE day >= CURRENT_DATE - INTERVAL '30 days' GROUP BY seniority ORDER BY campaign_count DESC",
+    "question": "How many campaigns are targeting each seniority level?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_group"
+    ],
+    "sql": "SELECT COUNT(*) as total_groups, COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) as active_groups FROM linkedin_ads_data.campaign_group",
+    "question": "How many campaign groups do we have and how many are active?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_group"
+    ],
+    "sql": "SELECT SUM(total_budget_amount) as total_budget FROM linkedin_ads_data.campaign_group WHERE status = 'ACTIVE' AND total_budget_amount IS NOT NULL",
+    "question": "What's our total budget across all active campaign groups?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_group"
+    ],
+    "sql": "SELECT name, total_budget_amount FROM linkedin_ads_data.campaign_group WHERE status = 'ACTIVE' AND total_budget_amount IS NOT NULL ORDER BY total_budget_amount DESC LIMIT 10",
+    "question": "Which campaign groups have the largest budgets?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_group"
+    ],
+    "sql": "SELECT status, COUNT(*) as count FROM linkedin_ads_data.campaign_group GROUP BY status",
+    "question": "What's the status breakdown of our campaign groups?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_group"
+    ],
+    "sql": "SELECT ROUND(AVG(total_budget_amount), 2) as avg_budget FROM linkedin_ads_data.campaign_group WHERE status = 'ACTIVE' AND total_budget_amount IS NOT NULL",
+    "question": "What's the average budget per campaign group?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_group"
+    ],
+    "sql": "SELECT COUNT(*) as new_groups FROM linkedin_ads_data.campaign_group WHERE created_time >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "How many campaign groups were created this quarter?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_group"
+    ],
+    "sql": "SELECT name, run_schedule_end FROM linkedin_ads_data.campaign_group WHERE status = 'ACTIVE' AND run_schedule_end >= CURRENT_DATE AND run_schedule_end < CURRENT_DATE + INTERVAL '30 days' ORDER BY run_schedule_end",
+    "question": "Which campaign groups are scheduled to end in the next month?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_group"
+    ],
+    "sql": "SELECT COUNT(*) as recently_started FROM linkedin_ads_data.campaign_group WHERE run_schedule_start >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many campaign groups launched in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_group"
+    ],
+    "sql": "SELECT COUNT(*) as recently_modified FROM linkedin_ads_data.campaign_group WHERE last_modified_time >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many campaign groups were updated this week?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.campaign_group"
+    ],
+    "sql": "SELECT COUNT(*) as total_groups FROM linkedin_ads_data.campaign_group",
+    "question": "How many campaign groups do we have in total?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.conversion"
+    ],
+    "sql": "SELECT COUNT(*) as total_conversions FROM linkedin_ads_data.conversion",
+    "question": "How many conversion events are we tracking?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.conversion"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM linkedin_ads_data.conversion GROUP BY type ORDER BY count DESC",
+    "question": "What types of conversions are we tracking?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.conversion"
+    ],
+    "sql": "SELECT name, type, created_time FROM linkedin_ads_data.conversion ORDER BY created_time DESC LIMIT 10",
+    "question": "What are our most recently created conversion events?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.conversion"
+    ],
+    "sql": "SELECT account_id, COUNT(*) as conversion_count FROM linkedin_ads_data.conversion GROUP BY account_id ORDER BY conversion_count DESC",
+    "question": "Which ad accounts have the most conversion events configured?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.conversion"
+    ],
+    "sql": "SELECT COUNT(*) as new_conversions FROM linkedin_ads_data.conversion WHERE created_time >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "How many conversion events were set up this quarter?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.conversion"
+    ],
+    "sql": "SELECT COUNT(DISTINCT account_id) as accounts_with_tracking FROM linkedin_ads_data.conversion",
+    "question": "How many ad accounts have conversion tracking enabled?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.conversion"
+    ],
+    "sql": "SELECT type, COUNT(DISTINCT account_id) as account_count FROM linkedin_ads_data.conversion GROUP BY type",
+    "question": "How many accounts are tracking each conversion type?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.conversion"
+    ],
+    "sql": "SELECT name FROM linkedin_ads_data.conversion ORDER BY name",
+    "question": "List all our conversion events alphabetically"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.conversion"
+    ],
+    "sql": "SELECT COUNT(*) as recently_modified FROM linkedin_ads_data.conversion WHERE last_modified_time >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many conversion events were updated in the last month?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.conversion"
+    ],
+    "sql": "SELECT ROUND(COUNT(*)::numeric / COUNT(DISTINCT account_id), 2) as avg_conversions_per_account FROM linkedin_ads_data.conversion",
+    "question": "What's the average number of conversion events per account?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.creative"
+    ],
+    "sql": "SELECT COUNT(*) as total_creatives, COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) as active_creatives FROM linkedin_ads_data.creative",
+    "question": "How many ad creatives do we have and how many are active?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.creative"
+    ],
+    "sql": "SELECT status, COUNT(*) as count FROM linkedin_ads_data.creative GROUP BY status ORDER BY count DESC",
+    "question": "What's the status breakdown of our ad creatives?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.creative"
+    ],
+    "sql": "SELECT campaign_id, COUNT(*) as creative_count FROM linkedin_ads_data.creative WHERE status = 'ACTIVE' GROUP BY campaign_id ORDER BY creative_count DESC LIMIT 10",
+    "question": "Which campaigns have the most active ad creatives?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.creative"
+    ],
+    "sql": "SELECT COUNT(*) as new_creatives FROM linkedin_ads_data.creative WHERE created_time >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many new ad creatives were created in the last month?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.creative"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_time) as week, COUNT(*) as creatives_created FROM linkedin_ads_data.creative WHERE created_time >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly ad creative production trend?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.creative"
+    ],
+    "sql": "SELECT COUNT(DISTINCT campaign_id) as campaigns_with_creatives FROM linkedin_ads_data.creative WHERE status = 'ACTIVE'",
+    "question": "How many campaigns currently have active ad creatives?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.creative"
+    ],
+    "sql": "SELECT COUNT(*) as paused_creatives FROM linkedin_ads_data.creative WHERE status = 'PAUSED'",
+    "question": "How many ad creatives are currently paused?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.creative"
+    ],
+    "sql": "SELECT COUNT(*) as recently_modified FROM linkedin_ads_data.creative WHERE last_modified_time >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many ad creatives were updated this week?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.creative"
+    ],
+    "sql": "SELECT COUNT(*) as this_month FROM linkedin_ads_data.creative WHERE created_time >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many ad creatives have we created so far this month?"
+  },
+  {
+    "data_sources": [
+      "linkedin_ads_data.creative"
+    ],
+    "sql": "SELECT ROUND(COUNT(*)::numeric / COUNT(DISTINCT campaign_id), 2) as avg_creatives_per_campaign FROM linkedin_ads_data.creative WHERE status = 'ACTIVE'",
+    "question": "What's the average number of active creatives per campaign?"
+  }
+]

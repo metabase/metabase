@@ -1,0 +1,100 @@
+[
+  {
+    "description": "Invalid JOIN: missing ON condition",
+    "used_tables": [
+      "brex_data.user",
+      "brex_data.card"
+    ],
+    "fixed_query": "SELECT\n  u.email,\n  c.card_name\nFROM brex_data.user u\nJOIN brex_data.card c\n  ON u.id = c.owner_user_id\nLIMIT 10",
+    "broken_query": "SELECT\n  u.email,\n  c.card_name\nFROM brex_data.user u\nJOIN brex_data.card c\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"LIMIT\"\n  Position: 195"
+  },
+  {
+    "description": "Mixing up columns from JOINed tables",
+    "used_tables": [
+      "calendly_data.event",
+      "calendly_data.event_membership"
+    ],
+    "fixed_query": "SELECT\n  e.name,\n  e.status,\n  em.user_uri\nFROM calendly_data.event e\nJOIN calendly_data.event_membership em\n  ON e.uri = em.event_uri\nLIMIT 10",
+    "broken_query": "SELECT\n  e.name,\n  em.status,\n  em.user_uri\nFROM calendly_data.event e\nJOIN calendly_data.event_membership em\n  ON e.uri = em.event_uri\nLIMIT 10",
+    "error_message": "ERROR: column em.status does not exist\n  Hint: Perhaps you meant to reference the column \"e.status\".\n  Position: 138"
+  },
+  {
+    "description": "Invalid CASE expression: missing END keyword",
+    "used_tables": [
+      "customerio_data.customer"
+    ],
+    "fixed_query": "SELECT\n  id,\n  email,\n  CASE\n    WHEN created_at > '2023-01-01' THEN 'new'\n    ELSE 'old'\n  END AS customer_type\nFROM customerio_data.customer\nLIMIT 10",
+    "broken_query": "SELECT\n  id,\n  email,\n  CASE\n    WHEN created_at > '2023-01-01' THEN 'new'\n    ELSE 'old'\n  AS customer_type\nFROM customerio_data.customer\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"AS\"\n  Position: 211"
+  },
+  {
+    "description": "Invalid nested SELECT subquery: missing closing parenthesis",
+    "used_tables": [
+      "google_adwords_data.account",
+      "google_adwords_data.campaign"
+    ],
+    "fixed_query": "SELECT name\nFROM google_adwords_data.account\nWHERE id IN (\n  SELECT account_id\n  FROM google_adwords_data.campaign\n  WHERE status = 'active'\n  LIMIT 5\n)",
+    "broken_query": "SELECT name\nFROM google_adwords_data.account\nWHERE id IN (\n  SELECT account_id\n  FROM google_adwords_data.campaign\n  WHERE status = 'active'\n  LIMIT 5",
+    "error_message": "ERROR: syntax error at end of input\n  Position: 269"
+  },
+  {
+    "description": "Invalid CTE: missing AS keyword",
+    "used_tables": [
+      "lever_data.application"
+    ],
+    "fixed_query": "WITH active_apps AS (\n  SELECT id, opportunity_id\n  FROM lever_data.application\n  WHERE type IS NOT NULL\n)\nSELECT * FROM active_apps\nLIMIT 10",
+    "broken_query": "WITH active_apps (\n  SELECT id, opportunity_id\n  FROM lever_data.application\n  WHERE type IS NOT NULL\n)\nSELECT * FROM active_apps\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"SELECT\"\n  Position: 140"
+  },
+  {
+    "description": "Invalid JOIN condition: wrong column reference",
+    "used_tables": [
+      "linkedin_ads_data.campaign",
+      "linkedin_ads_data.campaign_group"
+    ],
+    "fixed_query": "SELECT c.name, cg.name\nFROM linkedin_ads_data.campaign c\nLEFT JOIN linkedin_ads_data.campaign_group cg\n  ON c.campaign_group_id = cg.id\nLIMIT 10",
+    "broken_query": "SELECT c.name, cg.name\nFROM linkedin_ads_data.campaign c\nLEFT JOIN linkedin_ads_data.campaign_group cg\n  ON c.name = cg.id\nLIMIT 10",
+    "error_message": "ERROR: operator does not exist: character varying = bigint\n  Hint: No operator matches the given name and argument types. You might need to add explicit type casts.\n  Position: 234"
+  },
+  {
+    "description": "Invalid CASE expression: missing THEN keyword",
+    "used_tables": [
+      "quickbooks_data.customer"
+    ],
+    "fixed_query": "SELECT\n  display_name,\n  CASE\n    WHEN balance > 1000 THEN 'high'\n    WHEN balance > 100 THEN 'medium'\n    ELSE 'low'\n  END AS balance_tier\nFROM quickbooks_data.customer\nLIMIT 10",
+    "broken_query": "SELECT\n  display_name,\n  CASE\n    WHEN balance > 1000 'high'\n    WHEN balance > 100 THEN 'medium'\n    ELSE 'low'\n  END AS balance_tier\nFROM quickbooks_data.customer\nLIMIT 10",
+    "error_message": "ERROR: syntax error at or near \"'high'\"\n  Position: 173"
+  },
+  {
+    "description": "Invalid subquery in SELECT: column not found in outer scope",
+    "used_tables": [
+      "salesforce_data.account",
+      "salesforce_data.contact"
+    ],
+    "fixed_query": "SELECT\n  a.name,\n  (\n    SELECT COUNT(*)\n    FROM salesforce_data.contact c\n    WHERE c.account_id = a.id\n  ) AS contact_count\nFROM salesforce_data.account a",
+    "broken_query": "SELECT\n  a.name,\n  (\n    SELECT COUNT(*)\n    FROM salesforce_data.contact c\n    WHERE c.account_id = s.id\n  ) AS contact_count\nFROM salesforce_data.account a",
+    "error_message": "ERROR: missing FROM-clause entry for table \"s\"\n  Position: 220"
+  },
+  {
+    "description": "Invalid multiple JOINs: ambiguous column reference",
+    "used_tables": [
+      "shopify_data.order",
+      "shopify_data.product",
+      "shopify_data.customer"
+    ],
+    "fixed_query": "SELECT\n  o.id AS order_id,\n  ol.name,\n  c.email\nFROM shopify_data.order o\nJOIN shopify_data.order_line ol ON o.id = ol.order_id\nJOIN shopify_data.customer c ON o.customer_id = c.id\nLIMIT 10",
+    "broken_query": "SELECT\n  id AS order_id,\n  ol.name,\n  c.email\nFROM shopify_data.order o\nJOIN shopify_data.order_line ol ON o.id = ol.order_id\nJOIN shopify_data.customer c ON o.customer_id = c.id\nLIMIT 10",
+    "error_message": "ERROR: column reference \"id\" is ambiguous\n  Position: 128"
+  },
+  {
+    "description": "Invalid CTE: referencing undefined CTE name",
+    "used_tables": [
+      "stripe_data.customer",
+      "stripe_data.charge"
+    ],
+    "fixed_query": "WITH recent_customers AS (\n  SELECT id, email\n  FROM stripe_data.customer\n  WHERE created > '2023-01-01'\n)\nSELECT rc.email, COUNT(ch.id)\nFROM recent_customers rc\nLEFT JOIN stripe_data.charge ch ON rc.id = ch.customer_id\nGROUP BY rc.email",
+    "broken_query": "WITH recent_customers AS (\n  SELECT id, email\n  FROM stripe_data.customer\n  WHERE created > '2023-01-01'\n)\nSELECT rc.email, COUNT(ch.id)\nFROM customers rc\nLEFT JOIN stripe_data.charge ch ON rc.id = ch.customer_id\nGROUP BY rc.email",
+    "error_message": "ERROR: relation \"customers\" does not exist\n  Position: 261"
+  }
+]

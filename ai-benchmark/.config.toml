@@ -1,0 +1,32 @@
+[features]
+# These are the default models and temperatures for each feature if not overridden
+model = "openai/gpt-4.1-mini-2025-04-14"
+temperature = 0.3
+
+[features.agent]
+# You can override the default model and temperature here
+model = "openrouter/anthropic/claude-haiku-4.5"
+resolve_schema_refs = true
+
+[features.agent.query_tool]
+model = "openai/gpt-4o-mini-2024-07-18"
+temperature = 0.3
+
+[features.codegen_agent]
+model = "openrouter/anthropic/claude-sonnet-4.5"
+
+[features.analyze]
+# You can override the default model and temperature here
+
+[features.example_question_generation]
+# You can override the default model and temperature here
+
+[features.sql_generation]
+model = "openai/gpt-4.1-mini-2025-04-14"
+
+[features.experimental.sql_completion]
+# You can override the default model and temperature here
+
+[analytics]
+# You can override the defaults here
+# classifier_model = "openrouter/openai/gpt-oss-20b"

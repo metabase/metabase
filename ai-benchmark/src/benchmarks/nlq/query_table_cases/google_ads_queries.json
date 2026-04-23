@@ -1,0 +1,702 @@
+[
+  {
+    "data_sources": [
+      "google_adwords_data.account"
+    ],
+    "sql": "SELECT name, currency_code, time_zone FROM google_adwords_data.account ORDER BY name",
+    "question": "Show me all our Google Ads accounts with their currencies and timezones"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.account"
+    ],
+    "sql": "SELECT currency_code, COUNT(*) as account_count FROM google_adwords_data.account GROUP BY currency_code",
+    "question": "How are our Google Ads accounts distributed by currency?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.account"
+    ],
+    "sql": "SELECT COUNT(*) as accounts_with_autotagging FROM google_adwords_data.account WHERE auto_tagging_enabled = true",
+    "question": "How many of our ad accounts have auto-tagging enabled?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.account"
+    ],
+    "sql": "SELECT time_zone, COUNT(*) as accounts FROM google_adwords_data.account GROUP BY time_zone ORDER BY accounts DESC",
+    "question": "What timezones are our ad accounts targeting?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.account"
+    ],
+    "sql": "SELECT name, auto_tagging_enabled FROM google_adwords_data.account WHERE auto_tagging_enabled = false",
+    "question": "Which ad accounts need auto-tagging set up?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.account"
+    ],
+    "sql": "SELECT COUNT(DISTINCT currency_code) as currencies_used FROM google_adwords_data.account",
+    "question": "How many different currencies are we advertising in?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.account"
+    ],
+    "sql": "SELECT COUNT(DISTINCT time_zone) as unique_timezones FROM google_adwords_data.account",
+    "question": "How many timezones do our ad accounts cover?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.account"
+    ],
+    "sql": "SELECT name FROM google_adwords_data.account ORDER BY id DESC LIMIT 1",
+    "question": "What's our most recently added Google Ads account?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.account"
+    ],
+    "sql": "SELECT auto_tagging_enabled, COUNT(*) as count FROM google_adwords_data.account GROUP BY auto_tagging_enabled",
+    "question": "How many accounts have auto-tagging on vs off?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.account"
+    ],
+    "sql": "SELECT currency_code, time_zone, COUNT(*) as accounts FROM google_adwords_data.account GROUP BY currency_code, time_zone ORDER BY accounts DESC",
+    "question": "Show me account distribution by currency and timezone"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad"
+    ],
+    "sql": "SELECT status, COUNT(*) as ad_count FROM google_adwords_data.ad GROUP BY status ORDER BY ad_count DESC",
+    "question": "How are our ads distributed by status?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM google_adwords_data.ad WHERE status = 'ENABLED' GROUP BY type ORDER BY count DESC",
+    "question": "What types of active ads are we running?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad"
+    ],
+    "sql": "SELECT ad_group_id, COUNT(*) as ads FROM google_adwords_data.ad WHERE status = 'ENABLED' GROUP BY ad_group_id ORDER BY ads DESC LIMIT 10",
+    "question": "Which ad groups have the most active ads?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad"
+    ],
+    "sql": "SELECT type, status, COUNT(*) as count FROM google_adwords_data.ad GROUP BY type, status ORDER BY count DESC",
+    "question": "Break down our ads by type and status"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad"
+    ],
+    "sql": "SELECT COUNT(DISTINCT ad_group_id) as ad_groups_with_ads FROM google_adwords_data.ad WHERE status = 'ENABLED'",
+    "question": "How many ad groups have active ads running?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad"
+    ],
+    "sql": "SELECT COUNT(*) as paused_ads FROM google_adwords_data.ad WHERE status = 'PAUSED'",
+    "question": "How many ads are currently paused?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad"
+    ],
+    "sql": "SELECT COUNT(*) as removed_ads FROM google_adwords_data.ad WHERE status = 'REMOVED'",
+    "question": "How many ads have been removed?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM google_adwords_data.ad GROUP BY type ORDER BY count DESC",
+    "question": "What are the most common ad formats we use?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad"
+    ],
+    "sql": "SELECT status, COUNT(DISTINCT ad_group_id) as ad_groups FROM google_adwords_data.ad GROUP BY status",
+    "question": "How many ad groups have ads in each status?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad"
+    ],
+    "sql": "SELECT AVG(ads_per_group) as avg_ads FROM (SELECT ad_group_id, COUNT(*) as ads_per_group FROM google_adwords_data.ad WHERE status = 'ENABLED' GROUP BY ad_group_id) subquery",
+    "question": "What's the average number of active ads per ad group?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group"
+    ],
+    "sql": "SELECT status, COUNT(*) as count FROM google_adwords_data.ad_group GROUP BY status ORDER BY count DESC",
+    "question": "How are our ad groups distributed by status?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM google_adwords_data.ad_group WHERE status = 'ENABLED' GROUP BY type",
+    "question": "What types of active ad groups are we running?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group"
+    ],
+    "sql": "SELECT AVG(cpc_bid_micros / 1000000.0) as avg_cpc_bid FROM google_adwords_data.ad_group WHERE status = 'ENABLED'",
+    "question": "What's the average CPC bid across our active ad groups?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group"
+    ],
+    "sql": "SELECT name, cpc_bid_micros / 1000000.0 as cpc_bid FROM google_adwords_data.ad_group WHERE status = 'ENABLED' ORDER BY cpc_bid_micros DESC LIMIT 10",
+    "question": "Which ad groups have the highest CPC bids?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group"
+    ],
+    "sql": "SELECT campaign_id, COUNT(*) as ad_groups FROM google_adwords_data.ad_group WHERE status = 'ENABLED' GROUP BY campaign_id ORDER BY ad_groups DESC LIMIT 10",
+    "question": "Which campaigns have the most active ad groups?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group"
+    ],
+    "sql": "SELECT type, AVG(cpc_bid_micros / 1000000.0) as avg_bid FROM google_adwords_data.ad_group WHERE status = 'ENABLED' GROUP BY type",
+    "question": "What's the average CPC bid by ad group type?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group"
+    ],
+    "sql": "SELECT COUNT(DISTINCT campaign_id) as campaigns_with_active_groups FROM google_adwords_data.ad_group WHERE status = 'ENABLED'",
+    "question": "How many campaigns have active ad groups?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group"
+    ],
+    "sql": "SELECT MAX(cpc_bid_micros / 1000000.0) as highest_bid, MIN(cpc_bid_micros / 1000000.0) as lowest_bid FROM google_adwords_data.ad_group WHERE status = 'ENABLED'",
+    "question": "What are our highest and lowest CPC bids?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group"
+    ],
+    "sql": "SELECT name, cpc_bid_micros / 1000000.0 as cpc_bid FROM google_adwords_data.ad_group WHERE status = 'ENABLED' AND cpc_bid_micros < 1000000 ORDER BY cpc_bid_micros",
+    "question": "Which ad groups have low CPC bids under $1?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group"
+    ],
+    "sql": "SELECT status, COUNT(*) as count, AVG(cpc_bid_micros / 1000000.0) as avg_bid FROM google_adwords_data.ad_group GROUP BY status",
+    "question": "Show me ad group counts and average bids by status"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group_stats"
+    ],
+    "sql": "SELECT SUM(impressions) as total_impressions, SUM(clicks) as total_clicks, ROUND(SUM(clicks)::numeric / NULLIF(SUM(impressions), 0) * 100, 2) as ctr FROM google_adwords_data.ad_group_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "What's our overall ad performance in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group_stats"
+    ],
+    "sql": "SELECT SUM(cost_micros) / 1000000.0 as total_spend FROM google_adwords_data.ad_group_stats WHERE date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How much have we spent on Google Ads this month?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group_stats"
+    ],
+    "sql": "SELECT SUM(conversions) as total_conversions, SUM(conversions_value) as conversion_value FROM google_adwords_data.ad_group_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many conversions did we get in the last 30 days and what were they worth?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group_stats"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', date) as day, SUM(cost_micros) / 1000000.0 as daily_spend FROM google_adwords_data.ad_group_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "Show me our daily ad spend for the last month"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group_stats"
+    ],
+    "sql": "SELECT ad_group_id, SUM(conversions) as conversions FROM google_adwords_data.ad_group_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY ad_group_id ORDER BY conversions DESC LIMIT 10",
+    "question": "Which ad groups are driving the most conversions?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group_stats"
+    ],
+    "sql": "SELECT SUM(cost_micros) / 1000000.0 / NULLIF(SUM(conversions), 0) as cost_per_conversion FROM google_adwords_data.ad_group_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "What's our cost per conversion over the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group_stats"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', date) as week, SUM(impressions) as impressions FROM google_adwords_data.ad_group_stats WHERE date >= CURRENT_DATE - INTERVAL '12 weeks' GROUP BY week ORDER BY week",
+    "question": "Show me our weekly impression trends"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group_stats"
+    ],
+    "sql": "SELECT ad_group_id, SUM(cost_micros) / 1000000.0 as spend, SUM(conversions) as conversions FROM google_adwords_data.ad_group_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY ad_group_id ORDER BY spend DESC LIMIT 10",
+    "question": "Which ad groups have the highest spend and how are they converting?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group_stats"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', date) as month, SUM(cost_micros) / 1000000.0 as spend, SUM(conversions_value) as value FROM google_adwords_data.ad_group_stats WHERE date >= CURRENT_DATE - INTERVAL '6 months' GROUP BY month ORDER BY month",
+    "question": "Show me monthly ad spend and conversion value trends"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.ad_group_stats"
+    ],
+    "sql": "SELECT SUM(conversions_value) / NULLIF(SUM(cost_micros) / 1000000.0, 0) as roas FROM google_adwords_data.ad_group_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "What's our return on ad spend for the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.budget"
+    ],
+    "sql": "SELECT SUM(amount_micros) / 1000000.0 as total_budget FROM google_adwords_data.budget",
+    "question": "What's our total ad budget across all campaigns?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.budget"
+    ],
+    "sql": "SELECT name, amount_micros / 1000000.0 as daily_budget FROM google_adwords_data.budget ORDER BY amount_micros DESC",
+    "question": "Show me all our ad budgets sorted by amount"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.budget"
+    ],
+    "sql": "SELECT delivery_method, COUNT(*) as count FROM google_adwords_data.budget GROUP BY delivery_method",
+    "question": "How are our budgets set up for delivery?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.budget"
+    ],
+    "sql": "SELECT AVG(amount_micros / 1000000.0) as avg_budget FROM google_adwords_data.budget",
+    "question": "What's the average budget amount across our campaigns?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.budget"
+    ],
+    "sql": "SELECT period, SUM(amount_micros) / 1000000.0 as total FROM google_adwords_data.budget GROUP BY period",
+    "question": "What's our budget by period type?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.budget"
+    ],
+    "sql": "SELECT name, amount_micros / 1000000.0 as budget FROM google_adwords_data.budget ORDER BY amount_micros DESC LIMIT 5",
+    "question": "What are our top 5 largest campaign budgets?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.budget"
+    ],
+    "sql": "SELECT delivery_method, AVG(amount_micros / 1000000.0) as avg_budget FROM google_adwords_data.budget GROUP BY delivery_method",
+    "question": "What's the average budget by delivery method?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.budget"
+    ],
+    "sql": "SELECT MAX(amount_micros / 1000000.0) as highest_budget, MIN(amount_micros / 1000000.0) as lowest_budget FROM google_adwords_data.budget",
+    "question": "What are our highest and lowest campaign budgets?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.budget"
+    ],
+    "sql": "SELECT name FROM google_adwords_data.budget WHERE amount_micros / 1000000.0 < 50 ORDER BY amount_micros",
+    "question": "Which campaigns have low daily budgets under $50?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.budget"
+    ],
+    "sql": "SELECT COUNT(*) as standard_delivery FROM google_adwords_data.budget WHERE delivery_method = 'STANDARD'",
+    "question": "How many campaigns use standard budget delivery?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign"
+    ],
+    "sql": "SELECT status, COUNT(*) as count FROM google_adwords_data.campaign GROUP BY status ORDER BY count DESC",
+    "question": "How are our campaigns distributed by status?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign"
+    ],
+    "sql": "SELECT advertising_channel_type, COUNT(*) as count FROM google_adwords_data.campaign WHERE status = 'ENABLED' GROUP BY advertising_channel_type ORDER BY count DESC",
+    "question": "What types of campaigns are we running?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign"
+    ],
+    "sql": "SELECT name, start_date FROM google_adwords_data.campaign WHERE start_date >= CURRENT_DATE - INTERVAL '30 days' ORDER BY start_date DESC",
+    "question": "Which campaigns have we launched in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign"
+    ],
+    "sql": "SELECT serving_status, COUNT(*) as count FROM google_adwords_data.campaign WHERE status = 'ENABLED' GROUP BY serving_status",
+    "question": "What's the serving status of our active campaigns?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign"
+    ],
+    "sql": "SELECT COUNT(*) as campaigns_with_end_date FROM google_adwords_data.campaign WHERE end_date IS NOT NULL AND end_date >= CURRENT_DATE",
+    "question": "How many campaigns have scheduled end dates?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign"
+    ],
+    "sql": "SELECT name, start_date, end_date FROM google_adwords_data.campaign WHERE status = 'ENABLED' ORDER BY start_date DESC LIMIT 10",
+    "question": "Show me our most recently started active campaigns"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign"
+    ],
+    "sql": "SELECT advertising_channel_type, status, COUNT(*) as count FROM google_adwords_data.campaign GROUP BY advertising_channel_type, status ORDER BY count DESC",
+    "question": "Break down campaigns by channel type and status"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign"
+    ],
+    "sql": "SELECT name FROM google_adwords_data.campaign WHERE end_date IS NOT NULL AND end_date < CURRENT_DATE + INTERVAL '7 days' AND end_date >= CURRENT_DATE",
+    "question": "Which campaigns are ending soon?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign"
+    ],
+    "sql": "SELECT COUNT(*) as paused_campaigns FROM google_adwords_data.campaign WHERE status = 'PAUSED'",
+    "question": "How many campaigns are currently paused?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign"
+    ],
+    "sql": "SELECT advertising_channel_type, COUNT(*) as count FROM google_adwords_data.campaign GROUP BY advertising_channel_type ORDER BY count DESC",
+    "question": "What are our most used advertising channels?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign_stats"
+    ],
+    "sql": "SELECT SUM(cost_micros) / 1000000.0 as weekly_spend FROM google_adwords_data.campaign_stats WHERE date >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How much did we spend on ads this week?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign_stats"
+    ],
+    "sql": "SELECT SUM(impressions) as total_impressions FROM google_adwords_data.campaign_stats WHERE date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many impressions have our ads gotten this month?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign_stats"
+    ],
+    "sql": "SELECT campaign_id, SUM(conversions) as conversions, SUM(cost_micros) / 1000000.0 as spend FROM google_adwords_data.campaign_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY campaign_id ORDER BY conversions DESC LIMIT 10",
+    "question": "Which campaigns are driving the most conversions?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign_stats"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', date) as day, SUM(clicks) as daily_clicks FROM google_adwords_data.campaign_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "Show me our daily click trends for the last month"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign_stats"
+    ],
+    "sql": "SELECT SUM(views) as video_views FROM google_adwords_data.campaign_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many video views did our ads get in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign_stats"
+    ],
+    "sql": "SELECT SUM(interactions) as total_interactions FROM google_adwords_data.campaign_stats WHERE date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many total ad interactions have we gotten this month?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign_stats"
+    ],
+    "sql": "SELECT campaign_id, SUM(cost_micros) / 1000000.0 as spend FROM google_adwords_data.campaign_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY campaign_id ORDER BY spend DESC LIMIT 10",
+    "question": "Which campaigns have the highest spend in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign_stats"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', date) as week, SUM(conversions_value) as value FROM google_adwords_data.campaign_stats WHERE date >= CURRENT_DATE - INTERVAL '12 weeks' GROUP BY week ORDER BY week",
+    "question": "Show me weekly conversion value trends"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign_stats"
+    ],
+    "sql": "SELECT SUM(cost_micros) / 1000000.0 as quarterly_spend FROM google_adwords_data.campaign_stats WHERE date >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "What's our total ad spend for the last quarter?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.campaign_stats"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', date) as month, SUM(clicks) as clicks, SUM(impressions) as impressions FROM google_adwords_data.campaign_stats WHERE date >= CURRENT_DATE - INTERVAL '6 months' GROUP BY month ORDER BY month",
+    "question": "Show me monthly click and impression trends"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.geographic_stats"
+    ],
+    "sql": "SELECT country_code, SUM(impressions) as impressions FROM google_adwords_data.geographic_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY country_code ORDER BY impressions DESC LIMIT 10",
+    "question": "Which countries are seeing the most ad impressions?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.geographic_stats"
+    ],
+    "sql": "SELECT country_code, SUM(clicks) as clicks, SUM(cost_micros) / 1000000.0 as spend FROM google_adwords_data.geographic_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY country_code ORDER BY clicks DESC LIMIT 10",
+    "question": "Where are we getting the most ad clicks?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.geographic_stats"
+    ],
+    "sql": "SELECT country_code, SUM(cost_micros) / 1000000.0 as spend FROM google_adwords_data.geographic_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY country_code ORDER BY spend DESC LIMIT 10",
+    "question": "Which countries are we spending the most on for ads?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.geographic_stats"
+    ],
+    "sql": "SELECT COUNT(DISTINCT country_code) as countries_reached FROM google_adwords_data.geographic_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many countries have we reached with our ads in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.geographic_stats"
+    ],
+    "sql": "SELECT country_code, SUM(conversions) as conversions FROM google_adwords_data.geographic_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY country_code ORDER BY conversions DESC LIMIT 10",
+    "question": "Which countries are driving the most conversions?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.geographic_stats"
+    ],
+    "sql": "SELECT region_name, SUM(clicks) as clicks FROM google_adwords_data.geographic_stats WHERE country_code = 'US' AND date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY region_name ORDER BY clicks DESC LIMIT 10",
+    "question": "Which US states are getting the most ad clicks?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.geographic_stats"
+    ],
+    "sql": "SELECT country_code, SUM(cost_micros) / 1000000.0 as spend, SUM(conversions) as conversions, ROUND((SUM(cost_micros) / 1000000.0) / NULLIF(SUM(conversions), 0), 2) as cost_per_conversion FROM google_adwords_data.geographic_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY country_code ORDER BY conversions DESC LIMIT 10",
+    "question": "Show me ad performance by country with cost per conversion"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.geographic_stats"
+    ],
+    "sql": "SELECT COUNT(DISTINCT region_name) as us_regions FROM google_adwords_data.geographic_stats WHERE country_code = 'US' AND date >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many US regions have we reached with our ads?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.geographic_stats"
+    ],
+    "sql": "SELECT region_name, SUM(cost_micros) / 1000000.0 as spend FROM google_adwords_data.geographic_stats WHERE country_code = 'US' AND date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY region_name ORDER BY spend DESC LIMIT 10",
+    "question": "Which US states are we spending the most on for ads?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.geographic_stats"
+    ],
+    "sql": "SELECT country_code, SUM(impressions) as impressions, SUM(clicks) as clicks, ROUND(SUM(clicks)::numeric / NULLIF(SUM(impressions), 0) * 100, 2) as ctr FROM google_adwords_data.geographic_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY country_code ORDER BY ctr DESC LIMIT 10",
+    "question": "Which countries have the highest ad click-through rates?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword"
+    ],
+    "sql": "SELECT status, COUNT(*) as count FROM google_adwords_data.keyword GROUP BY status ORDER BY count DESC",
+    "question": "How are our keywords distributed by status?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword"
+    ],
+    "sql": "SELECT match_type, COUNT(*) as count FROM google_adwords_data.keyword WHERE status = 'ENABLED' GROUP BY match_type ORDER BY count DESC",
+    "question": "What match types are we using for our active keywords?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword"
+    ],
+    "sql": "SELECT AVG(cpc_bid_micros / 1000000.0) as avg_keyword_bid FROM google_adwords_data.keyword WHERE status = 'ENABLED'",
+    "question": "What's the average CPC bid for our active keywords?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword"
+    ],
+    "sql": "SELECT text, cpc_bid_micros / 1000000.0 as cpc_bid FROM google_adwords_data.keyword WHERE status = 'ENABLED' ORDER BY cpc_bid_micros DESC LIMIT 10",
+    "question": "Which keywords have the highest CPC bids?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword"
+    ],
+    "sql": "SELECT ad_group_id, COUNT(*) as keywords FROM google_adwords_data.keyword WHERE status = 'ENABLED' GROUP BY ad_group_id ORDER BY keywords DESC LIMIT 10",
+    "question": "Which ad groups have the most active keywords?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword"
+    ],
+    "sql": "SELECT match_type, AVG(cpc_bid_micros / 1000000.0) as avg_bid FROM google_adwords_data.keyword WHERE status = 'ENABLED' GROUP BY match_type",
+    "question": "What's the average CPC bid by match type?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword"
+    ],
+    "sql": "SELECT COUNT(DISTINCT ad_group_id) as ad_groups_with_keywords FROM google_adwords_data.keyword WHERE status = 'ENABLED'",
+    "question": "How many ad groups have active keywords?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword"
+    ],
+    "sql": "SELECT text FROM google_adwords_data.keyword WHERE status = 'ENABLED' AND cpc_bid_micros >= 5000000 ORDER BY cpc_bid_micros DESC",
+    "question": "Which keywords have bids at or above $5?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword"
+    ],
+    "sql": "SELECT match_type, COUNT(*) as count FROM google_adwords_data.keyword GROUP BY match_type ORDER BY count DESC",
+    "question": "How are all our keywords distributed by match type?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword"
+    ],
+    "sql": "SELECT MAX(cpc_bid_micros / 1000000.0) as highest_bid, MIN(cpc_bid_micros / 1000000.0) as lowest_bid, AVG(cpc_bid_micros / 1000000.0) as avg_bid FROM google_adwords_data.keyword WHERE status = 'ENABLED'",
+    "question": "What are our min, max, and average keyword bids?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword_stats"
+    ],
+    "sql": "SELECT keyword_id, SUM(impressions) as impressions FROM google_adwords_data.keyword_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY keyword_id ORDER BY impressions DESC LIMIT 10",
+    "question": "Which keywords are getting the most impressions?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword_stats"
+    ],
+    "sql": "SELECT keyword_id, SUM(clicks) as clicks FROM google_adwords_data.keyword_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY keyword_id ORDER BY clicks DESC LIMIT 10",
+    "question": "Which keywords are getting the most clicks?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword_stats"
+    ],
+    "sql": "SELECT keyword_id, SUM(cost_micros) / 1000000.0 as spend FROM google_adwords_data.keyword_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY keyword_id ORDER BY spend DESC LIMIT 10",
+    "question": "Which keywords have the highest spend?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword_stats"
+    ],
+    "sql": "SELECT keyword_id, SUM(conversions) as conversions FROM google_adwords_data.keyword_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY keyword_id ORDER BY conversions DESC LIMIT 10",
+    "question": "Which keywords are driving the most conversions?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword_stats"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', date) as day, SUM(clicks) as clicks FROM google_adwords_data.keyword_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY day ORDER BY day",
+    "question": "Show me daily keyword click trends"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword_stats"
+    ],
+    "sql": "SELECT SUM(cost_micros) / 1000000.0 as keyword_spend FROM google_adwords_data.keyword_stats WHERE date >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How much have we spent on keywords this month?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword_stats"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', date) as week, SUM(conversions) as conversions FROM google_adwords_data.keyword_stats WHERE date >= CURRENT_DATE - INTERVAL '12 weeks' GROUP BY week ORDER BY week",
+    "question": "Show me weekly keyword conversion trends"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword_stats"
+    ],
+    "sql": "SELECT keyword_id, SUM(clicks)::numeric / NULLIF(SUM(impressions), 0) * 100 as ctr FROM google_adwords_data.keyword_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY keyword_id ORDER BY ctr DESC LIMIT 10",
+    "question": "Which keywords have the highest click-through rates?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword_stats"
+    ],
+    "sql": "SELECT COUNT(DISTINCT keyword_id) as active_keywords FROM google_adwords_data.keyword_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' AND impressions > 0",
+    "question": "How many keywords got impressions in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "google_adwords_data.keyword_stats"
+    ],
+    "sql": "SELECT keyword_id, SUM(cost_micros) / 1000000.0 as spend, SUM(conversions) as conversions FROM google_adwords_data.keyword_stats WHERE date >= CURRENT_DATE - INTERVAL '30 days' GROUP BY keyword_id HAVING SUM(conversions) > 0 ORDER BY (SUM(cost_micros) / 1000000.0) / SUM(conversions) LIMIT 10",
+    "question": "Which keywords have the best cost per conversion?"
+  }
+]

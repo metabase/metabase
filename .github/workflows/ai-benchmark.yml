@@ -1,21 +1,163 @@
 name: AI Benchmark
 
-# Runs the ai-benchmark E2E test suite against a Metabase instance.
-#
-# NOTE: This is a stub. The real workflow — which builds the benchmark Docker
-# image, boots Metabase + Postgres with a preloaded data dump, runs the
-# benchmark suite, and uploads results as artifacts — is being developed on a
-# feature branch. This stub exists on master so that the "Run workflow" button
-# is available in the GitHub Actions UI, which lets us dispatch the real
-# workflow against feature branches during development.
-
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Agent profile to benchmark'
+        required: false
+        default: 'nlq'
+        type: choice
+        options:
+          - internal
+          - metabot_next
+          - nlq
+          - sql
+      sample:
+        description: 'Cases per benchmark (integer N, or 1.0 for all)'
+        required: false
+        default: '3'
+        type: string
 
 jobs:
-  placeholder:
-    name: Placeholder
-    runs-on: ubuntu-latest
+  benchmark:
+    name: Run AI Benchmark
+    runs-on: ubuntu-latest-8-cores
+    timeout-minutes: 120
+
     steps:
-      - name: Stub
-        run: echo "ai-benchmark workflow stub — real implementation pending"
+      - name: Checkout with LFS
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Verify db_dump.sql is not an LFS pointer
+        run: |
+          DUMP=ai-benchmark/src/benchmarks/fixtures/db_dump.sql
+          file "$DUMP"
+          SIZE=$(stat -c%s "$DUMP")
+          if [ "$SIZE" -lt 1000000 ]; then
+            echo "ERROR: db_dump.sql is only $SIZE bytes — likely an LFS pointer stub"
+            exit 1
+          fi
+          echo "db_dump.sql looks real ($SIZE bytes)"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build benchmark base image
+        working-directory: ai-benchmark
+        run: ./scripts/build-base-image.sh
+
+      - name: Start Metabase container
+        working-directory: ai-benchmark
+        env:
+          MB_PREMIUM_EMBEDDING_TOKEN: ${{ secrets.PR_ENV_MB_PREMIUM_EMBEDDING_TOKEN }}
+          MB_LLM_ANTHROPIC_API_KEY: ${{ secrets.AI_BENCHMARK_ANTHROPIC_API_KEY }}
+        run: ./scripts/start-metabase.sh --keep-running
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry and dependencies
+        working-directory: ai-benchmark
+        run: |
+          pipx install poetry
+          poetry install --no-interaction
+
+      - name: Run benchmark
+        working-directory: ai-benchmark
+        env:
+          AI_SERVICE_ANTHROPIC_API_KEY: ${{ secrets.AI_BENCHMARK_ANTHROPIC_API_KEY }}
+        run: |
+          poetry run ai-benchmark \
+            --profile ${{ inputs.profile }} \
+            --sample ${{ inputs.sample }} \
+            --seed 1337
+
+      - name: Upload results to dashboard
+        if: success()
+        env:
+          AI_BENCHMARK_UPLOAD_URL: ${{ secrets.AI_BENCHMARK_UPLOAD_URL }}
+          AI_BENCHMARK_UPLOAD_API_KEY: ${{ secrets.AI_BENCHMARK_UPLOAD_API_KEY }}
+        run: |
+          RESULTS_FILE=$(find ai-benchmark/logs -name "results.json" -type f | head -1)
+          if [ -z "$RESULTS_FILE" ]; then
+            echo "No results.json found, skipping upload"
+            exit 0
+          fi
+          if [ -z "$AI_BENCHMARK_UPLOAD_URL" ] || [ -z "$AI_BENCHMARK_UPLOAD_API_KEY" ]; then
+            echo "Upload secrets not configured, skipping"
+            exit 0
+          fi
+
+          BRANCH="${GITHUB_REF_NAME}"
+          COMMIT="${GITHUB_SHA}"
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          PR_NUMBER=""
+          if [[ "$GITHUB_REF" == refs/pull/*/merge ]]; then
+            PR_NUMBER=$(echo "$GITHUB_REF" | grep -oP '\d+')
+          fi
+
+          # Build the payload: read results from file via jq's --slurpfile to avoid ARG_MAX
+          SOURCE="pr"
+          if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "main" ]; then
+            SOURCE="main"
+          fi
+
+          jq -n \
+            --slurpfile results "$RESULTS_FILE" \
+            --arg branch "$BRANCH" \
+            --arg commit_sha "$COMMIT" \
+            --arg source "$SOURCE" \
+            --arg repo "$GITHUB_REPOSITORY" \
+            --arg ci_run_url "$RUN_URL" \
+            --arg ci_workflow "ai-benchmark" \
+            --arg pr_number "$PR_NUMBER" \
+            --arg profile "${{ inputs.profile }}" \
+            '{
+              results: $results[0],
+              branch: $branch,
+              commit_sha: $commit_sha,
+              source: $source,
+              repo: $repo,
+              ci_run_url: $ci_run_url,
+              ci_workflow: $ci_workflow,
+              label: ("CI: " + $profile + " profile"),
+              pr_number: (if $pr_number != "" then ($pr_number | tonumber) else null end)
+            }' > payload.json
+
+          HTTP_CODE=$(curl -s -X POST "$AI_BENCHMARK_UPLOAD_URL" \
+            -H "Authorization: Bearer $AI_BENCHMARK_UPLOAD_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d @payload.json \
+            -o response.json -w "%{http_code}")
+
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "Upload successful (HTTP $HTTP_CODE)"
+            cat response.json
+          else
+            echo "Upload failed (HTTP $HTTP_CODE)"
+            cat response.json
+            exit 1
+          fi
+
+      - name: Dump container logs
+        if: always()
+        run: docker logs metabase-benchmark > metabase-container.log 2>&1 || true
+
+      - name: Upload benchmark results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: |
+            ai-benchmark/logs/
+            metabase-container.log
+          retention-days: 30
+
+      - name: Stop container
+        if: always()
+        run: docker stop metabase-benchmark || true

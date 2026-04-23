@@ -1,0 +1,723 @@
+[
+  {
+    "data_sources": [
+      "lever_data.application"
+    ],
+    "sql": "SELECT posting_id, COUNT(*) as application_count FROM lever_data.application WHERE archived_at IS NULL GROUP BY posting_id ORDER BY application_count DESC LIMIT 10",
+    "question": "Which positions are getting the most applications?"
+  },
+  {
+    "data_sources": [
+      "lever_data.application"
+    ],
+    "sql": "SELECT COUNT(*) as total_apps, COUNT(CASE WHEN archived_at IS NOT NULL THEN 1 END) as archived_apps, ROUND(COUNT(CASE WHEN archived_at IS NOT NULL THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as archived_rate FROM lever_data.application",
+    "question": "What percentage of our applications have been archived?"
+  },
+  {
+    "data_sources": [
+      "lever_data.application"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as applications FROM lever_data.application WHERE created_at >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "How has our application volume been trending over the past 2 months?"
+  },
+  {
+    "data_sources": [
+      "lever_data.application"
+    ],
+    "sql": "SELECT type, COUNT(*) as count, ROUND(AVG(EXTRACT(EPOCH FROM (archived_at - created_at)) / 86400), 1) as avg_days_to_archive FROM lever_data.application WHERE archived_at IS NOT NULL GROUP BY type",
+    "question": "What's the average time to archive for each application type?"
+  },
+  {
+    "data_sources": [
+      "lever_data.application"
+    ],
+    "sql": "SELECT type, COUNT(*) as count, ROUND(AVG(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - created_at)) / 86400), 1) as avg_days_open FROM lever_data.application WHERE archived_at IS NULL GROUP BY type",
+    "question": "What's the average age of currently open applications by type?"
+  },
+  {
+    "data_sources": [
+      "lever_data.application"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', created_at) as application_date, COUNT(*) as daily_applications FROM lever_data.application WHERE created_at >= CURRENT_DATE - INTERVAL '30 days' GROUP BY application_date ORDER BY daily_applications DESC LIMIT 1",
+    "question": "What was our highest application volume day in the last month?"
+  },
+  {
+    "data_sources": [
+      "lever_data.application"
+    ],
+    "sql": "SELECT COUNT(*) as new_apps FROM lever_data.application WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many applications have we received so far this month?"
+  },
+  {
+    "data_sources": [
+      "lever_data.application"
+    ],
+    "sql": "SELECT posting_id, type, COUNT(*) as count FROM lever_data.application WHERE archived_at IS NULL GROUP BY posting_id, type ORDER BY count DESC LIMIT 15",
+    "question": "What types of applications are we seeing for each open position?"
+  },
+  {
+    "data_sources": [
+      "lever_data.application"
+    ],
+    "sql": "SELECT COUNT(DISTINCT posting_id) as active_positions FROM lever_data.application WHERE created_at >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many positions received applications in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "lever_data.application"
+    ],
+    "sql": "SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as applications FROM lever_data.application WHERE created_at >= CURRENT_DATE - INTERVAL '90 days' GROUP BY hour ORDER BY applications DESC LIMIT 5",
+    "question": "What times of day do we get the most applications?"
+  },
+  {
+    "data_sources": [
+      "lever_data.application"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as applications FROM lever_data.application WHERE created_at >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly application trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "lever_data.archive_reason"
+    ],
+    "sql": "SELECT COALESCE(s.text, 'Unknown Stage') as stage, COUNT(*) as archived_count FROM lever_data.opportunity o LEFT JOIN lever_data.stage s ON o.stage_id = s.id WHERE o.archived_at >= CURRENT_DATE - INTERVAL '90 days' GROUP BY COALESCE(s.text, 'Unknown Stage') ORDER BY archived_count DESC",
+    "question": "Which stages do candidates tend to be in when they are archived in the last 90 days?"
+  },
+  {
+    "data_sources": [
+      "lever_data.archive_reason"
+    ],
+    "sql": "SELECT text FROM lever_data.archive_reason WHERE text = 'rejected'",
+    "question": "Which archive reasons capture candidate rejections?"
+  },
+  {
+    "data_sources": [
+      "lever_data.archive_reason"
+    ],
+    "sql": "SELECT text FROM lever_data.archive_reason WHERE text = 'hired'",
+    "question": "What archive reasons indicate a successful hire?"
+  },
+  {
+    "data_sources": [
+      "lever_data.archive_reason"
+    ],
+    "sql": "SELECT COUNT(*) as total_reasons FROM lever_data.archive_reason",
+    "question": "How many different archive reasons do we have configured?"
+  },
+  {
+    "data_sources": [
+      "lever_data.archive_reason"
+    ],
+    "sql": "SELECT text FROM lever_data.archive_reason WHERE text = 'withdrew'",
+    "question": "Which archive reasons are for candidate withdrawals?"
+  },
+  {
+    "data_sources": [
+      "lever_data.archive_reason"
+    ],
+    "sql": "SELECT text FROM lever_data.archive_reason ORDER BY text",
+    "question": "Show me all our archive reasons alphabetically"
+  },
+  {
+    "data_sources": [
+      "lever_data.archive_reason"
+    ],
+    "sql": "SELECT text FROM lever_data.archive_reason WHERE text = 'duplicate'",
+    "question": "Which archive reasons help us flag duplicate candidates?"
+  },
+  {
+    "data_sources": [
+      "lever_data.archive_reason"
+    ],
+    "sql": "SELECT text, CASE WHEN text = 'hired' THEN 'positive outcome' WHEN text = 'withdrew' THEN 'candidate decision' ELSE 'internal process' END as outcome_category FROM lever_data.archive_reason ORDER BY outcome_category, text",
+    "question": "How do our archive reasons group into outcome categories?"
+  },
+  {
+    "data_sources": [
+      "lever_data.archive_reason"
+    ],
+    "sql": "SELECT text FROM lever_data.archive_reason WHERE _fivetran_synced >= CURRENT_DATE - INTERVAL '30 days' ORDER BY _fivetran_synced DESC",
+    "question": "Which archive reasons were synced in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "lever_data.archive_reason"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', _fivetran_synced) as month, COUNT(*) as reasons_synced FROM lever_data.archive_reason GROUP BY month ORDER BY month DESC",
+    "question": "When were our archive reasons last updated by month?"
+  },
+  {
+    "data_sources": [
+      "lever_data.feedback"
+    ],
+    "sql": "SELECT COUNT(*) as total_feedback, COUNT(CASE WHEN completed_at IS NOT NULL THEN 1 END) as completed, ROUND(COUNT(CASE WHEN completed_at IS NOT NULL THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as completion_rate FROM lever_data.feedback WHERE deleted_at IS NULL",
+    "question": "What's our interview feedback completion rate?"
+  },
+  {
+    "data_sources": [
+      "lever_data.feedback"
+    ],
+    "sql": "SELECT author_id, COUNT(*) as feedback_count FROM lever_data.feedback WHERE completed_at >= CURRENT_DATE - INTERVAL '90 days' GROUP BY author_id ORDER BY feedback_count DESC LIMIT 10",
+    "question": "Who are our most active interviewers this quarter?"
+  },
+  {
+    "data_sources": [
+      "lever_data.feedback"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (completed_at - created_at)) / 3600), 1) as avg_hours_to_complete FROM lever_data.feedback WHERE completed_at IS NOT NULL AND created_at IS NOT NULL",
+    "question": "How quickly are interviewers submitting feedback after interviews?"
+  },
+  {
+    "data_sources": [
+      "lever_data.feedback"
+    ],
+    "sql": "SELECT COUNT(*) as pending_feedback FROM lever_data.feedback WHERE created_at IS NOT NULL AND completed_at IS NULL AND deleted_at IS NULL",
+    "question": "How many interview feedback forms are still pending?"
+  },
+  {
+    "data_sources": [
+      "lever_data.feedback"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', completed_at) as week, COUNT(*) as completed_feedback FROM lever_data.feedback WHERE completed_at >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "What's the weekly trend of completed interview feedback?"
+  },
+  {
+    "data_sources": [
+      "lever_data.feedback"
+    ],
+    "sql": "SELECT COUNT(DISTINCT opportunity_id) as candidates_interviewed FROM lever_data.feedback WHERE completed_at >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many candidates did we interview in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "lever_data.feedback"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', completed_at) as month, COUNT(*) as feedback_count FROM lever_data.feedback WHERE completed_at >= CURRENT_DATE - INTERVAL '6 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly interview activity over the last 6 months?"
+  },
+  {
+    "data_sources": [
+      "lever_data.feedback"
+    ],
+    "sql": "SELECT COUNT(DISTINCT author_id) as active_interviewers FROM lever_data.feedback WHERE completed_at >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "How many people are actively interviewing candidates?"
+  },
+  {
+    "data_sources": [
+      "lever_data.feedback"
+    ],
+    "sql": "SELECT COUNT(*) as recent_feedback FROM lever_data.feedback WHERE completed_at >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How much interview feedback was submitted this week?"
+  },
+  {
+    "data_sources": [
+      "lever_data.feedback"
+    ],
+    "sql": "SELECT opportunity_id, COUNT(*) as feedback_count FROM lever_data.feedback WHERE completed_at >= CURRENT_DATE - INTERVAL '30 days' GROUP BY opportunity_id ORDER BY feedback_count DESC LIMIT 10",
+    "question": "Which candidates have received the most interview feedback recently?"
+  },
+  {
+    "data_sources": [
+      "lever_data.interview"
+    ],
+    "sql": "SELECT COUNT(*) as upcoming_interviews FROM lever_data.interview WHERE date >= CURRENT_DATE AND date < CURRENT_DATE + INTERVAL '7 days' AND canceled_at IS NULL",
+    "question": "How many interviews do we have scheduled for this week?"
+  },
+  {
+    "data_sources": [
+      "lever_data.interview"
+    ],
+    "sql": "SELECT DATE_TRUNC('day', date) as interview_day, COUNT(*) as interview_count FROM lever_data.interview WHERE date >= CURRENT_DATE AND date < CURRENT_DATE + INTERVAL '14 days' AND canceled_at IS NULL GROUP BY interview_day ORDER BY interview_day",
+    "question": "What does our interview calendar look like for the next 2 weeks?"
+  },
+  {
+    "data_sources": [
+      "lever_data.interview"
+    ],
+    "sql": "SELECT COUNT(*) as total_interviews, COUNT(CASE WHEN canceled_at IS NOT NULL THEN 1 END) as canceled, ROUND(COUNT(CASE WHEN canceled_at IS NOT NULL THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as cancellation_rate FROM lever_data.interview WHERE date >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "What's our interview cancellation rate for the last quarter?"
+  },
+  {
+    "data_sources": [
+      "lever_data.interview"
+    ],
+    "sql": "SELECT stage_id, COUNT(*) as interview_count FROM lever_data.interview WHERE date >= CURRENT_DATE - INTERVAL '30 days' AND canceled_at IS NULL GROUP BY stage_id ORDER BY interview_count DESC",
+    "question": "Which interview stages are we conducting most frequently?"
+  },
+  {
+    "data_sources": [
+      "lever_data.interview"
+    ],
+    "sql": "SELECT ROUND(AVG(duration), 0) as avg_duration_minutes, MIN(duration) as min_duration, MAX(duration) as max_duration FROM lever_data.interview WHERE canceled_at IS NULL AND duration > 0",
+    "question": "What's the typical length of our interviews?"
+  },
+  {
+    "data_sources": [
+      "lever_data.interview"
+    ],
+    "sql": "SELECT posting_id, COUNT(*) as interview_count FROM lever_data.interview WHERE date >= CURRENT_DATE AND canceled_at IS NULL GROUP BY posting_id ORDER BY interview_count DESC LIMIT 10",
+    "question": "Which positions have the most interviews scheduled?"
+  },
+  {
+    "data_sources": [
+      "lever_data.interview"
+    ],
+    "sql": "SELECT COUNT(*) as interviews_conducted FROM lever_data.interview WHERE date >= CURRENT_DATE - INTERVAL '30 days' AND date < CURRENT_DATE AND canceled_at IS NULL",
+    "question": "How many interviews did we conduct last month?"
+  },
+  {
+    "data_sources": [
+      "lever_data.interview"
+    ],
+    "sql": "SELECT EXTRACT(HOUR FROM date) as hour, COUNT(*) as interview_count FROM lever_data.interview WHERE date >= CURRENT_DATE - INTERVAL '90 days' AND canceled_at IS NULL GROUP BY hour ORDER BY interview_count DESC",
+    "question": "What time slots do we schedule most interviews for?"
+  },
+  {
+    "data_sources": [
+      "lever_data.interview"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as scheduled FROM lever_data.interview WHERE created_at >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "How has our interview scheduling volume been trending?"
+  },
+  {
+    "data_sources": [
+      "lever_data.interview"
+    ],
+    "sql": "SELECT COUNT(*) as last_minute_cancellations FROM lever_data.interview WHERE canceled_at IS NOT NULL AND EXTRACT(EPOCH FROM (date - canceled_at)) / 3600 < 24",
+    "question": "How many interviews were canceled with less than 24 hours notice?"
+  },
+  {
+    "data_sources": [
+      "lever_data.offer"
+    ],
+    "sql": "SELECT COUNT(*) as offers_sent, COUNT(CASE WHEN signed_at IS NOT NULL THEN 1 END) as offers_accepted, ROUND(COUNT(CASE WHEN signed_at IS NOT NULL THEN 1 END)::numeric / NULLIF(COUNT(*), 0) * 100, 2) as acceptance_rate FROM lever_data.offer WHERE sent_at >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "What's our offer acceptance rate for the last quarter?"
+  },
+  {
+    "data_sources": [
+      "lever_data.offer"
+    ],
+    "sql": "SELECT status, COUNT(*) as count FROM lever_data.offer GROUP BY status ORDER BY count DESC",
+    "question": "What's the breakdown of our job offers by status?"
+  },
+  {
+    "data_sources": [
+      "lever_data.offer"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (signed_at - sent_at)) / 86400), 1) as avg_days_to_accept FROM lever_data.offer WHERE sent_at IS NOT NULL AND signed_at IS NOT NULL",
+    "question": "How long does it typically take candidates to accept our offers?"
+  },
+  {
+    "data_sources": [
+      "lever_data.offer"
+    ],
+    "sql": "SELECT COUNT(*) as pending_offers FROM lever_data.offer WHERE sent_at IS NOT NULL AND signed_at IS NULL AND status IN ('pending', 'sent')",
+    "question": "How many job offers are currently pending candidate response?"
+  },
+  {
+    "data_sources": [
+      "lever_data.offer"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', signed_at) as month, COUNT(*) as accepted_offers FROM lever_data.offer WHERE signed_at >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our monthly hiring trend based on accepted offers?"
+  },
+  {
+    "data_sources": [
+      "lever_data.offer"
+    ],
+    "sql": "SELECT COUNT(*) as offers_extended FROM lever_data.offer WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many job offers have we made this month?"
+  },
+  {
+    "data_sources": [
+      "lever_data.offer"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (approved_at - created_at)) / 3600), 1) as avg_hours_to_approve FROM lever_data.offer WHERE created_at IS NOT NULL AND approved_at IS NOT NULL",
+    "question": "How quickly are we approving job offers?"
+  },
+  {
+    "data_sources": [
+      "lever_data.offer"
+    ],
+    "sql": "SELECT COUNT(*) as recent_hires FROM lever_data.offer WHERE signed_at >= CURRENT_DATE - INTERVAL '30 days'",
+    "question": "How many new hires accepted offers in the last 30 days?"
+  },
+  {
+    "data_sources": [
+      "lever_data.offer"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', sent_at) as week, COUNT(*) as offers_sent FROM lever_data.offer WHERE sent_at >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "What's the weekly trend of offers being sent out?"
+  },
+  {
+    "data_sources": [
+      "lever_data.offer"
+    ],
+    "sql": "SELECT COUNT(*) as total_offers, COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved, COUNT(CASE WHEN sent_at IS NOT NULL THEN 1 END) as sent FROM lever_data.offer WHERE created_at >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "How many offers have we created, approved, and sent in the last quarter?"
+  },
+  {
+    "data_sources": [
+      "lever_data.opportunity"
+    ],
+    "sql": "SELECT COUNT(*) as active_candidates FROM lever_data.opportunity WHERE archived_at IS NULL",
+    "question": "How many candidates are currently in our pipeline?"
+  },
+  {
+    "data_sources": [
+      "lever_data.opportunity"
+    ],
+    "sql": "SELECT origin, COUNT(*) as candidate_count, ROUND(COUNT(*)::numeric / SUM(COUNT(*)) OVER () * 100, 2) as percentage FROM lever_data.opportunity WHERE archived_at IS NULL GROUP BY origin ORDER BY candidate_count DESC",
+    "question": "Where are our candidates coming from?"
+  },
+  {
+    "data_sources": [
+      "lever_data.opportunity"
+    ],
+    "sql": "SELECT stage_id, COUNT(*) as candidate_count FROM lever_data.opportunity WHERE archived_at IS NULL GROUP BY stage_id ORDER BY candidate_count DESC",
+    "question": "How many candidates are at each stage of our hiring process?"
+  },
+  {
+    "data_sources": [
+      "lever_data.opportunity"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as new_candidates FROM lever_data.opportunity WHERE created_at >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "What's our weekly candidate intake over the past 2 months?"
+  },
+  {
+    "data_sources": [
+      "lever_data.opportunity"
+    ],
+    "sql": "SELECT location, COUNT(*) as candidate_count FROM lever_data.opportunity WHERE archived_at IS NULL AND location IS NOT NULL GROUP BY location ORDER BY candidate_count DESC LIMIT 10",
+    "question": "Where are most of our active candidates located?"
+  },
+  {
+    "data_sources": [
+      "lever_data.opportunity"
+    ],
+    "sql": "SELECT owner_id, COUNT(*) as candidates_managed FROM lever_data.opportunity WHERE archived_at IS NULL GROUP BY owner_id ORDER BY candidates_managed DESC LIMIT 10",
+    "question": "What's the candidate load distribution across our recruiting team?"
+  },
+  {
+    "data_sources": [
+      "lever_data.opportunity"
+    ],
+    "sql": "SELECT COUNT(*) as archived_this_week FROM lever_data.opportunity WHERE archived_at >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many candidates moved out of our pipeline this week?"
+  },
+  {
+    "data_sources": [
+      "lever_data.opportunity"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (archived_at - created_at)) / 86400), 1) as avg_days_in_pipeline FROM lever_data.opportunity WHERE archived_at IS NOT NULL AND created_at >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "What's the average time candidates spent in our pipeline for those who exited in the last 90 days?"
+  },
+  {
+    "data_sources": [
+      "lever_data.opportunity"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - created_at)) / 86400), 1) as avg_days_in_pipeline FROM lever_data.opportunity WHERE archived_at IS NULL",
+    "question": "What's the average age of candidates currently in our pipeline?"
+  },
+  {
+    "data_sources": [
+      "lever_data.opportunity"
+    ],
+    "sql": "SELECT COUNT(*) as new_candidates FROM lever_data.opportunity WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many new candidates have entered our pipeline this month?"
+  },
+  {
+    "data_sources": [
+      "lever_data.opportunity"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as candidates FROM lever_data.opportunity WHERE created_at >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's our candidate sourcing trend over the past year?"
+  },
+  {
+    "data_sources": [
+      "lever_data.posting"
+    ],
+    "sql": "SELECT COUNT(*) as open_positions FROM lever_data.posting WHERE state = 'published'",
+    "question": "How many job openings do we currently have?"
+  },
+  {
+    "data_sources": [
+      "lever_data.posting"
+    ],
+    "sql": "SELECT categories_department, COUNT(*) as open_positions FROM lever_data.posting WHERE state = 'published' GROUP BY categories_department ORDER BY open_positions DESC",
+    "question": "Which departments are hiring right now?"
+  },
+  {
+    "data_sources": [
+      "lever_data.posting"
+    ],
+    "sql": "SELECT location, COUNT(*) as positions FROM lever_data.posting WHERE state = 'published' GROUP BY location ORDER BY positions DESC",
+    "question": "Where are we hiring?"
+  },
+  {
+    "data_sources": [
+      "lever_data.posting"
+    ],
+    "sql": "SELECT categories_level, COUNT(*) as positions FROM lever_data.posting WHERE state = 'published' GROUP BY categories_level ORDER BY positions DESC",
+    "question": "What seniority levels are we hiring for?"
+  },
+  {
+    "data_sources": [
+      "lever_data.posting"
+    ],
+    "sql": "SELECT state, COUNT(*) as count FROM lever_data.posting GROUP BY state ORDER BY count DESC",
+    "question": "What's the status breakdown of all our job postings?"
+  },
+  {
+    "data_sources": [
+      "lever_data.posting"
+    ],
+    "sql": "SELECT categories_team, COUNT(*) as positions FROM lever_data.posting WHERE state = 'published' GROUP BY categories_team ORDER BY positions DESC LIMIT 10",
+    "question": "Which teams have the most open positions?"
+  },
+  {
+    "data_sources": [
+      "lever_data.posting"
+    ],
+    "sql": "SELECT categories_commitment, COUNT(*) as positions FROM lever_data.posting WHERE state = 'published' GROUP BY categories_commitment",
+    "question": "Are we hiring for full-time, part-time, or contract roles?"
+  },
+  {
+    "data_sources": [
+      "lever_data.posting"
+    ],
+    "sql": "SELECT COUNT(*) as new_postings FROM lever_data.posting WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many new positions have we opened this month?"
+  },
+  {
+    "data_sources": [
+      "lever_data.posting"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as new_positions FROM lever_data.posting WHERE created_at >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "How has our hiring demand been trending over the past year?"
+  },
+  {
+    "data_sources": [
+      "lever_data.posting"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - created_at)) / 86400), 0) as avg_days_open FROM lever_data.posting WHERE state = 'published'",
+    "question": "How long have our current job postings been open on average?"
+  },
+  {
+    "data_sources": [
+      "lever_data.referral"
+    ],
+    "sql": "SELECT COUNT(*) as total_referrals FROM lever_data.referral WHERE created_at >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "How many employee referrals have we received this quarter?"
+  },
+  {
+    "data_sources": [
+      "lever_data.referral"
+    ],
+    "sql": "SELECT referrer_user_id, COUNT(*) as referral_count FROM lever_data.referral GROUP BY referrer_user_id ORDER BY referral_count DESC LIMIT 10",
+    "question": "Who are our top employee referrers?"
+  },
+  {
+    "data_sources": [
+      "lever_data.referral"
+    ],
+    "sql": "SELECT COUNT(DISTINCT referrer_user_id) as active_referrers FROM lever_data.referral WHERE created_at >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "How many employees have submitted referrals this quarter?"
+  },
+  {
+    "data_sources": [
+      "lever_data.referral"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as referrals FROM lever_data.referral WHERE created_at >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "What's the monthly trend of our employee referral program?"
+  },
+  {
+    "data_sources": [
+      "lever_data.referral"
+    ],
+    "sql": "SELECT type, COUNT(*) as count FROM lever_data.referral GROUP BY type ORDER BY count DESC",
+    "question": "What types of referrals are we receiving?"
+  },
+  {
+    "data_sources": [
+      "lever_data.referral"
+    ],
+    "sql": "SELECT COUNT(*) as referrals_this_month FROM lever_data.referral WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE)",
+    "question": "How many referrals have we received so far this month?"
+  },
+  {
+    "data_sources": [
+      "lever_data.referral"
+    ],
+    "sql": "SELECT DATE_TRUNC('week', created_at) as week, COUNT(*) as referrals FROM lever_data.referral WHERE created_at >= CURRENT_DATE - INTERVAL '8 weeks' GROUP BY week ORDER BY week",
+    "question": "How has our weekly referral volume been trending?"
+  },
+  {
+    "data_sources": [
+      "lever_data.referral"
+    ],
+    "sql": "SELECT COUNT(DISTINCT opportunity_id) as unique_candidates FROM lever_data.referral",
+    "question": "How many unique candidates have been referred by employees?"
+  },
+  {
+    "data_sources": [
+      "lever_data.referral"
+    ],
+    "sql": "SELECT ROUND(COUNT(*)::numeric / COUNT(DISTINCT referrer_user_id), 2) as avg_referrals_per_employee FROM lever_data.referral",
+    "question": "What's the average number of referrals per referring employee?"
+  },
+  {
+    "data_sources": [
+      "lever_data.referral"
+    ],
+    "sql": "SELECT COUNT(*) as recent_referrals FROM lever_data.referral WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'",
+    "question": "How many employee referrals came in this week?"
+  },
+  {
+    "data_sources": [
+      "lever_data.stage"
+    ],
+    "sql": "SELECT COUNT(*) as total_stages FROM lever_data.stage",
+    "question": "How many stages are in our hiring pipeline?"
+  },
+  {
+    "data_sources": [
+      "lever_data.stage"
+    ],
+    "sql": "SELECT text FROM lever_data.stage ORDER BY id",
+    "question": "What are the stages in our hiring process?"
+  },
+  {
+    "data_sources": [
+      "lever_data.stage"
+    ],
+    "sql": "SELECT text FROM lever_data.stage WHERE text LIKE '%interview%' OR text LIKE '%screen%'",
+    "question": "Which pipeline stages involve interviews or screening?"
+  },
+  {
+    "data_sources": [
+      "lever_data.stage"
+    ],
+    "sql": "SELECT text FROM lever_data.stage WHERE text LIKE '%offer%' OR text LIKE '%hire%'",
+    "question": "What are our final hiring stages?"
+  },
+  {
+    "data_sources": [
+      "lever_data.stage"
+    ],
+    "sql": "SELECT text FROM lever_data.stage WHERE text LIKE '%review%' OR text LIKE '%assess%'",
+    "question": "Which stages are for reviewing or assessing candidates?"
+  },
+  {
+    "data_sources": [
+      "lever_data.stage"
+    ],
+    "sql": "SELECT s.text as stage, COUNT(o.id) as candidate_count FROM lever_data.stage s LEFT JOIN lever_data.opportunity o ON s.id = o.stage_id WHERE o.archived_at IS NULL GROUP BY s.text ORDER BY candidate_count DESC",
+    "question": "How many candidates are at each stage right now?"
+  },
+  {
+    "data_sources": [
+      "lever_data.stage"
+    ],
+    "sql": "SELECT text FROM lever_data.stage WHERE text LIKE '%phone%' OR text LIKE '%call%'",
+    "question": "Do we have phone screen stages in our pipeline?"
+  },
+  {
+    "data_sources": [
+      "lever_data.stage"
+    ],
+    "sql": "SELECT text FROM lever_data.stage WHERE text LIKE '%reference%' OR text LIKE '%background%'",
+    "question": "What stages do we have for reference or background checks?"
+  },
+  {
+    "data_sources": [
+      "lever_data.stage"
+    ],
+    "sql": "SELECT text FROM lever_data.stage WHERE text LIKE '%technical%' OR text LIKE '%coding%'",
+    "question": "Are there technical assessment stages in our process?"
+  },
+  {
+    "data_sources": [
+      "lever_data.stage"
+    ],
+    "sql": "SELECT text FROM lever_data.stage ORDER BY text",
+    "question": "Show me all our pipeline stages alphabetically"
+  },
+  {
+    "data_sources": [
+      "lever_data.user"
+    ],
+    "sql": "SELECT COUNT(*) as active_users FROM lever_data.user WHERE deactivated_at IS NULL",
+    "question": "How many active recruiting team members do we have?"
+  },
+  {
+    "data_sources": [
+      "lever_data.user"
+    ],
+    "sql": "SELECT COUNT(*) as total_users, COUNT(CASE WHEN deactivated_at IS NULL THEN 1 END) as active, COUNT(CASE WHEN deactivated_at IS NOT NULL THEN 1 END) as deactivated FROM lever_data.user",
+    "question": "What's the breakdown of active vs deactivated recruiting users?"
+  },
+  {
+    "data_sources": [
+      "lever_data.user"
+    ],
+    "sql": "SELECT name, email, created_at FROM lever_data.user WHERE deactivated_at IS NULL ORDER BY created_at DESC LIMIT 10",
+    "question": "Who are our most recently added team members?"
+  },
+  {
+    "data_sources": [
+      "lever_data.user"
+    ],
+    "sql": "SELECT COUNT(*) as new_users FROM lever_data.user WHERE created_at >= DATE_TRUNC('quarter', CURRENT_DATE)",
+    "question": "How many new recruiting team members joined this quarter?"
+  },
+  {
+    "data_sources": [
+      "lever_data.user"
+    ],
+    "sql": "SELECT DATE_TRUNC('month', created_at) as month, COUNT(*) as new_users FROM lever_data.user WHERE created_at >= CURRENT_DATE - INTERVAL '12 months' GROUP BY month ORDER BY month",
+    "question": "How has our recruiting team size grown over the past year?"
+  },
+  {
+    "data_sources": [
+      "lever_data.user"
+    ],
+    "sql": "SELECT COUNT(*) as recent_deactivations FROM lever_data.user WHERE deactivated_at >= CURRENT_DATE - INTERVAL '90 days'",
+    "question": "How many team members left the recruiting team this quarter?"
+  },
+  {
+    "data_sources": [
+      "lever_data.user"
+    ],
+    "sql": "SELECT name, email FROM lever_data.user WHERE deactivated_at IS NULL ORDER BY name",
+    "question": "List all our current recruiting team members"
+  },
+  {
+    "data_sources": [
+      "lever_data.user"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (deactivated_at - created_at)) / 86400 / 365), 1) as avg_tenure_years FROM lever_data.user WHERE deactivated_at IS NOT NULL",
+    "question": "What's the average tenure of departed recruiting team members?"
+  },
+  {
+    "data_sources": [
+      "lever_data.user"
+    ],
+    "sql": "SELECT ROUND(AVG(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - created_at)) / 86400 / 365), 1) as avg_tenure_years FROM lever_data.user WHERE deactivated_at IS NULL",
+    "question": "What's the average tenure of current recruiting team members?"
+  },
+  {
+    "data_sources": [
+      "lever_data.user"
+    ],
+    "sql": "SELECT COUNT(*) as users_this_year FROM lever_data.user WHERE created_at >= DATE_TRUNC('year', CURRENT_DATE)",
+    "question": "How many recruiting team members were added this year?"
+  },
+  {
+    "data_sources": [
+      "lever_data.user"
+    ],
+    "sql": "SELECT name, email, created_at FROM lever_data.user WHERE created_at >= CURRENT_DATE - INTERVAL '30 days' AND deactivated_at IS NULL",
+    "question": "Who joined the recruiting team in the last month?"
+  }
+]
