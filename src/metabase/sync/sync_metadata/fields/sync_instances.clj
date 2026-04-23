@@ -117,8 +117,8 @@
   parent Fields when recursively syncing nested Fields, we need to propagate the updates to `our-metadata` made by
   this function and pass them to other steps of the `sync-instances!` process."
   [:map
-   [:num-updates  ms/IntGreaterThanOrEqualToZero]
-   [:our-metadata [:set common/TableMetadataFieldWithID]]])
+   [:num-updates      ms/IntGreaterThanOrEqualToZero]
+   [:updated-metadata [:set common/TableMetadataFieldWithID]]])
 
 (mu/defn- sync-active-instances! :- Updates
   "Sync instances of `Field` in the application database with 'active' Fields in the DB being synced (i.e., ones that
@@ -144,7 +144,7 @@
            ;; now return count of rows updated
            (count new-fields))))
 
-     :our-metadata
+     :updated-metadata
      @our-metadata}))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -190,11 +190,12 @@
         metabase-nested-fields (:nested-fields metabase-field)]
     (when (or (seq nested-fields-metadata)
               (seq metabase-nested-fields))
-      (sync-instances!
-       table
-       (set nested-fields-metadata)
-       (set metabase-nested-fields)
-       (some-> metabase-field u/the-id)))))
+      (:num-updates
+       (sync-instances!
+        table
+        (set nested-fields-metadata)
+        (set metabase-nested-fields)
+        (some-> metabase-field u/the-id))))))
 
 (mu/defn- sync-nested-field-instances! :- [:maybe ms/IntGreaterThanOrEqualToZero]
   "Recursively sync Field instances (i.e., rows in application DB) for *all* the nested Fields of all Fields in
@@ -212,9 +213,11 @@
                               metabase-field (get name->metabase-field field-name)]]
       (sync-nested-fields-of-one-field! table field-metadata metabase-field))))
 
-(mu/defn sync-instances! :- ms/IntGreaterThanOrEqualToZero
+(mu/defn sync-instances! :- Updates
   "Sync rows in the Field table with `db-metadata` describing the current schema of the Table currently being synced,
-  creating Field objects or marking them active/inactive as needed."
+  creating Field objects or marking them active/inactive as needed.
+  Returns a map with `:num-updates` (count of synced Fields) and `:updated-metadata` (the updated set of Field metadata
+  reflecting any newly created or reactivated Fields)."
   ([table        :- i/TableInstance
     db-metadata  :- [:set i/TableMetadataField]
     our-metadata :- [:set common/TableMetadataFieldWithID]]
@@ -231,7 +234,8 @@
                (sync-util/name-for-logging table)
                (pr-str (sort (map common/canonical-name db-metadata)))
                (pr-str (sort (map common/canonical-name our-metadata))))
-   (let [{:keys [num-updates our-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
-     (+ num-updates
-        (retire-fields! table db-metadata our-metadata)
-        (sync-nested-field-instances! table db-metadata our-metadata)))))
+   (let [{:keys [num-updates updated-metadata]} (sync-active-instances! table db-metadata our-metadata parent-id)]
+     {:num-updates      (+ num-updates
+                           (retire-fields! table db-metadata updated-metadata)
+                           (sync-nested-field-instances! table db-metadata updated-metadata))
+      :updated-metadata updated-metadata})))
