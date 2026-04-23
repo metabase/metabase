@@ -308,4 +308,5 @@
 (api.macros/defendpoint :get "/query-activity"
   "Get recent query executions for the current user with resolved source table and card names."
   [_route-params _query-params]
+  (api/check-superuser)
   (query-activity {:limit (request/limit)}))
