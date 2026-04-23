@@ -15,6 +15,7 @@ import type { Workspace } from "metabase-types/api";
 import { useFetchWorkspaceList } from "../../hooks/use-fetch-workspace-list";
 
 import { WorkspaceList } from "./WorkspaceList";
+import { filterWorkspaces } from "./utils";
 
 export function WorkspaceListPage() {
   const { workspaces, error, isLoading } = useFetchWorkspaceList();
@@ -83,15 +84,5 @@ function WorkspaceListPageBody({
         />
       </Flex>
     </Stack>
-  );
-}
-
-function filterWorkspaces(workspaces: Workspace[], query: string): Workspace[] {
-  if (query.length === 0) {
-    return workspaces;
-  }
-  const lowercaseQuery = query.toLowerCase();
-  return workspaces.filter((workspace) =>
-    workspace.name.toLowerCase().includes(lowercaseQuery),
   );
 }

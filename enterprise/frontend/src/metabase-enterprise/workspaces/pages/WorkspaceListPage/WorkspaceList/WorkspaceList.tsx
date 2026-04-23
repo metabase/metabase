@@ -1,7 +1,6 @@
 import type { Row } from "@tanstack/react-table";
 import { useCallback, useMemo } from "react";
 import { push } from "react-router-redux";
-import { t } from "ttag";
 
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import {
@@ -14,7 +13,8 @@ import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Workspace } from "metabase-types/api";
 
-import { COLUMN_WIDTHS, getColumns } from "./utils";
+import { COLUMN_WIDTHS } from "./constants";
+import { getColumns, getEmptyLabel } from "./utils";
 
 type WorkspaceListProps = {
   workspaces: Workspace[];
@@ -44,7 +44,7 @@ export function WorkspaceList({
     onRowActivate: handleRowActivate,
   });
 
-  const emptyLabel = isFiltered ? t`No workspaces found` : t`No workspaces yet`;
+  const emptyLabel = getEmptyLabel(isFiltered);
 
   return (
     <Card flex="0 1 auto" mih={0} p={0} withBorder data-testid="workspace-list">

@@ -4,18 +4,16 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { Box, Button, Icon, Tooltip } from "metabase/ui";
-import type {
-  Database,
-  DatabaseId,
-  WorkspaceDatabaseDraft,
-} from "metabase-types/api";
+import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
+import type { DatabaseId, WorkspaceDatabaseDraft } from "metabase-types/api";
 
 import type { WorkspaceInfo } from "../../../types";
-import { isDatabaseProvisioned, isSupportedDatabase } from "../../../utils";
+import { isDatabaseProvisioned } from "../../../utils";
 import { TitleSection } from "../../TitleSection";
 
 import { DatabaseMappingList } from "./DatabaseMappingList";
 import { DatabaseMappingModal } from "./DatabaseMappingModal";
+import { getAddTooltipLabel, getAvailableDatabases } from "./utils";
 
 type DatabaseMappingSectionProps = {
   workspace: WorkspaceInfo;
@@ -84,6 +82,7 @@ export function DatabaseMappingSection({
           <Tooltip
             label={getAddTooltipLabel(isReadOnly)}
             disabled={canAddMapping}
+            openDelay={TOOLTIP_OPEN_DELAY}
           >
             <Button
               leftSection={<Icon name="add" />}
@@ -125,23 +124,4 @@ export function DatabaseMappingSection({
       />
     </>
   );
-}
-
-function getAvailableDatabases(
-  databases: Database[],
-  mappings: WorkspaceDatabaseDraft[],
-  databaseId?: DatabaseId,
-): Database[] {
-  const mappedIds = new Set(mappings.map((mapping) => mapping.database_id));
-  return databases.filter(
-    (database) =>
-      isSupportedDatabase(database) &&
-      (!mappedIds.has(database.id) || database.id === databaseId),
-  );
-}
-
-function getAddTooltipLabel(isReadOnly: boolean): string {
-  return isReadOnly
-    ? t`Unprovision this workspace before editing.`
-    : t`No available databases that support workspaces.`;
 }

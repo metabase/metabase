@@ -11,6 +11,7 @@ import {
   FormSubmitButton,
 } from "metabase/forms";
 import { Box, Button, Group, Modal, Stack, Tooltip } from "metabase/ui";
+import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
 import * as Errors from "metabase/utils/errors";
 import type {
   Database,
@@ -149,6 +150,7 @@ function DatabaseMappingForm({
                     disabled={
                       getDeleteButtonLabel(isReadOnly, canDelete) == null
                     }
+                    openDelay={TOOLTIP_OPEN_DELAY}
                   >
                     <Button
                       variant="subtle"
@@ -167,6 +169,7 @@ function DatabaseMappingForm({
                 <Tooltip
                   label={t`Unprovision this workspace before editing.`}
                   disabled={!isReadOnly}
+                  openDelay={TOOLTIP_OPEN_DELAY}
                 >
                   <FormSubmitButton
                     label={isNew ? t`Add database` : t`Save`}

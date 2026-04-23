@@ -5,10 +5,10 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
 import { ActionIcon, Anchor, FixedSizeIcon, Group, Tooltip } from "metabase/ui";
+import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
 import * as Urls from "metabase/utils/urls";
 import type { DependencyNode } from "metabase-types/api";
 
-import { TOOLTIP_OPEN_DELAY_MS } from "../../../../constants";
 import { getNodeLabel, getNodeLink } from "../../../../utils";
 import type { DependencyDiagnosticsMode } from "../../types";
 
@@ -54,7 +54,7 @@ export function SidebarHeader({ node, onClose, mode }: SidebarHeaderProps) {
       </Anchor>
       <Group gap="xs" wrap="nowrap">
         {link != null && (
-          <Tooltip label={link.label} openDelay={TOOLTIP_OPEN_DELAY_MS}>
+          <Tooltip label={link.label} openDelay={TOOLTIP_OPEN_DELAY}>
             <ActionIcon
               component={ForwardRefLink}
               to={link.url}
@@ -67,7 +67,7 @@ export function SidebarHeader({ node, onClose, mode }: SidebarHeaderProps) {
         )}
         <Tooltip
           label={t`View in dependency graph`}
-          openDelay={TOOLTIP_OPEN_DELAY_MS}
+          openDelay={TOOLTIP_OPEN_DELAY}
         >
           <ActionIcon
             component={ForwardRefLink}

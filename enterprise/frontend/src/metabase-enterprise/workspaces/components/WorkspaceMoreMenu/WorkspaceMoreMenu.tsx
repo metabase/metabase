@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
+import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
 import { openSaveDialog } from "metabase/utils/dom";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
@@ -70,6 +71,7 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
           <Tooltip
             label={t`Provision this workspace before downloading the configuration file.`}
             disabled={isFullyProvisioned}
+            openDelay={TOOLTIP_OPEN_DELAY}
           >
             <Menu.Item
               leftSection={<Icon name="download" />}
@@ -82,6 +84,7 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
           <Tooltip
             label={t`Unprovision this workspace before deleting.`}
             disabled={isFullyUnprovisioned}
+            openDelay={TOOLTIP_OPEN_DELAY}
           >
             <Menu.Item
               leftSection={<Icon name="trash" />}

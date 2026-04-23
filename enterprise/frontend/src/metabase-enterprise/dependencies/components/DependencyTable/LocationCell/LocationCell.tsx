@@ -1,4 +1,5 @@
 import { Ellipsified, FixedSizeIcon, Group } from "metabase/ui";
+import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeLocationInfo } from "../../../utils";
@@ -20,7 +21,9 @@ export function LocationCell({ node }: LocationCellProps) {
   return (
     <Group align="center" gap="sm" miw={0} wrap="nowrap">
       {icon && <FixedSizeIcon name={icon} />}
-      <Ellipsified tooltipProps={{ openDelay: 300 }}>{path}</Ellipsified>
+      <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY }}>
+        {path}
+      </Ellipsified>
     </Group>
   );
 }
