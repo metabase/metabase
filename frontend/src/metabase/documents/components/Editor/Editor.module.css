@@ -243,22 +243,6 @@
   border-radius: 4px 4px 4px 0;
   user-select: none;
   pointer-events: none;
-  /* Fade the label after the caret is idle. The extension remounts the widget
-     on each awareness tick, re-firing the animation so it stays visible while
-     the remote user is active. */
-  animation: collab-caret-label-fade 1s ease-out 3s forwards;
-}
-
-.editorContent
-  :global(.collaboration-carets__caret:hover .collaboration-carets__label) {
-  animation: none;
-  opacity: 1;
-}
-
-@keyframes collab-caret-label-fade {
-  to {
-    opacity: 0;
-  }
 }
 
 .editorContent :global(.ProseMirror-yjs-selection) {
