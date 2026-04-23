@@ -714,8 +714,8 @@
       (let [conv-id (str (random-uuid))]
         (try
           (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider "anthropic/claude-sonnet-4-6"]
-            (#'api/store-native-parts!
-             conv-id "internal" nil nil
+            (metabot.persistence/store-native-parts!
+             conv-id "internal"
              [{:type :start :id "msg-1"}
               {:type :text :text "Hi"}
               {:type :data :data-type "navigate_to" :data "/question/1"}
