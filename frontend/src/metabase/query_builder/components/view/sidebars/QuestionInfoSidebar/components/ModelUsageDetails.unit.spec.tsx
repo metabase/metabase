@@ -209,7 +209,7 @@ describe("ModelUsageDetails", () => {
         for (const q of usedByQuestions) {
           const link = await screen.findByLabelText(q._card.name);
           expect(link).toBeInTheDocument();
-          expect(link).toHaveAttribute("href", ML_Urls.getUrl(q));
+          expect(link).toHaveAttribute("href", ML_Urls.getQuestionUrl(q));
         }
 
         expect(
@@ -235,7 +235,7 @@ describe("ModelUsageDetails", () => {
         for (const q of slicedQuestions) {
           const link = await screen.findByLabelText(q._card.name);
           expect(link).toBeInTheDocument();
-          expect(link).toHaveAttribute("href", ML_Urls.getUrl(q));
+          expect(link).toHaveAttribute("href", ML_Urls.getQuestionUrl(q));
         }
 
         // Expect sixth card to be hidden

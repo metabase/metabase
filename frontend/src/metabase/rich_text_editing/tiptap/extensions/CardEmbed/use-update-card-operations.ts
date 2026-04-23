@@ -8,7 +8,7 @@ import { useDraftCardOperations } from "metabase/documents/hooks/use-draft-card-
 import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import { getUrl } from "metabase-lib/v1/urls";
+import { getQuestionUrl } from "metabase-lib/v1/urls";
 import type { Card, Document, VisualizationSettings } from "metabase-types/api";
 
 export const useUpdateCardOperations = ({
@@ -59,7 +59,7 @@ export const useUpdateCardOperations = ({
         // Remove the ID so getUrl creates an adhoc question URL instead of navigating to saved question
         const adhocCard = { ...nextCard, id: null };
         const question = new Question(adhocCard, metadata);
-        const url = getUrl(question, { includeDisplayIsLocked: true });
+        const url = getQuestionUrl(question, { includeDisplayIsLocked: true });
         dispatch(navigateToCardFromDocument(url, document));
       } catch (error) {
         console.error("Failed to create question URL:", error);

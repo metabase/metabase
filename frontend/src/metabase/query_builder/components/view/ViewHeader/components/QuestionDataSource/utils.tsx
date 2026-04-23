@@ -191,7 +191,7 @@ function getTableURL(table: Table) {
       return Urls.question({ id: cardId, name: table.displayName() });
     }
   }
-  return ML_Urls.getUrl(table.newQuestion());
+  return ML_Urls.getQuestionUrl(table.newQuestion());
 }
 
 export function getQuestionIcon(question: Question): IconName {

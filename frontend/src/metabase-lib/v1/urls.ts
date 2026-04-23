@@ -17,7 +17,7 @@ type UrlBuilderOpts = {
   creationType?: string;
 };
 
-export function getUrl(
+export function getQuestionUrl(
   question: Question,
   { originalQuestion, query, creationType }: UrlBuilderOpts = {},
 ) {
@@ -51,7 +51,7 @@ export function getUrlWithParameters(
 ): string {
   const includeDisplayIsLocked = true;
   if (parameters.length === 0 && objectId == null) {
-    return getUrl(question, { includeDisplayIsLocked });
+    return getQuestionUrl(question, { includeDisplayIsLocked });
   }
 
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
@@ -69,7 +69,7 @@ export function getUrlWithParameters(
         .setParameterValues(parameterValues)
         ._convertParametersToMbql({ isComposed: needsComposing });
 
-      return getUrl(questionWithParameters, {
+      return getQuestionUrl(questionWithParameters, {
         originalQuestion,
         includeDisplayIsLocked,
         query: objectId === undefined ? {} : { objectId },
@@ -77,14 +77,14 @@ export function getUrlWithParameters(
     }
 
     const query = getParameterValuesBySlug(parameters, parameterValues);
-    return getUrl(questionWithParameters.markDirty(), {
+    return getQuestionUrl(questionWithParameters.markDirty(), {
       query,
       includeDisplayIsLocked,
     });
   }
 
   const query = question.legacyNativeQuery() as NativeQuery;
-  return getUrl(question, {
+  return getQuestionUrl(question, {
     query: remapParameterValuesToTemplateTags(
       query.templateTags(),
       parameters,

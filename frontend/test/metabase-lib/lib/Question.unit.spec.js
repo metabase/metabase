@@ -600,12 +600,14 @@ describe("Question", () => {
           assoc(orders_raw_card, "id", 1),
           metadata,
         );
-        expect(ML_Urls.getUrl(question)).toBe("/question/1-raw-orders-data");
+        expect(ML_Urls.getQuestionUrl(question)).toBe(
+          "/question/1-raw-orders-data",
+        );
       });
 
       it("returns a URL with hash for an unsaved question", () => {
         const question = new Question(dissoc(orders_raw_card, "id"), metadata);
-        expect(ML_Urls.getUrl(question)).toBe(adhocUrl);
+        expect(ML_Urls.getQuestionUrl(question)).toBe(adhocUrl);
       });
     });
 
@@ -615,7 +617,7 @@ describe("Question", () => {
         metadata,
       );
 
-      expect(ML_Urls.getUrl(question)).toBe(adhocUrl);
+      expect(ML_Urls.getQuestionUrl(question)).toBe(adhocUrl);
     });
   });
 

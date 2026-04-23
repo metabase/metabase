@@ -59,7 +59,7 @@ const getReloadInterval = (
 export const getTableUrl = (table: Table, metadata?: Metadata): string => {
   const metadataTable = metadata?.table(table.id);
   const question = metadataTable?.newQuestion();
-  return question ? ML_Urls.getUrl(question) : "";
+  return question ? ML_Urls.getQuestionUrl(question) : "";
 };
 
 export const TableBrowser = _.compose(

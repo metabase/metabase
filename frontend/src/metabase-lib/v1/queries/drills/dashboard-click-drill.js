@@ -157,7 +157,7 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
         parameters,
         queryParams,
       )
-    : `${ML_Urls.getUrl(targetQuestion)}?${querystring.stringify(queryParams)}`;
+    : `${ML_Urls.getQuestionUrl(targetQuestion)}?${querystring.stringify(queryParams)}`;
 }
 
 export function getClickBehavior(clicked) {
