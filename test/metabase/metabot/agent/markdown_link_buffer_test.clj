@@ -114,7 +114,7 @@
   (testing "resolves metabase://chart links using charts-state"
     (let [query (lib.tu/venues-query)
           queries {"q-456" query}
-          charts {"c-789" {:query-id "q-456" :chart-type :bar}}
+          charts {"c-789" {:chart_id "c789" :queries [query] :visualization_settings {:chart_type :bar}}}
           [output flushed] (process "[My Chart](metabase://chart/c-789)" queries charts)]
       (is (re-find #"\[My Chart\]\(/question#" output))
       (is (not (re-find #"metabase://" output)))
@@ -123,6 +123,18 @@
   (testing "falls back to link text for unknown chart"
     (let [[output flushed] (process "[Chart](metabase://chart/unknown)")]
       (is (= "Chart" output))
+      (is (= "" flushed)))))
+
+(deftest ^:parallel resolve-table-link-test
+  (testing "resolves metabase://table links to ad-hoc question URLs"
+    (let [table-id (mt/id :venues)
+          [output flushed] (process (str "[Users Table](metabase://table/" table-id ")"))]
+      (is (re-find #"\[Users Table\]\(/question#.+\)" output))
+      (is (= "" flushed))))
+
+  (testing "falls back to link text for unknown table"
+    (let [[output flushed] (process "[Unknown Table](metabase://table/999999999)")]
+      (is (= "Unknown Table" output))
       (is (= "" flushed)))))
 
 (deftest ^:parallel resolve-entity-link-test
@@ -141,9 +153,9 @@
       (is (= "[Sales Dashboard](/dashboard/789)" output))
       (is (= "" flushed))))
 
-  (testing "resolves metabase://table links"
-    (let [[output flushed] (process "[Users Table](metabase://table/42)")]
-      (is (= "[Users Table](/table/42)" output))
+  (testing "resolves metabase://transform links"
+    (let [[output flushed] (process "[My Transform](metabase://transform/42)")]
+      (is (= "[My Transform](/data-studio/transforms/42)" output))
       (is (= "" flushed)))))
 
 (deftest ^:parallel resolve-link-split-across-chunks-test

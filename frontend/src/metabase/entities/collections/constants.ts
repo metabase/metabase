@@ -2,8 +2,6 @@ import { t } from "ttag";
 
 import type { CollectionId } from "metabase-types/api";
 
-export const DEFAULT_COLLECTION_COLOR_ALIAS = "brand";
-
 export const ROOT_COLLECTION = {
   id: "root" as CollectionId,
   get name() {

@@ -13,7 +13,7 @@ Metabase logs quite a bit of information by default. Metabase uses [Log4j 2](htt
 
 You can find Metabase logs in **Admin** > **Tools** > **Logs**. You can filter the logs by keywords (for example, "sync") and download them as a text file.
 
-If you're running self-hosted Metabase, you'll also be able see the logs in the terminal.
+If you're running self-hosted Metabase, you'll also be able to see the logs in the terminal.
 
 ## How to read Metabase logs
 

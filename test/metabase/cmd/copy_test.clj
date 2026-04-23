@@ -25,7 +25,8 @@
 
 (def ^:private models-to-exclude
   "Models that should *not* be migrated in `load-from-h2`."
-  #{:model/AnalysisFinding
+  #{:model/AiUsageLog
+    :model/AnalysisFinding
     :model/AnalysisFindingError
     :model/ApiKey
     :model/CacheConfig
@@ -35,6 +36,10 @@
     :model/DashboardFavorite
     :model/DatabaseRouter
     :model/Dependency
+    :model/DependencyStatus
+    :model/MetabotGroupLimit
+    :model/MetabotInstanceLimit
+    :model/MetabotPermissions
     :model/PythonLibrary
     :model/PremiumFeaturesCache
     :model/Query
@@ -46,6 +51,7 @@
     :model/RemoteSyncTask
     :model/ReplacementRun
     :model/SearchIndexMetadata
+    :model/SecurityAdvisory
     :model/SemanticSearchTokenTracking
     :model/SupportAccessGrantLog
     :model/TaskHistory
@@ -60,18 +66,7 @@
     :model/TransformTag
     :model/TransformTransformTag
     :model/Undo
-    :model/UserKeyValue
-    :model/Workspace
-    :model/WorkspaceGraph
-    :model/WorkspaceInput
-    :model/WorkspaceInputExternal
-    :model/WorkspaceInputTransform
-    :model/WorkspaceLog
-    :model/WorkspaceMerge
-    :model/WorkspaceMergeTransform
-    :model/WorkspaceOutput
-    :model/WorkspaceOutputExternal
-    :model/WorkspaceTransform})
+    :model/UserKeyValue})
 
 (defn- all-model-names []
   (into (sorted-set)

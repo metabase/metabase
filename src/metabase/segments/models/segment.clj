@@ -222,20 +222,17 @@
     table_id (conj (serdes/table->path table_id))))
 
 (defmethod serdes/storage-path "Segment" [segment _ctx]
-  (let [{:keys [id label]} (-> segment serdes/path last)]
-    (-> segment
-        :table_id
-        serdes/table->path
-        serdes/storage-path-prefixes
-        (concat ["segments" (serdes/storage-leaf-file-name id label)]))))
+  (into (-> segment :table_id serdes/table->path serdes/storage-path-prefixes)
+        [{:label "segments"} {:label (:name segment) :key (:entity_id segment)}]))
 
 (defmethod serdes/make-spec "Segment" [_model-name _opts]
-  {:copy [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
-   :skip [:dependency_analysis_version]
+  {:copy      [:name :points_of_interest :archived :caveats :description :entity_id :show_in_getting_started]
+   :skip      []
    :transform {:created_at (serdes/date)
-               :table_id (serdes/fk :model/Table)
+               :table_id   (serdes/fk :model/Table)
                :creator_id (serdes/fk :model/User)
-               :definition {:export serdes/export-mbql :import serdes/import-mbql}}})
+               :definition {:export serdes/export-mbql :import serdes/import-mbql}}
+   :defaults {:archived false :show_in_getting_started false}})
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------
 

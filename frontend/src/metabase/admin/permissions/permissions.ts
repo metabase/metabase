@@ -22,16 +22,16 @@ import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";
 import { Groups } from "metabase/entities/groups";
 import { Tables } from "metabase/entities/tables";
 import {
-  combineReducers,
-  createAction,
-  createThunkAction,
-} from "metabase/lib/redux";
-import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
 } from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import { CollectionsApi, PermissionsApi } from "metabase/services";
+import {
+  combineReducers,
+  createAction,
+  createThunkAction,
+} from "metabase/utils/redux";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Collection,
@@ -63,18 +63,6 @@ import {
 function isErrorAction(action: UnknownAction) {
   return action.error === true;
 }
-
-const INITIALIZE_DATA_PERMISSIONS =
-  "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
-export const initializeDataPermissions = createThunkAction(
-  INITIALIZE_DATA_PERMISSIONS,
-  () => async (dispatch) => {
-    await Promise.all([
-      dispatch(loadDataPermissions()),
-      dispatch(Groups.actions.fetchList()),
-    ]);
-  },
-);
 
 export const LOAD_DATA_PERMISSIONS =
   "metabase/admin/permissions/LOAD_DATA_PERMISSIONS";
@@ -595,10 +583,8 @@ const dataPermissions = createReducer<GroupsPermissions | null>(
       (state, { payload }) =>
         state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
-    builder.addMatcher(
-      isLoadDataPermissionsForDbAction,
-      (state, { payload }) =>
-        state != null ? merge(payload.groups, current(state)) : payload.groups,
+    builder.addMatcher(isLoadDataPermissionsForDbAction, (state, { payload }) =>
+      state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
     builder.addMatcher(isSaveDataPermissionsAction, (state, { payload }) =>
       mergeGroupsPermissionsUpdates(
@@ -726,10 +712,8 @@ const originalDataPermissions = createReducer<GroupsPermissions | null>(
       (state, { payload }) =>
         state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
-    builder.addMatcher(
-      isLoadDataPermissionsForDbAction,
-      (state, { payload }) =>
-        state != null ? merge(payload.groups, current(state)) : payload.groups,
+    builder.addMatcher(isLoadDataPermissionsForDbAction, (state, { payload }) =>
+      state != null ? merge(payload.groups, current(state)) : payload.groups,
     );
     builder.addMatcher(isSaveDataPermissionsAction, (state, { payload }) =>
       mergeGroupsPermissionsUpdates(

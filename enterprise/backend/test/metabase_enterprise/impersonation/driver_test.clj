@@ -1,7 +1,6 @@
 (ns ^:mb/driver-tests metabase-enterprise.impersonation.driver-test
   (:require
    [clojure.java.jdbc :as jdbc]
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
@@ -13,6 +12,9 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
@@ -436,8 +438,7 @@
                      (mt/rows (mt/run-mbql-query venues))))))))))))
 
 (deftest conn-impersonation-column-and-row-test
-  (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :test/rls-impersonation)
-                                     (mt/normal-drivers-with-feature :test/column-impersonation))
+  (mt/test-drivers (mt/normal-driver-select {:+features [:test/rls-impersonation :test/column-impersonation]})
     (mt/with-premium-features #{:advanced-permissions}
       (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
             products-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "products")
@@ -926,3 +927,47 @@
                        java.lang.Exception
                        (mt/run-mbql-query checkins
                          {:aggregation [[:count]]}))))))))))))
+
+(deftest reject-multiple-and-non-select-statements-impersonation-test
+  (testing "Impersonated native queries with multiple or non-select statements are rejected under impersonation"
+    (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a (u/lower-case-en (mt/random-name))]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                     :details (impersonation-details driver/*driver* (mt/db))}]
+              (mt/with-db database
+                (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                  (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+                (sync/sync-database! database {:scan :schema})
+                (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                               :attributes     {"impersonation_attr" role-a}}
+                  (testing "A single SELECT statement works with normal impersonation"
+                    (let [mp (mt/metadata-provider)
+                          run-native-query (fn [table] (->> (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                                                                (lib/aggregate (lib/count)))
+                                                            (qp.compile/compile-with-inline-parameters)
+                                                            :query
+                                                            (lib/native-query mp)
+                                                            (qp/process-query)
+                                                            (mt/rows)))]
+                      (is (= [[100]] (run-native-query :venues)))
+                      (is (thrown? java.lang.Exception (run-native-query :checkins)))))
+                  (testing "All other queries are rejected"
+                    (are [sql] (thrown?
+                                java.lang.Exception
+                                (-> (lib/native-query (mt/metadata-provider) sql)
+                                    (qp/process-query)
+                                    (mt/rows)))
+                      "SELECT ("
+                      "SELECT 1; SELECT 2"
+                      "SET ROLE NONE"
+                      "DROP TABLE table"
+                      "SET ROLE NONE; DROP TABLE table"
+                      "SELECT set_config('role', 'none', false); DROP TABLE table"
+                      "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;")))))))))))

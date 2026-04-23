@@ -231,13 +231,13 @@
     [:time-interval field-or-expression :last    unit options] (&recur [:time-interval field-or-expression -1 unit options])
     [:time-interval field-or-expression :next    unit options] (&recur [:time-interval field-or-expression  1 unit options])
 
-    [:time-interval field-or-expression (n :guard #{-1}) unit {:include-current identity}]
+    [:time-interval field-or-expression (n :guard #{-1}) unit {:include-current &truthy}]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime n unit]
      [:relative-datetime 0 unit]]
 
-    [:time-interval field-or-expression (n :guard #{1}) unit {:include-current identity}]
+    [:time-interval field-or-expression (n :guard #{1}) unit {:include-current &truthy}]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime 0 unit]
@@ -246,7 +246,7 @@
     [:time-interval field-or-expression (n :guard #{-1 0 1}) unit _]
     [:= (replace-field-or-expression field-or-expression unit) [:relative-datetime n unit]]
 
-    [:time-interval field-or-expression (n :guard neg?) unit {:include-current identity}]
+    [:time-interval field-or-expression (n :guard neg?) unit {:include-current &truthy}]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime n unit]
@@ -258,7 +258,7 @@
      [:relative-datetime n unit]
      [:relative-datetime -1 unit]]
 
-    [:time-interval field-or-expression n unit {:include-current identity}]
+    [:time-interval field-or-expression n unit {:include-current &truthy}]
     [:between
      (replace-field-or-expression field-or-expression unit)
      [:relative-datetime 0 unit]
@@ -354,7 +354,7 @@
 
   Note that the optional options map is in different positions for `:contains`, `:does-not-contain`, `:starts-with` and
   `:ends-with` depending on the number of arguments. 2-argument forms use the legacy style `[:contains field x opts]`.
-  Multi-argument forms use pMBQL style with the options at index 1, **even if there are no options**:
+  Multi-argument forms use MBQL 5 style with the options at index 1, **even if there are no options**:
   `[:contains {} field x y z]`."
   {:deprecated "0.57.0"}
   [m]
@@ -384,7 +384,7 @@
   [m]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (lib.util.match/replace-lite m
-    [clause field & (args :guard (some (partial = [:relative-datetime :current]) args))]
+    [clause field & (args :guard (some #{[:relative-datetime :current]} args))]
     (let [temporal-unit (or (lib.util.match/match-lite field
                               [:field _ {:temporal-unit temporal-unit}] temporal-unit)
                             :default)]

@@ -1,11 +1,5 @@
 const { H } = cy;
 
-export function startQuestionFromTable(table: string) {
-  cy.visit("/");
-  H.newButton("Question").click();
-  H.modal().contains(table).should("be.visible").click();
-}
-
 export function saveQuestion(name: string) {
   cy.log(`-- Save question: ${name}`);
   cy.intercept("POST", "/api/card").as("saveQuestion");
@@ -15,6 +9,7 @@ export function saveQuestion(name: string) {
     cy.button("Save").click();
     cy.wait("@saveQuestion");
   });
+  cy.findByTestId("save-question-modal").should("not.exist");
 }
 
 export function assertRowCount(count: string) {

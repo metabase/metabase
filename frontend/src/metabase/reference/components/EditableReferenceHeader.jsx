@@ -5,10 +5,9 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import L from "metabase/common/components/List/List.module.css";
 import CS from "metabase/css/core/index.css";
-import { Icon, TextInputBlurChange } from "metabase/ui";
+import { Ellipsified, Icon, TextInputBlurChange } from "metabase/ui";
 
 import S from "./ReferenceHeader.module.css";
 

@@ -4,8 +4,8 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Button, Combobox, Icon, Loader, Text, useCombobox } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import {
   useGetHasRemoteChangesQuery,
   useImportChangesMutation,
@@ -47,6 +47,7 @@ export const GitSyncControls = () => {
   const {
     currentData: hasRemoteChangesData,
     isFetching: isFetchingRemoteChanges,
+    isError: hasRemoteChangesError,
   } = useGetHasRemoteChangesQuery(undefined, {
     refetchOnMountOrArgChange: 10, // only refetch if the cache is more than 10 seconds stale
     skip: !combobox.dropdownOpened,
@@ -201,6 +202,7 @@ export const GitSyncControls = () => {
         {dropdownView === "options" ? (
           <GitSyncOptionsDropdown
             isPullDisabled={!hasRemoteChanges}
+            isPullError={hasRemoteChangesError}
             isLoadingPull={isFetchingRemoteChanges}
             isPushDisabled={!isDirty || isLoading}
             onPullClick={handlePullClick}

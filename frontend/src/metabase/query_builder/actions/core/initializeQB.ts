@@ -1,43 +1,44 @@
-import querystring from "querystring";
-
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
+import {
+  cardIsEquivalent,
+  deserializeCard,
+  parseHash,
+} from "metabase/common/utils/card";
 import { Questions } from "metabase/entities/questions";
 import { Snippets } from "metabase/entities/snippets";
-import { deserializeCardFromUrl } from "metabase/lib/card";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
 } from "metabase/query_builder/selectors";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
+import { addFields } from "metabase/redux/metadata";
+import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
+import type {
+  Dispatch,
+  GetState,
+  QueryBuilderUIControls,
+} from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
+import { isNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
-import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type { Card, SegmentId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
-import type {
-  Dispatch,
-  GetState,
-  QueryBuilderUIControls,
-} from "metabase-types/store";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { cancelQuery, runQuestionQuery } from "../querying";
 import { updateUrl } from "../url";
 
 import { loadCard } from "./card";
-import { resetQB } from "./core";
 import {
   getParameterValuesForQuestion,
   propagateDashboardParameters,
@@ -123,15 +124,6 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
 
   const newQuery = Lib.filter(query, stageIndex, segmentMetadata);
   return question.setQuery(newQuery);
-}
-
-export function deserializeCard(serializedCard: string) {
-  const card = deserializeCardFromUrl(serializedCard);
-  if (card.dataset_query.database != null) {
-    // Ensure older MBQL is supported
-    card.dataset_query = normalize(card.dataset_query);
-  }
-  return card;
 }
 
 async function fetchAndPrepareSavedQuestionCards(
@@ -226,25 +218,6 @@ export async function resolveCards({
         getState,
       );
 }
-
-export function parseHash(hash?: string) {
-  let options: BlankQueryOptions = {};
-  let serializedCard;
-
-  // hash can contain either query params starting with ? or a base64 serialized card
-  if (hash) {
-    const cleanHash = hash.replace(/^#/, "");
-    if (cleanHash.charAt(0) === "?") {
-      options = querystring.parse(cleanHash.substring(1));
-    } else {
-      serializedCard = cleanHash;
-    }
-  }
-
-  return { options, serializedCard };
-}
-
-export const INITIALIZE_QB = "metabase/qb/INITIALIZE_QB";
 
 /**
  * Updates the template tag names in the query
@@ -350,6 +323,14 @@ async function handleQBInit(
   }
 
   await dispatch(loadMetadataForCard(card));
+
+  // Populate the metadata store with param_fields from the card response.
+  // This ensures field filter widgets have has_field_values even when the user
+  // lacks create-queries permission on the underlying table (GHY-1605).
+  if (card.param_fields) {
+    await dispatch(addFields(Object.values(card.param_fields).flat()));
+  }
+
   const metadata = getMetadata(getState());
 
   let question = new Question(card, metadata);

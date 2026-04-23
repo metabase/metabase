@@ -8,10 +8,11 @@ import S from "metabase/common/components/List/List.module.css";
 import { ListItem } from "metabase/common/components/ListItem";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import { getShallowSegments } from "metabase/selectors/metadata";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { modelIconMap } from "metabase/utils/icon";
+import { useSelector } from "metabase/utils/redux";
 
 import ReferenceHeader from "../../components/ReferenceHeader";
 import { getError, getLoading } from "../../selectors";
@@ -68,7 +69,7 @@ export function SegmentList({ style }: SegmentListProps) {
                         name={entity.name}
                         description={entity.description}
                         url={`/reference/segments/${entity.id}`}
-                        icon="segment"
+                        icon={modelIconMap.segment}
                       />
                     ),
                 )}

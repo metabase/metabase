@@ -1,15 +1,16 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatChangeWithSign } from "metabase/lib/formatting";
-import { getObjectKeys } from "metabase/lib/objects";
+import { isNative } from "metabase/common/utils/card";
+import { formatPercent } from "metabase/static-viz/lib/numbers";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatChangeWithSign } from "metabase/utils/formatting";
+import { getObjectKeys } from "metabase/utils/objects";
 import {
   getDaylightSavingsChangeTolerance,
   parseTimestamp,
-} from "metabase/lib/time-dayjs";
-import { checkNumber, isNotNull } from "metabase/lib/types";
-import { formatPercent } from "metabase/static-viz/lib/numbers";
+} from "metabase/utils/time-dayjs";
+import { checkNumber, isNotNull } from "metabase/utils/types";
 import type {
   EChartsTooltipModel,
   EChartsTooltipRow,
@@ -64,7 +65,6 @@ import type { ClickObject, ClickObjectDimension } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
 import type {

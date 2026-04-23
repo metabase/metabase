@@ -29,6 +29,7 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -64,7 +65,8 @@
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
-                              :workspace                              true}]
+                              :workspace                              true
+                              :table-privileges                       true}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (mu/defmethod driver/database-supports? [:sqlserver :percentile-aggregations]
@@ -802,8 +804,8 @@
       ;; NULL` for us.
       (let [clause (into [op field]
                          ;; we're compiling this ahead of time and throwing out the compiled value to make it easier to
-                         ;; get the real database type of the expression... maybe when we convert this to MLv2 we can
-                         ;; just use MLv2 metadata or type calculation functions instead.
+                         ;; get the real database type of the expression... maybe when we convert this to MBQL 5 we can
+                         ;; just use Lib metadata or type calculation functions instead.
                          (or (when-let [field-database-type (h2x/database-type (sql.qp/->honeysql driver field))]
                                (when (#{"datetime" "datetime2" "datetimeoffset" "smalldatetime"} field-database-type)
                                  (map (fn [[_type val :as expr]]
@@ -1169,7 +1171,7 @@
   (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (:id database))
         username  (-> workspace :database_details :user)]
     (when-not username
-      (throw (ex-info "Workspace isolation is not properly initialized - missing read user name"
+      (throw (ex-info (tru "Workspace isolation is not properly initialized - missing read user name")
                       {:workspace-id (:id workspace) :step :grant})))
     ;; Grant SELECT on each specific table only - no schema-level grants
     (let [qu (sql.u/quote-name :sqlserver :field username)]
@@ -1181,3 +1183,34 @@
 
 (defmethod driver/llm-sql-dialect-resource :sqlserver [_]
   "metabot/prompts/dialects/sqlserver.md")
+
+(defmethod driver/validate-impersonated-query :sqlserver
+  [driver query]
+  (driver.sql/validate-impersonated-query* driver query))
+
+(defmethod sql-jdbc.sync/current-user-table-privileges :sqlserver
+  [_driver conn-spec & {:as _options}]
+  ;; role is NULL because HAS_PERMS_BY_NAME checks the current user's effective
+  ;; permissions directly rather than querying role-based grants
+  (->> (jdbc/query
+        conn-spec
+        (str/join
+         "\n"
+         ["SELECT"
+          "  NULL AS [role],"
+          "  s.name AS [schema],"
+          "  o.name AS [table],"
+          "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'SELECT') AS [select],"
+          "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'UPDATE') AS [update],"
+          "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'INSERT') AS [insert],"
+          "  HAS_PERMS_BY_NAME(QUOTENAME(s.name) + '.' + QUOTENAME(o.name), 'OBJECT', 'DELETE') AS [delete]"
+          "FROM sys.objects o"
+          "JOIN sys.schemas s ON o.schema_id = s.schema_id"
+          ;; U = user table, V = view
+          "WHERE o.type IN ('U', 'V')"]))
+       (map (fn [row]
+              (-> row
+                  (update :select pos?)
+                  (update :update pos?)
+                  (update :insert pos?)
+                  (update :delete pos?))))))

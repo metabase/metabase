@@ -22,14 +22,12 @@ import { Button } from "metabase/common/components/Button";
 import { DebouncedFrame } from "metabase/common/components/DebouncedFrame";
 import { EditBar } from "metabase/common/components/EditBar";
 import { LeaveConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { getSemanticTypeIcon } from "metabase/common/utils/fields";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { connect, useDispatch } from "metabase/lib/redux";
-import { getSemanticTypeIcon } from "metabase/lib/schema_metadata";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import {
   setDatasetEditorTab,
-  setUIControls,
   updateQuestion as updateQuestionAction,
 } from "metabase/query_builder/actions";
 import { getInitialEditorHeight } from "metabase/query_builder/components/NativeQueryEditor/utils";
@@ -50,8 +48,11 @@ import type { DataReferenceItem } from "metabase/querying/components/DataReferen
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
 import { MODAL_TYPES } from "metabase/querying/constants";
+import { setUIControls } from "metabase/redux/query-builder";
+import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
+import { connect, useDispatch } from "metabase/utils/redux";
 import {
   extractRemappings,
   getVisualizationTransformed,
@@ -75,7 +76,6 @@ import type {
   VisualizationDisplay,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 import DatasetEditorS from "./DatasetEditor.module.css";
 import {

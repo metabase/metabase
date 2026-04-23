@@ -1,6 +1,5 @@
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import DashboardS from "metabase/css/dashboard.module.css";
-import { Text } from "metabase/ui";
+import { Ellipsified, Text } from "metabase/ui";
 
 interface ScalarPeriodProps {
   period: string | number | JSX.Element | null;

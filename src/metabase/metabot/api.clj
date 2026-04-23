@@ -3,37 +3,42 @@
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.metabot.agent.core :as agent]
-   [metabase.metabot.api.describe]
    [metabase.metabot.api.document]
    [metabase.metabot.api.metabot]
+   [metabase.metabot.api.permissions]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.permissions.core :as perms]
    [metabase.server.streaming-response :as sr]
    [metabase.settings.core :as setting]
    [metabase.slackbot.api]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
    (java.io OutputStream)))
-
-(comment
-  metabase.metabot.api.describe/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -47,7 +52,8 @@
                                (= (:type %) "state"))
                          messages)
         messages (-> (remove #(or (= % state) (= % finish)) messages)
-                     vec)]
+                     vec)
+        ai-proxy? (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))]
     (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
                               (constantly (cond-> {:user_id    api/*current-user-id*}
                                             state (assoc :state state))))
@@ -63,7 +69,8 @@
                                        ;; removed when ai-service does not give us `completionTokens` in `usage`
                                        (filter map?)
                                        (map #(+ (:prompt %) (:completion %)))
-                                       (apply +))})))
+                                       (apply +))
+                 :ai_proxied      (boolean ai-proxy?)})))
 
 (defn- extract-usage
   "Extract usage from parts, taking the last `:usage` per model.
@@ -83,6 +90,15 @@
    {}
    parts))
 
+(defn- strip-tool-output-bloat
+  "For :tool-output parts, keep only :output in the result map.
+  Both LLM adapters only read (get-in part [:result :output]) when replaying history.
+  Everything else (:structured-output, :resources, :data-parts, :reactions, etc.)
+  is transient runtime data consumed during streaming and can be very large."
+  [{:keys [type] :as part}]
+  (cond-> part
+    (= :tool-output type) (update :result select-keys [:output])))
+
 (defn- store-native-parts!
   "Store assistant response parts directly to the database.
 
@@ -95,11 +111,15 @@
                                  (= "state" (:data-type %)))
                            parts)
         usage      (extract-usage parts)
+        ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
         ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
         ;; :data is like `:navigate_to`
         content    (->> parts
                         (remove #(#{:start :usage :finish :data} (:type %)))
-                        vec)]
+                        (mapv strip-tool-output-bloat))]
+    (prometheus/observe! :metabase-metabot/message-persist-bytes
+                         {:profile-id (or profile-id "unknown")}
+                         (u/string-byte-count (json/encode content)))
     (t2/with-transaction [_conn]
       (when state-part
         (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
@@ -113,7 +133,8 @@
                    :profile_id      profile-id
                    :total_tokens    (->> (vals usage)
                                          (map #(+ (:prompt %) (:completion %)))
-                                         (reduce + 0))}))))
+                                         (reduce + 0))
+                   :ai_proxied      (boolean ai-proxy?)}))))
 
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
@@ -182,8 +203,7 @@
                                :metabot-id    metabot-id
                                :profile-id    (keyword profile-id)
                                :context       enriched-context
-                               :tracking-opts {:session-id          conversation-id
-                                               :track-user-intent?  true}}
+                               :tracking-opts {:session-id conversation-id}}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))
@@ -196,6 +216,7 @@
   (let [message    (metabot.envelope/user-message message)
         metabot-id (metabot.config/resolve-dynamic-metabot-id metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot-id)
+        _          (metabot.usage/check-metabase-managed-free-limit!)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))]
@@ -203,13 +224,36 @@
 
     (log/info "Using native Clojure agent" {:profile-id profile-id :debug? debug?})
     (native-agent-streaming-request
-     {:profile-id      profile-id
+     {:metabot-id      metabot-id
+      :profile-id      profile-id
       :message         message
       :context         context
       :history         history
       :conversation-id conversation_id
       :state           state
       :debug?          debug?})))
+
+(defn- legacy->modern-query
+  [query]
+  (if-not (= :mbql-version/legacy (lib/normalized-mbql-version query))
+    query
+    (lib/query
+     (lib-be/application-database-metadata-provider (:database query))
+     query)))
+
+(def upgradable-item-types
+  "User is viewing item types with query and chart configs. Upgradeable by [[upgrade-viewing-queries]]."
+  metabot.context/item-types-qc)
+
+(mu/defn- upgrade-viewing-queries
+  "Update queries of items in viewing context vector. Handles following item types: adhoc, question, model, metric"
+  [viewing :- [:vector metabot.context/ViewingItemSchema]]
+  (letfn [(update-items-query [item] (m/update-existing item :query legacy->modern-query))
+          (maybe-update-item [item] (cond-> item
+                                      (contains? upgradable-item-types (:type item))
+                                      (-> update-items-query
+                                          (m/update-existing :chart_configs (partial mapv update-items-query)))))]
+    (mapv maybe-update-item viewing)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -232,7 +276,8 @@
                      [:chart-configs {:optional true} [:map-of :string :any]]]]
             [:debug {:optional true} [:maybe :boolean]]]]
   (metabot.context/log body :llm.log/fe->be)
-  (streaming-request body))
+  (let [body* (m/update-existing body [:context :user_is_viewing] upgrade-viewing-queries)]
+    (streaming-request body*)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -253,7 +298,7 @@
       (throw e))))
 
 (def ^:private metabot-provider-schema
-  [:enum "anthropic" "openai" "openrouter"])
+  (into [:enum] metabot.settings/supported-metabot-providers))
 
 (def ^:private llm-model-response-schema
   [:map
@@ -270,7 +315,7 @@
 (def ^:private metabot-settings-request-schema
   [:map
    [:provider metabot-provider-schema]
-   [:model {:optional true} ms/NonBlankString]
+   [:model {:optional true} [:maybe :string]]
    [:api-key {:optional true} [:maybe :string]]])
 
 (defn- provider-api-key-setting-key
@@ -286,6 +331,12 @@
     (let [trimmed (str/trim value)]
       (when-not (str/blank? trimmed)
         trimmed))))
+
+(defn- effective-provider-model
+  [provider model]
+  (when (some? model)
+    (or (non-blank-string model)
+        (metabot.settings/default-model-for-provider provider))))
 
 (def ^:private invalid-api-key-statuses
   #{401 403})
@@ -334,9 +385,20 @@
     "openrouter" (assoc model :group (openrouter-model-group model))
     model))
 
+(defn- normalize-metabase-model
+  [model]
+  (update model :id (fn [id]
+                      (when id
+                        (if (str/includes? id "/")
+                          id
+                          (str "anthropic/" id))))))
+
 (defn- decorate-provider-models
   [provider models]
-  (let [decorated-models (map #(decorate-provider-model provider %) models)]
+  (let [models           (if (= provider provider-util/metabase-provider-prefix)
+                           (map normalize-metabase-model models)
+                           models)
+        decorated-models (map #(decorate-provider-model provider %) models)]
     (if (contains? #{"anthropic" "openrouter"} provider)
       (let [grouped-models (group-by :group decorated-models)]
         (->> grouped-models
@@ -350,20 +412,24 @@
   ([provider]
    (provider-models-response provider nil))
   ([provider api-key-override]
-   (let [effective-api-key (or (non-blank-string api-key-override)
-                               (non-blank-string
-                                (metabot.settings/configured-provider-api-key provider)))]
-     (if (and provider effective-api-key)
-       (try
-         {:models (decorate-provider-models
-                   provider
-                   (:models (metabot.self/list-models provider {:api-key effective-api-key})))}
-         (catch clojure.lang.ExceptionInfo e
-           (if (invalid-api-key-error? e)
-             {:models []
-              :api-key-error (.getMessage e)}
-             (throw e))))
-       {:models []}))))
+   (if (= provider provider-util/metabase-provider-prefix)
+     {:models (decorate-provider-models
+               provider
+               (:models (metabot.self/list-models "anthropic" {:ai-proxy? true})))}
+     (let [effective-api-key (or (non-blank-string api-key-override)
+                                 (non-blank-string
+                                  (metabot.settings/configured-provider-api-key provider)))]
+       (if (and provider effective-api-key)
+         (try
+           {:models (decorate-provider-models
+                     provider
+                     (:models (metabot.self/list-models provider {:api-key effective-api-key})))}
+           (catch clojure.lang.ExceptionInfo e
+             (if (invalid-api-key-error? e)
+               {:models []
+                :api-key-error (.getMessage e)}
+               (throw e))))
+         {:models []})))))
 
 (defn- settings-response
   ([provider]
@@ -375,24 +441,19 @@
 
 (defn- current-provider
   []
-  (some-> (metabot.settings/llm-metabot-provider)
-          (str/split #"/" 2)
-          first))
+  (provider-util/provider-and-model->provider (metabot.settings/llm-metabot-provider)))
 
-(defn- api-error->status-code
-  [error]
-  (or (:status (ex-data error))
-      (:status-code (ex-data error))
-      400))
+(defn- current-setting-provider
+  []
+  (provider-util/provider-and-model->outer-provider (metabot.settings/llm-metabot-provider)))
 
-(defn- verify-api-key!
-  [provider api-key]
-  (when-let [trimmed-api-key (non-blank-string api-key)]
-    (when-let [api-key-error (:api-key-error (provider-models-response provider trimmed-api-key))]
-      (throw (ex-info api-key-error
-                      {:status-code 400
-                       :api-error true}))))
-  nil)
+(defn- throw-api-key-error!
+  [response]
+  (when-let [api-key-error (:api-key-error response)]
+    (throw (ex-info api-key-error
+                    {:status-code 400
+                     :api-error true})))
+  response)
 
 (api.macros/defendpoint :get "/settings"
   :- metabot-settings-response-schema
@@ -410,28 +471,34 @@
    _query-params
    body :- metabot-settings-request-schema]
   (perms/check-has-application-permission :setting)
-  (let [{:keys [provider model api-key]} body]
-    (verify-api-key! provider api-key)
+  (let [{:keys [provider api-key] request-model :model} body
+        current-provider (current-setting-provider)
+        provider-changed? (not= current-provider provider)
+        model (cond
+                (non-blank-string request-model)
+                (effective-provider-model provider request-model)
+
+                provider-changed?
+                (or (effective-provider-model provider request-model)
+                    (metabot.settings/default-model-for-provider provider))
+
+                :else
+                nil)
+        response (-> (settings-response provider api-key)
+                     throw-api-key-error!)]
     (when (contains? body :api-key)
       (setting/set! (provider-api-key-setting-key provider) (non-blank-string api-key)))
     (when model
       (setting/set! :llm-metabot-provider (str provider "/" model)))
-    (try
-      (settings-response provider)
-      (catch clojure.lang.ExceptionInfo e
-        (if (:api-error (ex-data e))
-          (throw (ex-info (.getMessage e)
-                          (assoc (ex-data e) :status-code (api-error->status-code e))
-                          e))
-          (throw e))))))
+    (assoc response :value (metabot.settings/llm-metabot-provider))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot` routes."
   (handlers/routes
    (handlers/route-map-handler
-    {"/metabot"  metabase.metabot.api.metabot/routes
-     "/document" metabase.metabot.api.document/routes
+    {"/metabot"      metabase.metabot.api.metabot/routes
+     "/permissions"  metabase.metabot.api.permissions/routes
+     "/document"     metabase.metabot.api.document/routes
      ;; premium check happens in the route so we still ack events to prevent slack retrying
      "/slack"    metabase.slackbot.api/routes})
-   (api.macros/ns-handler 'metabase.metabot.api.describe +auth)
    (api.macros/ns-handler *ns* +auth)))

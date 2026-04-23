@@ -8,7 +8,8 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders } from "__support__/ui";
 import type { RouteParams } from "metabase/data-studio/data-model/pages/DataModel/types";
-import type { DataStudioTableMetadataTab } from "metabase/lib/urls";
+import { createMockState } from "metabase/redux/store/mocks";
+import type { DataStudioTableMetadataTab } from "metabase/utils/urls";
 import type {
   Database,
   EnterpriseSettings,
@@ -22,7 +23,6 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { TableSection } from "../TableSection";
 
@@ -42,7 +42,7 @@ export type SetupOpts = {
 export function setup({
   database = createMockDatabase(),
   table = createMockTable({ db: database }),
-  activeTab = "field",
+  activeTab = "details",
   segments,
   isAdmin = false,
   isDataAnalyst = false,

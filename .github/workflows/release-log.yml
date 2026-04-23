@@ -21,6 +21,10 @@ on:
         type: number # needs to be a number to pass variables
         required: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   update-release-log:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
@@ -29,10 +33,9 @@ jobs:
     if: ${{ github.event_name != 'push' || github.repository == 'metabase/metabase' }}
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_S3_RELEASE_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_S3_RELEASE_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_RELEASE_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
       - uses: actions/checkout@v4
         with:
@@ -70,21 +73,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: cd release && tsx ./src/release-log-run.ts $VERSION > v$VERSION.html
-      - name: generate release channel log
-        run: cd release && tsx ./src/release-channel-log.ts > channels.html
       - name: upload release log to the web
         run: |
           aws s3 cp \
           release/v$VERSION.html \
           s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/v$VERSION.html
-      - name: upload release channel log to the web
-        run: |
-          aws s3 cp \
-          release/channels.html \
-          s3://${{ vars.AWS_S3_STATIC_BUCKET }}/release-log/channels.html
 
       - name: Create cloudfront invalidation
         run: |
           aws cloudfront create-invalidation \
           --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
-          --paths "/release-log/v$VERSION.html" "/release-log/channels.html"
+          --paths "/release-log/v$VERSION.html"

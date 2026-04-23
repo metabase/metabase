@@ -4,7 +4,6 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
@@ -19,10 +18,17 @@ import { Columns } from "metabase/common/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
 import { Link } from "metabase/common/components/Link";
 import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
-import { getIcon } from "metabase/lib/icon";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { FixedSizeIcon, Flex, Icon, Repeat, Skeleton } from "metabase/ui";
+import {
+  Ellipsified,
+  FixedSizeIcon,
+  Flex,
+  Icon,
+  Repeat,
+  Skeleton,
+} from "metabase/ui";
+import { getIcon } from "metabase/utils/icon";
+import { useDispatch } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import type { SortingOptions } from "metabase-types/api";
 
 import BrowseTableS from "../components/BrowseTable.module.css";

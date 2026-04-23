@@ -11,6 +11,7 @@
    [metabase.search.spec :as search.spec]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf]
    [metabase.util.queue :as queue]
@@ -109,13 +110,18 @@
       false)))
 
 (defn- execute-all-function-attrs
-  "Execute all function attributes for a given spec and return computed values"
+  "Execute all function attributes for a given spec and return computed values.
+  If a function returns a map, its entries are merged directly into the result —
+  this allows a single function to populate multiple document keys (e.g. :temporal-info
+  returns both :has_temporal_dim and :non_temporal_dim_ids in one call)."
   [spec record]
   (reduce-kv
    (fn [acc attr-key attr-def]
      (if (search.spec/function-attr? attr-def)
-       (let [snake-key (keyword (u/->snake_case_en (name attr-key)))]
-         (assoc acc snake-key (execute-function-attr attr-key attr-def record)))
+       (let [result (execute-function-attr attr-key attr-def record)]
+         (if (map? result)
+           (merge acc result)
+           (assoc acc (keyword (u/->snake_case_en (name attr-key))) result)))
        acc))
    {}
    (:attrs spec)))
@@ -129,7 +135,7 @@
                         (update :archived boolean)
                         (assoc
                          :display_data (display-data m)
-                         :legacy_input (dissoc m :pinned :view_count :last_viewed_at :native_query)
+                         :legacy_input (json/encode (dissoc m :pinned :view_count :last_viewed_at :native_query :dataset_query))
                          :searchable_text (searchable-text m)
                          :embeddable_text (embeddable-text m)))]
     (merge fn-results sql-results)))
@@ -182,28 +188,44 @@
 
 (defn- spec-index-reducible [search-model & [where-clause]]
   (->> (spec-index-query-where search-model where-clause)
-       t2/reducible-query
-       (eduction (map #(assoc % :model search-model)))))
+       mdb/streaming-reducible-query
+       (eduction (cond-> (map #(assoc % :model search-model))
+                   ;; It's possible to get redundant entries from the indexed-entities table.
+                   ;; We deduplicate only that model to avoid an unbounded set over all documents.
+                   (= "indexed-entity" search-model)
+                   (comp (m/distinct-by (juxt :id :model)))))))
 
 (defn- search-items-reducible []
-  (let [models search.spec/search-models
-        ;; we're pushing indexed entities last in the search items reducible
-        ;; so that more important models gets indexed first, making the partial
-        ;; index more usable earlier
-        sorted-models (cond-> models
-                        (contains? models "indexed-entity")
-                        (-> (disj "indexed-entity") (concat ["indexed-entity"])))]
-    (reduce u/rconcat [] (map spec-index-reducible sorted-models))))
+  (reduce u/rconcat [] (map spec-index-reducible search.spec/search-models)))
+
+(def ^:private max-document-error-logs 10)
 
 (defn- query->documents [query-reducible]
-  (->> query-reducible
-       (eduction
-        (comp
-         (map t2.realize/realize)
-         ;; It's possible to get redundant entries from the indexed-entities table.
-         ;; We remove duplicates to avoid creating invalid insert statements.
-         (m/distinct-by (juxt :id :model))
-         (map ->document)))))
+  (let [failures (volatile! 0)]
+    (->> query-reducible
+         (eduction
+          (comp
+           (map t2.realize/realize)
+           (fn [rf]
+             (fn
+               ([] (rf))
+               ([result]
+                (when (pos? @failures)
+                  (log/warnf "Failed to build %d search documents; they were skipped" @failures))
+                (rf result))
+               ([result m]
+                (if-let [doc (try
+                               (->document m)
+                               (catch Throwable t
+                                 (let [n (vswap! failures inc)]
+                                   (cond
+                                     (<= n max-document-error-logs)
+                                     (log/warnf t "Error building search document for %s %s; skipping" (:model m) (:id m))
+                                     (= n (inc max-document-error-logs))
+                                     (log/warnf "Suppressing further per-document error logs after %d failures" max-document-error-logs)))
+                                 nil))]
+                  (rf result doc)
+                  result)))))))))
 
 (defn searchable-documents
   "Return all existing searchable documents from the database."
@@ -287,13 +309,15 @@
                              (reduce u/rconcat [])
                              query->documents)
               passed-documents (map extract-model-and-id updates)
-              indexed-documents (map (juxt :model (comp str :id)) (into [] documents))
+              ;; Collect just [model, id] pairs — tiny memory footprint vs materializing full document maps.
+              ;; The eduction will replay the streaming query when passed to update!.
+              indexed-pairs (into #{} (map (juxt :model (comp str :id))) documents)
               ;; TODO: The list of documents to delete is not completely accurate.
               ;; We are attempting to figure it out based on the ids that are passed in to be indexed vs. the ids of the rows that were actually indexed.
               ;; This will not work for cases like indexed-entries with compound PKs,
               ;; but it's fine for now because that model doesn't have a where clause so never needs to be purged during an update.
               ;; Long-term, we should find a better approach to knowing what to purge.
-              to-delete (remove (set indexed-documents) passed-documents)]
+              to-delete (remove indexed-pairs passed-documents)]
 
           (update! documents to-delete))
         {}))))

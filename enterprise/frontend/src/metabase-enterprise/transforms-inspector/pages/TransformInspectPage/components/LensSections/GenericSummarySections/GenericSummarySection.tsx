@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
+import { Ellipsified } from "metabase/ui";
 import {
   Box,
   Card,

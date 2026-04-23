@@ -4,6 +4,7 @@
   instead of creating charts. Does not save or navigate."
   (:require
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.construct :as construct]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
@@ -13,21 +14,24 @@
 (def ^:private slackbot-query-schema
   [:map {:closed true}
    [:reasoning :string]
-   [:query construct/construct-query-schema]
+   [:source_entity [:map [:type :string] [:id :int]]]
+   [:referenced_entities {:optional true} [:maybe [:sequential [:map [:type :string] [:id :int]]]]]
+   [:program construct/construct-program-schema]
    [:title {:optional true} [:maybe :string]]
    [:display {:optional true
               :description "Visualization type for displaying the query results in Slack. Required in practice whenever the user asks for a chart or graph, and it must match any requested chart type. Valid values: 'table', 'bar', 'line', 'pie', 'area', 'row', 'scatter', 'funnel'. Use requested chart types like 'line', 'bar', 'area', 'pie', 'scatter', 'funnel', 'row', or 'table' when they fit the query. Omitting this field falls back to Metabase's default table display, so do not omit it for chart or graph requests. Only omit it when you intentionally want a plain table and the user did not request a chart type."}
     [:maybe [:enum "table" "bar" "line" "pie" "area" "row" "scatter" "funnel"]]]])
 
-(mu/defn ^{:tool-name "construct_notebook_query"}
+(mu/defn ^{:tool-name "construct_notebook_query"
+           :scope     scope/agent-notebook-create}
   slackbot-construct-notebook-query-tool
   "Construct a notebook query from a metric, model, or table. The query results will be rendered as a visualization in Slack."
-  [{:keys [_reasoning query title display]} :- slackbot-query-schema]
+  [{:keys [_reasoning source_entity referenced_entities program title display]} :- slackbot-query-schema]
   (try
-    (let [query-result (construct/execute-query query)
+    (let [query-result (construct/execute-program source_entity referenced_entities program)
           structured   (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
-        (let [metabase-link (streaming/query->question-url (:query structured))
+        (let [metabase-link (streaming/query->question-url (:query structured) display)
               adhoc-viz-value (cond-> {:query (:query structured)
                                        :link  metabase-link}
                                 title   (assoc :title title)

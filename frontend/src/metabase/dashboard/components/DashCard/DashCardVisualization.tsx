@@ -1,11 +1,14 @@
 import cx from "classnames";
+import type { LocationDescriptorObject } from "history";
 import { useCallback, useMemo } from "react";
+import { push } from "react-router-redux";
 import { jt, t } from "ttag";
 import _ from "underscore";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink/ExternalLink";
 import { useLearnUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
+import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
@@ -15,10 +18,6 @@ import {
 } from "metabase/dashboard/selectors";
 import { getVirtualCardType } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { isVirtualDashCard } from "metabase/lib/dashboard";
-import { duration } from "metabase/lib/formatting";
-import { measureTextWidth } from "metabase/lib/measure-text";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { getSetting } from "metabase/selectors/settings";
 import {
@@ -35,6 +34,10 @@ import {
   Title,
   Transition,
 } from "metabase/ui";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { duration } from "metabase/utils/formatting";
+import { measureTextWidth } from "metabase/utils/measure-text";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { LoadingViewProps } from "metabase/visualizations/components/Visualization/LoadingView/LoadingView";
@@ -45,7 +48,10 @@ import {
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { extendCardWithDashcardSettings } from "metabase/visualizations/lib/settings/typed-utils";
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type {
+  CardSlownessStatus,
+  ComputedVisualizationSettings,
+} from "metabase/visualizations/types";
 import {
   createDataSource,
   isVisualizerDashboardCard,
@@ -78,10 +84,7 @@ import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import S from "./DashCardVisualization.module.css";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
-import type {
-  CardSlownessStatus,
-  DashCardOnChangeCardAndRunHandler,
-} from "./types";
+import type { DashCardOnChangeCardAndRunHandler } from "./types";
 import {
   getMissingColumnsFromVisualizationSettings,
   shouldShowParameterMapper,
@@ -258,6 +261,16 @@ export function DashCardVisualization({
     onChangeLocation,
     enableEntityNavigation,
   } = useDashboardContext();
+
+  const dispatch = useDispatch();
+
+  const onSameOriginNavigation = useCallback(
+    (location: LocationDescriptorObject) => {
+      dispatch(push(location));
+      dispatch(setParameterValuesFromQueryParams(location.query));
+    },
+    [dispatch],
+  );
 
   const datasets = useSelector((state) => getDashcardData(state, dashcard.id));
 
@@ -643,6 +656,7 @@ export function DashCardVisualization({
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
           enableEntityNavigation={enableEntityNavigation}
+          onSameOriginNavigation={onSameOriginNavigation}
           autoAdjustSettings
         />
       </EmbeddingEntityContextProvider>

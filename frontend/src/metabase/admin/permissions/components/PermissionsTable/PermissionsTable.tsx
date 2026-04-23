@@ -3,9 +3,8 @@ import cx from "classnames";
 import { memo, useCallback, useRef, useState } from "react";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
-import { Flex, Text, Tooltip } from "metabase/ui";
+import { Ellipsified, Flex, Text, Tooltip } from "metabase/ui";
 
 import type {
   DataPermissionValue,

@@ -17,7 +17,6 @@ import {
   useListTransformsQuery,
 } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
@@ -26,13 +25,11 @@ import CS from "metabase/css/core/index.css";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { type NamedUser, getUserName } from "metabase/lib/user";
 import { PLUGIN_REPLACEMENT, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { getShouldShowPythonTransformsUpsell } from "metabase/transforms/selectors";
+import { Ellipsified } from "metabase/ui";
 import {
   Card,
   EntityNameCell,
@@ -47,6 +44,9 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
+import { type NamedUser, getUserName } from "metabase/utils/user";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";
 import { CreateTransformMenu } from "./CreateTransformMenu";
@@ -156,11 +156,10 @@ export const TransformListPage = ({
 
   const treeData = useMemo(() => {
     const data = buildTreeData(collections, transforms);
-    // Only show Python library item if there's at least one item in the table
+
     // It will trigger the upsell modal if the feature isn't enabled.
     const shouldShowPythonLibraryRow =
-      data.length > 0 &&
-      (hasPythonTransformsFeature || shouldShowPythonTransformsUpsell);
+      hasPythonTransformsFeature || shouldShowPythonTransformsUpsell;
 
     if (shouldShowPythonLibraryRow) {
       data.push({

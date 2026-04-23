@@ -135,7 +135,10 @@
     :model/MetabotMessage
     :model/MetabotPrompt]
    (when config/ee-available?
-     [:model/Sandbox
+     [:model/MetabotPermissions
+      :model/MetabotGroupLimit
+      :model/MetabotInstanceLimit
+      :model/Sandbox
       :model/Tenant
       :model/ConnectionImpersonation])))
 

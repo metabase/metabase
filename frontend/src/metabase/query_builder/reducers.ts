@@ -8,38 +8,12 @@ import {
   updateCardEmbeddingParams,
   updateCardEnableEmbedding,
 } from "metabase/api";
-import {
-  EDIT_QUESTION,
-  NAVIGATE_TO_NEW_CARD,
-} from "metabase/dashboard/actions";
 import { TimelineEvents } from "metabase/entities/timeline-events";
-import type { Deferred } from "metabase/lib/promise";
-import { copy } from "metabase/lib/utils";
-import type {
-  Card,
-  CollectionItemModel,
-  Dataset,
-  Field,
-  NativeQuerySnippet,
-  ParameterValuesMap,
-  TimelineEvent,
-} from "metabase-types/api";
-import type {
-  ForeignKeyReference,
-  InitialChartSettingState,
-  QueryBuilderLoadingControls,
-  QueryBuilderParentEntityState,
-  QueryBuilderQueryStatus,
-  QueryBuilderUIControls,
-  Range,
-} from "metabase-types/store";
-
+import { EDIT_QUESTION, NAVIGATE_TO_NEW_CARD } from "metabase/redux/dashboard";
 import {
-  API_CREATE_QUESTION,
   API_UPDATE_QUESTION,
   CANCEL_QUERY,
   CANCEL_QUESTION_CHANGES,
-  CLEAR_OBJECT_DETAIL_FK_REFERENCES,
   CLEAR_QUERY_RESULT,
   CLOSE_AI_QUESTION_ANALYSIS_SIDEBAR,
   CLOSE_CHART_SETTINGS,
@@ -50,48 +24,73 @@ import {
   CLOSE_QUESTION_SETTINGS,
   CLOSE_SIDEBARS,
   CLOSE_TIMELINES,
-  DESELECT_TIMELINE_EVENTS,
   EDIT_SUMMARY,
-  HIDE_TIMELINE_EVENTS,
   INITIALIZE_QB,
-  LOAD_OBJECT_DETAIL_FK_REFERENCES,
   ON_CLOSE_SUMMARY,
   OPEN_AI_QUESTION_ANALYSIS_SIDEBAR,
   OPEN_CHART_SETTINGS,
   OPEN_CHART_TYPE,
-  OPEN_DATA_REFERENCE_AT_QUESTION,
   OPEN_QUESTION_INFO,
   OPEN_QUESTION_SETTINGS,
   OPEN_TIMELINES,
   QUERY_COMPLETED,
   QUERY_ERRORED,
-  RELOAD_CARD,
   RESET_QB,
   RESET_ROW_ZOOM,
   RESET_UI_CONTROLS,
   RUN_QUERY,
+  SET_DOCUMENT_TITLE,
+  SET_DOCUMENT_TITLE_TIMEOUT_ID,
+  SET_PARAMETER_VALUE,
+  SET_SHOW_LOADING_COMPLETE_FAVICON,
+  SET_UI_CONTROLS,
+  SHOW_CHART_SETTINGS,
+  SOFT_RELOAD_CARD,
+  ZOOM_IN_ROW,
+} from "metabase/redux/query-builder";
+import type {
+  ForeignKeyReference,
+  InitialChartSettingState,
+  QueryBuilderLoadingControls,
+  QueryBuilderParentEntityState,
+  QueryBuilderQueryStatus,
+  QueryBuilderUIControls,
+  Range,
+} from "metabase/redux/store";
+import { clone } from "metabase/utils/clone";
+import type { Deferred } from "metabase/utils/promise";
+import type {
+  Card,
+  CollectionItemModel,
+  Dataset,
+  Field,
+  NativeQuerySnippet,
+  ParameterValuesMap,
+  TimelineEvent,
+} from "metabase-types/api";
+
+import {
+  API_CREATE_QUESTION,
+  CLEAR_OBJECT_DETAIL_FK_REFERENCES,
+  DESELECT_TIMELINE_EVENTS,
+  HIDE_TIMELINE_EVENTS,
+  LOAD_OBJECT_DETAIL_FK_REFERENCES,
+  OPEN_DATA_REFERENCE_AT_QUESTION,
+  RELOAD_CARD,
   SELECT_TIMELINE_EVENTS,
   SET_CARD_AND_RUN,
   SET_CURRENT_STATE,
   SET_DATA_REFERENCE_STACK,
-  SET_DOCUMENT_TITLE,
-  SET_DOCUMENT_TITLE_TIMEOUT_ID,
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
   SET_METADATA_DIFF,
   SET_MODAL_SNIPPET,
   SET_NATIVE_EDITOR_SELECTED_RANGE,
-  SET_PARAMETER_VALUE,
-  SET_SHOW_LOADING_COMPLETE_FAVICON,
   SET_SNIPPET_COLLECTION_ID,
-  SET_UI_CONTROLS,
-  SHOW_CHART_SETTINGS,
   SHOW_TIMELINE_EVENTS,
-  SOFT_RELOAD_CARD,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_SNIPPET_SIDEBAR,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   UPDATE_QUESTION,
-  ZOOM_IN_ROW,
 } from "./actions";
 import {
   CLOSED_NATIVE_EDITOR_SIDEBARS,
@@ -410,24 +409,24 @@ export const originalCard = createReducer<Card | null>(null, (builder) => {
     .addCase<string, { type: string; payload: { originalCard?: Card } }>(
       INITIALIZE_QB,
       (_state, action) =>
-        action.payload.originalCard ? copy(action.payload.originalCard) : null,
+        action.payload.originalCard ? clone(action.payload.originalCard) : null,
     )
     .addCase<string, { type: string; payload: Card }>(
       RELOAD_CARD,
-      (_state, action) => (action.payload.id ? copy(action.payload) : null),
+      (_state, action) => (action.payload.id ? clone(action.payload) : null),
     )
     .addCase<string, { type: string; payload: { originalCard?: Card } }>(
       SET_CARD_AND_RUN,
       (_state, action) =>
-        action.payload.originalCard ? copy(action.payload.originalCard) : null,
+        action.payload.originalCard ? clone(action.payload.originalCard) : null,
     )
     .addCase<string, { type: string; payload: Card }>(
       API_CREATE_QUESTION,
-      (_state, action) => copy(action.payload),
+      (_state, action) => clone(action.payload),
     )
     .addCase<string, { type: string; payload: Card }>(
       API_UPDATE_QUESTION,
-      (_state, action) => copy(action.payload),
+      (_state, action) => clone(action.payload),
     );
 });
 
@@ -525,7 +524,9 @@ export const parameterValues = createReducer<ParameterValuesMap>(
       .addCase<
         string,
         { type: string; payload: { id: string; value: unknown } }
-      >(SET_PARAMETER_VALUE, (state, action) => assoc(state, action.payload.id, action.payload.value));
+      >(SET_PARAMETER_VALUE, (state, action) =>
+        assoc(state, action.payload.id, action.payload.value),
+      );
   },
 );
 

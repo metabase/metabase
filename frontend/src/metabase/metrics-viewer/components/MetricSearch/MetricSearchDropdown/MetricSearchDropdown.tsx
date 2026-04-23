@@ -1,4 +1,12 @@
-import { useCallback, useMemo, useState } from "react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useUnmount } from "react-use";
 import { t } from "ttag";
 
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
@@ -9,19 +17,26 @@ import {
   useMetricMeasureSearch,
 } from "../../../hooks/use-metric-measure-search";
 import type { SelectedMetric } from "../../../types/viewer-state";
+import { createSourceId } from "../../../utils/source-ids";
 import { MetricSearchResults } from "../MetricSearchResults";
-import { type ExcludeMetric, filterSearchResults } from "../utils";
+import {
+  type ExcludeMetric,
+  type MetricNameMap,
+  filterSearchResults,
+} from "../utils";
 
 import S from "./MetricSearchDropdown.module.css";
 
 type MetricSearchDropdownProps = {
-  selectedMetricIds: Set<number>;
-  selectedMeasureIds: Set<number>;
+  selectedMetricIds?: Set<number>;
+  selectedMeasureIds?: Set<number>;
   onSelect: (metric: SelectedMetric) => void;
   onClose?: () => void;
   excludeMetric?: ExcludeMetric;
   showSearchInput?: boolean;
   externalSearchText?: string;
+  onHasSelectionChange?: (hasSelection: boolean) => void;
+  setSearchMetricNames?: Dispatch<SetStateAction<MetricNameMap>>;
 };
 
 export function MetricSearchDropdown({
@@ -32,6 +47,8 @@ export function MetricSearchDropdown({
   excludeMetric,
   showSearchInput = false,
   externalSearchText,
+  onHasSelectionChange,
+  setSearchMetricNames,
 }: MetricSearchDropdownProps) {
   const [internalSearchText, setInternalSearchText] = useState("");
   const searchText = showSearchInput
@@ -50,6 +67,22 @@ export function MetricSearchDropdown({
       ),
     [results, selectedMetricIds, selectedMeasureIds, excludeMetric],
   );
+
+  useEffect(() => {
+    setSearchMetricNames?.((prev) => ({
+      ...prev,
+      ...Object.fromEntries(
+        filteredResults.map((result) => [
+          createSourceId(result.id, result.model),
+          result.name,
+        ]),
+      ),
+    }));
+  }, [filteredResults, setSearchMetricNames]);
+
+  useUnmount(() => {
+    setSearchMetricNames?.({});
+  });
 
   const handleSelectResult = useCallback(
     (id: number, model: "metric" | "measure") => {
@@ -83,6 +116,10 @@ export function MetricSearchDropdown({
     list: filteredResults,
     onEnter: handleEnter,
   });
+
+  useEffect(() => {
+    onHasSelectionChange?.(cursorIndex != null);
+  }, [cursorIndex, onHasSelectionChange]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

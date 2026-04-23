@@ -72,6 +72,7 @@ const setup = (
     isVisualizer: false,
     isVisualizerCard: false,
     isEditing: false,
+    isMetricsViewer: false,
     isMobile: false,
     isSettings: false,
     width: 500,

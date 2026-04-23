@@ -125,7 +125,7 @@
 (deftest ^:parallel available-temporal-buckets-marks-selected-test
   (testing "Selected unit is marked when projection has temporal-unit"
     (let [projection [:dimension {:temporal-unit :month} uuid-datetime]
-          def-with-proj (assoc definition :projections [{:type :metric :id 1 :projection [projection]}])
+          def-with-proj (assoc definition :projections [{:type :metric :id 1 :lib/uuid "550e8400-e29b-41d4-a716-446655440099" :projection [projection]}])
           buckets (lib-metric.projection/available-temporal-buckets def-with-proj datetime-dimension)]
       (is (some #(and (= :month (:unit %)) (:selected %)) buckets)))))
 

@@ -19,6 +19,7 @@
   - metabase://dashboard/{id} - Dashboard details"
   (:require
    [clojure.string :as str]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -77,47 +78,63 @@
 
       ;; metabase://table/123/fields
       (= sub-resource "fields")
-      (entity-details/get-table-details {:table-id table-id
-                                         :with-fields true
-                                         :with-field-values false
-                                         :with-related-tables false})
+      (entity-details/get-table-details {:entity-type :table
+                                         :entity-id table-id
+                                         :with-fields? true
+                                         :with-field-values? false
+                                         :with-related-tables? false
+                                         :with-measures? true
+                                         :with-segments? true})
 
       ;; metabase://table/123
       (nil? sub-resource)
-      (entity-details/get-table-details {:table-id table-id
-                                         :with-fields false
-                                         :with-field-values false
-                                         :with-related-tables false})
+      (entity-details/get-table-details {:entity-type :table
+                                         :entity-id table-id
+                                         :with-fields? false
+                                         :with-field-values? false
+                                         :with-related-tables? false
+                                         :with-measures? true
+                                         :with-segments? true})
 
       :else
       (throw (ex-info (str "Unsupported sub-resource '" sub-resource "' for table. Supported: fields")
                       {:resource-id resource-id :sub-resource sub-resource})))))
 
-(defn- fetch-model-resource
+(defn- fetch-model-or-card-resource
   "Fetch model resource based on URI components."
-  [{:keys [resource-id sub-resource sub-resource-id]}]
-  (let [model-id (parse-long resource-id)]
+  [{:keys [resource-id resource-type sub-resource sub-resource-id]}]
+  (let [resource-id* (parse-long resource-id)
+        resource-type* (keyword resource-type)]
+    (assert (#{:question :model} resource-type*))
     (cond
-      ;; metabase://model/123/fields/FIELD_ID
+      ;; metabase://<model,question>/123/fields/FIELD_ID
       (and (= sub-resource "fields") sub-resource-id)
-      (field-stats/field-values {:entity-type "model"
-                                 :entity-id model-id
+      ;; field-values takes type as string and id as integer
+      (field-stats/field-values {:entity-type resource-type
+                                 :entity-id resource-id*
                                  :field-id sub-resource-id
                                  :limit 30})
 
-      ;; metabase://model/123/fields
+      ;; metabase://<model,question>/123/fields
       (= sub-resource "fields")
-      (entity-details/get-table-details {:model-id model-id
-                                         :with-fields true
-                                         :with-field-values false
-                                         :with-related-tables false})
+      ;; get-table-details takes type as kw and id as integer
+      (entity-details/get-table-details {:entity-type resource-type*
+                                         :entity-id resource-id*
+                                         :with-fields? true
+                                         :with-field-values? false
+                                         :with-related-tables? false
+                                         :with-measures? true
+                                         :with-segments? true})
 
-      ;; metabase://model/123
+      ;; metabase://<model,question>/123
       (nil? sub-resource)
-      (entity-details/get-table-details {:model-id model-id
-                                         :with-fields false
-                                         :with-field-values false
-                                         :with-related-tables false})
+      (entity-details/get-table-details {:entity-type resource-type*
+                                         :entity-id resource-id*
+                                         :with-fields? false
+                                         :with-field-values? false
+                                         :with-related-tables? false
+                                         :with-measures? true
+                                         :with-segments? true})
 
       :else
       (throw (ex-info (str "Unsupported sub-resource '" sub-resource "' for model. Supported: fields")
@@ -174,7 +191,8 @@
 (def ^:private resource-handlers
   "Map of resource type to handler function."
   {"table"     fetch-table-resource
-   "model"     fetch-model-resource
+   "model"     fetch-model-or-card-resource
+   "question"  fetch-model-or-card-resource
    "metric"    fetch-metric-resource
    "transform" fetch-transform-resource
    "dashboard" fetch-dashboard-resource})
@@ -269,7 +287,8 @@
     {:resources resources
      :output formatted}))
 
-(mu/defn ^{:tool-name "read_resource"}
+(mu/defn ^{:tool-name "read_resource"
+           :scope     scope/agent-resource-read}
   read-resource-tool
   "Read detailed information about Metabase resources via URI patterns.
 

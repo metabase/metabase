@@ -4,16 +4,16 @@ import { t } from "ttag";
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import {
-  onCloseChartSettings,
-  onOpenChartType,
-  onReplaceAllVisualizationSettings,
-} from "metabase/query_builder/actions";
+import { onReplaceAllVisualizationSettings } from "metabase/query_builder/actions";
 import {
   getUiControls,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
+import {
+  onCloseChartSettings,
+  onOpenChartType,
+} from "metabase/redux/query-builder";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 import visualizations from "metabase/visualizations";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type Question from "metabase-lib/v1/Question";

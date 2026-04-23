@@ -9,10 +9,10 @@ import {
   isPublicEmbedding,
   isStaticEmbedding,
 } from "metabase/embedding/config";
-import { getSitePath } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
 import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
 import { useMantineTheme } from "metabase/ui";
+import { getSitePath } from "metabase/utils/dom";
+import { useSelector } from "metabase/utils/redux";
 import { saveDomImageStyles } from "metabase/visualizations/lib/image-exports";
 
 import { getFont, getFontFiles } from "../../selectors";

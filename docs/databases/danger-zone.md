@@ -25,6 +25,6 @@ This option allows you to clear all saved field values that were collected durin
 > If you’re trying to migrate from a development DB to a production one, you don’t need to do this. You can just
 > edit your connection details.
 
-This will delete the database _connection_ (not your database and its data). But deleting the connection will also delete all of the questions, models, metrics, segments. You'll have to check a bunch of boxes to even do this to make you know what you're doing.
+This will delete the database _connection_ (not your database and its data). But deleting the connection will also delete all of the questions, models, metrics, segments. You'll have to check a bunch of boxes to even do this to make sure you know what you're doing.
 
 This action is irreversible in Metabase. If you accidentally delete a database connection, the only way to get your stuff back is to restore your Metabase from the last [backup of your application database](../installation-and-operation/backing-up-metabase-application-data.md).

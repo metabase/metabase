@@ -6,11 +6,11 @@ import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { useListPermissionsGroupsQuery, useListUsersQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Button, Flex, Group, Tabs, Title } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 
 import { PeopleList } from "../../components/PeopleList";
 import { SearchFilter } from "../../components/SearchFilter";
@@ -82,11 +82,14 @@ export function PeopleListingApp({
     }
   };
 
+  // Only reset status if it actually needs changing. Calling `updateStatus`
+  // unconditionally triggers `setPage(0)`, which races any in-flight
+  // pagination clicks when this effect re-fires on query resolution.
   useEffect(() => {
-    if (!hasDeactivatedUsers) {
-      updateStatus("active");
+    if (!hasDeactivatedUsers && status !== ACTIVE_STATUS.active) {
+      updateStatus(ACTIVE_STATUS.active);
     }
-  }, [hasDeactivatedUsers, updateStatus]);
+  }, [hasDeactivatedUsers, status, updateStatus]);
 
   const pageTitle = useMemo(() => {
     if (!isUsingTenants) {

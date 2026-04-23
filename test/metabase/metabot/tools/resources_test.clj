@@ -3,8 +3,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.resources :as read-resource]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]))
 
 (deftest parse-uri-test
@@ -42,6 +45,13 @@
             :sub-resource nil
             :sub-resource-id nil}
            (#'read-resource/parse-uri "metabase://model/456"))))
+
+  (testing "parses question URI"
+    (is (= {:resource-type "question"
+            :resource-id "456"
+            :sub-resource nil
+            :sub-resource-id nil}
+           (#'read-resource/parse-uri "metabase://question/456"))))
 
   (testing "parses metric with dimensions"
     (is (= {:resource-type "metric"
@@ -96,6 +106,26 @@
                   (read-resource/read-resource
                    {:uris ["metabase://table/99999"]}))))))))
 
+(deftest read-table-resource-excludes-related-tables-test
+  (testing "table resources should not include related_tables (to avoid bloated responses)"
+    (mt/test-drivers #{:h2}
+      (mt/with-current-user (mt/user->id :crowberto)
+        ;; Use orders table which has FK relationships to other tables
+        (let [orders-id (mt/id :orders)]
+          (testing "metabase://table/:id excludes related_tables"
+            (let [result (read-resource/read-resource
+                          {:uris [(str "metabase://table/" orders-id)]})
+                  output (get-in result [:resources 0 :content :structured-output])]
+              (is (nil? (:related_tables output))
+                  "table resource should not include related_tables")))
+
+          (testing "metabase://table/:id/fields excludes related_tables"
+            (let [result (read-resource/read-resource
+                          {:uris [(str "metabase://table/" orders-id "/fields")]})
+                  output (get-in result [:resources 0 :content :structured-output])]
+              (is (nil? (:related_tables output))
+                  "table/fields resource should not include related_tables"))))))))
+
 (deftest read-dashboard-resource-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dashboard-id :id dashboard-name :name}
@@ -115,7 +145,7 @@
                 (read-resource/read-resource {:uris ["metabase://dashboard/99999"]})))))))
 
 (deftest read-transform-resource-test
-  (mt/with-premium-features #{:metabot-v3 :transforms}
+  (mt/with-premium-features #{:transforms}
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Transform {transform-id :id transform-name :name}
                      {:name   "Gadget Products"
@@ -152,3 +182,30 @@
                       :error "Table not found"}]
           formatted (#'read-resource/format-resources resources)]
       (is (str/includes? formatted "**Error:** Table not found")))))
+
+(deftest read-question-resource-test
+  (let [mp (mt/metadata-provider)
+        query (as-> (lib/query mp (lib.metadata/table mp (mt/id :products))) $
+                (lib/aggregate $ (lib/count))
+                (lib/breakout $ (m/find-first (comp #{"Category"} :display-name)
+                                              (lib/breakoutable-columns $))))
+        metadata (-> query
+                     qp/process-query
+                     :data :results_metadata :columns)]
+
+    (mt/with-temp
+      [:model/Card {question-id :id} {:name "My fav card"
+                                      :dataset_query query
+                                      :result_metadata metadata}]
+      (mt/with-test-user :crowberto
+        (let [read-result (read-resource/read-resource-tool
+                           {:uris [(str "metabase://question/" question-id "/fields")]})
+              output (:output read-result)
+              structured (get-in read-result [:resources 0 :content :structured-output])]
+          (testing "Output references expected fields"
+            (is (re-find #"display_name\S+Count" output))
+            (is (re-find #"display_name\S+Category" output)))
+          (testing "Structured output contains expected fields"
+            (is (=? {:fields [{:display_name "Category"}
+                              {:display_name "Count"}]}
+                    structured))))))))

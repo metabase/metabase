@@ -101,11 +101,13 @@ When you get an error in a SQL query, you can click the **Have Metabot fix it** 
 You can ask Metabot to generate or edit code in the SQL editor, without using the [chat sidebar](#the-metabot-chat-sidebar):
 
 1. Open the [SQL editor](../questions/native-editor/writing-sql.md).
-2. Press Cmd+shift+i on Mac or Ctrl+shift+i on Windows.
-3. Describe the SQL you want to generate or modify.
-4. Review the generated code and accept or reject it.
+2. Press **Cmd+Shift+I** (Mac) or **Ctrl+Shift+I** (Windows).
+3. Enter one or more tables.
+4. Type a prompt describing the query you want to write.
+5. Click **Generate** to create the SQL.
+6. Accept or reject the change. Always review the code before running it (AI is not magic).
 
-Once you start typing or editing your SQL, you can continue using the keyboard shortcut to refine your code.
+You can also edit existing SQL. Place your cursor in the query, press **Cmd/Ctrl+Shift+I**, and describe the change you want to make (like "add a filter for orders from this year"). Metabase will suggest edits that you can accept or reject.
 
 ## Navigating after Metabot creates a chart
 

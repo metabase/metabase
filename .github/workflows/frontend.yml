@@ -16,7 +16,7 @@ on:
         type: boolean
         default: false
       skip-lint:
-        description: "Skip linting jobs (prettier, eslint, css variables check)"
+        description: "Skip linting jobs (oxfmt, eslint, css variables check)"
         type: boolean
         default: false
 
@@ -49,8 +49,8 @@ jobs:
         run: bun run build-pure:cljs
       - name: Find CSS variables that are used but never defined
         run: bun run find-never-defined-css-variables
-      - name: Run Prettier formatting linter
-        run: bun run lint-prettier-pure
+      - name: Run oxfmt formatting linter
+        run: bun run lint-format-pure
       - name: Run ESLint linter
         run: bun run lint-eslint-pure
       - name: Run CSS linter
@@ -103,8 +103,7 @@ jobs:
           input-path: ./target/junit
           output-name: frontend-unit
           bucket: ${{ vars.AWS_S3_TEST_RESULTS_BUCKET }}
-          aws-access-key-id: ${{ secrets.AWS_TEST_RESULTS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_TEST_RESULTS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ secrets.CI_TEST_RESULTS_IAM_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
           trunk-api-token: ${{ secrets.TRUNK_API_TOKEN }}
           previous-step-outcome: ${{ steps.fe-tests.outcome }}

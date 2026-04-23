@@ -88,7 +88,10 @@ describe("issue 45255", () => {
     // Can reorder (empty)
     H.getDraggableElements().eq(2).should("have.text", "(empty)");
     H.getDraggableElements().first().as("dragElement");
-    H.moveDnDKitElementByAlias("@dragElement", { vertical: 100 });
+    H.moveDnDKitElementByAlias("@dragElement", {
+      vertical: 100,
+      useMouseEvents: true,
+    });
     H.getDraggableElements().eq(1).should("have.text", "(empty)");
 
     // Has (empty) in the chart
@@ -212,7 +215,7 @@ describe("issue 47847", () => {
 
     H.cartesianChartCircleWithColor("#509EE3").eq(0).trigger("mousemove");
     H.assertEChartsTooltip({
-      header: "April 24–30, 2022",
+      header: "April 27 – May 3, 2025", // expect this to break when we shift years in the Sample Database
       blurAfter: false,
       footer: null,
       rows: [
@@ -252,7 +255,7 @@ describe("issue 51926", () => {
       cy.findByTestId("Pivot Table-button").click();
     });
 
-    cy.findAllByTestId("pivot-table-cell").contains("April 24, 2022");
+    cy.findAllByTestId("pivot-table-cell").should("contain", "April 27, 2025"); // expect this to break when we shift years in the Sample Database
   });
 });
 
@@ -283,7 +286,7 @@ describe("issue 51952", () => {
 
     cy.findByTestId("settings-CREATED_AT").click();
     H.popover().findByText("Abbreviate days and months").click();
-    H.echartsContainer().findByText("Jan 2024");
+    H.echartsContainer().findByText("Jan 2027");
   });
 });
 
@@ -782,9 +785,10 @@ describe("UXW-2696", () => {
 
     H.getDocumentSidebar().within(() => {
       cy.findByRole("radio", { name: /axes/i }).click({ force: true });
-      cy.findByRole("switch", { name: /auto y-axis range/i }).should(
-        "not.have.attr",
+      cy.findByLabelText("Auto y-axis range").should(
+        "have.attr",
         "data-checked",
+        "false",
       );
 
       cy.findByLabelText("Min").clear().type("70");
@@ -825,9 +829,10 @@ describe("UXW-2696", () => {
 
       H.modal().within(() => {
         cy.findByRole("radio", { name: /axes/i }).click({ force: true });
-        cy.findByRole("switch", { name: /auto y-axis range/i }).should(
-          "not.have.attr",
+        cy.findByLabelText("Auto y-axis range").should(
+          "have.attr",
           "data-checked",
+          "false",
         );
 
         assertNoPoints(false);

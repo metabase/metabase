@@ -1,13 +1,15 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { useGetMetricQuery } from "metabase/api/metric";
 import {
   type PaneHeaderTab,
   PaneHeaderTabs,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { useSelector } from "metabase/lib/redux";
+import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { getMetadata } from "metabase/selectors/metadata";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -22,9 +24,12 @@ interface MetricTabsProps {
 
 export function MetricTabs({ card, urls }: MetricTabsProps) {
   const metadata = useSelector(getMetadata);
+  const { data: metric } = useGetMetricQuery(card.id);
+  const hasDimensions =
+    metric?.dimensions != null && metric.dimensions.length > 0;
   const tabs = useMemo(
-    () => getTabs(card, metadata, urls),
-    [card, metadata, urls],
+    () => getTabs(card, metadata, urls, hasDimensions),
+    [card, metadata, urls, hasDimensions],
   );
   return <PaneHeaderTabs tabs={tabs} />;
 }
@@ -33,6 +38,7 @@ function getTabs(
   card: Card,
   metadata: Metadata,
   urls: MetricUrls,
+  hasDimensions: boolean,
 ): PaneHeaderTab[] {
   const tabs: PaneHeaderTab[] = [
     {
@@ -45,10 +51,13 @@ function getTabs(
   const queryInfo = Lib.queryDisplayInfo(query);
 
   if (queryInfo.isEditable) {
-    tabs.push({
-      label: t`Overview`,
-      to: urls.overview(card.id),
-    });
+    if (isNumericMetric(card) && hasDimensions) {
+      tabs.push({
+        label: t`Overview`,
+        to: urls.overview(card.id),
+      });
+    }
+
     tabs.push({
       label: t`Definition`,
       to: urls.query(card.id),
@@ -63,6 +72,7 @@ function getTabs(
   }
 
   const isCacheableQuestion =
+    card.can_write &&
     PLUGIN_CACHING.isGranularCachingEnabled() &&
     PLUGIN_CACHING.hasQuestionCacheSection(new Question(card));
 

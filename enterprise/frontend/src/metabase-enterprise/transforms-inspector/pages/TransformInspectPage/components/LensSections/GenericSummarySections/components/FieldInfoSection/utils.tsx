@@ -2,8 +2,8 @@ import type { CellContext } from "@tanstack/react-table";
 import { c, t } from "ttag";
 
 import { getFormattedTime } from "metabase/common/components/DateTime";
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
+import { Ellipsified } from "metabase/ui";
 import {
   EntityNameCell,
   Flex,

@@ -1,8 +1,12 @@
 (ns metabase.metabot.self.core
   (:require
+   [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [metabase.llm.settings :as llm]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.o11y :refer [with-span]])
@@ -41,7 +45,8 @@
     :temperature - Sampling temperature
     :max-tokens  - Maximum tokens in the response
     :schema      - JSON Schema map for structured output; each provider forces a
-                   tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)"
+                   tool call (Claude, OpenRouter) or uses json_schema mode (OpenAI)
+    :ai-proxy?   - When true, skip provider auth and use the Metabase AI proxy"
   [:map
    [:model       {:optional true} :string]
    [:system      {:optional true} [:maybe :string]]
@@ -50,7 +55,8 @@
    [:tool_choice {:optional true} [:maybe [:enum "auto" "required"]]]
    [:temperature {:optional true} [:maybe number?]]
    [:max-tokens  {:optional true} [:maybe :int]]
-   [:schema      {:optional true} :any]])
+   [:schema      {:optional true} :any]
+   [:ai-proxy?   {:optional true} [:maybe :boolean]]])
 
 (defn mkid
   "Generate a random id"
@@ -416,7 +422,7 @@
                          (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
           results  (try
                      (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
-                           arguments (coerce-stringified-json arguments)
+                           arguments (or (coerce-stringified-json arguments) {})
                            decode    (tool-decode-fn tool)
                            arguments (cond-> arguments decode decode)]
                        (log/debug "Executing tool" {:tool-name tool-name :arguments arguments})
@@ -480,3 +486,58 @@
            nil)
 
          (rf result chunk))))))
+
+(defn rethrow-api-error!
+  "Rethrow a provider HTTP exception with a translated, user-facing message.
+
+  `res->message` receives the decoded response map and must return the message
+  to surface to the client.  If the exception already carries `:api-error true`
+  in its ex-data (e.g. a missing-API-key error from [[resolve-auth]]) it is
+  rethrown as-is so the original message is preserved."
+  [provider res->message e]
+  (let [data (ex-data e)]
+    (cond
+      (:api-error data) (throw e)
+      (:body data)      (let [res (json/decode-body data)]
+                          (throw (ex-info (res->message res)
+                                          (assoc res
+                                                 :api-error  true
+                                                 :provider   provider
+                                                 :error-code :provider-api-error)
+                                          e)))
+      :else             (throw (ex-info (tru "{0} API request failed: {1}" provider (ex-message e))
+                                        {:api-error  true
+                                         :provider   provider
+                                         :error-code :provider-request-failed}
+                                        e)))))
+
+(defn missing-api-key-ex
+  "Create a standardized missing-API-key exception for provider adapters."
+  [llm-type]
+  (ex-info (tru "No {0} API key is set" llm-type)
+           {:api-error  true
+            :error-code :api-key-missing}))
+
+(defn resolve-auth
+  "Pick the right auth map for an LLM request.
+
+  - When `ai-proxy?` is true, uses the Metabase Cloud proxy (errors if unconfigured).
+   - Otherwise uses the provider's BYOK `auth`."
+  [provider-slug llm-type auth ai-proxy?]
+  (let [proxy-auth (when-let [base (llm/llm-proxy-base-url)]
+                     {:url     (str (str/replace base #"/+$" "") "/" provider-slug)
+                      :headers {"x-metabase-instance-token" (premium-features/premium-embedding-token)}})]
+    (if ai-proxy?
+      (or proxy-auth
+          (throw (ex-info (tru "AI proxy is not configured")
+                          {:api-error  true
+                           :error-code :proxy-not-configured})))
+      (or auth
+          (throw (missing-api-key-ex llm-type))))))
+
+(defn request
+  "Perform an LLM HTTP request with the given auth (a map of `:url` and `:headers`)."
+  [{:keys [url headers]} req]
+  (http/request (-> req
+                    (update :url #(str url %))
+                    (update :headers merge headers))))

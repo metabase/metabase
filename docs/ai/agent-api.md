@@ -6,7 +6,13 @@ summary: The Agent API is a REST API for building headless, agentic BI applicati
 
 # Agent API
 
-The Agent API is a REST API for building headless, agentic BI applications on top of Metabase's semantic layer, scoped to an authenticated user's permissions.
+The [Agent API](../api.html#tag/apiagent) is a REST API for building headless, agentic BI applications on top of Metabase's semantic layer, scoped to an authenticated user's permissions.
+
+## Agent API endpoints and reference
+
+Check out the API endpoint docs: [/api/agent](../api.html#tag/apiagent).
+
+You can also point your AI to the [Agent API reference](https://github.com/metabase/metabase/blob/master/src/metabase/agent_api/reference.md) to bootstrap your agent.
 
 ## Example application
 
@@ -36,12 +42,6 @@ If you want to connect an MCP-compatible AI client (like Claude Desktop) without
 ## Row limits and pagination
 
 Queries return a maximum of 200 rows per request. To page through larger result sets, use `POST /api/agent/v1/query`, which returns a `continuation_token` when more rows are available. Pass the token back to get the next page.
-
-## Agent API endpoints and reference
-
-Check out the API endpoints: [/api/agent](../api.html#tag/apiagent).
-
-You can also point your AI to the [Agent API reference](https://github.com/metabase/metabase/blob/master/src/metabase/agent_api/reference.md) to bootstrap your agent.
 
 ## Authentication
 

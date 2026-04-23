@@ -140,6 +140,16 @@
       (try
         (log/info "Sending")
         (prometheus/inc! :metabase-notification/concurrent-tasks)
+        ;; Guard against orphaned card notifications whose payload record was cascade-deleted.
+        ;; Only applies to persisted notifications (with a non-nil :payload_id); Pulse-converted
+        ;; notifications pass through :payload instead and have no :payload_id.
+        (when-let [payload-id (when (= :notification/card payload_type)
+                                (:payload_id notification-info))]
+          (when-not (t2/exists? :model/NotificationCard payload-id)
+            (log/warnf "Payload for notification %d no longer exists, deleting" id)
+            (t2/delete! :model/Notification id)
+            (throw (ex-info "Card no longer exists, notification deleted"
+                            {:notification-id id}))))
         (let [hydrated-notification (hydrate-notification notification-info)
               handlers              (:handlers hydrated-notification)]
           (task-history/with-task-history {:task          "notification-send"

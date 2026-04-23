@@ -4,17 +4,17 @@ import { useEffect } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
+import { Button } from "metabase/common/components/Button/Button";
+import { FieldSet } from "metabase/common/components/FieldSet";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
 import {
   getSegmentQuery,
   getSegmentQueryDefinition,
-} from "metabase/admin/datamodel/utils/segments";
-import { Button } from "metabase/common/components/Button/Button";
-import { FieldSet } from "metabase/common/components/FieldSet";
-import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
-import { SegmentEditor } from "metabase/querying/segments/components/SegmentEditor";
+} from "metabase/querying/segments/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Alert } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { DatasetQuery, Segment, TableId } from "metabase-types/api";

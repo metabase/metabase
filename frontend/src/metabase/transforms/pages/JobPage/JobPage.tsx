@@ -8,13 +8,13 @@ import {
   useUpdateTransformJobMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import {
   canEditTransform,
   useTransformPermissions,
 } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type {
   ScheduleDisplayType,
   TransformJob,

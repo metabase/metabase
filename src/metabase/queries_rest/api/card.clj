@@ -215,11 +215,21 @@
                     :can_manage_db
                     [:collection :is_personal]
                     [:moderation_reviews :moderator_details]
+                    :param_fields
                     :is_remote_synced)
+        (update :param_fields (fn [param-fields]
+                                (let [viewable? (memoize (fn [table-id]
+                                                           (perms/user-has-permission-for-table?
+                                                            api/*current-user-id*
+                                                            :perms/view-data :unrestricted
+                                                            (:database_id card) table-id)))]
+                                  (update-vals param-fields
+                                               (fn [fields]
+                                                 (filterv #(viewable? (:table_id %)) fields))))))
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          (queries/model? card) (t2/hydrate :persisted
-                                           ;; can_manage_db determines whether we should enable model persistence settings
+                                              ;; can_manage_db determines whether we should enable model persistence settings
                                            :can_manage_db)))))
 
 (defn- get-card

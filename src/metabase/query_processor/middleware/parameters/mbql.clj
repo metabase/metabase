@@ -79,7 +79,7 @@
    {param-type :type, param-value :value, target :target, :as param} :- ::lib.schema.parameter/parameter]
   (let [a-ref (lib.util.match/match-lite target
                 [#{:field :expression} & _]
-                (lib/->pMBQL &match))]
+                (lib/->mbql5 &match))]
     (cond
       (params.ops/operator? param-type)
       (params.ops/to-clause param)

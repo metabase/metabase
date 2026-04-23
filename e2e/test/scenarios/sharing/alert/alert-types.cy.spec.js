@@ -104,7 +104,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       });
 
       H.modal().within(() => {
-        cy.findByText("Delete this Alert after it's triggered").click();
+        cy.findByLabelText("Delete this Alert after it's triggered").click();
 
         cy.button("Done").click();
       });

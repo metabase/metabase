@@ -8,7 +8,9 @@
   (:require
    [metabase.actions.init]
    [metabase.activity-feed.init]
+   [metabase.agent-api.init]
    [metabase.analytics.init]
+   [metabase.api-scope.init]
    [metabase.api.init]
    [metabase.app-db.init]
    [metabase.appearance.init]
@@ -37,6 +39,7 @@
    [metabase.llm.init]
    [metabase.logger.init]
    [metabase.login-history.init]
+   [metabase.mcp.init]
    [metabase.metabot.init]
    [metabase.model-persistence.init]
    [metabase.models.init]

@@ -8,25 +8,30 @@ import { Input } from "metabase/common/components/Input";
 import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { getCollectionBreadCrumbs } from "metabase/common/utils/collections";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { getDashboard } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
-import { getCrumbs } from "metabase/lib/collections";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import { getIcon } from "metabase/lib/icon";
-import { connect, useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/selectors/user";
 import { Button, Flex, Icon } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import { getIcon } from "metabase/utils/icon";
+import { connect, useDispatch, useSelector } from "metabase/utils/redux";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
 import S from "./QuestionPicker.module.css";
 import { addDashboardQuestion } from "./actions";
+import {
+  COLLECTIONS_TOP_LEVEL_ID,
+  SHARED_TENANT_COLLECTIONS_ROOT_ID,
+  useCollectionsWithTenants,
+} from "./hooks/use-collections-with-tenants";
 
 interface QuestionPickerInnerProps {
   onSelect: BaseSelectListItemProps["onSelect"];
@@ -35,7 +40,7 @@ interface QuestionPickerInnerProps {
 
 function QuestionPickerInner({
   onSelect,
-  collectionsById,
+  collectionsById: baseCollectionsById,
 }: QuestionPickerInnerProps) {
   const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
@@ -49,8 +54,17 @@ function QuestionPickerInner({
     SEARCH_DEBOUNCE_DURATION,
   );
 
+  const collectionsById = useCollectionsWithTenants(baseCollectionsById);
+
+  const isAtTopLevel = currentCollectionId === COLLECTIONS_TOP_LEVEL_ID;
+  const isAtSharedTenantRoot =
+    currentCollectionId === SHARED_TENANT_COLLECTIONS_ROOT_ID;
   const collection = collectionsById[currentCollectionId];
-  const crumbs = getCrumbs(collection, collectionsById, setCurrentCollectionId);
+  const crumbs = getCollectionBreadCrumbs(
+    collection,
+    collectionsById,
+    setCurrentCollectionId,
+  );
 
   const handleSearchTextChange: React.ChangeEventHandler<HTMLInputElement> = (
     e,
@@ -139,13 +153,18 @@ function QuestionPickerInner({
         </>
       )}
 
-      <QuestionList
-        hasCollections={collections.length > 0}
-        searchText={debouncedSearchText}
-        collectionId={currentCollectionId}
-        onSelect={onSelect}
-        showOnlyPublicCollections={showOnlyPublicCollections}
-      />
+      {/* Hide the question list at top-level "Collections"
+          and "Shared collections" root. These have fake IDs that don't map to
+          real collections, so querying questions against them would fail. */}
+      {((!isAtSharedTenantRoot && !isAtTopLevel) || debouncedSearchText) && (
+        <QuestionList
+          hasCollections={collections.length > 0}
+          searchText={debouncedSearchText}
+          collectionId={currentCollectionId}
+          onSelect={onSelect}
+          showOnlyPublicCollections={showOnlyPublicCollections}
+        />
+      )}
     </div>
   );
 }

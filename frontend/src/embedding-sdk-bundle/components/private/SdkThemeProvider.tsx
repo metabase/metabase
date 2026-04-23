@@ -7,11 +7,11 @@ import { useEmbeddingThemeOverride } from "embedding-sdk-bundle/hooks/private/us
 import { EnsureSingleInstance } from "embedding-sdk-shared/components/EnsureSingleInstance/EnsureSingleInstance";
 import { useSetting } from "metabase/common/hooks";
 import type { MetabaseEmbeddingTheme } from "metabase/embedding-sdk/theme";
-import { useSelector } from "metabase/lib/redux";
 import { getFont } from "metabase/styled-components/selectors";
 import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
+import { useSelector } from "metabase/utils/redux";
 
 interface Props {
   theme?: MetabaseEmbeddingTheme;
@@ -38,7 +38,10 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
             withGlobalClasses: withGlobalClasses ?? isInstanceToRender,
           }}
         >
-          <ThemeProvider theme={themeOverride}>
+          <ThemeProvider
+            theme={themeOverride}
+            cssVariablesSelector=".mb-wrapper"
+          >
             {isInstanceToRender && <GlobalSdkCssVariables />}
 
             {children}

@@ -37,55 +37,67 @@ const ORDERS_SOURCE_ID: MetricSourceId = `metric:${ORDERS_METRIC.id}`;
 
 const REVENUE_DIMENSIONS = [
   {
-    dimensionId: "dim-amount",
-    label: "Amount",
     icon: "int",
-    tabType: "numeric",
-    sourceIds: [REVENUE_SOURCE_ID],
+    group: undefined,
+    tabInfo: {
+      type: "numeric",
+      label: "Amount",
+      dimensionMapping: { 0: "dim-amount" },
+    },
   },
   {
-    dimensionId: "dim-category",
-    label: "Category",
     icon: "string",
-    tabType: "category",
-    sourceIds: [REVENUE_SOURCE_ID],
+    group: undefined,
+    tabInfo: {
+      type: "category",
+      label: "Category",
+      dimensionMapping: { 0: "dim-category" },
+    },
   },
   {
-    dimensionId: "dim-created-at",
-    label: "Created At",
     icon: "calendar",
-    tabType: "time",
-    sourceIds: [REVENUE_SOURCE_ID],
+    group: undefined,
+    tabInfo: {
+      type: "time",
+      label: "Created At",
+      dimensionMapping: { 0: "dim-created-at" },
+    },
   },
   {
-    dimensionId: "dim-active",
-    label: "Is Active",
     icon: "io",
-    tabType: "boolean",
-    sourceIds: [REVENUE_SOURCE_ID],
+    group: undefined,
+    tabInfo: {
+      type: "boolean",
+      label: "Is Active",
+      dimensionMapping: { 0: "dim-active" },
+    },
   },
 ];
 
 const ORDERS_DIMENSIONS = [
   {
-    dimensionId: "dim-created-at",
-    label: "Created At",
     icon: "calendar",
-    tabType: "time",
-    sourceIds: [ORDERS_SOURCE_ID],
+    group: undefined,
+    tabInfo: {
+      type: "time",
+      label: "Created At",
+      dimensionMapping: { 0: "dim-created-at" },
+    },
   },
   {
-    dimensionId: "dim-status",
-    label: "Status",
     icon: "string",
-    tabType: "category",
-    sourceIds: [ORDERS_SOURCE_ID],
+    group: undefined,
+    tabInfo: {
+      type: "category",
+      label: "Status",
+      dimensionMapping: { 0: "dim-status" },
+    },
   },
 ];
 
 describe("getAvailableDimensionsForPicker", () => {
   it("returns empty result for empty source order", () => {
-    const result = getAvailableDimensionsForPicker({}, [], new Set());
+    const result = getAvailableDimensionsForPicker({}, [], [], new Set());
 
     expect(result).toEqual({ shared: [], bySource: {} });
   });
@@ -94,6 +106,7 @@ describe("getAvailableDimensionsForPicker", () => {
     const result = getAvailableDimensionsForPicker(
       { [REVENUE_SOURCE_ID]: revenueDefinition },
       [REVENUE_SOURCE_ID],
+      [{ slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID }],
       new Set(),
     );
 
@@ -109,6 +122,7 @@ describe("getAvailableDimensionsForPicker", () => {
     const result = getAvailableDimensionsForPicker(
       { [ORDERS_SOURCE_ID]: ordersDefinition },
       [ORDERS_SOURCE_ID],
+      [{ slotIndex: 0, entityIndex: 0, sourceId: ORDERS_SOURCE_ID }],
       new Set(),
     );
 
@@ -127,6 +141,10 @@ describe("getAvailableDimensionsForPicker", () => {
         [ORDERS_SOURCE_ID]: ordersDefinition,
       },
       [REVENUE_SOURCE_ID, ORDERS_SOURCE_ID],
+      [
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: ORDERS_SOURCE_ID },
+      ],
       new Set(),
     );
 
@@ -134,17 +152,65 @@ describe("getAvailableDimensionsForPicker", () => {
       shared: [],
       bySource: {
         [REVENUE_SOURCE_ID]: REVENUE_DIMENSIONS,
-        [ORDERS_SOURCE_ID]: ORDERS_DIMENSIONS,
+        [ORDERS_SOURCE_ID]: [
+          {
+            icon: "calendar",
+            group: undefined,
+            tabInfo: {
+              type: "time",
+              label: "Created At",
+              dimensionMapping: { 1: "dim-created-at" },
+            },
+          },
+          {
+            icon: "string",
+            group: undefined,
+            tabInfo: {
+              type: "category",
+              label: "Status",
+              dimensionMapping: { 1: "dim-status" },
+            },
+          },
+        ],
       },
     });
   });
 
-  it("filters out dimensions whose id matches existingTabIds", () => {
-    const allIds = REVENUE_DIMENSIONS.map((dimension) => dimension.dimensionId);
+  it("does not duplicate dimensions when a metric appears in multiple slots", () => {
+    const result = getAvailableDimensionsForPicker(
+      { [REVENUE_SOURCE_ID]: revenueDefinition },
+      [REVENUE_SOURCE_ID],
+      [
+        { slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID },
+        { slotIndex: 1, entityIndex: 1, sourceId: REVENUE_SOURCE_ID },
+      ],
+      new Set(),
+    );
+
+    const allDimensions = result.bySource[REVENUE_SOURCE_ID] ?? [];
+    expect(allDimensions).toHaveLength(REVENUE_DIMENSIONS.length);
+
+    const labels = allDimensions.map((d) => d.tabInfo.label);
+    expect(labels).toEqual([...new Set(labels)]);
+
+    for (const dim of allDimensions) {
+      const dimId = Object.values(dim.tabInfo.dimensionMapping)[0];
+      expect(dim.tabInfo.dimensionMapping).toEqual({
+        0: dimId,
+        1: dimId,
+      });
+    }
+  });
+
+  it("filters out dimensions whose id matches existingTabDimensionIds", () => {
+    const allIds = REVENUE_DIMENSIONS.flatMap((dimension) =>
+      Object.values(dimension.tabInfo.dimensionMapping),
+    );
 
     const result = getAvailableDimensionsForPicker(
       { [REVENUE_SOURCE_ID]: revenueDefinition },
       [REVENUE_SOURCE_ID],
+      [{ slotIndex: 0, entityIndex: 0, sourceId: REVENUE_SOURCE_ID }],
       new Set(allIds),
     );
 

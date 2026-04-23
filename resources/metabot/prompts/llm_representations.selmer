@@ -1,3 +1,17 @@
+{% if is_measure %}
+<measure measure_id="{{measure_id}}" name="{{measure_name}}" display_name="{{measure_display_name}}">{% if measure_description %}
+{{measure_description}}{% endif %}{% if measure_definition_description %}
+Definition: {{measure_definition_description}}{% endif %}{% if measure_definition %}
+<definition>{{measure_definition}}</definition>{% endif %}
+</measure>
+{% endif %}
+{% if is_segment %}
+<segment segment_id="{{segment_id}}" name="{{segment_name}}" display_name="{{segment_display_name}}">{% if segment_description %}
+{{segment_description}}{% endif %}{% if segment_definition_description %}
+Definition: {{segment_definition_description}}{% endif %}{% if segment_definition %}
+<definition>{{segment_definition}}</definition>{% endif %}
+</segment>
+{% endif %}
 {% if is_field %}
 <field id="{{field_id}}" name="{{field_name_quoted|safe}}" display_name="{{field_display_name}}" type="{{field_base_type}}" database_type="{{field_database_type}}">{% if field_description %}
 ## Description
@@ -55,6 +69,24 @@ Foreign key fields from related tables. Usage patterns:
 
 {{table_related_tables_xml|safe}}
 {% endif %}
+{% if table_measures_xml %}
+
+### Measures (Pre-defined Aggregation Formulas)
+
+The following pre-defined MEASURES (NOT metrics!) are available for this table.
+These are aggregation formulas defined on this table. Use them instead of creating custom aggregations when available.
+
+{{table_measures_xml|safe}}
+{% endif %}
+{% if table_segments_xml %}
+
+### Segments (Pre-defined Filter Conditions)
+
+The following pre-defined SEGMENTS are available for this table.
+These are business-defined filter conditions. Use them instead of creating custom filters when available.
+
+{{table_segments_xml|safe}}
+{% endif %}
 
 Before using any field in comparisons, filters, or conditions, you should check their metadata and sample values first, using the uri `metabase://table/{{table_id}}/fields/{field_id}`.
 This will help avoid errors due to unexpected data types or formats.
@@ -81,6 +113,24 @@ Foreign key fields from related tables. Usage patterns:
 - For SQL queries: Use "fieldname" with explicit JOINs
 
 {{model_related_tables_xml|safe}}
+{% endif %}
+{% if model_measures_xml %}
+
+### Measures (Pre-defined Aggregation Formulas)
+
+The following pre-defined MEASURES (NOT metrics!) are available for this model.
+These are aggregation formulas defined on this model. Use them instead of creating custom aggregations when available.
+
+{{model_measures_xml|safe}}
+{% endif %}
+{% if model_segments_xml %}
+
+### Segments (Pre-defined Filter Conditions)
+
+The following pre-defined SEGMENTS are available for this model.
+These are business-defined filter conditions. Use them instead of creating custom filters when available.
+
+{{model_segments_xml|safe}}
 {% endif %}
 Before using any field in comparisons, filters, or conditions, you should check their metadata and sample values first, using the uri `metabase://model/{{model_id}}/fields/{field_id}`.
 This will help avoid errors due to unexpected data types or formats.
@@ -137,6 +187,13 @@ The question is stored in the following collection:
 {% if question_visualization_xml %}
 The question is visualized as follows:
 {{question_visualization_xml|safe}}
+{% endif %}
+{% if question_fields_xml %}
+
+### Fields
+
+The following fields are returned by this question.
+{{question_fields_xml|safe}}
 {% endif %}
 </metabase_question>
 {% endif %}

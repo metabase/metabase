@@ -6,6 +6,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupDatabaseListEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
+  type RenderWithProvidersOptions,
   act,
   fireEvent,
   renderWithProviders,
@@ -19,18 +20,23 @@ import {
   createPauses,
   mockStreamedEndpoint,
 } from "metabase/api/ai-streaming/test-utils";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { User } from "metabase-types/api";
 import {
-  createMockTokenFeatures,
   createMockUser,
+  createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { Metabot } from "../components/Metabot";
 import { FIXED_METABOT_IDS } from "../constants";
 import { MetabotProvider } from "../context";
-import { type MetabotAgentId, type MetabotState, setVisible } from "../state";
+import {
+  type MetabotAgentId,
+  type MetabotState,
+  metabotReducer,
+  setVisible,
+} from "../state";
 import { getMetabotInitialState } from "../state/reducer-utils";
 
 export { createMockReadableStream, createPauses };
@@ -146,14 +152,13 @@ export function setup(
     currentUser?: User | null | undefined;
     promptSuggestions?: { prompt: string }[];
     isHosted?: boolean;
+    storeInitialState?: RenderWithProvidersOptions["storeInitialState"];
+    customReducers?: RenderWithProvidersOptions["customReducers"];
   } | void,
 ) {
   const settings = mockSettings({
     "llm-metabot-configured?": true,
     "is-hosted?": options?.isHosted ?? false,
-    "token-features": createMockTokenFeatures({
-      metabot_v3: true,
-    }),
   });
 
   setupEnterprisePlugins();
@@ -170,11 +175,17 @@ export function setup(
     currentUser = createMockUser(),
     metabotInitialState = metabotState,
     promptSuggestions = [],
+    storeInitialState = {},
+    customReducers,
   } = options || {};
 
   fetchMock.get(
     `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: promptSuggestions, offset: 0, limit: 3, total: 3 },
+  );
+  fetchMock.get(
+    "path:/api/metabot/permissions/user-permissions",
+    createMockUserMetabotPermissions(),
   );
   setupDatabaseListEndpoint([]);
 
@@ -182,16 +193,24 @@ export function setup(
     <MetabotProvider>{ui}</MetabotProvider>,
     {
       storeInitialState: createMockState({
+        ...storeInitialState,
+        settings: {
+          ...settings,
+          ...(storeInitialState.settings ?? {}),
+        },
         currentUser: currentUser ? currentUser : undefined,
         metabot: metabotInitialState,
-        settings,
       }),
+      customReducers: {
+        ...customReducers,
+        metabot: metabotReducer,
+      },
     },
   );
 
   return {
     rerender,
-    conversationIds: Object.keys(metabotState.conversations),
+    conversationIds: Object.keys(metabotInitialState.conversations),
     store: store as Omit<typeof store, "getState"> & {
       getState: () => State;
     },

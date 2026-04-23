@@ -3,20 +3,9 @@ import type { Draft } from "@reduxjs/toolkit";
 import { createAction, createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import {
-  CANCEL_EDITING_DASHBOARD,
-  INITIALIZE,
-} from "metabase/dashboard/actions/core";
+import { CANCEL_EDITING_DASHBOARD } from "metabase/dashboard/actions/core";
 import { Dashboards } from "metabase/entities/dashboards";
-import { isVirtualDashCard } from "metabase/lib/dashboard";
-import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
-import { checkNotNull } from "metabase/lib/types";
-import { addUndo } from "metabase/redux/undo";
-import type {
-  DashCardId,
-  DashboardId,
-  DashboardTabId,
-} from "metabase-types/api";
+import { INITIALIZE, selectTab } from "metabase/redux/dashboard";
 import type {
   DashboardState,
   Dispatch,
@@ -25,7 +14,16 @@ import type {
   StoreDashboard,
   StoreDashcard,
   TabDeletionId,
-} from "metabase-types/store";
+} from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
+import { isVirtualDashCard } from "metabase/utils/dashboard";
+import { getPositionForNewDashCard } from "metabase/utils/dashboard_grid";
+import { checkNotNull } from "metabase/utils/types";
+import type {
+  DashCardId,
+  DashboardId,
+  DashboardTabId,
+} from "metabase-types/api";
 
 import { trackCardMoved } from "../analytics";
 import { INITIAL_DASHBOARD_STATE } from "../constants";
@@ -59,9 +57,6 @@ type MoveTabPayload = {
   sourceTabId: DashboardTabId;
   destinationTabId: DashboardTabId;
 };
-type SelectTabPayload = {
-  tabId: DashboardTabId | null;
-};
 type MoveDashCardToTabPayload = {
   dashCardId: DashCardId;
   destinationTabId: DashboardTabId;
@@ -82,7 +77,7 @@ const DELETE_TAB = "metabase/dashboard/DELETE_TAB";
 const UNDO_DELETE_TAB = "metabase/dashboard/UNDO_DELETE_TAB";
 const RENAME_TAB = "metabase/dashboard/RENAME_TAB";
 const MOVE_TAB = "metabase/dashboard/MOVE_TAB";
-const SELECT_TAB = "metabase/dashboard/SELECT_TAB";
+export { SELECT_TAB } from "metabase/redux/dashboard";
 const MOVE_DASHCARD_TO_TAB = "metabase/dashboard/MOVE_DASHCARD_TO_TAB";
 const UNDO_MOVE_DASHCARD_TO_TAB =
   "metabase/dashboard/UNDO_MOVE_DASHCARD_TO_TAB";
@@ -150,8 +145,6 @@ export function duplicateTab(sourceTabId: DashboardTabId | null) {
 
   return duplicateTabAction({ sourceTabId, newTabId });
 }
-
-export const selectTab = createAction<SelectTabPayload>(SELECT_TAB);
 
 function _selectTab({
   state,

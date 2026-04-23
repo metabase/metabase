@@ -390,6 +390,18 @@
           (.execute ^Value (object-array [sql (json/encode replacements) dialect]))
           .asString))))
 
+(defn is-single-select-stmt?
+  "Validates that a query is a single SELECT statement
+   and returns the query reconstructed from the parsed AST."
+  [dialect sql]
+  (-> (with-open [^Closeable ctx (python.pool/python-context)]
+        (with-python-timeout ctx default-timeout-ms
+          (-> ^Value (common/eval-python ctx "sql_tools.is_single_select_stmt")
+              (.execute ^Value (object-array [sql dialect]))
+              .asString)))
+      json/decode+kw
+      (perf/update-keys (comp keyword u/->kebab-case-en))))
+
 (comment
   (referenced-tables "postgres" "select * from transactions")
 

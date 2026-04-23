@@ -1,5 +1,4 @@
-import { trackSimpleEvent } from "metabase/lib/analytics";
-import type { GsheetsConnectionClickedEvent } from "metabase-types/analytics";
+import { trackSimpleEvent } from "metabase/utils/analytics";
 
 export function trackSheetImportClick() {
   trackSimpleEvent({
@@ -11,7 +10,7 @@ export function trackSheetImportClick() {
 export function trackSheetConnectionClick({
   from,
 }: {
-  from: GsheetsConnectionClickedEvent["triggered_from"];
+  from: "db-page" | "add-data-modal";
 }) {
   trackSimpleEvent({
     event: "sheets_connection_clicked",

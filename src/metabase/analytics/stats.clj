@@ -905,9 +905,6 @@
    {:name      :cache-preemptive
     :available (premium-features/enable-preemptive-caching?)
     :enabled   (t2/exists? :model/CacheConfig :refresh_automatically true)}
-   {:name      :metabot-v3
-    :available (premium-features/enable-metabot-v3?)
-    :enabled   (premium-features/enable-metabot-v3?)}
    {:name      :remote-sync
     :available (premium-features/enable-remote-sync?)
     :enabled   (premium-features/enable-remote-sync?)}
@@ -937,12 +934,12 @@
    {:name      :support-users
     :available (premium-features/enable-support-users?)
     :enabled   (premium-features/enable-support-users?)}
-   {:name      :workspaces
-    :available (premium-features/enable-workspaces?)
-    :enabled   (premium-features/enable-workspaces?)}
    {:name      :writable-connection
     :available (premium-features/enable-writable-connection?)
-    :enabled   (premium-features/enable-writable-connection?)}])
+    :enabled   (premium-features/enable-writable-connection?)}
+   {:name      :ai-controls
+    :available (premium-features/enable-ai-controls?)
+    :enabled   (premium-features/enable-ai-controls?)}])
 
 (defn- snowplow-features
   []

@@ -75,7 +75,8 @@
 (mu/defn- hydrated-measure [id :- ms/PositiveInt]
   (api/read-check (t2/select-one :model/Measure :id id))
   (metrics/sync-dimensions! :metadata/measure id)
-  (t2/hydrate (t2/select-one :model/Measure :id id) :creator))
+  (-> (t2/hydrate (t2/select-one :model/Measure :id id) :creator)
+      metrics/filter-dimensions-for-user))
 
 (api.macros/defendpoint :get "/:id" :- ::measure
   "Fetch `Measure` with ID."

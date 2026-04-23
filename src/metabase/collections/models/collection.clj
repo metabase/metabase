@@ -526,7 +526,7 @@
   "For tenant root collections, localize the name to the user's locale.
 
   OSS version: returns collections unchanged."
-  metabase-enterprise.tenants.model
+  metabase-enterprise.tenants.models
   [collections]
   collections)
 
@@ -2068,8 +2068,13 @@
     (merge child-colls dashboards cards documents timelines tables transforms)))
 
 (defmethod serdes/storage-path "Collection" [coll {:keys [collections]}]
-  (let [parental (get collections (:entity_id coll))]
-    (concat ["collections"] parental [(last parental)])))
+  (let [path      (get collections (:entity_id coll))
+        ns-folder (case (:namespace coll)
+                    :snippets   "snippets"
+                    :transforms "transforms"
+                    nil         "main"
+                    "main")]
+    (into [{:label "collections"} {:label ns-folder}] path)))
 
 (defn- parent-id->location-path [parent-id]
   (if-not parent-id
@@ -2099,8 +2104,10 @@
                                               (serdes/fk :model/Collection)
                                               {:export location-path->parent-id
                                                :import parent-id->location-path}))
-               :personal_owner_id (serdes/fk :model/User)
-               :workspace_id      (serdes/fk :model/Workspace)}})
+               :personal_owner_id (serdes/fk :model/User)}
+   :defaults {:archived         false
+              :is_sample        false
+              :is_remote_synced false}})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Perms Checking Helper Fns                                            |

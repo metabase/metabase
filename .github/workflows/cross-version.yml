@@ -25,7 +25,7 @@ on:
 jobs:
   # Generate matrix for scheduled/PR runs
   generate-matrix:
-    if: github.event_name != 'workflow_dispatch'
+    if: github.event_name != 'workflow_dispatch' && github.repository == 'metabase/metabase'
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -47,7 +47,7 @@ jobs:
 
   # Matrix-based tests for scheduled/PR runs
   test-matrix:
-    if: github.event_name != 'workflow_dispatch'
+    if: github.event_name != 'workflow_dispatch' && github.repository == 'metabase/metabase'
     needs: generate-matrix
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 30
@@ -102,7 +102,11 @@ jobs:
 
   # Notify Slack on nightly failures
   notify-on-failure:
-    if: always() && github.event_name == 'schedule' && needs.test-matrix.result == 'failure'
+    if: >-
+      always()
+      && github.event_name == 'schedule'
+      && github.repository == 'metabase/metabase'
+      && needs.test-matrix.result == 'failure'
     needs: [test-matrix]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5

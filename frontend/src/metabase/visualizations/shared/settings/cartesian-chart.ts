@@ -1,15 +1,13 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import {
   getMaxDimensionsSupported,
   getMaxMetricsSupported,
 } from "metabase/visualizations";
 import { getCardsColumns } from "metabase/visualizations/echarts/cartesian/model";
 import { getCardsSeriesModels } from "metabase/visualizations/echarts/cartesian/model/series";
-import { dimensionIsNumeric } from "metabase/visualizations/lib/numeric";
-import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
 import {
   MAX_SERIES,
   columnsAreValid,
@@ -276,20 +274,6 @@ export const getDefaultIsHistogram = (dimensionColumn: DatasetColumn) => {
 
 export const getDefaultIsAutoSplitEnabled = () => true;
 
-export const getDefaultIsNumeric = (
-  data: DatasetData,
-  dimensionIndex: number,
-) => {
-  return dimensionIsNumeric(data, dimensionIndex);
-};
-
-export const getDefaultIsTimeSeries = (
-  data: DatasetData,
-  dimensionIndex: number,
-) => {
-  return dimensionIsTimeseries(data, dimensionIndex);
-};
-
 export const getDefaultXAxisScale = (
   vizSettings: ComputedVisualizationSettings,
   display?: string,
@@ -315,7 +299,6 @@ export const getDefaultLegendIsReversed = (
 
 export const getDefaultShowDataLabels = () => false;
 export const getDefaultDataLabelsFrequency = () => "fit";
-export const getDefaultDataLabelsFormatting = () => "auto";
 
 export const getAvailableXAxisScales = (
   [{ data, card }]: RawSeries,
@@ -370,7 +353,7 @@ export const isXAxisScaleValid = (
 
   return Boolean(
     !isWaterfall ||
-      (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)),
+    (xAxisScale && !WATERFALL_UNSUPPORTED_X_AXIS_SCALES.includes(xAxisScale)),
   );
 };
 
@@ -443,17 +426,6 @@ export function getDefaultScatterColumns(data: DatasetData): {
     metrics: [null],
     bubble: null,
   };
-}
-
-/**
- * Returns the default column name for the bubble size setting
- * on the scatter plot. If there is no suitable default, it will return `null`.
- *
- * @param data - property on the series object from the `rawSeries` array
- * @returns column name string or `null`
- */
-export function getDefaultBubbleSizeCol(data: DatasetData) {
-  return getDefaultScatterColumns(data).bubble;
 }
 
 export function getDefaultColumns(series: RawSeries): {

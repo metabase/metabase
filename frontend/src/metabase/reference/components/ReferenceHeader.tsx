@@ -3,12 +3,11 @@ import { memo } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Ellipsified } from "metabase/common/components/Ellipsified";
 import L from "metabase/common/components/List/List.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
-import { Icon } from "metabase/ui";
+import { Ellipsified, Icon } from "metabase/ui";
 
 import S from "./ReferenceHeader.module.css";
 

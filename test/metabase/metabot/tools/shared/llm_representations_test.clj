@@ -85,6 +85,73 @@
       (is (str/includes? xml "is_verified=\"false\""))
       (is (not (str/includes? xml "### Dimensions"))))))
 
+(deftest measure->xml-test
+  (testing "formats measure with all attributes"
+    (let [measure {:id 1
+                   :name "total_revenue"
+                   :display-name "Total Revenue"
+                   :description "Sum of all revenue"
+                   :definition {:database 1 :type :query :query {:source-table 5 :aggregation [[:sum [:field 10 nil]]]}}
+                   :definition-description "Sum of Price"}
+          xml (llm-rep/measure->xml measure)]
+      (is (str/starts-with? xml "<measure"))
+      (is (str/includes? xml "measure_id=\"1\""))
+      (is (str/includes? xml "name=\"total_revenue\""))
+      (is (str/includes? xml "display_name=\"Total Revenue\""))
+      (is (str/includes? xml "Sum of all revenue"))
+      (is (str/includes? xml "Definition: Sum of Price"))
+      (is (str/includes? xml "<definition>"))
+      (is (str/includes? xml ":source-table 5"))
+      (is (str/ends-with? (str/trim xml) "</measure>"))))
+
+  (testing "handles measure without description or definition"
+    (let [measure {:id 2 :name "count_orders"}
+          xml (llm-rep/measure->xml measure)]
+      (is (str/includes? xml "measure_id=\"2\""))
+      (is (str/includes? xml "name=\"count_orders\""))
+      (is (str/includes? xml "display_name=\"count_orders\""))
+      (is (not (str/includes? xml "<definition>")))
+      (is (not (str/includes? xml "Definition:")))
+      (is (str/ends-with? (str/trim xml) "</measure>"))))
+
+  (testing "uses name as display_name fallback"
+    (let [measure {:id 3 :name "avg_price" :display-name nil}
+          xml (llm-rep/measure->xml measure)]
+      (is (str/includes? xml "display_name=\"avg_price\"")))))
+
+(deftest segment->xml-test
+  (testing "formats segment with all attributes"
+    (let [segment {:id 1
+                   :name "active_customers"
+                   :display-name "Active Customers"
+                   :description "Customers who made a purchase in the last 30 days"
+                   :definition {:database 1 :type :query :query {:source-table 5 :filter [:> [:field 10 nil] 0]}}
+                   :definition-description "Price is greater than 0"}
+          xml (llm-rep/segment->xml segment)]
+      (is (str/starts-with? xml "<segment"))
+      (is (str/includes? xml "segment_id=\"1\""))
+      (is (str/includes? xml "name=\"active_customers\""))
+      (is (str/includes? xml "display_name=\"Active Customers\""))
+      (is (str/includes? xml "Customers who made a purchase in the last 30 days"))
+      (is (str/includes? xml "Definition: Price is greater than 0"))
+      (is (str/includes? xml "<definition>"))
+      (is (str/includes? xml ":source-table 5"))
+      (is (str/ends-with? (str/trim xml) "</segment>"))))
+
+  (testing "handles segment without description or definition-description"
+    (let [segment {:id 2 :name "new_users"}
+          xml (llm-rep/segment->xml segment)]
+      (is (str/includes? xml "segment_id=\"2\""))
+      (is (str/includes? xml "name=\"new_users\""))
+      (is (not (str/includes? xml "<definition>")))
+      (is (not (str/includes? xml "Definition:")))
+      (is (str/ends-with? (str/trim xml) "</segment>"))))
+
+  (testing "uses name as display_name fallback"
+    (let [segment {:id 3 :name "q4_orders" :display-name nil}
+          xml (llm-rep/segment->xml segment)]
+      (is (str/includes? xml "display_name=\"q4_orders\"")))))
+
 (deftest table->xml-test
   (testing "formats table with all attributes matching Python"
     (let [table {:id 10
@@ -111,7 +178,33 @@
       (is (str/includes? xml "Foreign key fields from related tables"))
       (is (str/includes? xml "<related-table"))
       (is (str/includes? xml "metabase://table/10/fields/{field_id}"))
-      (is (str/ends-with? (str/trim xml) "</table>")))))
+      (is (str/ends-with? (str/trim xml) "</table>"))))
+
+  (testing "includes measures and segments when present"
+    (let [table {:id 10
+                 :name "order_facts"
+                 :database_id 1
+                 :database_engine "postgres"
+                 :database_schema "shopify"
+                 :description "Order facts table"
+                 :measures [{:id 1 :name "avg_order_value" :display-name "Average Order Value"
+                             :description "Average value of orders"}]
+                 :segments [{:id 2 :name "q4_orders" :display-name "Q4 Orders"
+                             :description "Orders placed in Q4"}]}
+          xml (llm-rep/table->xml table)]
+      (is (str/includes? xml "### Measures (Pre-defined Aggregation Formulas)"))
+      (is (str/includes? xml "MEASURES (NOT metrics!)"))
+      (is (str/includes? xml "<measure measure_id=\"1\""))
+      (is (str/includes? xml "Average Order Value"))
+      (is (str/includes? xml "### Segments (Pre-defined Filter Conditions)"))
+      (is (str/includes? xml "<segment segment_id=\"2\""))
+      (is (str/includes? xml "Q4 Orders"))))
+
+  (testing "omits measures and segments sections when empty"
+    (let [table {:id 10 :name "users" :database_id 1 :database_engine "postgres"}
+          xml (llm-rep/table->xml table)]
+      (is (not (str/includes? xml "### Measures")))
+      (is (not (str/includes? xml "### Segments"))))))
 
 (deftest model->xml-test
   (testing "formats model with all attributes matching Python"
@@ -136,7 +229,32 @@
       (is (str/includes? xml "The following fields are available in this model"))
       (is (str/includes? xml "metabase://model/5/fields/{field_id}"))
       ;; Python closes with </model>
-      (is (str/ends-with? (str/trim xml) "</model>")))))
+      (is (str/ends-with? (str/trim xml) "</model>"))))
+
+  (testing "includes measures and segments when present"
+    (let [model {:id 5
+                 :name "Sales Model"
+                 :database_id 1
+                 :database_engine "postgres"
+                 :description "Sales data"
+                 :measures [{:id 1 :name "total_net_revenue" :display-name "Total Net Revenue"
+                             :description "Net revenue after returns"}]
+                 :segments [{:id 1 :name "new_customers" :display-name "New Customers"
+                             :description "First-time buyers"}]}
+          xml (llm-rep/model->xml model)]
+      (is (str/includes? xml "### Measures (Pre-defined Aggregation Formulas)"))
+      (is (str/includes? xml "MEASURES (NOT metrics!)"))
+      (is (str/includes? xml "<measure measure_id=\"1\""))
+      (is (str/includes? xml "Total Net Revenue"))
+      (is (str/includes? xml "### Segments (Pre-defined Filter Conditions)"))
+      (is (str/includes? xml "<segment segment_id=\"1\""))
+      (is (str/includes? xml "New Customers"))))
+
+  (testing "omits measures and segments sections when empty"
+    (let [model {:id 5 :name "Empty Model" :database_id 1 :database_engine "postgres"}
+          xml (llm-rep/model->xml model)]
+      (is (not (str/includes? xml "### Measures")))
+      (is (not (str/includes? xml "### Segments"))))))
 
 (deftest query->xml-test
   (testing "formats query result matching Python"

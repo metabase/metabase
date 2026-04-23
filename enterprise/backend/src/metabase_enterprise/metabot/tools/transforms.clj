@@ -25,7 +25,7 @@
 
 (defenterprise-schema get-transform-python-library-details-tool
   "Get information about a Python library by path."
-  :feature :none
+  :feature :transforms-python
   [{:keys [path]} :- [:map {:closed true} [:path :string]]]
   (tools.transforms/add-output (transforms-write-tools/get-transform-python-library-details {:path path})
                                format-python-library-output))
@@ -43,7 +43,7 @@
   Use `get_transform_python_library_details` before writing any Python code to inspect the shared library.
   Use the shared library in your code by adding `import common` at the top of the file.
   Keep `import common` at the top of the file even if it is currently unused."
-  :feature :none
+  :feature :transforms-python
   [{:keys [transform_id edit_action thinking transform_name transform_description
            database_id source_tables]}
    :- tools.transforms/write-transform-python-schema]

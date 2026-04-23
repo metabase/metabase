@@ -2,7 +2,6 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { CopyButton } from "metabase/common/components/CopyButton";
-import { useSelector } from "metabase/lib/redux";
 import { getPublicEmbedHTMLWithResizer } from "metabase/public/lib/code-templates";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
@@ -17,6 +16,7 @@ import {
   TextInput,
   Tooltip,
 } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 
 import S from "./DocumentPublicLinkPopoverContent.module.css";
 

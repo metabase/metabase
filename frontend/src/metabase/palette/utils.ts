@@ -1,5 +1,4 @@
 import type { LocationDescriptor } from "history";
-import type { MouseEvent } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -141,6 +140,3 @@ export const locationDescriptorToURL = (
     return `${pathname}${queryString}${hashString}`;
   }
 };
-
-export const isNormalClick = (e: MouseEvent): boolean =>
-  !e.ctrlKey && !e.shiftKey && !e.metaKey && !e.altKey && e.button === 0;

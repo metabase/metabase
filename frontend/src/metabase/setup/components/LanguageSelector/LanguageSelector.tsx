@@ -2,14 +2,14 @@ import { useMemo } from "react";
 import { t } from "ttag";
 import { findWhere } from "underscore";
 
-import { useUpdateSettingsMutation } from "metabase/api";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useUpdateSettingMutation } from "metabase/api";
 import {
   getAvailableLocales,
+  getIsStepCompleted,
   getLocale,
-  getUser,
 } from "metabase/setup/selectors";
 import { Select } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import { updateLocale } from "../../actions";
 import { getLocales } from "../../utils";
@@ -18,8 +18,10 @@ export const LanguageSelector = () => {
   const dispatch = useDispatch();
   const locale = useSelector(getLocale);
   const localeData = useSelector(getAvailableLocales);
-  const user = useSelector(getUser);
-  const [updateSettings] = useUpdateSettingsMutation();
+  const [updateSetting] = useUpdateSettingMutation();
+  const isUserInfoStepCompleted = useSelector((state) =>
+    getIsStepCompleted(state, "user_info"),
+  );
 
   const locales = useMemo(() => getLocales(localeData), [localeData]);
   const languages = useMemo(() => locales.map(({ name }) => name), [locales]);
@@ -32,8 +34,8 @@ export const LanguageSelector = () => {
 
       // Only update site-locale setting if the user has been created.
       // This prevents the API request from failing before the user creation step.
-      if (user) {
-        await updateSettings({ "site-locale": locale.code });
+      if (isUserInfoStepCompleted) {
+        await updateSetting({ key: "site-locale", value: locale.code });
       }
     }
   };
@@ -45,10 +47,11 @@ export const LanguageSelector = () => {
   return (
     <Select
       aria-label={t`Select a language`}
-      data={languages}
-      value={locale?.name || "English"}
-      onChange={handleLocaleChange}
       comboboxProps={{ width: "12.5rem", position: "bottom-end" }}
+      data-testid="language-selector"
+      data={languages}
+      onChange={handleLocaleChange}
+      value={locale?.name || "English"}
     />
   );
 };

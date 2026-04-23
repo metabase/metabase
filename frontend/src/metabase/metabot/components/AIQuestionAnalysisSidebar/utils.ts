@@ -1,4 +1,4 @@
-import { isNotNull } from "metabase/lib/types";
+import { isNotNull } from "metabase/utils/types";
 import type { CollectionId, Timeline, TimelineEvent } from "metabase-types/api";
 
 export const getTimelineEventsForAnalysis = (

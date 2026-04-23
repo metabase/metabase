@@ -2,6 +2,7 @@
   "Implementation(s) of [[metabase.lib.metadata.protocols/MetadataProvider]] only for the JVM."
   (:refer-clojure :exclude [get-in])
   (:require
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [clj-yaml.core]
    [clojure.core.cache :as cache]
    [clojure.core.cache.wrapped :as cache.wrapped]
    [clojure.string :as str]
@@ -48,7 +49,7 @@
    :metadata/column ::lib.schema.metadata/column})
 
 (mu/defn instance->metadata
-  "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a MLv2 style
+  "Convert a (presumably) Toucan 2 instance of an application database model with `snake_case` keys to a Lib style
   metadata instance with `:lib/type` and `kebab-case` keys."
   [instance      :- :map
    metadata-type :- :keyword]
@@ -624,3 +625,8 @@
  UncachedApplicationDatabaseMetadataProvider
  (fn [_mp json-generator]
    (json/generate-nil nil json-generator)))
+
+(extend-protocol clj-yaml.core/YAMLCodec
+  UncachedApplicationDatabaseMetadataProvider
+  (encode [_this]
+    nil))

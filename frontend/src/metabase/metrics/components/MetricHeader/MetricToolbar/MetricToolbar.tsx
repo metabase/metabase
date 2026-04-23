@@ -10,9 +10,9 @@ import {
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
 import { PLUGIN_AUDIT, PLUGIN_MODERATION } from "metabase/plugins";
 import { AddToDashSelectDashModal } from "metabase/query_builder/components/AddToDashSelectDashModal";
@@ -23,6 +23,8 @@ import { openUrl } from "metabase/redux/app";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Button, Group, Icon, Menu } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
@@ -76,7 +78,7 @@ interface MetricToolbarButtonsProps {
 
 function MetricToolbarButtons({
   card,
-  showDataStudioLink,
+  showDataStudioLink: showDataStudioLinkProp,
   onOpenModal,
 }: MetricToolbarButtonsProps) {
   const metadata = useSelector(getMetadata);
@@ -99,22 +101,25 @@ function MetricToolbarButtons({
 
   const dispatch = useDispatch();
 
-  const isInLibrary =
-    showDataStudioLink &&
-    getLibraryCollectionType(card.collection?.type) != null;
+  const canAccessDataStudio = useSelector(canAccessDataStudioSelector);
+
+  const showDataStudioLink =
+    showDataStudioLinkProp &&
+    getLibraryCollectionType(card.collection?.type) != null &&
+    canAccessDataStudio;
 
   return (
     <Group wrap="nowrap" gap="sm">
-      <Button
-        size="sm"
-        component={ForwardRefLink}
-        to={Urls.exploreMetric(card.id)}
-        target="_blank"
-        leftSection={<Icon name="external" />}
-        data-testid="explore-link"
-      >
-        {t`Explore`}
-      </Button>
+      {isNumericMetric(card) && (
+        <Button
+          component={ForwardRefLink}
+          to={Urls.exploreMetric(card.id)}
+          leftSection={<Icon name="external" />}
+          data-testid="explore-link"
+        >
+          {t`Explore`}
+        </Button>
+      )}
       <Menu position="bottom-end">
         <Menu.Target>
           <ToolbarButton icon="ellipsis" aria-label={t`More options`} />
@@ -150,7 +155,7 @@ function MetricToolbarButtons({
             </Menu.Item>
           )}
 
-          <Menu.Divider />
+          <Menu.Divider role="separator" />
 
           <Menu.Item
             leftSection={<Icon name="add_to_dash" />}
@@ -170,9 +175,11 @@ function MetricToolbarButtons({
             </Menu.Item>
           )}
 
-          {(canManageSubscriptions || isInLibrary) && <Menu.Divider />}
+          {(PLUGIN_AUDIT.isEnabled || showDataStudioLink) && (
+            <Menu.Divider role="separator" />
+          )}
 
-          {isInLibrary && (
+          {showDataStudioLink && (
             <Menu.Item
               leftSection={<Icon name="grid_bordered" />}
               onClick={() => dispatch(openUrl(Urls.dataStudioMetric(card.id)))}
@@ -188,7 +195,7 @@ function MetricToolbarButtons({
 
           {card.can_write && (
             <>
-              <Menu.Divider />
+              <Menu.Divider role="separator" />
               <Menu.Item
                 leftSection={<Icon name="trash" />}
                 onClick={() => onOpenModal("archive")}

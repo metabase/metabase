@@ -26,9 +26,9 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Flex, Stack, Text } from "metabase/ui";
+import { useSelector } from "metabase/utils/redux";
 import {
   type CustomOidcConfig,
   type OidcCheckRequest,

@@ -23,7 +23,7 @@ export type CardOrDashboardRevisionDiff = {
   after: Record<string, unknown>;
 };
 
-export type RevisionDiff = SegmentRevisionDiff | CardOrDashboardRevisionDiff;
+type RevisionDiff = SegmentRevisionDiff | CardOrDashboardRevisionDiff;
 
 export type RevisionDiffKey =
   | keyof SegmentRevisionDiff

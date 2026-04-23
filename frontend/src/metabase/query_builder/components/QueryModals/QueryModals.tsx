@@ -9,8 +9,6 @@ import { Modal } from "metabase/common/components/Modal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { type ToastArgs, useToast } from "metabase/common/hooks";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { QuestionAlertListModal } from "metabase/notifications/modals";
 import { setArchivedQuestion } from "metabase/query_builder/actions";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
@@ -21,13 +19,15 @@ import { getQuestionWithoutComposing } from "metabase/query_builder/selectors";
 import { MODAL_TYPES, type QueryModalType } from "metabase/querying/constants";
 import { ArchiveCardModal } from "metabase/questions/components/ArchiveCardModal";
 import { MoveCardModal } from "metabase/questions/components/MoveCardModal";
+import type { QueryBuilderMode } from "metabase/redux/store";
 import EditEventModal from "metabase/timelines/questions/containers/EditEventModal";
 import MoveEventModal from "metabase/timelines/questions/containers/MoveEventModal";
 import NewEventModal from "metabase/timelines/questions/containers/NewEventModal";
 import { Text } from "metabase/ui";
+import { useDispatch, useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, DashboardTabId } from "metabase-types/api";
-import type { QueryBuilderMode } from "metabase-types/store";
 
 import { AddToDashSelectDashModal } from "../AddToDashSelectDashModal";
 

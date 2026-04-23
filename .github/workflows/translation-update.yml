@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   synchronize-translations:
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     name: Synchronize Translations
     env:
       BRANCH_NAME: update-translations-${{ github.run_id }}
@@ -33,7 +34,7 @@ jobs:
         run: sudo apt-get install gettext
 
       - name: Crowdin download
-        uses: crowdin/github-action@v2
+        uses: crowdin/github-action@ce33ce793a5cbc401d9cd748716e03fc90c001f1 # v2
         id: crowdin-download
         with:
           config: locales/crowdin.yml
@@ -73,8 +74,18 @@ jobs:
           git commit -a -m "Update translations $Date" --allow-empty --no-verify
           git push -u origin $BRANCH_NAME
 
+      - name: Upload i18n violations report
+        id: upload-violations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: i18n-violations
+          path: target/i18n-violations.*
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Crowdin upload
-        uses: crowdin/github-action@v2
+        uses: crowdin/github-action@ce33ce793a5cbc401d9cd748716e03fc90c001f1 # v2
         id: crowdin-upload
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -102,16 +113,45 @@ jobs:
 
           PR_NUMBER=${URL##*/}
 
-          echo "::set-output name=pr_number::$PR_NUMBER"
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Comment violations summary on PR
+        if: ${{ steps.create_pr.outputs.pr_number && hashFiles('target/i18n-violations.csv') != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+          ARTIFACT_URL: ${{ steps.upload-violations.outputs.artifact-url }}
+        run: | # sh
+          PR_NUMBER=${{ steps.create_pr.outputs.pr_number }}
+          SUMMARY=$(awk -F',' 'NR>1 {gsub(/"/, "", $2); n=split($2,a,"+"); for(i=1;i<=n;i++) counts[a[i]]++} END {for (t in counts) printf "- **%s**: %d\n", t, counts[t]}' target/i18n-violations.csv)
+          if [ -z "$SUMMARY" ]; then
+            echo "No violations to report."
+            exit 0
+          fi
+          if [ -n "$ARTIFACT_URL" ]; then
+            REPORT_LINK="[Full report]($ARTIFACT_URL) (downloads the \`i18n-violations\` artifact)"
+          else
+            REPORT_LINK="Full report: download the \`i18n-violations\` artifact from this workflow run."
+          fi
+          gh pr comment "$PR_NUMBER" --body "$(cat <<EOF
+          ### Translation violations filtered from this update
+
+          Translated strings that are invalid MessageFormat were dropped from the build. They fall back to English at runtime until corrected in Crowdin.
+          Partially translated strings that violate other validations are recorded in the report below, but are left in the build as-is to avoid loss of contextual knowledge for the user.
+
+          $SUMMARY
+
+          $REPORT_LINK
+          EOF
+          )"
 
       - name: Auto approve PR
-        uses: juliangruber/approve-pull-request-action@v1
+        uses: juliangruber/approve-pull-request-action@f83b836abaed1b3ab639ae61f9117c52ae405f65 # v1
         with:
           github-token: ${{ github.token }}
           number: ${{ steps.create_pr.outputs.pr_number }}
 
       - name: Enable Pull Request Automerge
-        uses: peter-evans/enable-pull-request-automerge@v2
+        uses: peter-evans/enable-pull-request-automerge@684fed02ccc9b5eefcf7d40b65b3cd44255bd5bc # v2
         with:
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           pull-request-number: ${{ steps.create_pr.outputs.pr_number }}

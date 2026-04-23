@@ -1,21 +1,28 @@
+import { isFulfilled } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useToast } from "metabase/common/hooks";
+import { getMetabotManagedProviderLimitToastProps } from "metabase/metabot/components/MetabotManagedProviderLimit";
+import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 import {
   useMetabotAgent,
-  useMetabotEnabledEmbeddingAware,
+  useMetabotName,
+  useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import { Button } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
 import { trackQueryFixClicked } from "../../analytics";
 
 export function FixSqlQueryButton() {
   const dispatch = useDispatch();
-  const isMetabotEnabled = useMetabotEnabledEmbeddingAware();
+  const { canUseSqlGeneration } = useUserMetabotPermissions();
+  const metabotName = useMetabotName();
+  const [sendToast] = useToast();
   const { submitInput, isDoingScience } = useMetabotAgent("sql");
 
-  if (!isMetabotEnabled) {
+  if (!canUseSqlGeneration) {
     return null;
   }
 
@@ -23,13 +30,30 @@ export function FixSqlQueryButton() {
     trackQueryFixClicked();
     await dispatch(setIsNativeEditorOpen(true));
     // SQL and error message are included in the context.
-    await submitInput("Fix this SQL query");
+    const action = await submitInput("Fix this SQL query", {
+      preventOpenSidebar: true,
+    });
+
+    if (!isFulfilled(action) || action.payload.success) {
+      return;
+    }
+
+    if (action.payload.errorMessage?.type === "locked") {
+      sendToast(getMetabotManagedProviderLimitToastProps());
+      return;
+    }
+
+    sendToast({
+      icon: "warning",
+      toastColor: "error",
+      message: action.payload.errorMessage?.message ?? METABOT_ERR_MSG.default,
+    });
   };
 
   return (
     <Button
       loading={isDoingScience}
       onClick={handleClick}
-    >{t`Have Metabot fix it`}</Button>
+    >{t`Have ${metabotName} fix it`}</Button>
   );
 }

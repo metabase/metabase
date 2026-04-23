@@ -676,10 +676,6 @@
       (should-qualify-identifier? identifier) update-identifier-prefix-components
       true                                    (vary-meta assoc ::do-not-qualify? true))))
 
-(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk ::sql.qp/nfc-path]
-  [_driver [_ nfc-path]]
-  nfc-path)
-
 (defn- with-base-temporal-type
   [[_ _id-or-name {:keys [base-type]} :as clause]]
   (if (not (instance? clojure.lang.IObj clause))

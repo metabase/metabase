@@ -247,6 +247,17 @@
              #"Cannot initialize setting before the db is set up"
              (setting/get :test-setting-custom-init)))))))
 
+(deftest discard-setting-changes-with-init-test
+  (testing "discard-setting-changes correctly handles settings with :init"
+    (clear-setting-if-leak!)
+    (let [value-inside (atom nil)]
+      (mt/discard-setting-changes [:test-setting-custom-init]
+        (reset! value-inside (test-setting-custom-init))
+        (testing "the setting returns its initialized value inside the macro, not nil"
+          (is (some? @value-inside))))
+      (testing "after the macro, the setting's initialized value is preserved (not re-initialized)"
+        (is (= @value-inside (test-setting-custom-init)))))))
+
 (def ^:private base-options
   {:setter   :none
    :default  "totally-basic"})
@@ -563,6 +574,12 @@
          (test-json-setting! {:a 100, :b 200})))
   (is (= {:a 100, :b 200}
          (test-json-setting))))
+
+(deftest db-stored-value-test
+  (testing "should expose the raw DB/cache value through the public API"
+    (is (= "raw-value"
+           (with-redefs [setting/db-or-cache-value (constantly "raw-value")]
+             (setting/db-stored-value :test-setting-1))))))
 
 ;;; -------------------------------------------------- CSV Settings --------------------------------------------------
 

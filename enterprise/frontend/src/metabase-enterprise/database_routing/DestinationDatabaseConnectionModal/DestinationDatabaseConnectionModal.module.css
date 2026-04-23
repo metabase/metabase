@@ -1,7 +1,6 @@
 .modalRoot {
   display: flex;
   flex-direction: column;
-  overflow-y: hidden;
 }
 
 .modalHeader {
@@ -10,4 +9,8 @@
 
 .modalBody {
   padding-inline: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
 }

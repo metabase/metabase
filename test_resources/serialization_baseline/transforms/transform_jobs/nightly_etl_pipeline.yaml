@@ -1,0 +1,23 @@
+created_at: '2026-04-02T02:00:49.163166Z'
+description: Custom job running nightly-refresh and custom-etl tagged transforms at 2 AM
+entity_id: PMlTT2ZjLB2B-C2Hng72Z
+job_tags:
+- entity_id: uZpZUow557u1cZbqT8BHt
+  position: 0
+  tag_id: 1uWng5tP1gyxr44PJ5FPb
+  serdes/meta:
+  - id: uZpZUow557u1cZbqT8BHt
+    model: TransformJobTransformTag
+- entity_id: 8WHAzlDHJZ7umVLvzbcfb
+  position: 1
+  tag_id: Z2nTZwFTBUz1Yil8AKrp2
+  serdes/meta:
+  - id: 8WHAzlDHJZ7umVLvzbcfb
+    model: TransformJobTransformTag
+name: Nightly ETL Pipeline
+schedule: 0 0 2 * * ? *
+ui_display_type: cron/builder
+serdes/meta:
+- id: PMlTT2ZjLB2B-C2Hng72Z
+  label: nightly_etl_pipeline
+  model: TransformJob

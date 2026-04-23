@@ -2,7 +2,6 @@ import type {
   CardOrDashboardRevisionDiff,
   FieldDiff,
   QueryDiff,
-  RevisionDiff,
   RevisionDiffKey,
   SegmentRevisionDiff,
 } from "metabase-types/api";
@@ -37,10 +36,6 @@ export function isCardOrDashboardRevisionDiff(
   value: unknown,
 ): value is CardOrDashboardRevisionDiff {
   return isObject(value) && isObject(value.before) && isObject(value.after);
-}
-
-export function isRevisionDiff(value: unknown): value is RevisionDiff {
-  return isSegmentRevisionDiff(value) || isCardOrDashboardRevisionDiff(value);
 }
 
 export function isCardOrDashboardRevisionDiffKey(

@@ -71,6 +71,10 @@ export function getDataStudioMetadataRoutes() {
           <IndexRoute component={PLUGIN_DEPENDENCIES.DependencyGraphPage} />
         </Route>
       )}
+      <Redirect
+        from="database/:databaseId/schema/:schemaId/table/:tableId"
+        to="database/:databaseId/schema/:schemaId/table/:tableId/details"
+      />
       <Route
         path="database/:databaseId/schema/:schemaId/table/:tableId/:tab"
         component={DataModel}
@@ -81,15 +85,7 @@ export function getDataStudioMetadataRoutes() {
       />
       <Redirect
         from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        to="database/:databaseId/schema/:schemaId/table/:tableId/field"
-      />
-      <Redirect
-        from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"
-        to="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId"
-      />
-      <Redirect
-        from="database/:databaseId/schema/:schemaId/table/:tableId/settings"
-        to="database/:databaseId/schema/:schemaId/table/:tableId/field"
+        to="database/:databaseId/schema/:schemaId/table/:tableId/details"
       />
       <Redirect
         from="database/:databaseId/schema/:schemaId/table/:tableId/field/:fieldId/:section"

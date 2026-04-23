@@ -7,6 +7,7 @@ export function setupBillingEndpoints({
   billingPeriodMonths = 12,
   hasBasicTransformsAddOn = true,
   hasAdvancedTransformsAddOn = true,
+  skipCloudAddOns = false,
   transformsBasicPrice = 100,
   transformsAdvancedPrice = 250,
   trialDays,
@@ -15,6 +16,7 @@ export function setupBillingEndpoints({
   billingPeriodMonths?: number;
   hasBasicTransformsAddOn?: boolean;
   hasAdvancedTransformsAddOn?: boolean;
+  skipCloudAddOns?: boolean;
   transformsBasicPrice?: number;
   transformsAdvancedPrice?: number;
   trialDays?: number;
@@ -74,7 +76,10 @@ export function setupBillingEndpoints({
       : []),
   ];
 
-  fetchMock.get("path:/api/ee/cloud-add-ons/addons", cloudAddOns);
+  if (!skipCloudAddOns) {
+    fetchMock.get("path:/api/ee/cloud-add-ons/addons", cloudAddOns);
+  }
+
   fetchMock.get("path:/api/ee/billing", {
     version: "0",
     data: {

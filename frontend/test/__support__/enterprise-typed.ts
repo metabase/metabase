@@ -11,7 +11,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   tools: "metabase-enterprise/tools",
   advanced_permissions: "metabase-enterprise/advanced_permissions",
   sharing: "metabase-enterprise/sharing",
-  metabot: "metabase/metabot",
+  metabot: "metabase-enterprise/metabot",
   rich_text_editing: "metabase-enterprise/rich_text_editing",
   license: "metabase-enterprise/license",
   user_provisioning: "metabase-enterprise/user_provisioning",
@@ -50,7 +50,6 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   content_verification: "metabase-enterprise/content_verification",
   moderation: "metabase-enterprise/moderation",
   tenants: "metabase-enterprise/tenants",
-  workspaces: "metabase-enterprise/data-studio/workspaces",
 
   // Embedding SDK specific plugins
   sdk_notifications: "embedding-sdk-ee/notifications",

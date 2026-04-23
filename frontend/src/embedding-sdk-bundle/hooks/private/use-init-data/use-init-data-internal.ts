@@ -18,7 +18,7 @@ import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensur
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
-import api from "metabase/lib/api";
+import api from "metabase/utils/api";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
@@ -85,11 +85,10 @@ export const useInitDataInternal = ({
   }
 
   if (!api.onResponseError) {
-    api.onResponseError = ({
-      metabaseVersion,
-    }: {
-      metabaseVersion: string;
-    }) => {
+    api.onResponseError = ({ metabaseVersion }) => {
+      if (metabaseVersion == null) {
+        return;
+      }
       // Use ensureMetabaseProviderPropsStore to access the current instance of reduxStore
       ensureMetabaseProviderPropsStore()
         .getState()
@@ -115,7 +114,7 @@ export const useInitDataInternal = ({
     }
 
     if (isGuestEmbed) {
-      dispatch(initGuestEmbed());
+      dispatch(initGuestEmbed(authConfig));
     } else {
       dispatch(initAuth({ ...authConfig, isLocalHost }));
     }

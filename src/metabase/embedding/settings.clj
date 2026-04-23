@@ -182,7 +182,6 @@
   :type       :string
   :export?    false
   :visibility :public
-  :feature    :embedding-sdk
   :default    ""
   :encryption :no
   :audit      :getter

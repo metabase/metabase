@@ -52,6 +52,7 @@ type ChartWithLegendProps = {
   showLegend?: boolean;
   isDashboard?: boolean;
   isDocument?: boolean;
+  isMetricsViewer?: boolean;
   onToggleSeriesVisibility?: (event: MouseEvent, index: number) => void;
   forwardedRef?: Ref<HTMLDivElement>;
 };
@@ -73,6 +74,7 @@ const ChartWithLegendInner = ({
   showLegend = true,
   isDashboard,
   isDocument,
+  isMetricsViewer,
   onToggleSeriesVisibility = () => {},
   forwardedRef,
 }: ChartWithLegendProps) => {
@@ -167,7 +169,7 @@ const ChartWithLegendInner = ({
         titles={layout.processedLegendTitles}
         hiddenIndices={legendHiddenIndices}
         colors={legendColors}
-        dotSize={isDashboard ? "8px" : "12px"}
+        dotSize={isDashboard || isMetricsViewer ? "8px" : "12px"}
         hovered={hovered}
         onHoverChange={onHoverChange}
         onToggleSeriesVisibility={onToggleSeriesVisibility}
@@ -211,7 +213,9 @@ const ChartWithLegendInner = ({
         <div
           className={cx(styles.LegendSpacer)}
           // don't center the chart on dashboards
-          style={isDashboard || isDocument ? { flexBasis: 0 } : {}}
+          style={
+            isDashboard || isDocument || isMetricsViewer ? { flexBasis: 0 } : {}
+          }
           data-testid="chart-legend-spacer"
         >
           {legend}
