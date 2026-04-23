@@ -35,7 +35,7 @@ export function MetabotChatHistory() {
     >
       {hasMessages ? (
         <Messages
-          messages={messages}
+          messages={messages.filter((message) => message.type !== "chart")}
           errorMessages={errorMessages}
           onRetryMessage={metabot.retryMessage}
           isDoingScience={metabot.isDoingScience}

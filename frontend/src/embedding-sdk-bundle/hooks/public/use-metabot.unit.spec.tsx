@@ -12,6 +12,16 @@ import {
 
 import { useMetabot } from "./use-metabot";
 
+/**
+ * This file covers hook wiring for non-passthrough behavior. The following
+ * result properties are deliberately not tested here because they forward
+ * directly to `useMetabotAgent` with no transformation:
+ *   - retryMessage       → agent.retryMessage(messageId)
+ *   - cancelRequest      → agent.cancelRequest
+ *   - resetConversation  → agent.resetConversation
+ *   - errorMessages      → agent.errorMessages
+ *   - isProcessing       → agent.isDoingScience (renamed)
+ */
 // These tests verify `useMetabot().CurrentChart` wiring only: renders nothing
 // before `navigate_to`, StaticQuestion vs InteractiveQuestion based on
 // `drills`, and `query` forwarding. Mocks surface `data-testid` + `data-query`
@@ -22,17 +32,14 @@ jest.mock("embedding-sdk-bundle/components/public/StaticQuestion", () => {
   const Component = ({ query }: { query?: string }) => (
     <div data-testid="mock-static-question" data-query={query} />
   );
-  return { StaticQuestion: Component, StaticQuestionInternal: Component };
+  return { StaticQuestionInternal: Component };
 });
 
 jest.mock("embedding-sdk-bundle/components/public/InteractiveQuestion", () => {
   const Component = ({ query }: { query?: string }) => (
     <div data-testid="mock-interactive-question" data-query={query} />
   );
-  return {
-    InteractiveQuestion: Component,
-    InteractiveQuestionInternal: Component,
-  };
+  return { InteractiveQuestionInternal: Component };
 });
 
 describe("useMetabot", () => {
@@ -163,6 +170,15 @@ describe("useMetabot", () => {
 
       act(() => {
         store.dispatch(
+          // `addAgentMessage`/`addUserMessage` in reducer.ts type their payload
+          // as `Omit<UnionType, ...>`. Non-distributive `Omit` collapses the
+          // discriminated union to common keys only, so branch-specific fields
+          // (message, navigateTo, payload, ...) fail excess-property checks
+          // without `as any`. Switching to a DistributiveOmit would unblock
+          // call sites here but surfaces more errors elsewhere (e.g. the
+          // edit_suggestion payload hits the "infinite TS errors" noted in
+          // reducer.ts). Keeping `as any` for now — applies to every dispatch
+          // below.
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "text",
@@ -177,6 +193,32 @@ describe("useMetabot", () => {
         role: "agent",
         type: "text",
         message: "ok",
+      });
+    });
+
+    it("renames `navigateTo` to `questionPath` on agent.chart", async () => {
+      const { store } = setup({ ui: <TestMessages /> });
+
+      act(() => {
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "chart",
+            navigateTo: "/question#base64",
+          } as any),
+        );
+      });
+
+      const [message] = await readMessages();
+      // `Chart` is a React component reference — JSON.stringify drops
+      // functions, so it appears as `undefined` in the serialized snapshot
+      // the harness reads. We assert only the serializable fields here;
+      // `Chart` wiring is covered by the `messages[n].Chart` describe.
+      expect(message).toEqual({
+        id: expect.any(String),
+        role: "agent",
+        type: "chart",
+        questionPath: "/question#base64",
       });
     });
 
@@ -322,6 +364,103 @@ describe("useMetabot", () => {
 
       await waitFor(() => expect(onResolved).toHaveBeenCalled());
       expect(onResolved).toHaveBeenCalledWith(undefined);
+    });
+  });
+
+  describe("messages[n].Chart", () => {
+    const TestMessageComponent = ({ drills }: { drills?: true }) => {
+      const { messages } = useMetabot();
+      const chartMessage = messages.find((message) => message.type === "chart");
+      if (!chartMessage) {
+        return null;
+      }
+      const { Chart } = chartMessage;
+      return <Chart drills={drills} />;
+    };
+
+    it("renders StaticQuestion when drills is absent", async () => {
+      const { store } = setup({ ui: <TestMessageComponent /> });
+
+      act(() => {
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "chart",
+            navigateTo: "/question#abc",
+          } as any),
+        );
+      });
+
+      expect(
+        await screen.findByTestId("mock-static-question"),
+      ).toBeInTheDocument();
+    });
+
+    it("renders InteractiveQuestion when drills is true", async () => {
+      const { store } = setup({ ui: <TestMessageComponent drills /> });
+
+      act(() => {
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "chart",
+            navigateTo: "/question#abc",
+          } as any),
+        );
+      });
+
+      expect(
+        await screen.findByTestId("mock-interactive-question"),
+      ).toBeInTheDocument();
+    });
+
+    it("Chart reference is stable after a second chart message arrives", async () => {
+      let firstChart: unknown = null;
+
+      const TestCapture = () => {
+        const { messages } = useMetabot();
+        const chartMessages = messages.filter(
+          (message) => message.type === "chart",
+        );
+        if (chartMessages[0]) {
+          firstChart = chartMessages[0].Chart;
+        }
+        return <div data-testid="chart-count">{chartMessages.length}</div>;
+      };
+
+      const { store } = setup({ ui: <TestCapture /> });
+
+      act(() => {
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "chart",
+            navigateTo: "/question#abc",
+          } as any),
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("chart-count")).toHaveTextContent("1");
+      });
+      const capturedChart = firstChart;
+      expect(capturedChart).not.toBeNull();
+
+      act(() => {
+        store.dispatch(
+          metabotActions.addAgentMessage({
+            agentId: "omnibot",
+            type: "chart",
+            navigateTo: "/question#xyz",
+          } as any),
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId("chart-count")).toHaveTextContent("2");
+      });
+
+      expect(firstChart).toBe(capturedChart);
     });
   });
 });
