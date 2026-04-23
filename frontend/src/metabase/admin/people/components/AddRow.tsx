@@ -34,7 +34,7 @@ export const AddRow = ({
     bd="1px solid var(--mb-color-brand)"
     style={{ borderRadius: "0.5rem" }}
   >
-    <Flex align="center" wrap="wrap">
+    <Flex align="center" wrap="wrap" gap="sm">
       {children}
       <Input
         type="text"
