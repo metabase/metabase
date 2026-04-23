@@ -1,6 +1,7 @@
 import { PLUGIN_WORKSPACES } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useGetCurrentWorkspaceQuery } from "metabase-enterprise/api";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import {
   getDataStudioWorkspaceInstanceRoutes,
@@ -13,10 +14,13 @@ function useCurrentWorkspace() {
 }
 
 export function initializePlugin() {
-  PLUGIN_WORKSPACES.isEnabled = true;
-  PLUGIN_WORKSPACES.canManageWorkspaces = getUserIsAdmin;
-  PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes = getDataStudioWorkspaceRoutes;
-  PLUGIN_WORKSPACES.getDataStudioWorkspaceInstanceRoutes =
-    getDataStudioWorkspaceInstanceRoutes;
-  PLUGIN_WORKSPACES.useCurrentWorkspace = useCurrentWorkspace;
+  if (hasPremiumFeature("hosting")) {
+    PLUGIN_WORKSPACES.isEnabled = true;
+    PLUGIN_WORKSPACES.canManageWorkspaces = getUserIsAdmin;
+    PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes =
+      getDataStudioWorkspaceRoutes;
+    PLUGIN_WORKSPACES.getDataStudioWorkspaceInstanceRoutes =
+      getDataStudioWorkspaceInstanceRoutes;
+    PLUGIN_WORKSPACES.useCurrentWorkspace = useCurrentWorkspace;
+  }
 }
