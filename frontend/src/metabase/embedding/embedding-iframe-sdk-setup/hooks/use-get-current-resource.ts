@@ -1,10 +1,5 @@
-import { useAsync } from "react-use";
-
-import { skipToken, useGetCardQuery } from "metabase/api";
-import { fetchDashboard } from "metabase/dashboard/actions";
-import { getDashboardComplete } from "metabase/dashboard/selectors";
+import { skipToken, useGetCardQuery, useGetDashboardQuery } from "metabase/api";
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { Card, Dashboard, DashboardId } from "metabase-types/api";
 
 const getResource = ({
@@ -36,22 +31,15 @@ export const useGetCurrentResource = ({
   dashboardId?: DashboardId | null;
   questionId?: string | number | null;
 }) => {
-  const dispatch = useDispatch();
-
-  const { loading: isDashboardLoading, error: dashboardLoadingError } =
-    useAsync(async () => {
-      if (!dashboardId) {
-        return;
-      }
-
-      await dispatch(
-        fetchDashboard({
-          dashId: dashboardId as number,
-          queryParams: {},
-        }),
-      );
-    }, [dashboardId, dispatch]);
-  const dashboard = useSelector(getDashboardComplete);
+  const {
+    data: dashboard,
+    error: dashboardLoadingError,
+    isLoading: isDashboardLoading,
+    isFetching: isDashboardFetching,
+  } = useGetDashboardQuery(
+    dashboardId ? { id: dashboardId as number } : skipToken,
+    { refetchOnMountOrArgChange: true },
+  );
 
   const {
     data: card,
@@ -63,7 +51,7 @@ export const useGetCurrentResource = ({
   });
 
   const isLoading = isDashboardLoading || isCardLoading;
-  const isFetching = isCardFetching;
+  const isFetching = isDashboardFetching || isCardFetching;
 
   const resource = getResource({
     experience,

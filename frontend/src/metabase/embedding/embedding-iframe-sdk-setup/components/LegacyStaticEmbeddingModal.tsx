@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { DashboardSharingEmbeddingModal } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
+import { DashboardSharingEmbeddingModal } from "metabase/embedding/components/DashboardSharingEmbeddingModal";
+import { QuestionEmbedWidget } from "metabase/embedding/components/QuestionEmbedWidget";
 import { useGetCurrentResource } from "metabase/embedding/embedding-iframe-sdk-setup/hooks";
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import { LoadingAndErrorWrapper } from "metabase/public/containers/PublicAction/PublicAction.styled";
-import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import type { Card, Dashboard, DashboardId } from "metabase-types/api";
 
 export type LegacyStaticEmbeddingModalProps = {
