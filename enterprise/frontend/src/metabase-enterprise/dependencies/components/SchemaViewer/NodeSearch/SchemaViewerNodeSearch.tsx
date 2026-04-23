@@ -1,6 +1,6 @@
 import { useHotkeys } from "@mantine/hooks";
 import { useMemo, useRef, useState } from "react";
-import { msgid, ngettext, t } from "ttag";
+import { t } from "ttag";
 
 import {
   Combobox,
@@ -35,7 +35,6 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
   const [query, setQuery] = useState("");
 
   const combobox = useCombobox({
-    defaultOpened: true,
     onDropdownClose: () => combobox.resetSelectedOption(),
     onDropdownOpen: () => combobox.updateSelectedOptionIndex("active"),
   });
@@ -143,13 +142,16 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
               >
                 <Group gap="sm" wrap="nowrap" justify="space-between" w="100%">
                   <Text className={S.label}>{item.label}</Text>
-                  <Text className={S.fieldCount} c="text-tertiary" fz="xs">
-                    {ngettext(
-                      msgid`${item.fkCount} FK`,
-                      `${item.fkCount} FKs`,
-                      item.fkCount,
-                    )}
-                  </Text>
+                  <Group gap={4} wrap="nowrap" className={S.fieldCount}>
+                    <Text c="text-tertiary" fz="xs">
+                      {item.fkCount}
+                    </Text>
+                    <FixedSizeIcon
+                      name="connections"
+                      c="text-tertiary"
+                      size={12}
+                    />
+                  </Group>
                 </Group>
               </Combobox.Option>
             ))}

@@ -150,6 +150,15 @@ export function SchemaPickerInput({
 
   const hasSelection = databaseId != null;
 
+  console.log(
+    "databasesResponse",
+    databasesResponse,
+    isLoadingDatabases,
+    isLoadingSchemas,
+    schemas,
+    queriedSchemas,
+  );
+
   return (
     <Box ref={clickOutsideRef}>
       <Popover
@@ -199,7 +208,7 @@ export function SchemaPickerInput({
               <Stack align="center" justify="center" py="md">
                 <Loader size="sm" />
               </Stack>
-            ) : schemas != null && schemas.length > 1 ? (
+            ) : schemas != null && schemas.length >= 1 ? (
               <SchemaList
                 schemas={schemas}
                 databaseName={

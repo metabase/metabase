@@ -1,4 +1,3 @@
-import { useClipboard } from "@mantine/hooks";
 import {
   Background,
   MiniMap,
@@ -16,7 +15,6 @@ import { getErrorMessage } from "metabase/api/utils/errors";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
-  ActionIcon,
   Box,
   Button,
   Group,
@@ -25,7 +23,6 @@ import {
   Menu,
   Stack,
   Text,
-  Tooltip,
   UnstyledButton,
   useColorScheme,
 } from "metabase/ui";
@@ -51,7 +48,6 @@ import { SchemaViewerContext } from "./SchemaViewerContext";
 import { SchemaViewerTableNode } from "./TableNode";
 import { MAX_ZOOM, MIN_ZOOM } from "./constants";
 import type { SchemaViewerFlowEdge, SchemaViewerFlowNode } from "./types";
-import { useSchemaViewerShareUrl } from "./useSchemaViewerShareUrl";
 import { useZoomToNodes } from "./useZoomToNodes";
 import {
   focusNodeLayout,
@@ -332,7 +328,7 @@ export function SchemaViewer({
   const [hops, setHops] = useState(initialHops ?? DEFAULT_HOPS);
   // IDs of tables the camera should fit/zoom to next. Populated in two
   // places: (1) the graph-sync effect when FK expansion adds new tables,
-  // (2) the onEdgeDoubleClick handler to zoom to an edge's source/target.
+  // (2) the onEdgeClick handler to zoom to an edge's source/target.
   const [pendingFitNodeIds, setPendingFitNodeIds] = useState<
     readonly string[] | null
   >(null);
@@ -599,20 +595,6 @@ export function SchemaViewer({
     [effectiveSelectedTableIds, databaseId, schema, hops, setSavedPrefs],
   );
 
-  const shareUrl = useSchemaViewerShareUrl({
-    databaseId,
-    schema,
-    tableIds: effectiveSelectedTableIds,
-    hops,
-  });
-  const clipboard = useClipboard({ timeout: 2000 });
-
-  const handleShare = useCallback(() => {
-    if (shareUrl != null) {
-      clipboard.copy(shareUrl);
-    }
-  }, [clipboard, shareUrl]);
-
   // Clear the canvas whenever the database/schema context changes, regardless
   // of how it was changed (picker click, direct URL navigation, history
   // back/forward). Without this, the previous schema's nodes linger on screen
@@ -675,12 +657,17 @@ export function SchemaViewer({
     [edges, setNodes, setEdges],
   );
 
-  // Double-click on an edge: alternate between zooming to the source node
-  // (first double-click, or any time the previous was "target") and the
-  // target node (when the previous was "source"). The edge stays selected
+  // Click on an already-selected edge: alternate between zooming to the
+  // source node (first repeat click, or any time the previous was "target")
+  // and the target node (when the previous was "source"). The first click —
+  // the one that selects the edge — is left alone, so the zoom only kicks
+  // in once the user has clearly chosen that edge. The edge stays selected
   // — fitView doesn't touch React Flow's selection state.
-  const handleEdgeDoubleClick = useCallback(
+  const handleEdgeClick = useCallback(
     (_event: React.MouseEvent, edge: SchemaViewerFlowEdge) => {
+      if (!edge.selected) {
+        return;
+      }
       const previousSide = lastEdgeZoomSideRef.current.get(edge.id);
       const nextSide: "source" | "target" =
         previousSide === "source" ? "target" : "source";
@@ -893,7 +880,7 @@ export function SchemaViewer({
         fitViewOptions={FIT_VIEW_OPTIONS}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onEdgeDoubleClick={handleEdgeDoubleClick}
+        onEdgeClick={handleEdgeClick}
         onNodeContextMenu={handleNodeContextMenu}
         onPaneClick={closeNodeContextMenu}
       >
@@ -905,27 +892,7 @@ export function SchemaViewer({
           onDone={clearPendingFitNodeIds}
         />
         <Panel position="top-right">
-          <Group gap="sm">
-            {shareUrl != null && (
-              <Tooltip
-                label={
-                  <Text fw={700} c="inherit">
-                    {clipboard.copied ? t`Copied!` : t`Share this schema`}
-                  </Text>
-                }
-                opened={clipboard.copied ? true : undefined}
-              >
-                <ActionIcon
-                  variant="default"
-                  onClick={handleShare}
-                  aria-label={t`Copy link`}
-                >
-                  <Icon name="link" />
-                </ActionIcon>
-              </Tooltip>
-            )}
-            <AppSwitcher className={S.appSwitcher} />
-          </Group>
+          <AppSwitcher className={S.appSwitcher} />
         </Panel>
         {nodes.length > 0 && <SchemaViewerNodeLayout />}
         {nodes.length > 0 && (
@@ -992,11 +959,11 @@ export function SchemaViewer({
               }}
             />
           </Menu.Target>
-          <Menu.Dropdown p={0}>
+          <Menu.Dropdown p="xs">
             <Menu.Item
               fz="sm"
-              fw="bold"
-              rightSection={<Icon name="eye_outline" c="text-tertiary" />}
+              py="xs"
+              leftSection={<Icon name="eye_outline" size={14} />}
               onClick={() => handleFocusNode(nodeContextMenu.nodeId)}
             >
               {t`Focus node`}
