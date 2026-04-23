@@ -33,7 +33,10 @@ import { setEntityTypes } from "metabase/redux/embedding-data-picker";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
+
+import { getLastVisibleStageIndex } from "../utils/stages";
 
 import type { SdkQuestionContextType, SdkQuestionProviderProps } from "./types";
 
@@ -198,8 +201,24 @@ export const SdkQuestionProvider = ({
     [navigateToNewCard, navigation, question, loadAndQueryQuestion],
   );
 
+  const query = question?.query();
+  const lastVisibleStageIndex = useMemo(
+    () => getLastVisibleStageIndex(query),
+    [query],
+  );
+
+  const updateAndNormalizeQuestion = useCallback(
+    (nextQuestion: Question, options?: { run?: boolean }) =>
+      updateQuestion(
+        nextQuestion.setQuery(Lib.dropEmptyStages(nextQuestion.query())),
+        options,
+      ),
+    [updateQuestion],
+  );
+
   const questionContext: SdkQuestionContextType = {
     originalId: questionId,
+    lastVisibleStageIndex,
     token,
     isQuestionLoading,
     isQueryRunning,
@@ -209,6 +228,7 @@ export const SdkQuestionProvider = ({
     queryQuestion,
     replaceQuestion,
     updateQuestion,
+    updateAndNormalizeQuestion,
     updateParameterValues,
     navigateToNewCard:
       userNavigateToNewCard !== undefined
