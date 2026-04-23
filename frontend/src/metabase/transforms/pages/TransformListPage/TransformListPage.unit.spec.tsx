@@ -12,9 +12,9 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import { TransformListPage } from "./TransformListPage";
 
