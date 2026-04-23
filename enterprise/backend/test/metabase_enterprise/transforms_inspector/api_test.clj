@@ -112,8 +112,9 @@
           (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-transforms/inspector-discovery
                                                           {:status "error"})))
           (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-transforms/inspector-lens
-                                                          {:lens-type "generic-summary"
-                                                           :status    "ok"}))))
+                                                          {:lens-type  "generic-summary"
+                                                           :complexity "fast"
+                                                           :status     "ok"}))))
         (mt/with-data-analyst-role! (mt/user->id :lucky)
           (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
             (testing "GET /api/ee/transforms/:id/inspect bumps inspector-discovery{status=ok}"
@@ -121,20 +122,22 @@
                                     (format "ee/transforms/%d/inspect" transform-id))
               (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/inspector-discovery
                                                               {:status "ok"}))))
-            (testing "GET /api/ee/transforms/:id/inspect/:lens-id bumps inspector-lens{status=ok}"
+            (testing "GET /api/ee/transforms/:id/inspect/:lens-id bumps inspector-lens{status=ok} with complexity label"
               (mt/user-http-request :lucky :get 200
                                     (format "ee/transforms/%d/inspect/generic-summary" transform-id))
               (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/inspector-lens
-                                                              {:lens-type "generic-summary"
-                                                               :status    "ok"}))))
-            (testing "404 from non-applicable lens bumps inspector-lens{status=error,lens-type=unknown}"
-              ;; Unknown lens-ids clamp to \"unknown\" to prevent Prometheus cardinality
-              ;; explosion from arbitrary path-param values.
+                                                              {:lens-type  "generic-summary"
+                                                               :complexity "fast"
+                                                               :status     "ok"}))))
+            (testing "404 from non-applicable lens bumps inspector-lens{lens-type=unknown,complexity=unknown,status=error}"
+              ;; Unknown lens-ids clamp both :lens-type and :complexity to \"unknown\" to prevent
+              ;; Prometheus cardinality explosion from arbitrary path-param values.
               (mt/user-http-request :lucky :get 404
                                     (format "ee/transforms/%d/inspect/no-such-lens" transform-id))
               (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/inspector-lens
-                                                              {:lens-type "unknown"
-                                                               :status    "error"}))))
+                                                              {:lens-type  "unknown"
+                                                               :complexity "unknown"
+                                                               :status     "error"}))))
             ;; Run the failure case before the success case so we can assert that a QP {:status :failed}
             ;; bumps the error bucket but NOT the ok bucket — the specific regression covered by the
             ;; streaming-error-path fix in api.clj (detecting :failed status from qp/process-query).

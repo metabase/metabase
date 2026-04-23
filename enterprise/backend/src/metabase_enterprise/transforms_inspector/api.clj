@@ -22,13 +22,26 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- lens-label
-  "Clamp `lens-id` (a user-controlled path param) to a registered lens type or
-   \"unknown\" to bound the cardinality of the `:lens-type` metric label."
+(defn- known-lens-id?
+  "True if `lens-id` matches a registered lens type (including drill lenses)."
   [lens-id]
-  (if (some #(= (name %) lens-id) (lens.core/registered-lens-types true))
-    lens-id
-    "unknown"))
+  (contains? (set (map name (lens.core/registered-lens-types true))) lens-id))
+
+(defn- lens-type-label
+  "Clamp `lens-id` (a user-controlled path param) to its registered form or
+   \"unknown\", bounding the cardinality of the `:lens-type` metric label."
+  [lens-id]
+  (if (known-lens-id? lens-id) lens-id "unknown"))
+
+(defn- lens-labels
+  "Return clamped `:lens-type` and `:complexity` metric labels for `lens-id`.
+   For unregistered lens-ids both fall back to \"unknown\"."
+  [lens-id]
+  (let [known? (known-lens-id? lens-id)]
+    {:lens-type  (if known? lens-id "unknown")
+     :complexity (if known?
+                   (-> (lens.core/lens-metadata (keyword lens-id) {}) :complexity :level name)
+                   "unknown")}))
 
 (api.macros/defendpoint :get "/:id/inspect"
   :- ::inspector.schema/discovery-response
@@ -70,11 +83,11 @@
                     (try
                       (let [r (inspector/get-lens transform lens-id params)]
                         (prometheus/inc! :metabase-transforms/inspector-lens
-                                         {:lens-type (lens-label lens-id) :status "ok"})
+                                         (assoc (lens-labels lens-id) :status "ok"))
                         r)
                       (catch Throwable t
                         (prometheus/inc! :metabase-transforms/inspector-lens
-                                         {:lens-type (lens-label lens-id) :status "error"})
+                                         (assoc (lens-labels lens-id) :status "error"))
                         (throw t))))]
     (events/publish-event! :event/transform-inspect-lens
                            {:object  transform
@@ -120,12 +133,12 @@
                     ;; instead of throwing — see qp.streaming/-streaming-response.
                     status (if (= :failed (:status result)) "error" "ok")]
                 (prometheus/observe! :metabase-transforms/inspector-query-duration-ms
-                                     {:lens-type (lens-label lens-id) :status status}
+                                     {:lens-type (lens-type-label lens-id) :status status}
                                      (u/since-ms timer))
                 result)
               (catch Throwable t
                 (prometheus/observe! :metabase-transforms/inspector-query-duration-ms
-                                     {:lens-type (lens-label lens-id) :status "error"}
+                                     {:lens-type (lens-type-label lens-id) :status "error"}
                                      (u/since-ms timer))
                 (throw t)))))))))
 
