@@ -609,12 +609,13 @@
      :order-by [[:keyword_rank :asc]]
      :limit (semantic-settings/semantic-search-results-limit)}))
 
+(def ^:private ^:const max-cosine-distance "Cut-off used to filter semantic search results" 0.7)
+
 (defn- semantic-search-query
   "Build a semantic search query using vector similarity with post-filtering to enable HNSW index usage."
   [index embedding search-context]
   (let [filters (search-filters search-context)
         embedding-literal (format-embedding embedding)
-        max-cosine-distance 0.7
         ;; Inner query: pure vector search to better trigger HNSW index vs. seqscan
         ;; TODO: only pull in necessary extra columns from configured filters
         hnsw-query {:select (into common-search-columns

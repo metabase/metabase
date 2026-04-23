@@ -12,6 +12,7 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { openUrl } from "metabase/redux/app";
 import {
   API_UPDATE_QUESTION,
+  REVERT_CARD_TO_REVISION,
   SOFT_RELOAD_CARD,
   clearQueryResult,
   onCloseSidebars,
@@ -349,9 +350,8 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
-export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
-  REVERT_TO_REVISION,
+  REVERT_CARD_TO_REVISION,
   (cardId, revision) => {
     return async (dispatch) => {
       await entityCompatibleQuery(

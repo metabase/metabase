@@ -42,6 +42,7 @@
   },
   "resolutions": {
     "axios": "1.15.0",
+    "follow-redirects": "^1.16.0",
     "form-data": "^4.0.4"
   }
 }
