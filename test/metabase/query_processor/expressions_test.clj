@@ -5,6 +5,8 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -1185,3 +1187,33 @@
                    (mt/formatted-rows
                     [u.date/temporal-str->iso8601-str int int]
                     (qp/process-query query))))))))))
+
+(deftest ^:parallel expression-as-bucketed-join-key-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql :+features [:expressions :left-join]})
+    (testing "can join a custom expression that uses temporal bucketing (#59614)"
+      (let [mp                (mt/metadata-provider)
+            orders-table      (lib.metadata/table mp (mt/id :orders))
+            products-table    (lib.metadata/table mp (mt/id :products))
+            orders-id         (lib.metadata/field mp (mt/id :orders :id))
+            orders-created    (lib.metadata/field mp (mt/id :orders :created_at))
+            products-id       (lib.metadata/field mp (mt/id :products :id))
+            products-created  (lib.metadata/field mp (mt/id :products :created_at))
+            q                 (-> (lib/query mp orders-table)
+                                  (lib/expression "X" (lib/datetime-add orders-created 1 :day)))
+            x-month             (-> (lib/expression-ref q "X")
+                                    (lib/with-temporal-bucket :month))
+            products-month    (lib/with-temporal-bucket products-created :month)
+            query             (-> q
+                                  (lib/join (-> (lib/join-clause products-table
+                                                                 [(lib/= x-month products-month)])
+                                                (lib/with-join-fields [products-id products-created])))
+                                  (lib/with-fields [orders-id (lib/expression-ref q "X")])
+                                  (lib/order-by orders-id :asc)
+                                  (lib/order-by products-id :asc)
+                                  (lib/limit 3))]
+        (is (= [[1 "2019-02-12T21:40:27Z" 9 "2019-02-07T08:26:25Z"]
+                [1 "2019-02-12T21:40:27Z" 137 "2019-02-16T22:36:43Z"]
+                [1 "2019-02-12T21:40:27Z" 188 "2019-02-07T19:03:43Z"]]
+               (mt/formatted-rows
+                [int u.date/temporal-str->iso8601-str int u.date/temporal-str->iso8601-str]
+                (qp/process-query query))))))))

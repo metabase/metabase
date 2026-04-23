@@ -37,4 +37,4 @@
 
                           "Median of ${ 0 }"
                           {:msgstr ["Median of ${ 0 }"]}}}}
-         (#'frontend/->i18n-map test-common/po-contents))))
+         (#'frontend/->i18n-map test-common/po-contents #{}))))

@@ -114,11 +114,10 @@ export const useInitDataInternal = ({
   }
 
   if (!api.onResponseError) {
-    api.onResponseError = ({
-      metabaseVersion,
-    }: {
-      metabaseVersion: string;
-    }) => {
+    api.onResponseError = ({ metabaseVersion }) => {
+      if (metabaseVersion == null) {
+        return;
+      }
       // Use ensureMetabaseProviderPropsStore to access the current instance of reduxStore
       ensureMetabaseProviderPropsStore()
         .getState()

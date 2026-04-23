@@ -79,7 +79,7 @@ export function GeneralSettingsPage() {
           title={t`Allowed domains for iframes in dashboards`}
           description={
             <>
-              {jt`You should make sure to trust the sources you allow your users to embed in dashboards. ${(<ExternalLink key="docs" href={iframeDocsUrl}>{t`Learn more`}</ExternalLink>)}`}
+              {jt`You should make sure to trust the sources you allow your users to embed in dashboards. ${<ExternalLink key="docs" href={iframeDocsUrl}>{t`Learn more`}</ExternalLink>}`}
             </>
           }
           inputType="textarea"

@@ -13,13 +13,13 @@ import { useGetAdminSettingsDetailsQuery } from "metabase/api";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSetting, useToast } from "metabase/common/hooks";
+import type { State } from "metabase/redux/store";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 import { Box, Divider, Flex, Stack } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
 import { useGetBillingInfoQuery } from "metabase-enterprise/api";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 import type { TokenStatus } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import { BillingInfo } from "../BillingInfo";
 
@@ -45,12 +45,13 @@ const getDescription = ({
       <>
         {jt`Your license isn’t valid anymore. If you have a new license, please
         enter it below, otherwise please contact ${
+          /* eslint-disable i18next/no-literal-string */
           (
-            // eslint-disable-next-line i18next/no-literal-string
             <ExternalLink key="email" href="mailto:support@metabase.com">
               support@metabase.com
             </ExternalLink>
           )
+          /* eslint-enable i18next/no-literal-string */
         }`}
       </>
     );

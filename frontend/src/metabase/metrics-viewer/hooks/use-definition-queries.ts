@@ -1,108 +1,293 @@
 import { useEffect, useMemo } from "react";
+import { t } from "ttag";
 
 import { metricApi } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
+import type { State } from "metabase/redux/store";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { MetricDefinition } from "metabase-lib/metric";
-import type { Dataset, MetricBreakoutValuesResponse } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-
+import * as LibMetric from "metabase-lib/metric";
+import { isMetric } from "metabase-lib/v1/types/utils/isa";
 import type {
-  MetricSourceId,
-  MetricsViewerDefinitionEntry,
-  MetricsViewerTabState,
+  Dataset,
+  ExpressionRef,
+  InstanceFilter,
+  MetricBreakoutValuesResponse,
+  TypedProjection,
+} from "metabase-types/api";
+import type { MetricDatasetRequest } from "metabase-types/api/metric";
+
+import {
+  type ExpressionDefinitionEntry,
+  type MetricSourceId,
+  type MetricsViewerDefinitionEntry,
+  type MetricsViewerFormulaEntity,
+  type MetricsViewerTabState,
+  isExpressionEntry,
+  isMetricEntry,
 } from "../types/viewer-state";
 import {
   getModifiedDefinition,
   toJsDefinition,
 } from "../utils/definition-cache";
-import { entryHasBreakout } from "../utils/definition-entries";
+import {
+  entryHasBreakout,
+  getEffectiveDefinitionEntry,
+  getEffectiveTokenDefinitionEntry,
+} from "../utils/definition-entries";
+import type { MetricSlot } from "../utils/metric-slots";
+import {
+  computeMetricSlots,
+  findExpressionTokenSlot,
+  findStandaloneSlot,
+} from "../utils/metric-slots";
+import { parseExpression } from "../utils/parse-expression";
+import { getTabConfig } from "../utils/tab-config";
 
 export interface UseDefinitionQueriesResult {
-  resultsByDefinitionId: Map<MetricSourceId, Dataset>;
-  errorsByDefinitionId: Map<MetricSourceId, string>;
-  modifiedDefinitions: Map<MetricSourceId, MetricDefinition>;
-  breakoutValuesBySourceId: Map<MetricSourceId, MetricBreakoutValuesResponse>;
-  isExecuting: (id: MetricSourceId) => boolean;
+  resultsByEntityIndex: Map<number, Dataset>;
+  queriesAreLoading: boolean;
+  queriesError: string | null;
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
+  breakoutValuesByEntityIndex: Map<number, MetricBreakoutValuesResponse>;
+}
+
+function getModifiedDefinitionForTab(
+  definition: MetricsViewerDefinitionEntry,
+  slotIndex: number,
+  tab: MetricsViewerTabState,
+): MetricDefinition | null {
+  if (!definition.definition) {
+    return null;
+  }
+  const tabConfig = getTabConfig(tab.type);
+  const dimensionId = tab.dimensionMapping[slotIndex];
+  if (!dimensionId) {
+    if (tabConfig.minDimensions > 0) {
+      return null;
+    }
+    return definition.definition;
+  }
+  return getModifiedDefinition(
+    definition.definition,
+    dimensionId,
+    tab.projectionConfig,
+  );
+}
+
+function buildArithmeticRequest(
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  tab: MetricsViewerTabState,
+  entity: ExpressionDefinitionEntry,
+  metricSlots: MetricSlot[],
+  entityIndex: number,
+  datasetRequestsByEntityIndex: Map<number, MetricDatasetRequest>,
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>,
+  expressionErrorsByEntityIndex: Map<number, string>,
+): void {
+  const { tokens } = entity;
+
+  // Build leaf refs and projections for each metric occurrence in the expression.
+  // Each occurrence gets its own unique UUID keyed by token position so the same
+  // metric can appear multiple times (e.g. Revenue / Revenue).
+  const leafRefs = new Map<number, ExpressionRef>();
+  const projections: TypedProjection[] = [];
+  const filters: InstanceFilter[] = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token.type !== "metric") {
+      continue;
+    }
+
+    const definition = getEffectiveTokenDefinitionEntry(token, definitions);
+    // Find the specific slot for this expression token
+    const tokenSlot = findExpressionTokenSlot(metricSlots, entityIndex, i);
+    const slotIndex = tokenSlot?.slotIndex ?? -1;
+    const modifiedDefinition = getModifiedDefinitionForTab(
+      definition,
+      slotIndex,
+      tab,
+    );
+    if (!modifiedDefinition) {
+      if (!definition.definition) {
+        return; // still loading the metric, not an error
+      }
+      expressionErrorsByEntityIndex.set(
+        entityIndex,
+        t`No compatible dimensions`,
+      );
+      return;
+    }
+
+    modifiedDefinitionsBySlotIndex.set(slotIndex, modifiedDefinition);
+
+    const uuid = `leaf-${i}`;
+    const metricId = LibMetric.sourceMetricId(modifiedDefinition);
+    const measureId = LibMetric.sourceMeasureId(modifiedDefinition);
+
+    if (metricId != null) {
+      leafRefs.set(i, ["metric", { "lib/uuid": uuid }, metricId]);
+    } else if (measureId != null) {
+      leafRefs.set(i, ["measure", { "lib/uuid": uuid }, measureId]);
+    } else {
+      expressionErrorsByEntityIndex.set(entityIndex, t`Invalid expression`);
+      return;
+    }
+
+    const jsdef = toJsDefinition(modifiedDefinition);
+
+    if (jsdef.projections) {
+      for (const proj of jsdef.projections) {
+        projections.push({
+          ...proj,
+          "lib/uuid": uuid,
+        });
+      }
+    }
+
+    filters.push(
+      ...(jsdef.filters ?? []).map((f) => ({
+        "lib/uuid": uuid,
+        filter: f.filter,
+      })),
+    );
+  }
+
+  const expr = parseExpression(tokens, leafRefs);
+  if (!expr) {
+    expressionErrorsByEntityIndex.set(entityIndex, t`Invalid expression`);
+    return;
+  }
+
+  datasetRequestsByEntityIndex.set(entityIndex, {
+    definition: {
+      expression: expr,
+      projections,
+      filters,
+    },
+  });
+}
+
+function buildQueryItems(
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  formulaEntities: MetricsViewerFormulaEntity[],
+  tab: MetricsViewerTabState | null,
+): {
+  datasetRequestsByEntityIndex: Map<number, MetricDatasetRequest>;
+  modifiedDefinitionsBySlotIndex: Map<number, MetricDefinition>;
+  expressionErrorsByEntityIndex: Map<number, string>;
+} {
+  const datasetRequestsByEntityIndex = new Map<number, MetricDatasetRequest>();
+  const modifiedDefinitionsBySlotIndex = new Map<number, MetricDefinition>();
+  const expressionErrorsByEntityIndex = new Map<number, string>();
+
+  if (!tab) {
+    return {
+      datasetRequestsByEntityIndex,
+      modifiedDefinitionsBySlotIndex,
+      expressionErrorsByEntityIndex,
+    };
+  }
+
+  const metricSlots = computeMetricSlots(formulaEntities);
+
+  formulaEntities.forEach((entity, entityIndex) => {
+    if (isMetricEntry(entity)) {
+      const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
+      const slot = findStandaloneSlot(metricSlots, entityIndex);
+      if (!slot) {
+        return;
+      }
+      const modifiedDefinition = getModifiedDefinitionForTab(
+        effectiveEntry,
+        slot.slotIndex,
+        tab,
+      );
+      if (!modifiedDefinition) {
+        return;
+      }
+      const jsDefinition = toJsDefinition(modifiedDefinition);
+      datasetRequestsByEntityIndex.set(entityIndex, {
+        definition: jsDefinition,
+      });
+      modifiedDefinitionsBySlotIndex.set(slot.slotIndex, modifiedDefinition);
+    }
+
+    if (isExpressionEntry(entity)) {
+      buildArithmeticRequest(
+        definitions,
+        tab,
+        entity,
+        metricSlots,
+        entityIndex,
+        // buildArithmeticRequest mutates these
+        datasetRequestsByEntityIndex,
+        modifiedDefinitionsBySlotIndex,
+        expressionErrorsByEntityIndex,
+      );
+    }
+  });
+
+  return {
+    datasetRequestsByEntityIndex,
+    modifiedDefinitionsBySlotIndex,
+    expressionErrorsByEntityIndex,
+  };
 }
 
 export function useDefinitionQueries(
-  definitions: MetricsViewerDefinitionEntry[],
+  definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry>,
+  formulaEntities: MetricsViewerFormulaEntity[],
   tab: MetricsViewerTabState | null,
 ): UseDefinitionQueriesResult {
   const dispatch = useDispatch();
 
-  const datasetRequests = useMemo(() => {
-    if (!tab) {
-      return [];
-    }
-
-    return definitions.flatMap((entry) => {
-      const dimensionId = tab.dimensionMapping[entry.id];
-      if (!dimensionId || !entry.definition) {
-        return [];
-      }
-
-      const modifiedDefinition = getModifiedDefinition(
-        entry.definition,
-        dimensionId,
-        tab.projectionConfig,
-      );
-
-      if (!modifiedDefinition) {
-        return [];
-      }
-
-      const jsDefinition = toJsDefinition(modifiedDefinition);
-
-      return [
-        {
-          sourceId: entry.id,
-          modifiedDefinition,
-          request: { definition: jsDefinition },
-        },
-      ];
-    });
-  }, [definitions, tab]);
+  const {
+    datasetRequestsByEntityIndex,
+    modifiedDefinitionsBySlotIndex,
+    expressionErrorsByEntityIndex,
+  } = useMemo(
+    () => buildQueryItems(definitions, formulaEntities, tab),
+    [definitions, formulaEntities, tab],
+  );
 
   const breakoutRequests = useMemo(() => {
-    return definitions.flatMap((entry) => {
-      if (!entry.definition || !entryHasBreakout(entry)) {
+    return formulaEntities.flatMap((entity, entityIndex) => {
+      if (!isMetricEntry(entity)) {
+        return [];
+      }
+      const effectiveEntry = getEffectiveDefinitionEntry(entity, definitions);
+      if (!effectiveEntry.definition || !entryHasBreakout(effectiveEntry)) {
         return [];
       }
 
-      const jsDefinition = toJsDefinition(entry.definition);
+      const jsDefinition = toJsDefinition(effectiveEntry.definition);
 
       return [
         {
-          sourceId: entry.id,
+          entityIndex,
           request: { definition: jsDefinition },
         },
       ];
     });
-  }, [definitions]);
-
-  const modifiedDefinitions = useMemo(() => {
-    const map = new Map<MetricSourceId, MetricDefinition>();
-    for (const { sourceId, modifiedDefinition } of datasetRequests) {
-      map.set(sourceId, modifiedDefinition);
-    }
-    return map;
-  }, [datasetRequests]);
+  }, [formulaEntities, definitions]);
 
   useEffect(() => {
-    if (datasetRequests.length === 0) {
+    const requestsToMake = [...datasetRequestsByEntityIndex.values()];
+
+    if (requestsToMake.length === 0) {
       return;
     }
 
-    const subscriptions = datasetRequests.map((query) =>
-      dispatch(metricApi.endpoints.getMetricDataset.initiate(query.request)),
+    const subscriptions = requestsToMake.map((request) =>
+      dispatch(metricApi.endpoints.getMetricDataset.initiate(request)),
     );
 
     return () => {
       subscriptions.forEach((subscription) => subscription.unsubscribe());
     };
-  }, [datasetRequests, dispatch]);
+  }, [datasetRequestsByEntityIndex, dispatch]);
 
   useEffect(() => {
     if (breakoutRequests.length === 0) {
@@ -121,61 +306,77 @@ export function useDefinitionQueries(
   }, [breakoutRequests, dispatch]);
 
   const datasetResults = useSelector((state: State) =>
-    datasetRequests.map((query) => ({
-      sourceId: query.sourceId,
-      result: metricApi.endpoints.getMetricDataset.select(query.request)(state),
-    })),
+    Array.from(datasetRequestsByEntityIndex.entries()).map(
+      ([entityIndex, request]) => ({
+        entityIndex,
+        result: metricApi.endpoints.getMetricDataset.select(request)(state),
+      }),
+    ),
   );
 
   const breakoutResults = useSelector((state: State) =>
     breakoutRequests.map((query) => ({
-      sourceId: query.sourceId,
+      entityIndex: query.entityIndex,
       result: metricApi.endpoints.getMetricBreakoutValues.select(query.request)(
         state,
       ),
     })),
   );
 
-  const { resultsByDefinitionId, errorsByDefinitionId, isExecuting } =
+  const { resultsByEntityIndex, queriesAreLoading, queriesError } =
     useMemo(() => {
-      const results = new Map<MetricSourceId, Dataset>();
-      const errors = new Map<MetricSourceId, string>();
-      const executing = new Set<MetricSourceId>();
+      const resultsByEntityIndex = new Map<number, Dataset>();
+      let queriesAreLoading = false;
+      let queriesError = null;
 
-      for (const { sourceId, result } of datasetResults) {
-        if (result.data) {
-          results.set(sourceId, result.data);
+      for (const { entityIndex, result } of datasetResults) {
+        if (result.data?.data?.cols?.length) {
+          if (result.data.data.cols.some((col) => isMetric(col))) {
+            resultsByEntityIndex.set(entityIndex, result.data);
+          } else {
+            queriesError = t`Non-numeric metrics are not supported`;
+          }
         }
-        if (result.error) {
-          errors.set(sourceId, getErrorMessage(result.error));
+        if (result.error && queriesError == null) {
+          queriesError = getErrorMessage(result.error);
         }
         if (result.isLoading || ("isFetching" in result && result.isFetching)) {
-          executing.add(sourceId);
+          queriesAreLoading = true;
         }
       }
 
-      return {
-        resultsByDefinitionId: results,
-        errorsByDefinitionId: errors,
-        isExecuting: (id: MetricSourceId) => executing.has(id),
-      };
-    }, [datasetResults]);
+      // only show expression errors if we have no data to show
+      if (
+        !queriesAreLoading &&
+        resultsByEntityIndex.size === 0 &&
+        queriesError == null &&
+        expressionErrorsByEntityIndex.size > 0
+      ) {
+        queriesError = expressionErrorsByEntityIndex.values().next().value!;
+      }
 
-  const breakoutValuesBySourceId = useMemo(() => {
-    const map = new Map<MetricSourceId, MetricBreakoutValuesResponse>();
-    for (const { sourceId, result } of breakoutResults) {
+      return {
+        resultsByEntityIndex,
+        queriesAreLoading,
+        queriesError,
+      };
+    }, [datasetResults, expressionErrorsByEntityIndex]);
+
+  const breakoutValuesByEntityIndex = useMemo(() => {
+    const map = new Map<number, MetricBreakoutValuesResponse>();
+    for (const { entityIndex, result } of breakoutResults) {
       if (result.data) {
-        map.set(sourceId, result.data);
+        map.set(entityIndex, result.data);
       }
     }
     return map;
   }, [breakoutResults]);
 
   return {
-    resultsByDefinitionId,
-    errorsByDefinitionId,
-    modifiedDefinitions,
-    breakoutValuesBySourceId,
-    isExecuting,
+    resultsByEntityIndex,
+    queriesAreLoading,
+    queriesError,
+    modifiedDefinitionsBySlotIndex,
+    breakoutValuesByEntityIndex,
   };
 }

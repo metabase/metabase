@@ -10,7 +10,6 @@ import {
 } from "metabase/api";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
-import { REVERT_TO_REVISION } from "metabase/query_builder/actions";
 import {
   INITIALIZE,
   RESET,
@@ -19,7 +18,14 @@ import {
   initialize,
   reset,
 } from "metabase/redux/dashboard";
-import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/redux/query-builder";
+import {
+  NAVIGATE_BACK_TO_DASHBOARD,
+  REVERT_CARD_TO_REVISION,
+} from "metabase/redux/query-builder";
+import type {
+  DashboardSidebarName,
+  StoreDashboard,
+} from "metabase/redux/store/dashboard";
 import { handleActions } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
@@ -31,10 +37,6 @@ import type {
   ParameterValuesMap,
   Revision,
 } from "metabase-types/api";
-import type {
-  DashboardSidebarName,
-  StoreDashboard,
-} from "metabase-types/store/dashboard";
 
 import {
   CLOSE_SIDEBAR,
@@ -441,7 +443,7 @@ export const dashcardData = createReducer(
         },
       )
       .addCase<string, { type: string; payload: Revision }>(
-        REVERT_TO_REVISION,
+        REVERT_CARD_TO_REVISION,
         (state, action) => {
           const { id } = action.payload;
           if (id != null) {

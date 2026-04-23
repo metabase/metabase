@@ -277,6 +277,48 @@
        :aggregation {:node/type :aggregation/count}
        :base-table  {:node/type :ast/table :id 1}})))
 
+;;; -------------------------------------------------- Expression Constant Nodes --------------------------------------------------
+
+(deftest ^:parallel expression-constant-test
+  (testing "valid expression constant nodes"
+    (are [node] (nil? (me/humanize (mr/explain ::ast.schema/expression-constant node)))
+      {:node/type :expression/constant :value 42}
+      {:node/type :expression/constant :value 3.14}
+      {:node/type :expression/constant :value -7}
+      {:node/type :expression/constant :value 0}))
+  (testing "invalid expression constant nodes"
+    (testing "missing value"
+      (is (some? (me/humanize (mr/explain ::ast.schema/expression-constant
+                                          {:node/type :expression/constant})))))
+    (testing "non-numeric value"
+      (is (some? (me/humanize (mr/explain ::ast.schema/expression-constant
+                                          {:node/type :expression/constant :value "nope"})))))))
+
+(deftest ^:parallel expression-arithmetic-with-constant-children-test
+  (let [source {:node/type   :source/metric
+                :id          1
+                :aggregation {:node/type :aggregation/count}
+                :base-table  {:node/type :ast/table :id 1}}
+        source-query {:node/type  :ast/source-query
+                      :source     source
+                      :dimensions []
+                      :mappings   []}]
+    (testing "arithmetic with constant children validates"
+      (is (nil? (me/humanize (mr/explain ::ast.schema/expression-arithmetic
+                                         {:node/type :expression/arithmetic
+                                          :operator  :*
+                                          :children  [{:node/type :expression/leaf
+                                                       :uuid      "test-uuid"
+                                                       :ast       source-query}
+                                                      {:node/type :expression/constant
+                                                       :value     100}]})))))))
+
+(deftest ^:parallel expression-node-includes-constant-test
+  (testing "expression-node union includes constants"
+    (is (nil? (me/humanize (mr/explain ::ast.schema/expression-node
+                                       {:node/type :expression/constant
+                                        :value     42}))))))
+
 ;;; -------------------------------------------------- Root Node --------------------------------------------------
 
 (deftest ^:parallel ast-root-test
@@ -287,31 +329,42 @@
         dim    {:node/type :ast/dimension :id uuid-1}
         mapping {:node/type    :ast/dimension-mapping
                  :dimension-id uuid-1
-                 :column       {:node/type :ast/column :id 1}}]
-    (testing "valid root AST"
+                 :column       {:node/type :ast/column :id 1}}
+        source-query-simple {:node/type  :ast/source-query
+                             :source     source
+                             :dimensions []
+                             :mappings   []}
+        source-query-full {:node/type  :ast/source-query
+                           :source     source
+                           :dimensions [dim]
+                           :mappings   [mapping]
+                           :filter     {:node/type :filter/comparison
+                                        :operator  :=
+                                        :dimension {:node/type :ast/dimension-ref :dimension-id uuid-1}
+                                        :values    ["test"]}
+                           :group-by   [{:node/type :ast/dimension-ref :dimension-id uuid-1}]}]
+    (testing "valid root AST with expression leaf"
       (are [node] (nil? (me/humanize (mr/explain ::ast.schema/ast node)))
         {:node/type  :ast/root
-         :source     source
-         :dimensions []
-         :mappings   []}
+         :expression {:node/type :expression/leaf
+                      :uuid      "test-uuid"
+                      :ast       source-query-simple}}
         {:node/type  :ast/root
-         :source     source
-         :dimensions [dim]
-         :mappings   [mapping]
-         :filter     nil
-         :group-by   []}
-        {:node/type  :ast/root
-         :source     source
-         :dimensions [dim]
-         :mappings   [mapping]
-         :filter     {:node/type :filter/comparison
-                      :operator  :=
-                      :dimension {:node/type :ast/dimension-ref :dimension-id uuid-1}
-                      :values    ["test"]}
-         :group-by   [{:node/type :ast/dimension-ref :dimension-id uuid-1}]}))
+         :expression {:node/type :expression/leaf
+                      :uuid      "test-uuid"
+                      :ast       source-query-full}}))
+    (testing "valid root AST with arithmetic expression"
+      (is (nil? (me/humanize (mr/explain ::ast.schema/ast
+                                         {:node/type  :ast/root
+                                          :expression {:node/type :expression/arithmetic
+                                                       :operator  :+
+                                                       :children  [{:node/type :expression/leaf
+                                                                    :uuid      "uuid-a"
+                                                                    :ast       source-query-simple}
+                                                                   {:node/type :expression/leaf
+                                                                    :uuid      "uuid-b"
+                                                                    :ast       source-query-simple}]}})))))
     (testing "invalid root AST"
-      (testing "missing source"
+      (testing "missing expression"
         (is (some? (me/humanize (mr/explain ::ast.schema/ast
-                                            {:node/type  :ast/root
-                                             :dimensions []
-                                             :mappings   []}))))))))
+                                            {:node/type :ast/root}))))))))

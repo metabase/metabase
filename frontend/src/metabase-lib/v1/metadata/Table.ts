@@ -14,11 +14,10 @@ import type Metadata from "./Metadata";
 import type Schema from "./Schema";
 import type Segment from "./Segment";
 
-interface Table
-  extends Omit<
-    NormalizedTable,
-    "db" | "schema" | "fields" | "fks" | "segments" | "measures" | "metrics"
-  > {
+interface Table extends Omit<
+  NormalizedTable,
+  "db" | "schema" | "fields" | "fks" | "segments" | "measures" | "metrics"
+> {
   db?: Database;
   schema?: Schema;
   fields?: Field[];

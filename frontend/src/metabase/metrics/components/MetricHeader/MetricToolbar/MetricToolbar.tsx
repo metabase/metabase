@@ -10,6 +10,7 @@ import {
 } from "metabase/api";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/data-studio/selectors";
 import { getLibraryCollectionType } from "metabase/data-studio/utils";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { QuestionAlertListModal } from "metabase/notifications/modals/QuestionAlertListModal";
@@ -77,7 +78,7 @@ interface MetricToolbarButtonsProps {
 
 function MetricToolbarButtons({
   card,
-  showDataStudioLink,
+  showDataStudioLink: showDataStudioLinkProp,
   onOpenModal,
 }: MetricToolbarButtonsProps) {
   const metadata = useSelector(getMetadata);
@@ -100,18 +101,19 @@ function MetricToolbarButtons({
 
   const dispatch = useDispatch();
 
-  const isInLibrary =
-    showDataStudioLink &&
-    getLibraryCollectionType(card.collection?.type) != null;
+  const canAccessDataStudio = useSelector(canAccessDataStudioSelector);
+
+  const showDataStudioLink =
+    showDataStudioLinkProp &&
+    getLibraryCollectionType(card.collection?.type) != null &&
+    canAccessDataStudio;
 
   return (
     <Group wrap="nowrap" gap="sm">
       {isNumericMetric(card) && (
         <Button
-          size="sm"
           component={ForwardRefLink}
           to={Urls.exploreMetric(card.id)}
-          target="_blank"
           leftSection={<Icon name="external" />}
           data-testid="explore-link"
         >
@@ -173,11 +175,11 @@ function MetricToolbarButtons({
             </Menu.Item>
           )}
 
-          {(PLUGIN_AUDIT.isEnabled || isInLibrary) && (
+          {(PLUGIN_AUDIT.isEnabled || showDataStudioLink) && (
             <Menu.Divider role="separator" />
           )}
 
-          {isInLibrary && (
+          {showDataStudioLink && (
             <Menu.Item
               leftSection={<Icon name="grid_bordered" />}
               onClick={() => dispatch(openUrl(Urls.dataStudioMetric(card.id)))}

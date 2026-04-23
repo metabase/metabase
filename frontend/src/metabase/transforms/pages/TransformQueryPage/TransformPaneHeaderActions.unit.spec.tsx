@@ -165,7 +165,7 @@ describe("TransformPaneHeaderActions", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should render nothing for native transforms when workspaces not available", () => {
+    it("should render nothing for native transforms", () => {
       setup({ isEditMode: false, isNative: true });
 
       expect(
@@ -189,20 +189,10 @@ describe("TransformPaneHeaderActions", () => {
         screen.getByRole("link", { name: /edit definition/i }),
       ).toBeInTheDocument();
     });
-
-    describe("workspaces feature availability", () => {
-      it("should render EditDefinitionButton when workspaces feature is not available", () => {
-        setup({ isEditMode: false, isNative: false });
-
-        expect(
-          screen.getByRole("link", { name: /edit definition/i }),
-        ).toBeInTheDocument();
-      });
-    });
   });
 
   describe("Python transforms", () => {
-    it("should not render EditDefinitionButton for Python transforms (moved to EditTransformMenu in header)", () => {
+    it("should not render EditDefinitionButton for Python transforms", () => {
       setup({ isEditMode: false, isPython: true });
       expect(
         screen.queryByRole("link", { name: /edit definition/i }),
