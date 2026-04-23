@@ -1,12 +1,10 @@
+import { isSettingSetFromEnvVar } from "metabase/admin/settings/settings";
 import { useAdminSetting } from "metabase/api/utils";
 import { Stack } from "metabase/ui";
 import type { Settings } from "metabase-types/api";
 
 import { SettingHeader } from "../../SettingHeader";
-import {
-  BasicAdminSettingInput,
-  SetByEnvVarWrapper,
-} from "../AdminSettingInput";
+import { BasicAdminSettingInput, SetByEnvVar } from "../AdminSettingInput";
 
 interface BaseUsageTrackingSettingToggleProps {
   settingName: keyof Settings;
@@ -41,17 +39,17 @@ export function BaseUsageTrackingSettingToggle({
   return (
     <Stack>
       <SettingHeader id={settingName} title={title} description={description} />
-      <SetByEnvVarWrapper
-        settingKey={settingName}
-        settingDetails={settingDetails}
-      >
+
+      {isSettingSetFromEnvVar(settingDetails) ? (
+        <SetByEnvVar varName={settingDetails.env_name} />
+      ) : (
         <BasicAdminSettingInput
           name={settingName}
           inputType="boolean"
           value={value}
           onChange={(newValue) => handleChange(Boolean(newValue))}
         />
-      </SetByEnvVarWrapper>
+      )}
     </Stack>
   );
 }
