@@ -24,7 +24,7 @@ stages:
 
 - `lib/type: mbql/query` — required marker.
 - `database: <name>` — the **exact** database name as reported by `entity_details` / metadata tools (e.g. `Sample Database`). This is the only signal Metabase uses to locate the application database — there is no separate `source_entity` parameter. If the name is wrong or ambiguous, the tool returns a clear error rather than guessing.
-- `stages: […]` — at least one stage. Phase 1 MVP supports a **single stage**; multi-stage is coming.
+- `stages: […]` — at least one stage. Multi-stage queries (post-aggregation filter/group-by/order-by) are supported — see the **Multi-stage queries** section below.
 
 ### Stage shape
 
@@ -113,6 +113,69 @@ fields:
   - [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]
 ```
 
+### Multi-stage queries
+
+A query can have more than one stage. Every stage after the first consumes the previous stage's output as its source — so you can aggregate, then filter on the aggregate; or aggregate, then group the aggregate by something else; or rank results and then `limit` to the top N.
+
+Only the **first** stage has a `source-table:` (or will soon have `source-card:`); later stages omit it — their source is implicitly the previous stage.
+
+Within a later stage, a field reference that points to a column produced by the previous stage uses the column's **name as a string** in the third slot instead of a portable FK vector:
+
+```yaml
+- [field, {}, count]          # references the `count` output of the previous stage
+- [field, {}, PRODUCT_ID]     # references the `PRODUCT_ID` output of the previous stage
+```
+
+The column's name is whatever the previous stage's aggregation / breakout / field produced — for aggregations, this is conventionally the operator name (`count`, `sum`, `avg`, …); for breakouts and field projections, it is the source field's name.
+
+#### Example — count of orders per product, keeping only products with more than 10 orders
+
+```yaml
+lib/type: mbql/query
+database: Sample
+stages:
+  - lib/type: mbql.stage/mbql
+    source-table: [Sample, PUBLIC, ORDERS]
+    aggregation:
+      - [count, {}]
+    breakout:
+      - [field, {}, [Sample, PUBLIC, ORDERS, PRODUCT_ID]]
+  - lib/type: mbql.stage/mbql
+    filters:
+      - ['>', {}, [field, {}, count], 10]
+```
+
+The stage-1 filter is a post-aggregation filter: the database groups orders by `PRODUCT_ID` and counts them in stage 0, then the outer query keeps only rows where `count > 10`.
+
+#### Example — group aggregated results a second time
+
+```yaml
+lib/type: mbql/query
+database: Sample
+stages:
+  - lib/type: mbql.stage/mbql
+    source-table: [Sample, PUBLIC, ORDERS]
+    aggregation:
+      - [sum, {}, [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]]
+    breakout:
+      - [field, {temporal-unit: day}, [Sample, PUBLIC, ORDERS, CREATED_AT]]
+  - lib/type: mbql.stage/mbql
+    aggregation:
+      - [avg, {}, [field, {}, sum]]
+    breakout:
+      - [field, {temporal-unit: month}, [field, {}, CREATED_AT]]
+```
+
+Note: cross-stage field refs inside aggregation/breakout arguments work the same way — `[field, {}, <column-name>]` where `<column-name>` is a string.
+
+#### Rules for multi-stage queries
+
+- The first stage must have a `source-table:` (or `source-card:`). Later stages must not.
+- Cross-stage field references (a `field` clause whose third slot is a **string column name**) are resolved against the previous stage's output columns. The tool will auto-fill the required `base-type` option on those clauses for you — you don't need to write it.
+- If you reference a column that the previous stage doesn't produce, you'll get a validation error. Pick an actual output column name (the result of an `aggregation`, `breakout`, or `fields` clause in the previous stage).
+- Aggregation / breakout / filter / order-by / limit / expressions are all valid in later stages, just as in the first.
+- Joins inside later stages: joining against the *previous stage's output* is allowed; use the same `joins:` shape as in the first stage, with field references on the joined side using portable FKs as usual.
+
 ### Joins (explicit)
 
 For cross-table queries where the user wants columns from a specific related table:
@@ -188,7 +251,6 @@ No explicit `joins:` entry needed. Internally, Metabase rewrites the breakout fi
 
 These are not yet available in this tool version; ignore them for now:
 - `source-card` (querying a saved question / model as a source)
-- Multi-stage queries (post-aggregation filtering/grouping)
 - Custom expressions (`expressions:` clause) and `expression-ref` references
 - Aggregation references with UUIDs
 
