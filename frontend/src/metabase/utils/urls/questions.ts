@@ -1,6 +1,9 @@
 import slugg from "slugg";
 
-import { serializeCardForUrl } from "metabase/common/utils/card";
+import {
+  isTransientCardId,
+  serializeCardForUrl,
+} from "metabase/common/utils/card";
 import MetabaseSettings from "metabase/utils/settings";
 import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";
@@ -56,7 +59,7 @@ export function question(
   const fallbackPath = isModel ? "model" : "question";
   let path: string = card?.type ?? fallbackPath;
 
-  if (!card || !card.id) {
+  if (!card || !card.id || isTransientCardId(card.id)) {
     const unsavedPath = path === "metric" ? "question" : path;
     return `/${unsavedPath}${query}${hash}`;
   }
