@@ -25,7 +25,8 @@
   "Hard-zero fields whose data values carry no exploratory meaning regardless of the
    role they're being scored for (dimension or measure):
    - `:type/PK`: opaque row identifiers
-   - `:type/SerializedJSON`: structured blobs, not groupable or aggregatable
+   - `:type/Collection` / `:type/Structured`: structured blobs (JSON, XML, arrays,
+     dictionaries, text-stored serialized JSON) — not groupable or aggregatable
    - `:type/UpdatedTimestamp` / `:type/DeletionTimestamp`: audit fields that describe
      the record, not the entity"
   [field]
@@ -33,7 +34,8 @@
     (cond
       (nil? semantic-type)                         {:score 1.0 :reason "no semantic type"}
       (isa? semantic-type :type/PK)                {:score 0.0 :reason "primary key"}
-      (isa? semantic-type :type/SerializedJSON)    {:score 0.0 :reason "serialized JSON"}
+      (isa? semantic-type :type/Collection)        {:score 0.0 :reason "structured blob"}
+      (isa? semantic-type :type/Structured)        {:score 0.0 :reason "structured blob"}
       (isa? semantic-type :type/UpdatedTimestamp)  {:score 0.0 :reason "updated timestamp"}
       (isa? semantic-type :type/DeletionTimestamp) {:score 0.0 :reason "deletion timestamp"}
       :else                                        {:score 1.0 :reason "no type penalty"})))

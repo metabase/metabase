@@ -11,7 +11,11 @@
          (let [{:keys [score reason]} (impl/type-penalty {:semantic-type sem-type})]
            (and (= 0.0 score) (re-find (re-pattern reason-substr) reason)))
       :type/PK                "primary key"
-      :type/SerializedJSON    "serialized JSON"
+      :type/SerializedJSON    "structured blob"
+      :type/JSON              "structured blob"
+      :type/XML               "structured blob"
+      :type/Array             "structured blob"
+      :type/Dictionary        "structured blob"
       :type/UpdatedTimestamp  "updated timestamp"
       :type/DeletionTimestamp "deletion timestamp"))
 
