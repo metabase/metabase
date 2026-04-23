@@ -11,7 +11,9 @@
    [metabase-enterprise.semantic-layer.settings :as semantic-layer.settings]
    [metabase-enterprise.semantic-layer.task.complexity-score :as task.complexity-score]
    [metabase-enterprise.semantic-search.core :as semantic-search]
+   [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedders :as ss.embedders]
+   [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.audit-app.core :as audit]
@@ -343,6 +345,27 @@
   (testing "returns {} when semantic-search index isn't available (no throw)"
     (is (= {} (semantic-search/search-index-embedder
                [(entity :name "orders" :kind :table)])))))
+
+(deftest ^:sequential complexity-scores-with-real-search-index-embedder-test
+  (testing "complexity-scores drives the real search-index-embedder + pgvector end-to-end"
+    ;; Self-gated on MB_PGVECTOR_DB_URL — CI without semantic-search infra skips this;
+    ;; locally with pgvector running it exercises the pgvector read path that all other
+    ;; embedder tests in this ns stub out (via with-redefs on try-active-index-state /
+    ;; fetch-batch). Uses `:mock-indexed` so the *embedding model* is a lookup-table — but
+    ;; the resulting vectors are real rows in the index table that search-index-embedder
+    ;; queries via SQL.
+    (when semantic.db.datasource/db-url
+      (let [captured (atom nil)]
+        (mt/with-premium-features #{:semantic-search}
+          (mt/as-admin
+            (semantic.tu/with-test-db! {:mode :mock-indexed}
+              (reset! captured (complexity/complexity-scores
+                                :embedder semantic-search/search-index-embedder)))))
+        (is (=? {:meta     {:embedding-model {:provider "mock" :model-name "model"}}
+                 :universe {:components {:synonym-pairs {:measurement number?
+                                                         :score       nat-int?}}}}
+                @captured)
+            "embedder returned vectors from pgvector and the synonym axis produced a real measurement")))))
 
 (deftest ^:sequential search-index-embedder-propagates-read-failures-test
   (testing "pgvector read failures propagate so the caller can flag a degraded synonym axis"
