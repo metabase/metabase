@@ -957,6 +957,80 @@
                 (is (= false (:cached response)))
                 (is (= 2 @call-count))))))))))
 
+(defn- missing-branch-source
+  "Source whose snapshot throws the typed :missing-branch ex-info — simulating a
+   configured branch that has been deleted upstream."
+  [branch]
+  (reify source.p/Source
+    (branches [_] ["main"])
+    (create-branch [_ _ _] nil)
+    (default-branch [_] "main")
+    (snapshot [_]
+      (throw (ex-info (str "Invalid branch: " branch)
+                      {:error-type :missing-branch
+                       :branch branch})))))
+
+(deftest has-remote-changes-returns-branch-missing-gracefully-test
+  (testing "GET /has-remote-changes returns branch_missing=true instead of 500 when the branch has been deleted upstream"
+    (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                       remote-sync-token "test-token"
+                                       remote-sync-branch "gone"
+                                       remote-sync-check-changes-cache-ttl-seconds 60]
+      (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                              :ended_at :%now
+                                              :version "some-prior-version"}]
+        (with-redefs [source/source-from-settings (fn [& _] (missing-branch-source "gone"))]
+          (impl/invalidate-remote-changes-cache!)
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+            (is (false? (:has_changes response)))
+            (is (true? (:branch_missing response)))
+            (is (nil? (:remote_version response)))
+            (is (= "some-prior-version" (:local_version response)))
+            (is (false? (:cached response)))))))))
+
+(deftest has-remote-changes-does-not-cache-branch-missing-test
+  (testing "Branch-missing results are not cached so a subsequent call re-checks"
+    (let [snapshot-calls (atom 0)
+          ;; First call returns missing-branch; second call succeeds.
+          source-fn (fn [& _]
+                      (swap! snapshot-calls inc)
+                      (if (= 1 @snapshot-calls)
+                        (missing-branch-source "gone")
+                        (test-helpers/create-mock-source)))]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "gone"
+                                         remote-sync-check-changes-cache-ttl-seconds 60]
+        (mt/with-temp [:model/RemoteSyncTask _ {:sync_task_type "import"
+                                                :ended_at :%now
+                                                :version "mock-version"}]
+          (with-redefs [source/source-from-settings source-fn]
+            (impl/invalidate-remote-changes-cache!)
+            (let [first-response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+              (is (true? (:branch_missing first-response)))
+              (is (false? (:cached first-response))))
+            ;; Second call re-hits the source; cache was not populated by the first call.
+            (let [second-response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/has-remote-changes")]
+              (is (not (:branch_missing second-response)))
+              (is (false? (:cached second-response)))
+              (is (= 2 @snapshot-calls)))))))))
+
+(deftest has-remote-changes-still-propagates-other-errors-test
+  (testing "Non-missing-branch failures still propagate (the graceful handler is :missing-branch-only)"
+    (let [failing-source (reify source.p/Source
+                           (branches [_] ["main"])
+                           (create-branch [_ _ _] nil)
+                           (default-branch [_] "main")
+                           (snapshot [_] (throw (RuntimeException. "boom"))))]
+      (mt/with-temporary-setting-values [remote-sync-url "https://github.com/test/repo.git"
+                                         remote-sync-token "test-token"
+                                         remote-sync-branch "main"
+                                         remote-sync-check-changes-cache-ttl-seconds 60]
+        (with-redefs [source/source-from-settings (fn [& _] failing-source)]
+          (impl/invalidate-remote-changes-cache!)
+          (is (thrown-with-msg? RuntimeException #"boom"
+                                (impl/has-remote-changes?))))))))
+
 ;;; ------------------------------------------- Token Preservation Tests -------------------------------------------
 
 (deftest settings-preserves-token-when-switching-to-read-only-test

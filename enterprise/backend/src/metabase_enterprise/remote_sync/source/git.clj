@@ -88,13 +88,15 @@
 
   Takes a git-source map containing a :git Git instance and optional :token for authentication. Returns the result
   of the git fetch operation. Uses the 'origin' remote which is configured by ensure-origin-configured!.
+  Prunes local refs that no longer exist on the remote so deleted branches are reflected locally.
 
   Throws ExceptionInfo if the fetch operation fails."
   [{:keys [^Git git] :as git-source}]
   (when (some? git)
     (log/info "Fetching repository" {:repo (str git)})
-    (u/prog1 (call-remote-command (.fetch git) git-source))
-    (log/info "Successfully fetched repository")))
+    (u/prog1 (call-remote-command (.. git fetch (setRemoveDeletedRefs true))
+                                  git-source)
+      (log/info "Successfully fetched repository"))))
 
 (defn- repo-path [{:keys [^String remote-url ^String token]}]
   (io/file (System/getProperty "java.io.tmpdir") "metabase-git" (-> (str/join ":" [remote-url token]) buddy-hash/sha1 codecs/bytes->hex)))
@@ -444,7 +446,9 @@
   (let [version (commit-sha source (:branch source))]
     (if version
       (->GitSnapshot (:git source) (:remote-url source) (:branch source) version (:token source) (:managed-dirs source))
-      (throw (ex-info (str "Invalid branch: " (:branch source)) {})))))
+      (throw (ex-info (str "Invalid branch: " (:branch source))
+                      {:error-type :missing-branch
+                       :branch (:branch source)})))))
 
 (defn- snapshot
   "Creates a snapshot, recovering from stale cache errors by re-cloning."
