@@ -529,7 +529,7 @@
                                                (assoc :db_id (:id db)))]
         (let [called (atom 0)
               ;; original is private so a var will pick up the redef'd. need contents of var before
-              original (var-get #'api.table/sync-unhidden-tables)]
+              original (mt/original-fn #'api.table/sync-unhidden-tables)]
           (mt/with-dynamic-fn-redefs [api.table/sync-unhidden-tables
                                       (fn [unhidden]
                                         (when (seq unhidden)
