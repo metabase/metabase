@@ -170,6 +170,15 @@ describe("useMetabot", () => {
 
       act(() => {
         store.dispatch(
+          // `addAgentMessage`/`addUserMessage` in reducer.ts type their payload
+          // as `Omit<UnionType, ...>`. Non-distributive `Omit` collapses the
+          // discriminated union to common keys only, so branch-specific fields
+          // (message, navigateTo, payload, ...) fail excess-property checks
+          // without `as any`. Switching to a DistributiveOmit would unblock
+          // call sites here but surfaces more errors elsewhere (e.g. the
+          // edit_suggestion payload hits the "infinite TS errors" noted in
+          // reducer.ts). Keeping `as any` for now — applies to every dispatch
+          // below.
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "text",
