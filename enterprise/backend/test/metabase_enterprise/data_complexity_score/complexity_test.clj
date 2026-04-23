@@ -516,6 +516,23 @@
           (is (not-any? #(contains? % "error")
                         (vals (dissoc by-axis "synonym_pairs")))))))))
 
+(deftest ^:sequential emit-snowplow-truncates-error-to-schema-max-test
+  (testing "a pathologically long exception message is truncated so it doesn't fail schema validation"
+    (snowplow-test/with-fake-snowplow-collector
+      (mt/with-dynamic-fn-redefs [complexity/library-catalog  (fn [] (catalog [(entity :name "customers")
+                                                                               (entity :name "clients")]))
+                                  complexity/universe-catalog (fn [] (catalog []))]
+        (snowplow-test/pop-event-data-and-user-id!)
+        (let [huge (apply str (repeat 5000 "x"))]
+          (complexity/complexity-scores :embedder (fn [_] (throw (ex-info huge {}))))
+          (let [err (->> (complexity-events!)
+                         (filter #(and (= "library" (get % "catalog"))
+                                       (= "synonym_pairs" (get % "axis"))))
+                         first
+                         (#(get % "error")))]
+            (is (= 1024 (count err))
+                "error is clipped to the schema's maxLength of 1024")))))))
+
 (deftest ^:sequential emit-snowplow-schema-2-0-0-payload-shape-test
   (snowplow-test/with-fake-snowplow-collector
     (doseq [level [0 1 2]]

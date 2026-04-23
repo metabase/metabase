@@ -267,6 +267,14 @@
   (when-let [v (:value var-map)]
     (when (number? v) v)))
 
+(def ^:private max-error-length
+  "Matches the `data_complexity` Snowplow schema's `error` maxLength — a pathological exception
+  message must not fail validation and drop the whole event."
+  1024)
+
+(defn- truncate-error [s]
+  (cond-> s (< max-error-length (count s)) (subs 0 max-error-length)))
+
 (defn- emit-catalog-snowplow!
   "Emit Snowplow events for one catalog. One event per (catalog × axis) — `axis=total` at the
   catalog level, then one per `(dimension, variable)` below. Events conform to
@@ -283,7 +291,7 @@
                                        :axis (axis-name var-k))
                           (contains? var-map :score) (assoc :score (:score var-map))
                           (measurement-of var-map)   (assoc :measurement (measurement-of var-map))
-                          (:error var-map)           (assoc :error (:error var-map)))]]
+                          (:error var-map)           (assoc :error (truncate-error (:error var-map))))]]
     (analytics/track-event! :snowplow/data_complexity payload)))
 
 (defn- emit-snowplow! [{:keys [library universe metabot meta]}]
