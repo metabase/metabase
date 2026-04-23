@@ -18,16 +18,6 @@ export type TrackingPermissionDisabledEvent = ValidateEvent<{
   source: "setup" | "admin";
 }>;
 
-export type AnalyticsPiiRetentionEnabledEvent = ValidateEvent<{
-  event: "analytics_pii_retention_enabled";
-  source: "setup" | "admin";
-}>;
-
-export type AnalyticsPiiRetentionDisabledEvent = ValidateEvent<{
-  event: "analytics_pii_retention_disabled";
-  source: "setup" | "admin";
-}>;
-
 export type HomepageDashboardEnabledEvent = ValidateEvent<{
   event: "homepage_dashboard_enabled";
   source: "admin" | "homepage";
@@ -36,6 +26,4 @@ export type HomepageDashboardEnabledEvent = ValidateEvent<{
 export type SettingsEvent =
   | TrackingPermissionEnabledEvent
   | TrackingPermissionDisabledEvent
-  | AnalyticsPiiRetentionEnabledEvent
-  | AnalyticsPiiRetentionDisabledEvent
   | HomepageDashboardEnabledEvent;
