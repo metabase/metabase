@@ -14,9 +14,10 @@ export function useDefaultPreviewResource(): {
   resource: PreviewResource | null;
   isLoading: boolean;
 } {
-  const { data: recents, isLoading: isRecentsLoading } = useListRecentsQuery({
-    context: ["views"],
-  });
+  const { data: recents = [], isLoading: isRecentsLoading } =
+    useListRecentsQuery({
+      context: ["views"],
+    });
 
   const recentResource = useMemo(() => pickRecentResource(recents), [recents]);
 
@@ -80,12 +81,8 @@ export function useDefaultPreviewResource(): {
 }
 
 function pickRecentResource(
-  recents: { model: string; id: number; name: string }[] | undefined,
+  recents: { model: string; id: number; name: string }[],
 ): PreviewResource | null {
-  if (!recents?.length) {
-    return null;
-  }
-
   const dashboard = recents.find((item) => item.model === "dashboard");
   if (dashboard) {
     return { model: "dashboard", id: dashboard.id, name: dashboard.name };

@@ -60,7 +60,7 @@ describe("PreviewPanel", () => {
     expect(preview).toHaveAttribute("data-resource-id", "200");
     expect(preview).toHaveTextContent("Only question");
     expect(
-      screen.getByRole("button", { name: /change preview resource/i }),
+      screen.getByRole("button", { name: "Change preview resource" }),
     ).toHaveTextContent("Only question");
   });
 
@@ -74,7 +74,7 @@ describe("PreviewPanel", () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId("resource-preview")).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: /change preview resource/i }),
+      screen.queryByRole("button", { name: "Change preview resource" }),
     ).not.toBeInTheDocument();
   });
 });
