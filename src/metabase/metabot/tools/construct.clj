@@ -16,19 +16,15 @@
    [metabase.metabot.tools.shared.llm-representations :as llm-rep]
    [metabase.metabot.tools.util :as tools.u]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------ Schema ------------------------------------------------
-
-(def ^:private source-entity-schema
-  "Schema for source_entity — identifies the primary data source."
-  [:map
-   [:type [:enum "table" "model" "question" "metric"]]
-   [:id :int]])
 
 (def construct-program-schema
   "Schema for the program parameter of construct_notebook_query (legacy sexp-in-array format).
@@ -54,18 +50,26 @@
   (see `resources/metabot/prompts/tools/construct_notebook_query.md`). We keep it at the plain
   `:string` type rather than parsing the shape here — parsing and structural validation happen
   inside `execute-representations-query`. Keeping the schema flat (just `:string`) also
-  sidesteps the MCP `flatten-root-schema` pitfalls hit by more elaborate `:and`/`:fn` wrappers."
+  sidesteps the MCP `flatten-root-schema` pitfalls hit by more elaborate `:and`/`:fn` wrappers.
+
+  Per `repr-plan.md` step 13, this schema intentionally does NOT include `:source_entity` or
+  `:referenced_entities`: the YAML query is self-describing (it carries `database: <name>` at
+  the top level and full portable FK paths everywhere else), so passing a separate entity
+  identifier is redundant and can disagree with the YAML. Database identity is now derived
+  from the YAML's `database:` field via [[resolve-database-id-from-yaml]]."
   [:map {:closed true}
    [:reasoning {:optional true} :string]
-   [:source_entity source-entity-schema]
-   [:referenced_entities {:optional true} [:maybe [:sequential source-entity-schema]]]
    [:query :string]
    [:visualization {:optional true} construct-visualization-schema]])
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
 (defn resolve-source-database-id
-  "Resolve the database ID for a source_entity. Public only so tests can stub it."
+  "Resolve the database ID for a source_entity. Public only so tests can stub it.
+
+  Still consumed by [[execute-program]] (the legacy sexp pipeline used by slackbot). The
+  representations pipeline derives database-id from the YAML's `database:` field instead;
+  see [[resolve-database-id-from-yaml]]."
   [{:keys [type id]}]
   (case type
     "table"                (:db_id (tools.u/get-table id :db_id))
@@ -73,6 +77,45 @@
     "metric"               (:database_id (tools.u/get-card id))
     (throw (ex-info (str "Unsupported source_entity type: " type)
                     {:agent-error? true :status-code 400}))))
+
+(defn resolve-database-id-from-yaml
+  "Look up a database id by name, given a parsed (string-keyed) representations query.
+
+  Public only so tests can stub it. Three error paths, all surfaced as `:agent-error? true`
+  so the tool wrapper produces a useful LLM-facing message rather than a stack trace:
+
+    * The query has no `database:` field at the top level (or it isn't a string).
+    * No application database is named `<name>`.
+    * Two or more application databases share the same name. The LLM has no way to
+      disambiguate by name alone, so we refuse to silently pick one.
+
+  Returns the numeric database id on success."
+  [parsed-query]
+  (let [db-name (get parsed-query "database")]
+    (when-not (string? db-name)
+      (throw (ex-info (tru "Representations query is missing a top-level `database:` field.")
+                      {:agent-error? true
+                       :status-code  400
+                       :error        :missing-database-name})))
+    (let [ids (t2/select-pks-vec :model/Database :name db-name)]
+      (case (count ids)
+        0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
+                                    "reported by `entity_details` / metadata tools.")
+                               db-name)
+                          {:agent-error? true
+                           :status-code  400
+                           :error        :unknown-database
+                           :database     db-name}))
+        1 (first ids)
+        (throw (ex-info (tru (str "Multiple databases share the name `{0}` (ids: {1}). The "
+                                  "agent has no way to disambiguate; ask the user to rename "
+                                  "one of the databases or use a more specific identifier.")
+                             db-name (pr-str (vec (sort ids))))
+                        {:agent-error? true
+                         :status-code  400
+                         :error        :ambiguous-database-name
+                         :database     db-name
+                         :database-ids (vec (sort ids))}))))))
 
 (defn- source-entity->model-str
   "Map source_entity type to the model string used by agent-lib evaluation context."
@@ -179,23 +222,34 @@
   "Execute a notebook query in the canonical MBQL 5 YAML representations format.
 
   Pipeline:
-    1. Resolve the source entity's database-id and build an application-DB-backed
+    1. Parse the YAML string into a portable Clojure data structure.
+    2. Look up the database id from the parsed query's top-level `database:` field
+       ([[resolve-database-id-from-yaml]]) and build an application-DB-backed
        `MetadataProvider`.
-    2. Parse the YAML string, run the repair pass (fill in `{}` options, missing `lib/type`
-       markers), structurally validate against the repr schema.
-    3. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
+    3. Run the repair pass (fill in `{}` options, missing `lib/type` markers, auto-wire
+       `source-field` for implicit joins, rewrite inline `order-by` aggregations to refs).
+    4. Structurally validate against the repr schema.
+    5. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
 
-  Returns the same shape as [[execute-program]]: a map with `:structured-output` and
-  `:instructions` keys. Throws with an `:agent-error?` ex-data flag when the LLM input is
-  invalid, so the outer tool wrapper can surface a helpful message to the LLM without a stack
-  trace."
-  [source-entity _referenced-entities yaml-string]
-  (let [database-id (resolve-source-database-id source-entity)
+  Returns a map with `:structured-output` and `:instructions` keys. Throws with an
+  `:agent-error?` ex-data flag when the LLM input is invalid, so the outer tool wrapper can
+  surface a helpful message to the LLM without a stack trace.
+
+  Per `repr-plan.md` step 13, database identity is taken from the YAML alone. There is no
+  `source_entity` parameter — the YAML carries everything needed."
+  [yaml-string]
+  (let [;; Parse first so we can derive the database-id from the YAML.
+        parsed      (try
+                      (repr/parse-yaml yaml-string)
+                      (catch clojure.lang.ExceptionInfo e
+                        (throw (ex-info (ex-message e)
+                                        (assoc (ex-data e) :agent-error? true)
+                                        e))))
+        database-id (resolve-database-id-from-yaml parsed)
         mp          (lib-be/application-database-metadata-provider database-id)
         pmbql-query (try
-                      (->> yaml-string
-                           repr/parse-yaml
+                      (->> parsed
                            (repr.repair/repair mp)
                            repr/validate-query
                            (repr.resolve/resolve-query mp))
@@ -250,12 +304,12 @@
 
   Accepts an MBQL 5 query in the canonical representations YAML format. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning source_entity referenced_entities query visualization]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning query visualization]} :- construct-notebook-query-args-schema]
   (try
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
                                       :table)
-          query-result            (execute-representations-query source_entity referenced_entities query)
+          query-result            (execute-representations-query query)
           structured              (or (:structured-output query-result) (:structured_output query-result))]
       (if (and structured (:query-id structured) (:query structured))
         (let [chart-result (create-chart-tools/create-chart
