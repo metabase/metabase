@@ -1,6 +1,10 @@
 import _ from "underscore";
 
 import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
+import {
+  cardIsEquivalent,
+  cardQueryIsEquivalent,
+} from "metabase/common/utils/card";
 import { entityCompatibleQuery } from "metabase/entities";
 import { Databases } from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
@@ -28,10 +32,6 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import {
-  cardIsEquivalent,
-  cardQueryIsEquivalent,
-} from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   DashboardTabId,
