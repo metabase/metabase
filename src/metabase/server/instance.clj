@@ -91,18 +91,34 @@
           (handler
            request-map
            (fn [response-map]
-             (if (ring.ws/websocket-response? response-map)
-               ;; `upgrade-to-websocket` is a private fn in ring-jetty-adapter; mirrors
-               ;; the pattern used by ring-jetty's own `async-jetty-respond`. Safe to
-               ;; `.complete` the async context here because upgrade-to-websocket does
-               ;; not complete it itself. Revisit if ring-jetty-adapter is bumped.
-               (do (#'ring-jetty/upgrade-to-websocket request response response-map {})
-                   (.complete context))
-               (server.protocols/respond (:body response-map) {:request       request
-                                                               :request-map   request-map
-                                                               :async-context context
-                                                               :response      response
-                                                               :response-map  response-map})))
+             ;; The Ring WebSocket listener may appear either at the top of
+             ;; `response-map` (when the handler returns `{::ring.ws/listener …}`
+             ;; directly) OR nested under `:body` (because Metabase's response
+             ;; pipeline — see `metabase.api.common.internal/wrap-response-if-needed`
+             ;; and related middleware — wraps any non-status map as
+             ;; `{:status 200 :body <original-map>}`). Check both.
+             ;;
+             ;; `upgrade-to-websocket` is a private fn in ring-jetty-adapter;
+             ;; mirrors the pattern used by ring-jetty's own
+             ;; `async-jetty-respond`. Safe to `.complete` the async context
+             ;; here because upgrade-to-websocket does not complete it itself.
+             ;; Revisit if ring-jetty-adapter is bumped.
+             (let [body        (:body response-map)
+                   ws-response (cond
+                                 (ring.ws/websocket-response? response-map)
+                                 response-map
+
+                                 (and (map? body)
+                                      (ring.ws/websocket-response? body))
+                                 body)]
+               (if ws-response
+                 (do (#'ring-jetty/upgrade-to-websocket request response ws-response {})
+                     (.complete context))
+                 (server.protocols/respond (:body response-map) {:request       request
+                                                                 :request-map   request-map
+                                                                 :async-context context
+                                                                 :response      response
+                                                                 :response-map  response-map}))))
            raise)
           (catch Throwable e
             (log/error e "Unexpected Exception in API request handler")
