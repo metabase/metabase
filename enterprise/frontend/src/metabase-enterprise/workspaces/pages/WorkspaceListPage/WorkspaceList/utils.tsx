@@ -97,7 +97,7 @@ function getStatusLabel(workspace: Workspace): string {
     return t`Provisioned`;
   }
   if (workspace.databases.every(isDatabaseUnprovisioned)) {
-    return t`Unprovisioned`;
+    return t`Not provisioned`;
   }
   return t`Partially provisioned`;
 }
