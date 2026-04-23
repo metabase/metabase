@@ -214,12 +214,9 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
           <Flex align="baseline" justify="space-between">
             <Title order={3}>{t`Conversation`}</Title>
             {conversation.slack_permalink && (
-              <Flex gap="sm" align="center">
-                <Icon name="slack_colorized" />
-                <ExternalLink href={conversation.slack_permalink}>
-                  {t`Open in Slack`}
-                </ExternalLink>
-              </Flex>
+              <ExternalLink href={conversation.slack_permalink}>
+                {t`Open in Slack`}
+              </ExternalLink>
             )}
           </Flex>
           <Card withBorder shadow="none" p="xl">
@@ -288,7 +285,7 @@ function FeedbackCard({
         {agentResponse && (
           <AgentMessage
             message={agentResponse}
-            debug={false}
+            debug
             readonly
             hideActions
             onCopy={noopCopy}

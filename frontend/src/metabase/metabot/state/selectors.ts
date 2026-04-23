@@ -96,14 +96,9 @@ export const getMetabotVisible = createSelector(
   (convo) => convo.visible,
 );
 
-const getInternalMessages = createSelector(
+export const getMessages = createSelector(
   getMetabotConversation,
   (convo) => convo.messages,
-);
-
-export const getMessages = createSelector(
-  getInternalMessages,
-  (messages) => messages,
 );
 
 export const getDeveloperMessage = createSelector(

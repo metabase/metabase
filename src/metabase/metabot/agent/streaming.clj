@@ -21,20 +21,15 @@
 (def adhoc-viz-type "AI-SDK data type for ad-hoc visualizations." "adhoc_viz")
 (def static-viz-type "AI-SDK data type for static visualizations." "static_viz")
 
-(def non-persistable-data-types
-  "Data-type wire values whose parts are streamed to the client but NOT written to MetabotMessage.data.
-
-  `state` is excluded because its value is salvaged separately into
-  MetabotConversation.state; duplicating the blob in every message would bloat storage."
-  #{state-type})
-
 (defn persistable-data-part?
-  "True if `part` should be written to MetabotMessage.data. Non-data parts are
+  "True if `part` should be written to MetabotMessage.data. `state` parts are
+  skipped because their value is salvaged separately into MetabotConversation.state;
+  duplicating the blob in every message would bloat storage. Non-data parts are
   always persistable here; the caller is responsible for filtering stream-level
   metadata (`:start`, `:usage`, `:finish`) separately."
   [part]
   (not (and (= :data (:type part))
-            (contains? non-persistable-data-types (:data-type part)))))
+            (= state-type (:data-type part)))))
 
 ;;; Query URL Encoding
 

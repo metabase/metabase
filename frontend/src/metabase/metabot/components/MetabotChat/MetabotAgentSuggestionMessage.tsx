@@ -142,8 +142,8 @@ export const AgentSuggestionMessage = ({
     : (url.pathname?.startsWith(getTransformUrl(suggestedTransform)) ?? false);
 
   const canApply = suggestionActions
-    ? !isViewing || !isActive
-    : !hasAppliedInContext && !isApplying;
+    ? !hasAppliedInContext && !isApplying
+    : !isViewing || !isActive;
 
   const isNew = !isViewing && !editorTransform && existingTransformId == null;
 

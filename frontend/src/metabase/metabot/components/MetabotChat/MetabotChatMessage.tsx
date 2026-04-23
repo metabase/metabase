@@ -1,6 +1,6 @@
 import { useClipboard } from "@mantine/hooks";
 import cx from "classnames";
-import { forwardRef, useCallback, useState } from "react";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -44,13 +44,10 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .exhaustive();
 
 const isUserVisibleMessage = (message: MetabotChatMessage): boolean => {
-  if (message.type === "tool_call") {
-    return false;
-  }
   if (message.role === "agent" && message.type === "data_part") {
     return isUserVisibleDataPart(message.part);
   }
-  return true;
+  return message.type !== "tool_call";
 };
 
 interface BaseMessageProps extends Omit<FlexProps, "onCopy"> {
@@ -349,9 +346,10 @@ export const Messages = ({
   showFeedbackButtons?: boolean;
   onInternalLinkClick?: (navigateToPath: string) => void;
 }) => {
-  const visibleMessages = debug
-    ? messages
-    : messages.filter(isUserVisibleMessage);
+  const visibleMessages = useMemo(
+    () => (debug ? messages : messages.filter(isUserVisibleMessage)),
+    [debug, messages],
+  );
   const clipboard = useClipboard();
   const [sendToast] = useToast();
 
