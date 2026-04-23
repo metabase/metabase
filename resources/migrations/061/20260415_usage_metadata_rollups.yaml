@@ -1,6 +1,6 @@
 databaseChangeLog:
   - changeSet:
-      id: v61.2026-04-15T00:00:00
+      id: v61.Oong1I
       author: johnswanson
       comment: Create source_segment_daily for usage metadata rollups
       changes:
@@ -52,12 +52,9 @@ databaseChangeLog:
                   remarks: Number of observations for this fact on the bucket day
                   constraints:
                     nullable: false
-      rollback:
-        - dropTable:
-            tableName: source_segment_daily
 
   - changeSet:
-      id: v61.2026-04-15T00:00:01
+      id: v61.Xoo5ue
       author: johnswanson
       comment: Create source_metric_daily for usage metadata rollups
       changes:
@@ -117,12 +114,9 @@ databaseChangeLog:
                   remarks: Number of observations for this fact on the bucket day
                   constraints:
                     nullable: false
-      rollback:
-        - dropTable:
-            tableName: source_metric_daily
 
   - changeSet:
-      id: v61.2026-04-15T00:00:02
+      id: v61.Tahg3l
       author: johnswanson
       comment: Create source_dimension_daily for usage metadata rollups
       changes:
@@ -182,12 +176,9 @@ databaseChangeLog:
                   remarks: Number of observations for this fact on the bucket day
                   constraints:
                     nullable: false
-      rollback:
-        - dropTable:
-            tableName: source_dimension_daily
 
   - changeSet:
-      id: v61.2026-04-15T00:00:03
+      id: v61.ojei4O
       author: johnswanson
       comment: Create source_dimension_profile_daily for usage metadata profile observations
       changes:
@@ -249,12 +240,9 @@ databaseChangeLog:
                   remarks: Number of times the observation was recorded on the bucket day
                   constraints:
                     nullable: false
-      rollback:
-        - dropTable:
-            tableName: source_dimension_profile_daily
 
   - changeSet:
-      id: v61.2026-04-15T00:00:04
+      id: v61.Ohk8ph
       author: johnswanson
       comment: Add source_segment_daily bucket/source index
       changes:
@@ -270,13 +258,9 @@ databaseChangeLog:
                   name: source_id
               - column:
                   name: ownership_mode
-      rollback:
-        - dropIndex:
-            tableName: source_segment_daily
-            indexName: idx_source_segment_daily_bucket_source
 
   - changeSet:
-      id: v61.2026-04-15T00:00:05
+      id: v61.Uike3b
       author: johnswanson
       comment: Add source_segment_daily field index
       changes:
@@ -286,13 +270,9 @@ databaseChangeLog:
             columns:
               - column:
                   name: field_id
-      rollback:
-        - dropIndex:
-            tableName: source_segment_daily
-            indexName: idx_source_segment_daily_field
 
   - changeSet:
-      id: v61.2026-04-15T00:00:06
+      id: v61.Chuun4
       author: johnswanson
       comment: Add source_metric_daily bucket/source index
       changes:
@@ -308,13 +288,9 @@ databaseChangeLog:
                   name: source_id
               - column:
                   name: ownership_mode
-      rollback:
-        - dropIndex:
-            tableName: source_metric_daily
-            indexName: idx_source_metric_daily_bucket_source
 
   - changeSet:
-      id: v61.2026-04-15T00:00:07
+      id: v61.eiQu2a
       author: johnswanson
       comment: Add source_metric_daily aggregation index
       changes:
@@ -326,13 +302,9 @@ databaseChangeLog:
                   name: agg_type
               - column:
                   name: agg_field_id
-      rollback:
-        - dropIndex:
-            tableName: source_metric_daily
-            indexName: idx_source_metric_daily_agg
 
   - changeSet:
-      id: v61.2026-04-15T00:00:08
+      id: v61.eeQu6e
       author: johnswanson
       comment: Add source_dimension_daily bucket/source index
       changes:
@@ -348,13 +320,9 @@ databaseChangeLog:
                   name: source_id
               - column:
                   name: ownership_mode
-      rollback:
-        - dropIndex:
-            tableName: source_dimension_daily
-            indexName: idx_source_dimension_daily_bucket_source
 
   - changeSet:
-      id: v61.2026-04-15T00:00:09
+      id: v61.mohCo0
       author: johnswanson
       comment: Add source_dimension_daily field index
       changes:
@@ -364,13 +332,9 @@ databaseChangeLog:
             columns:
               - column:
                   name: field_id
-      rollback:
-        - dropIndex:
-            tableName: source_dimension_daily
-            indexName: idx_source_dimension_daily_field
 
   - changeSet:
-      id: v61.2026-04-15T00:00:10
+      id: v61.Ye2eib
       author: johnswanson
       comment: Add source_dimension_profile_daily bucket/source index
       changes:
@@ -384,13 +348,9 @@ databaseChangeLog:
                   name: source_type
               - column:
                   name: source_id
-      rollback:
-        - dropIndex:
-            tableName: source_dimension_profile_daily
-            indexName: idx_source_dimension_profile_daily_bucket_source
 
   - changeSet:
-      id: v61.2026-04-15T00:00:11
+      id: v61.ouZ0sh
       author: johnswanson
       comment: Add source_dimension_profile_daily field/observation index
       changes:
@@ -402,7 +362,3 @@ databaseChangeLog:
                   name: field_id
               - column:
                   name: observation_type
-      rollback:
-        - dropIndex:
-            tableName: source_dimension_profile_daily
-            indexName: idx_source_dimension_profile_daily_field
