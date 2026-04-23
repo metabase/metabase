@@ -4,8 +4,8 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Button, Card, FixedSizeIcon, Select, Tooltip } from "metabase/ui";
+import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
 
-import { TOOLTIP_OPEN_DELAY_MS } from "../../../constants";
 import { getNodeIcon, getNodeLabel } from "../../../utils";
 import type { NodeType } from "../types";
 
@@ -44,7 +44,7 @@ export function GraphSelectInput({ nodes }: GraphSelectInputProps) {
       ) : (
         <Tooltip
           label={t`Jump to an item on the graph`}
-          openDelay={TOOLTIP_OPEN_DELAY_MS}
+          openDelay={TOOLTIP_OPEN_DELAY}
         >
           <Button
             leftSection={<FixedSizeIcon name="search" />}

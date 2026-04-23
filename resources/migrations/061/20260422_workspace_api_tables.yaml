@@ -1,0 +1,250 @@
+## Workspace and workspace_database tables for the /api/ee/workspace API
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+  - changeSet:
+      id: v61.2026-04-22T12:00:00
+      author: eric
+      comment: Create workspace table
+      changes:
+        - createTable:
+            tableName: workspace
+            remarks: A Workspace groups one or more databases with override connection details and per-database schema configuration
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: varchar(254)
+                  remarks: Display name of the workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this workspace was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When this workspace was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v61.2026-04-22T12:00:01
+      author: eric
+      comment: Create workspace_database table
+      changes:
+        - createTable:
+            tableName: workspace_database
+            remarks: Associates a Workspace with a Database, including override credentials and schema configuration
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: workspace_id
+                  type: int
+                  remarks: The workspace this row belongs to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: The underlying metabase_database this row configures
+                  constraints:
+                    nullable: false
+              - column:
+                  name: database_details
+                  type: ${text.type}
+                  remarks: JSON-encoded override connection details (e.g. user, password) used for this workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: output_schema
+                  type: varchar(254)
+                  remarks: Schema where workspace output tables are written
+                  constraints:
+                    nullable: false
+              - column:
+                  name: input_schemas
+                  type: ${text.type}
+                  remarks: JSON array of schema names that participate as inputs for this workspace
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this row was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: ${timestamp_type}
+                  remarks: When this row was last updated
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v61.2026-04-22T12:00:02
+      author: eric
+      comment: FK workspace_database.workspace_id -> workspace.id (cascade on delete)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_database
+            baseColumnNames: workspace_id
+            referencedTableName: workspace
+            referencedColumnNames: id
+            constraintName: fk_workspace_database_workspace_id
+            deleteCascade: true
+
+  - changeSet:
+      id: v61.2026-04-22T12:00:03
+      author: eric
+      comment: FK workspace_database.database_id -> metabase_database.id (cascade on delete)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_database
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_workspace_database_database_id
+            deleteCascade: true
+
+  - changeSet:
+      id: v61.2026-04-22T12:00:04
+      author: eric
+      comment: Unique index on (workspace_id, database_id)
+      changes:
+        - addUniqueConstraint:
+            tableName: workspace_database
+            constraintName: idx_unique_workspace_database
+            columnNames: workspace_id, database_id
+
+  - changeSet:
+      id: v61.2026-04-22T12:00:05
+      author: eric
+      comment: Index workspace_database.workspace_id for hydration lookups
+      changes:
+        - createIndex:
+            tableName: workspace_database
+            indexName: idx_workspace_database_workspace_id
+            columns:
+              - column:
+                  name: workspace_id
+
+  - changeSet:
+      id: v61.2026-04-22T12:00:06
+      author: eric
+      comment: Add status column to workspace_database (uninitialized/initialized)
+      changes:
+        - addColumn:
+            tableName: workspace_database
+            columns:
+              - column:
+                  name: status
+                  type: varchar(20)
+                  defaultValue: uninitialized
+                  remarks: Initialization state of this workspace database (uninitialized/initialized)
+                  constraints:
+                    nullable: false
+
+  ## Tighten workspace_database.database_id FK: cascade → restrict.
+  ##
+  ## The original FK above (v61.2026-04-22T12:00:03) used deleteCascade: true — deleting
+  ## a metabase_database silently cascade-deleted its workspace_database rows, bypassing
+  ## the 409 guard in `delete-workspace!` and orphaning any isolated warehouse
+  ## schemas/users for :initialized rows.
+  ##
+  ## RESTRICT forces the deletion to fail at the DB level unless the workspace_database
+  ## rows have been cleaned up first. An enterprise pre-delete hook on :model/Database
+  ## does that cleanup (refuse with 409 for :initialized rows, delete :uninitialized rows
+  ## explicitly) — the FK is the last-line-of-defense for paths that skip the hook.
+
+  - changeSet:
+      id: v61.2026-04-22T15:00:00
+      author: timothy
+      comment: Drop fk_workspace_database_database_id (previously cascade on delete)
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: workspace_database
+            constraintName: fk_workspace_database_database_id
+
+  - changeSet:
+      id: v61.2026-04-22T15:00:01
+      author: timothy
+      comment: Re-add fk_workspace_database_database_id with ON DELETE RESTRICT
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace_database
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_workspace_database_database_id
+            onDelete: RESTRICT
+
+  - changeSet:
+      id: v61.2026-04-22T18:00:00
+      author: eric
+      comment: Add creator_id to workspace table (nullable, set null on user delete)
+      changes:
+        - addColumn:
+            tableName: workspace
+            columns:
+              - column:
+                  name: creator_id
+                  type: int
+                  remarks: The user who created this Workspace; null if that user was deleted
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-04-22T18:00:01
+      author: eric
+      comment: FK workspace.creator_id -> core_user.id (set null on delete so deleting a user doesn't cascade)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: workspace
+            baseColumnNames: creator_id
+            referencedTableName: core_user
+            referencedColumnNames: id
+            constraintName: fk_workspace_creator_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v61.2026-04-22T19:00:00
+      author: eric
+      comment: Rename workspace_database status values to the 4-state machine (uninitialized/initialized -> unprovisioned/provisioned, with new transient provisioning/unprovisioning states)
+      changes:
+        - sql: UPDATE workspace_database SET status = 'unprovisioned' WHERE status = 'uninitialized'
+        - sql: UPDATE workspace_database SET status = 'provisioned'   WHERE status = 'initialized'
+
+  - changeSet:
+      id: v61.2026-04-22T19:00:01
+      author: eric
+      comment: Change workspace_database.status default from 'uninitialized' to 'unprovisioned'
+      changes:
+        - dropDefaultValue:
+            tableName: workspace_database
+            columnName: status
+        - addDefaultValue:
+            tableName: workspace_database
+            columnName: status
+            defaultValue: unprovisioned

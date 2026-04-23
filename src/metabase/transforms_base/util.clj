@@ -365,7 +365,7 @@
 
 (defn- sync-table!
   ([database target] (sync-table! database target nil))
-  ([database target {:keys [create?]}]
+  ([database target {:keys [create? physical-target]}]
    (when-let [table (or (target-table (:id database) target)
                         (when create?
                           (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
@@ -377,28 +377,47 @@
                          (-> (t2/select-one :model/Table (:id table))
                              (t2/hydrate :db)))
                      table)
-                   table)]
-       (sync/sync-table! table)
+                   table)
+           ;; Activate before sync's fingerprint queries run. Those go through the QP,
+           ;; which rejects references to inactive tables in
+           ;; metabase.query-processor.middleware.permissions/check-query-does-not-access-inactive-tables.
+           ;; Gated on `create?` so `deactivate-table!` doesn't re-activate rows it is tearing down.
+           table (if (and create? (not (:active table)))
+                   (do (t2/update! :model/Table (:id table) {:active true})
+                       (assoc table :active true))
+                   table)
+           ;; Under workspace remapping, the physical warehouse table lives at a different
+           ;; (schema, name) than the persisted row. We override those on the in-memory
+           ;; table instance so sync's describe-* calls hit the right warehouse location;
+           ;; fields written by sync attach via table_id to the persisted (logical) row.
+           physical-table (if physical-target
+                            (merge table (select-keys physical-target [:schema :name]))
+                            table)]
+       (sync/sync-table! physical-table)
        table))))
 
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
-  [database target]
-  (when-let [table (sync-table! database (assoc target
-                                                :data_authority :computed
-                                                :data_source :metabase-transform
-                                                :is_writable false)
-                                {:create? true})]
-    (when-not (:active table)
-      (t2/update! :model/Table (:id table) {:active true}))
-    table))
+  ([database target] (activate-table-and-mark-computed! database target nil))
+  ([database target physical-target]
+   (sync-table! database (assoc target
+                                :data_authority :computed
+                                :data_source :metabase-transform
+                                :is_writable false)
+                {:create? true
+                 :physical-target physical-target})))
 
 (defn sync-target!
-  "Sync target of a transform"
-  [target database]
-  ;; sync the new table (note that even a failed sync status means that the execution succeeded)
-  (log/info "Syncing target" (pr-str target) "for transform")
-  (activate-table-and-mark-computed! database target))
+  "Sync target of a transform. `physical-target`, when non-nil, overrides the warehouse
+   (schema, name) that sync queries — used when workspace remapping writes the output to
+   a different physical location than the transform's declared target."
+  ([target database] (sync-target! target database nil))
+  ([target database physical-target]
+   ;; sync the new table (note that even a failed sync status means that the execution succeeded)
+   (log/info "Syncing target" (pr-str target)
+             (when physical-target (str "(physical: " (pr-str physical-target) ")"))
+             "for transform")
+   (activate-table-and-mark-computed! database target physical-target)))
 
 (defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."
@@ -490,12 +509,16 @@
    to preserve the correct order of operations."
   [transform opts]
   (let [{:keys [target]} transform
-        {:keys [publish-events?]
+        {:keys [publish-events? table-remapping]
          :or   {publish-events? true}} opts
+        ;; Under workspaces the physical warehouse table lives at a remapped (schema, name);
+        ;; the persisted metabase_table row stays at the declared `target` so cards and the
+        ;; QP workspace-remapping middleware (keyed on the *from* side) continue to resolve.
+        physical-target (when table-remapping (merge target table-remapping))
         db-id (transforms-base.i/target-db-id transform)
         database (t2/select-one :model/Database db-id)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
-    (when-let [table (sync-target! target database)]
+    (when-let [table (sync-target! target database physical-target)]
       (t2/update! :model/Transform (:id transform) {:target_table_id (:id table)})
       (t2/update! :model/Table (:id table) {:transform_id (:id transform)}))
     ;; Publish event after sync so the table exists in AppDB.

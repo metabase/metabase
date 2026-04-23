@@ -219,6 +219,7 @@
   metabase.sync.util/do-with-start-and-finish-debug-logging                                   [[:default]]
   metabase.sync.util/sum-for                                                                  [[:block 1]]
   metabase.sync.util/sync-operation                                                           [[:block 3]]
+  metabase.sync.util/when-sync-enabled                                                        [[:block 2]]
   metabase.sync.util/with-db-logging-disabled                                                 [[:default]]
   metabase.sync.util/with-duplicate-ops-prevented                                             [[:default]]
   metabase.sync.util/with-emoji-progress-bar                                                  [[:block 1]]

@@ -1,0 +1,46 @@
+import type { DatabaseId } from "./database";
+import type { UserId, UserInfo } from "./user";
+
+export type WorkspaceId = number;
+
+export type WorkspaceDatabaseStatus =
+  | "provisioned"
+  | "provisioning"
+  | "unprovisioning"
+  | "unprovisioned";
+
+export type Workspace = {
+  id: WorkspaceId;
+  name: string;
+  databases: WorkspaceDatabase[];
+  created_at: string;
+  updated_at: string;
+
+  creator_id: UserId | null;
+  creator?: UserInfo | null;
+};
+
+export type WorkspaceDatabase = {
+  database_id: DatabaseId;
+  input_schemas: string[];
+  output_schema: string;
+  status: WorkspaceDatabaseStatus;
+};
+
+export type WorkspaceDatabaseDraft = {
+  database_id: DatabaseId;
+  input_schemas: string[];
+  output_schema?: string;
+  status?: WorkspaceDatabaseStatus;
+};
+
+export type CreateWorkspaceRequest = {
+  name: string;
+  databases: WorkspaceDatabaseDraft[];
+};
+
+export type UpdateWorkspaceRequest = {
+  id: WorkspaceId;
+  name?: string;
+  databases?: WorkspaceDatabaseDraft[];
+};

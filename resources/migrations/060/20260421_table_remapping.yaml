@@ -1,0 +1,103 @@
+## Table-to-table remapping for workspace isolation
+
+databaseChangeLog:
+  - logicalFilePath: migrations/060_update_migrations.yaml
+  - changeSet:
+      id: v60.2026-04-21T12:00:00
+      author: bcm
+      comment: Create table_remapping table for workspace table-to-table remapping
+      changes:
+        - createTable:
+            tableName: table_remapping
+            remarks: Maps production tables to workspace tables for query remapping
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  remarks: Unique ID
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: database_id
+                  type: int
+                  remarks: Database this remapping applies to
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_schema
+                  type: varchar(254)
+                  remarks: Source schema name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: from_table_name
+                  type: varchar(254)
+                  remarks: Source table name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_schema
+                  type: varchar(254)
+                  remarks: Target schema name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: to_table_name
+                  type: varchar(254)
+                  remarks: Target table name
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  remarks: When this remapping was created
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v60.2026-04-21T12:00:01
+      author: bcm
+      comment: Add foreign key on table_remapping(database_id)
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: table_remapping
+            baseColumnNames: database_id
+            referencedTableName: metabase_database
+            referencedColumnNames: id
+            constraintName: fk_table_remapping_database_id
+            deleteCascade: true
+
+  - changeSet:
+      id: v60.2026-04-21T12:00:02
+      author: bcm
+      comment: Add unique constraint on (database_id, from_schema, from_table_name)
+      changes:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_source
+            columnNames: database_id, from_schema, from_table_name
+
+  - changeSet:
+      id: v60.2026-04-21T12:00:03
+      author: bcm
+      comment: Add unique constraint on (database_id, to_schema, to_table_name) to prevent two source tables mapping to the same target
+      changes:
+        - addUniqueConstraint:
+            tableName: table_remapping
+            constraintName: idx_unique_table_remapping_target
+            columnNames: database_id, to_schema, to_table_name
+
+  - changeSet:
+      id: v60.2026-04-21T12:00:04
+      author: bcm
+      comment: Add index on database_id for fast lookup
+      changes:
+        - createIndex:
+            tableName: table_remapping
+            indexName: idx_table_remapping_database_id
+            columns:
+              - column:
+                  name: database_id

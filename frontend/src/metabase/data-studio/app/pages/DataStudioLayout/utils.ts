@@ -9,7 +9,9 @@ type TabName =
   | "dependencies"
   | "dependency-diagnostics"
   | "glossary"
-  | "git-sync";
+  | "git-sync"
+  | "workspaces"
+  | "workspace";
 
 export const getCurrentTab = (pathname: string): TabName => {
   switch (true) {
@@ -17,6 +19,10 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "glossary";
     case pathname.startsWith(Urls.dataStudioGitSync()):
       return "git-sync";
+    case pathname.startsWith(Urls.workspaceList()):
+      return "workspaces";
+    case pathname.startsWith(Urls.workspaceInstance()):
+      return "workspace";
     case pathname.startsWith(Urls.transformJobList()):
       return "jobs";
     case pathname.startsWith(Urls.dependencyGraph()):

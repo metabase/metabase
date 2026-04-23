@@ -38,6 +38,7 @@
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.util.random :as u.random]
@@ -48,6 +49,7 @@
    [ring.util.codec :as codec]
    [toucan2.core :as t2])
   (:import
+   (java.io ByteArrayInputStream)
    (java.sql Connection)
    (java.util.concurrent CountDownLatch)
    (org.quartz JobDetail TriggerKey)))
@@ -804,6 +806,66 @@
         (is (= {:databases [] :tables [] :fields []}
                (mt/user-http-request :rasta :get 202 "database/metadata")))))))
 
+(deftest databases-field-values-test
+  (testing "GET /api/database/field-values"
+    (mt/with-temp [:model/Database    {db-id :id} {:name "fv-db" :engine :h2}
+                   :model/Table       {t-id :id}  {:db_id db-id :name "people" :schema "PUBLIC"}
+                   :model/Field       {f1-id :id} {:table_id t-id :name "state" :base_type :type/Text
+                                                   :database_type "VARCHAR"}
+                   :model/Field       {f2-id :id} {:table_id t-id :name "rating" :base_type :type/Integer
+                                                   :database_type "INTEGER"}
+                   :model/FieldValues _           {:field_id f1-id :type :full
+                                                   :values [["CA"] ["NY"] ["TX"]]
+                                                   :has_more_values false}
+                   :model/FieldValues _           {:field_id f2-id :type :full
+                                                   :values [[1] [2] [3]]
+                                                   :human_readable_values ["Low" "Mid" "High"]
+                                                   :has_more_values true}]
+      (let [{:keys [field_values]} (mt/user-http-request :crowberto :get 202 "database/field-values")
+            by-field                (into {} (map (juxt :field_id identity)) field_values)]
+        (is (=? {:field_id        f1-id
+                 :values          [["CA"] ["NY"] ["TX"]]
+                 :has_more_values false}
+                (by-field f1-id)))
+        (is (nil? (:human_readable_values (by-field f1-id)))
+            "human_readable_values is omitted when empty")
+        (is (=? {:field_id              f2-id
+                 :values                [[1] [2] [3]]
+                 :human_readable_values ["Low" "Mid" "High"]
+                 :has_more_values       true}
+                (by-field f2-id)))))))
+
+(deftest databases-field-values-non-admin-test
+  (testing "GET /api/database/field-values — non-admin requests are rejected"
+    (mt/with-temp [:model/Database    {db-id :id} {:name "fv-db" :engine :h2}
+                   :model/Table       {t-id :id}  {:db_id db-id :name "people" :schema "PUBLIC"}
+                   :model/Field       {f-id :id}  {:table_id t-id :name "state" :base_type :type/Text
+                                                   :database_type "VARCHAR"}
+                   :model/FieldValues _           {:field_id f-id :type :full
+                                                   :values [["CA"] ["NY"]]
+                                                   :has_more_values false}]
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403 "database/field-values"))))))
+
+(deftest databases-field-values-excludes-non-full-test
+  (testing "GET /api/database/field-values — only :full FieldValues are included"
+    (mt/with-temp [:model/Database    {db-id :id} {:name "fv-db" :engine :h2}
+                   :model/Table       {t-id :id}  {:db_id db-id :name "people" :schema "PUBLIC"}
+                   :model/Field       {f-id :id}  {:table_id t-id :name "state" :base_type :type/Text
+                                                   :database_type "VARCHAR"}
+                   :model/FieldValues _           {:field_id f-id :type :full
+                                                   :values [["CA"]]
+                                                   :has_more_values false}
+                   :model/FieldValues _           {:field_id f-id :type :sandbox
+                                                   :hash_key "sandbox-hash"
+                                                   :values [["NY"]]
+                                                   :has_more_values false}]
+      (let [{:keys [field_values]} (mt/user-http-request :crowberto :get 202 "database/field-values")
+            for-field               (filter #(= f-id (:field_id %)) field_values)]
+        (is (= 1 (count for-field))
+            "only the :full entry streams; :sandbox / other variants are excluded")
+        (is (= [["CA"]] (-> for-field first :values)))))))
+
 (deftest databases-metadata-excludes-audit-db-test
   (testing "GET /api/database/metadata — audit (internal) database, its tables, and its fields are excluded"
     (mt/with-temp [:model/Database {db-id :id} {:name "audit-db" :engine :h2 :is_audit true}
@@ -1167,6 +1229,513 @@
                                   :semantic_type "type/PK"}]}]
         (mt/user-http-request :crowberto :post 200 "database/metadata" payload)
         (is (= pk-id (t2/select-one-fn :fk_target_field_id :model/Field :id fk-id)))))))
+
+;;; -------------------------- POST /api/database/metadata/* (streaming NDJSON) --------------------------
+
+(defn- ndjson-post
+  "Submit `lines` (a sequence of maps) as an `application/x-ndjson` body to `path`. Returns the
+  parsed response lines in order. Temporarily replaces `metabase.test.http-client/parse-response`
+  with `identity` so the raw NDJSON body survives the mock client's default JSON-decoding path."
+  [user path lines]
+  (let [ndjson (str/join (map #(str (json/encode %) "\n") lines))
+        body   (ByteArrayInputStream. (.getBytes ^String ndjson "UTF-8"))
+        orig   @#'client/parse-response
+        resp   (try
+                 (alter-var-root #'client/parse-response (constantly identity))
+                 (mt/user-http-request-full-response
+                  user :post 202 path
+                  {:request-options {:headers {"content-type" "application/x-ndjson"}
+                                     :body    body}})
+                 (finally
+                   (alter-var-root #'client/parse-response (constantly orig))))]
+    (->> (str/split-lines (:body resp))
+         (remove str/blank?)
+         (mapv json/decode+kw))))
+
+(deftest post-field-values-streaming-test
+  (testing "POST /api/database/field-values — happy path upserts by field_id"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fv-post-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t1" :schema "PUBLIC"}
+                   :model/Field    {f1-id :id} {:table_id t-id :name "x" :base_type :type/Text
+                                                :database_type "TEXT"}
+                   :model/Field    {f2-id :id} {:table_id t-id :name "y" :base_type :type/Integer
+                                                :database_type "INT"}]
+      (let [resp (ndjson-post :crowberto "database/field-values"
+                              [{:field_id f1-id :values [["A"] ["B"]] :has_more_values false}
+                               {:field_id f2-id :values [[1] [2] [3]] :has_more_values true
+                                :human_readable_values ["One" "Two" "Three"]}])]
+        (is (= [{:field_id f1-id :created true}
+                {:field_id f2-id :created true}]
+               resp))
+        (is (= [["A"] ["B"]]
+               (t2/select-one-fn :values :model/FieldValues :field_id f1-id :type :full :hash_key nil)))
+        (is (= true
+               (t2/select-one-fn :has_more_values :model/FieldValues :field_id f2-id :type :full :hash_key nil)))
+        (is (= ["One" "Two" "Three"]
+               (t2/select-one-fn :human_readable_values :model/FieldValues :field_id f2-id :type :full :hash_key nil))))
+      (testing "re-post updates the existing row and reports updated: true"
+        (let [resp (ndjson-post :crowberto "database/field-values"
+                                [{:field_id f1-id :values [["A"] ["B"] ["C"]] :has_more_values true}])]
+          (is (= [{:field_id f1-id :updated true}] resp))
+          (is (= [["A"] ["B"] ["C"]]
+                 (t2/select-one-fn :values :model/FieldValues :field_id f1-id :type :full :hash_key nil)))
+          (is (= true
+                 (t2/select-one-fn :has_more_values :model/FieldValues :field_id f1-id :type :full :hash_key nil))))))))
+
+(deftest post-field-values-fast-fail-test
+  (testing "POST /api/database/field-values — invalid_field_id terminates the stream and nothing from the failing batch commits"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fv-fastfail-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}
+                   :model/Field    {f-id :id}  {:table_id t-id :name "x" :base_type :type/Text
+                                                :database_type "TEXT"}]
+      (let [resp (ndjson-post :crowberto "database/field-values"
+                              [{:field_id f-id     :values [["A"]] :has_more_values false}
+                               {:field_id 99999999 :values [["B"]] :has_more_values false}
+                               {:field_id f-id     :values [["C"]] :has_more_values false}])]
+        (testing "exactly one line is written and it's the error for line 2"
+          (is (= 1 (count resp)))
+          (is (=? {:error "invalid_field_id" :line 2 :field_id 99999999} (first resp))))
+        (testing "the whole batch rolled back — nothing committed"
+          (is (nil? (t2/select-one :model/FieldValues :field_id f-id :type :full :hash_key nil))))))))
+
+(deftest post-field-values-batched-test
+  (testing "POST /api/database/field-values — more than import-batch-size lines stream successfully"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fv-batch-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      ;; Create 2100 fields (> import-batch-size = 2000)
+      (let [n     2100
+            rows  (mapv (fn [i]
+                          {:table_id t-id :name (str "f" i)
+                           :base_type :type/Text :database_type "TEXT" :active true})
+                        (range n))
+            f-ids (t2/insert-returning-pks! :model/Field rows)
+            lines (mapv (fn [f-id]
+                          {:field_id f-id :values [[(str "val-" f-id)]] :has_more_values false})
+                        f-ids)
+            resp  (ndjson-post :crowberto "database/field-values" lines)]
+        (is (= n (count resp)))
+        (is (every? :created resp))
+        (is (= n (t2/count :model/FieldValues :field_id [:in f-ids] :type :full :hash_key nil)))))))
+
+(deftest post-field-values-query-count-test
+  (testing "POST /api/database/field-values — # SQL statements per batch is O(1), not O(N)"
+    ;; Measures the batch processor directly — wrapping the full HTTP request counts session/perm/
+    ;; streaming-setup queries that vary with JVM warmth and drown out the signal we care about.
+    (mt/with-temp [:model/Database {db-id :id} {:name "fv-qcount-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      (let [n       50
+            rows    (mapv (fn [i]
+                            {:table_id t-id :name (str "f" i)
+                             :base_type :type/Text :database_type "TEXT" :active true})
+                          (range n))
+            f-ids   (t2/insert-returning-pks! :model/Field rows)
+            batch   (map-indexed (fn [i fid]
+                                   [(inc i) {:field_id fid :values [[(str "val-" fid)]] :has_more_values false}])
+                                 f-ids)
+            buffer  (java.util.ArrayList.)
+            calls   (t2/with-call-count [call-count]
+                      (t2/with-transaction [_conn]
+                        (#'metabase.warehouses-rest.metadata-import-core/process-field-values-batch! batch buffer))
+                      (call-count))]
+        (testing "field-values batch processor should issue a bounded number of statements independent of batch size"
+          (is (< calls 10)
+              (format "expected < 10 SQL statements for %d-row field-values batch, got %d" n calls))
+          (is (= n (.size buffer)))
+          (is (every? :created (vec buffer))))))))
+
+(deftest post-field-values-non-admin-test
+  (testing "POST /api/database/field-values — non-admin requests are rejected"
+    (let [body (ByteArrayInputStream. (.getBytes "{}\n" "UTF-8"))
+          orig @#'client/parse-response
+          resp (try
+                 (alter-var-root #'client/parse-response (constantly identity))
+                 (mt/user-http-request-full-response
+                  :rasta :post 403 "database/field-values"
+                  {:request-options {:headers {"content-type" "application/x-ndjson"}
+                                     :body    body}})
+                 (finally
+                   (alter-var-root #'client/parse-response (constantly orig))))]
+      (is (= 403 (:status resp))))))
+
+(deftest post-metadata-databases-streaming-test
+  (testing "POST /api/database/metadata/databases — matched rows return new_id in order"
+    (mt/with-temp [:model/Database {db-a :id} {:name "streaming-db-a" :engine :h2}
+                   :model/Database {db-b :id} {:name "streaming-db-b" :engine :h2}]
+      (let [resp (ndjson-post :crowberto "database/metadata/databases"
+                              [{:id 900 :name "streaming-db-a" :engine "h2"}
+                               {:id 901 :name "streaming-db-b" :engine "h2"}])]
+        (is (= [{:old_id 900 :new_id db-a}
+                {:old_id 901 :new_id db-b}]
+               resp))))))
+
+(deftest post-metadata-databases-no-match-per-row-test
+  (testing "POST /api/database/metadata/databases — no_match emits a per-row error and the stream continues"
+    (mt/with-temp [:model/Database {db-a :id} {:name "ff-db-a" :engine :h2}]
+      (let [resp (ndjson-post :crowberto "database/metadata/databases"
+                              [{:id 900 :name "ff-db-a" :engine "h2"}
+                               {:id 901 :name "does-not-exist" :engine "h2"}
+                               {:id 902 :name "ff-db-a" :engine "h2"}])]
+        (is (=? [{:old_id 900 :new_id db-a}
+                 {:old_id 901 :error "no_match" :line 2 :detail string?}
+                 {:old_id 902 :new_id db-a}]
+                resp))))))
+
+(deftest post-metadata-databases-batched-test
+  (testing "POST /api/database/metadata/databases — > import-batch-size rows stream successfully"
+    ;; 2100 matchable DBs created in one go so we exercise multi-batch streaming end-to-end.
+    (let [n     2100
+          names (mapv #(str "streaming-db-batch-" %) (range n))]
+      (mt/with-model-cleanup [:model/Database]
+        (t2/insert! :model/Database
+                    (mapv (fn [nm] {:name nm :engine :h2 :details "{}"}) names))
+        (let [lines (mapv (fn [i nm] {:id (+ 100000 i) :name nm :engine "h2"})
+                          (range n) names)
+              resp  (ndjson-post :crowberto "database/metadata/databases" lines)]
+          (is (= n (count resp)))
+          (is (every? :new_id resp)))))))
+
+(deftest post-metadata-databases-non-admin-test
+  (testing "POST /api/database/metadata/databases — non-admin rejected"
+    (let [body (ByteArrayInputStream. (.getBytes "{}\n" "UTF-8"))
+          orig @#'client/parse-response
+          resp (try
+                 (alter-var-root #'client/parse-response (constantly identity))
+                 (mt/user-http-request-full-response
+                  :rasta :post 403 "database/metadata/databases"
+                  {:request-options {:headers {"content-type" "application/x-ndjson"}
+                                     :body    body}})
+                 (finally
+                   (alter-var-root #'client/parse-response (constantly orig))))]
+      (is (= 403 (:status resp))))))
+
+(deftest post-metadata-tables-streaming-test
+  (testing "POST /api/database/metadata/tables — match updates description, unmatched insert"
+    (mt/with-temp [:model/Database {db-id :id} {:name "streaming-tbl-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "orders" :schema "PUBLIC"
+                                                :description "before"}]
+      (let [resp (ndjson-post :crowberto "database/metadata/tables"
+                              [{:id 500 :db_id db-id :schema "PUBLIC" :name "orders"
+                                :description "after"}
+                               {:id 501 :db_id db-id :schema "PUBLIC" :name "customers"
+                                :description "new"}])]
+        (is (=? [{:old_id 500 :existing_id t-id}
+                 {:old_id 501 :new_id int?}]
+                resp))
+        (is (= "after" (t2/select-one-fn :description :model/Table :id t-id)))
+        (let [new-tbl (t2/select-one :model/Table :db_id db-id :name "customers")]
+          (is (some? new-tbl))
+          (is (= "new" (:description new-tbl)))
+          (is (true? (:active new-tbl))))))))
+
+(deftest post-metadata-tables-fast-fail-test
+  (testing "POST /api/database/metadata/tables — invalid_db_id terminates the stream and rolls back the batch"
+    (mt/with-temp [:model/Database {db-id :id} {:name "tbl-fastfail-db" :engine :h2}]
+      (let [resp (ndjson-post :crowberto "database/metadata/tables"
+                              [{:id 500 :db_id db-id    :schema "PUBLIC" :name "good-before"}
+                               {:id 501 :db_id 99999999 :schema "PUBLIC" :name "orphan"}
+                               {:id 502 :db_id db-id    :schema "PUBLIC" :name "after-error"}])]
+        (testing "only the error line is emitted (batch rolled back, pre-error successes were buffered)"
+          (is (= 1 (count resp)))
+          (is (=? {:error "invalid_db_id" :line 2 :old_id 501} (first resp))))
+        (testing "nothing from the failing batch committed"
+          (is (nil? (t2/select-one :model/Table :db_id db-id :name "good-before")))
+          (is (nil? (t2/select-one :model/Table :db_id db-id :name "after-error"))))))))
+
+(deftest post-metadata-tables-null-schema-test
+  (testing "POST /api/database/metadata/tables — null schema matches via IS NULL"
+    (mt/with-temp [:model/Database {db-id :id} {:name "null-schema-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "no-schema-tbl" :schema nil
+                                                :description "before"}]
+      (let [resp (ndjson-post :crowberto "database/metadata/tables"
+                              [{:id 500 :db_id db-id :schema nil :name "no-schema-tbl"
+                                :description "after"}])]
+        (is (= [{:old_id 500 :existing_id t-id}] resp))
+        (is (= "after" (t2/select-one-fn :description :model/Table :id t-id)))))))
+
+(deftest post-metadata-tables-batched-test
+  (testing "POST /api/database/metadata/tables — > import-batch-size rows stream"
+    (mt/with-temp [:model/Database {db-id :id} {:name "batched-tbl-db" :engine :h2}]
+      (let [n     2100
+            lines (mapv (fn [i]
+                          {:id (+ 10000 i) :db_id db-id :schema "PUBLIC" :name (str "t" i)})
+                        (range n))
+            resp  (ndjson-post :crowberto "database/metadata/tables" lines)]
+        (is (= n (count resp)))
+        (is (every? :new_id resp))
+        (is (= n (t2/count :model/Table :db_id db-id)))))))
+
+(deftest post-metadata-fields-insert-and-finalize-test
+  (testing "POST /api/database/metadata/fields + /finalize — deeply nested fields that would collide under idx_unique_field"
+    (mt/with-temp [:model/Database {db-id :id} {:name "nested-insert-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "obs" :schema "PUBLIC"}]
+      ;; Payload: 3 root fields each with a child "leaf" — all 3 children collide under the
+      ;; naive unique constraint, but defective-duplicate insertion bypasses it.
+      (let [insert-resp (ndjson-post :crowberto "database/metadata/fields"
+                                     [{:id 100 :table_id t-id :name "wind"
+                                       :base_type "type/Dictionary" :database_type "NULL"}
+                                      {:id 101 :table_id t-id :name "leaf"
+                                       :base_type "type/Float" :database_type "NULL"}
+                                      {:id 200 :table_id t-id :name "temp"
+                                       :base_type "type/Dictionary" :database_type "NULL"}
+                                      {:id 201 :table_id t-id :name "leaf"
+                                       :base_type "type/Float" :database_type "NULL"}
+                                      {:id 300 :table_id t-id :name "humidity"
+                                       :base_type "type/Dictionary" :database_type "NULL"}
+                                      {:id 301 :table_id t-id :name "leaf"
+                                       :base_type "type/Float" :database_type "NULL"}])
+            by-old      (into {} (map (juxt :old_id identity)) insert-resp)
+            target-id   (fn [old] (or (:new_id (by-old old)) (:existing_id (by-old old))))
+            finalize    [{:id (target-id 100) :parent_id nil                 :fk_target_field_id nil}
+                         {:id (target-id 101) :parent_id (target-id 100)     :fk_target_field_id nil}
+                         {:id (target-id 200) :parent_id nil                 :fk_target_field_id nil}
+                         {:id (target-id 201) :parent_id (target-id 200)     :fk_target_field_id nil}
+                         {:id (target-id 300) :parent_id nil                 :fk_target_field_id nil}
+                         {:id (target-id 301) :parent_id (target-id 300)     :fk_target_field_id nil}]
+            fin-resp    (ndjson-post :crowberto "database/metadata/fields/finalize" finalize)]
+        (is (= 6 (count insert-resp)))
+        (is (every? :new_id insert-resp))
+        (is (= 6 (count fin-resp)))
+        (is (every? :ok fin-resp))
+        (let [rows (t2/query {:select [:id :name :parent_id :is_defective_duplicate :unique_field_helper]
+                              :from   [:metabase_field]
+                              :where  [:= :table_id t-id]
+                              :order-by [:id]})]
+          (is (= 6 (count rows)))
+          (testing "every row has is_defective_duplicate = false after finalize"
+            (is (every? (comp false? :is_defective_duplicate) rows)))
+          (testing "unique_field_helper is 0 for roots and parent_id for nested rows"
+            (let [by-name (group-by :name rows)
+                  leafs   (get by-name "leaf")
+                  roots   (concat (get by-name "wind") (get by-name "temp") (get by-name "humidity"))]
+              (is (every? #(= 0 (:unique_field_helper %)) roots))
+              (is (= #{(target-id 100) (target-id 200) (target-id 300)}
+                     (set (map :unique_field_helper leafs)))))))))))
+
+(deftest post-metadata-fields-root-reimport-test
+  (testing "POST /api/database/metadata/fields — root-level re-import matches and returns existing_id"
+    (mt/with-temp [:model/Database {db-id :id} {:name "reimport-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t1" :schema "PUBLIC"}
+                   :model/Field    {f-id :id}  {:table_id t-id :name "id" :base_type :type/Integer
+                                                :database_type "BIGINT" :description "before"}]
+      (let [resp (ndjson-post :crowberto "database/metadata/fields"
+                              [{:id 9001 :table_id t-id :name "id"
+                                :base_type "type/Integer" :database_type "BIGINT"
+                                :description "after" :semantic_type "type/PK"}])]
+        (is (= [{:old_id 9001 :existing_id f-id}] resp))
+        (is (= "after"   (t2/select-one-fn :description :model/Field :id f-id)))
+        (is (= :type/PK (t2/select-one-fn :semantic_type :model/Field :id f-id)))
+        (testing "base_type and database_type on matched rows are not overwritten"
+          (is (= :type/Integer (t2/select-one-fn :base_type :model/Field :id f-id)))
+          (is (= "BIGINT"      (t2/select-one-fn :database_type :model/Field :id f-id))))))))
+
+(deftest post-metadata-fields-fast-fail-test
+  (testing "POST /api/database/metadata/fields — invalid_table_id terminates the stream and rolls back the batch"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fld-fastfail-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      (let [resp (ndjson-post :crowberto "database/metadata/fields"
+                              [{:id 1 :table_id t-id     :name "before"
+                                :base_type "type/Integer" :database_type "INT"}
+                               {:id 2 :table_id 99999999 :name "orphan"
+                                :base_type "type/Integer" :database_type "INT"}
+                               {:id 3 :table_id t-id     :name "after"
+                                :base_type "type/Integer" :database_type "INT"}])]
+        (testing "only the error line is emitted"
+          (is (= 1 (count resp)))
+          (is (=? {:error "invalid_table_id" :line 2 :old_id 2} (first resp))))
+        (testing "nothing from the failing batch committed"
+          (is (zero? (t2/count :model/Field :table_id t-id)))))))
+  (testing "POST /api/database/metadata/fields — missing database_type is invalid_input (no silent fallback)"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fld-missing-dbtype" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      (let [resp (ndjson-post :crowberto "database/metadata/fields"
+                              [{:id 1 :table_id t-id :name "no_dbtype"
+                                :base_type "type/Text"}])]
+        (is (= 1 (count resp)))
+        (is (=? {:error "invalid_input" :line 1 :old_id 1} (first resp)))))))
+
+(deftest post-metadata-fields-batched-test
+  (testing "POST /api/database/metadata/fields — > import-batch-size rows stream and all end up defective pre-finalize"
+    (mt/with-temp [:model/Database {db-id :id} {:name "batched-fld-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      (let [n     2100
+            lines (mapv (fn [i]
+                          {:id (+ 100000 i) :table_id t-id :name (str "col" i)
+                           :base_type "type/Integer" :database_type "INT"})
+                        (range n))
+            resp  (ndjson-post :crowberto "database/metadata/fields" lines)]
+        (is (= n (count resp)))
+        (is (every? :new_id resp))
+        (is (= n (t2/count :metabase_field
+                           {:where [:and [:= :table_id t-id]
+                                    [:= :is_defective_duplicate true]]})))))))
+
+(deftest post-metadata-fields-finalize-unique-violation-test
+  (testing "POST /api/database/metadata/fields/finalize — unique_violation terminates the stream and rolls back the batch"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fin-collide-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      (let [insert-resp (ndjson-post :crowberto "database/metadata/fields"
+                                     [{:id 1 :table_id t-id :name "parent"
+                                       :base_type "type/Dictionary" :database_type "NULL"}
+                                      {:id 2 :table_id t-id :name "leaf"
+                                       :base_type "type/Integer" :database_type "INT"}
+                                      {:id 3 :table_id t-id :name "leaf"
+                                       :base_type "type/Integer" :database_type "INT"}])
+            target-id   (fn [old] (:new_id (first (filter #(= old (:old_id %)) insert-resp))))
+            parent-id   (target-id 1)
+            leaf1-id    (target-id 2)
+            leaf2-id    (target-id 3)
+            fin-resp    (ndjson-post :crowberto "database/metadata/fields/finalize"
+                                     [{:id parent-id :parent_id nil       :fk_target_field_id nil}
+                                      {:id leaf1-id  :parent_id parent-id :fk_target_field_id nil}
+                                      {:id leaf2-id  :parent_id parent-id :fk_target_field_id nil}])]
+        (testing "exactly one line is written and it's a unique_violation"
+          ;; Per the batched-UPDATE plan, per-row :line / :id attribution is lost for SQL-level throws.
+          (is (= 1 (count fin-resp)))
+          (is (=? {:error "unique_violation"} (first fin-resp))))
+        (testing "the whole batch rolled back — every row stays defective"
+          (is (true? (t2/select-one-fn :is_defective_duplicate :metabase_field :id parent-id)))
+          (is (true? (t2/select-one-fn :is_defective_duplicate :metabase_field :id leaf1-id)))
+          (is (true? (t2/select-one-fn :is_defective_duplicate :metabase_field :id leaf2-id))))))))
+
+(deftest post-metadata-fields-finalize-server-error-test
+  (testing "POST /api/database/metadata/fields/finalize — an unexpected exception surfaces as server_error"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fin-svr-err-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}
+                   :model/Field    {f-id :id}  {:table_id t-id :name "x" :base_type :type/Integer
+                                                :database_type "INT" :is_defective_duplicate true}]
+      ;; Batched-UPDATE path issues one t2/query per batch — simulate a DB-layer failure by
+      ;; throwing from it. Per-line attribution is lost for SQL-level throws (documented caveat).
+      (let [orig-query t2/query]
+        (with-redefs [t2/query (fn [& args]
+                                 (let [q (first args)]
+                                   (if (and (vector? q)
+                                            (str/starts-with? (str (first q)) "UPDATE metabase_field"))
+                                     (throw (RuntimeException. "kaboom"))
+                                     (apply orig-query args))))]
+          (let [resp (ndjson-post :crowberto "database/metadata/fields/finalize"
+                                  [{:id f-id :parent_id nil :fk_target_field_id nil}])]
+            (is (= 1 (count resp)))
+            (is (=? {:error "server_error"} (first resp)))))))))
+
+(deftest post-metadata-fields-finalize-not-found-test
+  (testing "POST /api/database/metadata/fields/finalize — unknown id terminates the stream with :not_found tagged to the offending line"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fin-notfound-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}
+                   :model/Field    {f-id :id}  {:table_id t-id :name "x" :base_type :type/Integer
+                                                :database_type "INT" :is_defective_duplicate true}]
+      (let [resp (ndjson-post :crowberto "database/metadata/fields/finalize"
+                              [{:id f-id     :parent_id nil :fk_target_field_id nil}
+                               {:id 99999999 :parent_id nil :fk_target_field_id nil}])]
+        (is (= 1 (count resp)))
+        (is (=? {:error "not_found" :line 2 :id 99999999} (first resp)))
+        (testing "the whole batch rolled back — the real row stays defective"
+          (is (true? (t2/select-one-fn :is_defective_duplicate :metabase_field :id f-id))))))))
+
+(deftest post-metadata-fields-finalize-batched-test
+  (testing "POST /api/database/metadata/fields/finalize — > import-batch-size rows stream per-row UPDATEs"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fin-batch-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      ;; Bulk-insert 2100 defective rows directly (simulating the prior insert pass), then finalize.
+      (let [n        2100
+            rows     (mapv (fn [i]
+                             {:table_id t-id :name (str "col" i)
+                              :base_type :type/Integer :database_type "INT"
+                              :active true :is_defective_duplicate true})
+                           (range n))
+            f-ids    (t2/insert-returning-pks! :model/Field rows)
+            fin-lines (mapv (fn [fid] {:id fid :parent_id nil :fk_target_field_id nil}) f-ids)
+            resp     (ndjson-post :crowberto "database/metadata/fields/finalize" fin-lines)]
+        (is (= n (count resp)))
+        (is (every? :ok resp))
+        (is (zero? (t2/count :metabase_field {:where [:and [:= :table_id t-id]
+                                                      [:= :is_defective_duplicate true]]})))))))
+
+(deftest post-metadata-fields-finalize-query-count-test
+  (testing "POST /api/database/metadata/fields/finalize — # SQL statements is O(1) in batch size, not O(N)"
+    ;; Measures the batch processor directly — wrapping the full HTTP request counts session/perm/
+    ;; streaming-setup queries that vary with JVM warmth and drown out the signal we care about.
+    (mt/with-temp [:model/Database {db-id :id} {:name "fin-qcount-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}]
+      (let [n      50
+            rows   (mapv (fn [i]
+                           {:table_id t-id :name (str "col" i)
+                            :base_type :type/Integer :database_type "INT"
+                            :active true :is_defective_duplicate true})
+                         (range n))
+            f-ids  (t2/insert-returning-pks! :model/Field rows)
+            batch  (map-indexed (fn [i fid]
+                                  [(inc i) {:id fid :parent_id nil :fk_target_field_id nil}])
+                                f-ids)
+            buffer (java.util.ArrayList.)
+            calls  (t2/with-call-count [call-count]
+                     (t2/with-transaction [_conn]
+                       (#'metabase.warehouses-rest.metadata-import-core/process-finalize-batch! batch buffer))
+                     (call-count))]
+        (testing "finalize batch processor should issue a bounded number of statements independent of batch size"
+          (is (< calls 10)
+              (format "expected < 10 SQL statements for %d-row finalize batch, got %d" n calls))
+          (is (= n (.size buffer)))
+          (is (every? :ok (vec buffer))))))))
+
+(deftest post-metadata-fields-finalize-overrides-user-settings-test
+  (testing "POST /api/database/metadata/fields/finalize — finalize's fk_target_field_id wins over any existing FieldUserSettings row"
+    (mt/with-temp [:model/Database {db-id :id} {:name "fin-overrides-db" :engine :h2}
+                   :model/Table    {t-id :id}  {:db_id db-id :name "t" :schema "PUBLIC"}
+                   :model/Field    {fk-target-a :id} {:table_id t-id :name "target_a"
+                                                      :base_type :type/Integer :database_type "INT"}
+                   :model/Field    {fk-target-b :id} {:table_id t-id :name "target_b"
+                                                      :base_type :type/Integer :database_type "INT"}
+                   :model/Field    {f-id :id}   {:table_id t-id :name "x"
+                                                 :base_type :type/Integer :database_type "INT"
+                                                 :is_defective_duplicate true}
+                   ;; User settings row carries an fk_target_field_id pointing at target A. finalize
+                   ;; sends target B. The contract says finalize wins; the current pre-update hook
+                   ;; merges the user-settings value over the finalize value and target A survives.
+                   :model/FieldUserSettings _ {:field_id f-id :fk_target_field_id fk-target-a}]
+      (let [resp (ndjson-post :crowberto "database/metadata/fields/finalize"
+                              [{:id f-id :parent_id nil :fk_target_field_id fk-target-b}])]
+        (is (= [{:id f-id :ok true}] resp))
+        (is (= fk-target-b
+               (t2/select-one-fn :fk_target_field_id :metabase_field :id f-id))
+            "finalize's fk_target_field_id must not be overridden by FieldUserSettings")))))
+
+(deftest post-metadata-streaming-end-to-end-test
+  (testing "POST /api/database/metadata/{databases,tables,fields,fields/finalize} — full happy-path chain"
+    (mt/with-temp [:model/Database {db-id :id} {:name "e2e-streaming-db" :engine :h2}]
+      (let [db-resp   (ndjson-post :crowberto "database/metadata/databases"
+                                   [{:id 900 :name "e2e-streaming-db" :engine "h2"}])
+            target-db (-> db-resp first :new_id)
+            tbl-resp  (ndjson-post :crowberto "database/metadata/tables"
+                                   [{:id 1001 :db_id target-db :schema "PUBLIC" :name "orders"
+                                     :description "o"}])
+            target-t  (-> tbl-resp first :new_id)
+            fld-resp  (ndjson-post :crowberto "database/metadata/fields"
+                                   [{:id 2001 :table_id target-t :name "id"
+                                     :base_type "type/Integer" :database_type "BIGINT"
+                                     :semantic_type "type/PK"}
+                                    {:id 2002 :table_id target-t :name "item"
+                                     :base_type "type/Dictionary" :database_type "NULL"}
+                                    {:id 2003 :table_id target-t :name "name"
+                                     :base_type "type/Text" :database_type "TEXT"}])
+            pk-id     (->> fld-resp (filter #(= 2001 (:old_id %))) first :new_id)
+            item-id   (->> fld-resp (filter #(= 2002 (:old_id %))) first :new_id)
+            name-id   (->> fld-resp (filter #(= 2003 (:old_id %))) first :new_id)
+            fin-resp  (ndjson-post :crowberto "database/metadata/fields/finalize"
+                                   [{:id pk-id   :parent_id nil     :fk_target_field_id nil}
+                                    {:id item-id :parent_id nil     :fk_target_field_id nil}
+                                    {:id name-id :parent_id item-id :fk_target_field_id pk-id}])]
+        (is (= target-db db-id))
+        (is (every? :new_id tbl-resp))
+        (is (every? :new_id fld-resp))
+        (is (every? :ok fin-resp))
+        (testing "parent_id and fk_target_field_id committed on the nested field"
+          (let [nested (t2/select-one :model/Field :id name-id)]
+            (is (= item-id (:parent_id nested)))
+            (is (= pk-id   (:fk_target_field_id nested)))))
+        (testing "all rows flipped is_defective_duplicate = false"
+          (is (zero? (t2/count :metabase_field
+                               {:where [:and [:= :table_id target-t]
+                                        [:= :is_defective_duplicate true]]}))))))))
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"

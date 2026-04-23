@@ -8,6 +8,7 @@
    [metabase.sync.sync-metadata]
    [metabase.sync.sync-metadata.fields]
    [metabase.sync.sync-metadata.tables]
+   [metabase.sync.util]
    [potemkin :as p]))
 
 (comment
@@ -16,7 +17,8 @@
   metabase.sync.sync/keep-me
   metabase.sync.sync-metadata/keep-me
   metabase.sync.sync-metadata.fields/keep-me
-  metabase.sync.sync-metadata.tables/keep-me)
+  metabase.sync.sync-metadata.tables/keep-me
+  metabase.sync.util/keep-me)
 
 (p/import-vars
  [metabase.sync.analyze
@@ -33,4 +35,7 @@
  [metabase.sync.sync-metadata.fields
   sync-fields-for-table!]
  [metabase.sync.sync-metadata.tables
-  create-table!])
+  create-table!]
+ [metabase.sync.util
+  check-sync-enabled-or-503!
+  sync-disabled?])

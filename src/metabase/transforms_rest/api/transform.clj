@@ -68,7 +68,11 @@
    [:checkpoint_filter_field_id {:optional true} [:maybe pos-int?]]
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
-   [:metered_as {:optional true} [:maybe :string]]])
+   [:metered_as {:optional true} [:maybe :string]]
+   [:target_schema {:optional true} [:maybe :string]]
+   [:target_table {:optional true} [:maybe :string]]
+   [:workspace_schema {:optional true} [:maybe :string]]
+   [:workspace_table {:optional true} [:maybe :string]]])
 
 (def ^:private TransformResponse
   [:map {:closed true}
@@ -114,6 +118,10 @@
    [:checkpoint_lo_value {:optional true} [:maybe :string]]
    [:checkpoint_hi_value {:optional true} [:maybe :string]]
    [:metered_as {:optional true} [:maybe :string]]
+   [:target_schema {:optional true} [:maybe :string]]
+   [:target_table {:optional true} [:maybe :string]]
+   [:workspace_schema {:optional true} [:maybe :string]]
+   [:workspace_table {:optional true} [:maybe :string]]
    ;; Transform can have id/name when exists, or be nil when deleted
    [:transform {:optional true} [:maybe [:map {:closed true}
                                          [:id {:optional true} pos-int?]

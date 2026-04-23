@@ -1134,3 +1134,79 @@
           (is (some #(= (:id %) (mt/id :venues :price))
                     (->> result :tables (mapcat :fields)))
               "Sensitive field SHOULD be included when :settings :include-sensitive-fields is true"))))))
+
+;;; ---------------------------------- POST /api/dataset/query-sources ----------------------------------
+
+(defn- source-ids [result k]
+  (set (map :id (get result k))))
+
+(deftest query-sources-shape-test
+  (testing "POST /api/dataset/query-sources returns {:tables [...], :cards [...]}"
+    (let [result (mt/user-http-request :crowberto :post 200 "dataset/query-sources"
+                                       (mt/mbql-query orders))]
+      (is (contains? result :tables))
+      (is (contains? result :cards))
+      (is (= [(mt/id :orders)] (map :id (:tables result))))
+      (is (= [] (:cards result)))
+      (testing "table entries include :id :db_id :schema :name :display_name"
+        (let [orders-entry (first (:tables result))]
+          (is (= #{:id :db_id :schema :name :display_name} (set (keys orders-entry))))
+          (is (= (mt/id) (:db_id orders-entry)))
+          (is (or (nil? (:schema orders-entry)) (string? (:schema orders-entry))))
+          (is (string? (:name orders-entry)))
+          (is (string? (:display_name orders-entry))))))))
+
+(deftest query-sources-mbql-test
+  (testing "MBQL query with source-table returns that table"
+    (let [result (mt/user-http-request :crowberto :post 200 "dataset/query-sources"
+                                       (mt/mbql-query orders))]
+      (is (= #{(mt/id :orders)} (source-ids result :tables)))
+      (is (empty? (:cards result))))))
+
+(deftest query-sources-native-raw-sql-test
+  (testing "Native query with raw table reference is extracted via SQL parsing"
+    (let [result (mt/user-http-request :crowberto :post 200 "dataset/query-sources"
+                                       {:database (mt/id)
+                                        :type     :native
+                                        :native   {:query "SELECT * FROM ORDERS"}})]
+      (is (= #{(mt/id :orders)} (source-ids result :tables)))
+      (is (empty? (:cards result))))))
+
+(deftest query-sources-native-template-tag-table-plus-raw-join-test
+  (testing "Native query with both a table template tag and a raw-SQL JOIN captures both tables"
+    (let [result (mt/user-http-request :crowberto :post 200 "dataset/query-sources"
+                                       {:database (mt/id)
+                                        :type     :native
+                                        :native   {:query "SELECT * FROM {{tbl}} JOIN PEOPLE ON 1=1"
+                                                   :template-tags {"tbl" {:type         :table
+                                                                          :name         "tbl"
+                                                                          :display-name "Tbl"
+                                                                          :table-id     (mt/id :products)}}}})]
+      (is (= #{(mt/id :products) (mt/id :people)} (source-ids result :tables)))
+      (is (empty? (:cards result))))))
+
+(deftest query-sources-native-card-template-tag-test
+  (testing "Native query with a card template tag returns the card — NOT the card's underlying tables"
+    (mt/with-temp [:model/Card {card-id :id} {:name          "Sources Test Card"
+                                              :database_id   (mt/id)
+                                              :dataset_query {:database (mt/id)
+                                                              :type     :native
+                                                              :native   {:query "SELECT ID FROM ORDERS WHERE TOTAL > 100"}}}]
+      (let [result (mt/user-http-request :crowberto :post 200 "dataset/query-sources"
+                                         {:database (mt/id)
+                                          :type     :native
+                                          :native   {:query "SELECT * FROM {{c}}"
+                                                     :template-tags {"c" {:type         :card
+                                                                          :name         "c"
+                                                                          :display-name "C"
+                                                                          :card-id      card-id}}}})]
+        (is (= #{card-id} (source-ids result :cards)))
+        (is (empty? (:tables result))
+            "card's underlying ORDERS table must NOT appear; placeholder substitution kept compile-with-inline-parameters from inlining the card's SQL")))))
+
+(deftest query-sources-read-checks-database-test
+  (testing "Returns 404 when the database does not exist (exercises api/read-check on :model/Database)"
+    (mt/user-http-request :crowberto :post 404 "dataset/query-sources"
+                          {:database Integer/MAX_VALUE
+                           :type     :native
+                           :native   {:query "SELECT 1"}})))

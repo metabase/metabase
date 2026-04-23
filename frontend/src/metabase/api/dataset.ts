@@ -4,6 +4,7 @@ import type {
   CardQueryMetadata,
   Dataset,
   DatasetQuery,
+  DatasetQuerySourceInfo,
   FieldValue,
   GetRemappedParameterValueRequest,
   NativeDatasetResponse,
@@ -14,6 +15,7 @@ import {
   provideAdhocDatasetTags,
   provideAdhocQueryMetadataTags,
   provideParameterValuesTags,
+  tag,
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
@@ -42,6 +44,10 @@ export const datasetApi = Api.injectEndpoints({
         noEvent: ignore_error,
       }),
       providesTags: () => provideAdhocDatasetTags(),
+      onQueryStarted: (_, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, () => {
+          dispatch(Api.util.invalidateTags([tag("query-execution")]));
+        }),
     }),
     getAdhocPivotQuery: builder.query<
       Dataset,
@@ -60,6 +66,10 @@ export const datasetApi = Api.injectEndpoints({
         noEvent: ignore_error,
       }),
       providesTags: () => provideAdhocDatasetTags(),
+      onQueryStarted: (_, { dispatch, queryFulfilled }) =>
+        handleQueryFulfilled(queryFulfilled, () => {
+          dispatch(Api.util.invalidateTags([tag("query-execution")]));
+        }),
     }),
     getAdhocQueryMetadata: builder.query<CardQueryMetadata, DatasetQuery>({
       query: (body) => ({
@@ -81,6 +91,15 @@ export const datasetApi = Api.injectEndpoints({
         body,
       }),
     }),
+    getDatasetQuerySources: builder.query<DatasetQuerySourceInfo, DatasetQuery>(
+      {
+        query: (body) => ({
+          method: "POST",
+          url: "/api/dataset/query-sources",
+          body,
+        }),
+      },
+    ),
     getRemappedParameterValue: builder.query<
       FieldValue,
       GetRemappedParameterValueRequest
@@ -103,5 +122,6 @@ export const {
   useGetAdhocQueryMetadataQuery,
   useLazyGetAdhocQueryMetadataQuery,
   useGetNativeDatasetQuery,
+  useGetDatasetQuerySourcesQuery,
   useGetRemappedParameterValueQuery,
 } = datasetApi;

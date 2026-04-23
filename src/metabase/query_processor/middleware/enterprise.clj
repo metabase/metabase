@@ -57,8 +57,22 @@
   [query]
   query)
 
+(def ^:dynamic *skip-workspace-remapping?*
+  "When true, `apply-workspace-remapping` and `apply-workspace-table-remapping` are no-ops. Bound by
+  display-oriented callers (e.g. `POST /api/dataset/native`) that want the compiled SQL to reflect the
+  presentation identifiers the user authored against, not the physical workspace-isolated identifiers
+  the query would execute against. Never bind this on an execution path."
+  false)
+
 (defenterprise apply-workspace-remapping
   "Pre-processing middleware to rewrite 'global' table references with 'isolated' tables in the workspace schema."
+  metabase-enterprise.workspaces.query-processor.middleware
+  [query]
+  query)
+
+(defenterprise apply-workspace-table-remapping
+  "Pre-processing middleware to rewrite MBQL `:source-table` references (and joins) to workspace tables.
+   Runs after sandboxing so sandbox filters materialize against production schema first."
   metabase-enterprise.workspaces.query-processor.middleware
   [query]
   query)

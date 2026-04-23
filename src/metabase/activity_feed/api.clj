@@ -7,7 +7,9 @@
    [metabase.api.macros :as api.macros]
    [metabase.app-db.core :as app-db]
    [metabase.models.interface :as mi]
+   [metabase.request.core :as request]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -276,3 +278,35 @@
   archived, deleted, etc it can usually still get 5. "
   []
   {:popular_items (get-popular-items-model-and-id)})
+
+;;; ---------------------------------------- Query Activity ----------------------------------------
+
+(defn query-activity
+  "Return recent query executions for a user with resolved table/card/database names.
+
+   Options:
+     :user-id     - filter to a specific user (optional, nil = all users)
+     :limit       - max rows (default 100)
+     :database-id - filter to a specific database (optional)"
+  [{:keys [limit]
+    :or   {limit 100}}]
+  (let [where-clause [:is-not :qe.started_at nil]
+        rows         (t2/query {:select    [[:qe.id :id]
+                                            [:qe.started_at :started_at]
+                                            [:qe.executor_id :executor_id]
+                                            [:qe.database_id :database_id]
+                                            [:q.query :query]
+                                            [:qe.result_rows :result_rows]
+                                            [:qe.running_time :running_time]]
+                                :from      [[:query_execution :qe]]
+                                :left-join [[:query :q] [:= :qe.hash :q.query_hash]]
+                                :where     where-clause
+                                :order-by  [[:qe.started_at :desc]]
+                                :limit     limit})]
+    (map #(update % :query json/decode+kw) rows)))
+
+(api.macros/defendpoint :get "/query-execution"
+  "Get recent query executions for the current user with resolved source table and card names."
+  [_route-params _query-params]
+  (api/check-superuser)
+  (query-activity {:limit (or (request/limit) 100)}))

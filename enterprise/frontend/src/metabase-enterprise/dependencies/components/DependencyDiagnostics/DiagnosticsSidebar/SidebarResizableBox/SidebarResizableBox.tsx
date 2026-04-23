@@ -10,6 +10,7 @@ const DEFAULT_SIDEBAR_WIDTH = 512;
 
 type SidebarResizableBoxProps = {
   containerWidth: number;
+  defaultWidth?: number;
   children?: ReactNode;
   onResizeStart: () => void;
   onResizeStop: () => void;
@@ -17,6 +18,7 @@ type SidebarResizableBoxProps = {
 
 export function SidebarResizableBox({
   containerWidth,
+  defaultWidth = DEFAULT_SIDEBAR_WIDTH,
   children,
   onResizeStart,
   onResizeStop,
@@ -26,7 +28,7 @@ export function SidebarResizableBox({
   return (
     <ResizableBox
       className={S.resizableBox}
-      width={DEFAULT_SIDEBAR_WIDTH}
+      width={defaultWidth}
       minConstraints={[MIN_SIDEBAR_WIDTH, 0]}
       maxConstraints={[maxSidebarWidth, 0]}
       axis="x"

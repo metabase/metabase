@@ -2,8 +2,8 @@ import { useContext } from "react";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ActionIcon, FixedSizeIcon, Tooltip } from "metabase/ui";
+import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
 
-import { TOOLTIP_OPEN_DELAY_MS } from "../../../constants";
 import { GraphContext } from "../GraphContext";
 
 type GraphExternalLinkProps = {
@@ -20,7 +20,7 @@ export function GraphExternalLink({
   const { openLinksInNewTab } = useContext(GraphContext);
 
   return (
-    <Tooltip label={label} openDelay={TOOLTIP_OPEN_DELAY_MS}>
+    <Tooltip label={label} openDelay={TOOLTIP_OPEN_DELAY}>
       <ActionIcon
         component={ForwardRefLink}
         to={url}

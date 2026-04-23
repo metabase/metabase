@@ -29,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouses.provider-detection :as provider-detection]
+   [metabase.warehouses.settings :as warehouses.settings]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -153,6 +154,16 @@
   [_db-id]
   (mi/superuser?))
 
+(defenterprise reconcile-workspace-database-refs-before-delete!
+  "Hook called from the `:model/Database` before-delete. In workspaces mode this refuses
+   the delete (409) if any `:initialized` `workspace_database` rows reference `db-id`, and
+   explicitly removes any `:uninitialized` rows so the FK RESTRICT is satisfied. OSS
+   implementation is a no-op — fresh OSS installs have no workspace_database table, and
+   feature-off EE instances have nothing to reconcile."
+  metabase-enterprise.workspaces.models.workspace-database
+  [_db-id]
+  nil)
+
 (defn- can-write?
   [db-id]
   (or (some-> db-id db-id->router-db-id can-write?)
@@ -204,9 +215,12 @@
   (boolean (:router_database_id db)))
 
 (defn should-sync?
-  "Should this database be synced?"
+  "Should this database be synced? Returns false when:
+    - the database is a routing destination (metadata comes from the primary), or
+    - the instance-global [[metabase.warehouses.settings/disable-sync]] kill-switch is on."
   [db]
-  (not (is-destination? db)))
+  (and (not (is-destination? db))
+       (not (warehouses.settings/disable-sync))))
 
 (defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
@@ -391,6 +405,11 @@
 
 (t2/define-before-delete :model/Database
   [{id :id, driver :engine, :as database}]
+  ;; Reconcile workspace_database rows first: the FK is RESTRICT, so uninitialized
+  ;; rows must be cleaned up explicitly, and initialized rows must refuse the delete.
+  ;; Runs before any other cleanup so we don't partially unwind sync tasks / secrets
+  ;; / fields for a Database whose deletion is about to be refused.
+  (reconcile-workspace-database-refs-before-delete! id)
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)

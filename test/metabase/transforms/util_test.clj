@@ -13,6 +13,7 @@
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.interface :as transforms-base.i]
+   [metabase.transforms-base.query :as transforms-base.query]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.util :as transforms.u]
@@ -381,13 +382,48 @@
               ;; so complete-execution! can set transform_id on it.
               (mt/with-dynamic-fn-redefs
                 [transforms-base.i/execute-base!        (constantly {:status :succeeded})
-                 transforms-base.u/sync-target!         (fn [_target _database]
-                                                          (t2/select-one :model/Table table-id))
+                 transforms-base.u/sync-target!         (fn
+                                                          ([_target _database]
+                                                           (t2/select-one :model/Table table-id))
+                                                          ([_target _database _physical-target]
+                                                           (t2/select-one :model/Table table-id)))
                  transforms.u/run-cancelable-transform! (fn [_run-id _transform _driver _details run-fn & _opts]
                                                           (run-fn (a/promise-chan) nil))]
                 (transforms.execute/execute! transform {:run-method :manual})
                 (is (= transform-id
                        (t2/select-one-fn :transform_id :model/Table :id table-id)))))))))))
+
+(deftest run-mbql-transform-uses-remapped-schema-for-output-test
+  (testing "query transform passes the workspace-redirected schema to run-cancelable-transform!"
+    ;; Regression guard: before the fix, `run-mbql-transform!` passed the declared
+    ;; (production) target schema as `:output-schema` in `transform-details`, and
+    ;; `run-cancelable-transform!` then called `driver/create-schema-if-needed!` on
+    ;; the production schema *before* the workspace redirect was resolved (the redirect
+    ;; only ran inside the lambda, too late). On a workspace instance without CREATE
+    ;; on production, that errored; with CREATE, it silently polluted production.
+    ;; The redirect must be resolved before run-cancelable-transform! is invoked.
+    (mt/with-premium-features #{:transforms-basic}
+      (let [target   {:type "table" :schema nil :name "prod_output_table_for_redirect_test"}
+            captured (atom nil)]
+        (mt/with-temp [:model/Transform transform
+                       {:target target
+                        :source {:type  "query"
+                                 :query (lib/query (mt/metadata-provider)
+                                                   (mt/mbql-query venues))}}]
+          (mt/with-dynamic-fn-redefs
+            [transforms-base.query/resolve-transform-remapping!
+             (fn [_db-id _from-schema _from-table]
+               {:schema "ws_redirected_schema" :name "ws_redirected_table"})
+             transforms-base.i/execute-base!        (constantly {:status :succeeded})
+             transforms-base.u/sync-target!         (fn
+                                                      ([_target _database] nil)
+                                                      ([_target _database _physical-target] nil))
+             transforms.u/run-cancelable-transform! (fn [_run-id _transform _driver details run-fn & _opts]
+                                                      (reset! captured details)
+                                                      (run-fn (a/promise-chan) nil))]
+            (transforms.execute/execute! transform {:run-method :manual})
+            (is (= "ws_redirected_schema" (:output-schema @captured))
+                "transform-details must carry the workspace-redirected schema so schema creation targets the workspace, not production")))))))
 
 (deftest transform-hydration-test
   (testing "hydrating :transform on a table"

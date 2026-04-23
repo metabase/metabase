@@ -158,6 +158,11 @@ export type TransformRun = {
   checkpoint_lo_value?: string | null;
   checkpoint_hi_value?: string | null;
 
+  target_schema?: string | null;
+  target_table?: string | null;
+  workspace_schema?: string | null;
+  workspace_table?: string | null;
+
   // hydrated fields
   transform?: Transform;
 };

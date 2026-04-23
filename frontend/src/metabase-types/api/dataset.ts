@@ -18,7 +18,7 @@ import type { Insight } from "./insight";
 import type { ParameterOptions } from "./parameters";
 import type { DownloadPermission } from "./permissions";
 import type { DatasetQuery, DatetimeUnit, DimensionReference } from "./query";
-import type { TableId } from "./table";
+import type { Table, TableId } from "./table";
 
 export type RowValue = string | number | null | boolean | object;
 export type RowValues = RowValue[];
@@ -188,6 +188,18 @@ export interface NativeDatasetResponse {
   // not used, added to the type only for completeness
   params: unknown;
 }
+
+export type TableDatasetQuerySource = Pick<
+  Table,
+  "id" | "db_id" | "name" | "display_name" | "schema"
+>;
+
+export type CardDatasetQuerySource = Pick<Card, "id" | "name" | "type">;
+
+export type DatasetQuerySourceInfo = {
+  tables?: TableDatasetQuerySource[];
+  cards?: CardDatasetQuerySource[];
+};
 
 export type SingleSeries = {
   card: Card;

@@ -514,7 +514,8 @@
   {:pre [(integer? field-id)]}
   (when (field-should-have-field-values? field)
     (let [existing (or (not-empty field-values) (get-latest-full-field-values field-id))]
-      (if (or (not existing) (inactive? existing))
+      (cond
+        (or (not existing) (inactive? existing))
         (case (create-or-update-full-field-values! field :human-readable-values human-readable-values)
           ::fv-deleted
           nil
@@ -526,6 +527,8 @@
             (when existing
               (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now}))
             (get-latest-full-field-values field-id)))
+
+        :else
         (do
           (t2/update! :model/FieldValues (:id existing) {:last_used_at :%now})
           existing)))))

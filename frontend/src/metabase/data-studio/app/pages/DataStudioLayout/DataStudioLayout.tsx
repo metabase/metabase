@@ -11,6 +11,7 @@ import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut"
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
+  PLUGIN_WORKSPACES,
 } from "metabase/plugins";
 import { getLocation } from "metabase/selectors/routing";
 import {
@@ -99,6 +100,10 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const hasDependenciesFeature = useHasTokenFeature("dependencies");
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
   const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
+  const { currentWorkspace } = PLUGIN_WORKSPACES.useCurrentWorkspace();
+  const canManageWorkspaces = useSelector(
+    PLUGIN_WORKSPACES.canManageWorkspaces,
+  );
 
   const currentTab = getCurrentTab(pathname);
 
@@ -196,6 +201,24 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
               isGated
             />
           )}
+          {PLUGIN_WORKSPACES.isEnabled &&
+            (currentWorkspace ? (
+              <DataStudioTab
+                label={t`Workspace`}
+                icon="folder_database"
+                to={Urls.workspaceInstance()}
+                isSelected={currentTab === "workspace"}
+                showLabel={isNavbarOpened}
+              />
+            ) : canManageWorkspaces ? (
+              <DataStudioTab
+                label={t`Workspaces`}
+                icon="folder_database"
+                to={Urls.workspaceList()}
+                isSelected={currentTab === "workspaces"}
+                showLabel={isNavbarOpened}
+              />
+            ) : null)}
           {canAccessTransforms && (
             <DataStudioTab
               label={t`Jobs`}

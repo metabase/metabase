@@ -2240,3 +2240,106 @@
             (is (=? {:type :missing-column
                      :name "xix"}
                     (first (driver/validate-native-query-fields :postgres broken-query))))))))))
+
+(deftest ^:parallel grant-workspace-read-access-sqls-test
+  (let [sqls #'postgres/grant-workspace-read-access-sqls]
+    (testing "single source schema with a single table emits five schema-scoped statements"
+      (is (= ["GRANT USAGE ON SCHEMA \"public\" TO \"bob\""
+              "GRANT SELECT ON ALL TABLES IN SCHEMA \"public\" TO \"bob\""
+              "ALTER DEFAULT PRIVILEGES IN SCHEMA \"public\" GRANT SELECT ON TABLES TO \"bob\""
+              "REVOKE CREATE ON SCHEMA \"public\" FROM \"bob\""
+              "REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA \"public\" FROM \"bob\""]
+             (sqls "bob" [{:schema "public" :name "t1"}]))))
+    (testing "multiple tables in the same schema dedupe to exactly five statements"
+      (is (= ["GRANT USAGE ON SCHEMA \"public\" TO \"bob\""
+              "GRANT SELECT ON ALL TABLES IN SCHEMA \"public\" TO \"bob\""
+              "ALTER DEFAULT PRIVILEGES IN SCHEMA \"public\" GRANT SELECT ON TABLES TO \"bob\""
+              "REVOKE CREATE ON SCHEMA \"public\" FROM \"bob\""
+              "REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA \"public\" FROM \"bob\""]
+             (sqls "bob" [{:schema "public" :name "t1"}
+                          {:schema "public" :name "t2"}
+                          {:schema "public" :name "t3"}]))))
+    (testing "multiple distinct source schemas emit five statements per schema"
+      ;; Compare as a set — schema iteration order over a set is not guaranteed.
+      (is (= #{"GRANT USAGE ON SCHEMA \"a\" TO \"bob\""
+               "GRANT SELECT ON ALL TABLES IN SCHEMA \"a\" TO \"bob\""
+               "ALTER DEFAULT PRIVILEGES IN SCHEMA \"a\" GRANT SELECT ON TABLES TO \"bob\""
+               "REVOKE CREATE ON SCHEMA \"a\" FROM \"bob\""
+               "REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA \"a\" FROM \"bob\""
+               "GRANT USAGE ON SCHEMA \"b\" TO \"bob\""
+               "GRANT SELECT ON ALL TABLES IN SCHEMA \"b\" TO \"bob\""
+               "ALTER DEFAULT PRIVILEGES IN SCHEMA \"b\" GRANT SELECT ON TABLES TO \"bob\""
+               "REVOKE CREATE ON SCHEMA \"b\" FROM \"bob\""
+               "REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA \"b\" FROM \"bob\""
+               "GRANT USAGE ON SCHEMA \"c\" TO \"bob\""
+               "GRANT SELECT ON ALL TABLES IN SCHEMA \"c\" TO \"bob\""
+               "ALTER DEFAULT PRIVILEGES IN SCHEMA \"c\" GRANT SELECT ON TABLES TO \"bob\""
+               "REVOKE CREATE ON SCHEMA \"c\" FROM \"bob\""
+               "REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA \"c\" FROM \"bob\""}
+             (set (sqls "bob" [{:schema "a" :name "t1"}
+                               {:schema "b" :name "t2"}
+                               {:schema "c" :name "t3"}]))))
+      (is (= 15 (count (sqls "bob" [{:schema "a" :name "t1"}
+                                    {:schema "b" :name "t2"}
+                                    {:schema "c" :name "t3"}])))))
+    (testing "empty tables collection produces no SQL statements"
+      (is (= [] (vec (sqls "bob" [])))))
+    (testing "schema and user identifiers are double-quoted via sql.u/quote-name"
+      (is (= ["GRANT USAGE ON SCHEMA \"My Schema\" TO \"user-42\""
+              "GRANT SELECT ON ALL TABLES IN SCHEMA \"My Schema\" TO \"user-42\""
+              "ALTER DEFAULT PRIVILEGES IN SCHEMA \"My Schema\" GRANT SELECT ON TABLES TO \"user-42\""
+              "REVOKE CREATE ON SCHEMA \"My Schema\" FROM \"user-42\""
+              "REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA \"My Schema\" FROM \"user-42\""]
+             (sqls "user-42" [{:schema "My Schema" :name "whatever"}]))))))
+
+(defn- find-sql-exception
+  "Walk the cause chain until we find a `java.sql.SQLException`, or nil."
+  [^Throwable t]
+  (loop [t t]
+    (cond
+      (nil? t)                              nil
+      (instance? java.sql.SQLException t)   t
+      :else                                 (recur (.getCause t)))))
+
+(deftest ^:synchronized workspace-user-cannot-write-to-input-schema-test
+  (mt/test-driver :postgres
+    (testing "provisioned workspace user can SELECT but cannot modify input schemas"
+      (tx/drop-if-exists-and-create-db! driver/*driver* "workspace_write_perms_test")
+      (let [details    (mt/dbdef->connection-details :postgres :db {:database-name "workspace_write_perms_test"})
+            admin-spec (sql-jdbc.conn/connection-details->spec :postgres details)]
+        (jdbc/execute! admin-spec
+                       [(str "CREATE TABLE public.src (id INT, v TEXT);"
+                             "INSERT INTO public.src VALUES (1, 'a');")])
+        (mt/with-temp [:model/Database database {:engine  :postgres
+                                                 :details (assoc details :dbname "workspace_write_perms_test")}]
+          (let [workspace       {:id 8675309 :name "wsd-writetest-8675309"}
+                init-result     (driver/init-workspace-isolation! :postgres database workspace)
+                ws-with-details (merge workspace init-result)]
+            (try
+              (driver/grant-workspace-read-access! :postgres database ws-with-details
+                                                   [{:schema "public" :name "src"}])
+              (let [user-details (assoc details
+                                        :user     (get-in ws-with-details [:database_details :user])
+                                        :password (get-in ws-with-details [:database_details :password]))
+                    user-spec    (sql-jdbc.conn/connection-details->spec :postgres user-details)]
+                (testing "SELECT on input schema succeeds"
+                  (is (= [{:id 1 :v "a"}]
+                         (jdbc/query user-spec ["SELECT id, v FROM public.src ORDER BY id"]))))
+                (doseq [[op sql] [[:insert       "INSERT INTO public.src VALUES (2, 'b')"]
+                                  [:update       "UPDATE public.src SET v = 'x'"]
+                                  [:delete       "DELETE FROM public.src"]
+                                  [:create-table "CREATE TABLE public.sneaky (id INT)"]
+                                  [:drop-table   "DROP TABLE public.src"]]]
+                  (testing (format "%s on input schema fails with SQLState 42501 (insufficient_privilege)" op)
+                    (try
+                      (jdbc/execute! user-spec [sql])
+                      (is false (format "%s unexpectedly succeeded" op))
+                      (catch Throwable t
+                        (let [^java.sql.SQLException sqle (find-sql-exception t)]
+                          (is (some? sqle) (format "expected SQLException; got %s" (class t)))
+                          (when sqle
+                            (is (= "42501" (.getSQLState sqle))
+                                (format "%s should fail with SQLState 42501, got state=%s msg=%s"
+                                        op (.getSQLState sqle) (.getMessage sqle))))))))))
+              (finally
+                (driver/destroy-workspace-isolation! :postgres database ws-with-details)))))))))

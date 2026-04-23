@@ -1,4 +1,5 @@
 import { Ellipsified, FixedSizeIcon, Group } from "metabase/ui";
+import { TOOLTIP_OPEN_DELAY } from "metabase/utils/constants";
 import type { DependencyNode } from "metabase-types/api";
 
 import { getNodeIcon, getNodeLabel } from "../../../utils";
@@ -14,7 +15,9 @@ export function NameCell({ node }: NameCellProps) {
   return (
     <Group align="center" gap="sm" miw={0} wrap="nowrap">
       {icon && <FixedSizeIcon name={icon} />}
-      <Ellipsified tooltipProps={{ openDelay: 300 }}>{label}</Ellipsified>
+      <Ellipsified tooltipProps={{ openDelay: TOOLTIP_OPEN_DELAY }}>
+        {label}
+      </Ellipsified>
     </Group>
   );
 }

@@ -34,6 +34,7 @@ export const TAG_TYPES = [
   "permissions-group",
   "persisted-info",
   "persisted-model",
+  "query-execution",
   "revision",
   "group-table-access-policy",
   "schema",

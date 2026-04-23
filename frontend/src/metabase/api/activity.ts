@@ -3,6 +3,7 @@ import type {
   Field,
   PopularItem,
   PopularItemsResponse,
+  QueryExecution,
   RecentItem,
   RecentsRequest,
   RecentsResponse,
@@ -16,6 +17,7 @@ import {
   invalidateTags,
   listTag,
   provideActivityItemListTags,
+  provideQueryExecutionItemListTags,
 } from "./tags";
 
 export const activityApi = Api.injectEndpoints({
@@ -58,6 +60,13 @@ export const activityApi = Api.injectEndpoints({
         response?.popular_items,
       providesTags: (items) => provideActivityItemListTags(items ?? []),
     }),
+    listQueryExecutions: builder.query<QueryExecution[], void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/activity/query-execution",
+      }),
+      providesTags: (items) => provideQueryExecutionItemListTags(items ?? []),
+    }),
     logRecentItem: builder.mutation<void, Omit<CreateRecentRequest, "context">>(
       {
         query: ({ model_id, model }) => ({
@@ -79,8 +88,11 @@ export const activityApi = Api.injectEndpoints({
   }),
 });
 
-export const { useListPopularItemsQuery, useLogRecentItemMutation } =
-  activityApi;
+export const {
+  useListPopularItemsQuery,
+  useListQueryExecutionsQuery,
+  useLogRecentItemMutation,
+} = activityApi;
 
 type GetRecentsQueryOptions = Parameters<
   typeof activityApi.useListRecentsQuery
