@@ -1148,6 +1148,7 @@
            metabase.login-history.init}
    :uses #{analytics
            api
+           app-db
            channel
            request
            settings
@@ -2996,7 +2997,6 @@
               permissions
               premium-features
               settings
-              task
               util
               enterprise/dependencies
               enterprise/transforms-python}

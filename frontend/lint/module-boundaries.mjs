@@ -53,7 +53,7 @@ const elements = [
     enforceOutgoing: true,
   }),
   createElement({ type: "feature", name: "admin" }),
-  createElement({ type: "feature", name: "reference" }),
+  createElement({ type: "feature", name: "reference", enforceOutgoing: true }),
   createElement({
     type: "feature",
     name: "enterprise",
