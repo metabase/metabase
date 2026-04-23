@@ -127,11 +127,13 @@
               (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/inspector-lens
                                                               {:lens-type "generic-summary"
                                                                :status    "ok"}))))
-            (testing "404 from non-applicable lens bumps inspector-lens{status=error}"
+            (testing "404 from non-applicable lens bumps inspector-lens{status=error,lens-type=unknown}"
+              ;; Unknown lens-ids clamp to \"unknown\" to prevent Prometheus cardinality
+              ;; explosion from arbitrary path-param values.
               (mt/user-http-request :lucky :get 404
                                     (format "ee/transforms/%d/inspect/no-such-lens" transform-id))
               (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/inspector-lens
-                                                              {:lens-type "no-such-lens"
+                                                              {:lens-type "unknown"
                                                                :status    "error"}))))
             ;; Run the failure case before the success case so we can assert that a QP {:status :failed}
             ;; bumps the error bucket but NOT the ok bucket — the specific regression covered by the

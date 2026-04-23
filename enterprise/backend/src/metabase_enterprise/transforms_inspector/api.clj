@@ -1,6 +1,7 @@
 (ns metabase-enterprise.transforms-inspector.api
   (:require
    [metabase-enterprise.transforms-inspector.core :as inspector]
+   [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
    [metabase-enterprise.transforms-inspector.schema :as inspector.schema]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
@@ -14,11 +15,20 @@
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.core :as server]
    [metabase.tracing.core :as tracing]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms.core]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
+
+(defn- lens-label
+  "Clamp `lens-id` (a user-controlled path param) to a registered lens type or
+   \"unknown\" to bound the cardinality of the `:lens-type` metric label."
+  [lens-id]
+  (if (some #(= (name %) lens-id) (lens.core/registered-lens-types true))
+    lens-id
+    "unknown"))
 
 (api.macros/defendpoint :get "/:id/inspect"
   :- ::inspector.schema/discovery-response
@@ -28,7 +38,8 @@
   (let [transform (api/read-check :model/Transform id)
         _         (transforms.core/check-feature-enabled! transform)
         result    (tracing/with-span :transforms "transforms.inspector.discover"
-                    {:transform/id id}
+                    {:transform/id          id
+                     :transform/source-type (name (transforms-base.u/transform-source-type (:source transform)))}
                     (try
                       (let [r (inspector/discover-lenses transform)]
                         (prometheus/inc! :metabase-transforms/inspector-discovery {:status "ok"})
@@ -53,16 +64,17 @@
   (let [transform (api/read-check :model/Transform id)
         _         (transforms.core/check-feature-enabled! transform)
         result    (tracing/with-span :transforms "transforms.inspector.lens"
-                    {:transform/id      id
-                     :inspector/lens-id lens-id}
+                    {:transform/id          id
+                     :transform/source-type (name (transforms-base.u/transform-source-type (:source transform)))
+                     :inspector/lens-id     lens-id}
                     (try
                       (let [r (inspector/get-lens transform lens-id params)]
                         (prometheus/inc! :metabase-transforms/inspector-lens
-                                         {:lens-type lens-id :status "ok"})
+                                         {:lens-type (lens-label lens-id) :status "ok"})
                         r)
                       (catch Throwable t
                         (prometheus/inc! :metabase-transforms/inspector-lens
-                                         {:lens-type lens-id :status "error"})
+                                         {:lens-type (lens-label lens-id) :status "error"})
                         (throw t))))]
     (events/publish-event! :event/transform-inspect-lens
                            {:object  transform
@@ -108,12 +120,12 @@
                     ;; instead of throwing — see qp.streaming/-streaming-response.
                     status (if (= :failed (:status result)) "error" "ok")]
                 (prometheus/observe! :metabase-transforms/inspector-query-duration-ms
-                                     {:lens-type lens-id :status status}
+                                     {:lens-type (lens-label lens-id) :status status}
                                      (u/since-ms timer))
                 result)
               (catch Throwable t
                 (prometheus/observe! :metabase-transforms/inspector-query-duration-ms
-                                     {:lens-type lens-id :status "error"}
+                                     {:lens-type (lens-label lens-id) :status "error"}
                                      (u/since-ms timer))
                 (throw t)))))))))
 
