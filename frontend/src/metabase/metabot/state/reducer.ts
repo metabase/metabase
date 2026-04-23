@@ -11,7 +11,7 @@ import type {
   SuggestedTransform,
 } from "metabase-types/api";
 
-import { TOOL_CALL_MESSAGES } from "../constants";
+import { type MetabotProfileId, TOOL_CALL_MESSAGES } from "../constants";
 
 import { sendAgentRequest } from "./actions";
 import {
@@ -217,7 +217,10 @@ export const metabot = createSlice({
       },
     ),
     setProfileOverride: convoReducer(
-      (state, action: ConvoPayloadAction<{ profile: string | undefined }>) => {
+      (
+        state,
+        action: ConvoPayloadAction<{ profile: MetabotProfileId | undefined }>,
+      ) => {
         state.profileOverride = action.payload.profile;
       },
     ),

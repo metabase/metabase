@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -14,7 +15,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { VIEW_CONVERSATIONS } from "../../constants";
 import { useAuditTable } from "../../hooks/useAuditTable";
 
-import S from "./BreakoutChart.module.css";
+import S from "./ChartCard.module.css";
 import {
   type UsageStatsMetric,
   applyDateFilter,
@@ -34,6 +35,7 @@ type Props = {
   h?: number;
   nullLabel?: string;
   maxCategories?: number;
+  transformDimension?: (value: string) => string;
 };
 
 // When a custom click handler is provided, we need visualizationIsClickable
@@ -54,6 +56,7 @@ export function BreakoutChart({
   h = 350,
   nullLabel,
   maxCategories = 8,
+  transformDimension,
 }: Props) {
   const otherLabel = t`Other`;
   const { provider, table } = useAuditTable(viewName);
@@ -112,11 +115,20 @@ export function BreakoutChart({
       rows = _.sortBy(rows, (row) => -rowMetricTotal(row));
     }
 
-    if (nullLabel != null && dimensionIndex >= 0) {
+    if (
+      (nullLabel != null || transformDimension != null) &&
+      dimensionIndex >= 0
+    ) {
       rows = rows.map((row) => {
-        if (row[dimensionIndex] == null) {
+        const value = row[dimensionIndex];
+        if (value == null && nullLabel != null) {
           const copy = [...row];
           copy[dimensionIndex] = nullLabel;
+          return copy;
+        }
+        if (typeof value === "string" && transformDimension != null) {
+          const copy = [...row];
+          copy[dimensionIndex] = transformDimension(value);
           return copy;
         }
         return row;
@@ -159,7 +171,16 @@ export function BreakoutChart({
         data: { ...data.data, rows },
       },
     ];
-  }, [data, jsQuery, display, metric, nullLabel, maxCategories, otherLabel]);
+  }, [
+    data,
+    jsQuery,
+    display,
+    metric,
+    nullLabel,
+    maxCategories,
+    otherLabel,
+    transformDimension,
+  ]);
 
   if (isFetching || !rawSeries) {
     return <Skeleton h={h} />;
@@ -167,7 +188,9 @@ export function BreakoutChart({
 
   return (
     <Card
-      className={S.visualization}
+      className={cx(S.visualization, {
+        [S.nonClickable]: !onDimensionClick,
+      })}
       withBorder
       shadow="none"
       px="lg"

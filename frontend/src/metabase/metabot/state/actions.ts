@@ -25,7 +25,7 @@ import type {
   MetabotTransformInfo,
 } from "metabase-types/api";
 
-import { METABOT_ERR_MSG } from "../constants";
+import { METABOT_ERR_MSG, type MetabotProfileId } from "../constants";
 
 import { metabot } from "./reducer";
 import {
@@ -155,7 +155,13 @@ export const executeSlashCommand = createAsyncThunk<
     match(command)
       .with({ cmd: "profile" }, ({ args }) => {
         if (args.length <= 1) {
-          dispatch(setProfileOverride({ agentId, profile: args[0] }));
+          // cast allows custom overrides for development purposes; the backend validates
+          dispatch(
+            setProfileOverride({
+              agentId,
+              profile: args[0] as MetabotProfileId | undefined,
+            }),
+          );
         } else {
           dispatch(addUndo({ message: "/profile <name>" }));
         }
@@ -221,7 +227,7 @@ export const submitInput = createAsyncThunk<
     context: MetabotChatContext;
     agentId: MetabotAgentId;
     metabot_id?: string;
-    profile?: string;
+    profile?: MetabotProfileId;
   }
 >(
   "metabase/metabot/submitInput",
