@@ -2633,7 +2633,7 @@
                                                    :middleware {:add-default-userland-constraints? true
                                                                 :userland-query?                   true}}}]
     (with-cards-in-readable-collection! card
-      (let [orig qp.card/process-query-for-card]
+      (let [orig (mt/original-fn #'qp.card/process-query-for-card)]
         (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
                                                                      (apply orig card-id export-format
                                                                             :make-run (constantly (fn [{:keys [constraints]} _]

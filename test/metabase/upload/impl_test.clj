@@ -963,7 +963,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     ;; There aren't any officially supported databases yet that don't support `:upload-with-auto-pk`
     ;; So we'll fake it here to test it for 3rd party drivers
-    (let [original-supports?-fn driver.u/supports?]
+    (let [original-supports?-fn (mt/original-fn #'driver.u/supports?)]
       (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [driver feature db]
                                                        (if (= feature :upload-with-auto-pk)
                                                          false

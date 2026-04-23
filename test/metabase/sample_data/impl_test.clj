@@ -62,7 +62,7 @@
 
   (testing "If the plugins directory is not creatable or writable, we fall back to reading from the DB in the JAR"
     (memoize/memo-clear! @#'plugins/plugins-dir*)
-    (let [original-var u.files/create-dir-if-not-exists!]
+    (let [original-var (mt/original-fn #'u.files/create-dir-if-not-exists!)]
       (mt/with-dynamic-fn-redefs [u.files/create-dir-if-not-exists! (fn [_] (throw (Exception.)))]
         (with-temp-sample-database-db [db]
           (let [db-path (get-in db [:details :db])]

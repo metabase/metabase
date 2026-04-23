@@ -216,7 +216,7 @@
 (deftest database-types-fallback-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
                           (tqpt/timeseries-drivers))
-    (let [org-result-set-seq jdbc/result-set-seq]
+    (let [org-result-set-seq (mt/original-fn #'jdbc/result-set-seq)]
       (mt/with-dynamic-fn-redefs [jdbc/result-set-seq (fn [& args]
                                                         (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
         (is (= #{{:name "longitude"   :base-type :type/Float}

@@ -419,8 +419,8 @@
     (let [save-execution-metadata-count       (atom 0)
           update-avg-execution-count          (atom 0)
           called-promise                      (promise)
-          save-execution-metadata-original    (var-get #'process-userland-query/save-execution-metadata!*)
-          save-query-update-avg-time-original query/save-query-and-update-average-execution-time!]
+          save-execution-metadata-original    (mt/original-fn #'process-userland-query/save-execution-metadata!*)
+          save-query-update-avg-time-original (mt/original-fn #'query/save-query-and-update-average-execution-time!)]
       (mt/with-dynamic-fn-redefs [process-userland-query/save-execution-metadata!*     (fn [& args]
                                                                                          (swap! save-execution-metadata-count inc)
                                                                                          (apply save-execution-metadata-original args)

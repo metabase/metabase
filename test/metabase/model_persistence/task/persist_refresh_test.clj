@@ -127,7 +127,7 @@
                                (refresh! [_ _database _definition _card]
                                  {:state :success})
                                (unpersist! [_ _database _persisted-info]))
-              original-update! t2/update!]
+              original-update! (mt/original-fn #'t2/update!)]
           (testing "If saving the `persisted` (or `error`) state fails..."
             (mt/with-dynamic-fn-redefs [t2/update! (fn [model id update]
                                                      (when (= "persisted" (:state update))
