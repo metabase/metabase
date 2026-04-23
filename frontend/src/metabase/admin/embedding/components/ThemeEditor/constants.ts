@@ -41,7 +41,9 @@ export const MORE_COLORS: {
   { key: "text-secondary", label: () => t`Secondary text` },
   { key: "text-tertiary", label: () => t`Tertiary text` },
   { key: "border", label: () => t`Border` },
-  { key: "background-secondary", label: () => t`Second. background` },
+  // https://linear.app/metabase/issue/EMB-1627/re-enable-secondary-background-and-use-it-in-sdk-dashboards
+  // TODO Re-enable this once we actually use it in embedded dashboards and questions
+  // { key: "background-secondary", label: () => t`Second. background` },
   { key: "filter", label: () => t`Filter` },
   { key: "summarize", label: () => t`Summarize` },
   { key: "positive", label: () => t`Positive` },

@@ -4,12 +4,14 @@ import { Box, Card, Flex, Popover, Text } from "metabase/ui";
 interface ColorSwatchCardProps {
   label: string;
   value: string;
+  showAlpha?: boolean;
   onChange: (color?: string) => void;
 }
 
 export function ColorSwatchCard({
   label,
   value,
+  showAlpha,
   onChange,
 }: ColorSwatchCardProps) {
   return (
@@ -21,7 +23,7 @@ export function ColorSwatchCard({
             direction="column"
             align="center"
             justify="space-evenly"
-            pt={2}
+            pt={3}
           >
             <Box
               w={20}
@@ -37,7 +39,11 @@ export function ColorSwatchCard({
         </Card>
       </Popover.Target>
       <Popover.Dropdown>
-        <ColorPickerContent value={value} onChange={onChange} />
+        <ColorPickerContent
+          value={value}
+          showAlpha={showAlpha}
+          onChange={onChange}
+        />
       </Popover.Dropdown>
     </Popover>
   );

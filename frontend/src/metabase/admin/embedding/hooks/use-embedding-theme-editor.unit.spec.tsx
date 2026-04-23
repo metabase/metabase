@@ -3,7 +3,10 @@ import fetchMock from "fetch-mock";
 import { act, renderHookWithProviders, waitFor } from "__support__/ui";
 import type { EmbeddingTheme } from "metabase-types/api/embedding-theme";
 
-import { useEmbeddingThemeEditor } from "./use-embedding-theme-editor";
+import {
+  type ThemeEditorId,
+  useEmbeddingThemeEditor,
+} from "./use-embedding-theme-editor";
 
 const TEST_THEME: EmbeddingTheme = {
   id: 1,
@@ -17,12 +20,14 @@ const TEST_THEME: EmbeddingTheme = {
   updated_at: "2024-01-01T00:00:00Z",
 };
 
-function setup(themeId = 1) {
-  fetchMock.get(`path:/api/embed-theme/${themeId}`, TEST_THEME);
-  fetchMock.put(`path:/api/embed-theme/${themeId}`, {
-    ...TEST_THEME,
-    name: "Updated",
-  });
+function setup(themeId: ThemeEditorId = 1) {
+  if (typeof themeId === "number") {
+    fetchMock.get(`path:/api/embed-theme/${themeId}`, TEST_THEME);
+    fetchMock.put(`path:/api/embed-theme/${themeId}`, {
+      ...TEST_THEME,
+      name: "Updated",
+    });
+  }
 
   return renderHookWithProviders(() => useEmbeddingThemeEditor(themeId), {
     withUndos: true,
@@ -249,6 +254,111 @@ describe("useEmbeddingThemeEditor", () => {
 
       expect(result.current.hasAdditionalColorChanges).toBe(false);
       expect(result.current.isDirty).toBe(true);
+    });
+  });
+
+  describe("clearing font fields", () => {
+    it("removes fontFamily from settings when cleared", async () => {
+      const { result } = setup();
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.currentTheme?.settings.fontFamily).toBe("Roboto");
+
+      act(() => {
+        result.current.setFontFamily("");
+      });
+
+      expect(
+        "fontFamily" in (result.current.currentTheme?.settings ?? {}),
+      ).toBe(false);
+      expect(result.current.isDirty).toBe(true);
+    });
+
+    it("removes fontSize from settings when cleared", async () => {
+      const { result } = setup();
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.currentTheme?.settings.fontSize).toBe("14px");
+
+      act(() => {
+        result.current.setFontSize("");
+      });
+
+      expect("fontSize" in (result.current.currentTheme?.settings ?? {})).toBe(
+        false,
+      );
+      expect(result.current.isDirty).toBe(true);
+    });
+  });
+
+  describe("draft mode", () => {
+    it("seeds state from defaults without calling GET", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.isLoading).toBe(false);
+      expect(result.current.currentTheme?.name).toBe("Untitled theme");
+      expect(result.current.isDraft).toBe(true);
+
+      expect(
+        fetchMock.callHistory.calls(/\/api\/embed-theme\/\d+/),
+      ).toHaveLength(0);
+    });
+
+    it("allows saving immediately even without changes", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.canSave).toBe(true);
+    });
+
+    it("reports isDirty only after the user makes a change", async () => {
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      expect(result.current.isDirty).toBe(false);
+
+      act(() => {
+        result.current.setName("Renamed");
+      });
+
+      expect(result.current.isDirty).toBe(true);
+    });
+
+    it("POSTs a new theme on save", async () => {
+      fetchMock.post("path:/api/embed-theme", {
+        ...TEST_THEME,
+        id: 42,
+        name: "Untitled theme",
+      });
+
+      const { result } = setup("new");
+
+      await waitFor(() => {
+        expect(result.current.currentTheme).not.toBeNull();
+      });
+
+      const saved = await result.current.handleSave();
+
+      expect(saved?.id).toBe(42);
+      expect(fetchMock.callHistory.calls("path:/api/embed-theme")).toHaveLength(
+        1,
+      );
     });
   });
 

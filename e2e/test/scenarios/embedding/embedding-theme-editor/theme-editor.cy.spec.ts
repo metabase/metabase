@@ -47,7 +47,7 @@ function changeColor(label: string, value: string) {
     cy.findByText(label).parent().parent().click();
   });
 
-  H.popover().should("be.visible").find("input").clear().type(value);
+  H.popover().should("be.visible").find("input").first().clear().type(value);
 
   cy.realPress("Escape");
 }
@@ -110,6 +110,56 @@ describe(
       cy.visit("/admin/embedding/themes/99999");
 
       H.main().findByText("We're a little lost...").should("be.visible");
+    });
+
+    it("can delete the theme from the editor with confirmation", () => {
+      createThemeViaApi("Theme to delete").then((theme) => {
+        visitThemeEditor(theme.id);
+      });
+
+      cy.log("delete button should be visible");
+      cy.findByRole("button", { name: /Delete theme/ })
+        .scrollIntoView()
+        .should("be.visible");
+
+      cy.log("open the delete confirmation modal");
+      cy.findByRole("button", { name: /Delete theme/ }).click();
+
+      cy.findByRole("dialog").within(() => {
+        cy.findByText("Delete theme").should("be.visible");
+        cy.findByText(
+          "Are you sure you want to delete this theme? This action cannot be undone.",
+        ).should("be.visible");
+
+        cy.log("cancel the deletion");
+        cy.findByRole("button", { name: /Cancel/ }).click();
+      });
+
+      cy.log("should remain on the editor page after cancelling");
+      cy.url().should("match", /\/themes\/\d+/);
+
+      cy.log("confirm deletion");
+      cy.findByRole("button", { name: /Delete theme/ }).click();
+      cy.findByRole("dialog").within(() => {
+        cy.findByRole("button", { name: /Delete/ }).click();
+      });
+
+      H.undoToast().findByText("Theme deleted successfully").should("exist");
+
+      cy.log("should navigate back to the themes listing");
+      cy.url().should("include", "/admin/embedding/themes");
+      cy.url().should("not.match", /\/themes\/\d+/);
+
+      H.main().within(() => {
+        cy.findByText("Theme to delete").should("not.exist");
+      });
+    });
+
+    it("does not show the delete button when creating a new theme", () => {
+      cy.visit("/admin/embedding/themes/new");
+
+      cy.findByLabelText("Theme name").should("be.visible");
+      cy.findByRole("button", { name: /Delete theme/ }).should("not.exist");
     });
 
     describe("font settings", () => {
@@ -188,7 +238,7 @@ describe(
 
         cy.wait("@updateTheme").then((interception) => {
           const { settings } = interception.request.body;
-          expect(settings.colors?.brand).to.eq("#ff0000");
+          expect(settings.colors?.brand).to.eq("#ff0000ff");
         });
 
         H.undoToast().findByText("Theme saved").should("exist");
@@ -267,8 +317,8 @@ describe(
 
         cy.wait("@updateTheme").then((interception) => {
           const { settings } = interception.request.body;
-          expect(settings.colors?.border).to.eq("#ff5733");
-          expect(settings.colors?.filter).to.eq("#2d2d30");
+          expect(settings.colors?.border).to.eq("#ff5733ff");
+          expect(settings.colors?.filter).to.eq("#2d2d30ff");
         });
 
         H.undoToast().findByText("Theme saved").should("exist");

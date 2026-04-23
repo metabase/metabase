@@ -63,24 +63,41 @@ function setup({
 
 describe("ThemeSelectorSection", () => {
   describe("with saved themes", () => {
-    it("renders Default Theme, saved theme cards, and a Custom card", () => {
+    it("renders Instance theme, saved theme cards, and a Custom card", () => {
       setup();
 
-      expect(screen.getByText("Default Theme")).toBeInTheDocument();
+      expect(screen.getByText("Instance theme")).toBeInTheDocument();
       expect(screen.getByText("Dark Theme")).toBeInTheDocument();
       expect(screen.getByText("Ocean Theme")).toBeInTheDocument();
       expect(screen.getByText("Custom")).toBeInTheDocument();
     });
 
-    it("selects Default Theme by default and sets no theme", async () => {
+    it("renders an info icon with tooltip on the Instance theme card", async () => {
+      setup();
+
+      const infoIcon = within(
+        screen.getByTestId("theme-card-Instance theme"),
+      ).getByLabelText("Instance theme info");
+      expect(infoIcon).toBeInTheDocument();
+
+      await userEvent.hover(infoIcon);
+
+      expect(
+        await screen.findByText(
+          "Changing the appearance settings will also update this embed.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("selects Instance theme by default and sets no theme", async () => {
       const { onThemeChange } = setup();
 
       // No theme change should have been called on initial render
       expect(onThemeChange).not.toHaveBeenCalled();
 
-      // Default Theme card should be rendered
+      // Instance theme card should be rendered
       expect(
-        screen.getByTestId("theme-card-Default Theme"),
+        screen.getByTestId("theme-card-Instance theme"),
       ).toBeInTheDocument();
     });
 
@@ -99,11 +116,11 @@ describe("ThemeSelectorSection", () => {
       expect(onThemeChange).toHaveBeenCalledWith(1);
     });
 
-    it("clears theme when clicking Default Theme after a saved theme", async () => {
+    it("clears theme when clicking Instance theme after a saved theme", async () => {
       const { onThemeChange } = setup();
 
       await userEvent.click(screen.getByTestId("theme-card-Dark Theme"));
-      await userEvent.click(screen.getByTestId("theme-card-Default Theme"));
+      await userEvent.click(screen.getByTestId("theme-card-Instance theme"));
 
       expect(onThemeChange).toHaveBeenLastCalledWith(undefined);
     });
@@ -115,16 +132,16 @@ describe("ThemeSelectorSection", () => {
         "data-selected",
         "true",
       );
-      expect(screen.getByTestId("theme-card-Default Theme")).toHaveAttribute(
+      expect(screen.getByTestId("theme-card-Instance theme")).toHaveAttribute(
         "data-selected",
         "false",
       );
     });
 
-    it("falls back to Default Theme when theme.id does not match any saved theme", () => {
+    it("falls back to Instance theme when theme.id does not match any saved theme", () => {
       setup({ theme: { id: 999 } });
 
-      expect(screen.getByTestId("theme-card-Default Theme")).toHaveAttribute(
+      expect(screen.getByTestId("theme-card-Instance theme")).toHaveAttribute(
         "data-selected",
         "true",
       );
@@ -140,13 +157,13 @@ describe("ThemeSelectorSection", () => {
       expect(screen.getByText("Background color")).toBeInTheDocument();
     });
 
-    it("hides color inputs when switching from Custom to Default Theme", async () => {
+    it("hides color inputs when switching from Custom to Instance theme", async () => {
       setup();
 
       await userEvent.click(screen.getByTestId("theme-card-Custom"));
       expect(screen.getByText("Brand color")).toBeInTheDocument();
 
-      await userEvent.click(screen.getByTestId("theme-card-Default Theme"));
+      await userEvent.click(screen.getByTestId("theme-card-Instance theme"));
       expect(screen.queryByText("Brand color")).not.toBeInTheDocument();
     });
 

@@ -3,7 +3,9 @@ import { t } from "ttag";
 import { isEqual } from "underscore";
 
 import { useDefaultEmbeddingThemeSettings } from "metabase/admin/embedding/hooks/use-default-embedding-theme-settings";
+import { skipToken } from "metabase/api";
 import {
+  useCreateEmbeddingThemeMutation,
   useGetEmbeddingThemeQuery,
   useUpdateEmbeddingThemeMutation,
 } from "metabase/api/embedding-theme";
@@ -12,11 +14,14 @@ import type {
   MetabaseColor,
   MetabaseTheme,
 } from "metabase/embedding-sdk/theme";
+import type { EmbeddingTheme } from "metabase-types/api";
 
 interface ThemeEditorState {
   name: string;
   settings: MetabaseTheme;
 }
+
+export type ThemeEditorId = number | "new";
 
 /** Color keys that belong to the "additional colors" section. */
 const ADDITIONAL_COLOR_KEYS: Exclude<MetabaseColor, "charts">[] = [
@@ -37,42 +42,57 @@ const PRIMARY_COLORS_KEYS: Exclude<MetabaseColor, "charts">[] = [
   "text-primary",
 ];
 
-export function useEmbeddingThemeEditor(themeId: number) {
+export function useEmbeddingThemeEditor(themeId: ThemeEditorId) {
+  const isDraft = themeId === "new";
   const {
     data: serverTheme,
-    isLoading,
+    isLoading: isLoadingServer,
     isError,
-  } = useGetEmbeddingThemeQuery(themeId);
+  } = useGetEmbeddingThemeQuery(isDraft ? skipToken : themeId);
+  const [createTheme] = useCreateEmbeddingThemeMutation();
   const [updateTheme] = useUpdateEmbeddingThemeMutation();
   const [sendToast] = useToast();
   const defaultThemeSettings = useDefaultEmbeddingThemeSettings();
+
+  // Seed once on mount when in draft mode so the baseline is stable across renders.
+  const [draftInitial] = useState<ThemeEditorState | null>(() =>
+    isDraft
+      ? { name: t`Untitled theme`, settings: defaultThemeSettings }
+      : null,
+  );
 
   const [currentTheme, setCurrentTheme] = useState<ThemeEditorState | null>(
     null,
   );
 
-  // Initialize state when server data arrives
   useEffect(() => {
-    if (serverTheme && !currentTheme) {
+    if (currentTheme) {
+      return;
+    }
+    if (isDraft && draftInitial) {
+      setCurrentTheme(draftInitial);
+    } else if (serverTheme) {
       setCurrentTheme({
         name: serverTheme.name,
         settings: serverTheme.settings,
       });
     }
-  }, [serverTheme, currentTheme]);
+  }, [isDraft, draftInitial, serverTheme, currentTheme]);
 
-  const serverThemeState = useMemo(
-    () =>
-      serverTheme
-        ? { name: serverTheme.name, settings: serverTheme.settings }
-        : null,
-    [serverTheme],
-  );
+  const baselineState = useMemo(() => {
+    if (isDraft) {
+      return draftInitial;
+    }
+    return serverTheme
+      ? { name: serverTheme.name, settings: serverTheme.settings }
+      : null;
+  }, [isDraft, draftInitial, serverTheme]);
 
   const isDirty = useMemo(
-    () => !isEqual(serverThemeState, currentTheme),
-    [serverThemeState, currentTheme],
+    () => !isEqual(baselineState, currentTheme),
+    [baselineState, currentTheme],
   );
+  const canSave = isDraft || isDirty;
 
   const updateSettings = useCallback(
     (updater: (settings: MetabaseTheme) => Partial<MetabaseTheme>) => {
@@ -112,19 +132,31 @@ export function useEmbeddingThemeEditor(themeId: number) {
     [updateSettings],
   );
 
-  const setFontFamily = useCallback(
-    (family: string) => {
-      updateSettings(() => ({ fontFamily: family }));
-    },
-    [updateSettings],
-  );
+  const setFontFamily = useCallback((family: string) => {
+    setCurrentTheme((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const { fontFamily: _omit, ...rest } = prev.settings;
+      return {
+        ...prev,
+        settings: family ? { ...rest, fontFamily: family } : rest,
+      };
+    });
+  }, []);
 
-  const setFontSize = useCallback(
-    (size: string) => {
-      updateSettings(() => ({ fontSize: size }));
-    },
-    [updateSettings],
-  );
+  const setFontSize = useCallback((size: string) => {
+    setCurrentTheme((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const { fontSize: _omit, ...rest } = prev.settings;
+      return {
+        ...prev,
+        settings: size ? { ...rest, fontSize: size } : rest,
+      };
+    });
+  }, []);
 
   const hasAdditionalColorChanges = useMemo(() => {
     if (!currentTheme) {
@@ -188,32 +220,44 @@ export function useEmbeddingThemeEditor(themeId: number) {
     });
   }, [updateSettings, defaultThemeSettings]);
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(async (): Promise<EmbeddingTheme | null> => {
     if (!currentTheme) {
-      return;
+      return null;
     }
     try {
-      await updateTheme({
-        id: themeId,
+      if (isDraft) {
+        const created = await createTheme({
+          name: currentTheme.name || t`Untitled theme`,
+          settings: currentTheme.settings,
+        }).unwrap();
+        sendToast({ message: t`Theme saved`, icon: "check" });
+        return created;
+      }
+      const updated = await updateTheme({
+        id: themeId as number,
         name: currentTheme.name,
         settings: currentTheme.settings,
       }).unwrap();
       sendToast({ message: t`Theme saved`, icon: "check" });
+      return updated;
     } catch (error) {
       console.error("Failed to save theme:", error);
       sendToast({ message: t`Failed to save theme`, icon: "warning" });
+      return null;
     }
-  }, [currentTheme, themeId, updateTheme, sendToast]);
+  }, [currentTheme, isDraft, themeId, createTheme, updateTheme, sendToast]);
 
   const handleDiscard = useCallback(() => {
-    setCurrentTheme(serverThemeState);
-  }, [serverThemeState]);
+    setCurrentTheme(baselineState);
+  }, [baselineState]);
 
   return {
-    isLoading,
+    isLoading: isDraft ? false : isLoadingServer,
     isNotFound: isError,
+    isDraft,
     currentTheme,
     isDirty,
+    canSave,
     setName,
     setColor,
     setChartColor,

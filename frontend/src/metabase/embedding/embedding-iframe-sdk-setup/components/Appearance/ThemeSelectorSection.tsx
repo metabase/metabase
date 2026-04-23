@@ -87,8 +87,20 @@ export const ThemeSelectorSection = ({
       {hasThemes && (
         <SimpleGrid cols={2} spacing="sm">
           <ThemeCard
-            name={t`Default Theme`}
+            name={t`Instance theme`}
             colors={[]}
+            icon={
+              <Tooltip
+                label={t`Changing the appearance settings will also update this embed.`}
+              >
+                <Icon
+                  name="info"
+                  size={12}
+                  c="text-secondary"
+                  aria-label={t`Instance theme info`}
+                />
+              </Tooltip>
+            }
             isSelected={selection.type === "default"}
             onClick={handleDefaultClick}
           />

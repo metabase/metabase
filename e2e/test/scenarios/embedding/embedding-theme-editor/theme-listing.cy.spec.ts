@@ -19,7 +19,7 @@ describe(
       H.activateToken("pro-self-hosted");
     });
 
-    it("shows empty state and allows creating a new theme", () => {
+    it("shows the new theme card and allows creating a new theme", () => {
       cy.visit("/admin/embedding/themes");
 
       cy.log("theme is visible in embedding sidebar");
@@ -28,17 +28,38 @@ describe(
         .should("be.visible");
 
       H.main().within(() => {
-        cy.log("empty state is visible");
-        cy.findByText("Create your first theme to get started").should(
-          "be.visible",
-        );
-
-        cy.log("create a theme");
-        cy.findByRole("button", { name: /New theme/ }).click();
+        cy.log("new theme card is visible");
+        cy.findByRole("button", { name: /New theme/ })
+          .should("be.visible")
+          .click();
       });
 
-      cy.log("navigates to the theme editor page");
-      cy.url().should("match", /\/admin\/embedding\/themes\/\d+/);
+      cy.log("navigates to the draft theme editor page");
+      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
+    });
+
+    it("does not create a theme when cancelling from the draft editor", () => {
+      cy.intercept("POST", "/api/embed-theme").as("createTheme");
+      cy.visit("/admin/embedding/themes");
+
+      H.main()
+        .findByRole("button", { name: /New theme/ })
+        .click();
+
+      cy.url().should("match", /\/admin\/embedding\/themes\/new$/);
+
+      cy.findByRole("button", { name: /Cancel/ }).click();
+
+      cy.log("navigates back to the listing");
+      cy.url().should("match", /\/admin\/embedding\/themes$/);
+
+      cy.log("new theme card is still visible");
+      H.main()
+        .findByRole("button", { name: /New theme/ })
+        .should("be.visible");
+
+      cy.log("no POST was issued");
+      cy.get("@createTheme.all").should("have.length", 0);
     });
 
     it("navigates to theme editor when clicking an existing theme card", () => {
@@ -71,6 +92,8 @@ describe(
       H.main()
         .findByRole("button", { name: /New theme/ })
         .click();
+
+      cy.findByRole("button", { name: /Save theme/ }).click();
 
       cy.wait<{ name: string; settings: MetabaseTheme }>("@createTheme").then(
         (interception) => {
@@ -150,12 +173,10 @@ describe(
       H.undoToast().findByText("Theme deleted successfully").should("exist");
 
       H.main().within(() => {
-        cy.log("theme should be deleted and show an empty state");
+        cy.log("theme should be deleted and only the new theme card remains");
         cy.findByText("Untitled theme").should("not.exist");
 
-        cy.findByText("Create your first theme to get started").should(
-          "be.visible",
-        );
+        cy.findByRole("button", { name: /New theme/ }).should("be.visible");
       });
     });
   },
