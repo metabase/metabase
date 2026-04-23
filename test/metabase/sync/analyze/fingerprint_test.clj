@@ -266,9 +266,10 @@
                                        :fingerprint_version 1
                                        :last_analyzed       #t "2017-08-09T00:00:00"}]
       (binding [i/*latest-fingerprint-version* 3]
-        (mt/with-dynamic-fn-redefs [qp/process-query             (fn [_query rff]
-                                                                   (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
-                                    fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
+        ;; fingerprinters/fingerprinter is a multimethod, so we can't use with-dynamic-fn-redefs
+        (with-redefs [qp/process-query             (fn [_query rff]
+                                                     (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
+                      fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
           (is (= {:no-data-fingerprints   0
                   :failed-fingerprints    0
                   :updated-fingerprints   1
