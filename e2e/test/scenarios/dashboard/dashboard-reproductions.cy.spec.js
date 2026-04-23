@@ -5,6 +5,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -178,6 +179,11 @@ describe("issue 12926", () => {
       // calling req.continue() will make cypress skip all previously added intercepts
       req.continue();
     }).as("dashcardQueryRestored");
+    // Card re-runs triggered by `undoRemoveCardFromDashboard` hit the
+    // per-card endpoint.
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) =>
+      req.continue(),
+    ).as("dashcardQueryRestoredSingle");
   }
 
   function removeCard() {
@@ -232,7 +238,7 @@ describe("issue 12926", () => {
 
       H.undo();
 
-      cy.wait("@dashcardQueryRestored");
+      cy.wait("@dashcardQueryRestoredSingle");
 
       H.getDashboardCard().findByText(queryResult);
     });
@@ -326,7 +332,10 @@ describe("issue 13736", () => {
         `/api/dashboard/${dashboardId}/card-query-batch`,
         (req) => {
           req.continue((res) => {
-            // Modify the response to inject an error for the failing card
+            // The batch endpoint emits NDJSON (one JSON object per line) with
+            // card-begin/card-rows/card-end/card-error/complete events. Rewrite
+            // the failing card's begin/rows/end into a single card-error.
+            const seenError = new Set();
             const body = res.body
               .split("\n")
               .map((line) => {
@@ -334,12 +343,20 @@ describe("issue 13736", () => {
                   return line;
                 }
                 try {
-                  const event = JSON.parse(line.replace(/^data: /, ""));
+                  const event = JSON.parse(line);
+                  if (event.card_id !== failingQuestionId) {
+                    return line;
+                  }
                   if (
-                    event.type === "card-result" &&
-                    event.card_id === failingQuestionId
+                    event.type === "card-begin" ||
+                    event.type === "card-rows" ||
+                    event.type === "card-end"
                   ) {
-                    return `data: ${JSON.stringify({
+                    if (seenError.has(event.dashcard_id)) {
+                      return "";
+                    }
+                    seenError.add(event.dashcard_id);
+                    return JSON.stringify({
                       type: "card-error",
                       dashcard_id: event.dashcard_id,
                       card_id: failingQuestionId,
@@ -348,13 +365,14 @@ describe("issue 13736", () => {
                         data: {},
                         message: "some error",
                       },
-                    })}`;
+                    });
                   }
                   return line;
                 } catch {
                   return line;
                 }
               })
+              .filter((line, i, all) => line !== "" || i === all.length - 1)
               .join("\n");
             res.send(body);
           });
@@ -792,6 +810,7 @@ describe("issue 29076", () => {
     H.assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
     H.assertDatasetReqIsSandboxed({
       requestAlias: "@cardQuery",
+      dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
       columnId: ORDERS.USER_ID,
       columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
     });

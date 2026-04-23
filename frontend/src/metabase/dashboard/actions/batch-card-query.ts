@@ -36,7 +36,10 @@ type BatchCardError = {
   type: "card-error";
   dashcard_id: DashCardId;
   card_id: CardId;
-  error: { status: number; message: string };
+  // `status` and `message` are always present; the rest of the QP error
+  // payload (`error`, `error_is_curated`, `error_type`, `ex-data`, ...) rides
+  // along so callers can surface curated messages.
+  error: { status: number; message: string } & Record<string, unknown>;
 };
 
 type BatchComplete = {
@@ -62,7 +65,7 @@ export type BatchCallbacks = {
   onCardError: (
     dashcardId: DashCardId,
     cardId: CardId,
-    error: { status: number; message: string },
+    error: { status: number; message: string } & Record<string, unknown>,
   ) => void;
   onComplete: (summary: {
     total: number;

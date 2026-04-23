@@ -52,6 +52,7 @@ import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
 import { uuid } from "metabase/utils/uuid";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -603,12 +604,6 @@ export const fetchDashboardCardData =
         return dashcard.id;
       });
 
-      // Cancel any in-flight batch request
-      if (batchFetchAbortController) {
-        batchFetchAbortController.abort();
-        batchFetchAbortController = null;
-      }
-
       for (const id of loadingIds) {
         const dashcard = getDashCardById(getState(), id);
         dispatch(cancelFetchCardData(dashcard.card.id, dashcard.id));
@@ -649,57 +644,55 @@ export const fetchDashboardCardData =
             )
           : dashboard.parameters;
 
-      const cardsNeedingFetch =
-        // Only `reload` forces re-fetch; `clearCache` only affects UI loading state
-        // (matches per-card behavior at line 278)
-        reload
-          ? nonVirtualDashcardsToFetch
-          : nonVirtualDashcardsToFetch.filter(({ card, dashcard }) => {
-              const lastResult = getIn(dashcardData, [
-                dashcard.id,
-                (card as Card).id,
-              ]);
-              if (!lastResult) {
-                return true; // No cache, need to fetch
-              }
-              // If the last result was an error, always retry — the user may
-              // have fixed what was wrong (e.g. a bad parameter mapping).
-              if ("error" in lastResult) {
-                return true;
-              }
-              // Apply parameters to get the query that would be executed
-              // (matches per-card code at lines 270-275)
-              const datasetQuery = applyParameters(
-                card as Card,
-                savedParameters,
-                parameterValues,
-                dashcard?.parameter_mappings ?? undefined,
-              );
-              return !_.isEqual(
-                getDatasetQueryParams(lastResult.json_query),
-                getDatasetQueryParams(datasetQuery),
-              );
-            });
+      // `reload` forces re-fetch of every dashcard; otherwise only fetch
+      // cards whose cached query params differ from what would run now.
+      const cardsNeedingFetch = reload
+        ? nonVirtualDashcardsToFetch
+        : nonVirtualDashcardsToFetch.filter(({ card, dashcard }) => {
+            const lastResult = getIn(dashcardData, [
+              dashcard.id,
+              (card as Card).id,
+            ]);
+            if (!lastResult) {
+              return true;
+            }
+            const datasetQuery = applyParameters(
+              card as Card,
+              savedParameters,
+              parameterValues,
+              dashcard?.parameter_mappings ?? undefined,
+            );
+            return !_.isEqual(
+              getDatasetQueryParams(lastResult.json_query),
+              getDatasetQueryParams(datasetQuery),
+            );
+          });
 
       if (cardsNeedingFetch.length === 0) {
         dispatch(loadingComplete());
         return;
       }
 
-      // Mirror per-card behavior at fetchCardDataAction line ~306: clear
-      // cached dashcard data so the card renders the loading skeleton instead
-      // of stale results while the batch is in flight.
+      // Clear cached dashcard data so the card shows its loading skeleton
+      // while the batch is in flight.
       for (const { card, dashcard } of cardsNeedingFetch) {
         dispatch(clearCardData((card as Card).id, dashcard.id));
       }
 
-      // Include cleared params too (value: null) so the server can delete
-      // their stored last-used value on filter reset.
-      const batchParameters = (dashboard.parameters ?? []).map((p) => ({
-        id: p.id,
-        type: p.type,
-        value: parameterValues[p.id] ?? null,
-      }));
+      // Send every dashboard parameter, including ones with a null value, so
+      // the server can clear its stored last-used value on filter reset.
+      // `options` carries operator defaults like `case-sensitive: false` for
+      // `string/contains`; without it the backend runs a case-sensitive
+      // filter.
+      const batchParameters = (dashboard.parameters ?? []).map((p) => {
+        const options = deriveFieldOperatorFromParameter(p)?.optionsDefaults;
+        return {
+          id: p.id,
+          type: p.type,
+          value: parameterValues[p.id] ?? null,
+          ...(options ? { options } : {}),
+        };
+      });
 
       // Build cards array: unique (dashcard_id, card_id) pairs
       const cards = cardsNeedingFetch.map(({ card, dashcard }) => ({
@@ -707,8 +700,27 @@ export const fetchDashboardCardData =
         card_id: (card as Card).id,
       }));
 
+      // Skip-if-redundant: if the in-flight batch is already fetching the
+      // same cards with the same params, let it finish. This keeps rapid
+      // re-entries (save → context useEffect, etc.) from cancelling each
+      // other in a loop that never renders. A new request with different
+      // cards/params still aborts the old one below.
+      const signature = computeBatchSignature(
+        dashboard.id,
+        cards,
+        batchParameters,
+        reload,
+      );
+      if (inFlightBatch?.signature === signature) {
+        return;
+      }
+      if (inFlightBatch) {
+        inFlightBatch.abortController.abort();
+        inFlightBatch = null;
+      }
+
       const abortController = new AbortController();
-      batchFetchAbortController = abortController;
+      inFlightBatch = { signature, abortController };
 
       let completedCount = 0;
       const totalCount = cardsNeedingFetch.length;
@@ -743,23 +755,27 @@ export const fetchDashboardCardData =
           dispatch(setDocumentTitle(t`${completedCount}/${totalCount} loaded`));
         },
         onCardError: (dashcardId, cardId, error) => {
+          // Store the error payload directly — `error_is_curated`,
+          // `error_type`, etc. need to sit at the top level of the cached
+          // dataset for `getDashcardResultsError` to surface a curated
+          // message.
           dispatch(
             receiveBatchCardResult({
               dashcard_id: dashcardId,
               card_id: cardId,
-              result: { error },
+              result: error as unknown as Dataset,
             }),
           );
           completedCount++;
           dispatch(setDocumentTitle(t`${completedCount}/${totalCount} loaded`));
         },
         onComplete: () => {
-          batchFetchAbortController = null;
+          clearInFlightIf(abortController);
           dispatch(loadingComplete());
         },
       }).catch((err) => {
         if (err?.name === "AbortError") {
-          batchFetchAbortController = null;
+          clearInFlightIf(abortController);
           return;
         }
         console.error("Batch card query failed:", err);
@@ -781,7 +797,7 @@ export const fetchDashboardCardData =
             }),
           );
         }
-        batchFetchAbortController = null;
+        clearInFlightIf(abortController);
         dispatch(loadingComplete());
       });
     }
@@ -838,11 +854,7 @@ export const reloadDashboardCards =
 export const cancelFetchDashboardCardData = createThunkAction(
   CANCEL_FETCH_DASHBOARD_CARD_DATA,
   () => (dispatch, getState) => {
-    // Cancel batch request if in flight
-    if (batchFetchAbortController) {
-      batchFetchAbortController.abort();
-      batchFetchAbortController = null;
-    }
+    abortBatchCardQuery();
 
     const dashboard = getDashboardComplete(getState());
 
@@ -856,7 +868,34 @@ export const cancelFetchDashboardCardData = createThunkAction(
   },
 );
 
-let batchFetchAbortController: AbortController | null = null;
+type InFlightBatch = {
+  signature: string;
+  abortController: AbortController;
+};
+
+let inFlightBatch: InFlightBatch | null = null;
+
+function computeBatchSignature(
+  dashboardId: DashboardId,
+  cards: { dashcard_id: DashCardId; card_id: CardId }[],
+  parameters: { id: string; type: string; value: unknown; options?: unknown }[],
+  reload: boolean,
+): string {
+  const normalizedCards = [...cards].sort((a, b) =>
+    a.dashcard_id !== b.dashcard_id
+      ? a.dashcard_id - b.dashcard_id
+      : Number(a.card_id) - Number(b.card_id),
+  );
+  const normalizedParams = [...parameters].sort((a, b) =>
+    a.id.localeCompare(b.id),
+  );
+  return JSON.stringify({
+    dashboardId,
+    reload,
+    cards: normalizedCards,
+    params: normalizedParams,
+  });
+}
 
 const cardDataCancelDeferreds: Record<
   `${DashCardId},${DashboardCard["card_id"]}`,
@@ -891,9 +930,17 @@ export const cancelFetchCardData = createAction(
  * this directly.
  */
 export function abortBatchCardQuery() {
-  if (batchFetchAbortController) {
-    batchFetchAbortController.abort();
-    batchFetchAbortController = null;
+  if (inFlightBatch) {
+    inFlightBatch.abortController.abort();
+    inFlightBatch = null;
+  }
+}
+
+// Only clear the slot if the in-flight entry is the one `controller` represents;
+// otherwise a newer batch has already replaced it and we'd orphan that.
+function clearInFlightIf(controller: AbortController) {
+  if (inFlightBatch?.abortController === controller) {
+    inFlightBatch = null;
   }
 }
 
