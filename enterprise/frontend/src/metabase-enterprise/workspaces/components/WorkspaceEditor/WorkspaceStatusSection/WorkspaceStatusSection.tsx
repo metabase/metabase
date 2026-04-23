@@ -84,7 +84,7 @@ function ProvisionButton({ workspace, workspaceId }: StatusButtonProps) {
   const handleProvision = () => {
     show({
       title: t`Provision this workspace?`,
-      message: t`Provisioning creates a temporary schema in each database to run transforms in isolation, and creates a user with read-only access to the selected schemas and write access to the workspace schema.`,
+      message: t`Creates an isolation schema and a database user in each database. The user can read the readable schemas and write to the isolation schema.`,
       confirmButtonText: t`Provision workspace`,
       confirmButtonProps: { variant: "filled", color: "brand" },
       onConfirm: async () => {
@@ -122,7 +122,7 @@ function UnprovisionButton({ workspace, workspaceId }: StatusButtonProps) {
   const handleUnprovision = () => {
     show({
       title: t`Unprovision this workspace?`,
-      message: t`Unprovisioning deletes the workspace user and the temporary schema from each database.`,
+      message: t`Deletes the isolation schema and database user from each database.`,
       confirmButtonText: t`Unprovision workspace`,
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
