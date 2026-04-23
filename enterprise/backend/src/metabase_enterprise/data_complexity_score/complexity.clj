@@ -41,9 +41,7 @@
 
 (def synonym-similarity-threshold
   "Cosine-similarity cutoff for flagging two names as synonyms.
-  Higher than semantic-search's retrieval cutoff (0.30) because scoring wants precision, not recall.
-  Eyeballed against stats-appdb samples; see `test_resources/data_complexity_score/analysis/2026_04_21_data_analysis_summary.md`.
-  Hard-coded so it can drift independently from the search cutoff."
+  Higher than semantic-search's retrieval cutoff (0.30) because scoring needs precision, not recall."
   0.90)
 
 ;;; ----------------------------------- enumeration -----------------------------------
