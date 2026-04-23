@@ -28,19 +28,33 @@
 ;;; -------------------------------------------------- type-bonus --------------------------------------------------
 
 (deftest ^:parallel type-bonus-test
-  (testing "score ordering: creation > temporal > geo > category > boolean > generic"
-    (let [creation (dim/type-bonus {:semantic-type :type/CreationTimestamp})
-          temporal (dim/type-bonus {:semantic-type :type/DateTime
-                                    :base-type    :type/DateTime})
-          geo      (dim/type-bonus {:semantic-type :type/Country})
-          category (dim/type-bonus {:semantic-type :type/Category})
-          boolean  (dim/type-bonus {:base-type :type/Boolean})
-          generic  (dim/type-bonus {:semantic-type :type/Number})]
-      (is (> (:score creation) (:score temporal)))
-      (is (> (:score temporal) (:score geo)))
-      (is (> (:score geo) (:score category)))
-      (is (> (:score category) (:score boolean)))
-      (is (> (:score boolean) (:score generic)))))
+  (testing "listed bonus types score 1.0"
+    (doseq [sem-type [:type/CreationTimestamp
+                      :type/Country     ; via :type/Address
+                      :type/ZipCode     ; via :type/Address
+                      :type/Income      ; via :type/Currency
+                      :type/Price       ; via :type/Currency
+                      :type/Birthdate
+                      :type/Title
+                      :type/Quantity
+                      :type/Share
+                      :type/Score
+                      :type/JoinDate    ; via :type/JoinTemporal
+                      :type/CancelationTimestamp ; via :type/CancelationTemporal
+                      :type/Company
+                      :type/Subscription
+                      :type/Owner]]
+      (is (= 1.0 (:score (dim/type-bonus {:semantic-type sem-type})))
+          (str sem-type " should score 1.0"))))
+
+  (testing "non-listed types score 0.5"
+    (doseq [sem-type [:type/Category :type/Name :type/Number :type/Text nil]]
+      (is (= 0.5 (:score (dim/type-bonus {:semantic-type sem-type})))
+          (str sem-type " should score 0.5"))))
+
+  (testing "base-type alone (no semantic-type) does not earn a bonus"
+    (is (= 0.5 (:score (dim/type-bonus {:base-type :type/DateTime}))))
+    (is (= 0.5 (:score (dim/type-bonus {:base-type :type/Boolean})))))
 
   (testing "no semantic type returns 0.5"
     (is (= 0.5 (:score (dim/type-bonus {}))))))

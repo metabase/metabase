@@ -87,32 +87,28 @@
       {:score  (bucket-count-score distinct-count)
        :reason (str distinct-count " distinct values")})))
 
+(def ^:private dimension-bonus-types
+  "Semantic types that make especially interesting dimensions."
+  [:type/CreationTimestamp
+   :type/Address
+   :type/Birthdate
+   :type/Title
+   :type/Currency
+   :type/Quantity
+   :type/Share
+   :type/Score
+   :type/JoinTemporal
+   :type/CancelationTemporal
+   :type/Company
+   :type/Subscription
+   :type/Owner])
+
 (defn type-bonus
   "Boost fields with semantic types that tend to produce interesting explorations."
   [field]
-  (let [semantic-type (:semantic-type field)
-        base-type     (or (:effective-type field) (:base-type field))]
-    (cond
-      (isa? semantic-type :type/CreationTimestamp)
-      {:score 0.95 :reason "creation timestamp"}
-
-      (or (isa? semantic-type :type/Temporal)
-          (isa? base-type :type/Temporal))
-      {:score 0.9 :reason "temporal field"}
-
-      (or (isa? semantic-type :type/State)
-          (isa? semantic-type :type/Country)
-          (isa? semantic-type :type/City))
-      {:score 0.85 :reason "geographic field"}
-
-      (isa? semantic-type :type/Category)
-      {:score 0.8 :reason "category field"}
-
-      (or (isa? base-type :type/Boolean)
-          (isa? semantic-type :type/Boolean))
-      {:score 0.7 :reason "boolean field"}
-
-      :else
+  (let [semantic-type (:semantic-type field)]
+    (if (some #(isa? semantic-type %) dimension-bonus-types)
+      {:score 1.0 :reason "special type"}
       {:score 0.5 :reason "no type bonus"})))
 
 (defn temporal-range
