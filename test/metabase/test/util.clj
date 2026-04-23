@@ -219,6 +219,24 @@
              :name "Mock Measure"
              :table_id (data/id :checkins)}))
 
+   :model/MetabotConversation
+   (fn [_] {:id      (str (random-uuid))
+            :user_id (rasta-id)})
+
+   :model/MetabotMessage
+   ;; `:conversation_id` is required and has no sensible default — callers must provide one.
+   (fn [_] {:role         "assistant"
+            :profile_id   "gpt-5"
+            :total_tokens 0
+            :data         []})
+
+   :model/AiUsageLog
+   (fn [_] {:source            "test"
+            :model             "test/model"
+            :prompt_tokens     0
+            :completion_tokens 0
+            :total_tokens      0})
+
    :model/NativeQuerySnippet
    (fn [_] (default-timestamped
             {:creator_id (user-id :crowberto)

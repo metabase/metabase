@@ -196,49 +196,24 @@
 (deftest metabot-stats-falls-back-to-conversation-user-for-legacy-rows-test
   (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
         yesterday (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
-        conv-1    (str (random-uuid))
-        conv-2    (str (random-uuid))
         rasta-id  (mt/user->id :rasta)
-        lucky-id  (mt/user->id :lucky)]
+        lucky-id  (mt/user->id :lucky)
+        ;; `:user_id` on the messages is intentionally omitted — this is the legacy
+        ;; scenario from before messages stamped their author.
+        legacy-msg #(hash-map :conversation_id % :created_at yesterday :role "user"
+                              :profile_id "legacy" :total_tokens 100 :ai_proxied true)
+        usage-log  (fn [conv-id user-id]
+                     {:conversation_id conv-id :user_id user-id :created_at yesterday
+                      :source "legacy-test" :total_tokens 100 :prompt_tokens 100
+                      :ai_proxied true})]
     (t/with-clock clock
-      (try
-        (t2/insert! :model/MetabotConversation {:id conv-1 :user_id rasta-id})
-        (t2/insert! :model/MetabotConversation {:id conv-2 :user_id lucky-id})
-        (t2/insert! :model/MetabotMessage {:conversation_id conv-1
-                                           :created_at      yesterday
-                                           :role            "user"
-                                           :profile_id      "legacy"
-                                           :total_tokens    100
-                                           :data            []
-                                           :ai_proxied      true})
-        (t2/insert! :model/MetabotMessage {:conversation_id conv-2
-                                           :created_at      yesterday
-                                           :role            "user"
-                                           :profile_id      "legacy"
-                                           :total_tokens    200
-                                           :data            []
-                                           :ai_proxied      true})
-        (t2/insert! :model/AiUsageLog {:conversation_id   conv-1
-                                       :created_at        yesterday
-                                       :source            "legacy-test"
-                                       :model             "test/model"
-                                       :prompt_tokens     100
-                                       :completion_tokens 0
-                                       :total_tokens      100
-                                       :user_id           rasta-id
-                                       :ai_proxied        true})
-        (t2/insert! :model/AiUsageLog {:conversation_id   conv-2
-                                       :created_at        yesterday
-                                       :source            "legacy-test"
-                                       :model             "test/model"
-                                       :prompt_tokens     200
-                                       :completion_tokens 0
-                                       :total_tokens      200
-                                       :user_id           lucky-id
-                                       :ai_proxied        true})
-        (is (= 2 (:metabot-users (sut/metabot-stats))))
-        (finally
-          (cleanup! conv-1 conv-2))))))
+      (mt/with-temp [:model/MetabotConversation {conv-1 :id} {:user_id rasta-id}
+                     :model/MetabotConversation {conv-2 :id} {:user_id lucky-id}
+                     :model/MetabotMessage _ (legacy-msg conv-1)
+                     :model/MetabotMessage _ (legacy-msg conv-2)
+                     :model/AiUsageLog _ (usage-log conv-1 rasta-id)
+                     :model/AiUsageLog _ (usage-log conv-2 lucky-id)]
+        (is (= 2 (:metabot-users (sut/metabot-stats))))))))
 
 (deftest metabot-usage-anthropic-provider-test
   (search.tu/with-index-disabled
