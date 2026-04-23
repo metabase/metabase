@@ -66,7 +66,7 @@
 (defn update-in-unless-empty
   "Like `update-in`, but only updates in the existing value is non-empty."
   [m ks f]
-  (if-not (seq (get-in m ks))
+  (if (empty? (get-in m ks))
     m
     (update-in m ks f)))
 
