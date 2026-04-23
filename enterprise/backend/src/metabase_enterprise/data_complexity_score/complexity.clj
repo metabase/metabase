@@ -394,33 +394,6 @@
             true
             events)))
 
-(defn score-from-entities
-  "Pure: compute the full complexity score from pre-built entity vectors and an embedder. No DB
-   access, no Snowplow emission — suitable for callers that have already loaded their entities
-   from another source (e.g., a representation file).
-
-   Options:
-     `:embedding-model-meta` — `{:provider ... :model-name ...}` map embedded into the response's
-        `:meta`, or nil to omit the key. Callers that know what embedding model they used should
-        pass it so benchmark consumers can pin to it.
-     `:metabot-entities` — when non-nil, scored separately as the `:metabot` catalog. When nil
-        (default), we assume this means that metabot has no additional filtering configured, and
-        reuse the `:universe` score. In the fallback case the response `:meta` includes
-        `:metabot-source :universe-fallback` so benchmark consumers recognise this scenario."
-  [library-entities universe-entities embedder {:keys [embedding-model-meta metabot-entities]}]
-  (let [universe-score     (score-catalog universe-entities embedder)
-        metabot-fallback?  (nil? metabot-entities)]
-    {:library  (score-catalog library-entities embedder)
-     :universe universe-score
-     :metabot  (if metabot-fallback?
-                 universe-score
-                 (score-catalog metabot-entities embedder))
-     :meta     (cond-> {:formula-version   formula-version
-                        :synonym-threshold synonym-similarity-threshold
-                        :weights           weights}
-                 embedding-model-meta (assoc :embedding-model embedding-model-meta)
-                 metabot-fallback?    (assoc :metabot-source :universe-fallback))}))
-
 (defn- time-phase!
   "Run `f`, record duration on the per-phase histogram labelled by `stage` and `catalog`, return its value."
   [stage catalog f]
