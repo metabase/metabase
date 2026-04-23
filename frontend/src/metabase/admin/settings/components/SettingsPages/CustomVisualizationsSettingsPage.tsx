@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
@@ -118,7 +118,7 @@ function CustomVizEmptyState() {
                 color="warning"
                 icon={<Icon name="warning" />}
                 title="Risks"
-              >{t`Be aware that custom visualizations can execute arbitrary code and should only be added from trusted sources.`}</Alert>
+              >{jt`Be aware that custom visualizations ${<strong key="arbitrary-code">{t`can execute arbitrary code`}</strong>} and should only be added from trusted sources.`}</Alert>
             </Stack>
             <Group gap="sm">
               <Button
