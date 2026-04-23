@@ -212,10 +212,12 @@
     (pulse-channel-test/with-send-pulse-setup!
       (mt/with-model-cleanup [:model/Pulse]
         (let [sent-channel-ids (atom #{})]
-          (mt/with-dynamic-fn-redefs [;; run the job every second
-                                      u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
-                                      task.send-pulses/send-pulse!     (fn [_pulse-id channel-ids]
-                                                                         (swap! sent-channel-ids set/union channel-ids))]
+          (with-redefs [;; run the job every second
+                        u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
+                        ;; quartz scheduler threads don't inherit *local-redefs*, so we have to swap the
+                        ;; root — see dynamic-redefs.clj docstring
+                        task.send-pulses/send-pulse!     (fn [_pulse-id channel-ids]
+                                                           (swap! sent-channel-ids set/union channel-ids))]
             (let [pc-count  (+ 2 mt.util/in-memory-scheduler-thread-count)
                   pulse-ids (t2/insert-returning-pks! :model/Pulse
                                                       (repeat pc-count {:creator_id (mt/user->id :rasta)
@@ -244,13 +246,15 @@
             (let [sent-pulse-ids (atom #{})
                   send-pulse-called (atom 0)
                   original-send-pulse!* (mt/original-fn #'task.send-pulses/send-pulse!*)]
-              (mt/with-dynamic-fn-redefs [;; run the job every second - must be before creating PulseChannel
-                                          u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
-                                          task.send-pulses/send-pulse!*    (fn [pulse-id channel-ids]
-                                                                             (swap! send-pulse-called inc)
-                                                                             (original-send-pulse!* pulse-id channel-ids))
-                                          pulse.send/send-pulse! (fn [pulse-id & _args]
-                                                                   (swap! sent-pulse-ids conj pulse-id))]
+              ;; quartz scheduler threads don't inherit *local-redefs*, so we have to swap the
+              ;; root — see dynamic-redefs.clj docstring
+              (with-redefs [;; run the job every second - must be before creating PulseChannel
+                            u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
+                            task.send-pulses/send-pulse!*    (fn [pulse-id channel-ids]
+                                                               (swap! send-pulse-called inc)
+                                                               (original-send-pulse!* pulse-id channel-ids))
+                            pulse.send/send-pulse! (fn [pulse-id & _args]
+                                                     (swap! sent-pulse-ids conj pulse-id))]
                 (mt/with-temp [:model/Pulse {pulse-id :id} {:creator_id      (mt/user->id :rasta)
                                                             :name            (mt/random-name)
                                                             :alert_condition "rows"}
