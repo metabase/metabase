@@ -77,7 +77,7 @@ export function DatabaseMappingSection({
     <>
       <TitleSection
         label={t`Database isolation`}
-        description={t`Configure how databases are isolated for this workspace.`}
+        description={t`Select readable schemas per database. Provisioning creates an isolation schema for transform output.`}
         rightSection={
           <Tooltip
             label={getAddTooltipLabel(isReadOnly)}

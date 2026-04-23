@@ -19,7 +19,7 @@ export function getDatabaseColumn(): TreeTableColumnDef<WorkspaceDatabaseRow> {
 export function getInputSchemasColumn(): TreeTableColumnDef<WorkspaceDatabaseRow> {
   return {
     id: "input_schemas",
-    header: t`Input schemas`,
+    header: t`Readable schemas`,
     width: "auto",
     minWidth: 200,
     accessorFn: (row) => row.mapping.input_schemas.join(", "),
@@ -30,7 +30,7 @@ export function getInputSchemasColumn(): TreeTableColumnDef<WorkspaceDatabaseRow
 export function getOutputSchemaColumn(): TreeTableColumnDef<WorkspaceDatabaseRow> {
   return {
     id: "output_schema",
-    header: t`Output schema`,
+    header: t`Isolation schema`,
     width: "auto",
     minWidth: 200,
     accessorFn: (row) => row.mapping.output_schema ?? "",
