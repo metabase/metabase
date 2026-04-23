@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 
-import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/admin/embedding/embedding-hub/constants";
 import { DatabaseEngineList } from "metabase/databases/components/DatabaseEngineList";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
 import { useDispatch } from "metabase/utils/redux";
 
 import { trackDatabaseSelect } from "../analytics";

@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import type { WithRouterProps } from "react-router";
 import { t } from "ttag";
 
-import { ReturnToSetupGuideModal } from "metabase/admin/embedding/embedding-hub/components/ReturnToSetupGuideModal";
-import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/admin/embedding/embedding-hub/constants";
 import { dashboardApi } from "metabase/api";
 import { invalidateTags } from "metabase/api/tags";
 import { ActionButton } from "metabase/common/components/ActionButton";
@@ -20,6 +18,8 @@ import {
   useDashboardContext,
 } from "metabase/dashboard/context";
 import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
+import { ReturnToSetupGuideModal } from "metabase/embedding/components/ReturnToSetupGuideModal";
+import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/constants";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Flex, Group } from "metabase/ui";
