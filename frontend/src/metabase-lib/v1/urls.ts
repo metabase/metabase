@@ -21,7 +21,9 @@ export function getQuestionUrl(
   question = question.omitTransientCardIds();
 
   if (
+    // the question is unsaved
     !question.id() ||
+    // the question is a new question based on the original question
     (originalQuestion && question.isDirtyComparedTo(originalQuestion))
   ) {
     return Urls.question(null, {
