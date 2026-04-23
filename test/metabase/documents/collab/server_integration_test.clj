@@ -5,9 +5,9 @@
    `async-proxy-handler` end-to-end."
   (:require
    [clojure.test :refer :all]
-   [metabase.config.core :as config]
    [metabase.documents.collab.handler :as collab.handler]
-   [metabase.server.instance :as server.instance])
+   [metabase.server.instance :as server.instance]
+   [metabase.test :as mt])
   (:import
    (java.net URI)
    (java.net.http HttpClient WebSocket WebSocket$Listener)
@@ -52,7 +52,7 @@
 
 (deftest websocket-upgrade-handshake-test
   (testing "a WebSocket client completes the upgrade handshake, exchanges a frame, and closes cleanly"
-    (with-redefs [config/config-bool (constantly true)]
+    (mt/with-temporary-setting-values [enable-document-collab true]
       (let [server (start-server!)]
         (try
           (with-open [client (HttpClient/newHttpClient)]
@@ -76,7 +76,7 @@
 
 (deftest websocket-handshake-fails-when-flag-off-test
   (testing "without MB_ENABLE_DOCUMENT_COLLAB the upgrade is rejected (404)"
-    (with-redefs [config/config-bool (constantly false)]
+    (mt/with-temporary-setting-values [enable-document-collab false]
       (let [server (start-server!)]
         (try
           (with-open [client (HttpClient/newHttpClient)]

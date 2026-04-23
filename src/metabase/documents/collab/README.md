@@ -86,8 +86,11 @@ The `authz.clj` `Extension` runs on the yhocuspocus executor. Its
 
 ## Feature flag
 
-`MB_ENABLE_DOCUMENT_COLLAB=true` — unset by default, read via
-`config/config-bool :mb-enable-document-collab`. When off:
+Backed by the `enable-document-collab` setting in
+`metabase.documents.collab.settings` (env var override:
+`MB_ENABLE_DOCUMENT_COLLAB=true`). Unset by default; `:setter :none` +
+`:visibility :internal` keeps this a deploy-time-only knob (no admin UI,
+no programmatic writes). When off:
 
 - the handler returns 404 for `/api/document/collab`
 - `server/get-server` returns `nil` (no `YHocuspocus` ever built)

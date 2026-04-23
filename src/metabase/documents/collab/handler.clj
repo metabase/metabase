@@ -1,7 +1,8 @@
 (ns metabase.documents.collab.handler
   "Ring handler for `GET /api/document/collab`. On upgrade, hands the resulting
    `Transport` to the embedded `YHocuspocus` server via `handleConnection`.
-   Gated behind `MB_ENABLE_DOCUMENT_COLLAB`.
+   Gated behind the `enable-document-collab` setting (env var
+   `MB_ENABLE_DOCUMENT_COLLAB`).
 
    Authentication is already enforced by `+auth` middleware upstream; by the
    time this handler runs, `api/*current-user-id*` is bound to the session's
@@ -10,8 +11,8 @@
    permission checks."
   (:require
    [metabase.api.common :as api]
-   [metabase.config.core :as config]
    [metabase.documents.collab.server :as collab.server]
+   [metabase.documents.collab.settings :as collab.settings]
    [metabase.documents.collab.transport :as collab.transport]
    [metabase.util.log :as log]
    [ring.websocket :as ring.ws])
@@ -84,14 +85,14 @@
 (defn routes
   "3-arg async Ring handler. Pass-through (`respond nil`) unless the request
    targets `/collab`, so callers can fall through to other documents routes.
-   Returns 404 when `MB_ENABLE_DOCUMENT_COLLAB` is unset, 426 for a non-upgrade
+   Returns 404 when `enable-document-collab` is off, 426 for a non-upgrade
    request, otherwise yields a Ring WebSocket response."
   [request respond _raise]
   (cond
     (not (collab-path? request))
     (respond nil)
 
-    (not (config/config-bool :mb-enable-document-collab))
+    (not (collab.settings/enable-document-collab))
     (respond {:status 404 :headers {"content-type" "text/plain"} :body "Not found"})
 
     (not (ring.ws/upgrade-request? request))

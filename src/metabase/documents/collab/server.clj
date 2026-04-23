@@ -6,10 +6,10 @@
    native library failed to load. Callers treat `nil` as \"feature unavailable\"
    (the websocket handler closes the connection with 1011 in that case)."
   (:require
-   [metabase.config.core :as config]
    [metabase.documents.collab.authz :as collab.authz]
    [metabase.documents.collab.native :as collab.native]
    [metabase.documents.collab.persistence :as collab.persistence]
+   [metabase.documents.collab.settings :as collab.settings]
    [metabase.util.log :as log])
   (:import
    (java.time Duration)
@@ -29,7 +29,7 @@
 (defonce ^:private server-delay
   (delay
     (try
-      (when (and (config/config-bool :mb-enable-document-collab)
+      (when (and (collab.settings/enable-document-collab)
                  (collab.native/native-library-available?))
         (build-server!))
       (catch Throwable t

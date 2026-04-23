@@ -2,9 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.common :as api]
-   [metabase.config.core :as config]
    [metabase.documents.collab.handler :as collab.handler]
-   [metabase.documents.collab.server :as collab.server])
+   [metabase.documents.collab.server :as collab.server]
+   [metabase.test :as mt])
   (:import
    (ring.websocket.protocols Socket)))
 
@@ -35,27 +35,27 @@
    :headers        {}})
 
 (deftest non-collab-path-passes-through-test
-  (with-redefs [config/config-bool (constantly true)]
+  (mt/with-temporary-setting-values [enable-document-collab true]
     (is (nil? (call-handler (upgrade-request "/some/other/path"))))))
 
 (deftest flag-off-returns-404-test
-  (with-redefs [config/config-bool (constantly false)]
+  (mt/with-temporary-setting-values [enable-document-collab false]
     (let [resp (call-handler (upgrade-request "/collab"))]
       (is (= 404 (:status resp))))))
 
 (deftest non-upgrade-request-returns-426-test
-  (with-redefs [config/config-bool (constantly true)]
+  (mt/with-temporary-setting-values [enable-document-collab true]
     (let [resp (call-handler (plain-request "/collab"))]
       (is (= 426 (:status resp))))))
 
 (deftest upgrade-returns-websocket-listener-test
-  (with-redefs [config/config-bool     (constantly true)
-                collab.server/get-server (constantly nil)]
-    (let [resp (call-handler (upgrade-request "/collab"))]
-      (is (contains? resp :ring.websocket/listener))
-      (let [listener (:ring.websocket/listener resp)]
-        (is (map? listener))
-        (is (every? listener [:on-open :on-message :on-close :on-error]))))))
+  (mt/with-temporary-setting-values [enable-document-collab true]
+    (with-redefs [collab.server/get-server (constantly nil)]
+      (let [resp (call-handler (upgrade-request "/collab"))]
+        (is (contains? resp :ring.websocket/listener))
+        (let [listener (:ring.websocket/listener resp)]
+          (is (map? listener))
+          (is (every? listener [:on-open :on-message :on-close :on-error])))))))
 
 (defn- recording-socket
   "A `Socket` stub that records every `-close` invocation as `[code reason]`."
@@ -71,30 +71,30 @@
 
 (deftest on-open-closes-1011-when-server-unavailable-test
   (testing "with no running YHocuspocus, :on-open closes the socket with 1011"
-    (with-redefs [config/config-bool       (constantly true)
-                  collab.server/get-server (constantly nil)]
-      (let [resp          (call-handler (upgrade-request "/collab"))
-            listener      (:ring.websocket/listener resp)
-            [sock closes] (recording-socket)]
-        ((:on-open listener) sock)
-        (is (= [[1011 "document-collab server unavailable"]] @closes))))))
+    (mt/with-temporary-setting-values [enable-document-collab true]
+      (with-redefs [collab.server/get-server (constantly nil)]
+        (let [resp          (call-handler (upgrade-request "/collab"))
+              listener      (:ring.websocket/listener resp)
+              [sock closes] (recording-socket)]
+          ((:on-open listener) sock)
+          (is (= [[1011 "document-collab server unavailable"]] @closes)))))))
 
 (deftest on-open-forwards-user-id-to-server-test
   (testing "with a running server, :on-open invokes handleConnection with a context HashMap that includes userId"
     (let [captured (atom nil)]
-      (with-redefs [config/config-bool               (constantly true)
-                    collab.server/get-server         (constantly ::fake-server)
-                    ;; Stub the indirection; real YHocuspocus is final and can't be reified.
-                    collab.handler/call-handle-connection!
-                    (fn [server _transport ctx]
-                      (reset! captured {:server server
-                                        :user-id (.get ctx "userId")
-                                        :connection-id (.get ctx "connectionId")}))]
-        (let [resp          (binding [api/*current-user-id* 42]
-                              (call-handler (upgrade-request "/collab")))
-              listener      (:ring.websocket/listener resp)
-              [sock _close] (recording-socket)]
-          ((:on-open listener) sock)
-          (is (= ::fake-server (:server @captured)))
-          (is (= 42 (:user-id @captured)))
-          (is (string? (:connection-id @captured))))))))
+      (mt/with-temporary-setting-values [enable-document-collab true]
+        (with-redefs [collab.server/get-server         (constantly ::fake-server)
+                      ;; Stub the indirection; real YHocuspocus is final and can't be reified.
+                      collab.handler/call-handle-connection!
+                      (fn [server _transport ctx]
+                        (reset! captured {:server server
+                                          :user-id (.get ctx "userId")
+                                          :connection-id (.get ctx "connectionId")}))]
+          (let [resp          (binding [api/*current-user-id* 42]
+                                (call-handler (upgrade-request "/collab")))
+                listener      (:ring.websocket/listener resp)
+                [sock _close] (recording-socket)]
+            ((:on-open listener) sock)
+            (is (= ::fake-server (:server @captured)))
+            (is (= 42 (:user-id @captured)))
+            (is (string? (:connection-id @captured)))))))))
