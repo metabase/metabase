@@ -11,7 +11,6 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.premium-features.core :as premium-features]
-   [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log])
@@ -19,7 +18,7 @@
    (io.aleph.dirigiste IPool$Controller IPool$Generator Pool Pools Stats)
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.nio.charset StandardCharsets)
-   (java.util.concurrent TimeUnit TimeoutException)
+   (java.util.concurrent TimeUnit)
    (org.apache.batik.anim.dom SAXSVGDocumentFactory SVGOMDocument)
    (org.apache.batik.transcoder TranscoderInput TranscoderOutput)
    (org.apache.batik.transcoder.image PNGTranscoder)
@@ -235,56 +234,23 @@
                                                            (json/encode (premium-features/token-features)))))]
     (svg-string->bytes svg-string)))
 
-(def ^:private javascript-visualization-timeout-ms
-  "Wall-clock deadline for a single [[*javascript-visualization*]] call. A custom viz bundle with a runaway loop would
-  otherwise block the pooled Graal context indefinitely."
-  30000)
-
-(defn- do-with-js-timeout
-  "Run `f` with a wall-clock deadline. On overrun, forcibly close the Graal context and taint it so the pool disposes it."
-  [^Context context timeout-ms f]
-  (try
-    (u/with-timeout timeout-ms (f))
-    (catch TimeoutException e
-      (taint-context!)
-      (try
-        (.close context true)
-        (catch Throwable t
-          (log/warn t "Error closing static-viz context")))
-      (throw (ex-info "Custom visualization render timed out"
-                      {:timeout-ms timeout-ms} e)))))
-
-(defmacro ^:private with-js-timeout
-  [context timeout-ms & body]
-  `(do-with-js-timeout ~context ~timeout-ms (^:once fn* [] ~@body)))
-
 (defn ^:dynamic *javascript-visualization*
   "Clojure entrypoint to render javascript visualizations. This functions is dynamic only for testing purposes.
    `custom-viz-bundles` is an optional seq of `{:identifier str :source str :assets map}` maps for custom visualization plugins."
-  [cards-with-data dashcard-viz-settings custom-viz-bundles]
+  [cards-with-data dashcard-viz-settings _custom-viz-bundles]
   (let [options      (json/encode {:applicationColors (appearance/application-colors)
                                    :startOfWeek       (lib-be/start-of-week)
                                    :customFormatting  (appearance/custom-formatting)
                                    :tokenFeatures     (premium-features/token-features)
                                    :locale            (i18n/user-locale-string)})
-        custom-viz?  (seq custom-viz-bundles)
         run          (fn [context]
                        (js.engine/execute-fn-name context "initialize_context" options)
-                       (when custom-viz?
-                         (taint-context!)
-                         (doseq [{:keys [identifier source assets]} custom-viz-bundles]
-                           (js.engine/load-js-string context source (str "custom-viz-" identifier ".js"))
-                           (js.engine/execute-fn-name context "register_custom_viz_plugin" identifier
-                                                      (json/encode (or assets {})))))
                        (.asString (js.engine/execute-fn-name context "javascript_visualization"
                                                              (json/encode cards-with-data)
                                                              (json/encode dashcard-viz-settings)
                                                              options)))
         response     (with-static-viz-context context
-                       (if custom-viz?
-                         (with-js-timeout context javascript-visualization-timeout-ms
-                           (run context))
-                         (run context)))]
+                       (run context))]
     (-> response
         json/decode+kw
         (update :type (fnil keyword "unknown")))))
