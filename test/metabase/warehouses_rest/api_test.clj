@@ -326,8 +326,8 @@
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
     (mt/with-model-cleanup [:model/Database]
-      (let [{db-id :id, :as response} (mt/with-dynamic-fn-redefs [driver/available?   (constantly true)
-                                                                  driver/can-connect? (constantly true)]
+      (let [{db-id :id, :as response} (with-redefs [driver/available?   (constantly true)
+                                                    driver/can-connect? (constantly true)]
                                         (mt/user-http-request :crowberto :post 200 "database"
                                                               (merge
                                                                {:name    db-name
@@ -436,8 +436,8 @@
         (is (= {:errors  {:host "check your host settings"
                           :port "check your port settings"}
                 :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct."}
-               (mt/with-dynamic-fn-redefs [driver/available?   (constantly true)
-                                           driver/can-connect? (fn [& _] (throw exception))]
+               (with-redefs [driver/available?   (constantly true)
+                             driver/can-connect? (fn [& _] (throw exception))]
                  (mt/user-http-request :crowberto :post 400 "database"
                                        {:name    (mt/random-name)
                                         :engine  (u/qualified-name ::test-driver)
@@ -2948,20 +2948,20 @@
 (deftest healthcheck-works
   (testing "GET /api/database/:id/healthcheck"
     (mt/with-temp [:model/Database {id :id} {}]
-      (mt/with-dynamic-fn-redefs [driver/available?   (constantly true)
-                                  driver/can-connect? (constantly true)]
+      (with-redefs [driver/available?   (constantly true)
+                    driver/can-connect? (constantly true)]
         (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck"))))))
     (mt/with-temp [:model/Database {id :id} {}]
       (testing "connection throws"
-        (mt/with-dynamic-fn-redefs [driver/available? (constantly true)
-                                    driver/can-connect? (fn [& _args]
-                                                          (throw (Exception. "oh no")))]
+        (with-redefs [driver/available? (constantly true)
+                      driver/can-connect? (fn [& _args]
+                                            (throw (Exception. "oh no")))]
           (is (= {:status "error"
                   :message "oh no"}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck"))))))
       (testing "connection just fails, doesn't throw"
-        (mt/with-dynamic-fn-redefs [driver/available? (constantly true)
-                                    driver/can-connect? (constantly false)]
+        (with-redefs [driver/available? (constantly true)
+                      driver/can-connect? (constantly false)]
           (is (= {:status "error"
                   :message "Failed to connect to Database"}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
@@ -2970,8 +2970,8 @@
         (mt/with-premium-features #{:writable-connection}
           (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
                                                    :write_data_details {:host "write"}}]
-            (mt/with-dynamic-fn-redefs [driver/available? (constantly true)
-                                        driver/can-connect? (constantly true)]
+            (with-redefs [driver/available? (constantly true)
+                          driver/can-connect? (constantly true)]
               (is (= {:status "ok"}
                      (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data")))))))))
     (testing "connection-type passed but not configured returns 400"

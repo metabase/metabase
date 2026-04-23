@@ -460,8 +460,8 @@
         (testing "The names should be truncated to the right size"
          ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
           (let [max-bytes 15]
-            (mt/with-dynamic-fn-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
-                                        upload/max-bytes (constantly max-bytes)]
+            (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
+                          upload/max-bytes (constantly max-bytes)]
               (doseq [^String c ["a" "出"]]
                 (let [long-csv-file-prefix (apply str (repeat (inc max-bytes) c))
                       char-size            (count (.getBytes ^String c "UTF-8"))]
