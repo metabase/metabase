@@ -12,6 +12,16 @@ import {
 
 import { useMetabot } from "./use-metabot";
 
+/**
+ * This file covers hook wiring for non-passthrough behavior. The following
+ * result properties are deliberately not tested here because they forward
+ * directly to `useMetabotAgent` with no transformation:
+ *   - retryMessage       → agent.retryMessage(messageId)
+ *   - cancelRequest      → agent.cancelRequest
+ *   - resetConversation  → agent.resetConversation
+ *   - errorMessages      → agent.errorMessages
+ *   - isProcessing       → agent.isDoingScience (renamed)
+ */
 // These tests verify `useMetabot().CurrentChart` wiring only: renders nothing
 // before `navigate_to`, StaticQuestion vs InteractiveQuestion based on
 // `drills`, and `query` forwarding. Mocks surface `data-testid` + `data-query`
