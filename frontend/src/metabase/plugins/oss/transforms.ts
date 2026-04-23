@@ -35,7 +35,6 @@ export type PythonTransformEditorProps = {
   onAcceptProposed: () => void;
   onRejectProposed: () => void;
   onRunTransform?: (result: any) => void;
-  /** Custom run handler that overrides internal test-run. Used in workspace context for dry-run. */
   onRun?: () => void;
 };
 
