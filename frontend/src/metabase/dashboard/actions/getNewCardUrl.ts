@@ -68,7 +68,7 @@ export const getNewCardUrl = ({
   // This try/catch block is a temporary workaround for metabase#43990.
   // Please remove it once the underlying issue is fixed.
   try {
-    const url = ML_Urls.getUrlWithParameters(
+    const url = ML_Urls.getQuestionUrlWithParameters(
       nextQuestion,
       previousQuestion,
       parametersMappedToCard,

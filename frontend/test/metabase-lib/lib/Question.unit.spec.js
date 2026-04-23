@@ -824,7 +824,7 @@ describe("Question", () => {
     });
   });
 
-  describe("getUrlWithParameters", () => {
+  describe("getQuestionUrlWithParameters", () => {
     const parameters = [
       {
         id: 1,
@@ -879,7 +879,7 @@ describe("Question", () => {
         const parameters = [];
         const parameterValues = {};
 
-        const url = ML_Urls.getUrlWithParameters(
+        const url = ML_Urls.getQuestionUrlWithParameters(
           question,
           originalQuestion,
           parameters,
@@ -894,7 +894,7 @@ describe("Question", () => {
       });
 
       it("should return question URL with string MBQL filter added", () => {
-        const url = ML_Urls.getUrlWithParameters(
+        const url = ML_Urls.getQuestionUrlWithParameters(
           question,
           originalQuestion,
           parameters,
@@ -914,7 +914,7 @@ describe("Question", () => {
       });
 
       it("should return question URL with number MBQL filter added", () => {
-        const url = ML_Urls.getUrlWithParameters(
+        const url = ML_Urls.getQuestionUrlWithParameters(
           question,
           originalQuestion,
           parameters,
@@ -932,7 +932,7 @@ describe("Question", () => {
       });
 
       it("should return question URL with date MBQL filter added", () => {
-        const url = ML_Urls.getUrlWithParameters(
+        const url = ML_Urls.getQuestionUrlWithParameters(
           question,
           originalQuestion,
           parameters,
@@ -951,7 +951,7 @@ describe("Question", () => {
 
       it("should include objectId in a URL", () => {
         const OBJECT_ID = "5";
-        const url = ML_Urls.getUrlWithParameters(
+        const url = ML_Urls.getQuestionUrlWithParameters(
           question,
           originalQuestion,
           parameters,
@@ -972,7 +972,7 @@ describe("Question", () => {
       const originalQuestion = question;
 
       it("should return a card with attached parameters and parameter values as query params", () => {
-        const url = ML_Urls.getUrlWithParameters(
+        const url = ML_Urls.getQuestionUrlWithParameters(
           question,
           originalQuestion,
           parameters,
@@ -1004,7 +1004,7 @@ describe("Question", () => {
       });
 
       it("should not include objectId in a URL", () => {
-        const url = ML_Urls.getUrlWithParameters(
+        const url = ML_Urls.getQuestionUrlWithParameters(
           question,
           originalQuestion,
           parameters,
@@ -1058,7 +1058,7 @@ describe("Question", () => {
       const originalQuestion = question;
 
       it("should return question URL when there are no parameters", () => {
-        const url = ML_Urls.getUrlWithParameters(
+        const url = ML_Urls.getQuestionUrlWithParameters(
           question,
           originalQuestion,
           [],
@@ -1072,7 +1072,7 @@ describe("Question", () => {
       });
 
       it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's variable", () => {
-        const url = ML_Urls.getUrlWithParameters(
+        const url = ML_Urls.getQuestionUrlWithParameters(
           question,
           originalQuestion,
           parametersForNativeQ,
@@ -1090,7 +1090,7 @@ describe("Question", () => {
 
       it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's field filter", () => {
         const question = new Question(cardWithFieldFilter, metadata);
-        const url = ML_Urls.getUrlWithParameters(
+        const url = ML_Urls.getQuestionUrlWithParameters(
           question,
           originalQuestion,
           parametersForNativeQ,
@@ -1107,7 +1107,7 @@ describe("Question", () => {
       });
 
       it("should not include objectId in a URL", () => {
-        const url = ML_Urls.getUrlWithParameters(
+        const url = ML_Urls.getQuestionUrlWithParameters(
           question,
           originalQuestion,
           parametersForNativeQ,
