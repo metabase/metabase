@@ -1,5 +1,7 @@
 export const POLLING_INTERVAL = 1000;
 
+export const PREMIUM_EMBEDDING_TOKEN_ENV = "MB_PREMIUM_EMBEDDING_TOKEN";
+
 export const DOCKER_RUN_COMMAND = `docker run -d -p 3000:3000 \\
   -v $(pwd)/config.yml:/config.yml \\
   -v $(pwd)/metadata.json:/metadata.json \\
@@ -7,7 +9,7 @@ export const DOCKER_RUN_COMMAND = `docker run -d -p 3000:3000 \\
   -e MB_CONFIG_FILE_PATH=/config.yml \\
   -e MB_TABLE_METADATA_PATH=/metadata.json \\
   -e MB_FIELD_VALUES_PATH=/field_values.json \\
-  -e MB_PREMIUM_EMBEDDING_TOKEN \\
+  -e ${PREMIUM_EMBEDDING_TOKEN_ENV} \\
   --name metabase \\
   metabase/metabase-enterprise:latest`;
 

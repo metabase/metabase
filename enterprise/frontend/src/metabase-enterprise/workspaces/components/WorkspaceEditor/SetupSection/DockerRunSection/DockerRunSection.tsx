@@ -2,10 +2,13 @@ import { jt } from "ttag";
 
 import { Box, Code } from "metabase/ui";
 
-import { DOCKER_RUN_COMMAND } from "../../../../constants";
+import {
+  DOCKER_RUN_COMMAND,
+  PREMIUM_EMBEDDING_TOKEN_ENV,
+} from "../../../../constants";
 
 export function DockerRunSection() {
-  const token = <Code key="token">MB_PREMIUM_EMBEDDING_TOKEN</Code>;
+  const token = <Code key="token">{PREMIUM_EMBEDDING_TOKEN_ENV}</Code>;
 
   return (
     <>
