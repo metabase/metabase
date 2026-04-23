@@ -4,7 +4,7 @@
    [clojure.core :as core]
    [clojure.string :as str]
    [malli.destructure]
-   [metabase.util :as u]
+   [me.flowthing.pp :as pp]
    [metabase.util.malli.fn :as mu.fn]
    [net.cgrand.macrovich :as macros]))
 
@@ -53,7 +53,10 @@
                                                 (map (comp pr-str :args :values)
                                                      (:arities arities-value)))
                                       ")"))
-          "\n  Return: " (str/replace (u/pprint-to-str (:schema (:values return) :any))
+          "\n  Return: " (str/replace (with-out-str
+                                        #_{:clj-kondo/ignore [:discouraged-var]}
+                                        (pp/pprint (:schema (:values return) :any)
+                                                   {:max-width 120}))
                                       "\n"
                                       "\n          ")
           (when (not-empty doc)
