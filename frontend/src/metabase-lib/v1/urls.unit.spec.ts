@@ -54,7 +54,7 @@ describe("URLs", () => {
 
   // Covered a lot in query_builder/actions.spec.js, just very basic cases here
   // (currently getUrl has logic that is strongly tied to the logic query builder Redux actions)
-  describe("getUrl(originalQuestion?)", () => {
+  describe("getQuestionUrl(originalQuestion?)", () => {
     it("returns URL with ID for saved question", () => {
       const question = new Question(assoc(orders_raw_card, "id", 1), metadata);
       expect(getQuestionUrl(question)).toBe("/question/1-raw-orders-data");
