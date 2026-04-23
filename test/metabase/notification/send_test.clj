@@ -478,6 +478,7 @@
                                         :timeout-ms  1000})]
       ;; dispatcher spawns its own worker threads that don't inherit *local-redefs* —
       ;; use with-redefs to swap the root so worker threads see the replacement.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [notification.send/send-notification-sync! (fn [notification]
                                                                 ;; fake latency
                                                                 (Thread/sleep 20)
@@ -517,6 +518,7 @@
             (reset! sent-notifications [])
             (let [error-thrown (atom false)]
               ;; dispatcher worker thread — see note above
+              #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
               (with-redefs [notification.send/send-notification-sync!
                             (fn [notification]
                               (if (= "F" (:test-value notification))
@@ -745,6 +747,7 @@
           dispatch-fn             (:dispatch-fn dispatcher)
           shutdown-fn             (:shutdown-fn dispatcher)]
       ;; dispatcher spawns worker threads without our dynamic binding
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [notification.send/send-notification-sync!
                     (fn [notification]
                       ;; Wait for the latch to be released before processing
