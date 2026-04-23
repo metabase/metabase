@@ -2,9 +2,14 @@
   "Metadata-provider-backed implementations of the serdes resolver protocols.
 
   Unlike `metabase.models.serialization.resolve.db`, this resolver does not touch toucan2 /
-  the application database directly. Instead, it works off a `lib.metadata/MetadataProvider`
-  \u2014 which may be the live application-DB-backed provider, a test-only mock provider, or any
-  cached variant.
+  the application database for *warehouse-schema* lookups (tables, fields) \u2014 it works off a
+  `lib.metadata/MetadataProvider`, which may be the live application-DB-backed provider, a
+  test-only mock provider, or any cached variant.
+
+  It does, however, touch the application DB for *Metabase-model* lookups (cards by
+  `entity_id`, etc.) because the lib metadata protocol doesn't support filtering by
+  `entity_id`, and cards in any case live in the application DB independently of whose
+  warehouse the metadata provider points at.
 
   Primary consumer: the agent-lib representations pipeline, which converts LLM-authored
   portable MBQL queries (with FK paths like `[DB, SCHEMA, TABLE, FIELD]`) into numeric-ID
@@ -12,11 +17,14 @@
 
   Phase 1 scope (per `repr-plan.md`):
     * `import-table-fk`, `import-field-fk`, `export-table-fk`, `export-field-fk` are real.
-    * Everything else throws `:not-implemented-yet` for now. Phase 2 will fill in card entity-id
-      lookup, user-by-email, etc."
+    * Everything else throws `:not-implemented-yet` for now.
+
+  Phase 2 additions (per `repr-plan.md`):
+    * `import-fk` for `Card` / `:model/Card` by `entity_id` (step 11)."
   (:require
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.util.i18n :refer [tru]]))
 
@@ -174,18 +182,58 @@
                        :database    db-name-value
                        :expected-db current-name})))))
 
+(defn- card-model? [model]
+  (or (= model 'Card) (= model :model/Card)))
+
+(defn- import-card-by-entity-id
+  "Resolve a saved question / model by its portable `entity_id` to its numeric id.
+
+  Guards against the card belonging to a different database than the metadata provider \u2014
+  that would produce a broken cross-database query at resolve time, so we surface a clear
+  agent-facing error here instead."
+  [metadata-provider entity-id]
+  (let [current-db-id (:id (lib.metadata/database metadata-provider))
+        card          (serdes/lookup-by-id 'Card entity-id)]
+    (cond
+      (nil? card)
+      (throw (ex-info (tru "No saved question or model found with entity_id {0}." (pr-str entity-id))
+                      {:agent-error? true
+                       :status-code  400
+                       :error        :unknown-card
+                       :entity-id    entity-id}))
+
+      (not= (:database_id card) current-db-id)
+      (throw (ex-info (tru "Saved question / model {0} belongs to database {1}, but this query targets database {2}. Cross-database queries are not supported."
+                           (pr-str entity-id)
+                           (pr-str (:database_id card))
+                           (pr-str current-db-id))
+                      {:agent-error?     true
+                       :status-code      400
+                       :error            :cross-database-card
+                       :entity-id        entity-id
+                       :card-database-id (:database_id card)
+                       :expected-database current-db-id}))
+
+      :else
+      (:id card))))
+
 (defn import-resolver
   "Build a `SerdesImportResolver` backed by `metadata-provider`.
 
-  Phase-1 implemented methods:
-    * `import-table-fk`, `import-field-fk`
-    * `import-fk-keyed` for `:model/Database` by `:name` (needed because
+  Implemented methods:
+    * `import-table-fk`, `import-field-fk` (Phase 1).
+    * `import-fk-keyed` for `:model/Database` by `:name` (Phase 1 — needed because
       `resolve/import-mbql` dispatches on `:database` keys).
+    * `import-fk` for `Card` / `:model/Card` by `entity_id` (Phase 2, step 11).
 
-  Other methods throw `:not-implemented-yet` — to be filled in Phase 2."
+  Other methods throw `:not-implemented-yet`."
   [metadata-provider]
   (reify resolve/SerdesImportResolver
-    (import-fk       [_ _eid _model]             (not-implemented! :import-fk))
+    (import-fk       [_ eid model]
+      (cond
+        (nil? eid)          nil
+        (card-model? model) (import-card-by-entity-id metadata-provider eid)
+        :else               (not-implemented! :import-fk)))
     (import-fk-keyed [_ portable model field]
       (cond
         (and (or (= model :model/Database) (= model 'Database))

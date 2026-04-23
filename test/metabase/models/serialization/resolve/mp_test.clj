@@ -2,12 +2,16 @@
   "Tests for the metadata-provider-backed serdes resolver.
 
   Covers the Phase-1 scope: `import-table-fk`, `import-field-fk`, `export-table-fk`,
-  `export-field-fk`, and the error paths for unknown / ambiguous / missing targets."
+  `export-field-fk`, and the error paths for unknown / ambiguous / missing targets.
+
+  Phase-2 additions (step 11): `import-fk` for `Card` by entity_id."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization.resolve :as resolve]
-   [metabase.models.serialization.resolve.mp :as resolve.mp]))
+   [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -184,20 +188,79 @@
 ;;; ============================================================
 
 (deftest not-implemented-phase1-test
-  (let [ir (resolve.mp/import-resolver mp-simple)
-        er (resolve.mp/export-resolver mp-simple)]
-    (testing "import-fk (card entity_id resolution) throws :not-implemented-yet"
-      (try
-        (resolve/import-fk ir "abcdefghijklmnopqrstu" 'Card)
-        (is false "expected throw")
-        (catch clojure.lang.ExceptionInfo e
-          (is (= :not-implemented-yet (:error (ex-data e)))))))
+  (let [er (resolve.mp/export-resolver mp-simple)]
     (testing "export-fk throws :not-implemented-yet"
       (try
         (resolve/export-fk er 1 'Card)
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
           (is (= :not-implemented-yet (:error (ex-data e)))))))))
+
+;;; ============================================================
+;;; import-fk — Card by entity_id (step 11)
+;;; ============================================================
+
+(deftest import-fk-card-happy-path-test
+  (testing "resolves a saved card's entity_id to its numeric id when the card lives in the same database"
+    (mt/with-temp [:model/Card {card-id :id card-eid :entity_id}
+                   {:database_id  (mt/id)
+                    :dataset_query {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (mt/id :orders)}}}]
+      (let [mp (lib-be/application-database-metadata-provider (mt/id))
+            ir (resolve.mp/import-resolver mp)]
+        (is (= card-id (resolve/import-fk ir card-eid 'Card)))
+        (testing "also accepts keyword-qualified model name :model/Card"
+          (is (= card-id (resolve/import-fk ir card-eid :model/Card))))))))
+
+(deftest import-fk-card-nil-input-returns-nil-test
+  (testing "nil entity_id returns nil (matches table/field FK contract)"
+    (let [ir (resolve.mp/import-resolver mp-simple)]
+      (is (nil? (resolve/import-fk ir nil 'Card))))))
+
+(deftest import-fk-card-unknown-test
+  (testing "unknown entity_id throws :agent-error? with :unknown-card code"
+    (mt/with-empty-h2-app-db!
+      (let [mp (lib-be/application-database-metadata-provider (mt/id))
+            ir (resolve.mp/import-resolver mp)]
+        (try
+          (resolve/import-fk ir "nonexistent_entity_id1" 'Card)
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :unknown-card (:error d)))
+              (is (= "nonexistent_entity_id1" (:entity-id d))))))))))
+
+(deftest import-fk-card-cross-database-test
+  (testing "a card that belongs to a different database surfaces a clear :cross-database-card error"
+    (mt/with-temp [:model/Database {other-db-id :id} {:name "Other DB" :engine :h2}
+                   :model/Card     {_card-id :id card-eid :entity_id}
+                   {:database_id   other-db-id
+                    :dataset_query {:database other-db-id
+                                    :type     :native
+                                    :native   {:query "SELECT 1"}}}]
+      (let [mp (lib-be/application-database-metadata-provider (mt/id))
+            ir (resolve.mp/import-resolver mp)]
+        (try
+          (resolve/import-fk ir card-eid 'Card)
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :cross-database-card (:error d)))
+              (is (= other-db-id (:card-database-id d))))))))))
+
+(deftest import-fk-non-card-models-still-not-implemented-test
+  (testing "models other than Card still throw :not-implemented-yet"
+    (let [ir (resolve.mp/import-resolver mp-simple)]
+      (doseq [model ['Segment 'Metric 'NativeQuerySnippet :model/Segment]]
+        (testing (str "model " model)
+          (try
+            (resolve/import-fk ir "someentityid_some_xyz" model)
+            (is false "expected throw")
+            (catch clojure.lang.ExceptionInfo e
+              (is (= :not-implemented-yet (:error (ex-data e)))))))))))
 
 ;;; ============================================================
 ;;; outbound-fks-from-table
