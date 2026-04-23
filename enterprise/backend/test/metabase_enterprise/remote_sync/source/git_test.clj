@@ -210,6 +210,54 @@
                   "master2.txt"]
                  (git/list-files (assoc remote :version "master")))))))))
 
+(deftest write-files-syncs-local-repo-working-tree-test
+  (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]
+    (mt/with-temp-dir [remote-dir nil]
+      (let [[master remote] (init-source! "master" remote-dir
+                                          :files {"README.md" "Project readme"
+                                                  (str subdir-path "existing.yaml") "Existing content"
+                                                  (str subdir-path "stale.yaml") "Stale content"})
+            ^Git remote-git (:git remote)]
+        (testing "After write-files!, the remote working tree is synced and clean"
+          (source.p/write-files! (source.p/snapshot master) "Push from Metabase"
+                                 [{:path (str subdir-path "existing.yaml") :content "Updated content"}
+                                  {:path (str subdir-path "new_doc.yaml") :content "New document"}])
+          (let [status (.call (.status remote-git))]
+            (is (.isClean status) "Remote repo should have clean git status after push"))
+          (testing "Newly pushed files exist in working tree"
+            (is (= "Updated content"
+                   (slurp (io/file (.getWorkTree (.getRepository remote-git))
+                                   (str subdir-path "existing.yaml")))))
+            (is (= "New document"
+                   (slurp (io/file (.getWorkTree (.getRepository remote-git))
+                                   (str subdir-path "new_doc.yaml"))))))
+          (testing "Files outside managed dirs are preserved in working tree"
+            (is (= "Project readme"
+                   (slurp (io/file (.getWorkTree (.getRepository remote-git)) "README.md")))))
+          (testing "Stale files in managed dirs are removed from working tree"
+            (is (not (.exists (io/file (.getWorkTree (.getRepository remote-git))
+                                       (str subdir-path "stale.yaml")))))))
+        (testing "Local staged and unstaged changes are preserved across push"
+          ;; Make a staged change to README.md
+          (git-working-add! remote "README.md" "Staged readme edit")
+          ;; Make an unstaged change to an existing file
+          (spit (io/file (.getWorkTree (.getRepository remote-git)) (str subdir-path "existing.yaml"))
+                "Unstaged local edit")
+          (source.p/write-files! (source.p/snapshot master) "Second push from Metabase"
+                                 [{:path (str subdir-path "existing.yaml") :content "Second update"}
+                                  {:path (str subdir-path "another.yaml") :content "Another file"}])
+          (testing "Staged change is preserved"
+            (is (= "Staged readme edit"
+                   (slurp (io/file (.getWorkTree (.getRepository remote-git)) "README.md")))))
+          (testing "Unstaged change is preserved"
+            (is (= "Unstaged local edit"
+                   (slurp (io/file (.getWorkTree (.getRepository remote-git))
+                                   (str subdir-path "existing.yaml"))))))
+          (testing "New pushed files still appear"
+            (is (= "Another file"
+                   (slurp (io/file (.getWorkTree (.getRepository remote-git))
+                                   (str subdir-path "another.yaml")))))))))))
+
 (deftest write-special-collections
   (let [subdir-path (str "collections/" "r" (subs (u/generate-nano-id "a") 1) "_subdir/")]
     (mt/with-temp-dir [remote-dir nil]
