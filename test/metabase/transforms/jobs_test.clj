@@ -524,7 +524,7 @@
 (deftest run-transforms-parallel-dispatch-test
   (mt/with-premium-features #{:transforms-basic}
     (testing "Independent transforms dispatch concurrently up to the configured limit"
-      (let [plan     [{:id 1 :name "a"} {:id 2 :name "b"} {:id 3 :name "c"} {:id 4 :name "d"}]
+      (let [plan     [{:id 1} {:id 2} {:id 3} {:id 4}]
             deps     {1 #{} 2 #{} 3 #{} 4 #{}}
             live     (atom 0)
             max-live (atom 0)
@@ -540,7 +540,7 @@
               (is (= 4 @max-live) "all four independents should be in flight at once"))))))
 
     (testing "Dependents wait for their dependencies even when concurrency > 1"
-      (let [plan  [{:id 1 :name "a"} {:id 2 :name "b"}]
+      (let [plan  [{:id 1} {:id 2}]
             deps  {1 #{} 2 #{1}}
             order (atom [])]
         (mt/with-temporary-setting-values [transforms.settings/transform-job-concurrency 4]
@@ -553,7 +553,7 @@
             (is (= [1 2] @order) "a must complete before b starts")))))
 
     (testing "Dependents of a failed transform are skipped transitively"
-      (let [plan [{:id 1 :name "a"} {:id 2 :name "b"} {:id 3 :name "c"}]
+      (let [plan [{:id 1} {:id 2} {:id 3}]
             deps {1 #{} 2 #{1} 3 #{2}}]
         (mt/with-temporary-setting-values [transforms.settings/transform-job-concurrency 4]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
@@ -566,7 +566,7 @@
                   "a failed, b & c skipped as dep-failed"))))))
 
     (testing "Concurrency is capped by the setting"
-      (let [plan     (mapv (fn [i] {:id i :name (str i)}) (range 1 9))
+      (let [plan     (mapv (fn [i] {:id i}) (range 1 9))
             deps     (into {} (map (fn [i] [i #{}]) (range 1 9)))
             live     (atom 0)
             max-live (atom 0)

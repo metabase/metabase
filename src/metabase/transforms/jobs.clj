@@ -111,9 +111,8 @@
   [^java.util.concurrent.ExecutorService executor
    ^java.util.concurrent.BlockingQueue completions
    run-id run-method user-id transform]
-  ;; `bound-fn` propagates dynamic bindings (e.g. *current-user-id*, QP bindings) to the worker
-  ;; thread. Worker puts its result on the completion queue; exceptions are translated to a
-  ;; failure payload so the coordinator loop never blocks forever on a lost completion.
+  ;; `bound-fn` propagates the coordinator thread's dynamic bindings (*current-user-id*, QP
+  ;; bindings, etc.) to the worker thread.
   (let [task (bound-fn []
                (let [result (try
                               (run-transform! run-id run-method user-id transform)
@@ -136,39 +135,40 @@
   [run-id transform-ids-to-run {:keys [run-method start-promise user-id]}]
   (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
         n           (max 1 (transforms.settings/transform-job-concurrency))
-        successful  (atom #{})
-        failed-ids  (atom #{})
-        failures    (atom [])
-        pending     (atom (vec plan))
-        in-flight   (atom 0)
+        successful  (volatile! #{})
+        failures    (volatile! [])
+        pending     (volatile! (vec plan))
+        in-flight   (volatile! 0)
         completions (java.util.concurrent.LinkedBlockingQueue.)
         executor    (java.util.concurrent.Executors/newFixedThreadPool n)
+        failed-ids  #(into #{} (map (comp :id ::transform)) @failures)
         record-dep-failure!
         (fn [t]
-          (swap! failed-ids conj (:id t))
-          (swap! failures conj {::transform t
-                                ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")}))
-        try-dispatch!
+          (vswap! failures conj {::transform t
+                                 ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")}))
+        cascade-skip-dep-failures!
+        ;; Loop: skipping one transform may expose further dependents to skip.
         (fn []
-          ;; Cascade-skip any pending transform whose deps have failed. Loop because skipping one
-          ;; transform may reveal further dependents that can be skipped.
           (loop []
-            (let [failed? @failed-ids
-                  to-skip (filterv #(some failed? (get deps (:id %))) @pending)]
+            (let [failed?  (failed-ids)
+                  to-skip  (filterv #(some failed? (get deps (:id %))) @pending)]
               (when (seq to-skip)
                 (let [skip-ids (set (map :id to-skip))]
                   (doseq [t to-skip] (record-dep-failure! t))
-                  (reset! pending (filterv #(not (skip-ids (:id %))) @pending))
-                  (recur)))))
+                  (vreset! pending (filterv #(not (skip-ids (:id %))) @pending))
+                  (recur))))))
+        try-dispatch!
+        (fn []
+          (cascade-skip-dep-failures!)
           (let [success?  @successful
                 ready     (filterv #(every? success? (get deps (:id %))) @pending)
                 ready-ids (set (map :id ready))
                 waiting   (filterv #(not (ready-ids (:id %))) @pending)
                 capacity  (- n @in-flight)
-                [to-dispatch held] (split-at capacity ready)]
-            (reset! pending (vec (concat waiting held)))
+                [to-dispatch deferred] (split-at capacity ready)]
+            (vreset! pending (vec (concat waiting deferred)))
             (doseq [t to-dispatch]
-              (swap! in-flight inc)
+              (vswap! in-flight inc)
               (submit-transform! executor completions run-id run-method user-id t))))]
     (when start-promise
       (deliver start-promise :started))
@@ -179,11 +179,10 @@
               t          (::transform completion)
               status     (::status completion)
               message    (::message completion)]
-          (swap! in-flight dec)
+          (vswap! in-flight dec)
           (case status
-            :succeeded (swap! successful conj (:id t))
-            :failed    (do (swap! failed-ids conj (:id t))
-                           (swap! failures conj {::transform t ::message message})))
+            :succeeded (vswap! successful conj (:id t))
+            :failed    (vswap! failures conj {::transform t ::message message}))
           (try-dispatch!)))
       (finally
         (.shutdown executor)))
