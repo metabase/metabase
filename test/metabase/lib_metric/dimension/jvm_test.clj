@@ -54,6 +54,40 @@
                 (str "dimension " (get-in pair [:dimension :name])
                      " should have a valid :has-field-values value"))))))))
 
+(deftest compute-dimension-pairs-native-sql-source-card-test
+  (testing "source-card metrics built on native-SQL models resolve dimensions (UXW-3491)"
+    ;; Native-SQL model cards have `:table_id nil` (there's no underlying table), so the
+    ;; dimension-sync path must fall back to the card's `:database_id` to find a usable
+    ;; db-specific MetadataProvider. Prior to the fix, compute-dimension-pairs returned
+    ;; zero pairs for this shape because the metric-context provider can't resolve
+    ;; `:metadata/card` requests.
+    (mt/with-temp [:model/Card model {:type            :model
+                                      :dataset_query   (mt/native-query
+                                                        {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES"})
+                                      :database_id     (mt/id)
+                                      :result_metadata [{:name         "ID"
+                                                         :display_name "ID"
+                                                         :base_type    :type/BigInteger}
+                                                        {:name         "NAME"
+                                                         :display_name "Name"
+                                                         :base_type    :type/Text}
+                                                        {:name         "CATEGORY_ID"
+                                                         :display_name "Category ID"
+                                                         :base_type    :type/Integer}]}]
+      (is (nil? (:table_id model))
+          "sanity check: native-SQL model should have no :table_id")
+      (let [mp        (lib-metric.metadata.jvm/metadata-provider)
+            db-mp     (mt/metadata-provider)
+            card-meta (lib.metadata/card db-mp (:id model))
+            query     (-> (lib/query db-mp card-meta)
+                          (lib/aggregate (lib/count)))
+            pairs     (dimension.jvm/compute-dimension-pairs mp query)]
+        (is (seq pairs)
+            "should resolve dimensions from the card's result_metadata")
+        (is (= #{"ID" "NAME" "CATEGORY_ID"}
+               (into #{} (map #(get-in % [:dimension :name])) pairs))
+            "dimension names should match the card's result_metadata columns")))))
+
 (deftest compute-dimension-pairs-has-field-values-for-category-columns-test
   (testing "CATEGORY_ID dimension has :has-field-values populated"
     (let [mp     (lib-metric.metadata.jvm/metadata-provider)
