@@ -3,5 +3,6 @@
   flex-direction: column;
   padding: 0;
   width: 32rem;
+  max-height: 95%;
   pointer-events: all;
 }

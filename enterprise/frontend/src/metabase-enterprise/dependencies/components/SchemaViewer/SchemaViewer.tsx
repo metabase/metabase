@@ -10,7 +10,11 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { skipToken, useListDatabaseSchemaTablesQuery } from "metabase/api";
+import {
+  skipToken,
+  useListDatabaseSchemaTablesQuery,
+  useListDatabasesQuery,
+} from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
@@ -29,6 +33,7 @@ import {
 import { useGetErdQuery } from "metabase-enterprise/api";
 import type {
   ConcreteTableId,
+  Database,
   DatabaseId,
   DependencyId,
   Field,
@@ -155,6 +160,12 @@ function SelectedNodeInfoPanel({
 }) {
   const zoomToNodes = useZoomToNodes();
 
+  // RTK-Query dedupes with the SchemaPickerInput subscription, so this is
+  // free — we just want the database name for the panel's breadcrumbs.
+  const { data: databasesResponse } = useListDatabasesQuery({
+    include: "schemas",
+  });
+
   const selectedNode = useMemo(
     () =>
       selectedNodeId != null
@@ -171,10 +182,15 @@ function SelectedNodeInfoPanel({
     return map;
   }, [nodes]);
 
-  const dependencyNode = useMemo(
-    () => (selectedNode != null ? toTableDependencyNode(selectedNode) : null),
-    [selectedNode],
-  );
+  const dependencyNode = useMemo(() => {
+    if (selectedNode == null) {
+      return null;
+    }
+    const db = databasesResponse?.data?.find(
+      (database) => database.id === selectedNode.data.db_id,
+    );
+    return toTableDependencyNode(selectedNode, db);
+  }, [selectedNode, databasesResponse]);
 
   const handleTitleClick = useCallback(() => {
     if (selectedNode != null) {
@@ -241,12 +257,14 @@ function emptyGraphUrl(): string {
 
 /**
  * Adapt a SchemaViewer ErdNode into the TableDependencyNode shape consumed
- * by GraphInfoPanel. We deliberately leave the `db`/`transform`/`owner`
- * slots unset — the panel's optional sections degrade gracefully when they
- * are missing, and we don't carry that data in the ERD payload.
+ * by GraphInfoPanel. When a matching Database is passed, populate `data.db`
+ * so PanelHeader renders the database + schema breadcrumbs. `transform` and
+ * `owner` stay unset — the panel's optional sections degrade gracefully,
+ * and the ERD payload doesn't carry that data.
  */
 function toTableDependencyNode(
   node: SchemaViewerFlowNode,
+  db?: Database,
 ): TableDependencyNode {
   const data: TableDependencyNodeData = {
     name: node.data.name,
@@ -254,6 +272,7 @@ function toTableDependencyNode(
     description: null,
     db_id: node.data.db_id,
     schema: node.data.schema ?? "",
+    db,
     fields: node.data.fields.map(
       (f) =>
         ({
