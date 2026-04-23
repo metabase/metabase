@@ -423,7 +423,7 @@
     "debug": "^4.3.4",
     "dompurify": "^3.3.2",
     "elliptic": "^6.6.1",
-    "follow-redirects": "^1.15.5",
+    "follow-redirects": "^1.16.0",
     "lodash-es": "^4.18.1",
     "lodash": "^4.18.1",
     "markdown-it": "^14.1.1",
