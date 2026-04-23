@@ -32,7 +32,6 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models.serialization.resolve :as resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
@@ -155,55 +154,6 @@
        (-> node infer-query-lib-type infer-stage-lib-type)
        node))
    form))
-
-;;; ============================================================
-;;; Pass 2.5 -- rewrite the database name to match the metadata provider
-;;;
-;;; Background: our prompt examples consistently use `Sample` as the database name (see
-;;; `resources/metabot/prompts/tools/construct_notebook_query.md`), so the LLM tends to write
-;;; `database: Sample` and `source-table: [Sample, PUBLIC, ORDERS]` literally — even when the
-;;; real application database is `Sample Database`. The downstream resolver requires exact
-;;; string equality on the DB name, which causes a hard `:unknown-database` failure for the
-;;; canonical demo flow.
-;;;
-;;; Per `repr-plan.md` step 13, `source_entity` (and thus the metadata provider) is the
-;;; ground truth for which database the query targets — the `database:` field and the DB
-;;; component of every portable FK in the YAML are redundant w.r.t. the MP. So we simply
-;;; overwrite them with the MP's actual DB name before validation/resolution.
-;;;
-;;; This is a permissive fix: any DB name the LLM writes (including the prompt's `Sample`,
-;;; the real `Sample Database`, or a hallucinated `MyDB`) gets normalised to the MP's name.
-;;; Cross-database queries are not supported by this tool anyway, so the MP unambiguously
-;;; identifies the only legal DB.
-;;; ============================================================
-
-(defn- rewrite-fk-db-name
-  "If `v` is a portable-FK-shaped vector, return it with its first slot replaced by `db-name`.
-  Otherwise return `v` unchanged.
-
-  Note we only rewrite when the existing first slot is a string — never when it's already nil
-  or some other shape — so we don't accidentally clobber non-FK vectors that happen to look
-  FK-ish under a future schema change."
-  [v db-name]
-  (if (and (vector? v)
-           (not (map-entry? v))
-           (looks-like-fk-path? v)
-           (string? (first v)))
-    (assoc v 0 db-name)
-    v))
-
-(defn- rewrite-database-name*
-  "Rewrite the top-level `\"database\"` field and the DB component of every portable FK in
-  `query` to `db-name`. No-op when `db-name` is nil."
-  [query db-name]
-  (if-not db-name
-    query
-    (let [walked (walk/postwalk
-                  (fn [node] (rewrite-fk-db-name node db-name))
-                  query)]
-      (cond-> walked
-        (and (map? walked) (contains? walked "database"))
-        (assoc "database" db-name)))))
 
 ;;; ============================================================
 ;;; Pass 2.7 -- rewrite inline aggregation expressions in `order-by` to aggregation refs
@@ -503,32 +453,31 @@
 (defn repair
   "Run the repair pipeline on a parsed (string-keyed, portable) representations query.
 
-  Phase 1 passes:
+  Passes:
     1. ensure every clause vector has an options map at position 2;
     2. fill in missing `\"lib/type\"` markers on the query and stages;
-    3. rewrite the top-level `\"database\"` field and the DB component of every portable FK
-       in the query to match the metadata provider's actual database name. This decouples the
-       LLM-authored DB name (which often follows the prompt examples literally) from the real
-       DB the query will run against — the MP is the source of truth.
-    4. rewrite inline aggregation expressions in `order-by` to aggregation references when
+    3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
-       referenced aggregation's `lib/uuid` if needed).
-    5. auto-wire `source-field` on field clauses that reference a foreign table via a single
+       referenced aggregation's `lib/uuid` if needed);
+    4. auto-wire `source-field` on field clauses that reference a foreign table via a single
        unambiguous FK on the source table (implicit-join resolution).
 
-  Passes 3 and 5 require `mp` (a `MetadataProvider`). They are best-effort no-ops when `mp`
-  can't resolve the relevant pieces (so the subsequent validate/resolve stages can surface the
-  real error with their own, better messages). Hard FK errors (`:no-fk-path`, `:ambiguous-fk`)
-  are raised as `:agent-error?` ex-info so the tool wrapper can relay them to the LLM.
+  Pass 4 requires `mp` (a `MetadataProvider`); it is a best-effort no-op when `mp` can't
+  resolve the relevant pieces (so the subsequent validate/resolve stages can surface the real
+  error with their own, better messages). Hard FK errors (`:no-fk-path`, `:ambiguous-fk`) are
+  raised as `:agent-error?` ex-info so the tool wrapper can relay them to the LLM.
 
-  Guaranteed to be **idempotent**: `(= (repair mp q) (repair mp (repair mp q)))`. Pass 4
+  Note: the database-name normalisation pass (\"Pass 2.5\") that previously lived here was
+  removed in `repr-plan.md` step 13. Database identity is now derived from the YAML's
+  `database:` field directly (see [[metabase.metabot.tools.construct/resolve-database-id-from-yaml]]),
+  which makes the MP guaranteed-consistent with the YAML by construction.
+
+  Guaranteed to be **idempotent**: `(= (repair mp q) (repair mp (repair mp q)))`. Pass 3
   satisfies idempotency by stamping a deterministic-once UUID into the matching aggregation
   (subsequent runs reuse it) and by leaving existing `[\"aggregation\" {} \"<uuid>\"]` refs
   alone."
   [mp parsed]
-  (let [db-name (when mp (:name (lib.metadata/database mp)))]
-    (-> parsed
-        normalize-shape*
-        (rewrite-database-name* db-name)
-        rewrite-order-by-inline-aggs*
-        (resolve-implicit-joins* mp))))
+  (-> parsed
+      normalize-shape*
+      rewrite-order-by-inline-aggs*
+      (resolve-implicit-joins* mp)))

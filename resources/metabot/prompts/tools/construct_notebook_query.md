@@ -1,9 +1,7 @@
 Use this tool to construct a notebook query. The query is written in the **MBQL 5 representations YAML format** — Metabase's portable, canonical serialization of a query. You write a YAML string describing the query shape; Metabase validates, repairs, and resolves it.
 
 Return a payload with:
-- `source_entity`: `{"type":"table"|"model"|"question"|"metric","id":123}` — used only to locate the right database; the query itself references tables and fields by portable foreign-key path (see below), not by numeric id.
-- `referenced_entities`: optional additional context entities in the same shape (same-database only; not required, but helpful context for us when scanning for FK paths).
-- `query`: a YAML string in representations format (see below).
+- `query`: a YAML string in representations format (see below). The YAML's top-level `database:` field identifies which application database the query targets — use the **exact name** as reported by `entity_details` / metadata tools (e.g. `Sample Database`, not `Sample`).
 - `visualization`: optional `{"chart_type":"bar"}`.
 
 ## The query YAML
@@ -25,7 +23,7 @@ stages:
 ### Top-level shape
 
 - `lib/type: mbql/query` — required marker.
-- `database: <name>` — the database name (a string, e.g. `Sample`). Must match the database of the `source_entity`.
+- `database: <name>` — the **exact** database name as reported by `entity_details` / metadata tools (e.g. `Sample Database`). This is the only signal Metabase uses to locate the application database — there is no separate `source_entity` parameter. If the name is wrong or ambiguous, the tool returns a clear error rather than guessing.
 - `stages: […]` — at least one stage. Phase 1 MVP supports a **single stage**; multi-stage is coming.
 
 ### Stage shape
@@ -179,7 +177,7 @@ No explicit `joins:` entry needed. Internally, Metabase rewrites the breakout fi
 ## Rules and common mistakes
 
 - **Always include `{}` options in every clause**, even when empty. `[count]` is wrong — it must be `[count, {}]`.
-- **Database name must match** the database of the `source_entity`. You can't mix tables from different databases in one query.
+- **Use the exact database name** reported by `entity_details` (e.g. `Sample Database`, not `Sample`). The lookup is strict; a near-miss returns an `Unknown database: \`X\`` error rather than silently picking a database. Cross-database queries are not supported — every portable FK in the query (the first slot of `[<db>, <schema>, <table>]`) must use the same name as the top-level `database:` field.
 - **Use the portable FK form**, not numeric IDs. The `entity_details` and `field_stats` tools return both; the portable form is under `portable_id` / `portable_fk` in the result.
 - **Schemaless databases** (MongoDB, etc.) use `null` in the schema slot: `[Mongo, null, orders]`.
 - **JSON-unfolded fields** append extra path segments: `[DB, SCHEMA, TABLE, PARENT, CHILD]`.

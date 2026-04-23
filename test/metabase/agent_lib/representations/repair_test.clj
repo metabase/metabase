@@ -135,84 +135,19 @@
       (is (= input (repair/repair trivial-mp input))))))
 
 ;;; ============================================================
-;;; Pass 2.5 — rewrite the database name to match the metadata provider
+;;; (Removed) Pass 2.5 — rewrite the database name to match the metadata provider
 ;;;
-;;; The LLM tends to follow the prompt examples literally and write `database: Sample`
-;;; (and `[Sample, PUBLIC, ORDERS]` portable FKs) regardless of the actual application DB
-;;; name. Repair normalises the DB component everywhere to whatever the MP says.
+;;; This pass was deleted in `repr-plan.md` step 13. The previous role of the pass was to
+;;; reconcile a YAML `database:` (often `Sample`, copied from the prompt examples) with the
+;;; real MP DB name (often `Sample Database`). Now that the MP is *built from* the YAML's
+;;; `database:` field via `construct/resolve-database-id-from-yaml`, the names are guaranteed
+;;; to agree by construction — the rewrite has nothing to do.
+;;;
+;;; A wrong DB name now surfaces a clear `:agent-error?` (`:unknown-database`) at the database
+;;; lookup step, with a message instructing the LLM to use the canonical name from
+;;; `entity_details`. Tests for that behaviour live in `construct_representations_test.clj`
+;;; under `llm-uses-prompt-example-database-name-now-fails-loudly-test`.
 ;;; ============================================================
-
-(def ^:private mp-real-name
-  "MP whose DB name is `Sample Database` — mirrors the real production sample DB. Used to
-  exercise the LLM → real-DB-name normalisation path."
-  (lib.tu/mock-metadata-provider
-   {:database {:id 1 :name "Sample Database"}
-    :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
-               {:id 20 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}]
-    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
-               {:id 102 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer
-                :fk-target-field-id 200}
-               {:id 200 :name "ID"         :table-id 20 :base-type :type/Integer}
-               {:id 201 :name "CATEGORY"   :table-id 20 :base-type :type/Text}]}))
-
-(deftest rewrite-database-name-top-level-test
-  (testing "top-level `database` field is rewritten to the MP's DB name"
-    (let [input  {"lib/type" "mbql/query"
-                  "database" "Sample"
-                  "stages"   [{"lib/type"     "mbql.stage/mbql"
-                               "source-table" ["Sample" "PUBLIC" "ORDERS"]}]}
-          output (repair/repair mp-real-name input)]
-      (is (= "Sample Database" (get output "database"))))))
-
-(deftest rewrite-database-name-portable-fks-test
-  (testing "every portable FK has its DB component rewritten to the MP's DB name"
-    (let [input  {"lib/type" "mbql/query"
-                  "database" "Sample"
-                  "stages"   [{"lib/type"     "mbql.stage/mbql"
-                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                               "aggregation"  [["sum" {}
-                                                ["field" {}
-                                                 ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
-                               "breakout"     [["field" {}
-                                                ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}
-          output (repair/repair mp-real-name input)]
-      (is (= ["Sample Database" "PUBLIC" "ORDERS"]
-             (get-in output ["stages" 0 "source-table"])))
-      (is (= ["Sample Database" "PUBLIC" "ORDERS" "TOTAL"]
-             (get-in output ["stages" 0 "aggregation" 0 2 2])))
-      (is (= ["Sample Database" "PUBLIC" "PRODUCTS" "CATEGORY"]
-             (get-in output ["stages" 0 "breakout" 0 2]))))))
-
-(deftest rewrite-database-name-no-op-when-already-matching-test
-  (testing "a query that already uses the MP's DB name everywhere is unchanged"
-    (let [input  {"lib/type" "mbql/query"
-                  "database" "Sample Database"
-                  "stages"   [{"lib/type"     "mbql.stage/mbql"
-                               "source-table" ["Sample Database" "PUBLIC" "ORDERS"]
-                               "aggregation"  [["count" {}]]}]}]
-      (is (= input (repair/repair mp-real-name input))))))
-
-(deftest rewrite-database-name-no-op-when-no-mp-test
-  (testing "calling repair with mp=nil leaves the database/FK names untouched"
-    (let [input {"lib/type" "mbql/query"
-                 "database" "AnythingGoes"
-                 "stages"   [{"lib/type"     "mbql.stage/mbql"
-                              "source-table" ["AnythingGoes" "PUBLIC" "ORDERS"]
-                              "aggregation"  [["count" {}]]}]}]
-      (is (= input (repair/repair nil input))))))
-
-(deftest rewrite-database-name-idempotent-test
-  (testing "running repair twice produces the same result"
-    (let [input    {"lib/type" "mbql/query"
-                    "database" "Sample"
-                    "stages"   [{"lib/type"     "mbql.stage/mbql"
-                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                                 "aggregation"  [["sum" {}
-                                                  ["field" {}
-                                                   ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]}]}
-          once     (repair/repair mp-real-name input)
-          twice    (repair/repair mp-real-name once)]
-      (is (= once twice)))))
 
 ;;; ============================================================
 ;;; Pass 2.7 — rewrite inline aggregations in `order-by` to aggregation refs

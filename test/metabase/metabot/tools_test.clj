@@ -119,7 +119,7 @@
     (let [yaml-captured (atom nil)
           chart-called  (atom nil)]
       (with-redefs [construct/execute-representations-query
-                    (fn [_source-entity _referenced-entities yaml-string]
+                    (fn [yaml-string]
                       (reset! yaml-captured yaml-string)
                       {:structured-output {:query-id "q-1"
                                            :query {:database 1}
@@ -142,7 +142,6 @@
                                         "aggregation"  [["count" {}]]}]})
               result (agent-tools/construct-notebook-query-tool
                       {:reasoning     "check seats"
-                       :source_entity {:type "table" :id 6}
                        :query         yaml-input
                        :visualization {:chart_type "table"}})]
           (is (= yaml-input @yaml-captured))

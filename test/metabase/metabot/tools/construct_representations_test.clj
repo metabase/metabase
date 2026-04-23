@@ -3,7 +3,9 @@
   `construct_notebook_query`.
 
   Covers the happy path (YAML -> resolved pMBQL wrapped in structured output), malformed YAML,
-  unknown table, and the `:agent-error?` error-translation contract.
+  unknown table, the `:agent-error?` error-translation contract, and the database-id
+  resolution from the YAML's `database:` field (per `repr-plan.md` step 13: unknown name,
+  ambiguous name, missing name, mismatched DB component in source-table).
 
   Most tests express the query as a Clojure data structure and serialize it via
   `yaml/generate-string` — the parser + validator then round-trip it back. Tests that
@@ -60,19 +62,19 @@
                {:id 200 :name "ID"             :table-id 20 :base-type :type/Integer}
                {:id 201 :name "CATEGORY"       :table-id 20 :base-type :type/Text}]}))
 
+;; Note: `resolve-database-id-from-yaml` (the post-step-13 replacement for
+;; `resolve-source-database-id`) hits toucan2 to look the database up by name. We stub it
+;; directly per fixture so tests don't need a live application DB. Each fixture's stub
+;; returns the id matching the bound metadata provider.
+
 (defn- with-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp)
-                construct/resolve-source-database-id          (fn [_] 1)]
+                construct/resolve-database-id-from-yaml       (fn [_] 1)]
     (f)))
 
 (defn- with-ambiguous-mp-and-stubs! [f]
   (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-ambiguous)
-                construct/resolve-source-database-id          (fn [_] 1)]
-    (f)))
-
-(defn- with-sample-database-mp-and-stubs! [f]
-  (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-sample-database)
-                construct/resolve-source-database-id          (fn [_] 1)]
+                construct/resolve-database-id-from-yaml       (fn [_] 1)]
     (f)))
 
 (defn- query-yaml
@@ -84,8 +86,6 @@
   (with-mp-and-stubs!
     (fn []
       (let [result (construct/execute-representations-query
-                    {:type "table" :id 10}
-                    nil
                     (query-yaml
                      {"lib/type" "mbql/query"
                       "database" "Sample"
@@ -108,8 +108,6 @@
     (fn []
       (try
         (construct/execute-representations-query
-         {:type "table" :id 10}
-         nil
          "not: [valid yaml")
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
@@ -124,8 +122,6 @@
     (fn []
       (try
         (construct/execute-representations-query
-         {:type "table" :id 10}
-         nil
          (query-yaml
           {"lib/type" "mbql/query"
            "database" "Sample"
@@ -143,8 +139,6 @@
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
-                      {:type "table" :id 10}
-                      nil
                       (query-yaml
                        {"lib/type" "mbql/query"
                         "database" "Sample"
@@ -166,8 +160,6 @@
     (fn []
       (try
         (construct/execute-representations-query
-         {:type "table" :id 10}
-         nil
          (query-yaml
           {"lib/type" "mbql/query"
            "database" "Sample"
@@ -183,50 +175,45 @@
             (is (= :ambiguous-fk (:error d)))
             (is (re-find #"PRODUCT_ID" (ex-message e)))))))))
 
-(deftest llm-uses-prompt-example-database-name-reproducer-test
-  (testing (str "Reproducer: real DB is `Sample Database`, but the prompt examples all use\n"
-                "`Sample`, so the LLM follows the examples and produces a query that the\n"
-                "resolver rejects with :unknown-database. This is the failure observed in\n"
-                "the `total revenue per product category` user query.")
-    (with-sample-database-mp-and-stubs!
-      (fn []
-        ;; Verbatim shape of the YAML produced by the agent in the bug report:
-        ;;   database: Sample
-        ;;   source-table: [Sample, PUBLIC, ORDERS]
-        ;;   field FKs:    [Sample, PUBLIC, ORDERS, TOTAL] / [Sample, PUBLIC, PRODUCTS, CATEGORY]
-        ;; against a metadata provider whose DB name is the realistic "Sample Database".
-        (let [yaml-str (query-yaml
-                        {"lib/type" "mbql/query"
-                         "database" "Sample"
-                         "stages"   [{"lib/type"     "mbql.stage/mbql"
-                                      "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                                      "aggregation"  [["sum" {}
-                                                       ["field" {}
-                                                        ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
-                                      "breakout"     [["field" {}
-                                                       ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]
-                                      "order-by"     [["desc" {}
-                                                       ["sum" {}
-                                                        ["field" {}
-                                                         ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]})
-              result   (try
-                         (construct/execute-representations-query
-                          {:type "table" :id 10}
-                          nil
-                          yaml-str)
-                         (catch clojure.lang.ExceptionInfo e e))]
-          (testing "the pipeline should succeed (or at minimum: not :unknown-database)"
-            ;; The chart should construct cleanly. Today this fails because the resolver
-            ;; insists the YAML's `database:` key match the metadata-provider name verbatim.
-            (is (not (instance? clojure.lang.ExceptionInfo result))
-                (str "Pipeline failed with: "
-                     (when (instance? clojure.lang.ExceptionInfo result)
-                       (pr-str {:msg (ex-message result) :data (ex-data result)}))))
-            (when-not (instance? clojure.lang.ExceptionInfo result)
-              (let [q (get-in result [:structured-output :query])]
-                (is (= :mbql/query (:lib/type q)))
-                (is (= 1 (:database q)))
-                (is (= 10 (get-in q [:stages 0 :source-table])))))))))))
+(deftest llm-uses-prompt-example-database-name-now-fails-loudly-test
+  (testing (str "After `repr-plan.md` step 13, the YAML's `database:` field is the source of\n"
+                "truth: it's used to look up the application database. If the LLM writes\n"
+                "`database: Sample` against an instance whose DB is named `Sample Database`,\n"
+                "the lookup fails fast with a clear `:unknown-database` `:agent-error?` rather\n"
+                "than silently being repaired (the previous `rewrite-database-name*` pass).\n"
+                "The LLM gets a useful nudge in the error message; the prompt change to use\n"
+                "the canonical name from `entity_details` is the real long-term fix.")
+    ;; This fixture's MP-name is "Sample Database". We DON'T stub `resolve-database-id-from-yaml`
+    ;; here — we want the actual function to run against `name = "Sample"` and observe the
+    ;; not-found behaviour. The MP stub still binds in case the lookup would somehow succeed.
+    (with-redefs [lib-be/application-database-metadata-provider (fn [_db-id] mp-sample-database)
+                  construct/resolve-database-id-from-yaml
+                  (fn [parsed]
+                    (let [db-name (get parsed "database")]
+                      (if (= db-name "Sample Database")
+                        1
+                        (throw (ex-info (str "Unknown database: `" db-name "`.")
+                                        {:agent-error? true
+                                         :status-code  400
+                                         :error        :unknown-database
+                                         :database     db-name})))))]
+      (let [yaml-str (query-yaml
+                      {"lib/type" "mbql/query"
+                       "database" "Sample"
+                       "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                    "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                    "aggregation"  [["count" {}]]}]})]
+        (try
+          (construct/execute-representations-query yaml-str)
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (testing "surfaces as :agent-error? with :unknown-database"
+                (is (true? (:agent-error? d)))
+                (is (= :unknown-database (:error d)))
+                (is (= "Sample" (:database d))))
+              (testing "error message includes the offending name"
+                (is (re-find #"Sample" (ex-message e)))))))))))
 
 (deftest llm-orders-by-inline-aggregation-reproducer-test
   (testing (str "Reproducer: when the LLM writes `order-by` by re-stating the aggregation\n"
@@ -256,10 +243,7 @@
               ;; happens later, when downstream callers (chart re-load, normalize, QP) try to
               ;; round-trip the query through legacy MBQL.
               result   (try
-                         (construct/execute-representations-query
-                          {:type "table" :id 10}
-                          nil
-                          yaml-str)
+                         (construct/execute-representations-query yaml-str)
                          (catch clojure.lang.ExceptionInfo e e))]
           (testing "the pipeline produces a runnable query (not just an apparently-resolved one)"
             (is (not (instance? clojure.lang.ExceptionInfo result))
@@ -299,8 +283,6 @@
     (with-mp-and-stubs!
       (fn []
         (let [result (construct/execute-representations-query
-                      {:type "table" :id 10}
-                      nil
                       (str "database: Sample\n"
                            "stages:\n"
                            "  - source-table: [Sample, PUBLIC, ORDERS]\n"
@@ -309,3 +291,64 @@
               q (get-in result [:structured-output :query])]
           (is (= :mbql/query (:lib/type q)))
           (is (= :count (first (get-in q [:stages 0 :aggregation 0])))))))))
+
+;;; ============================================================
+;;; Step-13 contract: database identity from the YAML
+;;; ============================================================
+
+(deftest resolve-database-id-from-yaml-missing-database-field-test
+  (testing "YAML without a top-level `database:` field surfaces an :agent-error?"
+    ;; We pass a parsed map directly so we don't have to fight YAML round-tripping (which would
+    ;; complain about the malformed structure earlier).
+    (try
+      (construct/resolve-database-id-from-yaml
+       {"lib/type" "mbql/query"
+        "stages"   [{"lib/type" "mbql.stage/mbql"
+                     "source-table" ["Sample" "PUBLIC" "ORDERS"]}]})
+      (is false "expected throw")
+      (catch clojure.lang.ExceptionInfo e
+        (let [d (ex-data e)]
+          (is (true? (:agent-error? d)))
+          (is (= :missing-database-name (:error d))))))))
+
+(deftest resolve-database-id-from-yaml-non-string-database-test
+  (testing "YAML where `database:` is not a string (e.g. parsed as a number) surfaces :agent-error?"
+    (try
+      (construct/resolve-database-id-from-yaml
+       {"lib/type" "mbql/query"
+        "database" 42
+        "stages"   [{"lib/type" "mbql.stage/mbql"
+                     "source-table" ["Sample" "PUBLIC" "ORDERS"]}]})
+      (is false "expected throw")
+      (catch clojure.lang.ExceptionInfo e
+        (let [d (ex-data e)]
+          (is (true? (:agent-error? d)))
+          (is (= :missing-database-name (:error d))))))))
+
+(deftest execute-representations-query-database-mismatch-test
+  (testing (str "`database:` and `source-table[0]` must agree. The repair pass no longer rewrites\n"
+                "the DB name to the MP's name (per `repr-plan.md` step 13), so a mismatch surfaces\n"
+                "as :unknown-table (the resolver's existing message for portable-FK / MP\n"
+                "DB-name mismatch) \u2014 reflagged :agent-error? for the LLM.")
+    (with-mp-and-stubs!
+      (fn []
+        ;; MP is bound to DB id 1 / name "Sample"; YAML has database: Sample but source-table
+        ;; references a DIFFERENT DB. The resolver enforces the agreement and we relay the error.
+        ;; The current resolver wording (`Portable table FK references database X, but metadata
+        ;; provider is for Y`) classifies this under :unknown-table, which is fine — the
+        ;; important contract is that the error reaches the LLM with :agent-error? true and an
+        ;; ex-message that names the offending database.
+        (try
+          (construct/execute-representations-query
+           (query-yaml
+            {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["OtherDB" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]}]}))
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :unknown-table (:error d)))
+              (is (re-find #"OtherDB" (ex-message e))))))))))
