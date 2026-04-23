@@ -24,6 +24,59 @@
    "month-of-year"   "get-month"
    "quarter-of-year" "get-quarter"})
 
+(defn- option-value
+  "Read the first present key from `options`, accepting either string or keyword keys."
+  [options & ks]
+  (reduce (fn [_ k]
+            (let [v (or (get options (name k)) (get options (keyword k)))]
+              (if (some? v) (reduced v) nil)))
+          nil
+          ks))
+
+(defn- wrap-field-with-options
+  "Rewrite a non-canonical `[\"field\" id {opts}]` tuple into the canonical
+  wrapper forms (`with-temporal-bucket`, `with-binning`) the runtime accepts."
+  [field-form options]
+  (let [temporal-unit (option-value options :temporal-unit)
+        binning       (option-value options :binning)
+        with-temporal (if (some? temporal-unit)
+                        ["with-temporal-bucket" field-form temporal-unit]
+                        field-form)]
+    (if (some? binning)
+      ["with-binning" with-temporal binning]
+      with-temporal)))
+
+(def ^:private field-like-map-id-keys
+  ["field_id" "field-id" :field_id :field-id])
+
+(defn field-like-map?
+  "True when `value` is a plain map that describes a field reference by carrying
+  a `:field_id`/`:field-id` key."
+  [value]
+  (boolean (and (map? value)
+                (some #(some? (get value %)) field-like-map-id-keys))))
+
+(defn repair-field-like-map
+  "Convert a field-like map (e.g. `{\"field_id\" 13 \"temporal_bucket\" \"month\"}`)
+  into the canonical nested operator form the runtime accepts.
+
+  Supports optional `temporal_bucket`/`temporal-unit`, `binning`, and `direction`
+  keys. When `direction` is present, the result is wrapped in `asc`/`desc`."
+  [m]
+  (let [field-id      (option-value m :field_id :field-id)
+        temporal-unit (option-value m :temporal_bucket :temporal-bucket
+                                    :temporal_unit :temporal-unit)
+        binning       (option-value m :binning)
+        direction     (option-value m :direction)
+        field-form    (cond-> ["field" (coerce-positive-int field-id)]
+                        (some? temporal-unit) (wrap-field-with-options
+                                               {"temporal-unit" temporal-unit})
+                        (some? binning)       (wrap-field-with-options
+                                               {"binning" binning}))]
+    (if (coercions/direction-string? direction)
+      [(coercions/normalize-direction direction) field-form]
+      field-form)))
+
 (defn expression-definition-tuple?
   "True when `value` is an inline expression definition tuple."
   [value]
@@ -188,7 +241,14 @@
                                         (unwrap-singleton-form arg'))))
                                   raw-args)]
     (case op-name
-      ("field" "table" "card" "metric" "measure")
+      "field"
+      (let [id        (coerce-positive-int (first args))
+            maybe-opt (second args)]
+        (if (map? maybe-opt)
+          (wrap-field-with-options [op-name id] maybe-opt)
+          [op-name id]))
+
+      ("table" "card" "metric" "measure")
       [op-name (coerce-positive-int (first args))]
 
       "aggregation-ref"

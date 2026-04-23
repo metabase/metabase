@@ -29,6 +29,9 @@
                    (contains? value :id))
               (update value :id coerce-positive-int)
 
+              (normalize.forms/field-like-map? value)
+              (repair-node (normalize.forms/repair-field-like-map value))
+
               :else
               (into {}
                     (map (fn [[k v]] [k (repair-node v)]))
