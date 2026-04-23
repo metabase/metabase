@@ -95,7 +95,7 @@ export const QuestionPane = ({
         <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <a
             className={S.QuestionPaneDetailLink}
-            href={ML_Urls.getUrl(question)}
+            href={ML_Urls.getQuestionUrl(question)}
             target="_blank"
             rel="noreferrer"
           >

@@ -31,7 +31,7 @@ describe("AdHocQuestionLoader", () => {
     const q = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
       Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     );
-    const questionHash = getQuestionHash(ML_Urls.getUrl(q));
+    const questionHash = getQuestionHash(ML_Urls.getQuestionUrl(q));
 
     render(
       <AdHocQuestionLoaderView
@@ -59,13 +59,13 @@ describe("AdHocQuestionLoader", () => {
     const q = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
       Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     );
-    const questionHash = getQuestionHash(ML_Urls.getUrl(q));
+    const questionHash = getQuestionHash(ML_Urls.getQuestionUrl(q));
 
     // Create a different valid question with a different limit
     const q2 = Question.create({ metadata: SAMPLE_METADATA })
       .setQuery(Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY))
       .updateSettings({ "table.pivot": true });
-    const newQuestionHash = getQuestionHash(ML_Urls.getUrl(q2));
+    const newQuestionHash = getQuestionHash(ML_Urls.getQuestionUrl(q2));
 
     const deserializeCardSpy = jest.spyOn(Card, "deserializeCardFromUrl");
 
@@ -104,7 +104,7 @@ describe("AdHocQuestionLoader", () => {
     const q = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
       Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     );
-    const questionHash = getQuestionHash(ML_Urls.getUrl(q));
+    const questionHash = getQuestionHash(ML_Urls.getQuestionUrl(q));
 
     // Make loadMetadataForCard hang so we can observe loading state
     let resolveLoad: () => void;

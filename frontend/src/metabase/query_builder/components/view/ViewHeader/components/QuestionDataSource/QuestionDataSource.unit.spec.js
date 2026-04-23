@@ -407,7 +407,7 @@ describe("QuestionDataSource", () => {
           expect(
             areQuestionUrlsEquivalent(
               node.closest("a").href,
-              ML_Urls.getUrl(table.newQuestion()),
+              ML_Urls.getQuestionUrl(table.newQuestion()),
             ),
           ).toBe(true);
         });
@@ -421,7 +421,7 @@ describe("QuestionDataSource", () => {
           expect(
             areQuestionUrlsEquivalent(
               node.closest("a").href,
-              ML_Urls.getUrl(table.newQuestion()),
+              ML_Urls.getQuestionUrl(table.newQuestion()),
             ),
           ).toBe(true);
         });
@@ -471,14 +471,14 @@ describe("QuestionDataSource", () => {
           expect(
             areQuestionUrlsEquivalent(
               orders.closest("a").href,
-              ML_Urls.getUrl(getAdHocOrdersQuestion()),
+              ML_Urls.getQuestionUrl(getAdHocOrdersQuestion()),
             ),
           ).toBe(true);
           expect(products).toBeInTheDocument();
           expect(
             areQuestionUrlsEquivalent(
               products.closest("a").href,
-              ML_Urls.getUrl(getAdHocProductsQuestion()),
+              ML_Urls.getQuestionUrl(getAdHocProductsQuestion()),
             ),
           ).toBe(true);
         });
@@ -503,21 +503,21 @@ describe("QuestionDataSource", () => {
           expect(
             areQuestionUrlsEquivalent(
               orders.closest("a").href,
-              ML_Urls.getUrl(getAdHocOrdersQuestion()),
+              ML_Urls.getQuestionUrl(getAdHocOrdersQuestion()),
             ),
           ).toBe(true);
           expect(products).toBeInTheDocument();
           expect(
             areQuestionUrlsEquivalent(
               products.closest("a").href,
-              ML_Urls.getUrl(getAdHocProductsQuestion()),
+              ML_Urls.getQuestionUrl(getAdHocProductsQuestion()),
             ),
           ).toBe(true);
           expect(people).toBeInTheDocument();
           expect(
             areQuestionUrlsEquivalent(
               people.closest("a").href,
-              ML_Urls.getUrl(getAdHocPeopleQuestion()),
+              ML_Urls.getQuestionUrl(getAdHocPeopleQuestion()),
             ),
           ).toBe(true);
         });

@@ -25,7 +25,7 @@ const QuestionLineage = ({
   return (
     <Badge icon={icon} isSingleLine>
       {t`Started from`}{" "}
-      <Link className={CS.link} to={ML_Urls.getUrl(originalQuestion)}>
+      <Link className={CS.link} to={ML_Urls.getQuestionUrl(originalQuestion)}>
         {originalQuestion.displayName()}
       </Link>
     </Badge>

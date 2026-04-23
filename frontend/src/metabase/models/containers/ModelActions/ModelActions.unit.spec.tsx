@@ -691,7 +691,7 @@ describe("ModelActions", () => {
       });
 
       expect(history?.getCurrentLocation().pathname).toBe(
-        ML_Urls.getUrl(question),
+        ML_Urls.getQuestionUrl(question),
       );
     });
 

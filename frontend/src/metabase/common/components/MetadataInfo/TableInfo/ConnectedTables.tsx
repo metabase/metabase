@@ -55,7 +55,7 @@ function ConnectedTableButton({
 
 function ConnectedTableLink({ table }: { table: Table }) {
   return (
-    <LabelLink to={ML_Urls.getUrl(table.newQuestion())}>
+    <LabelLink to={ML_Urls.getQuestionUrl(table.newQuestion())}>
       <InteractiveTableLabel table={table} />
     </LabelLink>
   );

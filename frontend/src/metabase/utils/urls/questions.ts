@@ -134,7 +134,7 @@ export function newQuestion({
   }
 
   const question = Question.create(options);
-  const url = ML_Urls.getUrl(question, {
+  const url = ML_Urls.getQuestionUrl(question, {
     creationType,
     query: objectId ? { objectId } : undefined,
   });
