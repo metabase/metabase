@@ -8,10 +8,8 @@ import { skipToken, useListActionsQuery } from "metabase/api";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import { useDatabaseListQuery } from "metabase/common/hooks";
-import { runQuestionQuery } from "metabase/query_builder/actions";
 import { ActionsApi, MetabaseApi } from "metabase/services";
 import { Modal } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
@@ -24,6 +22,7 @@ import type {
 
 import { DeleteObjectModal } from "./DeleteObjectModal";
 import { ObjectDetailBody } from "./ObjectDetailBody";
+import { useObjectDetailControls } from "./ObjectDetailControlsContext";
 import { ObjectDetailHeader } from "./ObjectDetailHeader";
 import {
   ErrorWrapper,
@@ -289,11 +288,7 @@ export function ObjectDetailView({
     [zoomedRowID],
   );
 
-  const dispatch = useDispatch();
-
-  const handleActionSuccess = useCallback(() => {
-    dispatch(runQuestionQuery());
-  }, [dispatch]);
+  const { onActionSuccess: handleActionSuccess } = useObjectDetailControls();
 
   const handleDeleteSuccess = useCallback(() => {
     handleActionSuccess();

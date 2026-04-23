@@ -1,27 +1,14 @@
 import { useCallback, useMemo } from "react";
 
-import { resetRowZoom, zoomInRow } from "metabase/query_builder/actions";
-import {
-  getRowIndexToPKMap,
-  getZoomedObjectId,
-} from "metabase/query_builder/selectors";
-import type { State } from "metabase/redux/store";
-import { useDispatch, useSelector } from "metabase/utils/redux";
+import { useObjectDetailControls } from "metabase/visualizations/components/ObjectDetail/ObjectDetailControlsContext";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 import { isPK } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData } from "metabase-types/api";
 
-const getZoomedObjectIdSafe = (state: State) => {
-  return state.qb ? getZoomedObjectId(state) : undefined;
-};
-
 export const useObjectDetail = ({ rows, cols }: DatasetData) => {
-  const dispatch = useDispatch();
-  const zoomedObjectId = useSelector(getZoomedObjectIdSafe);
-  const rowIndexToPkMap: Record<number, ObjectId> = useSelector((state) =>
-    state.qb != null ? getRowIndexToPKMap(state) : {},
-  );
+  const { zoomedObjectId, rowIndexToPkMap, zoomInRow, resetRowZoom } =
+    useObjectDetailControls();
 
   const primaryKeyColumn: ColumnDescriptor | null = useMemo(() => {
     const primaryKeyColumns = cols.filter(isPK);
@@ -39,7 +26,7 @@ export const useObjectDetail = ({ rows, cols }: DatasetData) => {
 
   const onOpenObjectDetail = useCallback(
     (rowIndex: number) => {
-      let objectId: number | string;
+      let objectId: ObjectId;
 
       if (primaryKeyColumn) {
         const value = rows[rowIndex][primaryKeyColumn.index];
@@ -52,12 +39,19 @@ export const useObjectDetail = ({ rows, cols }: DatasetData) => {
       }
 
       if (objectId === zoomedObjectId) {
-        dispatch(resetRowZoom());
+        resetRowZoom();
       } else {
-        dispatch(zoomInRow({ objectId }));
+        zoomInRow({ objectId });
       }
     },
-    [dispatch, primaryKeyColumn, rowIndexToPkMap, rows, zoomedObjectId],
+    [
+      primaryKeyColumn,
+      rowIndexToPkMap,
+      rows,
+      zoomedObjectId,
+      zoomInRow,
+      resetRowZoom,
+    ],
   );
 
   return onOpenObjectDetail;

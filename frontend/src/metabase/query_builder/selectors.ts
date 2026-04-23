@@ -595,7 +595,11 @@ export const getCanZoomPreviousRow = createSelector(
 export const getCanZoomNextRow = createSelector(
   [getQueryResults, getZoomedObjectRowIndex],
   (queryResults, rowIndex) => {
-    if (!Array.isArray(queryResults) || !queryResults.length) {
+    if (
+      !Array.isArray(queryResults) ||
+      !queryResults.length ||
+      !queryResults[0].data
+    ) {
       return;
     }
     const rowCount = queryResults[0].data.rows.length;
