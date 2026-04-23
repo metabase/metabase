@@ -1,21 +1,19 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { CustomVizEnableSwitch } from "metabase/admin/settings/components/SettingsPages/CustomVisualizationsSettingsPage";
+import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useAdminSetting } from "metabase/api/utils";
 import { Link } from "metabase/common/components/Link";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import {
+  ActionIcon,
   Box,
   Button,
   Flex,
   Group,
   Icon,
   Loader,
+  Menu,
   Stack,
   Text,
   Title,
@@ -35,7 +33,7 @@ import S from "./ManageCustomVizPage.module.css";
 const CUSTOM_VIZ_ENABLED_SETTING = "custom-viz-enabled";
 
 export function ManageCustomVizPage() {
-  const { value: isCustomVizEnabled } = useAdminSetting(
+  const { value: isCustomVizEnabled, updateSetting } = useAdminSetting(
     CUSTOM_VIZ_ENABLED_SETTING,
   );
   const hasCustomVizFeature = useHasTokenFeature("custom-viz");
@@ -47,6 +45,15 @@ export function ManageCustomVizPage() {
     () => plugins?.filter((p) => !p.dev_only),
     [plugins],
   );
+
+  const handleDeactivate = useCallback(async () => {
+    await updateSetting({
+      key: CUSTOM_VIZ_ENABLED_SETTING,
+      value: false,
+      toast: false,
+    });
+    setTimeout(() => window.location.reload(), 1000);
+  }, [updateSetting]);
 
   const handleDelete = useCallback(
     async (id: CustomVizPluginId) => {
@@ -67,24 +74,41 @@ export function ManageCustomVizPage() {
           <Title order={1} style={{ height: "2.5rem" }}>
             {t`Custom visualizations`}
           </Title>
-          <Button
-            component={Link}
-            to={Urls.customVizAdd()}
-            leftSection={<Icon name="add" />}
-            variant="filled"
-          >
-            {t`Add`}
-          </Button>
+          <Group gap="xs">
+            <Button
+              component={Link}
+              to={Urls.customVizAdd()}
+              leftSection={<Icon name="add" />}
+              variant="filled"
+            >
+              {t`Add`}
+            </Button>
+            <Menu position="bottom-end">
+              <Menu.Target>
+                <ActionIcon
+                  variant="subtle"
+                  size="lg"
+                  aria-label={t`More options`}
+                >
+                  <Icon name="ellipsis" />
+                </ActionIcon>
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  onClick={handleDeactivate}
+                  leftSection={<Icon name="pause" />}
+                >
+                  {t`Deactivate custom visualizations`}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </Group>
         </Flex>
 
         <Text c="text-secondary" maw="40rem">
           {t`Add custom visualizations to your instance here by adding links to git repositories containing custom visualization bundles.`}
         </Text>
       </Stack>
-
-      <SettingsSection>
-        <CustomVizEnableSwitch />
-      </SettingsSection>
 
       {isLoading && (
         <Flex justify="center" p="xl">
