@@ -714,3 +714,170 @@
              (get-in repaired ["stages" 0 "expressions" 0 1 "lib/expression-name"])))
       (is (= "Doubled"
              (get-in repaired ["stages" 1 "expressions" 0 1 "lib/expression-name"]))))))
+
+;;; ============================================================
+;;; Pass 2.8 — integer-index aggregation refs → canonical UUID form (repr-plan step 10)
+;;; ============================================================
+
+(deftest aggregation-ref-integer-index-happy-path-test
+  (testing "a 0-based integer agg-ref in order-by is rewritten to the canonical UUID form"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["sum" {} ["field" {"base-type" "type/Float"}
+                                                     ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+                                          ["count" {}]]
+                          "order-by"     [["desc" {} ["aggregation" {} 1]]]}]}
+          repaired (repair/repair trivial-mp q)
+          count-agg (get-in repaired ["stages" 0 "aggregation" 1])
+          ref-clause (get-in repaired ["stages" 0 "order-by" 0 2])]
+      (testing "target aggregation clause got a lib/uuid stamped"
+        (is (uuid-string? (get-in count-agg [1 "lib/uuid"]))))
+      (testing "ref last slot is the same UUID as the target aggregation"
+        (is (= (get-in count-agg [1 "lib/uuid"])
+               (nth ref-clause 2))))
+      (testing "ref options got base-type/effective-type from the aggregation head"
+        (is (= "type/BigInteger" (get-in ref-clause [1 "base-type"])))
+        (is (= "type/BigInteger" (get-in ref-clause [1 "effective-type"])))))))
+
+(deftest aggregation-ref-preserves-authored-options-test
+  (testing "authored base-type / name in the ref's options are not overwritten"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "order-by"     [["desc" {} ["aggregation"
+                                                      {"base-type"      "type/Float"
+                                                       "effective-type" "type/Float"
+                                                       "name"           "custom-name"}
+                                                      0]]]}]}
+          repaired (repair/repair trivial-mp q)
+          opts     (get-in repaired ["stages" 0 "order-by" 0 2 1])]
+      (is (= "type/Float"  (get opts "base-type")))
+      (is (= "type/Float"  (get opts "effective-type")))
+      (is (= "custom-name" (get opts "name"))))))
+
+(deftest aggregation-ref-out-of-range-raises-agent-error-test
+  (testing "an index past the stage's aggregation vector surfaces an agent-error"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+                                          ["count" {}]]
+                          "order-by"     [["desc" {} ["aggregation" {} 5]]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (true? (:agent-error? d)))
+            (is (= :aggregation-ref-out-of-range (:error d)))
+            (is (= 5 (:index d)))
+            (is (= 2 (:available d)))
+            (is (re-find #"sum at 0" (ex-message e)))
+            (is (re-find #"count at 1" (ex-message e)))))))))
+
+(deftest aggregation-ref-string-uuid-is-idempotent-test
+  (testing "a ref whose last slot is already a UUID string is left unchanged"
+    (let [uuid "11111111-1111-1111-1111-111111111111"
+          q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {"lib/uuid" uuid}]]
+                          "order-by"     [["desc" {} ["aggregation"
+                                                      {"base-type" "type/BigInteger"
+                                                       "effective-type" "type/BigInteger"}
+                                                      uuid]]]}]}
+          repaired (repair/repair trivial-mp q)]
+      (is (= uuid (get-in repaired ["stages" 0 "order-by" 0 2 2])))
+      (is (= uuid (get-in repaired ["stages" 0 "aggregation" 0 1 "lib/uuid"]))))))
+
+(deftest aggregation-ref-no-aggregations-in-stage-raises-agent-error-test
+  (testing "`[aggregation, {}, 0]` with no `aggregation:` clause in the stage is an agent-error"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "order-by"     [["desc" {} ["aggregation" {} 0]]]}]}]
+      (try
+        (repair/repair trivial-mp q)
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (true? (:agent-error? d)))
+            (is (= :aggregation-ref-no-aggregations (:error d)))))))))
+
+(deftest aggregation-ref-noop-when-no-int-refs-test
+  (testing "a stage without integer-indexed agg-refs is left alone by this pass"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]}]}
+          repaired (repair/repair trivial-mp q)]
+      ;; aggregation still there; no order-by to rewrite
+      (is (= [["count" {}]]
+             (get-in repaired ["stages" 0 "aggregation"]))))))
+
+(deftest aggregation-ref-idempotent-test
+  (testing "repair is a fixed point under repeated application"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["sum" {} ["field" {"base-type" "type/Float"}
+                                                     ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+                                          ["count" {}]]
+                          "order-by"     [["desc" {} ["aggregation" {} 0]]
+                                          ["asc"  {} ["aggregation" {} 1]]]}]}
+          once  (repair/repair trivial-mp q)
+          twice (repair/repair trivial-mp once)]
+      (is (= once twice)))))
+
+(deftest aggregation-ref-type-inference-by-head-test
+  (testing "base-type inference from aggregation head"
+    (let [mk (fn [agg-clause]
+               {"lib/type" "mbql/query"
+                "database" "Sample"
+                "stages"   [{"lib/type"     "mbql.stage/mbql"
+                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                             "aggregation"  [agg-clause]
+                             "order-by"     [["desc" {} ["aggregation" {} 0]]]}]})
+          type-of (fn [agg-clause]
+                    (-> (repair/repair trivial-mp (mk agg-clause))
+                        (get-in ["stages" 0 "order-by" 0 2 1 "base-type"])))]
+      (testing "count / distinct / cum-count / count-where → BigInteger"
+        (is (= "type/BigInteger" (type-of ["count" {}])))
+        (is (= "type/BigInteger" (type-of ["distinct" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]))))
+      (testing "avg / median / stddev / var / share → Float"
+        (is (= "type/Float" (type-of ["avg" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]])))
+        (is (= "type/Float" (type-of ["median" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]))))
+      (testing "sum / min / max inherit from inner field when annotated"
+        (is (= "type/Float"
+               (type-of ["sum" {} ["field" {"base-type" "type/Float"}
+                                   ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]))))
+      (testing "unknown head → type/*"
+        (is (= "type/*" (type-of ["some-new-agg-fn" {}])))))))
+
+(deftest aggregation-ref-multi-stage-same-stage-ref-test
+  (testing "a later stage can use integer agg-ref against its own aggregation list"
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                         {"lib/type"    "mbql.stage/mbql"
+                          "aggregation" [["avg" {} ["field" {"base-type" "type/BigInteger"} "count"]]]
+                          "order-by"    [["desc" {} ["aggregation" {} 0]]]}]}
+          repaired (repair/repair trivial-mp q)
+          stage1-agg-uuid (get-in repaired ["stages" 1 "aggregation" 0 1 "lib/uuid"])
+          stage1-ref-uuid (get-in repaired ["stages" 1 "order-by" 0 2 2])]
+      (is (uuid-string? stage1-agg-uuid))
+      (is (= stage1-agg-uuid stage1-ref-uuid))
+      (is (= "type/Float"
+             (get-in repaired ["stages" 1 "order-by" 0 2 1 "base-type"]))))))

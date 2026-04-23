@@ -285,6 +285,35 @@ stages:
 - Arithmetic operators must be quoted when they are YAML special characters: `'+'`, `'-'`, `'*'`, `'/'`. `concat`, `coalesce`, `case`, `substring`, etc. don't need quotes.
 - Reference the expression with `[expression, {}, "<Name>"]` — the same three-element shape as a field reference, but with `expression` as the clause head and the name (not a FK path) as the last slot.
 
+### Aggregation references
+
+You can refer to an aggregation you already wrote in the same stage — for example, from `order-by` to sort by a computed `sum` — in either of two forms:
+
+1. **Inline** — put the aggregation clause itself as the argument (simple, but duplicates the expression). `[desc, {}, [sum, {}, [field, {}, [..., TOTAL]]]]`
+2. **By 0-based index** (preferred when reused) — reference the aggregation by its position in the same stage's `aggregation:` list: `[aggregation, {}, 0]` means "the first aggregation".
+
+Both forms are rewritten to the same canonical MBQL 5 reference; the tool fills in `lib/uuid`, `base-type`, and `effective-type` for you.
+
+```yaml
+lib/type: mbql/query
+database: Sample
+stages:
+  - lib/type: mbql.stage/mbql
+    source-table: [Sample, PUBLIC, ORDERS]
+    aggregation:
+      - [sum, {}, [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]]  # index 0: sum(total)
+      - [count, {}]                                               # index 1: count
+    breakout:
+      - [field, {}, [Sample, PUBLIC, ORDERS, PRODUCT_ID]]
+    order-by:
+      - [desc, {}, [aggregation, {}, 0]]   # sort by sum(total) desc
+```
+
+**Rules:**
+
+- Index is 0-based and refers to the **same stage's** `aggregation:` list. Out-of-range indices produce a clear error listing each available aggregation with its index.
+- This form is for referring to an aggregation from `order-by`, `breakout`, or `filter` within the **same stage**. To filter a *later* stage by a previous stage's aggregation, use a cross-stage field reference by the aggregation's column name instead (see **Multi-stage queries** above): `[field, {}, "sum"]` in stage 2 refers to the `sum` column produced by stage 1.
+
 ## Rules and common mistakes
 
 - **Always include `{}` options in every clause**, even when empty. `[count]` is wrong — it must be `[count, {}]`.
@@ -299,6 +328,5 @@ stages:
 
 These are not yet available in this tool version; ignore them for now:
 - `source-card` (querying a saved question / model as a source)
-- Aggregation references with UUIDs
 
 If the user asks for something that requires one of these, explain the limitation and offer to construct a simpler version instead.

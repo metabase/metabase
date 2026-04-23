@@ -345,6 +345,174 @@
     (update query "stages" #(mapv rewrite-order-by-inline-aggs-in-stage %))))
 
 ;;; ============================================================
+;;; Pass 2.8 -- resolve integer-index aggregation references to UUID form
+;;;
+;;; LLM-authored queries commonly use a 0-based integer index to refer to an aggregation
+;;; from the same stage: `[aggregation, {}, 0]` means "the first aggregation in this stage".
+;;; This mirrors legacy MBQL 4 prior art (`[:aggregation 0]`, see `legacy_mbql/schema.cljc`)
+;;; and is far easier for the model to produce than a UUID-based ref.
+;;;
+;;; MBQL 5's canonical form is `[aggregation, {lib/uuid, base-type, effective-type, …},
+;;; "<uuid-string>"]` where the string in slot 2 is the `:lib/uuid` of the target
+;;; aggregation clause in the same stage. This pass walks each stage, builds an
+;;; index→uuid map over the stage's `aggregation:` vector (stamping a UUID on each agg
+;;; clause that lacks one), then rewrites every `[aggregation, opts, <int>]` clause to the
+;;; canonical form with `base-type`/`effective-type` inferred from the aggregation head.
+;;;
+;;; Same-stage refs only. Cross-stage aggregation references (a stage-N+1 `:aggregation`
+;;; ref pointing at a stage-N aggregation) are **out of scope** for this pass — pMBQL
+;;; actually forbids that shape; the correct downstream form is a cross-stage field ref by
+;;; the aggregation's column name, which Pass 4 handles once the column name is known.
+;;; An out-of-range or no-aggregations stage raises an `:agent-error?` ex-info with a
+;;; helpful message listing the available indices/heads.
+;;; ============================================================
+
+(defn- integer-index-agg-ref?
+  "True if `clause` is `[\"aggregation\", <opts>, <non-negative-int>]`."
+  [clause]
+  (and (vector? clause)
+       (= 3 (count clause))
+       (= "aggregation" (nth clause 0))
+       (map? (nth clause 1))
+       (let [idx (nth clause 2)]
+         (and (integer? idx) (not (neg? idx))))))
+
+(defn- inner-clause-field-base-type
+  "Best-effort inner-field type extraction for `sum`/`min`/`max` etc. Looks for a nested
+  `[\"field\" {\"base-type\" T, …} …]` clause; returns nil if none found."
+  [agg-clause]
+  (when (and (vector? agg-clause) (>= (count agg-clause) 3))
+    (let [inner (nth agg-clause 2)]
+      (when (and (vector? inner)
+                 (>= (count inner) 2)
+                 (= "field" (nth inner 0))
+                 (map? (nth inner 1)))
+        (get (nth inner 1) "base-type")))))
+
+(defn- infer-agg-base-type
+  "Return the string base-type for an aggregation clause. Small, intentionally inexact
+  lookup table keyed by clause head — this is a shape pass, not a resolver. Return values
+  are the string forms expected in the portable repair output.
+
+  Heads whose output type tracks an inner field (`sum`, `min`, `max`, etc) try to pull the
+  inner field's authored `base-type`; fall through to `type/*` if unknown."
+  [agg-clause]
+  (let [head (when (and (vector? agg-clause) (>= (count agg-clause) 1))
+               (nth agg-clause 0))]
+    (case head
+      ("count" "distinct" "cum-count" "count-where") "type/BigInteger"
+      ("avg" "median" "stddev" "var" "share")        "type/Float"
+      ("sum" "sum-where" "cum-sum" "min" "max")
+      (or (inner-clause-field-base-type agg-clause) "type/Float")
+      "type/*")))
+
+(defn- ensure-aggregation-uuids
+  "Walk the stage's aggregation vector, stamping `lib/uuid` into each clause's options map
+  when missing. Returns `[stamped-aggs index->uuid]` where `index->uuid` is a vector aligned
+  with the aggregation vector."
+  [aggs]
+  (reduce
+   (fn [[acc-aggs acc-uuids] agg]
+     (let [[stamped uuid] (ensure-aggregation-uuid agg)]
+       [(conj acc-aggs stamped) (conj acc-uuids uuid)]))
+   [[] []]
+   aggs))
+
+(defn- agg-heads-summary
+  "Return a short human-readable summary like `[sum at 0, count at 1]` for error messages."
+  [aggs]
+  (str "["
+       (str/join ", "
+                 (map-indexed (fn [i a]
+                                (let [head (when (and (vector? a) (>= (count a) 1))
+                                             (nth a 0))]
+                                  (str head " at " i)))
+                              aggs))
+       "]"))
+
+(defn- rewrite-integer-agg-refs-in-tree
+  "Postwalk `tree` replacing every integer-index aggregation ref with its canonical
+  UUID-keyed form. Uses `index->uuid` / `index->type` (both vectors aligned with the
+  stage's aggregation vector) for the rewrite. Throws agent-error ex-info on out-of-range.
+
+  Does NOT descend into the stage's own `aggregation:` vector; that's handled by the
+  caller (we don't want to rewrite a stray integer that legitimately means \"the number 0\"
+  inside an aggregation's args)."
+  [tree index->uuid index->type aggs-for-error]
+  (walk/postwalk
+   (fn [node]
+     (if (integer-index-agg-ref? node)
+       (let [[_ opts idx] node]
+         (if-let [uuid (get index->uuid idx)]
+           (let [inferred-type (get index->type idx)
+                 new-opts      (cond-> opts
+                                 (and inferred-type (not (contains? opts "base-type")))
+                                 (assoc "base-type" inferred-type)
+                                 (and inferred-type (not (contains? opts "effective-type")))
+                                 (assoc "effective-type" inferred-type))]
+             ["aggregation" new-opts uuid])
+           (throw (ex-info (tru "Aggregation index {0} out of range; stage has {1} aggregation(s): {2}"
+                                idx (count index->uuid) (agg-heads-summary aggs-for-error))
+                           {:agent-error? true
+                            :error        :aggregation-ref-out-of-range
+                            :index        idx
+                            :available    (count index->uuid)
+                            :heads        (mapv (fn [a] (when (vector? a) (first a))) aggs-for-error)}))))
+       node))
+   tree))
+
+(defn- stage-has-integer-agg-ref?
+  "Does `stage` contain any `[aggregation, {}, <int>]` clause anywhere? Used to decide
+  whether to complain about a missing `aggregation:` vector (if there are no integer refs
+  and no `aggregation:` block, it's a perfectly valid stage)."
+  [stage]
+  (let [found? (atom false)]
+    (walk/postwalk
+     (fn [n]
+       (when (integer-index-agg-ref? n) (reset! found? true))
+       n)
+     (dissoc stage "aggregation"))
+    @found?))
+
+(defn- resolve-integer-agg-refs-in-stage
+  "Resolve all integer-index aggregation refs in a single stage to canonical UUID form.
+  No-op when the stage has neither `aggregation:` nor any integer-indexed refs."
+  [stage]
+  (let [aggs (get stage "aggregation")]
+    (cond
+      ;; No integer refs anywhere in the stage — nothing to do.
+      (not (stage-has-integer-agg-ref? stage))
+      stage
+
+      ;; Integer ref(s) present but stage has no aggregation vector — agent-error.
+      (not (and (vector? aggs) (seq aggs)))
+      (throw (ex-info (tru "Found an integer-indexed aggregation reference but this stage has no `aggregation:` clause")
+                      {:agent-error? true
+                       :error        :aggregation-ref-no-aggregations}))
+
+      :else
+      (let [[stamped-aggs index->uuid] (ensure-aggregation-uuids aggs)
+            index->type                (mapv infer-agg-base-type stamped-aggs)
+            ;; Walk everything EXCEPT the `aggregation:` vector itself. We replace that
+            ;; vector with a sentinel during the walk and restore it after. (Simpler than
+            ;; implementing a custom non-descending walker.)
+            stage-wo-aggs              (assoc stage "aggregation" ::placeholder)
+            rewritten                  (rewrite-integer-agg-refs-in-tree
+                                        stage-wo-aggs index->uuid index->type stamped-aggs)]
+        (assoc rewritten "aggregation" stamped-aggs)))))
+
+(defn- resolve-aggregation-ref-indexes*
+  "Top-level pass: resolve 0-based integer `[aggregation, {}, <idx>]` references to the
+  canonical MBQL 5 `[aggregation, {lib/uuid, base-type, effective-type}, \"<uuid>\"]`
+  shape. See block comment above."
+  [query]
+  (if-not (and (map? query) (vector? (get query "stages")))
+    query
+    (let [stages (get query "stages")]
+      (log/debugf "[repr-repair] resolve-aggregation-ref-indexes*: %d stage(s)" (count stages))
+      (assoc query "stages" (mapv resolve-integer-agg-refs-in-stage stages)))))
+
+;;; ============================================================
 ;;; Pass 3 -- auto-wire `source-field` for implicit joins
 ;;;
 ;;; When a field clause references a field on a table *other* than the stage's
@@ -661,6 +829,9 @@
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
        referenced aggregation's `lib/uuid` if needed);
+    3.5. resolve 0-based integer aggregation references (`[aggregation, {}, <int>]`) in a
+       stage to the canonical UUID-keyed MBQL 5 form, stamping `lib/uuid` on the target
+       aggregation clause and `base-type`/`effective-type` on the ref's options;
     4. auto-wire `source-field` on field clauses that reference a foreign table via a single
        unambiguous FK on the source table (implicit-join resolution);
     5. infer `base-type` / `effective-type` on cross-stage field references
@@ -688,5 +859,6 @@
   (-> parsed
       normalize-shape*
       rewrite-order-by-inline-aggs*
+      resolve-aggregation-ref-indexes*
       (resolve-implicit-joins* mp)
       (infer-cross-stage-field-types* mp)))
