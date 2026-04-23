@@ -68,7 +68,7 @@ describe("URLs", () => {
 
   it("should avoid generating URLs with transient IDs", () => {
     const question = new Question(
-      assoc(orders_raw_card, "id", "foo"),
+      { ...orders_raw_card, id: "foo", original_card_id: "bar" },
       metadata,
     );
 
