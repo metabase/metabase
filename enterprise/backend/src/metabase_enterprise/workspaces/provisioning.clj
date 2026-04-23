@@ -24,29 +24,31 @@
            (str "wsd-" workspace-database-id)))
 
 (defn provision-workspace-database!
-  "Provision an isolated output schema and user for an already-existing
-  `:unprovisioned` `WorkspaceDatabase` row, using driver-level primitives. Grants
-  the provisioned user read access on the row's `:input_schemas` and write access
-  on the new output schema. State transitions: `:unprovisioned` -> `:provisioning`
-  (before any driver call) -> `:provisioned` on success, or back to `:unprovisioned`
-  on failure (with warehouse-side cleanup via `destroy-workspace-isolation!`).
-  Throws unless the row is currently `:unprovisioned`. Returns the updated row.
+  "Provision an isolated output schema and user for a `:provisioning`
+  `WorkspaceDatabase` row, using driver-level primitives. Grants the provisioned
+  user read access on the row's `:input_schemas` and write access on the new
+  output schema. State transitions: `:provisioning` -> `:provisioned` on
+  success, or back to `:unprovisioned` on failure (with warehouse-side cleanup
+  via `destroy-workspace-isolation!`). Throws unless the row is currently
+  `:provisioning`. Returns the updated row.
+
+  The caller ([[provision-workspace!]]) is responsible for flipping the row
+  from `:unprovisioned` to `:provisioning` synchronously before scheduling this
+  per-row work — that way an API caller observes the in-progress state
+  immediately, without racing the background thread.
 
   Holds an appdb cluster-lock keyed on `workspace-database-id` for the duration of
   the warehouse-side work so concurrent provision attempts on the same row
-  serialize safely (any later caller sees a non-`:unprovisioned` status and throws)."
+  serialize safely (any later caller sees a non-`:provisioning` status and throws)."
   [workspace-database-id]
   (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key workspace-database-id)
                                    :timeout-seconds provisioning-lock-timeout-seconds}
     (let [wsd (t2/select-one :model/WorkspaceDatabase :id workspace-database-id)]
       (when-not wsd
         (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
-      (when-not (= :unprovisioned (:status wsd))
-        (throw (ex-info "WorkspaceDatabase must be :unprovisioned to provision"
+      (when-not (= :provisioning (:status wsd))
+        (throw (ex-info "WorkspaceDatabase must be :provisioning to provision"
                         {:id workspace-database-id :status (:status wsd)})))
-      (t2/update! :model/WorkspaceDatabase
-                  {:id workspace-database-id}
-                  {:status :provisioning})
       (try
         (let [db          (t2/select-one :model/Database :id (:database_id wsd))
               driver      (driver.u/database->driver db)
@@ -72,13 +74,15 @@
       (t2/select-one :model/WorkspaceDatabase :id workspace-database-id))))
 
 (defn provision-workspace-databases!
-  "Synchronously provision every `:unprovisioned` WorkspaceDatabase under `workspace-id`.
-  Each row is attempted independently; per-row exceptions are logged and swallowed so a
-  single failure does not block the rest of the batch."
+  "Synchronously provision every `:provisioning` WorkspaceDatabase under `workspace-id`.
+  Rows are expected to have been flipped from `:unprovisioned` to `:provisioning` by
+  [[provision-workspace!]] before this runs. Each row is attempted independently;
+  per-row exceptions are logged and swallowed so a single failure does not block
+  the rest of the batch."
   [workspace-id]
   (doseq [{:keys [id]} (t2/select [:model/WorkspaceDatabase :id]
                                   :workspace_id workspace-id
-                                  :status       :unprovisioned)]
+                                  :status       :provisioning)]
     (try
       (provision-workspace-database! id)
       (catch Throwable t
@@ -93,34 +97,42 @@
   (future (f)))
 
 (defn provision-workspace!
-  "Kick off async provisioning for every `:unprovisioned` WorkspaceDatabase under
-  `workspace-id`. Returns the number of rows that were scheduled."
+  "Flip every `:unprovisioned` WorkspaceDatabase under `workspace-id` to
+  `:provisioning` synchronously, then kick off async provisioning for those
+  rows. Returns the number of rows that were flipped (and therefore scheduled).
+
+  Flipping synchronously before returning is what lets the HTTP caller observe
+  the in-progress state on its very next `GET /ee/workspace/:id` — otherwise the
+  refetch would race the background thread and usually win, clobbering the
+  optimistic UI state."
   [workspace-id]
-  (let [pending-count (t2/count :model/WorkspaceDatabase
-                                :workspace_id workspace-id
-                                :status       :unprovisioned)]
-    (run-async! (fn [] (provision-workspace-databases! workspace-id)))
-    pending-count))
+  (let [triggered (t2/update! :model/WorkspaceDatabase
+                              {:workspace_id workspace-id :status :unprovisioned}
+                              {:status :provisioning})]
+    (when (pos? triggered)
+      (run-async! (fn [] (provision-workspace-databases! workspace-id))))
+    triggered))
 
 (defn unprovision-workspace-database!
-  "Reverse provisioning for a `:provisioned` WorkspaceDatabase. State transitions:
-  `:provisioned` -> `:unprovisioning` (before driver call) -> `:unprovisioned` on
-  success (with empty `:database_details` / `:output_schema`), or back to
-  `:provisioned` on failure so the admin can retry. Throws unless the row is
-  `:provisioned`. Returns the updated row. Takes the same cluster-lock as
-  [[provision-workspace-database!]]."
+  "Reverse provisioning for an `:unprovisioning` WorkspaceDatabase. State
+  transitions: `:unprovisioning` -> `:unprovisioned` on success (with empty
+  `:database_details` / `:output_schema`), or back to `:provisioned` on failure
+  so the admin can retry. Throws unless the row is `:unprovisioning`. Returns
+  the updated row. Takes the same cluster-lock as
+  [[provision-workspace-database!]].
+
+  The caller ([[unprovision-workspace!]]) is responsible for flipping the row
+  from `:provisioned` to `:unprovisioning` synchronously before scheduling this
+  per-row work."
   [workspace-database-id]
   (cluster-lock/with-cluster-lock {:lock            (wsd-lock-key workspace-database-id)
                                    :timeout-seconds provisioning-lock-timeout-seconds}
     (let [wsd (t2/select-one :model/WorkspaceDatabase :id workspace-database-id)]
       (when-not wsd
         (throw (ex-info "WorkspaceDatabase not found" {:id workspace-database-id})))
-      (when-not (= :provisioned (:status wsd))
-        (throw (ex-info "WorkspaceDatabase must be :provisioned to unprovision"
+      (when-not (= :unprovisioning (:status wsd))
+        (throw (ex-info "WorkspaceDatabase must be :unprovisioning to unprovision"
                         {:id workspace-database-id :status (:status wsd)})))
-      (t2/update! :model/WorkspaceDatabase
-                  {:id workspace-database-id}
-                  {:status :unprovisioning})
       (try
         (let [db        (t2/select-one :model/Database :id (:database_id wsd))
               driver    (driver.u/database->driver db)
@@ -142,24 +154,29 @@
       (t2/select-one :model/WorkspaceDatabase :id workspace-database-id))))
 
 (defn unprovision-workspace-databases!
-  "Synchronously unprovision every `:provisioned` WorkspaceDatabase under
-  `workspace-id`. Per-row exceptions are logged and swallowed so one failure
-  does not block the rest of the batch."
+  "Synchronously unprovision every `:unprovisioning` WorkspaceDatabase under
+  `workspace-id`. Rows are expected to have been flipped from `:provisioned` to
+  `:unprovisioning` by [[unprovision-workspace!]] before this runs. Per-row
+  exceptions are logged and swallowed so one failure does not block the rest
+  of the batch."
   [workspace-id]
   (doseq [{:keys [id]} (t2/select [:model/WorkspaceDatabase :id]
                                   :workspace_id workspace-id
-                                  :status       :provisioned)]
+                                  :status       :unprovisioning)]
     (try
       (unprovision-workspace-database! id)
       (catch Throwable t
         (log/warnf t "Failed to unprovision WorkspaceDatabase %s" id)))))
 
 (defn unprovision-workspace!
-  "Kick off async unprovisioning for every `:provisioned` WorkspaceDatabase
-  under `workspace-id`. Returns the number of rows that were scheduled."
+  "Flip every `:provisioned` WorkspaceDatabase under `workspace-id` to
+  `:unprovisioning` synchronously, then kick off async unprovisioning for
+  those rows. Returns the number of rows that were flipped (and therefore
+  scheduled). See [[provision-workspace!]] for why the flip is synchronous."
   [workspace-id]
-  (let [pending-count (t2/count :model/WorkspaceDatabase
-                                :workspace_id workspace-id
-                                :status       :provisioned)]
-    (run-async! (fn [] (unprovision-workspace-databases! workspace-id)))
-    pending-count))
+  (let [triggered (t2/update! :model/WorkspaceDatabase
+                              {:workspace_id workspace-id :status :provisioned}
+                              {:status :unprovisioning})]
+    (when (pos? triggered)
+      (run-async! (fn [] (unprovision-workspace-databases! workspace-id))))
+    triggered))

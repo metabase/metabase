@@ -26,7 +26,8 @@
                     :database_id      (mt/id)
                     :database_details {}
                     :output_schema    ""
-                    :input_schemas    ["sales" "finance"]}]
+                    :input_schemas    ["sales" "finance"]
+                    :status           :provisioning}]
       (let [grant-calls   (atom [])
             destroy-calls (atom [])]
         (with-redefs [driver/init-workspace-isolation!   (stub-init "mb_isolation_xyz" {:user "wsd_user" :password "pw"})
@@ -57,7 +58,8 @@
                     :database_id      (mt/id)
                     :database_details {}
                     :output_schema    ""
-                    :input_schemas    ["public"]}]
+                    :input_schemas    ["public"]
+                    :status           :provisioning}]
       (let [destroy-calls (atom [])]
         (with-redefs [driver/init-workspace-isolation!    (stub-init "mb_isolation_doomed" {:user "u" :password "p"})
                       driver/grant-workspace-read-access! (throwing "grant exploded")
@@ -92,14 +94,14 @@
           (is (thrown? Exception (provisioning/provision-workspace-database! wsd-id)))
           (is (empty? @init-calls)))))))
 
-(deftest provision-workspace-databases-runs-every-uninitialized-row-test
-  (testing "provision-workspace-databases! provisions every :unprovisioned row and skips :provisioned ones"
+(deftest provision-workspace-databases-runs-every-provisioning-row-test
+  (testing "provision-workspace-databases! provisions every :provisioning row and skips :provisioned ones"
     (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}
                    :model/Workspace {ws-id :id} {:name "WS"}
-                   :model/WorkspaceDatabase {uninit-id :id}
+                   :model/WorkspaceDatabase {pending-id :id}
                    {:workspace_id ws-id :database_id (mt/id)
                     :database_details {} :output_schema "" :input_schemas ["a"]
-                    :status :unprovisioned}
+                    :status :provisioning}
                    :model/WorkspaceDatabase {already-id :id}
                    {:workspace_id ws-id :database_id db2-id
                     :database_details {:user "x"} :output_schema "done" :input_schemas ["b"]
@@ -108,7 +110,7 @@
         (with-redefs [provisioning/provision-workspace-database!
                       (fn [id] (swap! calls conj id) nil)]
           (provisioning/provision-workspace-databases! ws-id)
-          (is (= [uninit-id] @calls))
+          (is (= [pending-id] @calls))
           (is (not (some #{already-id} @calls))))))))
 
 (deftest provision-workspace-databases-isolates-failures-test
@@ -118,11 +120,11 @@
                    :model/WorkspaceDatabase {wsd-a :id}
                    {:workspace_id ws-id :database_id (mt/id)
                     :database_details {} :output_schema "" :input_schemas ["a"]
-                    :status :unprovisioned}
+                    :status :provisioning}
                    :model/WorkspaceDatabase {wsd-b :id}
                    {:workspace_id ws-id :database_id db2-id
                     :database_details {} :output_schema "" :input_schemas ["b"]
-                    :status :unprovisioned}]
+                    :status :provisioning}]
       (let [attempted (atom [])]
         (with-redefs [provisioning/provision-workspace-database!
                       (fn [id]
@@ -141,7 +143,7 @@
                     :database_details {:user "wsd_u" :password "wsd_p"}
                     :output_schema    "mb_isolation_xyz"
                     :input_schemas    ["public"]
-                    :status           :provisioned}]
+                    :status           :unprovisioning}]
       (let [destroy-calls (atom [])]
         (with-redefs [driver/destroy-workspace-isolation! (record-call destroy-calls)]
           (let [returned (provisioning/unprovision-workspace-database! wsd-id)
@@ -172,14 +174,14 @@
           (is (thrown? Exception (provisioning/unprovision-workspace-database! wsd-id)))
           (is (empty? @destroy-calls)))))))
 
-(deftest unprovision-workspace-databases-skips-uninitialized-test
-  (testing "unprovision-workspace-databases! calls the per-row fn only for :provisioned rows"
+(deftest unprovision-workspace-databases-runs-every-unprovisioning-row-test
+  (testing "unprovision-workspace-databases! calls the per-row fn only for :unprovisioning rows"
     (mt/with-temp [:model/Database {db2-id :id} {:engine :h2 :details {}}
                    :model/Workspace {ws-id :id} {:name "WS"}
-                   :model/WorkspaceDatabase {init-id :id}
+                   :model/WorkspaceDatabase {pending-id :id}
                    {:workspace_id ws-id :database_id (mt/id)
                     :database_details {:user "x"} :output_schema "done" :input_schemas ["a"]
-                    :status :provisioned}
+                    :status :unprovisioning}
                    :model/WorkspaceDatabase {uninit-id :id}
                    {:workspace_id ws-id :database_id db2-id
                     :database_details {} :output_schema "" :input_schemas ["b"]
@@ -188,7 +190,7 @@
         (with-redefs [provisioning/unprovision-workspace-database!
                       (fn [id] (swap! calls conj id) nil)]
           (provisioning/unprovision-workspace-databases! ws-id)
-          (is (= [init-id] @calls))
+          (is (= [pending-id] @calls))
           (is (not (some #{uninit-id} @calls))))))))
 
 (deftest unprovision-workspace-databases-isolates-failures-test
@@ -198,11 +200,11 @@
                    :model/WorkspaceDatabase {wsd-a :id}
                    {:workspace_id ws-id :database_id (mt/id)
                     :database_details {:user "a"} :output_schema "sa" :input_schemas ["a"]
-                    :status :provisioned}
+                    :status :unprovisioning}
                    :model/WorkspaceDatabase {wsd-b :id}
                    {:workspace_id ws-id :database_id db2-id
                     :database_details {:user "b"} :output_schema "sb" :input_schemas ["b"]
-                    :status :provisioned}]
+                    :status :unprovisioning}]
       (let [attempted (atom [])]
         (with-redefs [provisioning/unprovision-workspace-database!
                       (fn [id]
@@ -228,7 +230,8 @@
                     :database_id      (mt/id)
                     :database_details {}
                     :output_schema    ""
-                    :input_schemas    ["public"]}]
+                    :input_schemas    ["public"]
+                    :status           :provisioning}]
       (let [first-call-in-flight (CountDownLatch. 1)
             first-call-release   (CountDownLatch. 1)
             init-count           (atom 0)]
@@ -276,7 +279,7 @@
                 (is (= :provisioned (:status s))
                     "the winner's returned row must reflect the :provisioned state"))
               (when-let [f (first failures)]
-                (is (re-find #"must be :unprovisioned" (str (ex-message f)))
+                (is (re-find #"must be :provisioning" (str (ex-message f)))
                     "the loser's error must cite the state precondition — not a lock timeout or unrelated failure")))
             (is (= 1 @init-count)
                 "init-workspace-isolation! ran exactly once — the loser's status check (re-done under the lock) caught the state change and aborted before touching the warehouse")))))))
