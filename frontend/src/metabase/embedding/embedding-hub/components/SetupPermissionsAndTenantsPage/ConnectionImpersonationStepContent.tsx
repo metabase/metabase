@@ -1,3 +1,5 @@
+/* eslint-disable metabase/no-literal-metabase-strings -- This string only shows for admins */
+
 import { useCallback, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
