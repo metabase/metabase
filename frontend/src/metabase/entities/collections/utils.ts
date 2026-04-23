@@ -82,6 +82,7 @@ export interface CollectionTreeItem extends Collection {
   icon: IconName | IconProps;
   children: CollectionTreeItem[];
   schemaName?: string;
+  nonNavigable?: boolean;
 }
 
 export function buildCollectionTree(

@@ -6,6 +6,7 @@ export interface ITreeNodeItem<TData = unknown> {
   icon: IconName | IconProps;
   children?: ITreeNodeItem<TData>[];
   data?: TData;
+  nonNavigable?: boolean;
 }
 
 export interface TreeNodeProps<TData = unknown> {

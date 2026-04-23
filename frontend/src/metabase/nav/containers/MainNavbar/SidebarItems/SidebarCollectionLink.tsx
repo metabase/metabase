@@ -18,6 +18,7 @@ import type { Collection } from "metabase-types/api";
 import {
   CollectionNodeRoot,
   ExpandToggleButton,
+  FullWidthContainer,
   FullWidthLink,
   NameContainer,
   SidebarIcon,
@@ -30,6 +31,7 @@ type DroppableProps = {
 
 type Props = DroppableProps &
   Omit<TreeNodeProps, "item"> & {
+    nonNavigable?: boolean;
     collection: Collection;
   };
 
@@ -39,6 +41,7 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
   function SidebarCollectionLink(
     {
       collection,
+      nonNavigable,
       hovered: isHovered,
       depth,
       onSelect,
@@ -96,6 +99,16 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
       collection as unknown as Collection,
     );
 
+    const content = (
+      <>
+        <TreeNode.IconContainer transparent={false}>
+          <SidebarIcon {...icon} isSelected={isSelected} />
+        </TreeNode.IconContainer>
+        <NameContainer>{collection.name}</NameContainer>
+        {rightSection?.(collection as unknown as ITreeNodeItem)}
+      </>
+    );
+
     return (
       <CollectionNodeRoot
         role="treeitem"
@@ -114,13 +127,15 @@ const SidebarCollectionLink = forwardRef<HTMLLIElement, Props>(
             size={12}
           />
         </ExpandToggleButton>
-        <FullWidthLink to={url} onClick={onSelect} onKeyDown={onKeyDown}>
-          <TreeNode.IconContainer transparent={false}>
-            <SidebarIcon {...icon} isSelected={isSelected} />
-          </TreeNode.IconContainer>
-          <NameContainer>{collection.name}</NameContainer>
-          {rightSection?.(collection as unknown as ITreeNodeItem)}
-        </FullWidthLink>
+        {nonNavigable ? (
+          <FullWidthContainer onKeyDown={onKeyDown}>
+            {content}
+          </FullWidthContainer>
+        ) : (
+          <FullWidthLink to={url} onClick={onSelect} onKeyDown={onKeyDown}>
+            {content}
+          </FullWidthLink>
+        )}
       </CollectionNodeRoot>
     );
   },
@@ -132,18 +147,27 @@ const DroppableSidebarCollectionLink = forwardRef<HTMLLIElement, TreeNodeProps>(
     ref,
   ) {
     const collection = item as unknown as Collection;
+
+    const link = (droppableProps?: DroppableProps) => (
+      <SidebarCollectionLink
+        {...props}
+        hovered={droppableProps?.hovered ?? false}
+        highlighted={droppableProps?.highlighted ?? false}
+        collection={collection}
+        nonNavigable={item.nonNavigable}
+        ref={ref}
+      />
+    );
+
     return (
       <div data-testid="sidebar-collection-link-root">
-        <CollectionDropTarget collection={collection}>
-          {(droppableProps: DroppableProps) => (
-            <SidebarCollectionLink
-              {...props}
-              {...droppableProps}
-              collection={collection}
-              ref={ref}
-            />
-          )}
-        </CollectionDropTarget>
+        {item.nonNavigable ? (
+          link()
+        ) : (
+          <CollectionDropTarget collection={collection}>
+            {(droppableProps: DroppableProps) => link(droppableProps)}
+          </CollectionDropTarget>
+        )}
       </div>
     );
   },
