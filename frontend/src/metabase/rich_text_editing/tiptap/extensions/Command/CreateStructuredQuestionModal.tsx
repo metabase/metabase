@@ -2,11 +2,9 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  createDraftCard,
-  generateDraftCardId,
-  loadMetadataForDocumentCard,
-} from "metabase/documents/documents.slice";
+import { useCreateDocumentCardMutation } from "metabase/api/document";
+import { loadMetadataForDocumentCard } from "metabase/documents/documents.slice";
+import { getCurrentDocument } from "metabase/documents/selectors";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -28,6 +26,9 @@ export const CreateStructuredQuestionModal = ({
 }: CreateQuestionModalProps) => {
   const store = useStore();
   const dispatch = useDispatch();
+  const document = useSelector(getCurrentDocument);
+  const [createDocumentCard, { isLoading: isSaving }] =
+    useCreateDocumentCardMutation();
 
   const [modifiedQuestion, setModifiedQuestion] = useState<Question>(() =>
     Question.create(),
@@ -71,39 +72,30 @@ export const CreateStructuredQuestionModal = ({
   };
 
   const handleSaveStructuredQuestion = async () => {
+    if (!document) {
+      return;
+    }
     try {
       const name =
         modifiedQuestion.displayName() ||
         modifiedQuestion.generateQueryDescription() ||
         "";
 
-      const dataset_query = modifiedQuestion.datasetQuery();
-
       const questionWithDefaultDisplay = modifiedQuestion.setDefaultDisplay();
 
-      const modifiedData = {
+      const card = await createDocumentCard({
+        document_id: document.id,
         name,
-        database_id: dataset_query.database || undefined,
-        dataset_query: dataset_query,
+        dataset_query: modifiedQuestion.datasetQuery(),
         display: questionWithDefaultDisplay.display(),
-        settings: questionWithDefaultDisplay.settings(),
         visualization_settings:
           questionWithDefaultDisplay.card().visualization_settings ?? {},
-      };
-      const newCardId = generateDraftCardId();
+      }).unwrap();
 
-      dispatch(
-        createDraftCard({
-          originalCard: undefined,
-          modifiedData,
-          draftId: newCardId,
-        }),
-      );
-
-      onSave(newCardId, name);
+      onSave(card.id, name);
       onClose();
     } catch (error) {
-      console.error("Failed to save modified question:", error);
+      console.error("Failed to save new question:", error);
     }
   };
 
@@ -132,7 +124,8 @@ export const CreateStructuredQuestionModal = ({
         </Button>
         <Button
           variant="filled"
-          disabled={!canSave}
+          disabled={!canSave || isSaving || !document}
+          loading={isSaving}
           onClick={handleSaveStructuredQuestion}
         >
           {t`Save and use`}

@@ -1,15 +1,24 @@
 import type { NodeViewProps } from "@tiptap/core";
 import { useCallback } from "react";
 
+import { useUpdateCardMutation } from "metabase/api/card";
+import { useCreateDocumentCardMutation } from "metabase/api/document";
 import { navigateToCardFromDocument } from "metabase/documents/actions";
-import { updateVizSettings } from "metabase/documents/documents.slice";
 import type { UseCardDataResult } from "metabase/documents/hooks/use-card-data";
-import { useDraftCardOperations } from "metabase/documents/hooks/use-draft-card-operations";
+import {
+  stampCardEmbedUpdated,
+  updateCardEmbedNodeId,
+} from "metabase/documents/utils/editorNodeUtils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";
-import type { Card, Document, VisualizationSettings } from "metabase-types/api";
+import type {
+  Card,
+  CardDisplayType,
+  Document,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 export const useUpdateCardOperations = ({
   document,
@@ -17,7 +26,6 @@ export const useUpdateCardOperations = ({
   regularCardData,
   editor,
   embedIndex,
-  cardId,
 }: {
   document: Document | null;
   question: Question | undefined;
@@ -29,16 +37,10 @@ export const useUpdateCardOperations = ({
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
 
-  const { card, draftCard, regularDataset } = regularCardData;
+  const { card } = regularCardData;
 
-  const { ensureDraftCard } = useDraftCardOperations(
-    draftCard,
-    card,
-    cardId,
-    editor,
-    embedIndex,
-    regularDataset,
-  );
+  const [updateCard] = useUpdateCardMutation();
+  const [createDocumentCard] = useCreateDocumentCardMutation();
 
   // Handle drill-through navigation
   const handleChangeCardAndRun = useCallback(
@@ -80,25 +82,36 @@ export const useUpdateCardOperations = ({
   );
 
   const handleUpdateVisualizationSettings = useCallback(
-    (settings: VisualizationSettings) => {
-      if (embedIndex !== null) {
-        if (!draftCard) {
-          const baseCard = card;
-          const newSettings = {
-            ...baseCard?.visualization_settings,
-            ...settings,
-          };
-          const actualCardId = ensureDraftCard(
-            { visualization_settings: newSettings },
-            true,
-          );
-          dispatch(updateVizSettings({ cardId: actualCardId, settings }));
+    async (settings: VisualizationSettings) => {
+      if (!card || !document || embedIndex === null) {
+        return;
+      }
+      const nextSettings = {
+        ...card.visualization_settings,
+        ...settings,
+      };
+      try {
+        if (card.document_id === document.id && card.id != null) {
+          await updateCard({
+            id: card.id,
+            visualization_settings: nextSettings,
+          }).unwrap();
+          stampCardEmbedUpdated(editor, embedIndex);
         } else {
-          dispatch(updateVizSettings({ cardId, settings }));
+          const created = await createDocumentCard({
+            document_id: document.id,
+            name: card.name,
+            dataset_query: card.dataset_query,
+            display: card.display as CardDisplayType,
+            visualization_settings: nextSettings,
+          }).unwrap();
+          updateCardEmbedNodeId(editor, embedIndex, created.id);
         }
+      } catch (error) {
+        console.error("Failed to update visualization settings:", error);
       }
     },
-    [card, cardId, dispatch, draftCard, embedIndex, ensureDraftCard],
+    [card, document, embedIndex, editor, updateCard, createDocumentCard],
   );
 
   const handleUpdateQuestion = useCallback(() => {

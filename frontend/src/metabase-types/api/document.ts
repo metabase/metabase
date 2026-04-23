@@ -9,6 +9,8 @@ export type DocumentContent = JSONContent;
 
 export type Document = {
   id: DocumentId;
+  /** 21-char NanoID — stable across rename; used as the doc-name suffix in the collab WS protocol. */
+  entity_id: string;
   creator: BaseUser;
   document: DocumentContent;
   name: string;

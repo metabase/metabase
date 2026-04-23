@@ -5,6 +5,7 @@ import { createMockUser } from "./user";
 
 export const createMockDocument = (opts?: Partial<Document>): Document => ({
   id: 1,
+  entity_id: "abcdefghijklmnopqrstu",
   name: "Test Document",
   creator: createMockUser(),
   creator_id: 1,

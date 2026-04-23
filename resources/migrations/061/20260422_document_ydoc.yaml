@@ -1,0 +1,25 @@
+## Document collab (Y-CRDT) — binary state column on document
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.2026-04-22T00:00:00
+      author: edpaget
+      comment: Add document.ydoc binary column for Y-CRDT collaborative editing state
+      changes:
+        - addColumn:
+            tableName: document
+            columns:
+              - column:
+                  name: ydoc
+                  type: ${blob.type}
+                  constraints:
+                    nullable: true
+                  remarks: >-
+                    Binary Y-CRDT (yhocuspocus) state vector. Authoritative
+                    during live collab sessions. The `document` JSON column
+                    remains authoritative for viewers and search until the
+                    ProseMirror dual-write lands.
+      rollback:
+        - dropColumn:
+            tableName: document
+            columnName: ydoc

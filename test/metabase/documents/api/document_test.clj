@@ -337,379 +337,6 @@
           (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
           (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id)))))))))
 
-(deftest post-document-with-cards-to-create-test
-  (testing "POST /api/document/ - create document with new cards via cards"
-    (mt/with-model-cleanup [:model/Document :model/Card]
-      (mt/with-temp [:model/Collection {col-id :id} {}]
-        (let [cards-to-create {-1 {:name "Generated Card 1"
-                                   :type :question
-                                   :dataset_query (mt/mbql-query venues)
-                                   :display :table
-                                   :visualization_settings {}}
-                               -2 {:name "Generated Card 2"
-                                   :type :question
-                                   :dataset_query (mt/mbql-query users)
-                                   :display :scalar
-                                   :visualization_settings {}}}
-              result (mt/user-http-request :crowberto
-                                           :post 200 "document/"
-                                           {:name "Document with Generated Cards"
-                                            :document {:type "doc"
-                                                       :content [{:type "cardEmbed"
-                                                                  :attrs {:id -1
-                                                                          :name nil}},
-                                                                 {:type "cardEmbed"
-                                                                  :attrs {:id -2
-                                                                          :name nil}}
-                                                                 {:type "paragraph"}]}
-                                            :collection_id col-id
-                                            :cards cards-to-create})]
-
-          (testing "should create document successfully"
-            (is (pos? (:id result)))
-            (is (= "Document with Generated Cards" (:name result))))
-
-          (testing "should create cards with correct properties"
-            (let [created-cards (t2/select :model/Card :document_id (:id result))
-                  card1 (first (filter #(= "Generated Card 1" (:name %)) created-cards))
-                  card2 (first (filter #(= "Generated Card 2" (:name %)) created-cards))]
-
-              (testing "should have created exactly 2 cards"
-                (is (= 2 (count created-cards))))
-
-              (testing "card1 inherits document's collection_id"
-                (is (some? card1))
-                (is (= "Generated Card 1" (:name card1)))
-                (is (= :question (:type card1)))
-                (is (= (:id result) (:document_id card1)))
-                (is (= col-id (:collection_id card1))))
-
-              (testing "card2 uses explicit collection_id"
-                (is (some? card2))
-                (is (= "Generated Card 2" (:name card2)))
-                (is (= :question (:type card2)))
-                (is (= (:id result) (:document_id card2)))
-                (is (= col-id (:collection_id card2))))
-
-              (testing "should update the doc with the substituted card ids"
-                (let [[card1-embed card2-embed] (get-in result [:document :content])]
-                  (is (= (:id card1)
-                         (get-in card1-embed [:attrs :id])))
-                  (is (= (:id card2)
-                         (get-in card2-embed [:attrs :id])))))))
-
-          (testing "document should have correct properties"
-            (let [document (t2/select-one :model/Document :id (:id result))]
-              (is (= "Document with Generated Cards" (:name document)))
-              (is (= col-id (:collection_id document))))))))))
-
-(deftest post-document-with-empty-cards-to-create-test
-  (testing "POST /api/document/ - handle empty cards gracefully"
-    (mt/with-model-cleanup [:model/Document]
-      (let [result (mt/user-http-request :crowberto
-                                         :post 200 "document/"
-                                         {:name "Document with Empty Cards To Create"
-                                          :document (documents.test-util/text->prose-mirror-ast "Doc with empty cards")
-                                          :cards {}})]
-        (is (pos? (:id result)))))))
-
-(deftest post-document-with-nil-cards-to-create-test
-  (testing "POST /api/document/ - handle nil cards gracefully"
-    (mt/with-model-cleanup [:model/Document]
-      (let [result (mt/user-http-request :crowberto
-                                         :post 200 "document/"
-                                         {:name "Document with Nil Cards To Create"
-                                          :document (documents.test-util/text->prose-mirror-ast "Doc with nil cards")
-                                          :cards nil})]
-        (is (pos? (:id result)))))))
-
-(deftest put-document-with-cards-to-create-test
-  (testing "PUT /api/document/:id - update document with new cards via cards"
-    (mt/with-temp [:model/Collection {col-id :id} {}
-                   :model/Document {document-id :id} {:name "Test Document"
-                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")
-                                                      :collection_id col-id}]
-      (let [cards-to-create {-10 {:name "Updated Generated Card 1"
-                                  :type :question
-                                  :dataset_query (mt/mbql-query venues)
-                                  :display :table
-                                  :visualization_settings {}}
-                             -20 {:name "Updated Generated Card 2"
-                                  :type :question
-                                  :dataset_query (mt/mbql-query users)
-                                  :display :bar
-                                  :visualization_settings {}}}
-            result (mt/user-http-request :crowberto
-                                         :put 200 (format "document/%s" document-id)
-                                         {:name "Updated Document with Generated Cards"
-                                          :document {:type "doc"
-                                                     :content [{:type "cardEmbed"
-                                                                :attrs {:id -10
-                                                                        :name nil}},
-                                                               {:type "cardEmbed"
-                                                                :attrs {:id -20
-                                                                        :name nil}}
-                                                               {:type "paragraph"}]}
-                                          :collection_id col-id
-                                          :cards cards-to-create})]
-
-        (testing "should update document successfully"
-          (is (= document-id (:id result)))
-          (is (= "Updated Document with Generated Cards" (:name result)))
-          (is (= col-id (:collection_id result))))
-
-        (testing "should create cards with correct properties"
-          (let [created-cards (t2/select :model/Card :document_id document-id)
-                card1 (first (filter #(= "Updated Generated Card 1" (:name %)) created-cards))
-                card2 (first (filter #(= "Updated Generated Card 2" (:name %)) created-cards))]
-
-            (testing "should have created exactly 2 cards"
-              (is (= 2 (count created-cards))))
-
-            (testing "card1 inherits document's updated collection_id"
-              (is (some? card1))
-              (is (= "Updated Generated Card 1" (:name card1)))
-              (is (= :question (:type card1)))
-              (is (= document-id (:document_id card1)))
-              (is (= col-id (:collection_id card1))))
-
-            (testing "card2 uses explicit collection_id"
-              (is (some? card2))
-              (is (= "Updated Generated Card 2" (:name card2)))
-              (is (= :question (:type card2)))
-              (is (= document-id (:document_id card2)))
-              (is (= col-id (:collection_id card2))))
-
-            (testing "should update the doc with the substituted card ids"
-              (let [[card1-embed card2-embed] (get-in result [:document :content])]
-                (is (= (:id card1)
-                       (get-in card1-embed [:attrs :id])))
-                (is (= (:id card2)
-                       (get-in card2-embed [:attrs :id])))))))
-
-        (testing "document should have updated properties"
-          (let [document (t2/select-one :model/Document :id document-id)]
-            (is (= "Updated Document with Generated Cards" (:name document)))
-            (is (= col-id (:collection_id document)))))))))
-
-(deftest cards-to-create-schema-validation-test
-  (testing "POST /api/document/ - cards schema validation"
-    (mt/with-model-cleanup [:model/Document]
-      (testing "should reject non-negative integer keys"
-        (mt/user-http-request :crowberto
-                              :post 400 "document/"
-                              {:name "Document with Invalid Keys"
-                               :document (documents.test-util/text->prose-mirror-ast "Doc")
-                               :cards {1 {:name "Invalid Key Card"
-                                          :type :question
-                                          :dataset_query (mt/mbql-query venues)
-                                          :display :table
-                                          :visualization_settings {}}}}))
-
-      (testing "should reject missing required card fields"
-        (mt/user-http-request :crowberto
-                              :post 400 "document/"
-                              {:name "Document with Invalid Card"
-                               :document (documents.test-util/text->prose-mirror-ast "Doc")
-                               :cards {-1 {:name "Incomplete Card"}}})) ; missing required fields
-
-      (testing "should reject non-map card data"
-        (mt/user-http-request :crowberto
-                              :post 400 "document/"
-                              {:name "Document with Invalid Card Data"
-                               :document (documents.test-util/text->prose-mirror-ast "Doc")
-                               :cards {-1 "not a map"}})))))
-
-(deftest cards-to-create-transaction-rollback-test
-  (testing "POST /api/document/ - transaction rollback on card creation failure"
-    (mt/with-model-cleanup [:model/Document :model/Card]
-      (let [invalid-cards {-1 {:name "Card with Invalid Query"
-                               :type :question
-                               :dataset_query {:type :invalid-type} ; invalid query
-                               :display :table
-                               :visualization_settings {}}}]
-        (mt/user-http-request :crowberto
-                              :post 403 "document/"
-                              {:name "Document That Should Rollback"
-                               :document (documents.test-util/text->prose-mirror-ast "Doc that should rollback")
-                               :cards invalid-cards})
-
-        ;; Verify no document was created
-        (is (zero? (t2/count :model/Document :name "Document That Should Rollback")))))))
-
-(deftest put-document-cards-to-create-transaction-rollback-test
-  (testing "PUT /api/document/:id - transaction rollback on card creation failure"
-    (mt/with-temp [:model/Document {document-id :id} {:name "Test Document"
-                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")}]
-      (let [initial-document (t2/select-one :model/Document :id document-id)
-            invalid-cards {-1 {:name "Card with Invalid Query"
-                               :type :question
-                               :dataset_query {:type :invalid-type} ; invalid query
-                               :display :table
-                               :visualization_settings {}}}]
-
-        (mt/user-http-request :crowberto
-                              :put 403 (format "document/%s" document-id)
-                              {:name "Document That Should Rollback"
-                               :document (documents.test-util/text->prose-mirror-ast "Doc that should rollback")
-                               :cards invalid-cards})
-
-        ;; Verify document wasn't updated
-        (let [unchanged-document (t2/select-one :model/Document :id document-id)]
-          (is (= (:name initial-document) (:name unchanged-document)))
-          (is (= (:document initial-document) (:document unchanged-document))))))))
-
-(deftest cards-to-create-collection-inheritance-edge-cases-test
-  (testing "Collection inheritance edge cases for cards"
-    (mt/with-model-cleanup [:model/Document :model/Card]
-      (testing "cards inherit from document when document has nil collection_id"
-        (let [cards-to-create {-1 {:name "Root Collection Card"
-                                   :type :question
-                                   :dataset_query (mt/mbql-query venues)
-                                   :display :table
-                                   :visualization_settings {}}}
-              result (mt/user-http-request :crowberto
-                                           :post 200 "document/"
-                                           {:name "Root Collection Document"
-                                            :document (documents.test-util/text->prose-mirror-ast "Doc in root collection")
-                                            :collection_id nil
-                                            :cards cards-to-create})
-              created-cards (t2/select :model/Card :document_id (:id result))
-              card (first created-cards)]
-
-          (is (= 1 (count created-cards)))
-          (is (nil? (:collection_id card))) ; should inherit nil from document
-          (is (= (:id result) (:document_id card))))))))
-
-(deftest post-document-cards-type-normalization-test
-  (testing "POST /api/document/ - normalizes card type from :model to :question and removes dashboard_id"
-    (mt/with-model-cleanup [:model/Document :model/Card]
-      (mt/with-temp [:model/Collection {col-id :id} {}
-                     :model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
-        (let [cards-to-create {-1 {:name "Model Card"
-                                   :type :model
-                                   :dataset_query (mt/mbql-query venues)
-                                   :display :table
-                                   :visualization_settings {}
-                                   :dashboard_id dash-id}}
-              result (mt/user-http-request :crowberto
-                                           :post 200 "document/"
-                                           {:name "Document with Model Card"
-                                            :document {:type "doc"
-                                                       :content [{:type "cardEmbed"
-                                                                  :attrs {:id -1
-                                                                          :name nil}}]}
-                                            :collection_id col-id
-                                            :cards cards-to-create})
-              created-cards (t2/select :model/Card :document_id (:id result))
-              card (first created-cards)]
-
-          (testing "should create document successfully"
-            (is (pos? (:id result)))
-            (is (= "Document with Model Card" (:name result))))
-
-          (testing "should normalize card type from :model to :question"
-            (is (= 1 (count created-cards)))
-            (is (= "Model Card" (:name card)))
-            (is (= :question (:type card)))
-            (is (not= :model (:type card))))
-
-          (testing "should remove dashboard_id"
-            (is (nil? (:dashboard_id card))))
-
-          (testing "should preserve other card properties"
-            (is (= (:id result) (:document_id card)))
-            (is (= col-id (:collection_id card)))
-            (is (= :table (:display card)))))))))
-
-(deftest put-document-cards-type-normalization-test
-  (testing "PUT /api/document/:id - normalizes card type from :model to :question and removes dashboard_id"
-    (mt/with-temp [:model/Collection {col-id :id} {}
-                   :model/Document {document-id :id} {:name "Test Document"
-                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")
-                                                      :collection_id col-id}
-                   :model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
-      (let [cards-to-create {-10 {:name "Updated Model Card"
-                                  :type :model
-                                  :dataset_query (mt/mbql-query venues)
-                                  :display :bar
-                                  :visualization_settings {}
-                                  :dashboard_id dash-id}}
-            result (mt/user-http-request :crowberto
-                                         :put 200 (format "document/%s" document-id)
-                                         {:name "Updated Document with Model Card"
-                                          :document {:type "doc"
-                                                     :content [{:type "cardEmbed"
-                                                                :attrs {:id -10
-                                                                        :name nil}}]}
-                                          :collection_id col-id
-                                          :cards cards-to-create})
-            created-cards (t2/select :model/Card :document_id document-id)
-            card (first created-cards)]
-
-        (testing "should update document successfully"
-          (is (= document-id (:id result)))
-          (is (= "Updated Document with Model Card" (:name result))))
-
-        (testing "should normalize card type from :model to :question"
-          (is (= 1 (count created-cards)))
-          (is (= "Updated Model Card" (:name card)))
-          (is (= :question (:type card)))
-          (is (not= :model (:type card))))
-
-        (testing "should remove dashboard_id"
-          (is (nil? (:dashboard_id card))))
-
-        (testing "should preserve other card properties"
-          (is (= document-id (:document_id card)))
-          (is (= col-id (:collection_id card)))
-          (is (= :bar (:display card))))))))
-
-(deftest cards-type-normalization-mixed-types-test
-  (testing "POST /api/document/ - handles mixed card types correctly"
-    (mt/with-model-cleanup [:model/Document :model/Card]
-      (mt/with-temp [:model/Collection {col-id :id} {}
-                     :model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
-        (let [cards-to-create {-1 {:name "Model Card"
-                                   :type :model
-                                   :dataset_query (mt/mbql-query venues)
-                                   :display :table
-                                   :visualization_settings {}
-                                   :dashboard_id dash-id}
-                               -2 {:name "Question Card"
-                                   :type :question
-                                   :dataset_query (mt/mbql-query users)
-                                   :display :scalar
-                                   :visualization_settings {}}}
-              result (mt/user-http-request :crowberto
-                                           :post 200 "document/"
-                                           {:name "Document with Mixed Card Types"
-                                            :document {:type "doc"
-                                                       :content [{:type "cardEmbed"
-                                                                  :attrs {:id -1
-                                                                          :name nil}}
-                                                                 {:type "cardEmbed"
-                                                                  :attrs {:id -2
-                                                                          :name nil}}]}
-                                            :collection_id col-id
-                                            :cards cards-to-create})
-              created-cards (t2/select :model/Card :document_id (:id result))
-              model-card (first (filter #(= "Model Card" (:name %)) created-cards))
-              question-card (first (filter #(= "Question Card" (:name %)) created-cards))]
-
-          (testing "should create both cards"
-            (is (= 2 (count created-cards)))
-            (is (some? model-card))
-            (is (some? question-card)))
-
-          (testing "model card should be normalized to question type"
-            (is (= :question (:type model-card)))
-            (is (nil? (:dashboard_id model-card))))
-
-          (testing "question card should remain unchanged"
-            (is (= :question (:type question-card)))
-            (is (nil? (:dashboard_id question-card)))))))))
-
 (deftest post-document-clone-existing-cards-test
   (testing "POST /api/document/ - clones existing cards and substitutes IDs in AST"
     (mt/with-model-cleanup [:model/Document :model/Card]
@@ -773,61 +400,6 @@
                   original-2 (t2/select-one :model/Card :id existing-card-2)]
               (is (nil? (:document_id original-1)))
               (is (nil? (:document_id original-2))))))))))
-
-(deftest post-document-mixed-cloned-and-new-cards-test
-  (testing "POST /api/document/ - handles both cloned existing cards and new cards"
-    (mt/with-model-cleanup [:model/Document :model/Card]
-      (mt/with-temp [:model/Collection {col-id :id} {}
-                     :model/Card {existing-card :id} {:name "Existing Card"
-                                                      :type :question
-                                                      :dataset_query (mt/mbql-query venues)
-                                                      :display :table
-                                                      :visualization_settings {}}]
-        (let [result (mt/user-http-request :crowberto
-                                           :post 200 "document/"
-                                           {:name "Document with Mixed Cards"
-                                            :document {:type "doc"
-                                                       :content [{:type "cardEmbed"
-                                                                  :attrs {:id existing-card
-                                                                          :name nil}}
-                                                                 {:type "cardEmbed"
-                                                                  :attrs {:id -1
-                                                                          :name nil}}
-                                                                 {:type "paragraph"}]}
-                                            :collection_id col-id
-                                            :cards {-1 {:name "New Card"
-                                                        :type :question
-                                                        :dataset_query (mt/mbql-query users)
-                                                        :display :scalar
-                                                        :visualization_settings {}}}})]
-
-          (testing "should create document successfully"
-            (is (pos? (:id result)))
-            (is (= "Document with Mixed Cards" (:name result))))
-
-          (testing "should handle both cloned and new cards"
-            (let [all-cards (t2/select :model/Card :document_id (:id result))
-                  cloned-card (first (filter #(= "Existing Card" (:name %)) all-cards))
-                  new-card (first (filter #(= "New Card" (:name %)) all-cards))]
-
-              (testing "should have created exactly 2 cards total"
-                (is (= 2 (count all-cards))))
-
-              (testing "cloned card should be different from original"
-                (is (not= existing-card (:id cloned-card)))
-                (is (= (:id result) (:document_id cloned-card))))
-
-              (testing "new card should be created properly"
-                (is (some? new-card))
-                (is (= "New Card" (:name new-card)))
-                (is (= (:id result) (:document_id new-card))))
-
-              (testing "should update the AST with both cloned and new card IDs"
-                (let [[cloned-embed new-embed] (get-in result [:document :content])]
-                  (is (= (:id cloned-card)
-                         (get-in cloned-embed [:attrs :id])))
-                  (is (= (:id new-card)
-                         (get-in new-embed [:attrs :id]))))))))))))
 
 (deftest post-document-no-skip-already-associated-cards-test
   (testing "POST /api/document/ - does not skip cloning cards already associated with a document"
@@ -993,62 +565,6 @@
                 original-2 (t2/select-one :model/Card :id existing-card-2)]
             (is (nil? (:document_id original-1)))
             (is (nil? (:document_id original-2)))))))))
-
-(deftest put-document-mixed-cloned-and-new-cards-test
-  (testing "PUT /api/document/:id - handles both cloned existing cards and new cards"
-    (mt/with-temp [:model/Collection {col-id :id} {}
-                   :model/Document {document-id :id} {:name "Test Document"
-                                                      :document (documents.test-util/text->prose-mirror-ast "Initial Doc")
-                                                      :collection_id col-id}
-                   :model/Card {existing-card :id} {:name "Existing Card"
-                                                    :type :question
-                                                    :dataset_query (mt/mbql-query venues)
-                                                    :display :table
-                                                    :visualization_settings {}}]
-      (let [result (mt/user-http-request :crowberto
-                                         :put 200 (format "document/%s" document-id)
-                                         {:name "Updated Document with Mixed Cards"
-                                          :document {:type "doc"
-                                                     :content [{:type "cardEmbed"
-                                                                :attrs {:id existing-card
-                                                                        :name nil}}
-                                                               {:type "cardEmbed"
-                                                                :attrs {:id -1
-                                                                        :name nil}}
-                                                               {:type "paragraph"}]}
-                                          :cards {-1 {:name "New Card"
-                                                      :type :question
-                                                      :dataset_query (mt/mbql-query users)
-                                                      :display :scalar
-                                                      :visualization_settings {}}}})]
-
-        (testing "should update document successfully"
-          (is (= document-id (:id result)))
-          (is (= "Updated Document with Mixed Cards" (:name result))))
-
-        (testing "should handle both cloned and new cards"
-          (let [all-cards (t2/select :model/Card :document_id document-id)
-                cloned-card (first (filter #(= "Existing Card" (:name %)) all-cards))
-                new-card (first (filter #(= "New Card" (:name %)) all-cards))]
-
-            (testing "should have created exactly 2 cards total"
-              (is (= 2 (count all-cards))))
-
-            (testing "cloned card should be different from original"
-              (is (not= existing-card (:id cloned-card)))
-              (is (= document-id (:document_id cloned-card))))
-
-            (testing "new card should be created properly"
-              (is (some? new-card))
-              (is (= "New Card" (:name new-card)))
-              (is (= document-id (:document_id new-card))))
-
-            (testing "should update the AST with both cloned and new card IDs"
-              (let [[cloned-embed new-embed] (get-in result [:document :content])]
-                (is (= (:id cloned-card)
-                       (get-in cloned-embed [:attrs :id])))
-                (is (= (:id new-card)
-                       (get-in new-embed [:attrs :id])))))))))))
 
 (deftest document-cloning-permissions-test
   (testing "Card cloning respects read permissions"
@@ -2679,3 +2195,71 @@
                                 {:name "Should Fail"
                                  :document (documents.test-util/text->prose-mirror-ast "Should not be created")
                                  :collection_id personal-coll-id}))))))
+
+;;; ---------------------------------- POST /api/document/:document-id/card ----------------------------------
+
+(deftest post-document-card-happy-path-test
+  (testing "POST /api/document/:id/card creates a doc-owned card inheriting the document's collection"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Document {doc-id :id} {:name "Doc"
+                                                   :collection_id coll-id
+                                                   :document (documents.test-util/text->prose-mirror-ast "x")}]
+        (let [card (mt/user-http-request :crowberto :post 200
+                                         (format "document/%d/card" doc-id)
+                                         {:name "Fresh card"
+                                          :dataset_query (mt/mbql-query venues)
+                                          :display "table"
+                                          :visualization_settings {}})]
+          (is (pos-int? (:id card)))
+          (is (= doc-id (:document_id card)))
+          (is (= coll-id (:collection_id card)))
+          (is (= "Fresh card" (:name card)))
+          (testing "collection_id in body is ignored — the endpoint always inherits from the doc"
+            (mt/with-temp [:model/Collection {other-coll-id :id} {}]
+              (let [card2 (mt/user-http-request :crowberto :post 200
+                                                (format "document/%d/card" doc-id)
+                                                {:name "Explicit coll"
+                                                 :dataset_query (mt/mbql-query venues)
+                                                 :display "table"
+                                                 :visualization_settings {}
+                                                 :collection_id other-coll-id})]
+                (is (= coll-id (:collection_id card2))
+                    "inherited from doc, not from body")))))))))
+
+(deftest post-document-card-404-on-missing-document-test
+  (mt/user-http-request :crowberto :post 404 "document/999999999/card"
+                        {:name "x"
+                         :dataset_query (mt/mbql-query venues)
+                         :display "table"
+                         :visualization_settings {}}))
+
+(deftest post-document-card-404-on-archived-document-test
+  (testing "archived documents reject new cards with 404 (matches check-not-archived semantics)"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Collection {coll-id :id} {}
+                     :model/Document {doc-id :id} {:name "Archived"
+                                                   :collection_id coll-id
+                                                   :archived true
+                                                   :document (documents.test-util/text->prose-mirror-ast "x")}]
+        (mt/user-http-request :crowberto :post 404
+                              (format "document/%d/card" doc-id)
+                              {:name "x"
+                               :dataset_query (mt/mbql-query venues)
+                               :display "table"
+                               :visualization_settings {}})))))
+
+(deftest post-document-card-403-when-no-write-perm-test
+  (testing "users without write access to the doc's collection get 403"
+    (mt/with-model-cleanup [:model/Document :model/Card]
+      (mt/with-temp [:model/Collection {restricted :id} {}
+                     :model/Document {doc-id :id} {:name "Restricted"
+                                                   :collection_id restricted
+                                                   :document (documents.test-util/text->prose-mirror-ast "x")}]
+        (mt/with-non-admin-groups-no-collection-perms restricted
+          (mt/user-http-request :rasta :post 403
+                                (format "document/%d/card" doc-id)
+                                {:name "x"
+                                 :dataset_query (mt/mbql-query venues)
+                                 :display "table"
+                                 :visualization_settings {}}))))))

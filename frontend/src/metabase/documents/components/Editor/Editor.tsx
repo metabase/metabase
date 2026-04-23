@@ -1,3 +1,6 @@
+import type { HocuspocusProvider } from "@hocuspocus/provider";
+import Collaboration from "@tiptap/extension-collaboration";
+import CollaborationCaret from "@tiptap/extension-collaboration-caret";
 import Image from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import type { JSONContent, Editor as TiptapEditor } from "@tiptap/react";
@@ -6,9 +9,11 @@ import cx from "classnames";
 import React, { useEffect, useMemo } from "react";
 import { useLatest, usePrevious } from "react-use";
 import { t } from "ttag";
+import type * as Y from "yjs";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { getMentionsCache } from "metabase/documents/selectors";
+import { getAwarenessUser } from "metabase/documents/utils/awareness";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
 import type { State } from "metabase/redux/store";
@@ -38,6 +43,7 @@ import { SupportingText } from "metabase/rich_text_editing/tiptap/extensions/Sup
 import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/shared/constants";
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
+import { getUser } from "metabase/selectors/user";
 import { Box, Loader } from "metabase/ui";
 import { useSelector, useStore } from "metabase/utils/redux";
 
@@ -91,6 +97,10 @@ export interface EditorProps {
   isLoading?: boolean;
   /** Ref to the editor container for external access (e.g., anchor scrolling) */
   editorContainerRef?: React.RefObject<HTMLDivElement>;
+  /** When provided, the editor runs in collaborative mode (overrides initialContent — YDoc seeds content). */
+  ydoc?: Y.Doc;
+  /** Hocuspocus provider paired with `ydoc`; drives remote cursors via CollaborationCaret. */
+  provider?: HocuspocusProvider;
 }
 
 export const Editor: React.FC<EditorProps> = React.memo(
@@ -103,13 +113,20 @@ export const Editor: React.FC<EditorProps> = React.memo(
     onQuestionSelect,
     isLoading = false,
     editorContainerRef,
+    ydoc,
+    provider,
   }) => {
     const siteUrl = useSelector((state) => getSetting(state, "site-url"));
+    const currentUser = useSelector(getUser);
     const { getState } = useStore();
+    const collabEnabled = Boolean(ydoc && provider);
 
     const extensions = useMemo(
       () => [
         CustomStarterKit.configure({
+          // Y-CRDT owns undo/redo when collab is on; disable TipTap's local
+          // UndoRedo (aka "history" in PM terms) to avoid double-undo conflicts.
+          ...(collabEnabled ? { undoRedo: false } : {}),
           dropcursor: {
             color: DROP_ZONE_COLOR,
             width: 2,
@@ -161,14 +178,25 @@ export const Editor: React.FC<EditorProps> = React.memo(
         }),
         ResizeNode,
         HandleEditorDrop,
+        ...(collabEnabled
+          ? [
+              Collaboration.configure({ document: ydoc, field: "default" }),
+              CollaborationCaret.configure({
+                provider,
+                user: getAwarenessUser(currentUser),
+              }),
+            ]
+          : []),
       ],
-      [siteUrl, getState],
+      [siteUrl, getState, collabEnabled, ydoc, provider, currentUser],
     );
 
     const editor = useEditor(
       {
         extensions,
-        content: initialContent || "",
+        // In collab mode the YDoc seeds content — passing initialContent here
+        // would conflict with Collaboration's bindings.
+        content: collabEnabled ? null : initialContent || "",
         autofocus: false,
         editable,
         immediatelyRender: false,
@@ -179,12 +207,33 @@ export const Editor: React.FC<EditorProps> = React.memo(
           }
         },
       },
-      [],
+      // Re-mount when collab flips on/off: the hook constructs the session
+      // asynchronously in useEffect, so the first render has `ydoc`/`provider`
+      // undefined and the editor would miss the Collaboration extensions
+      // without this dep.
+      [collabEnabled],
     );
 
-    // Handle content updates when initialContent changes
+    // Editor is built once per collab toggle, so if currentUser loads after
+    // mount the initial CollaborationCaret config captured a null user.
+    // Push to awareness on every change to recover.
+    useEffect(() => {
+      if (!provider || !currentUser) {
+        return;
+      }
+      provider.awareness?.setLocalStateField(
+        "user",
+        getAwarenessUser(currentUser),
+      );
+    }, [provider, currentUser]);
+
+    // Handle content updates when initialContent changes. Skipped in collab mode —
+    // the Y.Doc is the source of truth; setContent here would clobber it.
     const previousContentRef = useLatest(usePrevious(initialContent));
     useEffect(() => {
+      if (collabEnabled) {
+        return;
+      }
       const previousContent = previousContentRef.current;
       if (editor && initialContent !== undefined) {
         // Use Promise.resolve() to avoid flushSync warning
@@ -196,7 +245,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
             .run();
         });
       }
-    }, [editor, initialContent, previousContentRef]);
+    }, [editor, initialContent, previousContentRef, collabEnabled]);
 
     // Notify parent when editor is ready
     useEffect(() => {

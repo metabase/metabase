@@ -3,13 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
+import { useUpdateCardMutation } from "metabase/api/card";
 import { datasetApi } from "metabase/api/dataset";
+import { useCreateDocumentCardMutation } from "metabase/api/document";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
-import {
-  createDraftCard,
-  generateDraftCardId,
-  loadMetadataForDocumentCard,
-} from "metabase/documents/documents.slice";
+import { loadMetadataForDocumentCard } from "metabase/documents/documents.slice";
+import { getCurrentDocument } from "metabase/documents/selectors";
 import { NativeQueryEditor } from "metabase/query_builder/components/NativeQueryEditor";
 import { createRawSeries } from "metabase/query_builder/utils";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
@@ -111,6 +110,11 @@ export const NativeQueryModal = ({
 }: NativeQueryModalProps) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+  const document = useSelector(getCurrentDocument);
+  const [createDocumentCard, { isLoading: isCreating }] =
+    useCreateDocumentCardMutation();
+  const [updateCard, { isLoading: isUpdating }] = useUpdateCardMutation();
+  const isSaving = isCreating || isUpdating;
 
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
@@ -210,55 +214,51 @@ export const NativeQueryModal = ({
     }
   }, [currentQueryPromise]);
 
-  const handleSave = useCallback(() => {
-    if (!modifiedQuestion) {
+  const handleSave = useCallback(async () => {
+    if (!modifiedQuestion || !document) {
       return;
     }
 
-    const newCardId = generateDraftCardId();
-    if (!isNewQuestion) {
-      const modifiedData = {
-        dataset_query: modifiedQuestion.datasetQuery(),
-        display: modifiedQuestion.display(),
-        visualization_settings:
-          modifiedQuestion.card().visualization_settings ?? {},
-      };
-
-      dispatch(
-        createDraftCard({
-          originalCard: card,
-          modifiedData,
-          draftId: newCardId,
-        }),
-      );
-    } else {
-      const dataset_query = modifiedQuestion.datasetQuery();
-      const name =
-        modifiedQuestion.displayName() ||
-        modifiedQuestion.generateQueryDescription() ||
-        t`New question`;
-
-      const modifiedData = {
-        name,
-        database_id: dataset_query.database || undefined,
-        dataset_query: dataset_query,
-        display: modifiedQuestion.display(),
-        visualization_settings:
-          modifiedQuestion.card().visualization_settings ?? {},
-      };
-
-      dispatch(
-        createDraftCard({
-          originalCard: undefined,
-          modifiedData,
-          draftId: newCardId,
-        }),
-      );
+    const isDocOwned = !isNewQuestion && card?.document_id === document.id;
+    try {
+      if (isDocOwned && card?.id) {
+        await updateCard({
+          id: card.id,
+          dataset_query: modifiedQuestion.datasetQuery(),
+          display: modifiedQuestion.display(),
+          visualization_settings:
+            modifiedQuestion.card().visualization_settings ?? {},
+        }).unwrap();
+        onSave({ card_id: card.id });
+      } else {
+        const name =
+          modifiedQuestion.displayName() ||
+          modifiedQuestion.generateQueryDescription() ||
+          t`New question`;
+        const created = await createDocumentCard({
+          document_id: document.id,
+          name,
+          dataset_query: modifiedQuestion.datasetQuery(),
+          display: modifiedQuestion.display(),
+          visualization_settings:
+            modifiedQuestion.card().visualization_settings ?? {},
+        }).unwrap();
+        onSave({ card_id: created.id });
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to save native query:", error);
     }
-
-    onSave({ card_id: newCardId });
-    onClose();
-  }, [modifiedQuestion, isNewQuestion, onSave, onClose, dispatch, card]);
+  }, [
+    modifiedQuestion,
+    isNewQuestion,
+    card,
+    document,
+    createDocumentCard,
+    updateCard,
+    onSave,
+    onClose,
+  ]);
 
   const rawSeries = useMemo<RawSeries | null>(() => {
     if (!modifiedQuestion || !datasetToUse || failedDataset) {
@@ -461,7 +461,8 @@ export const NativeQueryModal = ({
           <Button
             variant="filled"
             onClick={handleSave}
-            disabled={!canSave || !modifiedQuestion}
+            disabled={!canSave || !modifiedQuestion || isSaving || !document}
+            loading={isSaving}
           >
             {t`Save and use`}
           </Button>

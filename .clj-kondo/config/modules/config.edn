@@ -760,6 +760,8 @@
   documents
   {:team "UX West"
    :api  #{metabase.documents.api
+           metabase.documents.collab.handler
+           metabase.documents.collab.server
            metabase.documents.core
            metabase.documents.init
            metabase.documents.prose-mirror

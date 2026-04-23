@@ -74,6 +74,7 @@ import { CardEmbedMenuDropdown } from "./CardEmbedMenuDropdown";
 import styles from "./CardEmbedNode.module.css";
 import { PublicDocumentCardMenu } from "./PublicDocumentCardMenu";
 import { ModifyQuestionModal } from "./modals/ModifyQuestionModal";
+import { useInvalidateCardOnStamp } from "./use-invalidate-card-on-stamp";
 import { useUpdateCardOperations } from "./use-update-card-operations";
 import { getEmbedIndex } from "./utils";
 
@@ -98,6 +99,7 @@ export interface CardEmbedAttributes {
   id?: number;
   name?: string;
   class?: string;
+  updatedAt?: number | null;
 }
 export const CardEmbed: Node<{
   HTMLAttributes: CardEmbedAttributes;
@@ -125,6 +127,17 @@ export const CardEmbed: Node<{
         default: null,
         parseHTML: (element) => element.getAttribute("data-name"),
       },
+      updatedAt: {
+        default: null,
+        parseHTML: (element) => {
+          const value = element.getAttribute("data-updated-at");
+          if (value == null) {
+            return null;
+          }
+          const parsed = Number(value);
+          return Number.isFinite(parsed) ? parsed : null;
+        },
+      },
       ...createIdAttribute(),
     };
   },
@@ -146,6 +159,7 @@ export const CardEmbed: Node<{
           "data-type": CardEmbed.name,
           "data-id": node.attrs.id,
           "data-name": node.attrs.name,
+          "data-updated-at": node.attrs.updatedAt,
         },
         this.options.HTMLAttributes,
       ),
@@ -188,9 +202,15 @@ export const CardEmbedComponent = memo(
     const commentsPath = document
       ? `/document/${document.id}/comments/${_id}`
       : "";
-    const { id, name } = node.attrs;
+    const { id, name, updatedAt } = node.attrs;
     const dispatch = useDispatch();
     const canWrite = editor.options.editable;
+
+    useInvalidateCardOnStamp({
+      id,
+      updatedAt,
+      skip: Boolean(publicDocumentUuid),
+    });
 
     const {
       isBeingDragged,
@@ -698,6 +718,7 @@ export const CardEmbedComponent = memo(
                 onSave={(result) => {
                   updateAttributes({
                     id: result.card_id,
+                    updatedAt: Date.now(),
                   });
                   setIsModifyModalOpen(false);
                 }}
@@ -710,6 +731,7 @@ export const CardEmbedComponent = memo(
                 onSave={(result) => {
                   updateAttributes({
                     id: result.card_id,
+                    updatedAt: Date.now(),
                   });
                   setIsModifyModalOpen(false);
                 }}
@@ -729,6 +751,7 @@ export const CardEmbedComponent = memo(
     return (
       prevProps.node.attrs.id === nextProps.node.attrs.id &&
       prevProps.node.attrs.name === nextProps.node.attrs.name &&
+      prevProps.node.attrs.updatedAt === nextProps.node.attrs.updatedAt &&
       prevProps.selected === nextProps.selected
     );
   },

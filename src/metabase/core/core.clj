@@ -13,6 +13,7 @@
    [metabase.core.config-from-file :as config-from-file]
    [metabase.core.init]
    [metabase.core.perf :as perf]
+   [metabase.documents.collab.server :as collab.server]
    [metabase.driver.h2]
    [metabase.driver.mysql]
    [metabase.driver.postgres]
@@ -107,6 +108,9 @@
   (queue/stop-listeners!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
+  ;; Stop Jetty first so per-WS-connection `:on-close` fires; then drain
+  ;; yhocuspocus (flushes any debounced saves before closing).
+  (collab.server/stop!)
   (tracing/shutdown!)
   (analytics/shutdown!)
   (notification/shutdown!)

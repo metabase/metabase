@@ -2,11 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import {
-  createDraftCard,
-  generateDraftCardId,
-  loadMetadataForDocumentCard,
-} from "metabase/documents/documents.slice";
+import { useUpdateCardMutation } from "metabase/api/card";
+import { useCreateDocumentCardMutation } from "metabase/api/document";
+import { loadMetadataForDocumentCard } from "metabase/documents/documents.slice";
+import { getCurrentDocument } from "metabase/documents/selectors";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -34,9 +33,15 @@ export const ModifyQuestionModal = ({
   const store = useStore();
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
+  const document = useSelector(getCurrentDocument);
   const reportTimezone = useSelector((state) =>
     getSetting(state, "report-timezone-long"),
   );
+  const [createDocumentCard, { isLoading: isCreating }] =
+    useCreateDocumentCardMutation();
+  const [updateCard, { isLoading: isUpdating }] = useUpdateCardMutation();
+  const isSaving = isCreating || isUpdating;
+
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
   );
@@ -88,29 +93,28 @@ export const ModifyQuestionModal = ({
   };
 
   const handleSave = async () => {
-    if (!modifiedQuestion) {
+    if (!modifiedQuestion || !document) {
       return;
     }
 
+    const payload = {
+      dataset_query: modifiedQuestion.datasetQuery(),
+      display: modifiedQuestion.display(),
+      visualization_settings:
+        modifiedQuestion.card().visualization_settings ?? {},
+    };
     try {
-      const modifiedData = {
-        dataset_query: modifiedQuestion.datasetQuery(),
-        display: modifiedQuestion.display(),
-        visualization_settings:
-          modifiedQuestion.card().visualization_settings ?? {},
-      };
-
-      const newCardId = generateDraftCardId();
-
-      dispatch(
-        createDraftCard({
-          originalCard: card,
-          modifiedData,
-          draftId: newCardId,
-        }),
-      );
-
-      onSave({ card_id: newCardId });
+      if (card.document_id === document.id && card.id) {
+        await updateCard({ id: card.id, ...payload }).unwrap();
+        onSave({ card_id: card.id });
+      } else {
+        const created = await createDocumentCard({
+          document_id: document.id,
+          name: card.name,
+          ...payload,
+        }).unwrap();
+        onSave({ card_id: created.id });
+      }
       onClose();
     } catch (error) {
       console.error("Failed to save modified question:", error);
@@ -142,7 +146,12 @@ export const ModifyQuestionModal = ({
             <Button variant="subtle" onClick={onClose}>
               {t`Cancel`}
             </Button>
-            <Button variant="filled" onClick={handleSave}>
+            <Button
+              variant="filled"
+              onClick={handleSave}
+              disabled={isSaving || !document}
+              loading={isSaving}
+            >
               {t`Save and use`}
             </Button>
           </Flex>
