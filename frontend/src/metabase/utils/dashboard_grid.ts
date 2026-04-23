@@ -24,7 +24,7 @@ export const DEFAULT_CARD_SIZE = { width: 4, height: 4 };
 
 export const MIN_ROW_HEIGHT = 40;
 
-type CardPosition = {
+export type CardPosition = {
   col: number;
   row: number;
   size_x: number;

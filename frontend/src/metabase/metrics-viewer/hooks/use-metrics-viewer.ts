@@ -191,21 +191,16 @@ export function useMetricsViewer({
     return buildSeries({
       formulaEntities: state.formulaEntities,
       definitions: state.definitions,
-      metricSlots,
-      dimensionMapping: activeTab.dimensionMapping,
       display: activeTab.display,
       resultsByEntityIndex,
-      modifiedDefinitionsBySlotIndex,
       sourceBreakoutColors,
       extraVizSettings: activeTab.visualizationSettings,
     });
   }, [
     state.formulaEntities,
     state.definitions,
-    metricSlots,
     activeTab,
     resultsByEntityIndex,
-    modifiedDefinitionsBySlotIndex,
     sourceBreakoutColors,
   ]);
 
