@@ -4,6 +4,7 @@
   omitting entities without a known vector."
   (:require
    [clojure.string :as str]
+   [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -35,3 +36,33 @@
                                    [n (if (instance? (Class/forName "[F") v) v (float-array v))])))
                          name->vec)]
     (fn embed [_entities] normalized)))
+
+(defn provider-embedder
+  "Route the synonym axis through the semantic-search embedding dispatcher for a specific
+  `{:provider :model-name :vector-dimensions}` config, independent of the active search-index
+  model. Goes via
+  [[metabase-enterprise.semantic-search.embedding/process-embeddings-streaming]] so provider-level
+  batching constraints (e.g. `openai-max-tokens-per-batch`) are honoured — calling
+  `get-embeddings-batch` directly would send every distinct entity name in one request and blow
+  past upstream limits on larger catalogs.
+
+  Returns `nil` when the config is incomplete (missing provider or model-name). Runtime errors
+  from the underlying dispatcher (invalid API key, network failure, rate limits, etc.) propagate
+  so `score-synonym-pairs` surfaces them as `:error` on the synonym-pairs result instead of the
+  embedder silently returning an empty map. Config-level prerequisites (API key set, base URL set)
+  should be validated by the caller before instantiating this embedder so a known-misconfigured
+  provider never reaches the dispatcher — see
+  [[metabase-enterprise.semantic-search.core/provider-ready?]]."
+  [{:keys [provider model-name] :as embedding-model}]
+  (when (and (seq provider) (seq model-name))
+    (fn-embedder
+     (fn [names]
+       ;; Default to {} so an empty result from process-embeddings-streaming (e.g. every input
+       ;; dropped by create-batches for exceeding openai-max-tokens-per-batch) degrades via the
+       ;; "no vector → no synonym signal" path in fn-embedder instead of throwing on nil lookup.
+       ;; mapv forces realization here so any dispatcher errors surface from this embedder call
+       ;; rather than being deferred until fn-embedder walks the lazy seq.
+       (let [text->vec (or (semantic-search/process-embeddings-streaming
+                            embedding-model names identity)
+                           {})]
+         (mapv text->vec names))))))

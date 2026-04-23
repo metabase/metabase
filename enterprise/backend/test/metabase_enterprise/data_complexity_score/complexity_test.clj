@@ -13,6 +13,8 @@
    [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedders :as ss.embedders]
+   [metabase-enterprise.semantic-search.embedding :as ss.embedding]
+   [metabase-enterprise.semantic-search.settings :as ss.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
@@ -612,6 +614,16 @@
                  (for [[g s] group-total] [(str g ".total") s])
                  (for [[leaf s] leaves]   [(str (leaf-key->group leaf) "." leaf) s])))))
 
+(defn- events-by-key
+  "Build an `{key -> event}` map for one catalog after asserting the catalog emitted exactly
+   one event per key, so duplicate emissions can't be silently overwritten by `into {}`."
+  [events catalog]
+  (let [catalog-events (filterv #(= catalog (get % "catalog")) events)
+        keys          (mapv #(get % "key") catalog-events)]
+    (is (= (count keys) (count (distinct keys)))
+        (format "catalog %s should emit each key exactly once" catalog))
+    (into {} (map (juxt #(get % "key") identity)) catalog-events)))
+
 (deftest ^:sequential emit-snowplow-publishes-total-and-each-subscore-test
   (testing "one event per (catalog × key) — grand total, group rollups, and leaves — with correct scores"
     (snowplow-test/with-fake-snowplow-collector
@@ -625,18 +637,20 @@
         ;; Drain any startup/setting events so we only assert on emissions from the call below.
         (snowplow-test/pop-event-data-and-user-id!)
         (let [{:keys [library universe metabot]} (complexity/complexity-scores :embedder nil)
-              events   (complexity-events!)
-              expected (into #{}
-                             (for [[catalog result] {"library"  library
-                                                     "universe" universe
-                                                     "metabot"  metabot}
-                                   [k score]        (expected-keys-for-catalog result)]
-                               [catalog k score]))
-              actual   (into #{}
-                             (map (fn [e] [(get e "catalog") (get e "key") (get e "score")]) events))]
-          (is (= (count expected) (count events))
+              events     (complexity-events!)
+              expected   (vec
+                          (for [[catalog result] {"library"  library
+                                                  "universe" universe
+                                                  "metabot"  metabot}
+                                [k score]        (expected-keys-for-catalog result)]
+                            [catalog k score]))
+              actual     (mapv (fn [e] [(get e "catalog") (get e "key") (get e "score")]) events)
+              catalog+key (mapv (fn [e] [(get e "catalog") (get e "key")]) events)]
+          (is (= (count expected) (count actual))
               "every (catalog, key) is emitted exactly once — no duplicates")
-          (is (= expected actual)
+          (is (= (count catalog+key) (count (set catalog+key)))
+              "no two events share a normalized (catalog, key) — guards against key-name collisions")
+          (is (= (frequencies expected) (frequencies actual))
               "every (catalog, key) pair carries the matching score from the result")
           (testing "every event carries the event name, formula version, and parameters map"
             (is (every? (fn [e]
@@ -658,9 +672,7 @@
                                                :metabot  []})]
         (snowplow-test/pop-event-data-and-user-id!)
         (complexity/complexity-scores :embedder nil)
-        (let [by-key (->> (complexity-events!)
-                          (filter #(= "library" (get % "catalog")))
-                          (into {} (map (juxt #(get % "key") identity))))]
+        (let [by-key (events-by-key (complexity-events!) "library")]
           (testing "aggregate totals (grand and per-group) have no measurement key"
             (is (not (contains? (get by-key "total")           "measurement")))
             (is (not (contains? (get by-key "size.total")      "measurement")))
@@ -683,9 +695,7 @@
                                                :metabot  []})]
         (snowplow-test/pop-event-data-and-user-id!)
         (complexity/complexity-scores :embedder (fn [_] (throw (ex-info "embedder boom" {}))))
-        (let [by-key (->> (complexity-events!)
-                          (filter #(= "library" (get % "catalog")))
-                          (into {} (map (juxt #(get % "key") identity))))]
+        (let [by-key (events-by-key (complexity-events!) "library")]
           (testing ":error from the synonym-pair scorer reaches the Snowplow leaf event"
             (is (= "embedder boom" (get-in by-key ["ambiguity.synonym_pairs" "error"]))))
           (testing ":error is only present on the originating leaf — aggregates use null score instead"
@@ -1049,3 +1059,382 @@
           (let [result (complexity/complexity-scores :embedder nil)]
             (is (false? (:metabase-enterprise.data-complexity-score.complexity/snowplow-published?
                          (meta result))))))))))
+;;; ---------------------- provider-embedder + synonym-axis settings ----------------------
+
+(deftest ^:parallel provider-embedder-nil-when-config-incomplete-test
+  (testing "provider-embedder returns nil when :provider or :model-name is missing/blank"
+    (is (nil? (embedders/provider-embedder {})))
+    (is (nil? (embedders/provider-embedder {:provider "ollama"})))
+    (is (nil? (embedders/provider-embedder {:model-name "all-minilm"})))
+    (is (nil? (embedders/provider-embedder {:provider "" :model-name "x"})))
+    (is (nil? (embedders/provider-embedder {:provider "ollama" :model-name ""})))))
+
+(deftest ^:sequential provider-embedder-routes-to-get-embeddings-batch-test
+  (testing "provider-embedder forwards to get-embeddings-batch with the given embedding-model map"
+    (let [captured  (atom nil)
+          model     {:provider "ollama" :model-name "all-minilm" :vector-dimensions 384}
+          stub-fn   (fn [embedding-model names & _]
+                      (reset! captured {:embedding-model embedding-model :names names})
+                      (mapv (fn [_] (float-array [1.0 2.0 3.0])) names))]
+      (with-redefs [ss.embedding/get-embeddings-batch stub-fn]
+        (let [embedder (embedders/provider-embedder model)
+              result   (embedder [{:name "Orders"} {:name "Customers"}])]
+          (is (= model (:embedding-model @captured)))
+          (is (= ["orders" "customers"] (:names @captured)))
+          (is (= 2 (count result)))
+          (is (every? #(= 3 (alength ^floats (val %))) result)))))))
+
+(deftest ^:sequential provider-embedder-propagates-errors-test
+  (testing "provider-embedder lets errors from the dispatcher propagate so score-synonym-pairs can surface :error"
+    ;; Older behaviour swallowed the throw and returned {}, which combined with resolve-synonym-embedder
+    ;; populating :model-meta from the custom config made the synonym axis score 0 while :meta
+    ;; still advertised the provider/model as active. Propagating lets the existing try/catch in
+    ;; score-synonym-pairs tag the result with :error so the silent-zero-but-lying-meta case shows up.
+    (with-redefs [ss.embedding/get-embeddings-batch (fn [& _] (throw (ex-info "boom" {})))]
+      (let [embedder (embedders/provider-embedder
+                      {:provider "ollama" :model-name "all-minilm" :vector-dimensions 384})]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                              (embedder [{:name "Orders"}])))))))
+
+(deftest ^:sequential provider-embedder-openai-batches-reassemble-by-name-test
+  (testing "with OpenAI provider, provider-embedder splits texts across batches per openai-max-tokens-per-batch and keys each returned vector back to its originating name"
+    ;; Regression: before process-embeddings-streaming routed these calls, provider-embedder sent
+    ;; every distinct name to get-embeddings-batch in a single request, bypassing the openai
+    ;; token-per-batch cap and also making it impossible to exercise the per-batch reassembly path.
+    (let [batches-seen (atom [])
+          ;; Fingerprint each name with a small integer so floating-point round-tripping through
+          ;; float-array doesn't obscure the mapping check below.
+          name->tag    {"alpha" 1.0 "bravo" 2.0 "charlie" 3.0 "delta" 4.0}
+          ;; Return a distinct float-array per input text so we can verify the outer map associates
+          ;; each name with the vector produced for it in its specific batch.
+          stub-batch   (fn [_embedding-model texts & _]
+                         (swap! batches-seen conj (vec texts))
+                         (mapv (fn [t] (float-array [(get name->tag t) 0.0])) texts))]
+      ;; Tiny cap forces create-batches to split the four single-token names into multiple batches.
+      (mt/with-temporary-setting-values [ss.settings/openai-max-tokens-per-batch 2]
+        (with-redefs [ss.embedding/get-embeddings-batch stub-batch]
+          (let [embedder (embedders/provider-embedder
+                          {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 2})
+                names    ["alpha" "bravo" "charlie" "delta"]
+                result   (embedder (mapv #(hash-map :name %) names))]
+            (testing "the dispatcher was called for more than one batch"
+              (is (< 1 (count @batches-seen))))
+            (testing "every input name is embedded exactly once across the batches"
+              (is (= names (vec (sort (mapcat identity @batches-seen))))))
+            (testing "each name in the returned map carries the vector its own batch produced"
+              (is (= (set names) (set (keys result))))
+              (doseq [n names]
+                (is (= (float (get name->tag n)) (aget ^floats (get result n) 0))
+                    (format "vector for %s should match its batch output" n))))))))))
+
+(deftest ^:sequential provider-embedder-empty-streaming-result-test
+  (testing "provider-embedder returns an empty map (not a throw) when process-embeddings-streaming yields nil"
+    ;; Regression: when every input text exceeds openai-max-tokens-per-batch, create-batches returns
+    ;; [] and process-embeddings-streaming's transduce collapses to nil. Without the `or {}` guard in
+    ;; provider-embedder, `(mapv text->vec names)` would throw on the nil lookup, surfacing as an
+    ;; error up through score-synonym-pairs instead of degrading to "no vector → no synonym signal".
+    (with-redefs [semantic-search/process-embeddings-streaming (fn [& _] nil)]
+      (let [embedder (embedders/provider-embedder
+                      {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 2})]
+        (is (= {} (embedder [{:name "alpha"} {:name "bravo"}])))))))
+
+(deftest ^:parallel default-threshold-for-minilm-test
+  (testing "default threshold is 0.80 for ollama + MiniLM model names (case-insensitive)"
+    (is (= 0.80 (#'complexity/default-threshold-for "ollama" "all-minilm")))
+    (is (= 0.80 (#'complexity/default-threshold-for "ollama" "all-MiniLM-L6-v2")))
+    (is (= 0.80 (#'complexity/default-threshold-for "ollama" "sentence-transformers/all-MiniLM-L6-v2"))))
+  (testing "falls back to the Arctic-calibrated 0.90 default otherwise"
+    (is (= 0.90 (#'complexity/default-threshold-for "ollama" "mxbai-embed-large")))
+    (is (= 0.90 (#'complexity/default-threshold-for "ai-service" "all-minilm")))
+    (is (= 0.90 (#'complexity/default-threshold-for nil nil)))))
+
+(deftest ^:sequential complexity-scores-routes-synonym-axis-via-settings-test
+  (testing "setting ee-complexity-synonym-provider + model-name routes the axis through provider-embedder"
+    (let [captured   (atom nil)
+          stub-batch (fn [embedding-model names & _]
+                       (reset! captured {:embedding-model embedding-model :names names})
+                       ;; Return unit vectors keyed so that "customers" and "clients" form a synonym pair.
+                       (mapv (fn [n]
+                               (cond
+                                 (= n "customers") (float-array [1.0 0.0])
+                                 (= n "clients")   (float-array [0.99 0.14])
+                                 :else             (float-array [0.0 1.0])))
+                             names))]
+      (mt/with-temporary-setting-values [ee-complexity-synonym-provider         "ollama"
+                                         ee-complexity-synonym-model-name       "all-minilm"
+                                         ee-complexity-synonym-model-dimensions 2]
+        (with-redefs [ss.embedding/get-embeddings-batch stub-batch]
+          (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "customers")
+                                                                                (entity :name "clients")])
+                                      complexity/universe-entities (constantly [(entity :name "customers")
+                                                                                (entity :name "clients")])]
+            (let [{:keys [library meta]} (complexity/complexity-scores)]
+              (testing "provider-embedder reached get-embeddings-batch with the configured model"
+                (is (= {:provider "ollama" :model-name "all-minilm" :vector-dimensions 2}
+                       (:embedding-model @captured)))
+                (is (= #{"customers" "clients"} (set (:names @captured)))))
+              (testing ":meta reflects the configured provider/model and the MiniLM-calibrated threshold"
+                (is (=? {:embedding-model {:provider "ollama" :model-name "all-minilm"}
+                         :synonym-threshold 0.80}
+                        meta)))
+              (testing "the synonym pair was detected (cosine ≈ 0.99 > 0.80 threshold)"
+                (is (= 1.0 (get-in library [:components :synonym-pairs :measurement])))))))))))
+
+(deftest ^:sequential complexity-scores-honours-threshold-override-test
+  (testing "ee-complexity-synonym-threshold overrides the provider-default threshold"
+    (let [stub-batch (fn [_ names & _]
+                       (mapv (fn [n]
+                               (cond
+                                 (= n "customers") (float-array [1.0 0.0])
+                                 (= n "clients")   (float-array [0.99 0.14])
+                                 :else             (float-array [0.0 1.0])))
+                             names))]
+      (mt/with-temporary-setting-values [ee-complexity-synonym-provider         "ollama"
+                                         ee-complexity-synonym-model-name       "all-minilm"
+                                         ee-complexity-synonym-model-dimensions 2
+                                         ;; Force an override above the ~0.99 similarity — the pair should disappear.
+                                         ee-complexity-synonym-threshold        0.999]
+        (with-redefs [ss.embedding/get-embeddings-batch stub-batch]
+          (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "customers")
+                                                                                (entity :name "clients")])
+                                      complexity/universe-entities (constantly [])]
+            (let [{:keys [library meta]} (complexity/complexity-scores)]
+              (is (= 0.999 (:synonym-threshold meta)))
+              (is (= 0.0 (get-in library [:components :synonym-pairs :measurement]))))))))))
+
+(deftest ^:sequential complexity-scores-default-path-unchanged-test
+  (testing "with no synonym-axis settings set, the default path still uses search-index-embedder and 0.90"
+    (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                complexity/universe-entities (constantly [(entity :name "orders")])]
+      (with-redefs [ss.embedders/try-active-index-state (constantly nil)]
+        (let [{:keys [meta]} (complexity/complexity-scores)]
+          (testing ":synonym-threshold is the Arctic-calibrated default"
+            (is (= 0.90 (:synonym-threshold meta))))
+          (testing ":embedding-model is omitted when the index is unreachable"
+            (is (not (contains? meta :embedding-model)))))))))
+
+(deftest ^:sequential complexity-scores-explicit-embedder-uses-default-threshold-test
+  (testing "passing an explicit :embedder bypasses the settings and uses the default threshold"
+    (mt/with-temporary-setting-values [ee-complexity-synonym-provider   "ollama"
+                                       ee-complexity-synonym-model-name "all-minilm"
+                                       ee-complexity-synonym-model-dimensions 2
+                                       ;; Also set a threshold override that the explicit-embedder path
+                                       ;; must ignore — pinned embedders are for reproducible benchmarks
+                                       ;; and shouldn't drift with unrelated instance settings.
+                                       ee-complexity-synonym-threshold  0.55]
+      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                  complexity/universe-entities (constantly [(entity :name "orders")])]
+        (let [{:keys [meta]} (complexity/complexity-scores :embedder nil)]
+          (testing "explicit :embedder nil ignores ee-complexity-synonym-threshold and uses the default"
+            (is (= 0.90 (:synonym-threshold meta)))))))))
+
+(deftest ^:sequential complexity-scores-explicit-embedder-accepts-threshold-opt-test
+  (testing "explicit :embedder paired with :threshold uses the supplied cutoff"
+    ;; cosine(customers, clients) ≈ 0.994 with these vectors, so 0.999 rejects and 0.5 accepts.
+    (let [es       [(entity :name "customers") (entity :name "clients")]
+          embedder (mock-embedder {"customers" [1.0 0.0]
+                                   "clients"   [0.9 0.1]})]
+      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly es)
+                                  complexity/universe-entities (constantly [])]
+        (testing "a high :threshold rejects the pair"
+          (let [{:keys [library meta]} (complexity/complexity-scores
+                                        :embedder  embedder
+                                        :threshold 0.999)]
+            (is (= 0.999 (:synonym-threshold meta)))
+            (is (= 0 (get-in library [:components :synonym-pairs :pairs])))))
+        (testing "a low :threshold accepts the pair"
+          (let [{:keys [library meta]} (complexity/complexity-scores
+                                        :embedder  embedder
+                                        :threshold 0.5)]
+            (is (= 0.5 (:synonym-threshold meta)))
+            (is (= 1 (get-in library [:components :synonym-pairs :pairs])))))))))
+
+;;; ---------------------- synonym-config validation ----------------------
+
+(deftest ^:parallel validate-synonym-config-test
+  (let [validate #'complexity/validate-synonym-config]
+    (testing "fully blank config returns nil (opt-out — no warning expected)"
+      (is (nil? (validate {:provider nil        :model-name nil        :vector-dimensions nil})))
+      (is (nil? (validate {:provider ""         :model-name "  "       :vector-dimensions nil}))))
+    (testing "trims whitespace on provider and model-name when valid"
+      (is (= {:provider "ollama" :model-name "all-minilm" :vector-dimensions 384}
+             (validate {:provider "  ollama  " :model-name " all-minilm " :vector-dimensions 384}))))
+    (testing "rejects unknown providers (typo-safe)"
+      (is (nil? (validate {:provider "olama"   :model-name "all-minilm" :vector-dimensions 384})))
+      (is (nil? (validate {:provider "OpenAI"  :model-name "text-embedding-3-small" :vector-dimensions 256}))))
+    (testing "rejects half-configured settings (one of provider/model-name blank)"
+      (is (nil? (validate {:provider "ollama"  :model-name nil         :vector-dimensions 384})))
+      (is (nil? (validate {:provider ""        :model-name "all-minilm" :vector-dimensions 384}))))
+    (testing "openai text-embedding-3* models require vector-dimensions"
+      (is (nil? (validate {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions nil})))
+      (is (nil? (validate {:provider "openai" :model-name "text-embedding-3-large" :vector-dimensions 0})))
+      (is (=? {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 512}
+              (validate {:provider "openai" :model-name "text-embedding-3-small" :vector-dimensions 512}))))
+    (testing "providers/models that don't forward :dimensions don't need vector-dimensions"
+      (is (=? {:provider "ollama" :model-name "all-minilm"}
+              (validate {:provider "ollama" :model-name "all-minilm" :vector-dimensions nil})))
+      (is (=? {:provider "openai" :model-name "text-embedding-ada-002"}
+              (validate {:provider "openai" :model-name "text-embedding-ada-002" :vector-dimensions nil}))))))
+
+(deftest ^:sequential ee-complexity-synonym-provider-setter-rejects-typos-test
+  (testing "the setter mirrors ee-embedding-provider — invalid values throw before anything is persisted"
+    (mt/with-temporary-setting-values [ee-complexity-synonym-provider nil]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid complexity-synonym provider"
+                            (semantic-layer.settings/ee-complexity-synonym-provider! "olama")))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid complexity-synonym provider"
+                            (semantic-layer.settings/ee-complexity-synonym-provider! "OpenAI")))
+      (testing "valid values (including nil to clear) are accepted"
+        (semantic-layer.settings/ee-complexity-synonym-provider! "ollama")
+        (is (= "ollama" (semantic-layer.settings/ee-complexity-synonym-provider)))
+        (semantic-layer.settings/ee-complexity-synonym-provider! nil)
+        (is (nil? (semantic-layer.settings/ee-complexity-synonym-provider)))))))
+
+(deftest ^:sequential complexity-scores-invalid-provider-falls-back-test
+  (testing "runtime validation also rejects a pre-existing bad value (e.g. stale DB state) and falls back"
+    (let [batch-called? (atom false)]
+      ;; Bypass the :setter guard by redefing the getter directly — this simulates a bad value
+      ;; that somehow reached runtime (env var, legacy DB row) without going through the setter.
+      (with-redefs [semantic-layer.settings/ee-complexity-synonym-provider         (constantly "olama")
+                    semantic-layer.settings/ee-complexity-synonym-model-name       (constantly "all-minilm")
+                    semantic-layer.settings/ee-complexity-synonym-model-dimensions (constantly 384)
+                    semantic-layer.settings/ee-complexity-synonym-threshold        (constantly nil)
+                    ss.embedding/get-embeddings-batch                           (fn [& _] (reset! batch-called? true) [])
+                    ss.embedders/try-active-index-state                            (constantly nil)]
+        (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                    complexity/universe-entities (constantly [(entity :name "orders")])]
+          (let [{:keys [meta]} (complexity/complexity-scores)]
+            (is (false? @batch-called?)
+                "provider-embedder should not be reached with an unsupported provider")
+            (is (not (contains? meta :embedding-model))
+                ":meta must not advertise a model the synonym axis never reached")
+            (is (= 0.90 (:synonym-threshold meta))
+                "falls back to the Arctic-calibrated default threshold")))))))
+
+(deftest ^:sequential complexity-scores-openai-text-embedding-3-requires-dims-test
+  (testing "openai text-embedding-3-* without dimensions falls back to search-index embedder"
+    (let [batch-called? (atom false)]
+      (mt/with-temporary-setting-values [ee-complexity-synonym-provider   "openai"
+                                         ee-complexity-synonym-model-name "text-embedding-3-small"
+                                         ee-complexity-synonym-model-dimensions nil]
+        (with-redefs [ss.embedding/get-embeddings-batch (fn [& _] (reset! batch-called? true) [])
+                      ss.embedders/try-active-index-state  (constantly nil)]
+          (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                      complexity/universe-entities (constantly [(entity :name "orders")])]
+            (let [{:keys [meta]} (complexity/complexity-scores)]
+              (is (false? @batch-called?)
+                  "get-embeddings-batch would send dimensions: null and fail; must not be reached")
+              (is (not (contains? meta :embedding-model))
+                  ":embedding-model must be absent when the config failed validation"))))))))
+
+(deftest ^:sequential complexity-scores-openai-provider-without-api-key-falls-back-test
+  (testing "provider=openai with a valid shape but no API key falls back to the search-index embedder"
+    ;; Guards the meta-lies-when-provider-unusable case: shape-level validation alone would accept
+    ;; {openai + text-embedding-3-small + 512} and commit that as :meta.embedding-model, even though
+    ;; any call would throw on openai-resolve-config!. provider-ready? catches this upfront.
+    (let [batch-called? (atom false)]
+      (with-redefs [semantic-layer-settings/ee-complexity-synonym-provider         (constantly "openai")
+                    semantic-layer-settings/ee-complexity-synonym-model-name       (constantly "text-embedding-3-small")
+                    semantic-layer-settings/ee-complexity-synonym-model-dimensions (constantly 512)
+                    semantic-layer-settings/ee-complexity-synonym-threshold        (constantly nil)
+                    ;; Force the OpenAI key getter to return nil regardless of ambient env.
+                    ss.settings/openai-api-key (constantly nil)
+                    ss.embedding/get-embeddings-batch (fn [& _] (reset! batch-called? true) [])
+                    ss.embedders/try-active-index-state (constantly nil)]
+        (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                    complexity/universe-entities (constantly [(entity :name "orders")])]
+          (let [{:keys [meta]} (complexity/complexity-scores)]
+            (is (false? @batch-called?)
+                "provider-embedder should not be reached when openai-api-key is blank")
+            (is (not (contains? meta :embedding-model))
+                ":meta must not advertise openai when the API key isn't configured")
+            (is (= 0.90 (:synonym-threshold meta))
+                "falls back to the Arctic-calibrated default threshold")))))))
+
+(deftest ^:sequential complexity-scores-ai-service-without-endpoint-falls-back-test
+  (testing "provider=ai-service without base URL / api key falls back to the search-index embedder"
+    (let [batch-called? (atom false)]
+      (with-redefs [semantic-layer-settings/ee-complexity-synonym-provider         (constantly "ai-service")
+                    semantic-layer-settings/ee-complexity-synonym-model-name       (constantly "some-embedder")
+                    semantic-layer-settings/ee-complexity-synonym-model-dimensions (constantly 384)
+                    semantic-layer-settings/ee-complexity-synonym-threshold        (constantly nil)
+                    ss.settings/ee-embedding-service-base-url (constantly nil)
+                    ss.settings/ee-embedding-service-api-key  (constantly nil)
+                    ss.embedding/get-embeddings-batch (fn [& _] (reset! batch-called? true) [])
+                    ss.embedders/try-active-index-state (constantly nil)]
+        (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                    complexity/universe-entities (constantly [(entity :name "orders")])]
+          (let [{:keys [meta]} (complexity/complexity-scores)]
+            (is (false? @batch-called?)
+                "provider-embedder should not be reached when ai-service has no base URL / key")
+            (is (not (contains? meta :embedding-model))
+                ":meta must not advertise ai-service when prerequisites are missing")))))))
+
+(deftest ^:sequential complexity-scores-openai-provider-ready-when-key-set-test
+  (testing "provider=openai with a configured API key IS used — readiness check doesn't regress the happy path"
+    (let [captured (atom nil)
+          stub     (fn [embedding-model names & _]
+                     (reset! captured {:embedding-model embedding-model :names names})
+                     (mapv (fn [_] (float-array [1.0 0.0])) names))]
+      (with-redefs [semantic-layer-settings/ee-complexity-synonym-provider         (constantly "openai")
+                    semantic-layer-settings/ee-complexity-synonym-model-name       (constantly "text-embedding-3-small")
+                    semantic-layer-settings/ee-complexity-synonym-model-dimensions (constantly 512)
+                    semantic-layer-settings/ee-complexity-synonym-threshold        (constantly nil)
+                    ss.settings/openai-api-key (constantly "sk-test-redacted")
+                    ss.embedding/get-embeddings-batch stub]
+        (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                    complexity/universe-entities (constantly [(entity :name "orders")])]
+          (let [{:keys [meta]} (complexity/complexity-scores)]
+            (is (= {:provider "openai" :model-name "text-embedding-3-small"}
+                   (:embedding-model meta))
+                "provider-ready? passes with an API key set, so :meta reflects the configured model")
+            (is (some? @captured)
+                "the provider-embedder path was actually taken")))))))
+
+(deftest ^:sequential complexity-scores-openai-blank-base-url-falls-back-test
+  (testing "provider=openai with an API key but a blank base URL still falls back"
+    ;; Guards drift between provider-ready? and openai-resolve-config!: before the shared
+    ;; openai-config-problem helper existed, readiness only looked at the API key, so a cleared
+    ;; base URL would publish :meta.embedding-model for a provider that would immediately throw on
+    ;; the next embedding call.
+    (let [batch-called? (atom false)]
+      (with-redefs [semantic-layer-settings/ee-complexity-synonym-provider         (constantly "openai")
+                    semantic-layer-settings/ee-complexity-synonym-model-name       (constantly "text-embedding-3-small")
+                    semantic-layer-settings/ee-complexity-synonym-model-dimensions (constantly 512)
+                    semantic-layer-settings/ee-complexity-synonym-threshold        (constantly nil)
+                    ss.settings/openai-api-key      (constantly "sk-test-redacted")
+                    ss.settings/openai-api-base-url (constantly "")
+                    ss.embedding/get-embeddings-batch (fn [& _] (reset! batch-called? true) [])
+                    ss.embedders/try-active-index-state (constantly nil)]
+        (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
+                                    complexity/universe-entities (constantly [(entity :name "orders")])]
+          (let [{:keys [meta]} (complexity/complexity-scores)]
+            (is (false? @batch-called?)
+                "provider-embedder must not be reached when the base URL is blank")
+            (is (not (contains? meta :embedding-model))
+                ":meta must not advertise openai when the base URL isn't configured")))))))
+
+(deftest ^:sequential complexity-scores-synonym-axis-error-populates-meta-test
+  (testing "dispatcher failure surfaces as :error on the synonym-pairs component and scores 0"
+    ;; End-to-end partner to provider-embedder-propagates-errors-test: that test stops at the
+    ;; embedder throwing; this one verifies the upstream contract it unlocks — score-synonym-pairs
+    ;; catches the throw, so the silent-zero-with-lying-meta case shows up as {:score 0 :error ...}
+    ;; on the user-facing result instead of an unannotated zero.
+    (with-redefs [semantic-layer-settings/ee-complexity-synonym-provider         (constantly "ollama")
+                  semantic-layer-settings/ee-complexity-synonym-model-name       (constantly "all-minilm")
+                  semantic-layer-settings/ee-complexity-synonym-model-dimensions (constantly 384)
+                  semantic-layer-settings/ee-complexity-synonym-threshold        (constantly nil)
+                  ss.embedding/get-embeddings-batch (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")
+                                                                            (entity :name "invoices")])
+                                  complexity/universe-entities (constantly [(entity :name "orders")
+                                                                            (entity :name "invoices")])]
+        (let [{:keys [library universe meta]} (complexity/complexity-scores)]
+          (is (=? {:pairs 0 :score 0 :error "boom"}
+                  (get-in library [:components :synonym-pairs]))
+              "library synonym axis scored zero with :error from the underlying throw")
+          (is (=? {:pairs 0 :score 0 :error "boom"}
+                  (get-in universe [:components :synonym-pairs]))
+              "universe synonym axis scored zero with :error from the underlying throw")
+          (is (= {:provider "ollama" :model-name "all-minilm"}
+                 (:embedding-model meta))
+              ":meta still reflects the configured provider — the failure is on the axis, not the config"))))))
