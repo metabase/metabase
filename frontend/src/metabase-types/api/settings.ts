@@ -482,6 +482,7 @@ export type EmbeddingHomepageStatus =
 
 interface AdminSettings {
   "active-users-count"?: number;
+  "analytics-pii-retention-enabled"?: boolean;
   "custom-geojson-enabled": boolean;
   "encryption-enabled": boolean;
   "deprecation-notice-version"?: string;
@@ -534,7 +535,6 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
-  "analytics-pii-retention-enabled"?: boolean;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;
