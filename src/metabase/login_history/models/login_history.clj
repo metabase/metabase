@@ -86,8 +86,8 @@
    window. Over-counts first-login-ever rows (those never email) — safe direction for a
    breaker."
   [user-id]
-  (let [cutoff [:inline (h2x/add-interval-honeysql-form
-                         (mdb/db-type) :%now (- new-device-email-rate-limit-window-hours) :hour)]]
+  (let [cutoff (h2x/add-interval-honeysql-form
+                (mdb/db-type) :%now (- new-device-email-rate-limit-window-hours) :hour)]
     (> (t2/count :model/LoginHistory
                  {:where [:and
                           [:= :user_id user-id]
