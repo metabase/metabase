@@ -57,10 +57,8 @@
           (log/warn "Data Complexity Score: Snowplow publish failed; leaving fingerprint unchanged so the next boot or cron retries"))
         result)
       (catch Throwable t
-        (log/warn t "Data Complexity Score run failed")
-        nil))
-    (do (log/debug "Data Complexity Score run skipped — data-complexity-scoring-enabled is off")
-        nil)))
+        (log/warn t "Data Complexity Score run failed")))
+    (log/debug "Data Complexity Score run skipped — data-complexity-scoring-enabled is off")))
 
 ;; Long enough that any realistic scoring run finishes well inside it, short enough that a crashed
 ;; claimant unblocks the next tick's retry without operator intervention.

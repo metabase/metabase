@@ -114,8 +114,7 @@
          :table-name (-> state :index :table-name)
          :model      (-> state :index :embedding-model)}))
     (catch Throwable t
-      (log/debug t "Semantic-search index not available; search-index embedder will return {}")
-      nil)))
+      (log/debug t "Semantic-search index not available; search-index embedder will return {}"))))
 
 (defn search-index-embedder
   "Embedder that reads vectors from the active semantic-search pgvector index.
