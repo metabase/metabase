@@ -32,17 +32,14 @@ jest.mock("embedding-sdk-bundle/components/public/StaticQuestion", () => {
   const Component = ({ query }: { query?: string }) => (
     <div data-testid="mock-static-question" data-query={query} />
   );
-  return { StaticQuestion: Component, StaticQuestionInternal: Component };
+  return { StaticQuestionInternal: Component };
 });
 
 jest.mock("embedding-sdk-bundle/components/public/InteractiveQuestion", () => {
   const Component = ({ query }: { query?: string }) => (
     <div data-testid="mock-interactive-question" data-query={query} />
   );
-  return {
-    InteractiveQuestion: Component,
-    InteractiveQuestionInternal: Component,
-  };
+  return { InteractiveQuestionInternal: Component };
 });
 
 describe("useMetabot", () => {
