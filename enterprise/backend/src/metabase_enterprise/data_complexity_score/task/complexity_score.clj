@@ -8,6 +8,7 @@
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
+   [metabase-enterprise.data-complexity-score.metrics.semantic :as metrics.semantic]
    [metabase-enterprise.data-complexity-score.settings :as settings]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
@@ -35,7 +36,7 @@
   []
   (pr-str (into (sorted-map)
                 {:formula-version   complexity/formula-version
-                 :synonym-threshold complexity/synonym-similarity-threshold
+                 :synonym-threshold metrics.semantic/synonym-similarity-threshold
                  :weights           complexity/weights
                  :embedding-model   embedders/default-synonym-model
                  :text-variant      embedders/default-text-variant})))

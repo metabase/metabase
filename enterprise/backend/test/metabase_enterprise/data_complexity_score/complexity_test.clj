@@ -404,7 +404,7 @@
                     (constantly {:pgvector   :mock
                                  :table-name "mock_table"
                                  :model      {:provider "openai" :model-name "text-embedding-3-small"}})
-                    ss.embedders/fetch-by-model+id (constantly [])]
+                    ss.embedders/fetch-batch (constantly [])]
         (let [{:keys [meta]} (complexity/complexity-scores :embedder semantic-search/search-index-embedder)]
           (is (= {:provider "openai" :model-name "text-embedding-3-small"}
                  (:embedding-model meta))))))))
@@ -607,7 +607,7 @@
                     (constantly {:pgvector   :mock
                                  :table-name "mock_table"
                                  :model      {:provider "openai" :model-name "text-embedding-3-small"}})
-                    ss.embedders/fetch-by-model+id (constantly [])]
+                    ss.embedders/fetch-batch (constantly [])]
         (mt/with-dynamic-fn-redefs [complexity/library-catalog  (fn [] (catalog [(entity :name "orders")]))
                                     complexity/universe-catalog (fn [] (catalog [(entity :name "orders")]))]
           (snowplow-test/pop-event-data-and-user-id!)
