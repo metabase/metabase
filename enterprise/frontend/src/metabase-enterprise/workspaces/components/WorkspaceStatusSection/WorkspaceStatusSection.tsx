@@ -12,9 +12,10 @@ import {
 import type { Workspace } from "metabase-types/api";
 
 import {
-  isWorkspaceProvisioned,
-  isWorkspaceProvisioning,
-  isWorkspaceUnprovisioning,
+  isDatabaseProvisioned,
+  isDatabaseProvisioning,
+  isDatabaseUnprovisioned,
+  isDatabaseUnprovisioning,
 } from "../../utils";
 import { TitleSection } from "../TitleSection";
 
@@ -30,9 +31,9 @@ export function WorkspaceStatusSection({
   const [unprovisionWorkspace] = useUnprovisionWorkspaceMutation();
   const { sendErrorToast } = useMetadataToasts();
 
-  const isProvisioning = isWorkspaceProvisioning(workspace);
-  const isUnprovisioning = isWorkspaceUnprovisioning(workspace);
-  const isProvisioned = isWorkspaceProvisioned(workspace);
+  const isProvisioning = workspace.databases.some(isDatabaseProvisioning);
+  const isUnprovisioning = workspace.databases.some(isDatabaseUnprovisioning);
+  const isProvisioned = workspace.databases.every(isDatabaseProvisioned);
   const isInProgress = isProvisioning || isUnprovisioning;
 
   const statusIcon = getStatusIcon(workspace);
@@ -96,49 +97,52 @@ export function WorkspaceStatusSection({
 }
 
 function getStatusIcon(workspace: Workspace): ReactNode {
-  if (isWorkspaceProvisioning(workspace)) {
+  if (workspace.databases.some(isDatabaseProvisioning)) {
     return <Loader size="sm" />;
   }
-  if (isWorkspaceUnprovisioning(workspace)) {
+  if (workspace.databases.some(isDatabaseUnprovisioning)) {
     return <Loader size="sm" />;
   }
-  if (isWorkspaceProvisioned(workspace)) {
+  if (workspace.databases.every(isDatabaseProvisioned)) {
     return <Icon name="check_filled" c="success" />;
   }
   return <Icon name="warning" c="warning" />;
 }
 
 function getStatusMessage(workspace: Workspace): string {
-  if (isWorkspaceProvisioning(workspace)) {
+  if (workspace.databases.some(isDatabaseProvisioning)) {
     return t`Provisioning this workspace…`;
   }
-  if (isWorkspaceUnprovisioning(workspace)) {
+  if (workspace.databases.some(isDatabaseUnprovisioning)) {
     return t`Unprovisioning this workspace…`;
   }
-  if (isWorkspaceProvisioned(workspace)) {
+  if (workspace.databases.every(isDatabaseProvisioned)) {
     return t`This workspace is provisioned and ready to use.`;
   }
-  return t`This workspace is not provisioned yet.`;
+  if (workspace.databases.every(isDatabaseUnprovisioned)) {
+    return t`This workspace is not provisioned yet.`;
+  }
+  return t`This workspace is partially provisioned.`;
 }
 
 function getButtonLabel(workspace: Workspace): string {
-  if (isWorkspaceProvisioning(workspace)) {
+  if (workspace.databases.some(isDatabaseProvisioning)) {
     return t`Provisioning…`;
   }
-  if (isWorkspaceUnprovisioning(workspace)) {
+  if (workspace.databases.some(isDatabaseUnprovisioning)) {
     return t`Unprovisioning…`;
   }
-  if (isWorkspaceProvisioned(workspace)) {
+  if (workspace.databases.every(isDatabaseProvisioned)) {
     return t`Unprovision workspace`;
   }
   return t`Provision workspace`;
 }
 
 function getButtonColor(workspace: Workspace): ColorName {
-  if (isWorkspaceUnprovisioning(workspace)) {
+  if (workspace.databases.some(isDatabaseUnprovisioning)) {
     return "error";
   }
-  if (isWorkspaceProvisioned(workspace)) {
+  if (workspace.databases.every(isDatabaseProvisioned)) {
     return "error";
   }
   return "brand";

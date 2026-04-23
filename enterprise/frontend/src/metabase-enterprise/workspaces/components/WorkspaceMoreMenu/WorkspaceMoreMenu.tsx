@@ -9,7 +9,7 @@ import * as Urls from "metabase/utils/urls";
 import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
-import { isWorkspaceUnprovisioned } from "../../utils";
+import { isDatabaseUnprovisioned } from "../../utils";
 
 type WorkspaceMoreMenuProps = {
   workspace: Workspace;
@@ -20,7 +20,9 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const dispatch = useDispatch();
-  const canDelete = isWorkspaceUnprovisioned(workspace);
+  const isFullyUnprovisioned = workspace.databases.every(
+    isDatabaseUnprovisioned,
+  );
 
   const handleDelete = () => {
     show({
@@ -51,11 +53,11 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
         <Menu.Dropdown>
           <Tooltip
             label={t`Unprovision this workspace before deleting.`}
-            disabled={canDelete}
+            disabled={isFullyUnprovisioned}
           >
             <Menu.Item
               leftSection={<Icon name="trash" />}
-              disabled={!canDelete}
+              disabled={!isFullyUnprovisioned}
               onClick={handleDelete}
             >
               {t`Delete`}

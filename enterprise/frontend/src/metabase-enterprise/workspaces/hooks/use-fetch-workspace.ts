@@ -2,10 +2,10 @@ import { useState } from "react";
 
 import { skipToken } from "metabase/api";
 import { useGetWorkspaceQuery } from "metabase-enterprise/api";
-import type { WorkspaceId } from "metabase-types/api";
+import type { Workspace, WorkspaceId } from "metabase-types/api";
 
 import { POLLING_INTERVAL } from "../constants";
-import { isWorkspaceProvisioning, isWorkspaceUnprovisioning } from "../utils";
+import { isDatabaseProvisioning, isDatabaseUnprovisioning } from "../utils";
 
 export function useFetchWorkspace(workspaceId: WorkspaceId | undefined) {
   const [isPolling, setIsPolling] = useState(false);
@@ -18,14 +18,21 @@ export function useFetchWorkspace(workspaceId: WorkspaceId | undefined) {
     pollingInterval: isPolling ? POLLING_INTERVAL : undefined,
   });
 
-  const shouldPoll =
-    workspace != null &&
-    (isWorkspaceProvisioning(workspace) ||
-      isWorkspaceUnprovisioning(workspace));
-
-  if (isPolling !== shouldPoll) {
-    setIsPolling(shouldPoll);
+  const isPollingNeeded = isPollingNeededForWorkspace(workspace);
+  if (isPolling !== isPollingNeeded) {
+    setIsPolling(isPollingNeeded);
   }
 
   return { workspace, isLoading, error };
+}
+
+function isPollingNeededForWorkspace(workspace: Workspace | undefined) {
+  if (workspace == null) {
+    return false;
+  }
+
+  return (
+    workspace.databases.some(isDatabaseProvisioning) ||
+    workspace.databases.some(isDatabaseUnprovisioning)
+  );
 }

@@ -10,7 +10,7 @@ import type {
   WorkspaceDatabaseDraft,
 } from "metabase-types/api";
 
-import { isWorkspaceDatabase } from "../../utils";
+import { isSupportedDatabase } from "../../utils";
 import { TitleSection } from "../TitleSection";
 
 import { DatabaseMappingList } from "./DatabaseMappingList";
@@ -132,7 +132,7 @@ function getAvailableDatabases(
   const mappedIds = new Set(mappings.map((mapping) => mapping.database_id));
   return databases.filter(
     (database) =>
-      isWorkspaceDatabase(database) &&
+      isSupportedDatabase(database) &&
       (!mappedIds.has(database.id) || database.id === databaseId),
   );
 }
