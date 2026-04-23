@@ -13,6 +13,8 @@ import { useLazyGetTransformQuery } from "metabase/api";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { MetabotContext } from "metabase/metabot/context";
 import {
+  type MetabotAgentDataPartMessage,
+  type MetabotDataPart,
   activateSuggestedTransform,
   getIsSuggestedTransformActive,
 } from "metabase/metabot/state";
@@ -43,9 +45,8 @@ import type {
 
 import S from "./MetabotAgentSuggestionMessage.module.css";
 
-export type AgentSuggestionPayload = {
-  editorTransform: MetabotTransformInfo | undefined;
-  suggestedTransform: MetabotSuggestedTransform;
+export type SuggestionMessage = Omit<MetabotAgentDataPartMessage, "part"> & {
+  part: Extract<MetabotDataPart, { type: "transform_suggestion" }>;
 };
 
 const PreviewContent = ({
@@ -89,7 +90,10 @@ const PreviewContent = ({
 const useGetOldTransform = ({
   editorTransform,
   suggestedTransform,
-}: AgentSuggestionPayload) => {
+}: {
+  editorTransform: MetabotTransformInfo | undefined;
+  suggestedTransform: MetabotSuggestedTransform;
+}) => {
   const [trigger, result] = useLazyGetTransformQuery();
   useMount(() => {
     if (!editorTransform && suggestedTransform.id) {
@@ -109,10 +113,10 @@ const useGetOldTransform = ({
 };
 
 export const AgentSuggestionMessage = ({
-  payload,
+  message,
   readonly,
 }: {
-  payload: AgentSuggestionPayload;
+  message: SuggestionMessage;
   readonly?: boolean;
 }) => {
   const dispatch = useDispatch();
@@ -123,7 +127,12 @@ export const AgentSuggestionMessage = ({
   const [isApplying, setIsApplying] = useState(false);
   const [hasAppliedInContext, setHasAppliedInContext] = useState(false);
 
-  const { suggestedTransform, editorTransform } = payload;
+  const suggestedTransform: MetabotSuggestedTransform = {
+    ...message.part.value,
+    active: true,
+    suggestionId: message.metadata?.suggestionId ?? message.id,
+  };
+  const editorTransform = message.metadata?.editorTransform;
   const existingTransformId =
     typeof suggestedTransform.id === "number"
       ? suggestedTransform.id
@@ -158,7 +167,7 @@ export const AgentSuggestionMessage = ({
     data: originalTransform,
     isLoading,
     error,
-  } = useGetOldTransform(payload);
+  } = useGetOldTransform({ editorTransform, suggestedTransform });
 
   const oldSource = originalTransform
     ? getSourceCode(originalTransform, metadata)
@@ -171,7 +180,10 @@ export const AgentSuggestionMessage = ({
     if (suggestionActions) {
       setIsApplying(true);
       try {
-        const result = await suggestionActions.applySuggestion(payload);
+        const result = await suggestionActions.applySuggestion({
+          editorTransform,
+          suggestedTransform,
+        });
         if (result.status === "applied") {
           setHasAppliedInContext(true);
         } else {

@@ -7,62 +7,45 @@ import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import type { MetabotAgentDataPartMessage } from "metabase/metabot/state";
 import { ActionIcon, Badge, Box, Button, Flex, Icon, Text } from "metabase/ui";
-import type {
-  MetabotCodeEdit,
-  MetabotSuggestedTransform,
-} from "metabase-types/api";
+import type { MetabotCodeEdit } from "metabase-types/api";
 
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
+
+type AgentDataPartMessageProps = {
+  message: MetabotAgentDataPartMessage;
+  readonly: boolean;
+  debug: boolean;
+};
 
 export const AgentDataPartMessage = ({
   message,
   readonly,
   debug,
-}: {
-  message: MetabotAgentDataPartMessage;
-  readonly: boolean;
-  debug: boolean;
-}) => {
-  const { part, metadata } = message;
-
-  return match(part)
-    .with({ type: "todo_list" }, (todoPart) => (
-      <AgentTodoListMessage todos={todoPart.value} />
+}: AgentDataPartMessageProps) =>
+  match(message)
+    .with({ part: { type: "todo_list" } }, ({ part }) => (
+      <AgentTodoListMessage todos={part.value} />
     ))
-    .with({ type: "transform_suggestion" }, (tsPart) => {
-      const suggestedTransform: MetabotSuggestedTransform = {
-        ...tsPart.value,
-        active: true,
-        suggestionId: metadata?.suggestionId ?? message.id,
-      };
-      return (
-        <AgentSuggestionMessage
-          payload={{
-            editorTransform: metadata?.editorTransform,
-            suggestedTransform,
-          }}
-          readonly={readonly}
-        />
-      );
-    })
-    .with({ type: "navigate_to" }, (p) =>
-      debug ? <NavigateToDataPart type={p.type} path={p.value} /> : null,
+    .with({ part: { type: "transform_suggestion" } }, (msg) => (
+      <AgentSuggestionMessage message={msg} readonly={readonly} />
+    ))
+    .with({ part: { type: "navigate_to" } }, ({ part }) =>
+      debug ? <NavigateToDataPart type={part.type} path={part.value} /> : null,
     )
-    .with({ type: "code_edit" }, (p) =>
-      debug ? <CodeEditDataPart type={p.type} value={p.value} /> : null,
+    .with({ part: { type: "code_edit" } }, ({ part }) =>
+      debug ? <CodeEditDataPart type={part.type} value={part.value} /> : null,
     )
-    .with({ type: "adhoc_viz" }, (p) =>
-      debug ? <DataPartJsonCard type={p.type} value={p.value} /> : null,
+    .with({ part: { type: "adhoc_viz" } }, ({ part }) =>
+      debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
     )
-    .with({ type: "static_viz" }, (p) =>
-      debug ? <DataPartJsonCard type={p.type} value={p.value} /> : null,
+    .with({ part: { type: "static_viz" } }, ({ part }) =>
+      debug ? <DataPartJsonCard type={part.type} value={part.value} /> : null,
     )
-    .exhaustive((part: unknown) => {
-      console.warn("AgentDataPartMessage received an unexpected value:", part);
+    .exhaustive((msg: unknown) => {
+      console.warn("AgentDataPartMessage received an unexpected value:", msg);
       return null;
     });
-};
 
 const DataPartJsonCard = ({
   type,

@@ -8,6 +8,7 @@ import { createMockState } from "metabase/redux/store/mocks";
 import type {
   MetabotSuggestedTransform,
   MetabotTransformInfo,
+  SuggestedTransform,
 } from "metabase-types/api";
 import {
   createMockNativeDatasetQuery,
@@ -20,7 +21,7 @@ import {
 
 import {
   AgentSuggestionMessage,
-  type AgentSuggestionPayload,
+  type SuggestionMessage,
 } from "./MetabotAgentSuggestionMessage";
 
 const createMockSuggestedTransform = (
@@ -40,18 +41,32 @@ const createMockTransformInfo = (
   ...overrides,
 });
 
-const createMockSuggestionPayload = (
-  overrides: Partial<AgentSuggestionPayload> = {},
-): AgentSuggestionPayload => ({
-  editorTransform: undefined,
-  suggestedTransform: createMockSuggestedTransform({}),
-  ...overrides,
-});
+const createMockSuggestionMessage = ({
+  suggestedTransform,
+  editorTransform,
+}: {
+  suggestedTransform?: Partial<MetabotSuggestedTransform>;
+  editorTransform?: MetabotTransformInfo;
+} = {}): SuggestionMessage => {
+  const merged = createMockSuggestedTransform(suggestedTransform ?? {});
+  const { active: _active, suggestionId, ...value } = merged;
+  return {
+    id: "msg-123",
+    role: "agent",
+    type: "data_part",
+    part: {
+      type: "transform_suggestion",
+      version: 1,
+      value: value as SuggestedTransform,
+    },
+    metadata: { editorTransform, suggestionId },
+  };
+};
 
-const setup = (payload: AgentSuggestionPayload, readonly = false) => {
+const setup = (message: SuggestionMessage, readonly = false) => {
   setupEnterprisePlugins();
   return renderWithProviders(
-    <AgentSuggestionMessage payload={payload} readonly={readonly} />,
+    <AgentSuggestionMessage message={message} readonly={readonly} />,
     {
       storeInitialState: createMockState({
         settings: mockSettings(),
@@ -64,7 +79,7 @@ const setup = (payload: AgentSuggestionPayload, readonly = false) => {
 describe("AgentSuggestionMessage", () => {
   it("should show proposal for new transforms", async () => {
     setup(
-      createMockSuggestionPayload({
+      createMockSuggestionMessage({
         editorTransform: undefined,
         suggestedTransform: createMockSuggestedTransform({
           id: undefined,
@@ -85,7 +100,7 @@ describe("AgentSuggestionMessage", () => {
 
   it("should show diff view for edited transforms", async () => {
     setup(
-      createMockSuggestionPayload({
+      createMockSuggestionMessage({
         editorTransform: createMockTransformInfo({
           id: 123,
           source: createMockPythonTransformSource({
@@ -113,7 +128,7 @@ describe("AgentSuggestionMessage", () => {
 
   it("should disable the action button and show a read-only tooltip when readonly", async () => {
     setup(
-      createMockSuggestionPayload({
+      createMockSuggestionMessage({
         editorTransform: undefined,
         suggestedTransform: createMockSuggestedTransform({
           id: undefined,
@@ -135,7 +150,7 @@ describe("AgentSuggestionMessage", () => {
 
   it("should be collapsible", async () => {
     setup(
-      createMockSuggestionPayload({
+      createMockSuggestionMessage({
         editorTransform: undefined,
         suggestedTransform: createMockSuggestedTransform({
           id: undefined, // Make sure this is a new transform
