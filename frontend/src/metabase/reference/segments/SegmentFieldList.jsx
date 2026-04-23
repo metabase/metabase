@@ -16,6 +16,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Field from "metabase/reference/components/Field";
 import F from "metabase/reference/components/Field.module.css";
 import * as actions from "metabase/reference/reference";
+import { modelIconMap } from "metabase/utils/icon";
 import { connect } from "metabase/utils/redux";
 import { getIconForField } from "metabase-lib/v1/metadata/utils/fields";
 
@@ -122,7 +123,7 @@ const SegmentFieldList = (props) => {
       )}
       <EditableReferenceHeader
         type="segment"
-        headerIcon="segment"
+        headerIcon={modelIconMap.segment}
         name={t`Fields in ${segment.name}`}
         user={user}
         isEditing={isEditing}

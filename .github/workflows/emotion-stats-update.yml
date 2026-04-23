@@ -1,0 +1,78 @@
+# Weekly count of files importing @emotion/*, uploaded to stats.metabase.com.
+# Feeds the "Emotion CSS Elimination Progress" chart tracking the migration
+# off Emotion onto Mantine (+ CSS modules as a fallback).
+name: Emotion Stats Update
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: 40 1 * * 2 # every Tuesday at 1:40
+
+jobs:
+  emotion-stats:
+    if: github.repository == 'metabase/metabase'
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get Emotion file count
+        id: get-emotion-file-count
+        run: |
+          # Match both `import ... from '@emotion/...'` and bare side-effect imports
+          # (`import '@emotion/...'`, used in e.g. frontend/src/types/emotion.d.ts).
+          # `|| true` prevents failing on the day the count reaches 0 — git grep
+          # exits 1 on no matches, which cascades through bash's default pipefail.
+          oss=$(
+            git grep -l -E "(from|import) ['\"]@emotion/" -- \
+              'frontend/**/*.ts' \
+              'frontend/**/*.tsx' \
+              'frontend/**/*.js' \
+              'frontend/**/*.jsx' \
+              | wc -l || true
+          )
+
+          ee=$(
+            git grep -l -E "(from|import) ['\"]@emotion/" -- \
+              'enterprise/frontend/**/*.ts' \
+              'enterprise/frontend/**/*.tsx' \
+              'enterprise/frontend/**/*.js' \
+              'enterprise/frontend/**/*.jsx' \
+              | wc -l || true
+          )
+
+          echo "$(($oss+$ee)) files importing @emotion/*"
+
+          echo "EMOTION_FILES=$(($oss+$ee))" >> $GITHUB_OUTPUT
+      - name: Upload count to Stats
+        uses: actions/github-script@v7
+        env:
+          EMOTION_FILES: ${{ steps.get-emotion-file-count.outputs.EMOTION_FILES }}
+          API_KEY: ${{ secrets.STATS_API_KEY }}
+        with:
+          script: | # js
+            const { uploadCsvToMb } = require('${{ github.workspace }}/.github/scripts/csv-to-mb.js');
+
+            console.log("EMOTION_FILES", Number(process.env.EMOTION_FILES));
+
+            // Keys become CSV headers and must match the target table's columns
+            // (Metabase slugifies both sides, so casing/spacing is forgiving).
+            const data = [
+              {
+                'Date': new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+                'Emotion Files': Number(process.env.EMOTION_FILES),
+              }
+            ];
+
+            // tableId 76283 = "Emotion Files" table on stats.metabase.com.
+            // Auth via x-api-key, sourced from STATS_API_KEY (see env block above).
+            uploadCsvToMb({
+              baseUrl: 'https://stats.metabase.com',
+              tableId: 76283,
+              jsonData: data,
+              mode: 'append',
+            }).then(() => {
+              console.log('Data uploaded successfully');
+            }).catch((error) => {
+              console.error('Error uploading data:', error);
+              process.exit(1);
+            });
