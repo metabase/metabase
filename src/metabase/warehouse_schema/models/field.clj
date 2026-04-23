@@ -434,7 +434,12 @@
   (let [[table-path fields] (split-with #(not= "Field" (:model %)) path)
         table               (serdes/load-find-local table-path)
         field-q             (serdes/recursively-find-field-q (:id table) (map :id (reverse fields)))]
-    (t2/select-one :model/Field field-q)))
+    (or (t2/select-one :model/Field field-q)
+        (t2/insert-returning-pk! :model/Field {:table_id (:id table)
+                                               ;; hack not dealing with nested fields yet
+                                               :name (->> fields last :id)
+                                               :base_type :type/*
+                                               :database_type "*"}))))
 
 (defmethod serdes/dependencies "Field" [field]
   ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.
