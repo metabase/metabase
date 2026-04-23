@@ -120,9 +120,10 @@ config:
         - raw_github
         output_schema: <schema from ws init>
   settings:
-    remote-sync-url: file:///tmp/metabase_assets
-    remote-sync-type: read-write
+    disable-sync: true
     remote-sync-branch: main
+    remote-sync-type: read-write
+    remote-sync-url: file:///tmp/metabase_assets
 EOF
 ```
 1. Download metadata.json. It should look like this:
