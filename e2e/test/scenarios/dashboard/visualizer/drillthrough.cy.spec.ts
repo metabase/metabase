@@ -73,12 +73,12 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     const PRODUCTS_SERIES_COLOR = "#88BF4D";
 
     // 1. Cartesian chart, timeseries breakout
-    const SEP_2022_POINT_INDEX = 5;
+    const SEP_2025_POINT_INDEX = 5;
 
     H.getDashboardCard(0).within(() =>
       // eslint-disable-next-line no-unsafe-element-filtering
       H.cartesianChartCircleWithColor(PRODUCTS_SERIES_COLOR)
-        .eq(SEP_2022_POINT_INDEX)
+        .eq(SEP_2025_POINT_INDEX)
         .click(),
     );
     H.clickActionsPopover().findByText("See these Products").click();
@@ -86,7 +86,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
 
     H.queryBuilderFiltersPanel().children().should("have.length", 1);
     H.queryBuilderFiltersPanel().findByText(
-      "Created At: Month is Sep 1–30, 2022",
+      "Created At: Month is Sep 1–30, 2025",
     );
     H.assertQueryBuilderRowCount(9);
     H.tableInteractiveHeader().findByText("Price"); // ensure we're on the Products table
@@ -96,7 +96,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.getDashboardCard(0).within(() => {
       // eslint-disable-next-line no-unsafe-element-filtering
       H.cartesianChartCircleWithColor(ORDERS_SERIES_COLOR)
-        .eq(SEP_2022_POINT_INDEX)
+        .eq(SEP_2025_POINT_INDEX)
         .click();
     });
 
@@ -107,7 +107,7 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
 
     H.queryBuilderFiltersPanel().children().should("have.length", 1);
     H.queryBuilderFiltersPanel().findByText(
-      "Created At: Month is Sep 1–30, 2022",
+      "Created At: Month is Sep 1–30, 2025",
     );
     H.assertQueryBuilderRowCount(5);
     H.echartsContainer().within(() => {
@@ -234,8 +234,8 @@ describe("scenarios > dashboard > visualizer > drillthrough", () => {
     H.queryBuilderMain().within(() => {
       cy.findByText("Count").should("exist"); // y-axis
       cy.findByText("Created At: Month").should("exist"); // x-axis
-      cy.findByText("May 2023").should("exist");
-      cy.findByText("December 2023").should("exist");
+      cy.findByText("May 2026").should("exist");
+      cy.findByText("December 2026").should("exist");
     });
   });
 });

@@ -259,7 +259,7 @@ describe("scenarios > question > summarize sidebar", () => {
     removeMetricFromSidebar("Sum of Total");
 
     cy.findAllByTestId("header-cell").should("have.length", 2);
-    cy.get("[data-testid=cell-data]").should("contain", 744); // `Count` for year 2022
+    cy.get("[data-testid=cell-data]").should("contain", 744); // `Count` for year 2025
   });
 
   // flaky test (#19454)
