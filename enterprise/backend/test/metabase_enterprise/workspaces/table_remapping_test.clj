@@ -9,8 +9,11 @@
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.remapping-ledger :as ledger]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-   [metabase.test :as mt]))
+   [metabase.sync.fetch-metadata :as fetch-metadata]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (use-fixtures :each (fn [f] (mt/with-premium-features #{:workspaces} (f))))
 
@@ -183,6 +186,56 @@
                (is (nil? (ws.table-remapping/remap-table (mt/id) "PUBLIC" "ORDERS"))))
              (testing "record-calls is empty because record-remap! is what threw"
                (is (= [] @record-calls))))))))))
+
+(deftest workspace-remap-schema+name-redirects-sync-fetch-test
+  (testing "sync's fetch-metadata hook returns [to-schema to-table-name] when a TableRemapping exists"
+    (let [db-id (mt/id)]
+      (clean-db-fixture
+       db-id
+       (fn []
+         (is (nil? (ws.table-remapping/workspace-remap-schema+name db-id "PUBLIC" "ORDERS"))
+             "without a remapping, the hook returns nil so sync queries the logical table")
+         (ws.table-remapping/add-schema+table-mapping! db-id ["PUBLIC" "ORDERS"] ["mb_iso_ws" "orders_copy"])
+         (is (= ["mb_iso_ws" "orders_copy"]
+                (ws.table-remapping/workspace-remap-schema+name db-id "PUBLIC" "ORDERS"))
+             "with a remapping, the hook returns the isolated warehouse location so sync asks the driver there"))))))
+
+(deftest table-fields-metadata-honors-workspace-remapping-test
+  (testing "sync/fetch-metadata/table-fields-metadata asks the driver about the remapped warehouse table"
+    (let [db-id          (mt/id)
+          describe-calls (atom [])]
+      (clean-db-fixture
+       db-id
+       (fn []
+         (ws.table-remapping/add-schema+table-mapping! db-id ["PUBLIC" "ORDERS"] ["mb_iso_ws" "orders_copy"])
+         (with-redefs [driver/describe-fields
+                       (fn [_driver _db & {:keys [table-names schema-names]}]
+                         (swap! describe-calls conj {:path         :describe-fields
+                                                     :table-names  table-names
+                                                     :schema-names schema-names})
+                         #{})
+                       driver/describe-table
+                       (fn [_driver _db table]
+                         (swap! describe-calls conj {:path   :describe-table
+                                                     :schema (:schema table)
+                                                     :name   (:name table)})
+                         {:fields #{}})]
+           (let [logical-table (t2/instance :model/Table
+                                            {:id 999 :name "ORDERS" :schema "PUBLIC" :db_id db-id})]
+             (fetch-metadata/table-fields-metadata
+              (t2/select-one :model/Database :id db-id)
+              logical-table))
+           (is (= 1 (count @describe-calls)))
+           (let [call (first @describe-calls)]
+             (testing "driver is asked about the remapped (to_schema, to_table_name), not the logical source"
+               (case (:path call)
+                 :describe-fields
+                 (do (is (= ["orders_copy"] (:table-names call)))
+                     (is (= ["mb_iso_ws"]   (:schema-names call))))
+                 :describe-table
+                 (do (is (= "orders_copy" (:name call)))
+                     (is (= "mb_iso_ws"   (:schema call))))
+                 (is false (str "unexpected path " (:path call))))))))))))
 
 (deftest record-remapping!-requires-workspaced-db-test
   (testing "throws with a clear error when db is not workspaced (db-workspace-schema returns nil)"

@@ -6,12 +6,31 @@
    [clojure.set :as set]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
    [toucan2.core :as t2]))
+
+(defenterprise workspace-remap-schema+name
+  "In workspace mode, a Table row at `(from-schema, from-name)` may be backed by a
+  physically-different warehouse table at `(to-schema, to-name)` recorded in
+  `table_remapping`. This hook returns `[to-schema to-name]` when a remapping
+  exists so sync asks the driver about the isolated warehouse location; returns
+  nil otherwise (OSS fallback) so the driver is queried at the logical identity."
+  metabase-enterprise.workspaces.table-remapping
+  [_db-id _schema _name]
+  nil)
+
+(defn- effective-schema+name
+  "Pair used when querying the driver for a Table's fields. Lets workspace mode
+  redirect to the isolated warehouse table while the app-db row keeps its
+  logical identity."
+  [database-id schema table-name]
+  (or (workspace-remap-schema+name database-id schema table-name)
+      [schema table-name]))
 
 (defmacro log-if-error
   "Logs an error message if an exception is thrown while executing the body."
@@ -33,10 +52,12 @@
 (defn include-nested-fields-for-table
   "Add nested-field-columns for table to set of fields."
   [fields database table]
-  (let [driver (driver.u/database->driver database)]
+  (let [driver                (driver.u/database->driver database)
+        [eff-schema eff-name] (effective-schema+name (:id database) (:schema table) (:name table))
+        effective-table       (assoc table :schema eff-schema :name eff-name)]
     (cond-> fields
       (driver.u/supports? driver :nested-field-columns database)
-      (set/union ((requiring-resolve 'metabase.driver.sql-jdbc.sync/describe-nested-field-columns) driver database table)))))
+      (set/union ((requiring-resolve 'metabase.driver.sql-jdbc.sync/describe-nested-field-columns) driver database effective-table)))))
 
 (mu/defn table-fields-metadata :- [:set i/TableMetadataField]
   "Fetch metadata about Fields belonging to a given `table` directly from an external database by calling its driver's
@@ -45,13 +66,15 @@
   [database :- i/DatabaseInstance
    table    :- i/TableInstance]
   (log-if-error "table-fields-metadata"
-    (let [driver (driver.u/database->driver database)
+    (let [driver               (driver.u/database->driver database)
+          [eff-schema eff-name] (effective-schema+name (:id database) (:schema table) (:name table))
+          effective-table       (assoc table :schema eff-schema :name eff-name)
           result (if (driver.u/supports? driver :describe-fields database)
                    (set (driver/describe-fields driver
                                                 database
-                                                :table-names [(:name table)]
-                                                :schema-names [(:schema table)]))
-                   (:fields (driver/describe-table driver database table)))]
+                                                :table-names [eff-name]
+                                                :schema-names [eff-schema]))
+                   (:fields (driver/describe-table driver database effective-table)))]
       result)))
 
 (defn- describe-fields-using-describe-table
