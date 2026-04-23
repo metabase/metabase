@@ -1,12 +1,15 @@
 (ns metabase-enterprise.workspaces.provisioning-test
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.workspaces.models.workspace]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.driver :as driver]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent CountDownLatch TimeUnit)))
+
+(comment metabase-enterprise.workspaces.models.workspace/keep-me)
 
 (defn- stub-init [schema details]
   (fn [_driver _db _workspace]
