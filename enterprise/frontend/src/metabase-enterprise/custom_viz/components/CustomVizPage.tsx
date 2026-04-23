@@ -200,25 +200,27 @@ export function CustomVizPage({ params }: Props) {
           >
             {({ dirty, values }) => (
               <Form>
-                <Stack gap={0}>
-                  <Title order={2} mb="2.5rem">
+                <Stack gap="40px">
+                  <Title order={2}>
                     {isEdit
                       ? t`Edit visualization`
                       : t`Add a new visualization`}
                   </Title>
-                  <FormTextInput
-                    name="repoUrl"
-                    label={t`Repository URL`}
-                    description={t`The location of the git repository where your visualization bundle is.`}
-                    placeholder="https://github.com/user/custom-viz-plugin"
-                    disabled={isEdit}
-                    autoFocus={!isEdit}
-                    styles={{
-                      description: { color: "var(--mb-color-text-tertiary)" },
-                      root: { marginBottom: "1rem" },
-                    }}
-                  />
                   <Stack gap="md">
+                    <FormTextInput
+                      name="repoUrl"
+                      label={t`Repository URL`}
+                      description={t`The location of the git repository where your visualization bundle is.`}
+                      placeholder="https://github.com/user/custom-viz-plugin"
+                      disabled={isEdit}
+                      autoFocus={!isEdit}
+                      styles={{
+                        description: {
+                          color: "var(--mb-color-text-tertiary)",
+                        },
+                      }}
+                    />
+
                     <FormCheckbox
                       name="isPrivateRepo"
                       label={t`This is a private repository`}
@@ -233,7 +235,7 @@ export function CustomVizPage({ params }: Props) {
                       />
                     )}
                   </Stack>
-                  <Stack gap="md" mt="2rem">
+                  <Stack gap="md">
                     <Flex gap="sm" align="center">
                       <FormSwitch
                         size="sm"
