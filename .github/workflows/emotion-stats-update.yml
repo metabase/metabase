@@ -15,11 +15,30 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: get Emotion file count
+      - name: Get Emotion file count
         id: get-emotion-file-count
         run: |
-          oss=$(git grep -l -E "from ['\"]@emotion/" -- 'frontend/src/metabase/**/*.ts' 'frontend/src/metabase/**/*.tsx' 'frontend/src/metabase/**/*.js' 'frontend/src/metabase/**/*.jsx' | wc -l)
-          ee=$(git grep -l -E "from ['\"]@emotion/" -- 'enterprise/frontend/src/metabase-enterprise/**/*.ts' 'enterprise/frontend/src/metabase-enterprise/**/*.tsx' 'enterprise/frontend/src/metabase-enterprise/**/*.js' 'enterprise/frontend/src/metabase-enterprise/**/*.jsx' | wc -l)
+          # Match both `import ... from '@emotion/...'` and bare side-effect imports
+          # (`import '@emotion/...'`, used in e.g. frontend/src/types/emotion.d.ts).
+          # `|| true` prevents failing on the day the count reaches 0 — git grep
+          # exits 1 on no matches, which cascades through bash's default pipefail.
+          oss=$(
+            git grep -l -E "(from|import) ['\"]@emotion/" -- \
+              'frontend/**/*.ts' \
+              'frontend/**/*.tsx' \
+              'frontend/**/*.js' \
+              'frontend/**/*.jsx' \
+              | wc -l || true
+          )
+
+          ee=$(
+            git grep -l -E "(from|import) ['\"]@emotion/" -- \
+              'enterprise/frontend/**/*.ts' \
+              'enterprise/frontend/**/*.tsx' \
+              'enterprise/frontend/**/*.js' \
+              'enterprise/frontend/**/*.jsx' \
+              | wc -l || true
+          )
 
           echo "$(($oss+$ee)) files importing @emotion/*"
 
@@ -35,6 +54,8 @@ jobs:
 
             console.log("EMOTION_FILES", Number(process.env.EMOTION_FILES));
 
+            // Keys become CSV headers and must match the target table's columns
+            // (Metabase slugifies both sides, so casing/spacing is forgiving).
             const data = [
               {
                 'Date': new Date().toISOString().slice(0, 10), // YYYY-MM-DD
@@ -42,7 +63,8 @@ jobs:
               }
             ];
 
-            // tableId 76283 = "Emotion Files" table on stats.metabase.com
+            // tableId 76283 = "Emotion Files" table on stats.metabase.com.
+            // Auth via x-api-key, sourced from STATS_API_KEY (see env block above).
             uploadCsvToMb({
               baseUrl: 'https://stats.metabase.com',
               tableId: 76283,
