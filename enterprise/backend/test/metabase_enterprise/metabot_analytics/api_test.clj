@@ -163,7 +163,8 @@
                 :user                    {:id         test-user-id
                                           :email      "metabot-analytics-list-test@metabase.com"
                                           :first_name "Metabot"
-                                          :last_name  "Analytics"}}
+                                          :last_name  "Analytics"
+                                          :tenant_id  nil}}
                (select-keys convo-1-response [:conversation_id :summary :message_count
                                               :user_message_count :assistant_message_count :total_tokens
                                               :profile_id :user])))
@@ -237,7 +238,8 @@
             (is (= {:id         user-id
                     :email      "crowberto@metabase.com"
                     :first_name "Crowberto"
-                    :last_name  "Corv"}
+                    :last_name  "Corv"
+                    :tenant_id  nil}
                    (:user response)))
             (is (nil? (:slack_permalink response)))
             (is (= "internal" (:profile_id response))

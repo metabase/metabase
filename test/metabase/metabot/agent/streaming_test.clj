@@ -168,6 +168,13 @@
     (is (= "adhoc_viz" streaming/adhoc-viz-type))
     (is (= "static_viz" streaming/static-viz-type))))
 
+(deftest persistable-data-part?-test
+  (testing "state parts are not persisted (value lives on MetabotConversation.state)"
+    (is (false? (streaming/persistable-data-part? (streaming/state-part {:queries {}})))))
+  (testing "other parts are persisted"
+    (is (true? (streaming/persistable-data-part? (streaming/navigate-to-part "/question/1"))))
+    (is (true? (streaming/persistable-data-part? {:type :text :text "hi"})))))
+
 ;;; Transducer Tests
 
 (deftest expand-reactions-xf-test

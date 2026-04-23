@@ -13,7 +13,8 @@ import { useLazyGetTransformQuery } from "metabase/api";
 import { CodeMirror } from "metabase/common/components/CodeMirror";
 import { MetabotContext } from "metabase/metabot/context";
 import {
-  type MetabotAgentEditSuggestionChatMessage,
+  type MetabotAgentDataPartMessage,
+  type MetabotDataPart,
   activateSuggestedTransform,
   getIsSuggestedTransformActive,
 } from "metabase/metabot/state";
@@ -29,17 +30,23 @@ import {
   Loader,
   Paper,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
+  MetabotSuggestedTransform,
   MetabotTransformInfo,
   SuggestedTransform,
 } from "metabase-types/api";
 
 import S from "./MetabotAgentSuggestionMessage.module.css";
+
+export type SuggestionMessage = Omit<MetabotAgentDataPartMessage, "part"> & {
+  part: Extract<MetabotDataPart, { type: "transform_suggestion" }>;
+};
 
 const PreviewContent = ({
   oldSource,
@@ -82,7 +89,10 @@ const PreviewContent = ({
 const useGetOldTransform = ({
   editorTransform,
   suggestedTransform,
-}: MetabotAgentEditSuggestionChatMessage["payload"]) => {
+}: {
+  editorTransform: MetabotTransformInfo | undefined;
+  suggestedTransform: MetabotSuggestedTransform;
+}) => {
   const [trigger, result] = useLazyGetTransformQuery();
   useMount(() => {
     if (!editorTransform && suggestedTransform.id) {
@@ -103,8 +113,10 @@ const useGetOldTransform = ({
 
 export const AgentSuggestionMessage = ({
   message,
+  readonly,
 }: {
-  message: MetabotAgentEditSuggestionChatMessage;
+  message: SuggestionMessage;
+  readonly?: boolean;
 }) => {
   const dispatch = useDispatch();
   const metadata = useSelector(getMetadata);
@@ -113,7 +125,12 @@ export const AgentSuggestionMessage = ({
   const [isApplying, setIsApplying] = useState(false);
   const [hasAppliedInContext, setHasAppliedInContext] = useState(false);
 
-  const { suggestedTransform, editorTransform } = message.payload;
+  const suggestedTransform: MetabotSuggestedTransform = {
+    ...message.part.value,
+    active: true,
+    suggestionId: message.metadata?.suggestionId ?? message.id,
+  };
+  const editorTransform = message.metadata?.editorTransform;
   const existingTransformId =
     typeof suggestedTransform.id === "number"
       ? suggestedTransform.id
@@ -131,13 +148,21 @@ export const AgentSuggestionMessage = ({
   const canApply = suggestionActions
     ? !hasAppliedInContext && !isApplying
     : !isViewing || !isActive;
+
   const isNew = !isViewing && !editorTransform && existingTransformId == null;
+
+  const applyBtnText = match({ isApplying, isNew, canApply })
+    .with({ isApplying: true }, () => t`Applying...`)
+    .with({ canApply: false }, () => t`Applied`)
+    .with({ isNew: true }, () => t`Create`)
+    .with({ canApply: true }, () => t`Apply`)
+    .exhaustive();
 
   const {
     data: originalTransform,
     isLoading,
     error,
-  } = useGetOldTransform(message.payload);
+  } = useGetOldTransform({ editorTransform, suggestedTransform });
 
   const oldSource = originalTransform
     ? getSourceCode(originalTransform, metadata)
@@ -150,7 +175,10 @@ export const AgentSuggestionMessage = ({
     if (suggestionActions) {
       setIsApplying(true);
       try {
-        const result = await suggestionActions.applySuggestion(message.payload);
+        const result = await suggestionActions.applySuggestion({
+          editorTransform,
+          suggestedTransform,
+        });
         if (result.status === "applied") {
           setHasAppliedInContext(true);
         } else {
@@ -244,23 +272,19 @@ export const AgentSuggestionMessage = ({
             h="1.375rem"
             gap="sm"
           >
-            <Button
-              size="compact-xs"
-              variant="subtle"
-              fw="normal"
-              fz="sm"
-              c={canApply ? "success" : "text-tertiary"}
-              disabled={!canApply}
-              onClick={handleApply}
-            >
-              {isApplying
-                ? t`Applying...`
-                : match({ isNew, canApply })
-                    .with({ canApply: false }, () => t`Applied`)
-                    .with({ isNew: true }, () => t`Create`)
-                    .with({ canApply: true }, () => t`Apply`)
-                    .exhaustive()}
-            </Button>
+            <Tooltip label={t`Read only`} disabled={!readonly}>
+              <Button
+                size="compact-xs"
+                variant="subtle"
+                fw="normal"
+                fz="sm"
+                c={canApply && !readonly ? "success" : "text-tertiary"}
+                disabled={!canApply || readonly}
+                onClick={handleApply}
+              >
+                {applyBtnText}
+              </Button>
+            </Tooltip>
           </Flex>
         </Group>
       </Collapse>

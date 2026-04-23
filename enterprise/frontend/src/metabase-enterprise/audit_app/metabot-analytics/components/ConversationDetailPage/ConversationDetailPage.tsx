@@ -12,6 +12,7 @@ import {
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { DateTime } from "metabase/common/components/DateTime";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
@@ -197,16 +198,6 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                   </Anchor>
                 </Flex>
               )}
-              {conversation.slack_permalink && (
-                <Anchor
-                  href={conversation.slack_permalink}
-                  target="_blank"
-                  rel="noreferrer"
-                  size="md"
-                >
-                  {t`Open in Slack`}
-                </Anchor>
-              )}
             </Flex>
           </Stack>
         </Flex>
@@ -237,12 +228,21 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
         )}
 
         <Stack gap="md">
-          <Title order={3}>{t`Conversation`}</Title>
+          <Flex align="baseline" justify="space-between">
+            <Title order={3}>{t`Conversation`}</Title>
+            {conversation.slack_permalink && (
+              <ExternalLink href={conversation.slack_permalink}>
+                {t`Open in Slack`}
+              </ExternalLink>
+            )}
+          </Flex>
           <Card withBorder shadow="none" p="xl">
             <Messages
               messages={conversation.chat_messages ?? []}
               errorMessages={[]}
               isDoingScience={false}
+              debug
+              readonly
             />
           </Card>
         </Stack>
@@ -302,6 +302,8 @@ function FeedbackCard({
         {agentResponse && (
           <AgentMessage
             message={agentResponse}
+            debug
+            readonly
             hideActions
             onCopy={noopCopy}
             showFeedbackButtons={false}

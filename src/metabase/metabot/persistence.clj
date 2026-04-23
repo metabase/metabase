@@ -4,6 +4,7 @@
    [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.app-db.core :as app-db]
+   [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
@@ -111,10 +112,12 @@
                       ai-proxy?
                       (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider)))
         external-id (or external-id (str (random-uuid)))
-        ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
-        ;; :data is like `:navigate_to`
+        ;; Filter out :start, :usage, :finish stream metadata. Data parts are
+        ;; persisted (so the analytics view can surface them) except :state,
+        ;; which is salvaged to MetabotConversation.state via `state-part` above.
         content     (->> parts
-                         (remove #(#{:start :usage :finish :data} (:type %)))
+                         (remove #(#{:start :usage :finish} (:type %)))
+                         (filter streaming/persistable-data-part?)
                          (mapv strip-tool-output-bloat))]
     (prometheus/observe! :metabase-metabot/message-persist-bytes
                          {:profile-id (or profile-id "unknown")}
@@ -238,8 +241,16 @@
        :args   (when-let [a (:arguments block)] (json/encode a))
        :status "ended"}
 
+      ;; Data part: {:type "data" :data-type "navigate_to" :version 1 :data ...}
+      (= "data" block-type)
+      {:id   (str (random-uuid))
+       :role "agent"
+       :type "data_part"
+       :part {:type    (:data-type block)
+              :version (or (:version block) 1)
+              :value   (:data block)}}
+
       ;; Tool output — skip here, merged via merge-tool-results
-      ;; Data parts — skip for now
       :else nil)))
 
 (defn- merge-tool-results
