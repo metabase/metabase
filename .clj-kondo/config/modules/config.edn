@@ -2967,8 +2967,7 @@
 
   enterprise/metabot
   {:team    "Metabot"
-   :api     #{metabase-enterprise.metabot.api
-              metabase-enterprise.metabot.init}
+   :api     #{metabase-enterprise.metabot.api}
    :friends #{enterprise/agent-api
               slackbot
               mcp
@@ -2979,7 +2978,6 @@
               models
               permissions
               premium-features
-              task
               util
               enterprise/dependencies
               enterprise/transforms-python}
