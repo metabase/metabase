@@ -1,4 +1,5 @@
 import { PLUGIN_WORKSPACES } from "metabase/plugins";
+import { getUserIsAdmin } from "metabase/selectors/user";
 import { useGetCurrentWorkspaceQuery } from "metabase-enterprise/api";
 
 import {
@@ -13,6 +14,7 @@ function useCurrentWorkspace() {
 
 export function initializePlugin() {
   PLUGIN_WORKSPACES.isEnabled = true;
+  PLUGIN_WORKSPACES.canManageWorkspaces = getUserIsAdmin;
   PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes = getDataStudioWorkspaceRoutes;
   PLUGIN_WORKSPACES.getDataStudioWorkspaceInstanceRoutes =
     getDataStudioWorkspaceInstanceRoutes;

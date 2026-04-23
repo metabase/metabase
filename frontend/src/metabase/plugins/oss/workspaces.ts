@@ -1,9 +1,11 @@
 import type { ReactNode } from "react";
 
+import type { State } from "metabase/redux/store";
 import type { WorkspaceInstance } from "metabase-types/api";
 
 type WorkspacesPlugin = {
   isEnabled: boolean;
+  canManageWorkspaces: (state: State) => boolean;
   getDataStudioWorkspaceRoutes: () => ReactNode;
   getDataStudioWorkspaceInstanceRoutes: () => ReactNode;
   useCurrentWorkspace: () => {
@@ -14,6 +16,7 @@ type WorkspacesPlugin = {
 
 const getDefaultPluginWorkspaces = (): WorkspacesPlugin => ({
   isEnabled: false,
+  canManageWorkspaces: () => false,
   getDataStudioWorkspaceRoutes: () => null,
   getDataStudioWorkspaceInstanceRoutes: () => null,
   useCurrentWorkspace: () => ({

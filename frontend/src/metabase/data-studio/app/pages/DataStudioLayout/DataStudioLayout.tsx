@@ -101,6 +101,9 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
   const hasRemoteSyncFeature = useHasTokenFeature("remote_sync");
   const hasTransformsFeature = useSelector(getTransformsFeatureAvailable);
   const { currentWorkspace } = PLUGIN_WORKSPACES.useCurrentWorkspace();
+  const canManageWorkspaces = useSelector(
+    PLUGIN_WORKSPACES.canManageWorkspaces,
+  );
 
   const currentTab = getCurrentTab(pathname);
 
@@ -207,7 +210,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
                 isSelected={currentTab === "workspace"}
                 showLabel={isNavbarOpened}
               />
-            ) : (
+            ) : canManageWorkspaces ? (
               <DataStudioTab
                 label={t`Workspaces`}
                 icon="folder_database"
@@ -215,7 +218,7 @@ function DataStudioNav({ isNavbarOpened, onNavbarToggle }: DataStudioNavProps) {
                 isSelected={currentTab === "workspaces"}
                 showLabel={isNavbarOpened}
               />
-            ))}
+            ) : null)}
           {canAccessTransforms && (
             <DataStudioTab
               label={t`Jobs`}
