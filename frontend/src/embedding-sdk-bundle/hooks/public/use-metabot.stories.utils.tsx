@@ -5,7 +5,7 @@ import type { defineMetabaseTheme } from "metabase/embedding-sdk/theme";
 
 import type { MetabotMessage } from "../../types/metabot";
 
-type ChartComponent = Extract<MetabotMessage, { type: "chart" }>["Component"];
+type ChartComponent = Extract<MetabotMessage, { type: "chart" }>["Chart"];
 
 // ============================================================================
 // Shared keyframes
@@ -140,16 +140,16 @@ export const MessageList = ({
   onRetry?: (messageId: string) => void;
 }) => (
   <>
-    {messages.map((msg) => {
-      const isUser = msg.role === "user";
+    {messages.map((message) => {
+      const isUser = message.role === "user";
 
-      if (msg.type === "chart") {
-        return <InlineChart key={msg.id} Component={msg.Component} />;
+      if (message.type === "chart") {
+        return <InlineChart key={message.id} Component={message.Chart} />;
       }
 
       const content: ReactNode =
-        msg.type === "text" && msg.message
-          ? stripMarkdownLinks(msg.message)
+        message.type === "text" && message.message
+          ? stripMarkdownLinks(message.message)
           : null;
 
       if (!content) {
@@ -158,7 +158,7 @@ export const MessageList = ({
 
       return (
         <div
-          key={msg.id}
+          key={message.id}
           style={{
             display: "flex",
             gap: 8,
@@ -232,7 +232,7 @@ export const MessageList = ({
               <span>{formatTime()}</span>
               {!isUser && onRetry && !isProcessing && (
                 <button
-                  onClick={() => onRetry(msg.id)}
+                  onClick={() => onRetry(message.id)}
                   style={{
                     background: "none",
                     border: "none",
@@ -314,7 +314,7 @@ export const Composer = ({
   palette,
 }: {
   value: string;
-  onChange: (v: string) => void;
+  onChange: (value: string) => void;
   onSubmit: () => void;
   canSend: boolean;
   placeholder?: string;
@@ -345,8 +345,8 @@ export const Composer = ({
         fontFamily: "inherit",
       }}
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onKeyDown={(e) => e.key === "Enter" && onSubmit()}
+      onChange={(event) => onChange(event.target.value)}
+      onKeyDown={(event) => event.key === "Enter" && onSubmit()}
       placeholder={placeholder ?? "Ask something..."}
     />
     {isProcessing && onCancel && (

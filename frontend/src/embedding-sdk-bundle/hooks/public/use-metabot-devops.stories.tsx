@@ -60,14 +60,16 @@ const InfraWatchBg = () => (
       <span style={{ fontWeight: 800, fontSize: 14, color: dv.accentLight }}>
         InfraWatch
       </span>
-      {["Dashboards", "Monitors", "APM", "Logs", "Infrastructure"].map((t) => (
-        <span
-          key={t}
-          style={{ fontSize: 12, color: dv.textSecondary, cursor: "pointer" }}
-        >
-          {t}
-        </span>
-      ))}
+      {["Dashboards", "Monitors", "APM", "Logs", "Infrastructure"].map(
+        (tab) => (
+          <span
+            key={tab}
+            style={{ fontSize: 12, color: dv.textSecondary, cursor: "pointer" }}
+          >
+            {tab}
+          </span>
+        ),
+      )}
       <span style={{ marginLeft: "auto", fontSize: 12, color: dv.textMuted }}>
         Press ⌘K to open Metabot
       </span>
@@ -144,12 +146,12 @@ const DevopsDemo = () => {
 
   // Open/close with Cmd+K
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setOpen((v) => !v);
+    const handler = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "k") {
+        event.preventDefault();
+        setOpen((isOpen) => !isOpen);
       }
-      if (e.key === "Escape") {
+      if (event.key === "Escape") {
         setOpen(false);
       }
     };
@@ -239,8 +241,8 @@ const DevopsDemo = () => {
                   fontFamily: "inherit",
                 }}
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                onChange={(event) => setInputValue(event.target.value)}
+                onKeyDown={(event) => event.key === "Enter" && handleSubmit()}
                 placeholder="Ask about products, orders..."
               />
               <button
@@ -259,9 +261,9 @@ const DevopsDemo = () => {
             </div>
 
             {/* Errors */}
-            {metabot.errorMessages.map((err, i) => (
+            {metabot.errorMessages.map((errorMessage, index) => (
               <div
-                key={i}
+                key={index}
                 style={{
                   padding: "6px 16px",
                   fontSize: 12,
@@ -269,7 +271,7 @@ const DevopsDemo = () => {
                   background: dv.redDim,
                 }}
               >
-                {err.message}
+                {errorMessage.message}
               </div>
             ))}
 
@@ -303,12 +305,12 @@ const DevopsDemo = () => {
                     "Which products have the lowest ratings?",
                     "Show order volume over time",
                     "Average review rating by category",
-                  ].map((p) => (
+                  ].map((prompt) => (
                     <div
-                      key={p}
+                      key={prompt}
                       onClick={() => {
                         if (!metabot.isProcessing) {
-                          metabot.submitMessage(p);
+                          metabot.submitMessage(prompt);
                         }
                       }}
                       style={{
@@ -322,7 +324,7 @@ const DevopsDemo = () => {
                         border: `1px solid ${dv.border}`,
                       }}
                     >
-                      {p}
+                      {prompt}
                     </div>
                   ))}
                 </div>

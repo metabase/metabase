@@ -60,12 +60,12 @@ const PayFlowBg = () => (
       <span style={{ fontWeight: 800, fontSize: 15, color: ft.text }}>
         <span style={{ color: ft.accentLight }}>Pay</span>Flow
       </span>
-      {["Home", "Payments", "Customers", "Reports", "Developers"].map((t) => (
+      {["Home", "Payments", "Customers", "Reports", "Developers"].map((tab) => (
         <span
-          key={t}
+          key={tab}
           style={{ fontSize: 13, color: ft.textSecondary, cursor: "pointer" }}
         >
-          {t}
+          {tab}
         </span>
       ))}
     </div>
@@ -83,7 +83,7 @@ const PayFlowBg = () => (
         ["MRR", "$142K", "+6.4%"],
         ["Churn", "2.8%", "-0.3%"],
         ["Active subs", "8,214", "+12.1%"],
-      ].map(([label, val, delta]) => (
+      ].map(([label, value, delta]) => (
         <div
           key={label}
           style={{
@@ -102,7 +102,7 @@ const PayFlowBg = () => (
               margin: "6px 0 4px",
             }}
           >
-            {val}
+            {value}
           </div>
           <div
             style={{
@@ -290,9 +290,9 @@ const FintechDemo = () => {
         </div>
 
         {/* Errors */}
-        {metabot.errorMessages.map((err, i) => (
+        {metabot.errorMessages.map((errorMessage, index) => (
           <div
-            key={i}
+            key={index}
             style={{
               padding: "6px 16px",
               fontSize: 12,
@@ -300,7 +300,7 @@ const FintechDemo = () => {
               background: ft.redDim,
             }}
           >
-            {err.message}
+            {errorMessage.message}
           </div>
         ))}
 

@@ -136,7 +136,7 @@ const StorefrontBg = () => (
           ["Total customers", "48,291", "+8.3%"],
           ["Returning", "61%", "+2.1%"],
           ["Avg. order value", "$84.20", "+12%"],
-        ].map(([label, val, delta]) => (
+        ].map(([label, value, delta]) => (
           <div
             key={label}
             style={{
@@ -155,7 +155,7 @@ const StorefrontBg = () => (
                 margin: "4px 0",
               }}
             >
-              {val}
+              {value}
             </div>
             <div style={{ fontSize: 12, color: ec.accentLight }}>{delta}</div>
           </div>
@@ -344,9 +344,9 @@ const EcommerceDemo = () => {
           </div>
 
           {/* Errors */}
-          {metabot.errorMessages.map((err, i) => (
+          {metabot.errorMessages.map((errorMessage, index) => (
             <div
-              key={i}
+              key={index}
               style={{
                 padding: "6px 16px",
                 fontSize: 12,
@@ -354,7 +354,7 @@ const EcommerceDemo = () => {
                 background: ec.redDim,
               }}
             >
-              {err.message}
+              {errorMessage.message}
             </div>
           ))}
 
@@ -429,12 +429,12 @@ const EcommerceDemo = () => {
                     "Show top products by revenue this month",
                     "Why did orders drop last Tuesday?",
                     "Which customers ordered the most?",
-                  ].map((p) => (
+                  ].map((prompt) => (
                     <button
-                      key={p}
+                      key={prompt}
                       onClick={() => {
                         if (!metabot.isProcessing) {
-                          metabot.submitMessage(p);
+                          metabot.submitMessage(prompt);
                         }
                       }}
                       style={{
@@ -452,7 +452,7 @@ const EcommerceDemo = () => {
                         marginBottom: 6,
                       }}
                     >
-                      {p}
+                      {prompt}
                     </button>
                   ))}
                 </div>

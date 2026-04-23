@@ -91,12 +91,12 @@ const AcmeCRMBg = () => (
       <span style={{ fontWeight: 800, fontSize: 14, color: crm.text }}>
         <span style={{ color: crm.accentLight }}>Acme</span>CRM
       </span>
-      {["Home", "Leads", "Opportunities", "Accounts", "Reports"].map((t) => (
+      {["Home", "Leads", "Opportunities", "Accounts", "Reports"].map((tab) => (
         <span
-          key={t}
+          key={tab}
           style={{ fontSize: 12, color: crm.textSecondary, cursor: "pointer" }}
         >
-          {t}
+          {tab}
         </span>
       ))}
     </div>
@@ -286,9 +286,9 @@ const CrmDemo = () => {
         </div>
 
         {/* Errors */}
-        {metabot.errorMessages.map((err, i) => (
+        {metabot.errorMessages.map((errorMessage, index) => (
           <div
-            key={i}
+            key={index}
             style={{
               padding: "5px 14px",
               fontSize: 12,
@@ -296,7 +296,7 @@ const CrmDemo = () => {
               background: crm.redDim,
             }}
           >
-            {err.message}
+            {errorMessage.message}
           </div>
         ))}
 
@@ -318,12 +318,12 @@ const CrmDemo = () => {
                 "Which customers have the highest total spend?",
                 "Show orders by acquisition source",
                 "Average order value by state",
-              ].map((p) => (
+              ].map((prompt) => (
                 <button
-                  key={p}
+                  key={prompt}
                   onClick={() => {
                     if (!metabot.isProcessing) {
-                      metabot.submitMessage(p);
+                      metabot.submitMessage(prompt);
                     }
                   }}
                   style={{
@@ -341,7 +341,7 @@ const CrmDemo = () => {
                     marginBottom: 6,
                   }}
                 >
-                  {p}
+                  {prompt}
                 </button>
               ))}
             </div>

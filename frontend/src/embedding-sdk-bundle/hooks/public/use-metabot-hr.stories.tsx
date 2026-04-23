@@ -62,12 +62,12 @@ const PeopleHQBg = () => (
       <span style={{ fontWeight: 800, fontSize: 15, color: hr.text }}>
         PeopleHQ
       </span>
-      {["People", "Time Off", "Performance", "Reports", "Hiring"].map((t) => (
+      {["People", "Time Off", "Performance", "Reports", "Hiring"].map((tab) => (
         <span
-          key={t}
+          key={tab}
           style={{ fontSize: 13, color: hr.textSecondary, cursor: "pointer" }}
         >
-          {t}
+          {tab}
         </span>
       ))}
     </div>
@@ -96,7 +96,7 @@ const PeopleHQBg = () => (
           ["Avg. tenure", "3.2 yrs", ""],
           ["Attrition", "8.4%", "-1.2% YoY"],
           ["Open roles", "42", "+7 this week"],
-        ].map(([label, val, note]) => (
+        ].map(([label, value, note]) => (
           <div
             key={label}
             style={{
@@ -115,7 +115,7 @@ const PeopleHQBg = () => (
                 margin: "4px 0 2px",
               }}
             >
-              {val}
+              {value}
             </div>
             {note && (
               <div style={{ fontSize: 11, color: hr.accentLight }}>{note}</div>
@@ -203,13 +203,13 @@ const HrDemo = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
-  const handleDragStart = (e: React.MouseEvent) => {
-    dragRef.current = { startY: e.clientY, startHeight: drawerHeight };
-    const onMove = (ev: MouseEvent) => {
+  const handleDragStart = (event: React.MouseEvent) => {
+    dragRef.current = { startY: event.clientY, startHeight: drawerHeight };
+    const onMove = (moveEvent: MouseEvent) => {
       if (!dragRef.current) {
         return;
       }
-      const delta = dragRef.current.startY - ev.clientY;
+      const delta = dragRef.current.startY - moveEvent.clientY;
       const next = Math.max(
         120,
         Math.min(
@@ -365,9 +365,9 @@ const HrDemo = () => {
           </div>
 
           {/* Errors */}
-          {metabot.errorMessages.map((err, i) => (
+          {metabot.errorMessages.map((errorMessage, index) => (
             <div
-              key={i}
+              key={index}
               style={{
                 padding: "5px 16px",
                 fontSize: 12,
@@ -375,7 +375,7 @@ const HrDemo = () => {
                 background: hr.redDim,
               }}
             >
-              {err.message}
+              {errorMessage.message}
             </div>
           ))}
 
@@ -405,12 +405,12 @@ const HrDemo = () => {
                   "How many customers joined each month?",
                   "Show customer distribution by state",
                   "What's the most common acquisition source?",
-                ].map((p) => (
+                ].map((prompt) => (
                   <button
-                    key={p}
+                    key={prompt}
                     onClick={() => {
                       if (!metabot.isProcessing) {
-                        metabot.submitMessage(p);
+                        metabot.submitMessage(prompt);
                       }
                     }}
                     style={{
@@ -425,7 +425,7 @@ const HrDemo = () => {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {p}
+                    {prompt}
                   </button>
                 ))}
               </div>
