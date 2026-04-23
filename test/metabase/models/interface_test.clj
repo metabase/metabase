@@ -233,9 +233,9 @@
   (testing "Default implementation falls back to can-read?"
     ;; Use Card model which uses the default can-query? implementation
     (mt/with-temp [:model/Card card {}]
-      (with-redefs [mi/can-read? (constantly true)]
+      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)]
         (is (true? (mi/can-query? card))))
-      (with-redefs [mi/can-read? (constantly false)]
+      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly false)]
         (is (false? (mi/can-query? card)))))))
 
 (deftest can-query-hydration-returns-boolean-test

@@ -297,11 +297,11 @@
         (mt/with-temporary-setting-values [slack-connect-user-provisioning-enabled false
                                            site-name "test"]
           (with-successful-oidc!
-            (with-redefs [auth-identity/login!
-                          (fn [_provider _request]
-                            {:success? false
-                             :error :user-provisioning-disabled
-                             :message "Sorry, but you'll need a test account to view this page. Please contact your administrator."})]
+            (mt/with-dynamic-fn-redefs [auth-identity/login!
+                                        (fn [_provider _request]
+                                          {:success? false
+                                           :error :user-provisioning-disabled
+                                           :message "Sorry, but you'll need a test account to view this page. Please contact your administrator."})]
             ;; Initiate auth
               (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                            {:request-options {:redirect-strategy :none}}

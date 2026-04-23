@@ -11,11 +11,11 @@
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:persist-models]})
     (let [db-id           (mt/id)
           write-cache-key [db-id :write-data]]
-      (with-redefs [driver.conn/effective-connection-type
-                    (fn [_database]
-                      (if (= driver.conn/*connection-type* :write-data)
-                        :write-data
-                        :default))]
+      (mt/with-dynamic-fn-redefs [driver.conn/effective-connection-type
+                                  (fn [_database]
+                                    (if (= driver.conn/*connection-type* :write-data)
+                                      :write-data
+                                      :default))]
         (try
           (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
           (testing "write pool does not exist before refresh"
@@ -37,11 +37,11 @@
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:persist-models]})
     (let [db-id           (mt/id)
           write-cache-key [db-id :write-data]]
-      (with-redefs [driver.conn/effective-connection-type
-                    (fn [_database]
-                      (if (= driver.conn/*connection-type* :write-data)
-                        :write-data
-                        :default))]
+      (mt/with-dynamic-fn-redefs [driver.conn/effective-connection-type
+                                  (fn [_database]
+                                    (if (= driver.conn/*connection-type* :write-data)
+                                      :write-data
+                                      :default))]
         (try
           (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
           (testing "write pool does not exist before prune"

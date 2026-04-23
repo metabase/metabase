@@ -237,7 +237,7 @@
   (testing "audit log for channel apis"
     (mt/with-premium-features #{:audit-app}
       (mt/with-model-cleanup [:model/Channel]
-        (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+        (mt/with-dynamic-fn-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
           (let [id (:id (mt/user-http-request :crowberto :post 200 "channel" default-test-channel))]
             (testing "POST /api/channel"
               (is (= {:details  {:description "Test channel description"

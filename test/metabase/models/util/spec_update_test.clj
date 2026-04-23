@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.models.util.spec-update :as spec-update]
+   [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (defn do-track-operations!
@@ -12,10 +13,10 @@
         track!     (fn [op args]
                      (swap! operations conj (cons op args))
                      1)]
-    (with-redefs [t2/insert!              (fn [& args] (track! :insert! args))
-                  t2/insert-returning-pk! (fn [& args] (track! :insert-returning-pk! args) (swap! id-counter inc) @id-counter)
-                  t2/update!              (fn [& args] (track! :update! args))
-                  t2/delete!              (fn [& args] (track! :delete! args))]
+    (mt/with-dynamic-fn-redefs [t2/insert!              (fn [& args] (track! :insert! args))
+                                t2/insert-returning-pk! (fn [& args] (track! :insert-returning-pk! args) (swap! id-counter inc) @id-counter)
+                                t2/update!              (fn [& args] (track! :update! args))
+                                t2/delete!              (fn [& args] (track! :delete! args))]
       (f)
       @operations)))
 

@@ -232,7 +232,7 @@
 
 (deftest analyze-unhidden-tables-test
   (testing "un-hiding a table should cause it to be analyzed"
-    (with-redefs [quick-task/submit-task! (fn [task] (task))]
+    (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
       (mt/with-temp [:model/Table table (fake-table)
                      :model/Field field (fake-field table)]
         (set-table-visibility-type-via-api! table "hidden")

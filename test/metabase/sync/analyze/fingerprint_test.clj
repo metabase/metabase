@@ -148,10 +148,10 @@
 (defn- field-was-fingerprinted?! [fingerprint-versions field-properties]
   (let [fingerprinted? (atom false)]
     (binding [i/*fingerprint-version->types-that-should-be-re-fingerprinted* fingerprint-versions]
-      (with-redefs [qp/process-query              (fn process-query
-                                                    [_query rff]
-                                                    (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
-                    sync.fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
+      (mt/with-dynamic-fn-redefs [qp/process-query              (fn process-query
+                                                                  [_query rff]
+                                                                  (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
+                                  sync.fingerprint/save-fingerprint! (fn [& _] (reset! fingerprinted? true))]
         (mt/with-temp [:model/Table table {}
                        :model/Field _     (assoc field-properties :table_id (u/the-id table))]
           [(sync.fingerprint/fingerprint-table! table)
@@ -266,9 +266,9 @@
                                        :fingerprint_version 1
                                        :last_analyzed       #t "2017-08-09T00:00:00"}]
       (binding [i/*latest-fingerprint-version* 3]
-        (with-redefs [qp/process-query             (fn [_query rff]
-                                                     (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
-                      fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
+        (mt/with-dynamic-fn-redefs [qp/process-query             (fn [_query rff]
+                                                                   (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
+                                    fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
           (is (= {:no-data-fingerprints   0
                   :failed-fingerprints    0
                   :updated-fingerprints   1

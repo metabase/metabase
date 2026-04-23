@@ -68,11 +68,11 @@
 
 (deftest check-health!-test
   (mt/test-drivers (mt/normal-drivers)
-    (with-redefs [quick-task/submit-task! (fn [task] (task))
-                  t2/select (fn [model & args]
-                              (if (and (= model :model/Database) (nil? args))
-                                [(mt/db)]
-                                (apply t2/select model args)))]
+    (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))
+                                t2/select (fn [model & args]
+                                            (if (and (= model :model/Database) (nil? args))
+                                              [(mt/db)]
+                                              (apply t2/select model args)))]
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (testing "status gauge resets"
           (mt/with-prometheus-system! [_ system]
@@ -84,7 +84,7 @@
 
 (deftest health-check-database-test
   (mt/test-drivers (mt/normal-drivers)
-    (with-redefs [quick-task/submit-task! (fn [task] (task))]
+    (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (testing "successes"
           (mt/with-prometheus-system! [_ system]
@@ -125,7 +125,7 @@
                       (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"}))) "unhealthy user-input or exception"))))
 
         (testing "failures for exception"
-          (with-redefs [driver/can-connect? (fn [& _args] (throw (Exception. "boom")))]
+          (mt/with-dynamic-fn-redefs [driver/can-connect? (fn [& _args] (throw (Exception. "boom")))]
             (mt/with-prometheus-system! [_ system]
               (database/health-check-database! (mt/db))
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
@@ -136,7 +136,7 @@
   (mt/test-drivers (mt/normal-drivers)
     (when config/ee-available?
       (mt/with-premium-features #{:writable-connection}
-        (with-redefs [quick-task/submit-task! (fn [task] (task))]
+        (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
           (binding [driver.settings/*allow-testing-h2-connections* true]
             (testing "database with write_data_details checks both connections"
               (mt/with-prometheus-system! [_ system]
@@ -158,10 +158,10 @@
 
             (testing "write connection failure does not prevent default check"
               (let [call-count (atom 0)]
-                (with-redefs [driver/can-connect? (fn [& _args]
-                                                    (if (< (swap! call-count inc) 2)
-                                                      true
-                                                      (throw (Exception. "write connection failed"))))]
+                (mt/with-dynamic-fn-redefs [driver/can-connect? (fn [& _args]
+                                                                  (if (< (swap! call-count inc) 2)
+                                                                    true
+                                                                    (throw (Exception. "write connection failed"))))]
                   (mt/with-prometheus-system! [_ system]
                     (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
                       (database/health-check-database! (assoc (mt/db) :write_data_details (:details (mt/db))))

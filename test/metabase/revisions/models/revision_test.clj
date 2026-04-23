@@ -19,14 +19,14 @@
 (derive ::FakedCard :metabase/model)
 
 (defn- do-with-model-i18n-strs! [thunk]
-  (with-redefs [revision.diff/model-str->i18n-str (fn [model-str]
-                                                    (case model-str
-                                                      "Dashboard"     (deferred-tru "Dashboard")
-                                                      "Card"          (deferred-tru "Card")
-                                                      "Segment"       (deferred-tru "Segment")
-                                                      "Metric"        (deferred-tru "Metric")
-                                                      "NonExistModel" "NonExistModel"
-                                                      "FakeCard"      "FakeCard"))]
+  (mt/with-dynamic-fn-redefs [revision.diff/model-str->i18n-str (fn [model-str]
+                                                                  (case model-str
+                                                                    "Dashboard"     (deferred-tru "Dashboard")
+                                                                    "Card"          (deferred-tru "Card")
+                                                                    "Segment"       (deferred-tru "Segment")
+                                                                    "Metric"        (deferred-tru "Metric")
+                                                                    "NonExistModel" "NonExistModel"
+                                                                    "FakeCard"      "FakeCard"))]
     (thunk)))
 
 (defmethod revision/serialize-instance ::FakedCard

@@ -1093,7 +1093,7 @@
 
 (deftest clean-errors-test
   (testing "Queries that error should not include visualization settings (metabase-private #233)"
-    (with-redefs [formatter/number-formatter (fn [& _args] (fn [_] (throw (Exception. "Test Exception"))))]
+    (mt/with-dynamic-fn-redefs [formatter/number-formatter (fn [& _args] (fn [_] (throw (Exception. "Test Exception"))))]
       (mt/with-temp [:model/Card {card-id :id} {:display                :table
                                                 :type                   :model
                                                 :dataset_query          {:database (mt/id)

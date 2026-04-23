@@ -32,7 +32,7 @@
 
 (deftest llm-anthropic-api-key-configured?-test
   (testing "returns false when no API key is set"
-    (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+    (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
       (is (false? (llm.settings/llm-anthropic-api-key-configured?)))))
 
   (testing "returns true when API key is set"

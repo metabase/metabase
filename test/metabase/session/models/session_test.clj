@@ -39,7 +39,7 @@
 (deftest embedding-test
   (testing "if request is an embedding request, we should set the anti_csrf_token"
     (request/with-current-request {:headers {"x-metabase-embedded" "true"}}
-      (with-redefs [session/random-anti-csrf-token (constantly "315c1279c6f9f873bf1face7afeee420")]
+      (mt/with-dynamic-fn-redefs [session/random-anti-csrf-token (constantly "315c1279c6f9f873bf1face7afeee420")]
         (is (=? {:id              test-id
                  :key_hashed      (session/hash-session-key "092797dd-a82a-4748-b393-697d7bb9ab65")
                  :user_id         (mt/user->id :trashbird)
@@ -56,16 +56,16 @@
             (mt/with-fake-inbox
               ;; mock out the IP address geocoding function so we can make sure it handles timezones like PST correctly
               ;; (#15603)
-              (with-redefs [request/geocode-ip-addresses (fn [ip-addresses]
-                                                           (into {} (for [ip-address ip-addresses]
-                                                                      [ip-address
-                                                                       {:description "San Francisco, California, United States"
-                                                                        :timezone    (t/zone-id "America/Los_Angeles")}])))
-                            metabase.login-history.record/maybe-send-login-from-new-device-email
-                            (fn [login-history]
-                              (when-let [futur (original-maybe-send login-history)]
+              (mt/with-dynamic-fn-redefs [request/geocode-ip-addresses (fn [ip-addresses]
+                                                                         (into {} (for [ip-address ip-addresses]
+                                                                                    [ip-address
+                                                                                     {:description "San Francisco, California, United States"
+                                                                                      :timezone    (t/zone-id "America/Los_Angeles")}])))
+                                          metabase.login-history.record/maybe-send-login-from-new-device-email
+                                          (fn [login-history]
+                                            (when-let [futur (original-maybe-send login-history)]
                                 ;; block in tests
-                                (u/deref-with-timeout futur 10000)))]
+                                              (u/deref-with-timeout futur 10000)))]
                 (mt/with-temp [:model/LoginHistory _ {:user_id   user-id
                                                       :device_id (str (random-uuid))}
                                :model/LoginHistory _ {:user_id   user-id
@@ -121,16 +121,16 @@
     (let [original-maybe-send (var-get #'metabase.login-history.record/maybe-send-login-from-new-device-email)
           new-login-email (fn [user-id email]
                             (mt/with-fake-inbox
-                              (with-redefs [request/geocode-ip-addresses (fn [ip-addresses]
-                                                                           (into {} (for [ip-address ip-addresses]
-                                                                                      [ip-address
-                                                                                       {:description "San Francisco, California, United States"
-                                                                                        :timezone    (t/zone-id "America/Los_Angeles")}])))
-                                            metabase.login-history.record/maybe-send-login-from-new-device-email
-                                            (fn [login-history]
-                                              (when-let [futur (original-maybe-send login-history)]
+                              (mt/with-dynamic-fn-redefs [request/geocode-ip-addresses (fn [ip-addresses]
+                                                                                         (into {} (for [ip-address ip-addresses]
+                                                                                                    [ip-address
+                                                                                                     {:description "San Francisco, California, United States"
+                                                                                                      :timezone    (t/zone-id "America/Los_Angeles")}])))
+                                                          metabase.login-history.record/maybe-send-login-from-new-device-email
+                                                          (fn [login-history]
+                                                            (when-let [futur (original-maybe-send login-history)]
                                                 ;; block in tests
-                                                (u/deref-with-timeout futur 10000)))]
+                                                              (u/deref-with-timeout futur 10000)))]
                                 (let [device (str (random-uuid))]
                                   (mt/with-temp [:model/LoginHistory _ {:user_id   user-id
                                                                         :device_id (str (random-uuid))}

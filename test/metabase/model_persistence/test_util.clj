@@ -4,12 +4,13 @@
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.task.persist-refresh :as task.persist-refresh]
    [metabase.test.data :as data]
-   [metabase.test.util :as tu]))
+   [metabase.test.util :as tu]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
 
 (defn do-with-persistence-enabled!
   [f]
   (tu/with-temporary-setting-values [:persisted-models-enabled true]
-    (with-redefs [persisted-info/default-persistent-info-state (fn [] "creating")]
+    (dynamic-redefs/with-dynamic-fn-redefs [persisted-info/default-persistent-info-state (fn [] "creating")]
       (ddl.i/check-can-persist (data/db))
       (persisted-info/ready-database! (data/id))
       (let [persist-fn (fn persist-fn []

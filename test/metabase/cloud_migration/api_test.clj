@@ -25,7 +25,7 @@
     (mt/user-http-request :crowberto :put 200 "cloud-migration/cancel")))
 
 (deftest hosted-test
-  (with-redefs [premium-features/is-hosted? (constantly true)]
+  (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
     (mt/user-http-request :crowberto :post 400 "cloud-migration")))
 
 (deftest lifecycle-test

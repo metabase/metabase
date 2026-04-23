@@ -16,13 +16,13 @@
 
 (deftest generate-content-backwards-compatible-route-test
   (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
-    (with-redefs [openrouter/openrouter
-                  (fn [_]
-                    (mut/mock-llm-response
-                     [{:type :start :id "msg-1"}
-                      {:type :text :text "No chart available"}
-                      {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                       :model "test-model" :id "msg-1"}]))]
+    (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                (fn [_]
+                                  (mut/mock-llm-response
+                                   [{:type :start :id "msg-1"}
+                                    {:type :text :text "No chart available"}
+                                    {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                     :model "test-model" :id "msg-1"}]))]
       (is (= {:draft_card nil
               :description nil
               :error "No chart available"}
@@ -33,13 +33,13 @@
 (deftest generate-content-prometheus-test
   (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
     (mt/with-prometheus-system! [_ system]
-      (with-redefs [openrouter/openrouter
-                    (fn [_]
-                      (mut/mock-llm-response
-                       [{:type :start :id "msg-1"}
-                        {:type :text :text "No chart available"}
-                        {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                         :model "anthropic/claude-haiku-4-5" :id "msg-1"}]))]
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                  (fn [_]
+                                    (mut/mock-llm-response
+                                     [{:type :start :id "msg-1"}
+                                      {:type :text :text "No chart available"}
+                                      {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                       :model "anthropic/claude-haiku-4-5" :id "msg-1"}]))]
         (mt/user-http-request :crowberto
                               :post 200 "metabot/document/generate-content"
                               {:instructions "Show me sales data"}))
@@ -58,13 +58,13 @@
   (mt/with-temporary-setting-values [llm-metabot-provider test-provider]
     (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
       (let [rasta-id (mt/user->id :rasta)]
-        (with-redefs [openrouter/openrouter
-                      (fn [_]
-                        (mut/mock-llm-response
-                         [{:type :start :id "msg-1"}
-                          {:type :text :text "No chart available"}
-                          {:type :usage :usage {:promptTokens 100 :completionTokens 20}
-                           :model "anthropic/claude-haiku-4-5" :id "msg-1"}]))]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [_]
+                                      (mut/mock-llm-response
+                                       [{:type :start :id "msg-1"}
+                                        {:type :text :text "No chart available"}
+                                        {:type :usage :usage {:promptTokens 100 :completionTokens 20}
+                                         :model "anthropic/claude-haiku-4-5" :id "msg-1"}]))]
           (snowplow-test/with-fake-snowplow-collector
             (mt/user-http-request :rasta
                                   :post 200 "metabot/document/generate-content"

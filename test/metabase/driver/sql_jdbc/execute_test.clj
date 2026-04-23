@@ -29,18 +29,18 @@
       (let [test-db-id (mt/id)  ;; Get the test database ID
             connection-count (volatile! 0)
             orig-do-with-resolved-connection-data-source @#'sql-jdbc.execute/do-with-resolved-connection-data-source]
-        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
-                      (fn [driver db opts]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                    (fn [driver db opts]
                         ;; Only count connections for our test database because on startup the audit-db will be
                         ;; synced, which causes this to fail intermittently because it creates connections (to db
                         ;; 13371337)
-                        (if (= db test-db-id)
-                          (reify javax.sql.DataSource
-                            (getConnection [_]
-                              (vswap! connection-count inc)
-                              (.getConnection ^DataSource (orig-do-with-resolved-connection-data-source driver db opts))))
+                                      (if (= db test-db-id)
+                                        (reify javax.sql.DataSource
+                                          (getConnection [_]
+                                            (vswap! connection-count inc)
+                                            (.getConnection ^DataSource (orig-do-with-resolved-connection-data-source driver db opts))))
                           ;; For other databases (like audit DB), just pass through
-                          (orig-do-with-resolved-connection-data-source driver db opts)))]
+                                        (orig-do-with-resolved-connection-data-source driver db opts)))]
           (let [closed-conn (doto (.getConnection ^DataSource
                                    (orig-do-with-resolved-connection-data-source driver/*driver* test-db-id {}))
                               (.close))]
@@ -63,11 +63,11 @@
       (let [test-db-id               (mt/id)
             captured-connection-type (volatile! nil)
             orig-fn                  @#'sql-jdbc.execute/do-with-resolved-connection-data-source]
-        (with-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
-                      (fn [driver db opts]
-                        (when (and (= db test-db-id) (:keep-open? opts))
-                          (vreset! captured-connection-type driver.conn/*connection-type*))
-                        (orig-fn driver db opts))]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                    (fn [driver db opts]
+                                      (when (and (= db test-db-id) (:keep-open? opts))
+                                        (vreset! captured-connection-type driver.conn/*connection-type*))
+                                      (orig-fn driver db opts))]
           (let [closed-conn (doto (.getConnection ^DataSource
                                    (orig-fn driver/*driver* test-db-id {}))
                               (.close))]

@@ -1718,8 +1718,8 @@
       (testing "archiving document publishes archive event"
         (mt/with-model-cleanup [:model/Document]
           (let [events (atom [])]
-            (with-redefs [events/publish-event! (fn [topic event]
-                                                  (swap! events conj {:topic topic :event event}))]
+            (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
+                                                                (swap! events conj {:topic topic :event event}))]
               (mt/user-http-request :crowberto
                                     :put 200 (format "document/%s" doc-id)
                                     {:archived true})
@@ -1730,8 +1730,8 @@
       (testing "unarchiving document publishes update event"
         (mt/with-model-cleanup [:model/Document]
           (let [events (atom [])]
-            (with-redefs [events/publish-event! (fn [topic event]
-                                                  (swap! events conj {:topic topic :event event}))]
+            (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
+                                                                (swap! events conj {:topic topic :event event}))]
               (mt/user-http-request :crowberto
                                     :put 200 (format "document/%s" doc-id)
                                     {:archived false})
@@ -1750,10 +1750,10 @@
 
         ;; Simulate a failure during card archiving
       (testing "failure during card archiving rolls back document archiving"
-        (with-redefs [t2/update! (fn [model id updates]
-                                   (if (and (= model :model/Card) (:archived updates))
-                                     (throw (ex-info "Simulated card archive failure" {}))
-                                     (t2/update! model id updates)))]
+        (mt/with-dynamic-fn-redefs [t2/update! (fn [model id updates]
+                                                 (if (and (= model :model/Card) (:archived updates))
+                                                   (throw (ex-info "Simulated card archive failure" {}))
+                                                   (t2/update! model id updates)))]
           (mt/user-http-request :crowberto
                                 :put 500 (format "document/%s" doc-id)
                                 {:archived true})
@@ -1954,8 +1954,8 @@
                                                  :document (documents.test-util/text->prose-mirror-ast "Event test")
                                                  :archived true}]
       (let [events (atom [])]
-        (with-redefs [events/publish-event! (fn [topic event]
-                                              (swap! events conj {:topic topic :event event}))]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
+                                                            (swap! events conj {:topic topic :event event}))]
           (mt/user-http-request :crowberto :delete 204 (format "document/%s" doc-id))
 
             ;; Should have published document-delete event

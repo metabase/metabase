@@ -1129,8 +1129,8 @@
 (deftest send-test-pulse-validate-emails-test
   (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
     (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues)}]
-      (with-redefs [pulse-channel/validate-email-domains (fn [& _]
-                                                           (throw (ex-info "Nope!" {:status-code 403})))]
+      (mt/with-dynamic-fn-redefs [pulse-channel/validate-email-domains (fn [& _]
+                                                                         (throw (ex-info "Nope!" {:status-code 403})))]
         ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
         ;; technically allow either right now
         (doseq [channel [{:details {:emails ["test@metabase.com"]}}

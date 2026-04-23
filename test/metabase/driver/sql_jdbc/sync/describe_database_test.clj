@@ -70,7 +70,7 @@
           nil
           (fn [^Connection conn]
             ;; We have to mock this to make it work with all DBs
-            (with-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
+            (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/all-schemas (constantly #{"PUBLIC"})]
               (->> (into [] (sql-jdbc.describe-database/fast-active-tables (or driver/*driver* :h2) conn nil nil))
                    (map :name)
                    sort)))))))
@@ -106,9 +106,9 @@
         resultsets          (atom [])]
     ;; swap out `jdbc/result-set-seq` which is what ultimately gets called on result sets with a function that will
     ;; stash the ResultSet object in an atom so we can check whether its closed later
-    (with-redefs [jdbc/result-set-seq (fn [^ResultSet rs & more]
-                                        (swap! resultsets conj rs)
-                                        (apply orig-result-set-seq rs more))]
+    (mt/with-dynamic-fn-redefs [jdbc/result-set-seq (fn [^ResultSet rs & more]
+                                                      (swap! resultsets conj rs)
+                                                      (apply orig-result-set-seq rs more))]
       ;; taking advantage of the fact that `sql-jdbc.describe-database/describe-database` can accept JBDC connections
       ;; instead of databases; by doing this we can keep the connection open and check whether resultsets are still
       ;; open before they would normally get closed
@@ -136,7 +136,7 @@
     (sync/sync-database! (mt/db))
     (is (= 1 (count-active-tables-in-db (mt/id))))
     ;; We have to mock this as H2 doesn't have the notion of a user connecting to it
-    (with-redefs [sql-jdbc.sync.interface/have-select-privilege? (constantly false)]
+    (mt/with-dynamic-fn-redefs [sql-jdbc.sync.interface/have-select-privilege? (constantly false)]
       (sync/sync-database! (mt/db))
       (is (= 0 (count-active-tables-in-db (mt/id)))
           "We shouldn't sync tables for which we don't have select privilege"))))
@@ -285,12 +285,12 @@
         (let [closed-first (volatile! false)
               execute-select-probe-query @#'sql-jdbc.describe-database/execute-select-probe-query
               all-tables (driver/describe-database driver/*driver* (mt/id))]
-          (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
-                        (fn [driver ^Connection conn query]
-                          (when-not @closed-first
-                            (vreset! closed-first true)
-                            (.close conn))
-                          (execute-select-probe-query driver conn query))]
+          (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/execute-select-probe-query
+                                      (fn [driver ^Connection conn query]
+                                        (when-not @closed-first
+                                          (vreset! closed-first true)
+                                          (.close conn))
+                                        (execute-select-probe-query driver conn query))]
             (let [table-names #(->> % :tables (map :name) set)
                   all-tables-sans-one (table-names (driver/describe-database driver/*driver* (mt/id)))]
               ;; there is at maximum one missing table
@@ -303,12 +303,12 @@
      driver/*driver* (mt/db) nil
      (fn [^Connection conn]
        (let [select-probes (atom 0)]
-         (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
-                       (fn [_driver conn' [sql]]
-                         (let [n (swap! select-probes inc)]
-                           (when (< n probe-errors)
-                             (probe-error-fn conn' sql))))
-                       driver/query-canceled? (constantly query-canceled)]
+         (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/execute-select-probe-query
+                                     (fn [_driver conn' [sql]]
+                                       (let [n (swap! select-probes inc)]
+                                         (when (< n probe-errors)
+                                           (probe-error-fn conn' sql))))
+                                     driver/query-canceled? (constantly query-canceled)]
            [(sql-jdbc.sync/have-select-privilege? driver/*driver* conn schema table-name)
             @select-probes]))))))
 

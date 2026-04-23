@@ -160,7 +160,7 @@
       ;; test flakes after 45 seconds with `mt/user-http-request` times out. And presumably other clients have similar
       ;; issues. This ensures we give a good error message in this case.
       (with-open [server (non-responding-server)]
-        (with-redefs [geojson.settings/valid-geojson-url? (constantly true)]
+        (mt/with-dynamic-fn-redefs [geojson.settings/valid-geojson-url? (constantly true)]
           (let [never-responds-url (str "http://localhost:" (-port server))]
             (testing "error is returned if URL connection fails"
               (is (= "GeoJSON URL failed to load"

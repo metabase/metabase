@@ -110,9 +110,9 @@
                                              :document "{\"type\":\"doc\",\"content\":[]}"
                                              :creator_id (:id user)}]
       (let [events-published (atom [])]
-        (with-redefs [events/publish-event! (fn [topic event]
-                                              (swap! events-published conj topic)
-                                              event)]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
+                                                            (swap! events-published conj topic)
+                                                            event)]
           (#'documents.view-log/update-document-last-viewed-at!*
            [{:id (:id document) :timestamp (t/offset-date-time)}])
           (is (not (contains? (set @events-published) :event/document-update))

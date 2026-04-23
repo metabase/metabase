@@ -110,7 +110,7 @@
      :metabase-query-processor/metrics-adjust 1
      :metabase-query-processor/metrics-adjust-errors 1
      :check-fn (fn [query]
-                 (with-redefs [metrics/adjust-metric-stages (fn [_ _ stages] stages)]
+                 (mt/with-dynamic-fn-redefs [metrics/adjust-metric-stages (fn [_ _ stages] stages)]
                    (try
                      (adjust query)
                      (is false "Failed to throw expected Exception")
@@ -126,7 +126,7 @@
      :metabase-query-processor/metrics-adjust 1
      :metabase-query-processor/metrics-adjust-errors 1
      :check-fn (fn [query]
-                 (with-redefs [lib.metadata/bulk-metadata-or-throw (fn [& _] (throw (Exception. "Test exception")))]
+                 (mt/with-dynamic-fn-redefs [lib.metadata/bulk-metadata-or-throw (fn [& _] (throw (Exception. "Test exception")))]
                    (is (thrown-with-msg?
                         java.lang.Exception
                         #"Test exception"

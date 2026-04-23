@@ -142,11 +142,11 @@
       (let [fingerprints                 (atom [])
             fingerprint-query            (atom nil)
             orig-table-rows-sample-query @#'table-rows-sample/table-rows-sample-query]
-        (with-redefs [fingerprint/save-fingerprint!             (fn [_field fingerprint]
-                                                                  (swap! fingerprints conj fingerprint))
-                      table-rows-sample/table-rows-sample-query (fn [& args]
-                                                                  (reset! fingerprint-query
-                                                                          (apply orig-table-rows-sample-query args)))]
+        (mt/with-dynamic-fn-redefs [fingerprint/save-fingerprint!             (fn [_field fingerprint]
+                                                                                (swap! fingerprints conj fingerprint))
+                                    table-rows-sample/table-rows-sample-query (fn [& args]
+                                                                                (reset! fingerprint-query
+                                                                                        (apply orig-table-rows-sample-query args)))]
           (fingerprint/fingerprint-table! (t2/select-one :model/Table :id (mt/id :string_nums)))
           (testing "empty expressions = no substring optimization in sample query = use of effective type"
             (is (empty? (lib/expressions @fingerprint-query))))
@@ -173,8 +173,8 @@
                 (lib/filters (#'table-rows-sample/table-rows-sample-query mp table [field1] {}))))))
     (testing "the mbql on a table that requires a filter will include a filter"
       ;; currently only applied for bigquery tables in which a table can have a required partition filter
-      (with-redefs [qp/process-query (fn [& args]
-                                       (first args))]
+      (mt/with-dynamic-fn-redefs [qp/process-query (fn [& args]
+                                                     (first args))]
         (is (=? [[:> {}
                   [:field {:base-type :type/Integer} (:id field2)]
                   int?]]

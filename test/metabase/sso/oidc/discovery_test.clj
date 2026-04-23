@@ -75,14 +75,14 @@
 (deftest discover-oidc-configuration-success-test
   (testing "Successfully discovers OIDC configuration"
     (oidc.discovery/clear-cache!)
-    (with-redefs [http/get (fn [url _opts]
-                             (is (= "https://example.com/.well-known/openid-configuration" url))
-                             {:status 200
-                              :body {:issuer "https://example.com"
-                                     :authorization_endpoint "https://example.com/authorize"
-                                     :token_endpoint "https://example.com/token"
-                                     :jwks_uri "https://example.com/jwks"
-                                     :userinfo_endpoint "https://example.com/userinfo"}})]
+    (mt/with-dynamic-fn-redefs [http/get (fn [url _opts]
+                                           (is (= "https://example.com/.well-known/openid-configuration" url))
+                                           {:status 200
+                                            :body {:issuer "https://example.com"
+                                                   :authorization_endpoint "https://example.com/authorize"
+                                                   :token_endpoint "https://example.com/token"
+                                                   :jwks_uri "https://example.com/jwks"
+                                                   :userinfo_endpoint "https://example.com/userinfo"}})]
       (let [config (oidc.discovery/discover-oidc-configuration "https://example.com")]
         (is (some? config))
         (is (= "https://example.com" (:issuer config)))
@@ -93,28 +93,28 @@
 (deftest discover-oidc-configuration-http-error-test
   (testing "Handles HTTP errors gracefully"
     (oidc.discovery/clear-cache!)
-    (with-redefs [http/get (fn [_url _opts]
-                             {:status 404
-                              :body "Not Found"})]
+    (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                           {:status 404
+                                            :body "Not Found"})]
       (let [config (oidc.discovery/discover-oidc-configuration "https://example.org")]
         (is (nil? config))))))
 
 (deftest discover-oidc-configuration-exception-test
   (testing "Handles exceptions gracefully"
     (oidc.discovery/clear-cache!)
-    (with-redefs [http/get (fn [_url _opts]
-                             (throw (ex-info "Connection timeout" {})))]
+    (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                           (throw (ex-info "Connection timeout" {})))]
       (let [config (oidc.discovery/discover-oidc-configuration "https://example.net")]
         (is (nil? config))))))
 
 (deftest discover-oidc-configuration-trailing-slash-test
   (testing "Strips trailing slash from issuer URI"
     (oidc.discovery/clear-cache!)
-    (with-redefs [http/get (fn [url _opts]
-                             (is (= "https://example.edu/.well-known/openid-configuration" url))
-                             {:status 200
-                              :body {:issuer "https://example.edu"
-                                     :authorization_endpoint "https://example.edu/authorize"}})]
+    (mt/with-dynamic-fn-redefs [http/get (fn [url _opts]
+                                           (is (= "https://example.edu/.well-known/openid-configuration" url))
+                                           {:status 200
+                                            :body {:issuer "https://example.edu"
+                                                   :authorization_endpoint "https://example.edu/authorize"}})]
       (let [config (oidc.discovery/discover-oidc-configuration "https://example.edu/")]
         (is (some? config))))))
 
@@ -130,10 +130,10 @@
   (testing "Uses cached discovery document when cache is fresh (not expired)"
     (oidc.discovery/clear-cache!)
     (let [fetch-count (atom 0)]
-      (with-redefs [http/get (fn [_url _opts]
-                               (swap! fetch-count inc)
-                               {:status 200
-                                :body test-discovery-doc})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! fetch-count inc)
+                                             {:status 200
+                                              :body test-discovery-doc})]
         ;; First call should fetch
         (let [result1 (oidc.discovery/discover-oidc-configuration "https://google.com")]
           (is (some? result1))
@@ -147,10 +147,10 @@
   (testing "Re-fetches discovery document when cache entry is expired"
     (oidc.discovery/clear-cache!)
     (let [fetch-count (atom 0)]
-      (with-redefs [http/get (fn [_url _opts]
-                               (swap! fetch-count inc)
-                               {:status 200
-                                :body test-discovery-doc})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! fetch-count inc)
+                                             {:status 200
+                                              :body test-discovery-doc})]
         ;; First call should fetch
         (oidc.discovery/discover-oidc-configuration "https://github.com")
         (is (= 1 @fetch-count))
@@ -169,10 +169,10 @@
   (testing "invalidate-cache! removes cache entry for specific issuer"
     (oidc.discovery/clear-cache!)
     (let [fetch-count (atom 0)]
-      (with-redefs [http/get (fn [_url _opts]
-                               (swap! fetch-count inc)
-                               {:status 200
-                                :body test-discovery-doc})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! fetch-count inc)
+                                             {:status 200
+                                              :body test-discovery-doc})]
         ;; Populate cache
         (oidc.discovery/discover-oidc-configuration "https://microsoft.com")
         (is (= 1 @fetch-count))
@@ -188,10 +188,10 @@
   (testing "invalidate-cache! normalizes issuer URL"
     (oidc.discovery/clear-cache!)
     (let [fetch-count (atom 0)]
-      (with-redefs [http/get (fn [_url _opts]
-                               (swap! fetch-count inc)
-                               {:status 200
-                                :body test-discovery-doc})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts]
+                                             (swap! fetch-count inc)
+                                             {:status 200
+                                              :body test-discovery-doc})]
         ;; Populate cache without trailing slash
         (oidc.discovery/discover-oidc-configuration "https://apple.com")
         (is (= 1 @fetch-count))

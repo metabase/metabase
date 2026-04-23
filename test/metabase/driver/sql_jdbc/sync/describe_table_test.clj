@@ -217,8 +217,8 @@
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
                           (tqpt/timeseries-drivers))
     (let [org-result-set-seq jdbc/result-set-seq]
-      (with-redefs [jdbc/result-set-seq (fn [& args]
-                                          (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
+      (mt/with-dynamic-fn-redefs [jdbc/result-set-seq (fn [& args]
+                                                        (map #(dissoc % :type_name) (apply org-result-set-seq args)))]
         (is (= #{{:name "longitude"   :base-type :type/Float}
                  {:name "category_id" :base-type :type/Integer}
                  {:name "price"       :base-type :type/Integer}
@@ -240,9 +240,9 @@
 (deftest calculated-semantic-type-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
                           (tqpt/timeseries-drivers))
-    (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_driver _database-type column-name]
-                                                                  (when (= (u/lower-case-en column-name) "longitude")
-                                                                    :type/Longitude))]
+    (mt/with-dynamic-fn-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_driver _database-type column-name]
+                                                                                (when (= (u/lower-case-en column-name) "longitude")
+                                                                                  :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
              (->> (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))
                   (filter :semantic-type)

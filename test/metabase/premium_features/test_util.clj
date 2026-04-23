@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.premium-features.token-check :as token-check]
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [metabase.test.util.thread-local :as tu.thread-local]))
 
 ;;; This is actually thread-safe by default unless you're using [[metabase.test/test-helpers-set-global-values!]]
@@ -21,7 +22,7 @@
                       (thunk)))]
         (if tu.thread-local/*thread-local*
           (thunk)
-          (with-redefs [token-check/*token-features* (constantly features)]
+          (dynamic-redefs/with-dynamic-fn-redefs [token-check/*token-features* (constantly features)]
             (thunk)))))))
 
 (defmacro with-premium-features

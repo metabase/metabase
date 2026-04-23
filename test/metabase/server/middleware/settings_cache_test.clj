@@ -48,7 +48,7 @@
         (let [calls (atom 0)]
           ;; value in 2042 to simulate client has more recent settings
           (update-cookie cs cookie-name "2042-12-02+19%3A57%3A49.775909%2B00")
-          (with-redefs [setting/restore-cache! (fn [] (swap! calls inc))]
+          (mt/with-dynamic-fn-redefs [setting/restore-cache! (fn [] (swap! calls inc))]
             (mt/user-real-request :crowberto :get 200 "user/current"
                                   {:request-options {:cookie-store cs}})
             (is (= 1 @calls) "Cache was not restored based on cookie value")

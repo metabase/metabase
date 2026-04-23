@@ -22,8 +22,8 @@
 (deftest create-dashboard-subscription-happy-path-test
   (testing "valid dashboard, valid user email, valid schedule → success"
     (let [captured-args (atom nil)]
-      (with-redefs [agent-subscriptions/create-dashboard-subscription
-                    (fn [args] (reset! captured-args args) {:output "success"})]
+      (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription
+                                  (fn [args] (reset! captured-args args) {:output "success"})]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
             (let [email  (:email (mt/fetch-user :crowberto))
@@ -47,11 +47,11 @@
 
 (deftest create-dashboard-subscription-unknown-email-test
   (testing "unknown email → 'no user with this email found'"
-    (with-redefs [agent-subscriptions/create-dashboard-subscription
-                  (fn [{:keys [email]}]
-                    (if (= email "nonexistent-user@example.com")
-                      {:output "no user with this email found"}
-                      {:output "success"}))]
+    (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription
+                                (fn [{:keys [email]}]
+                                  (if (= email "nonexistent-user@example.com")
+                                    {:output "no user with this email found"}
+                                    {:output "success"}))]
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
           (let [result (agent-subscriptions/create-dashboard-subscription-tool
@@ -62,11 +62,11 @@
 
 (deftest create-dashboard-subscription-nonexistent-dashboard-test
   (testing "nonexistent dashboard → 404 or error message"
-    (with-redefs [agent-subscriptions/create-dashboard-subscription
-                  (fn [{:keys [dashboard-id]}]
-                    (if (= dashboard-id 999999)
-                      {:output "no dashboard with this dashboard_id found"}
-                      {:output "success"}))]
+    (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription
+                                (fn [{:keys [dashboard-id]}]
+                                  (if (= dashboard-id 999999)
+                                    {:output "no dashboard with this dashboard_id found"}
+                                    {:output "success"}))]
       (mt/with-current-user (mt/user->id :crowberto)
         (let [result (agent-subscriptions/create-dashboard-subscription-tool
                       {:dashboard_id 999999
@@ -77,8 +77,8 @@
 (deftest create-dashboard-subscription-schedule-keywords-test
   (testing "schedule keywords are converted from snake_case to kebab-case"
     (let [captured-args (atom nil)]
-      (with-redefs [agent-subscriptions/create-dashboard-subscription
-                    (fn [args] (reset! captured-args args) {:output "success"})]
+      (mt/with-dynamic-fn-redefs [agent-subscriptions/create-dashboard-subscription
+                                  (fn [args] (reset! captured-args args) {:output "success"})]
         (mt/with-current-user (mt/user->id :crowberto)
           (agent-subscriptions/create-dashboard-subscription-tool
            {:dashboard_id 1
@@ -101,9 +101,9 @@
 (deftest create-dashboard-subscription-slack-happy-path-test
   (testing "valid dashboard, Slack channel, daily schedule → success"
     (mt/with-model-cleanup [:model/Pulse]
-      (with-redefs [channel.settings/slack-configured?                       (constantly true)
-                    channel.settings/slack-cached-channels-and-usernames
-                    (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
+      (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                       (constantly true)
+                                  channel.settings/slack-cached-channels-and-usernames
+                                  (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-temp [:model/Dashboard     {dash-id :id}  {:name "Test Dashboard"}
                          :model/Card          {card-id :id}  {}
@@ -120,9 +120,9 @@
 (deftest create-dashboard-subscription-slack-monthly-schedule-test
   (testing "Slack subscription with monthly schedule → success"
     (mt/with-model-cleanup [:model/Pulse]
-      (with-redefs [channel.settings/slack-configured?                       (constantly true)
-                    channel.settings/slack-cached-channels-and-usernames
-                    (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
+      (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                       (constantly true)
+                                  channel.settings/slack-cached-channels-and-usernames
+                                  (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-temp [:model/Dashboard     {dash-id :id}  {:name "Test Dashboard"}
                          :model/Card          {card-id :id}  {}
@@ -140,7 +140,7 @@
 
 (deftest create-dashboard-subscription-slack-required-test
   (testing "empty slack_channel → error"
-    (with-redefs [channel.settings/slack-configured? (constantly true)]
+    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly true)]
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
           (let [result (agent-subscriptions/create-dashboard-subscription-tool
@@ -151,7 +151,7 @@
 
 (deftest create-dashboard-subscription-slack-not-configured-test
   (testing "Slack not configured → error"
-    (with-redefs [channel.settings/slack-configured? (constantly false)]
+    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured? (constantly false)]
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Test Dashboard"}]
           (let [result (agent-subscriptions/create-dashboard-subscription-tool
@@ -163,8 +163,8 @@
 
 (deftest create-dashboard-subscription-slack-channel-not-found-test
   (testing "nonexistent Slack channel → error"
-    (with-redefs [channel.settings/slack-configured?                       (constantly true)
-                  channel.settings/slack-cached-channels-and-usernames (constantly {:channels []})]
+    (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                       (constantly true)
+                                channel.settings/slack-cached-channels-and-usernames (constantly {:channels []})]
       (mt/with-current-user (mt/user->id :crowberto)
         (mt/with-temp [:model/Dashboard     {dash-id :id}  {:name "Test Dashboard"}
                        :model/Card          {card-id :id}  {}

@@ -7,7 +7,7 @@
    [toucan2.core :as t2]))
 
 (defn- get-humanized-display-name! [actual-name strategy]
-  (with-redefs [humanization/humanization-strategy (constantly strategy)]
+  (mt/with-dynamic-fn-redefs [humanization/humanization-strategy (constantly strategy)]
     (mt/with-temp [:model/Table {table-id :id} {:name actual-name}]
       (t2/select-one-fn :display_name :model/Table, :id table-id))))
 

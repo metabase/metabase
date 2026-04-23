@@ -25,7 +25,7 @@
 
   (testing "oidc-get allows requests when oidc-allowed-networks is :allow-all"
     (mt/with-temporary-setting-values [oidc-allowed-networks :allow-all]
-      (with-redefs [http/get (fn [_url _opts] {:status 200 :body {:ok true}})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts] {:status 200 :body {:ok true}})]
         (let [response (oidc.http/oidc-get "https://provider.example.com/discovery")]
           (is (= 200 (:status response))))))))
 
@@ -46,7 +46,7 @@
 
   (testing "oidc-post allows requests when oidc-allowed-networks is :allow-all"
     (mt/with-temporary-setting-values [oidc-allowed-networks :allow-all]
-      (with-redefs [http/post (fn [_url _opts] {:status 200 :body {:access_token "tok"}})]
+      (mt/with-dynamic-fn-redefs [http/post (fn [_url _opts] {:status 200 :body {:access_token "tok"}})]
         (let [response (oidc.http/oidc-post "https://provider.example.com/token"
                                             {:form-params {:grant_type "client_credentials"}})]
           (is (= 200 (:status response))))))))
@@ -54,17 +54,17 @@
 (deftest oidc-get-allow-all-test
   (testing "oidc-get allows all hosts when oidc-allowed-networks is :allow-all"
     (mt/with-temporary-setting-values [oidc-allowed-networks :allow-all]
-      (with-redefs [http/get (fn [_url _opts] {:status 200 :body {}})]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url _opts] {:status 200 :body {}})]
         (is (= 200 (:status (oidc.http/oidc-get "http://192.168.1.1/path"))))))))
 
 (deftest oidc-get-merges-custom-opts-test
   (testing "Custom options are merged with defaults"
     (mt/with-temporary-setting-values [oidc-allowed-networks :allow-all]
-      (with-redefs [http/get (fn [_url opts]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_url opts]
                                ;; Verify custom opts are present alongside defaults
-                               (is (= :json (:as opts)))
-                               (is (= :json (:accept opts)))
-                               (is (= 5000 (:conn-timeout opts)))
-                               (is (false? (:throw-exceptions opts)))
-                               {:status 200 :body {}})]
+                                             (is (= :json (:as opts)))
+                                             (is (= :json (:accept opts)))
+                                             (is (= 5000 (:conn-timeout opts)))
+                                             (is (false? (:throw-exceptions opts)))
+                                             {:status 200 :body {}})]
         (oidc.http/oidc-get "https://example.com/path" {:accept :json})))))

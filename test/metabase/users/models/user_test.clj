@@ -228,10 +228,10 @@
                  (zipmap (map :first_name users)
                          (map (comp group-names :group_ids) users)))))))
     (testing "should be the hydrate function for `:group_ids`"
-      (with-redefs [user/group-ids     (constantly '(user/group-ids <user>))
-                    user/add-group-ids (fn [users]
-                                         (for [user users]
-                                           (assoc user :group_ids '(user/add-group-ids <users>))))]
+      (mt/with-dynamic-fn-redefs [user/group-ids     (constantly '(user/group-ids <user>))
+                                  user/add-group-ids (fn [users]
+                                                       (for [user users]
+                                                         (assoc user :group_ids '(user/add-group-ids <users>))))]
         (testing "for a single User"
           (is (= '(user/add-group-ids <users>)
                  (-> (t2/hydrate (t2/select-one :model/User :id (mt/user->id :lucky)) :group_ids)
@@ -546,7 +546,7 @@
 
 (deftest add-attributes-merges-tenant-attributes-test
   (testing "add-attributes should merge tenant attributes"
-    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:login_attributes {"user_attr" "user_value"}
                   :email "test@example.com"}
             result (user/add-attributes user)]
@@ -557,7 +557,7 @@
 
 (deftest add-attributes-tenant-handles-nil-login-attributes-test
   (testing "add-attributes with tenant attributes should handle nil login_attributes"
-    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:email "test@example.com"}
             result (user/add-attributes user)]
         (is (= {"tenant_attr" "tenant_value"}
@@ -565,7 +565,7 @@
 
 (deftest add-attributes-tenant-handles-empty-login-attributes-test
   (testing "add-attributes with tenant attributes should handle empty login_attributes"
-    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:login_attributes {}
                   :email "test@example.com"}
             result (user/add-attributes user)]
@@ -574,7 +574,7 @@
 
 (deftest add-attributes-handles-nil-tenant-attributes-test
   (testing "add-attributes should handle nil tenant attributes"
-    (with-redefs [tenants/login-attributes (constantly nil)]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly nil)]
       (let [user {:login_attributes {"user_attr" "user_value"}
                   :email "test@example.com"}
             result (user/add-attributes user)]
@@ -583,7 +583,7 @@
 
 (deftest add-attributes-handles-both-nil-tenant-and-user-attributes-test
   (testing "add-attributes should handle both nil tenant and user attributes"
-    (with-redefs [tenants/login-attributes (constantly nil)]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly nil)]
       (let [user {:email "test@example.com"}
             result (user/add-attributes user)]
         (is (= {}
@@ -591,8 +591,8 @@
 
 (deftest add-attributes-user-overrides-tenant-test
   (testing "add-attributes: user attributes should override tenant attributes with same keys"
-    (with-redefs [tenants/login-attributes (constantly {"shared_key" "tenant_value"
-                                                        "tenant_only" "tenant_val"})]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"shared_key" "tenant_value"
+                                                                      "tenant_only" "tenant_val"})]
       (let [user {:login_attributes {"shared_key" "user_value"
                                      "user_only" "user_val"}
                   :email "test@example.com"}
@@ -604,7 +604,7 @@
 
 (deftest add-attributes-tenant-preserves-user-fields-test
   (testing "add-attributes with tenant attributes should preserve all other user fields"
-    (with-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
+    (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
       (let [user {:id 123
                   :email "test@example.com"
                   :first_name "John"

@@ -41,7 +41,7 @@
       (assoc :body (java.io.ByteArrayInputStream. (.getBytes body "UTF-8")))))
 
 (deftest verify-slack-request-test
-  (with-redefs [mw.auth/current-unix-timestamp (constantly test-timestamp)]
+  (mt/with-dynamic-fn-redefs [mw.auth/current-unix-timestamp (constantly test-timestamp)]
     (testing "Valid signature w/ signing secret configured"
       (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret]
         (let [body      "test-body"
@@ -83,7 +83,7 @@
 
 (deftest verify-slack-request-timestamp-validation-test
   (mt/with-temporary-raw-setting-values [metabot-slack-signing-secret test-signing-secret]
-    (with-redefs [mw.auth/current-unix-timestamp (constantly test-timestamp)]
+    (mt/with-dynamic-fn-redefs [mw.auth/current-unix-timestamp (constantly test-timestamp)]
       (testing "Replay attack prevention - rejects timestamps outside 5 minute window"
         (doseq [[expected offset-or-val description]
                 [[true  0     "current time"]

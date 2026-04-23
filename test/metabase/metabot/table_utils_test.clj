@@ -170,9 +170,9 @@
       (testing "handles query with recognized tables"
         (mt/with-current-user (mt/user->id :crowberto)
           ;; Mock query analyzer result with recognized table
-          (with-redefs [query-analyzer/tables-for-native
-                        (fn [_query & _opts]
-                          {:tables [{:table "users" :table-id table1-id :schema "public"}]})]
+          (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
+                                      (fn [_query & _opts]
+                                        {:tables [{:table "users" :table-id table1-id :schema "public"}]})]
             (let [query (mt/with-db db
                           (lib/native-query (mt/metadata-provider) "SELECT * FROM users"))
                   tables (table-utils/used-tables query)]
@@ -182,9 +182,9 @@
       (testing "handles query with unrecognized tables that have fuzzy matches"
         (mt/with-current-user (mt/user->id :crowberto)
           ;; Mock query analyzer result with unrecognized table
-          (with-redefs [query-analyzer/tables-for-native
-                        (fn [_query & _opts]
-                          {:tables [{:table "user" :schema "public"}]})]  ; "user" should match "users"
+          (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
+                                      (fn [_query & _opts]
+                                        {:tables [{:table "user" :schema "public"}]})]  ; "user" should match "users"
             (let [query (mt/with-db db
                           (lib/native-query (mt/metadata-provider) "SELECT * FROM user"))
                   tables (table-utils/used-tables query)]
@@ -194,8 +194,8 @@
 
       (testing "handles empty query analysis result"
         (mt/with-current-user (mt/user->id :crowberto)
-          (with-redefs [query-analyzer/tables-for-native
-                        (fn [_query & _opts] {:tables []})]
+          (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
+                                      (fn [_query & _opts] {:tables []})]
             (let [query (mt/with-db db
                           (lib/native-query (mt/metadata-provider) "SELECT 1"))
                   tables (table-utils/used-tables query)]
@@ -203,10 +203,10 @@
 
       (testing "handles mixed recognized and unrecognized tables"
         (mt/with-current-user (mt/user->id :crowberto)
-          (with-redefs [query-analyzer/tables-for-native
-                        (fn [_query & _opts]
-                          {:tables [{:table "users" :table-id table1-id :schema "public"}    ; recognized
-                                    {:table "order" :schema "public"}]})]                     ; unrecognized, should match "orders"
+          (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
+                                      (fn [_query & _opts]
+                                        {:tables [{:table "users" :table-id table1-id :schema "public"}    ; recognized
+                                                  {:table "order" :schema "public"}]})]                     ; unrecognized, should match "orders"
             (let [query (mt/with-db db
                           (lib/native-query (mt/metadata-provider) "SELECT * FROM users JOIN order ON ..."))
                   tables (table-utils/used-tables query)]
@@ -302,8 +302,8 @@
           (is (empty? matches))))))
 
   (testing "used-tables handles query analyzer exceptions"
-    (with-redefs [query-analyzer/tables-for-native
-                  (fn [_query & _opts] (throw (Exception. "Query analysis failed")))]
+    (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
+                                (fn [_query & _opts] (throw (Exception. "Query analysis failed")))]
       (let [query (lib/native-query (mt/metadata-provider) "SELECT * FROM users")]
         (is (thrown? Exception (table-utils/used-tables query))))))
 
@@ -433,9 +433,9 @@
                    :model/Field {} {:table_id table4-id, :name "id", :database_type "INTEGER"}]
       (mt/with-current-user (mt/user->id :crowberto)
         ;; Mock query analyzer to return only "users" table
-        (with-redefs [query-analyzer/tables-for-native
-                      (fn [_query & _opts]
-                        {:tables [{:table "users" :table-id table1-id :schema "public"}]})]
+        (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
+                                    (fn [_query & _opts]
+                                      {:tables [{:table "users" :table-id table1-id :schema "public"}]})]
           (let [query (mt/with-db db
                         (lib/native-query (mt/metadata-provider) "SELECT * FROM users"))
                 ;; Set limit to 2, but we have 4 tables, so it should use query-based selection
@@ -522,10 +522,10 @@
                    :model/Field {} {:table_id table3-id, :name "id", :database_type "INTEGER"}
                    :model/Field {} {:table_id table4-id, :name "id", :database_type "INTEGER"}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (with-redefs [query-analyzer/tables-for-native
-                      (fn [_query & _opts]
-                        {:tables [{:table "users" :table-id table1-id :schema "public"}
-                                  {:table "products" :table-id table3-id :schema "public"}]})]
+        (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
+                                    (fn [_query & _opts]
+                                      {:tables [{:table "users" :table-id table1-id :schema "public"}
+                                                {:table "products" :table-id table3-id :schema "public"}]})]
           (let [query (mt/with-db db
                         (lib/native-query (mt/metadata-provider) "SELECT * FROM users JOIN products"))
                 ddl (table-utils/schema-sample query {:all-tables-limit 1})]
@@ -545,10 +545,10 @@
                    :model/Field {} {:table_id table2-id, :name "id", :database_type "INTEGER"}
                    :model/Field {} {:table_id table3-id, :name "id", :database_type "INTEGER"}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (with-redefs [query-analyzer/tables-for-native
-                      (fn [_query & _opts]
+        (mt/with-dynamic-fn-redefs [query-analyzer/tables-for-native
+                                    (fn [_query & _opts]
                         ;; Return "order" which will fuzzy match multiple tables
-                        {:tables [{:table "order" :schema "public"}]})]
+                                      {:tables [{:table "order" :schema "public"}]})]
           (let [query (mt/with-db db
                         (lib/native-query (mt/metadata-provider) "SELECT * FROM order"))
                 ddl (table-utils/schema-sample query {:all-tables-limit 1})]

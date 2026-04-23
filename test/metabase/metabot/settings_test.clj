@@ -98,14 +98,14 @@
 
 (deftest metabot-configured-with-direct-provider-no-api-key-test
   (testing "returns false when direct provider has no API key"
-    (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+    (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
       (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"]
         (is (false? (metabot.settings/llm-metabot-configured?)))))))
 
 (deftest metabot-configured-proxy-url-not-fallback-for-direct-provider-test
   (testing "proxy URL alone does not make a direct provider configured"
     (mt/with-premium-features #{:metabase-ai-managed}
-      (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
+      (mt/with-dynamic-fn-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
         (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-sonnet-4-6"
                                            llm-proxy-base-url   "https://proxy.example.com"]
           (is (false? (metabot.settings/llm-metabot-configured?))))))))

@@ -192,10 +192,10 @@
            {:result_metadata cols-1})
           (let [call-count      (atom 0)
                 t2-update!-orig t2/update!]
-            (with-redefs [t2/update! (fn [modelable & args]
-                                       (when (= :model/Card modelable)
-                                         (swap! call-count inc))
-                                       (apply t2-update!-orig modelable args))]
+            (mt/with-dynamic-fn-redefs [t2/update! (fn [modelable & args]
+                                                     (when (= :model/Card modelable)
+                                                       (swap! call-count inc))
+                                                     (apply t2-update!-orig modelable args))]
               (let [result (qp/process-query
                             (qp/userland-query
                              (mt/native-query {:query "SELECT NAME FROM VENUES ORDER BY ID ASC LIMIT 5;"})
