@@ -53,7 +53,7 @@
                                      anon-tracking-enabled true]
     (binding [*snowplow-collector* (atom [])]
       (let [collector *snowplow-collector*] ;; get a reference to the atom
-        (with-redefs [snowplow/track-event-impl! (partial fake-track-event-impl! collector)]
+        (mt/with-dynamic-fn-redefs [snowplow/track-event-impl! (partial fake-track-event-impl! collector)]
           (f))))))
 
 ;;; TODO -- rename to `with-fake-snowplow-collector!` because this is not thread-safe and remove the Kondo ignore rule below
