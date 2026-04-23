@@ -15,8 +15,8 @@
 import { render } from "@testing-library/react";
 import { useEffect } from "react";
 
-import type { UseMetabotResult } from "embedding-sdk-bundle/types/metabot";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
+import type { UseMetabotResult } from "embedding-sdk-bundle/types/metabot";
 import * as metabotStateChannel from "embedding-sdk-shared/lib/metabot-state-channel";
 
 import { MetabaseProvider } from "./MetabaseProvider";
@@ -40,7 +40,7 @@ const makeStubMetabotResult = (): UseMetabotResult => ({
 
 const authConfig: MetabaseAuthConfig = {
   metabaseInstanceUrl: "https://example.metabase.test",
-  authProviderUri: "https://example.metabase.test/sso",
+  jwtProviderUri: "https://example.metabase.test/sso",
 };
 
 const installBundleStub = (stubMetabotResult: UseMetabotResult) => {
@@ -66,15 +66,16 @@ const installBundleStub = (stubMetabotResult: UseMetabotResult) => {
     // Return a minimal redux-store-shaped object. `MetabaseProviderInner`
     // only checks truthiness and passes it through to the subscriber stub,
     // which ignores the prop.
-    getSdkStore: () => ({
-      getState: () => ({}),
-      subscribe: () => () => {},
-      dispatch: () => {},
-    }),
+    getSdkStore: () =>
+      ({
+        getState: () => ({}),
+        subscribe: () => () => {},
+        dispatch: () => {},
+      }) as any,
     _internal: {
-      MetabotSubscriber: MetabotSubscriberStub,
+      MetabotSubscriber: MetabotSubscriberStub as any,
     },
-  };
+  } as any;
 };
 
 const resetBundleAndChannel = () => {

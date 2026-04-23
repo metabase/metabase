@@ -27,7 +27,7 @@ import type { ReactNode } from "react";
 import "metabase-enterprise/plugins";
 import "embedding-sdk-ee/metabot";
 
-import { act, screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import { MetabotSubscriber } from "embedding-sdk-bundle/components/private/MetabotSubscriber/MetabotSubscriber";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/types/sdk-bundle";
@@ -37,6 +37,7 @@ import {
   mockAgentEndpoint,
   whoIsYourFavoriteResponse,
 } from "metabase/metabot/tests/utils";
+
 import { MetabaseProvider } from "./MetabaseProvider";
 
 // Mocks for chart components so `CurrentChart` + message.Component don't need
@@ -65,36 +66,34 @@ jest.mock("embedding-sdk-bundle/components/public/InteractiveQuestion", () => {
 // await a CustomEvent. That's useless in jsdom — we stub the bundle global
 // directly below, and this mock just marks the store as loaded so
 // `MetabaseProviderInner` proceeds past its `isLoading` guard.
-jest.mock(
-  "embedding-sdk-package/hooks/private/use-load-sdk-bundle",
-  () => ({
-    // Effect-based state transition so we don't setState during render (which
-    // React 18 drops with a "Cannot update a component while rendering a
-    // different component" warning). `useEffect` schedules the transition
-    // after commit so `MetabaseProviderInner` picks it up on the next render.
-    useLoadSdkBundle: () => {
-      const React = require("react");
-      const {
-        ensureMetabaseProviderPropsStore,
-      } = require("embedding-sdk-shared/lib/ensure-metabase-provider-props-store");
-      const {
-        SdkLoadingState,
-      } = require("embedding-sdk-shared/types/sdk-loading");
-      React.useEffect(() => {
-        const store = ensureMetabaseProviderPropsStore();
-        if (
-          store.getState().internalProps.loadingState !== SdkLoadingState.Loaded
-        ) {
-          store.updateInternalProps({ loadingState: SdkLoadingState.Loaded });
-        }
-      }, []);
-    },
-  }),
-);
+jest.mock("embedding-sdk-package/hooks/private/use-load-sdk-bundle", () => ({
+  // Effect-based state transition so we don't setState during render (which
+  // React 18 drops with a "Cannot update a component while rendering a
+  // different component" warning). `useEffect` schedules the transition
+  // after commit so `MetabaseProviderInner` picks it up on the next render.
+  useLoadSdkBundle: () => {
+    const React = jest.requireActual("react");
+    const { ensureMetabaseProviderPropsStore } = jest.requireActual(
+      "embedding-sdk-shared/lib/ensure-metabase-provider-props-store",
+    );
+    const { SdkLoadingState } = jest.requireActual(
+      "embedding-sdk-shared/types/sdk-loading",
+    );
+    React.useEffect(() => {
+      const store = ensureMetabaseProviderPropsStore();
+      if (
+        store.getState().internalProps.loadingState !== SdkLoadingState.Loaded
+      ) {
+        store.updateInternalProps({ loadingState: SdkLoadingState.Loaded });
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+  },
+}));
 
 const mockAuthConfig = {
   metabaseInstanceUrl: "http://localhost:3000",
-  authProviderUri: "http://localhost:3000/sso",
+  jwtProviderUri: "http://localhost:3000/sso",
 } as const;
 
 type BundleWindow = Window & {
@@ -187,9 +186,7 @@ describe("MetabaseProvider integration (EMB-1616 Step 7)", () => {
     expect(screen.getByTestId("submit-btn")).toBeInTheDocument();
 
     // submitMessage routes through the mocked agent endpoint.
-    await act(async () => {
-      await userEvent.click(screen.getByTestId("submit-btn"));
-    });
+    await userEvent.click(screen.getByTestId("submit-btn"));
 
     const requestBody = await lastReqBody(agentSpy);
     expect(requestBody?.message).toBe("hi");

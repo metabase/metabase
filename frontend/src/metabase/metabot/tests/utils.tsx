@@ -14,6 +14,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import {
   type MockStreamedEndpointParams,
   createMockReadableStream,
@@ -27,7 +28,6 @@ import {
   createMockUser,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 
 import { Metabot } from "../components/Metabot";
 import { FIXED_METABOT_IDS } from "../constants";
@@ -200,7 +200,7 @@ export function setup(
   seededStore.initialize({
     authConfig: {
       metabaseInstanceUrl: "http://localhost:3000",
-      authProviderUri: "http://localhost:3000/sso",
+      jwtProviderUri: "http://localhost:3000/sso",
     },
   });
 
