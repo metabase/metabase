@@ -25,6 +25,7 @@ import type {
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
 } from "metabase/metabot/state/types";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
@@ -49,6 +50,8 @@ import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
 import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import { getUserName } from "metabase/utils/user";
+import { useGetTenantQuery } from "metabase-enterprise/api";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 import Question from "metabase-lib/v1/Question";
 import { getUrl as ML_getUrl } from "metabase-lib/v1/urls";
 import type { DatasetQuery } from "metabase-types/api";
@@ -84,6 +87,10 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   } = useGetMetabotConversationQuery(convoId);
 
   const userGroupsInfo = useUserGroupsInfo(conversation?.user?.id);
+  const tenantId = conversation?.user?.tenant_id ?? null;
+  const { data: tenant } = useGetTenantQuery(
+    PLUGIN_TENANTS.isEnabled && tenantId != null ? tenantId : skipToken,
+  );
 
   if (isLoading || error) {
     return (
@@ -157,6 +164,20 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                 <Flex gap="xs" align="center">
                   <Icon name="group" size={16} c="text-tertiary" />
                   <UserGroupsMenu {...userGroupsInfo} />
+                </Flex>
+              )}
+              {tenant && (
+                <Flex gap="xs" align="center">
+                  <Icon name="globe" size={16} c="text-tertiary" />
+                  <Anchor
+                    component={ForwardRefLink}
+                    to={EnterpriseUrls.editTenant(tenant.id)}
+                    c="text-secondary"
+                    size="md"
+                    underline="hover"
+                  >
+                    {tenant.name}
+                  </Anchor>
                 </Flex>
               )}
               {conversation.slack_permalink && (
