@@ -56,8 +56,8 @@
           ; settings is used for theme card previews
           (is (= #{:id :entity_id :name :settings :created_at :updated_at}
                  (set (keys (first themes)))))
-          (testing "themes are ordered by newest first"
-            (is (= ["Theme 2" "Theme 1"]
+          (testing "themes are ordered by oldest first"
+            (is (= ["Theme 1" "Theme 2"]
                    (map :name themes)))))))
     (testing "requires superuser permissions"
       (is (= "You don't have permissions to do that."

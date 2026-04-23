@@ -7,7 +7,6 @@ const TEST_THEME: MetabaseTheme = {
   fontFamily: "Roboto",
   fontSize: "14px",
   colors: {
-    "background-secondary": "#f0f0f0",
     background: "#ffffff",
     "text-primary": "#223344",
     "text-secondary": "#667788",
@@ -27,11 +26,11 @@ describe("EmbeddingThemeCardPreview", () => {
     expect(svg).toHaveStyle({ fontFamily: "Roboto" });
   });
 
-  it("uses the background-secondary color for the card background", () => {
+  it("uses the background color for the card background", () => {
     setup();
 
     const backgroundPath = document.querySelector("path");
-    expect(backgroundPath).toHaveAttribute("fill", "#f0f0f0");
+    expect(backgroundPath).toHaveAttribute("fill", "#ffffff");
   });
 
   it("uses the text-primary color for the heading text", () => {

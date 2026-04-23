@@ -2,6 +2,7 @@ import { useRef } from "react";
 import type { Route } from "react-router";
 import { push } from "react-router-redux";
 
+import { useDeleteThemeFlow } from "metabase/admin/embedding/hooks";
 import { useEmbeddingThemeEditor } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal/LeaveRouteConfirmModal";
@@ -21,9 +22,12 @@ export function EmbeddingThemeEditorApp({
   params,
   route,
 }: EmbeddingThemeEditorAppProps) {
-  const themeId = parseInt(params.themeId, 10);
+  const themeId =
+    params.themeId === "new" ? "new" : parseInt(params.themeId, 10);
   const editor = useEmbeddingThemeEditor(themeId);
   const dispatch = useDispatch();
+  // Suppresses the unsaved-changes prompt when we navigate away intentionally
+  // (save or delete), since those flows leave the editor while `isDirty` is true.
   const isSavingRef = useRef(false);
 
   const shouldWarnOnLeave = editor.isDirty && !isSavingRef.current;
@@ -32,6 +36,13 @@ export function EmbeddingThemeEditorApp({
   const goToThemeList = () => {
     dispatch(push("/admin/embedding/themes"));
   };
+
+  const { requestDelete, modal: deleteModal } = useDeleteThemeFlow({
+    onDeleted: () => {
+      isSavingRef.current = true;
+      goToThemeList();
+    },
+  });
 
   const handleSave = async () => {
     isSavingRef.current = true;
@@ -57,9 +68,13 @@ export function EmbeddingThemeEditorApp({
         editor={editor}
         onSave={handleSave}
         onCancel={goToThemeList}
+        onDelete={
+          typeof themeId === "number" ? () => requestDelete(themeId) : undefined
+        }
       />
       <PreviewPanel settings={editor.currentTheme.settings} />
       <LeaveRouteConfirmModal isEnabled={shouldWarnOnLeave} route={route} />
+      {deleteModal}
     </Flex>
   );
 }

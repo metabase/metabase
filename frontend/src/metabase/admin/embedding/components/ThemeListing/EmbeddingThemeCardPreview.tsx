@@ -66,7 +66,18 @@ export const EmbeddingThemeCardPreview = ({
       }}
     >
       <g>
-        <path d="M0 0H251V251H0V0Z" fill={colorOf("background-secondary")} />
+        <defs>
+          <filter
+            id="theme-preview-drop-shadow"
+            x="-20%"
+            y="-20%"
+            width="140%"
+            height="140%"
+          >
+            <feDropShadow dx="2" dy="4" stdDeviation="4" floodOpacity="0.2" />
+          </filter>
+        </defs>
+        <path d="M0 0H251V251H0V0Z" fill={colorOf("background")} />
 
         <text
           x="28"
@@ -85,6 +96,7 @@ export const EmbeddingThemeCardPreview = ({
           height="269"
           rx="6"
           fill={colorOf("background")}
+          filter="url(#theme-preview-drop-shadow)"
         />
 
         <rect

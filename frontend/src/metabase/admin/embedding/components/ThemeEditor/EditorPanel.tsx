@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import type { EmbeddingThemeEditorResult } from "metabase/admin/embedding/hooks/use-embedding-theme-editor";
@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   Collapse,
+  CopyButton,
   Flex,
   Icon,
   Select,
@@ -24,17 +25,29 @@ import {
   MORE_COLORS,
   PRIMARY_COLORS,
 } from "./constants";
+import { getThemeCodeSnippet } from "./get-theme-code-snippet";
 
 interface EditorPanelProps {
   editor: EmbeddingThemeEditorResult;
   onSave: () => void;
   onCancel: () => void;
+  onDelete?: () => void;
 }
 
-export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
+export function EditorPanel({
+  editor,
+  onSave,
+  onCancel,
+  onDelete,
+}: EditorPanelProps) {
   const [moreColorsOpen, setMoreColorsOpen] = useState(false);
 
   const { currentTheme } = editor;
+  const themeCodeSnippet = useMemo(
+    () => getThemeCodeSnippet(currentTheme?.settings ?? {}),
+    [currentTheme?.settings],
+  );
+
   if (!currentTheme) {
     return null;
   }
@@ -58,7 +71,21 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
       style={{ borderRight: "1px solid var(--mb-color-border)" }}
     >
       <Box flex={1} style={{ overflow: "auto" }} p="xl">
-        <Text fw={700} fz="xl" mb="xl">{t`Edit theme`}</Text>
+        <Flex align="center" justify="space-between" mb="xl">
+          <Text fw={700} fz="xl">{t`Edit theme`}</Text>
+          <CopyButton value={themeCodeSnippet}>
+            {({ copied, copy }) => (
+              <Button
+                variant="subtle"
+                size="compact-sm"
+                leftSection={<Icon name="copy" size={16} />}
+                onClick={copy}
+              >
+                {copied ? t`Copied!` : t`Copy code`}
+              </Button>
+            )}
+          </CopyButton>
+        </Flex>
 
         <Stack gap="lg">
           {/* Theme name */}
@@ -67,6 +94,8 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
               label={t`Theme name`}
               value={currentTheme.name}
               onChange={(e) => editor.setName(e.currentTarget.value)}
+              autoFocus
+              onFocus={(e) => e.currentTarget.select()}
             />
           </Card>
 
@@ -92,6 +121,7 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
                   key={key}
                   label={label()}
                   value={(colors[key] as string) ?? ""}
+                  showAlpha
                   onChange={(color) => editor.setColor(key, color ?? "")}
                 />
               ))}
@@ -139,6 +169,7 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
                     key={key}
                     label={label()}
                     value={(colors[key] as string) ?? ""}
+                    showAlpha
                     onChange={(color) => editor.setColor(key, color ?? "")}
                   />
                 ))}
@@ -166,6 +197,7 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
                       key={i}
                       label={`Chart ${i + 1}`}
                       value={value}
+                      showAlpha
                       onChange={(color) => editor.setChartColor(i, color ?? "")}
                     />
                   );
@@ -184,6 +216,7 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
                 onChange={(value) =>
                   editor.setFontFamily((value ?? "") as MetabaseFontFamily)
                 }
+                placeholder={t`Default`}
                 clearable
                 searchable
               />
@@ -197,6 +230,7 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
                   }
                   editor.setFontSize(raw ? `${raw}px` : "");
                 }}
+                placeholder={t`Default`}
                 rightSection={
                   <Text c="text-tertiary" fz="sm">
                     {"px"}
@@ -206,6 +240,19 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
             </Stack>
           </Card>
         </Stack>
+
+        {onDelete && (
+          <Button
+            mt="lg"
+            variant="subtle"
+            color="error"
+            px={0}
+            leftSection={<Icon name="trash" size={16} />}
+            onClick={onDelete}
+          >
+            {t`Delete theme`}
+          </Button>
+        )}
       </Box>
 
       {/* Bottom action bar */}
@@ -218,7 +265,7 @@ export function EditorPanel({ editor, onSave, onCancel }: EditorPanelProps) {
         <Button variant="subtle" onClick={onCancel}>
           {t`Cancel`}
         </Button>
-        <Button variant="filled" onClick={onSave} disabled={!editor.isDirty}>
+        <Button variant="filled" onClick={onSave} disabled={!editor.canSave}>
           {t`Save theme`}
         </Button>
       </Flex>
