@@ -4,12 +4,6 @@ import { assoc, assocIn, chain, dissoc, getIn } from "icepick";
 import slugg from "slugg";
 import _ from "underscore";
 
-/* eslint-disable no-restricted-imports */
-import {
-  type SerializeCardOptions,
-  isTransientCardId,
-  serializeCardForUrl,
-} from "metabase/common/utils/card";
 import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -129,6 +123,16 @@ class Question {
     return this._doNotCallSerializableCard();
   }
 
+  /**
+   * returns the card but normalizes the dataset_query field.
+   */
+  cardWithNormalizedQuery() {
+    return {
+      ...this.card(),
+      dataset_query: Lib.toJsQuery(this.query()),
+    };
+  }
+
   _doNotCallSerializableCard() {
     return this._card;
   }
@@ -147,21 +151,6 @@ class Question {
         .dissoc("description")
         .value(),
     );
-  }
-
-  omitTransientCardIds() {
-    let question = this;
-
-    const card = question.card();
-    const { id, original_card_id } = card;
-    if (isTransientCardId(id)) {
-      question = question.setCard(_.omit(question.card(), "id"));
-    }
-    if (isTransientCardId(original_card_id)) {
-      question = question.setCard(_.omit(question.card(), "original_card_id"));
-    }
-
-    return question;
   }
 
   /**
@@ -672,17 +661,6 @@ class Question {
       this.datasetQuery(),
       originalQuestion.datasetQuery(),
     );
-  }
-
-  serializeForUrl(opts: SerializeCardOptions = {}) {
-    const card = {
-      ...this.card(),
-      dataset_query: Lib.toJsQuery(this.query()),
-    };
-    return serializeCardForUrl(card, {
-      ...opts,
-      parameterValues: this._parameterValues,
-    });
   }
 
   // Internal methods

@@ -784,51 +784,6 @@ describe("Question", () => {
     });
   });
 
-  describe("Question.prototype.omitTransientCardIds", () => {
-    it("should return a question without a transient ids", () => {
-      const cardWithTransientId = {
-        ...card,
-        id: "foo",
-        original_card_id: 123,
-      };
-
-      const question = new Question(cardWithTransientId, metadata);
-      const newQuestion = question.omitTransientCardIds();
-      expect(newQuestion.id()).toBeUndefined();
-      expect(newQuestion._doNotCallSerializableCard().original_card_id).toBe(
-        123,
-      );
-    });
-
-    it("should return a question without a transient original_card_id", () => {
-      const cardWithTransientId = {
-        ...card,
-        id: 123,
-        original_card_id: "bar",
-      };
-
-      const question = new Question(cardWithTransientId, metadata);
-      const newQuestion = question.omitTransientCardIds();
-      expect(
-        newQuestion._doNotCallSerializableCard().original_card_id,
-      ).toBeUndefined();
-      expect(newQuestion.id()).toBe(123);
-    });
-
-    it("should do nothing if id and original_card_id are both not transient", () => {
-      const cardWithoutTransientId = {
-        ...card,
-        id: 123,
-        original_card_id: undefined,
-      };
-
-      const question = new Question(cardWithoutTransientId, metadata);
-      const newQuestion = question.omitTransientCardIds();
-
-      expect(newQuestion).toBe(question);
-    });
-  });
-
   describe("Question.prototype.supportsImplicitActions", () => {
     it("should allow to create implicit actions for a raw model", () => {
       const question = new Question(orders_raw_card, metadata);
