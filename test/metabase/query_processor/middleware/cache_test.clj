@@ -107,7 +107,7 @@
       (binding [cache/*backend* (test-backend save-chan purge-chan)
                 *save-chan*     save-chan
                 *purge-chan*    purge-chan]
-        (let [orig @#'cache/serialized-bytes]
+        (let [orig (mt/original-fn #'cache/serialized-bytes)]
           (mt/with-dynamic-fn-redefs [cache/serialized-bytes (fn []
                                                  ;; if `save-results!` isn't going to get called because `*result-fn*`
                                                  ;; throws an Exception, catch it and send it to `save-chan` so it still

@@ -66,7 +66,7 @@
     (testing "creating and removing specs works"
       ;; need to create a new, nonexistent h2 db
       (let [destroyed?         (atom false)
-            original-destroy   @#'sql-jdbc.conn/destroy-pool!
+            original-destroy   (mt/original-fn #'sql-jdbc.conn/destroy-pool!)
             pool-cache-key     @#'sql-jdbc.conn/pool-cache-key
             connection-details {:db "mem:connection_test"}
             spec               (mdb/spec :h2 connection-details)]
