@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
@@ -21,7 +21,7 @@ export function WorkspaceListPage() {
   const { workspaces, error, isLoading } = useFetchWorkspaceList();
 
   if (error) {
-    return <LoadingAndErrorWrapper loading={false} error={error} />;
+    return <DelayedLoadingAndErrorWrapper loading={false} error={error} />;
   }
 
   return (

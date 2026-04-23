@@ -4,6 +4,7 @@ import type { CollectionId, CollectionType } from "./collection";
 import type { DashboardId } from "./dashboard";
 import type { DatabaseId, InitialSyncStatus } from "./database";
 import type { ModerationReviewStatus } from "./moderation";
+import type { OpaqueDatasetQuery } from "./query";
 import type { CardDisplayType } from "./visualization";
 
 export const ACTIVITY_MODELS = [
@@ -111,3 +112,14 @@ export interface CreateRecentRequest {
   model: ActivityModel;
   context: "selection";
 }
+
+export type QueryExecutionId = number;
+
+export type QueryExecution = {
+  id: QueryExecutionId;
+  database_id: DatabaseId;
+  query: OpaqueDatasetQuery;
+  started_at: string;
+  running_time: number;
+  result_rows: number;
+};

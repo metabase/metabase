@@ -39,6 +39,7 @@ import type {
   NotificationChannel,
   ParameterId,
   PopularItem,
+  QueryExecution,
   RecentItem,
   Revision,
   SearchModel,
@@ -120,6 +121,21 @@ export function provideActivityItemTags(
   item: RecentItem | PopularItem,
 ): TagDescription<TagType>[] {
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
+}
+
+export function provideQueryExecutionItemListTags(
+  items: QueryExecution[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("query-execution"),
+    ...items.flatMap(provideQueryExecutionItemTags),
+  ];
+}
+
+export function provideQueryExecutionItemTags(
+  item: QueryExecution,
+): TagDescription<TagType>[] {
+  return [idTag("query-execution", item.id)];
 }
 
 export function provideAdhocDatasetTags(): TagDescription<TagType>[] {

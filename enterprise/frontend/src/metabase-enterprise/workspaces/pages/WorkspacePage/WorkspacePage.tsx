@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/utils/urls";
@@ -26,7 +26,7 @@ export function WorkspacePage({ params }: WorkspacePageProps) {
   if (isLoading || error != null || workspace == null) {
     return (
       <Center h="100%">
-        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+        <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
       </Center>
     );
   }

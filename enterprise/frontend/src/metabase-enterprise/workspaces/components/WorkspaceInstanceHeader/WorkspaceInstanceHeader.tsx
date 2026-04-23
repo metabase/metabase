@@ -22,6 +22,10 @@ export const WorkspaceInstanceHeader = memo(function WorkspaceInstanceHeader({
       to: Urls.workspaceInstanceOverview(),
     },
     {
+      label: t`Query execution`,
+      to: Urls.workspaceInstanceQueryExecution(),
+    },
+    {
       label: t`Transform Runs`,
       to: Urls.workspaceInstanceRuns(),
     },

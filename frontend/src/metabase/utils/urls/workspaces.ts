@@ -27,6 +27,10 @@ export function workspaceInstanceOverview() {
   return `${WORKSPACE_INSTANCE_URL}/overview`;
 }
 
+export function workspaceInstanceQueryExecution() {
+  return `${WORKSPACE_INSTANCE_URL}/query-execution`;
+}
+
 export function workspaceInstanceRemappings() {
   return `${WORKSPACE_INSTANCE_URL}/remappings`;
 }

@@ -4,7 +4,7 @@ import { useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Center, Flex, Stack } from "metabase/ui";
 import {
@@ -78,7 +78,7 @@ export function WorkspaceInstanceRemappingsPage() {
         <WorkspaceInstanceHeader workspaceName={workspace?.name} />
         {isLoading || error != null || workspace == null ? (
           <Center h="100%">
-            <LoadingAndErrorWrapper loading={isLoading} error={error} />
+            <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
           <WorkspaceRemappingsTable

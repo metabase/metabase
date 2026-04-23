@@ -286,12 +286,12 @@
 
    Options:
      :user-id     - filter to a specific user (optional, nil = all users)
-     :limit       - max rows (default 20)
+     :limit       - max rows (default 100)
      :database-id - filter to a specific database (optional)"
   [{:keys [limit]
-    :or   {limit 20}}]
+    :or   {limit 100}}]
   (let [where-clause [:is-not :qe.started_at nil]
-        rows         (t2/query {:select    [[:qe.id :execution_id]
+        rows         (t2/query {:select    [[:qe.id :id]
                                             [:qe.started_at :started_at]
                                             [:qe.executor_id :executor_id]
                                             [:qe.database_id :database_id]
@@ -309,4 +309,4 @@
   "Get recent query executions for the current user with resolved source table and card names."
   [_route-params _query-params]
   (api/check-superuser)
-  (query-activity {:limit (request/limit)}))
+  (query-activity {:limit (or (request/limit) 100)}))
