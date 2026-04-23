@@ -59,7 +59,8 @@ function getCleanCard(
   if (includeDatasetQuery) {
     keysToInclude.push("dataset_query");
   }
-  if (includeOriginalCardId) {
+  if (includeOriginalCardId && !isTransientCardId(value.original_card_id)) {
+    // transient card id's are never included
     keysToInclude.push("original_card_id");
   }
   if (includeDisplayIsLocked) {
