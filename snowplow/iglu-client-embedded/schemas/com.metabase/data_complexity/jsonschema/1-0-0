@@ -50,7 +50,7 @@
             "maximum": 2147483647
         },
         "measurement": {
-            "description": "Raw pre-score measurement (absent on aggregates; null on uncomputed leaves). Number, not integer, to future-proof density-style metrics.",
+            "description": "Raw pre-score measurement (absent on aggregates; null on uncomputed leaves). Number, not integer, to future-proof.",
             "type": [
                 "number",
                 "null"
@@ -73,7 +73,7 @@
             "maximum": 2147483647
         },
         "parameters": {
-            "description": "Scoring inputs that are likely to evolve (tunables, embedder identity). Sorted-key JSON so the string form is stable for SQL group-by; Metabase transforms can break out individual keys without a schema bump.",
+            "description": "Scoring inputs that are likely to evolve (tunables, embedder identity). Sorted-key JSON so stable for SQL group-by; Metabase Transforms can break out its fields without bumping schema.",
             "type": "object",
             "additionalProperties": true
         }

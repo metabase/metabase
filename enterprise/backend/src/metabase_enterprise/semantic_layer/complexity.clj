@@ -317,11 +317,10 @@
        :value-doesnt-matter))))
 
 (defn- score-synonym-pairs
-  "Compute the synonym sub-score for `entities` using `embedder`. On embedder failure, returns
-   `{:measurement nil :score nil :error \"...\"}` so the failure cascades through `score-catalog`'s
-   `:total` and through Snowplow's group/grand-total rollups — distinguishing 'we couldn't compute
-   it' from 'we computed and got zero pairs'. A nil `embedder` naturally produces an empty lookup
-   and scores zero (a real zero, not a failure)."
+  "Compute the synonym sub-score for `entities` using `embedder`. On embedder failure, returns nil
+   `:score`/`:measurement` plus an `:error` string so the failure cascades through aggregates
+   instead of being mistaken for a real zero. A nil `embedder` produces an empty lookup and scores
+   a real zero."
   [entities embedder]
   (try
     (let [name->vec     (or (and embedder (embedder entities)) {})
@@ -390,9 +389,8 @@
 (defn- emit-snowplow!
   "One Snowplow event per (catalog × dotted-key) — grand `total`, one `<group>.total` per thematic
   group, and one `<group>.<component>` leaf per sub-score. Aggregate `:score` is nil when any
-  contributing leaf couldn't be computed (today: synonym embedder failures); the schema permits
-  null scores on aggregates so consumers see an explicit 'unknown' instead of a silently low-
-  biased total."
+  contributing leaf couldn't be computed, so consumers see an explicit unknown instead of a
+  silently low-biased total."
   [{:keys [library universe metabot meta]}]
   (let [base {:event           :data_complexity_scoring
               :formula_version (:formula-version meta)

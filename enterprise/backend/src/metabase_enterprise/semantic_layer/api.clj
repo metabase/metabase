@@ -10,17 +10,21 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private SubScore
-  "Raw `:measurement` + weighted `:score`.
-   Includes :error if something went wrong and we're using a fallback."
-  [:map
-   [:measurement number?]
-   [:score       nat-int?]
-   [:error       {:optional true} string?]])
+  "Either a computed sub-score (`:measurement` + `:score`) or an uncomputed one (`:error`)."
+  [:or
+   [:map {:closed true}
+    [:measurement number?]
+    [:score       nat-int?]]
+   [:map {:closed true}
+    [:measurement nil?]
+    [:score       nil?]
+    [:error       string?]]])
 
 (def ^:private Catalog
-  "One catalog's total + per-component breakdown."
+  "One catalog's total + per-component breakdown.
+  `:total` is nil when any sub-score couldn't be computed — failures cascade through aggregates."
   [:map
-   [:total nat-int?]
+   [:total [:maybe nat-int?]]
    [:components
     [:map
      [:entity-count      SubScore]

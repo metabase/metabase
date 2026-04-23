@@ -125,16 +125,19 @@
       (is (=? {:components {:synonym-pairs {:measurement 1.0 :score 50}}}
               (#'complexity/score-catalog es embedder)))))
 
-  (testing "embedder failure degrades gracefully (score 0, not exception)"
+  (testing "embedder failure cascades nil through the catalog (no zero-fallback)"
     (let [es       [(entity :name "customers") (entity :name "clients")]
           embedder (fn [_] (throw (ex-info "boom" {})))]
-      (is (=? {:components {:synonym-pairs {:measurement 0.0 :score 0 :error "boom"}}}
+      (is (=? {:total nil
+               :components {:synonym-pairs {:measurement nil :score nil :error "boom"}
+                            ;; Sibling sub-scores still compute their real values — only the rollup
+                            ;; cascades nil — so consumers can still see the unaffected dimensions.
+                            :entity-count {:measurement 2.0 :score 20}}}
               (#'complexity/score-catalog es embedder)))))
 
   (testing "throwable with a nil/blank message still records :error as a nonblank string"
-    ;; Regression: we must not emit {:error nil} (schema requires string), but we also must keep
-    ;; :error present so an embedder failure is distinguishable from a genuine zero-synonym
-    ;; result on the API/Snowplow payload. Fall back to the exception class name.
+    ;; Regression: we must keep :error present so an embedder failure is distinguishable from a
+    ;; genuine zero-synonym result. Fall back to the exception class name.
     (let [es         [(entity :name "customers") (entity :name "clients")]
           synonym-of #(get-in (#'complexity/score-catalog es %) [:components :synonym-pairs])]
       (doseq [[label embedder expected] [["nil message"   (fn [_] (throw (NullPointerException.)))
@@ -143,7 +146,7 @@
                                           "java.lang.RuntimeException"]]]
         (testing label
           (let [sub (synonym-of embedder)]
-            (is (= 0 (:score sub)))
+            (is (nil? (:score sub)))
             (is (= expected (:error sub))
                 (format ":error must be a nonblank string when the throwable's message is %s" label))))))))
 
@@ -337,8 +340,8 @@
                                [{:id 1 :name "orders" :kind :table}]))))
       (testing "score-synonym-pairs converts the propagated failure into :error on the sub-score"
         (let [es [(entity :name "customers") (entity :name "clients")]]
-          (is (=? {:components {:synonym-pairs {:measurement 0.0
-                                                :score       0
+          (is (=? {:components {:synonym-pairs {:measurement nil
+                                                :score       nil
                                                 :error       string?}}}
                   (#'complexity/score-catalog es semantic-search/search-index-embedder))))))))
 
@@ -480,23 +483,23 @@
 
 (deftest ^:parallel prefer-new-row-test
   (let [prefer? #'ss.embedders/prefer-new-row?]
-    (are [expected new-row prior-row]
-         (= expected (prefer? new-row prior-row))
+    (are [expected? new-row prior-row]
+         (expected? (prefer? new-row prior-row))
       ;; lower numeric model_id wins
-      true  {:mid 2  :model_id "2"  :model "card"}   {:mid 10 :model_id "10" :model "card"}
-      false {:mid 10 :model_id "10" :model "card"}   {:mid 2  :model_id "2"  :model "card"}
+      true?  {:mid 2  :model_id "2"  :model "card"}   {:mid 10 :model_id "10" :model "card"}
+      false? {:mid 10 :model_id "10" :model "card"}   {:mid 2  :model_id "2"  :model "card"}
       ;; equal model_ids tie-break on model name
-      true  {:mid 5  :model_id "5"  :model "card"}   {:mid 5  :model_id "5"  :model "table"}
-      false {:mid 5  :model_id "5"  :model "table"}  {:mid 5  :model_id "5"  :model "card"}
+      true?  {:mid 5  :model_id "5"  :model "card"}   {:mid 5  :model_id "5"  :model "table"}
+      false? {:mid 5  :model_id "5"  :model "table"}  {:mid 5  :model_id "5"  :model "card"}
       ;; same parsed number but different raw strings → tie-break on raw model_id before model
-      true  {:mid 2  :model_id "02" :model "card"}   {:mid 2  :model_id "2"  :model "card"}
-      false {:mid 2  :model_id "2"  :model "card"}   {:mid 2  :model_id "02" :model "card"}
+      true?  {:mid 2  :model_id "02" :model "card"}   {:mid 2  :model_id "2"  :model "card"}
+      false? {:mid 2  :model_id "2"  :model "card"}   {:mid 2  :model_id "02" :model "card"}
       ;; numeric always beats non-numeric
-      true  {:mid 99 :model_id "99" :model "card"}   {:mid nil :model_id "abc" :model "card"}
-      false {:mid nil :model_id "abc" :model "card"}  {:mid 1  :model_id "1"   :model "card"}
+      true?  {:mid 99 :model_id "99" :model "card"}   {:mid nil :model_id "abc" :model "card"}
+      false? {:mid nil :model_id "abc" :model "card"}  {:mid 1  :model_id "1"   :model "card"}
       ;; both non-numeric: lexicographic on model_id string
-      true  {:mid nil :model_id "abc" :model "card"}  {:mid nil :model_id "xyz" :model "card"}
-      false {:mid nil :model_id "xyz" :model "card"}  {:mid nil :model_id "abc" :model "card"})))
+      true?  {:mid nil :model_id "abc" :model "card"}  {:mid nil :model_id "xyz" :model "card"}
+      false? {:mid nil :model_id "xyz" :model "card"}  {:mid nil :model_id "abc" :model "card"})))
 
 (deftest ^:sequential meta-embedding-model-absent-when-unavailable-test
   (with-redefs [complexity/library-entities  (constantly [])
@@ -624,8 +627,8 @@
             (is (= 0.0 (get-in by-key ["ambiguity.synonym_pairs"     "measurement"])))
             (is (= 0.0 (get-in by-key ["ambiguity.repeated_measures" "measurement"])))))))))
 
-(deftest ^:sequential emit-snowplow-propagates-error-on-embedder-failure-test
-  (testing "ambiguity.synonym_pairs event carries the embedder error string; other keys do not"
+(deftest ^:sequential emit-snowplow-cascades-nil-on-embedder-failure-test
+  (testing "embedder failure cascades nil through aggregates without skipping any events"
     (snowplow-test/with-fake-snowplow-collector
       (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "customers")
                                                                             (entity :name "clients")])
@@ -635,11 +638,20 @@
         (let [by-key (->> (complexity-events!)
                           (filter #(= "library" (get % "catalog")))
                           (into {} (map (juxt #(get % "key") identity))))]
-          (is (= "embedder boom" (get-in by-key ["ambiguity.synonym_pairs" "error"]))
-              ":error from the synonym-pair scorer reaches the Snowplow payload")
-          (is (not-any? #(contains? % "error")
-                        (vals (dissoc by-key "ambiguity.synonym_pairs")))
-              ":error is only present on the synonym_pairs leaf"))))))
+          (testing ":error from the synonym-pair scorer reaches the Snowplow leaf event"
+            (is (= "embedder boom" (get-in by-key ["ambiguity.synonym_pairs" "error"]))))
+          (testing ":error is only present on the originating leaf — aggregates use null score instead"
+            (is (not-any? #(contains? % "error")
+                          (vals (dissoc by-key "ambiguity.synonym_pairs")))))
+          (testing "the failed leaf publishes null :score (no zero-fallback)"
+            (is (nil? (get-in by-key ["ambiguity.synonym_pairs" "score"]))))
+          (testing "aggregates that include the failed leaf cascade null :score"
+            (is (nil? (get-in by-key ["ambiguity.total" "score"])))
+            (is (nil? (get-in by-key ["total"           "score"]))))
+          (testing "unaffected aggregates keep their numeric :score (cascade is leaf-scoped, not catalog-wide)"
+            ;; size group has no synonym dependency, so its rollup must still be a real number even
+            ;; when ambiguity falls through. Catches a regression where the cascade goes too far.
+            (is (number? (get-in by-key ["size.total" "score"])))))))))
 
 (deftest ^:sequential emit-snowplow-includes-embedding-model-meta-test
   (testing "every event's parameters carry embedding_model_provider/name when the search-index embedder is active"
@@ -690,12 +702,13 @@
   (testing "the scheduled task body runs complexity-scores so operators see a score line in the logs"
     (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
                                 complexity/universe-entities (constantly [(entity :name "orders")])]
-      (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer.complexity :info]]
-        (#'task.complexity-score/run-scoring! "test-fp")
-        (is (some #(and (= :info (:level %))
-                        (re-find #"Semantic complexity score" (:message %)))
-                  (messages))
-            "the scheduled task produced the expected info log")))))
+      (mt/with-temporary-setting-values [data-complexity-scoring-enabled true]
+        (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer.complexity :info]]
+          (#'task.complexity-score/run-scoring! "test-fp")
+          (is (some #(and (= :info (:level %))
+                          (re-find #"Semantic complexity score" (:message %)))
+                    (messages))
+              "the scheduled task produced the expected info log"))))))
 
 (deftest ^:sequential complexity-score-library-hermetic-test
   (testing "library score is computed over exactly the Library collection tree — known inputs produce known scores"
