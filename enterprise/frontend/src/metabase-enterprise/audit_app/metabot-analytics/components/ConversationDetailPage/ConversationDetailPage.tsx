@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import type { WithRouterProps } from "react-router";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
+import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
+import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
   useGetAdhocQueryMetadataQuery,
@@ -11,6 +13,7 @@ import {
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { DateTime } from "metabase/common/components/DateTime";
+import { ForwardRefLink, Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import {
@@ -34,13 +37,15 @@ import {
   Flex,
   Icon,
   Loader,
+  Menu,
   SimpleGrid,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
-import { isDefaultGroup } from "metabase/utils/groups";
+import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
 import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { getUserName } from "metabase/utils/user";
 import Question from "metabase-lib/v1/Question";
 import { getUrl as ML_getUrl } from "metabase-lib/v1/urls";
@@ -76,7 +81,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     error,
   } = useGetMetabotConversationQuery(convoId);
 
-  const userGroupNames = useUserGroupNames(conversation?.user?.id);
+  const userGroupsInfo = useUserGroupsInfo(conversation?.user?.id);
 
   if (isLoading || error) {
     return (
@@ -115,7 +120,19 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
 
         <Flex justify="space-between" align="flex-start" gap="md">
           <Stack gap="sm">
-            <Title order={2}>{t`Conversation with ${userName}`}</Title>
+            <Title order={2}>
+              {conversation.user
+                ? jt`Conversation with ${(
+                    <Link
+                      key="user"
+                      to={Urls.editUser(conversation.user)}
+                      variant="brandBold"
+                    >
+                      {userName}
+                    </Link>
+                  )}`
+                : t`Conversation with ${userName}`}
+            </Title>
             <Flex gap="lg" align="center" wrap="wrap">
               <Flex gap="xs" align="center">
                 <Icon name="calendar" size={16} c="text-tertiary" />
@@ -131,12 +148,10 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                   </Text>
                 </Flex>
               )}
-              {userGroupNames.length > 0 && (
+              {userGroupsInfo.userGroups.length > 0 && (
                 <Flex gap="xs" align="center">
                   <Icon name="group" size={16} c="text-tertiary" />
-                  <Text size="md" c="text-secondary">
-                    {userGroupNames.join(", ")}
-                  </Text>
+                  <UserGroupsMenu {...userGroupsInfo} />
                 </Flex>
               )}
               {conversation.slack_permalink && (
@@ -418,20 +433,66 @@ function noopUpdateQuestion(): Promise<void> {
 
 function noopCopy() {}
 
-function useUserGroupNames(userId: number | undefined): string[] {
+function useUserGroupsInfo(userId: number | undefined) {
   const { data: membershipsByUser } = useListUserMembershipsQuery();
   const { data: groups } = useListPermissionsGroupsQuery({});
 
   return useMemo(() => {
     if (userId == null || !membershipsByUser || !groups) {
-      return [];
+      return { allGroups: [], userGroups: [], selectedGroupIds: [] };
     }
     const memberships = membershipsByUser[userId] ?? [];
-    const groupsById = new Map(
-      groups.filter((g) => !isDefaultGroup(g)).map((g) => [g.id, g.name]),
-    );
-    return memberships
-      .map((m) => groupsById.get(m.group_id))
-      .filter((name): name is string => Boolean(name));
+    const selectedGroupIds = memberships.map((m) => m.group_id);
+    const userGroups = groups
+      .filter((g) => selectedGroupIds.includes(g.id) && !isDefaultGroup(g))
+      // admin first, rest in the API's stable order
+      .sort((a, b) => Number(isAdminGroup(b)) - Number(isAdminGroup(a)));
+    return { allGroups: groups, userGroups, selectedGroupIds };
   }, [userId, membershipsByUser, groups]);
+}
+
+function UserGroupsMenu({
+  allGroups,
+  userGroups,
+  selectedGroupIds,
+}: ReturnType<typeof useUserGroupsInfo>) {
+  if (userGroups.length === 0) {
+    return null;
+  }
+
+  return (
+    <Menu shadow="md" position="bottom-start" withinPortal>
+      <Menu.Target>
+        <Anchor
+          component="button"
+          type="button"
+          underline="never"
+          c="text-secondary"
+          size="md"
+          fw="normal"
+        >
+          <Flex component="span" align="center" gap={4}>
+            <GroupSummary
+              groups={allGroups}
+              selectedGroupIds={selectedGroupIds}
+            />
+            <Icon name="chevrondown" size={10} c="text-tertiary" />
+          </Flex>
+        </Anchor>
+      </Menu.Target>
+      <Menu.Dropdown miw="14rem">
+        <Menu.Label>{t`Groups`}</Menu.Label>
+        {userGroups.map((group) => (
+          <Menu.Item
+            key={group.id}
+            component={ForwardRefLink}
+            to={getGroupFocusPermissionsUrl(group.id)}
+            leftSection={<Icon name="group" size={14} />}
+          >
+            {group.name}
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
+  );
 }

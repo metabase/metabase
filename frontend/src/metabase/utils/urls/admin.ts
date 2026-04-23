@@ -7,7 +7,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-export const isInternalUser = (user: BaseUser) => user.tenant_id === null;
+export const isInternalUser = (user: Pick<BaseUser, "tenant_id">) =>
+  user.tenant_id == null;
 
 export function newUser() {
   return `/admin/people/new`;
@@ -16,7 +17,7 @@ export function newTenantUser() {
   return "/admin/people/tenants/people/new";
 }
 
-export function editUser(user: BaseUser) {
+export function editUser(user: Pick<BaseUser, "id" | "tenant_id">) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/edit`
     : `/admin/people/tenants/people/${user.id}/edit`;
