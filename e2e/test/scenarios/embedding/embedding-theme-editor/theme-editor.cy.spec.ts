@@ -307,5 +307,45 @@ describe(
         H.main().findByText("Theme preview").should("be.visible");
       });
     });
+
+    describe("preview picker", () => {
+      beforeEach(() => {
+        H.updateSetting("enable-embedding-simple", true);
+        H.updateSetting("show-simple-embed-terms", false);
+      });
+
+      it("defaults to a dashboard and can switch to a question", () => {
+        createThemeViaApi("Picker test").then((theme) => {
+          visitThemeEditor(theme.id);
+        });
+
+        cy.log("picker button shows the default dashboard name");
+        H.main()
+          .findByLabelText("Change preview resource")
+          .should("be.visible")
+          .and("contain", "Orders in a dashboard");
+
+        cy.log("preview renders the dashboard web component");
+        H.main().find("metabase-dashboard").should("exist");
+
+        cy.log("opens the entity picker modal");
+        H.main().findByLabelText("Change preview resource").click();
+
+        H.entityPickerModal().within(() => {
+          cy.findByText("Select data to preview").should("be.visible");
+          cy.findByText("Our analytics").click();
+          cy.findByText("Orders, Count").click();
+        });
+
+        cy.log("picker button updates to the selected question");
+        H.main()
+          .findByLabelText("Change preview resource")
+          .should("contain", "Orders, Count");
+
+        cy.log("preview switches to the question web component");
+        H.main().find("metabase-question").should("exist");
+        H.main().find("metabase-dashboard").should("not.exist");
+      });
+    });
   },
 );
