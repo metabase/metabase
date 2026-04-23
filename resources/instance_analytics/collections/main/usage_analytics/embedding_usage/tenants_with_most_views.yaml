@@ -1,0 +1,161 @@
+name: Tenants with most views
+entity_id: URLiB2ln8D_T0dIYGNA1O
+created_at: '2026-04-22T08:30:00Z'
+creator_id: internal@metabase.com
+display: table
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_view_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - count
+      - {lib/uuid: 2d944947-900e-4f2a-850d-656faa225090}
+    breakout:
+    - - field
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Tenants}
+      - [Internal Metabase Database, public, v_tenants, name]
+    - - field
+      - {base-type: type/Integer, effective-type: type/Integer, join-alias: Tenants}
+      - [Internal Metabase Database, public, v_tenants, tenant_id]
+    filters:
+    - - not-null
+      - {}
+      - - field
+        - {base-type: type/Integer, effective-type: type/Integer}
+        - [Internal Metabase Database, public, v_view_log, tenant_id]
+    - - time-interval
+      - {include-current: true}
+      - - field
+        - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, lib/uuid: 51171b56-4f9f-410a-b399-ce7904eeb94e}
+        - timestamp
+      - -30
+      - day
+    joins:
+    - alias: Tenants
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer}
+          - [Internal Metabase Database, public, v_view_log, tenant_id]
+        - - field
+          - {base-type: type/Integer, effective-type: type/Integer, join-alias: Tenants}
+          - [Internal Metabase Database, public, v_tenants, tenant_id]
+      stages:
+      - {source-card: 7ttdbco3tMmYqcRxPsMgm, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: 3f8a9c21-7b4d-4e16-8923-5a1b0e4d6c72}
+      lib/type: mbql/join
+    order-by:
+    - - desc
+      - {}
+      - - aggregation
+        - {base-type: type/BigInteger, effective-type: type/BigInteger, lib/source-name: count}
+        - 2d944947-900e-4f2a-850d-656faa225090
+    source-card: P6Ityjj7igswKh4NgZZjz
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Tenants → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tenants, name]
+  - {join-alias: Tenants}
+  id: [Internal Metabase Database, public, v_tenants, name]
+  name: name
+  position: 2
+  semantic_type: type/Name
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_tenants]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 1081
+  lib/deduplicated-name: name
+  lib/desired-column-alias: Tenants__name
+  lib/from-model?: true
+  lib/join-alias: Tenants
+  lib/original-display-name: Name
+  lib/original-join-alias: Tenants
+  lib/original-name: name
+  lib/source: source/joins
+  lib/source-column-alias: name
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Tenants → Tenant ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_tenants, tenant_id]
+  - {join-alias: Tenants}
+  id: [Internal Metabase Database, public, v_tenants, tenant_id]
+  name: tenant_id
+  position: 0
+  semantic_type: type/PK
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_tenants]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 1081
+  lib/deduplicated-name: tenant_id
+  lib/desired-column-alias: Tenants__tenant_id
+  lib/from-model?: true
+  lib/join-alias: Tenants
+  lib/original-display-name: Tenant ID
+  lib/original-join-alias: Tenants
+  lib/original-name: tenant_id
+  lib/source: source/joins
+  lib/source-column-alias: tenant_id
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+visualization_settings:
+  column_settings:
+    '["name","count"]': {column_title: Views, show_mini_bar: true}
+    '["name","name"]': {column_title: Tenant, link_url: question/199, view_as: link}
+    '["name","tenant_id"]': {column_title: Tenant ID, link_url: question/199, view_as: link}
+  table.cell_column: count
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_tenants, name]
+    - {base-type: type/Text, join-alias: Tenants}
+    name: name
+  - enabled: false
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_tenants, tenant_id]
+    - {base-type: type/Integer, join-alias: Tenants}
+    name: tenant_id
+  - enabled: true
+    fieldRef: [aggregation, 0]
+    name: count
+  table.pivot: false
+  table.pivot_column: name
+card_schema: 23
+serdes/meta:
+- {id: URLiB2ln8D_T0dIYGNA1O, label: tenants_with_most_views, model: Card}
+dashboard_id: 2NWw98hfm_kimGA4xuyMW
+source_card_id: P6Ityjj7igswKh4NgZZjz
+type: question

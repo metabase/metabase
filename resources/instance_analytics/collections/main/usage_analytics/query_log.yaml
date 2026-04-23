@@ -304,6 +304,141 @@ result_metadata:
   semantic_type: type/SerializedJSON
   settings: null
   visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding Client
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, embedding_client]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, embedding_client]
+  name: embedding_client
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Auth Method
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, auth_method]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, auth_method]
+  name: auth_method
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Is Preview
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, is_preview]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, is_preview]
+  name: is_preview
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Metabase Version
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, metabase_version]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, metabase_version]
+  name: metabase_version
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding SDK Package Version
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, embedding_sdk_version]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, embedding_sdk_version]
+  name: embedding_sdk_version
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Tenant ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, tenant_id]
+  - null
+  fk_target_field_id: [Internal Metabase Database, public, v_tenants, tenant_id]
+  id: [Internal Metabase Database, public, v_query_log, tenant_id]
+  name: tenant_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding Hostname
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, embedding_hostname]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, embedding_hostname]
+  name: embedding_hostname
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding Path
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, embedding_path]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, embedding_path]
+  name: embedding_path
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Sanitized User Agent
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, sanitized_user_agent]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, sanitized_user_agent]
+  name: sanitized_user_agent
+  semantic_type: null
+  settings: null
+  visibility_type: normal
 visualization_settings:
   column_settings: null
   table.cell_column: running_time_seconds
@@ -327,6 +462,15 @@ visualization_settings:
   - {enabled: true, name: action_id}
   - {enabled: true, name: action_qualified_id}
   - {enabled: true, name: query}
+  - {enabled: true, name: embedding_client}
+  - {enabled: true, name: auth_method}
+  - {enabled: true, name: is_preview}
+  - {enabled: true, name: metabase_version}
+  - {enabled: true, name: embedding_sdk_version}
+  - {enabled: true, name: tenant_id}
+  - {enabled: true, name: embedding_hostname}
+  - {enabled: true, name: embedding_path}
+  - {enabled: true, name: sanitized_user_agent}
   table.pivot_column: error
 card_schema: 23
 serdes/meta:

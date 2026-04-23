@@ -1,5 +1,5 @@
 name: Usage analytics
-description: Your instance data. To customize these questions and dashboards, you can duplicate them and save them in the custom reports collection.
+description: General information about embedding usage, including views across embedded dashboards and questions
 entity_id: vG58R8k-QddHWA7_47umn
 slug: usage_analytics
 created_at: '2023-06-08T14:12:32.4457Z'

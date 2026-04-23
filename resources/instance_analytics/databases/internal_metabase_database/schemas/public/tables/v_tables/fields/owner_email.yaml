@@ -6,6 +6,7 @@ table_id: [Internal Metabase Database, public, v_tables]
 database_type: text
 base_type: type/Text
 effective_type: type/Text
+semantic_type: type/Owner
 dimensions: []
 position: 15
 custom_position: 0

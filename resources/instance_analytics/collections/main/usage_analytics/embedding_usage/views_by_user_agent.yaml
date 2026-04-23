@@ -1,0 +1,90 @@
+name: Views by user agent
+description: Breakdown of embed views by sanitized user agent (browser + OS).
+entity_id: CZVMu5tqSLaV7WIQNnL77
+created_at: '2026-04-22T11:10:00Z'
+creator_id: internal@metabase.com
+display: pie
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_view_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - count
+      - {}
+    breakout:
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, sanitized_user_agent]
+    expressions:
+    - - not-null
+      - {effective-type: type/Boolean, lib/expression-name: is_embed}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text, lib/uuid: a7743886-95fd-4560-8c48-737742789d58}
+        - embedding_client
+    filters:
+    - - =
+      - {}
+      - - expression
+        - {effective-type: type/Boolean}
+        - is_embed
+      - true
+    - - time-interval
+      - {include-current: true}
+      - - field
+        - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, inherited-temporal-unit: default, lib/uuid: 89b84624-a957-4825-b587-430c79e2e6e9}
+        - timestamp
+      - -30
+      - day
+    source-card: P6Ityjj7igswKh4NgZZjz
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Sanitized User Agent
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, sanitized_user_agent]
+  - null
+  id: [Internal Metabase Database, public, v_view_log, sanitized_user_agent]
+  name: sanitized_user_agent
+  position: 18
+  semantic_type: type/Category
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_view_log]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 1020
+  lib/deduplicated-name: sanitized_user_agent
+  lib/desired-column-alias: sanitized_user_agent
+  lib/from-model?: true
+  lib/original-display-name: Sanitized User Agent
+  lib/original-name: sanitized_user_agent
+  lib/source: source/previous-stage
+  lib/source-column-alias: sanitized_user_agent
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+visualization_settings: {column_settings: null, pie.dimension: sanitized_user_agent, pie.metric: count}
+card_schema: 23
+serdes/meta:
+- {id: CZVMu5tqSLaV7WIQNnL77, label: views_by_user_agent, model: Card}
+dashboard_id: 2NWw98hfm_kimGA4xuyMW
+source_card_id: P6Ityjj7igswKh4NgZZjz
+type: question
