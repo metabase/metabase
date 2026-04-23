@@ -182,8 +182,8 @@
           (testing "and record exception in task history"
             (let [send!       (fn [& _args]
                                 (throw (ex-info "Failed to send" {:metadata 42})))]
-              (mt/with-dynamic-fn-redefs [notification.send/should-skip-retry? (constantly true)
-                                          channel/send!                        send!]
+              (with-redefs [notification.send/should-skip-retry? (constantly true)
+                            channel/send!                        send!]
                 (#'notification.send/send-notification-sync! n))
               (is (=? {:task "channel-send"
                        :status       :failed

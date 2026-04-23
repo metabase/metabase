@@ -303,12 +303,13 @@
      driver/*driver* (mt/db) nil
      (fn [^Connection conn]
        (let [select-probes (atom 0)]
-         (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/execute-select-probe-query
-                                     (fn [_driver conn' [sql]]
-                                       (let [n (swap! select-probes inc)]
-                                         (when (< n probe-errors)
-                                           (probe-error-fn conn' sql))))
-                                     driver/query-canceled? (constantly query-canceled)]
+         ;; query-canceled? is a multimethod, so we can't use with-dynamic-fn-redefs for the pair.
+         (with-redefs [sql-jdbc.describe-database/execute-select-probe-query
+                       (fn [_driver conn' [sql]]
+                         (let [n (swap! select-probes inc)]
+                           (when (< n probe-errors)
+                             (probe-error-fn conn' sql))))
+                       driver/query-canceled? (constantly query-canceled)]
            [(sql-jdbc.sync/have-select-privilege? driver/*driver* conn schema table-name)
             @select-probes]))))))
 
