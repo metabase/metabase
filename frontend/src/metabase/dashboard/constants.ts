@@ -5,9 +5,6 @@ import type {
 
 import type { EmbedDisplayParams } from "./types";
 
-export const DASHBOARD_NAME_MAX_LENGTH = 254;
-export const DASHBOARD_DESCRIPTION_MAX_LENGTH = 1500;
-
 export const SIDEBAR_NAME: Record<DashboardSidebarName, DashboardSidebarName> =
   {
     addQuestion: "addQuestion",

@@ -6,6 +6,10 @@ import type { SdkCollectionId } from "embedding-sdk-bundle/types";
 import { useCreateDashboardMutation } from "metabase/api";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
 import { FormFooter } from "metabase/common/components/FormFooter";
+import {
+  DASHBOARD_DESCRIPTION_MAX_LENGTH,
+  DASHBOARD_NAME_MAX_LENGTH,
+} from "metabase/common/utils/dashboard";
 import { Collections } from "metabase/entities/collections";
 import {
   Form,
@@ -19,11 +23,6 @@ import { Button, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { useSelector } from "metabase/utils/redux";
 import type { CollectionId, Dashboard } from "metabase-types/api";
-
-import {
-  DASHBOARD_DESCRIPTION_MAX_LENGTH,
-  DASHBOARD_NAME_MAX_LENGTH,
-} from "../constants";
 
 const DASHBOARD_SCHEMA = Yup.object({
   name: Yup.string()

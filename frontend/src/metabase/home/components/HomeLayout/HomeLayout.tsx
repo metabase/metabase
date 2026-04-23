@@ -4,13 +4,13 @@ import { t } from "ttag";
 
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
-import { EmbeddingHubHomePage } from "metabase/embedding/embedding-hub";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 import { Box, Button, Icon, Tooltip } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
 
 import { CustomHomePageModal } from "../CustomHomePageModal";
+import { EmbeddingHubHomePage } from "../EmbeddingHubHomePage";
 import { HomeGreeting } from "../HomeGreeting";
 
 interface HomeLayoutProps {

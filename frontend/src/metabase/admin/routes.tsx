@@ -15,6 +15,7 @@ import { RevisionHistoryApp } from "metabase/admin/datamodel/containers/Revision
 import { SegmentApp } from "metabase/admin/datamodel/containers/SegmentApp";
 import { SegmentListApp } from "metabase/admin/datamodel/containers/SegmentListApp";
 import { AdminEmbeddingApp } from "metabase/admin/embedding/containers/AdminEmbeddingApp";
+import { EmbeddingHubAdminSettingsPage } from "metabase/admin/embedding/embedding-hub";
 import { AdminPeopleApp } from "metabase/admin/people/containers/AdminPeopleApp";
 import { EditUserModal } from "metabase/admin/people/containers/EditUserModal";
 import { GroupDetailApp } from "metabase/admin/people/containers/GroupDetailApp";
@@ -41,7 +42,6 @@ import {
   ModelCacheRefreshJobModal,
 } from "metabase/admin/tools/components/ModelCacheRefreshJobs";
 import {
-  EmbeddingHubAdminSettingsPage,
   SetupPermissionsAndTenantsPage,
   SetupSsoPage,
 } from "metabase/embedding/embedding-hub";

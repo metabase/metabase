@@ -9,7 +9,10 @@ import {
   useUpdateDashboardMutation,
 } from "metabase/api";
 import { listTag } from "metabase/api/tags";
-import { createDashCard, createVirtualCard } from "metabase/dashboard/utils";
+import {
+  createDashCard,
+  createVirtualCard,
+} from "metabase/common/utils/dashboard";
 import { useDispatch } from "metabase/utils/redux";
 import type {
   CollectionId,

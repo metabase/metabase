@@ -5,9 +5,8 @@ import {
   getModularEmbeddingRelatedSettingItems,
 } from "metabase/admin/components/RelatedSettingsSection";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { EmbeddingHub } from "metabase/embedding/embedding-hub";
 import { Stack, Text, Title } from "metabase/ui";
-
-import { EmbeddingHub } from "./EmbeddingHub";
 
 export const EmbeddingHubAdminSettingsPage = () => {
   const isUsingTenants = useSetting("use-tenants");

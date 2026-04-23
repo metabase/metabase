@@ -2,13 +2,13 @@ import { useDisclosure } from "@mantine/hooks";
 import type { ReactNode } from "react";
 import { t } from "ttag";
 
-import { CustomHomePageModal } from "metabase/home/components/CustomHomePageModal";
-import { dismissEmbeddingHomepage } from "metabase/home/components/EmbedHomepage/actions";
-import { MetabotGreeting } from "metabase/home/components/HomeGreeting";
+import { EmbeddingHub } from "metabase/embedding/embedding-hub";
 import { ActionIcon, Group, Icon, Menu, Stack, Text } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 
-import { EmbeddingHub } from "./EmbeddingHub";
+import { CustomHomePageModal } from "../CustomHomePageModal";
+import { dismissEmbeddingHomepage } from "../EmbedHomepage/actions";
+import { MetabotGreeting } from "../HomeGreeting";
 
 /**
  * Embedding Hub shown in the embedding home page for admins in EE instances.
