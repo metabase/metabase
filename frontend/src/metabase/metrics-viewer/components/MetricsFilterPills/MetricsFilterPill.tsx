@@ -32,19 +32,17 @@ export const MetricsFilterPill = forwardRef(function MetricsFilterPill(
       size="xs"
       h="lg"
       px="sm"
+      data-testid="metrics-viewer-filter-pill"
       withRemoveButton={!!onRemoveClick}
       onRemove={onRemoveClick}
       removeButtonProps={{
         mr: 0,
         "aria-label": t`Remove`,
+        "aria-hidden": false,
+        c: "text-filter",
       }}
     >
-      <Flex
-        align="center"
-        gap="xs"
-        h="1.25rem"
-        data-testid="metrics-viewer-filter-pill"
-      >
+      <Flex align="center" gap="xs" h="1.25rem">
         <SourceColorIndicator
           colors={colors}
           fallbackIcon={fallbackIcon}

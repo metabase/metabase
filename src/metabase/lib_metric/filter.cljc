@@ -166,7 +166,7 @@
                     :measure (dimension/dimensions-for-measure provider leaf-id)
                     nil)
         by-table  (reduce (fn [acc dim]
-                            (let [tid (get-in dim [:dimension-mapping :table-id])]
+                            (let [tid (perf/get-in dim [:dimension-mapping :table-id])]
                               (if (and tid (not (contains? acc tid)))
                                 (assoc acc tid (:group dim))
                                 acc)))
