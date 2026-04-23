@@ -18,7 +18,7 @@
     (-clear! [_ metric]
       (swap! calls conj {:op :clear! :metric metric}))))
 
-(defn- do-with-test-reporter [f]
+(defn- do-with-test-reporter! [f]
   (let [calls             (atom [])
         original-reporter (analytics.interface/get-reporter)]
     (try
@@ -34,7 +34,7 @@
 
 (deftest report-match-test
   (testing "matching result increments runs-total and matches-total, observes durations"
-    (do-with-test-reporter
+    (do-with-test-reporter!
      (fn [calls]
        (analytics.experiment/report!
         {:name                  :test/match
@@ -57,7 +57,7 @@
 
 (deftest report-mismatch-test
   (testing "mismatching result increments runs-total and mismatches-total"
-    (do-with-test-reporter
+    (do-with-test-reporter!
      (fn [calls]
        (analytics.experiment/report!
         {:name                  :test/mismatch
@@ -76,7 +76,7 @@
 
 (deftest report-matching-errors-test
   (testing "both threw same exception: counted as match, not error"
-    (do-with-test-reporter
+    (do-with-test-reporter!
      (fn [calls]
        (let [ex (ex-info "boom" {:code 1})]
          (analytics.experiment/report!
@@ -94,7 +94,7 @@
 
 (deftest report-candidate-error-test
   (testing "candidate error (mismatch) increments runs-total and errors-total"
-    (do-with-test-reporter
+    (do-with-test-reporter!
      (fn [calls]
        (analytics.experiment/report!
         {:name                  :test/error

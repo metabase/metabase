@@ -4,11 +4,6 @@
    [metabase.util.experiment :as experiment])
   #?(:cljs (:require-macros [metabase.util.experiment])))
 
-(defn- reset-throttle! []
-  (reset! #?(:clj  @#'experiment/last-run-times
-             :cljs experiment/last-run-times)
-          {}))
-
 (defn- capture-report-fn
   "Returns [report-fn, results-atom]. The report-fn appends each result map to the atom."
   []
@@ -18,7 +13,6 @@
 
 (use-fixtures :each
   (fn [t]
-    (reset-throttle!)
     (binding [experiment/*sync?* true]
       (t))))
 
@@ -139,8 +133,10 @@
 (deftest report-fn-receives-durations-test
   (let [[report-fn results] (capture-report-fn)]
     (experiment/experiment {:name :test/durations :min-interval-ms 0 :report-fn report-fn}
-                           (do #?(:clj (Thread/sleep 1) :cljs nil) :control)
-                           (do #?(:clj (Thread/sleep 1) :cljs nil) :candidate))
+                           #?(:clj  (do (Thread/sleep 1) :control)
+                              :cljs :control)
+                           #?(:clj  (do (Thread/sleep 1) :candidate)
+                              :cljs :candidate))
     (let [r (first @results)]
       (is (pos? (:control-duration-ns r)))
       (is (pos? (:candidate-duration-ns r))))))
@@ -163,11 +159,13 @@
     (is (= 5 (count @results)))))
 
 (deftest throttle-skips-rapid-calls-test
-  (let [[report-fn results] (capture-report-fn)]
-    (experiment/experiment {:name :test/throttled :min-interval-ms 60000 :report-fn report-fn}
+  (let [[report-fn results] (capture-report-fn)
+        ;; unique per run so the throttle atom's leftover state from previous runs doesn't affect us
+        name-key            (keyword "test" (str "throttled-" (gensym)))]
+    (experiment/experiment {:name name-key :min-interval-ms 60000 :report-fn report-fn}
                            :control
                            :candidate)
-    (experiment/experiment {:name :test/throttled :min-interval-ms 60000 :report-fn report-fn}
+    (experiment/experiment {:name name-key :min-interval-ms 60000 :report-fn report-fn}
                            :control
                            :candidate)
     (is (= 1 (count @results)))))
@@ -210,7 +208,7 @@
 
 ;;; ------------------------------------------- Default report fn --------------------------------------------------
 
-(defn- with-default-report-fn [f body-fn]
+(defn- with-default-report-fn! [f body-fn]
   (let [prev @#?(:clj  @#'experiment/default-report-fn
                  :cljs experiment/default-report-fn)]
     (try
@@ -222,7 +220,7 @@
 (deftest default-report-fn-test
   (testing "the default report fn is used when no :report-fn is specified"
     (let [[report-fn results] (capture-report-fn)]
-      (with-default-report-fn
+      (with-default-report-fn!
         report-fn
         (fn []
           (experiment/experiment {:name :test/default-report :min-interval-ms 0}
@@ -233,7 +231,7 @@
   (testing ":report-fn overrides the default report fn"
     (let [[default-report-fn default-results] (capture-report-fn)
           [custom-report-fn  custom-results]  (capture-report-fn)]
-      (with-default-report-fn
+      (with-default-report-fn!
         default-report-fn
         (fn []
           (experiment/experiment {:name      :test/override-report

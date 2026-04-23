@@ -4,6 +4,7 @@
    [metabase.util.experiment :as experiment]
    [metabase.util.i18n :refer [deferred-tru]]))
 
+#_{:clj-kondo/ignore [:metabase/defsetting-namespace]}
 (defsetting experiments-enabled
   (deferred-tru "Enable or disable all code experiments. When disabled, only the production code path runs.")
   :type       :boolean
