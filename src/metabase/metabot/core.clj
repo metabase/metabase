@@ -2,6 +2,7 @@
   "API namespace for the `metabase.metabot` module."
   (:require
    [metabase.metabot.provider-util]
+   [metabase.metabot.search-models]
    [metabase.metabot.usage]
    [potemkin :as p]))
 
@@ -9,6 +10,9 @@
  [metabase.metabot.provider-util
   metabase-provider?
   provider-and-model->provider]
+ [metabase.metabot.search-models
+  entity-type->search-model
+  search-model->entity-type]
  [metabase.metabot.usage
   log-ai-usage!])
 
