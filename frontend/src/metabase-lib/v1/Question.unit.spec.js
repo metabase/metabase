@@ -1,7 +1,5 @@
 import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import {
   createMockColumn,
   createMockDatasetData,
@@ -27,6 +25,9 @@ import {
   createReviewsTable,
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
+
+import Question from "./Question";
+import NativeQuery from "./queries/NativeQuery";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
