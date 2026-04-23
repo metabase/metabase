@@ -350,7 +350,7 @@
   (testing "complexity-scores drives the real search-index-embedder + pgvector end-to-end"
     ;; Self-gated on MB_PGVECTOR_DB_URL — CI without semantic-search infra skips this;
     ;; locally with pgvector running it exercises the pgvector read path that all other
-    ;; embedder tests in this ns stub out (via with-redefs on try-active-index-state /
+    ;; embedder tests in this ns stub out (via mt/with-dynamic-fn-redefs on try-active-index-state /
     ;; fetch-batch). Uses `:mock-indexed` so the *embedding model* is a lookup-table — but
     ;; the resulting vectors are real rows in the index table that search-index-embedder
     ;; queries via SQL.
@@ -372,10 +372,10 @@
     ;; Regression guard: before this, the embedder swallowed read exceptions and returned {}, which
     ;; looked indistinguishable from \"no synonym matches.\" A transient search-index failure
     ;; silently underreported complexity with no `:error` on the Snowplow payload.
-    (with-redefs [ss.embedders/try-active-index-state
-                  (constantly {:pgvector :mock :table-name "t" :model nil})
-                  ss.embedders/fetch-batch
-                  (fn [& _] (throw (ex-info "pgvector read failed" {})))]
+    (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
+                                (constantly {:pgvector :mock :table-name "t" :model nil})
+                                ss.embedders/fetch-batch
+                                (fn [& _] (throw (ex-info "pgvector read failed" {})))]
       (testing "the embedder itself throws rather than swallowing the failure"
         (is (thrown-with-msg? Throwable #"pgvector read failed"
                               (semantic-search/search-index-embedder
@@ -420,18 +420,18 @@
             [["table" "10"]] [{:name "Orders" :model_id "10" :model "table" :embedding loser-vec}]
             ;; table with model_id "2" (winner — lower id)
             [["table" "2"]]  [{:name "orders" :model_id "2"  :model "table" :embedding winner-vec}]})]
-      (with-redefs [ss.embedders/try-active-index-state
-                    (constantly {:pgvector :mock :table-name "t" :model nil})
-                    ss.embedders/fetch-batch-size 1
-                    ss.embedders/fetch-batch stub]
-        (let [result (semantic-search/search-index-embedder
-                      [{:id 10 :name "Orders" :kind :table}
-                       {:id 2  :name "orders" :kind :table}])]
-          (is (= 1 (count result)) "duplicate normalized names collapse to one entry")
-          (is (= (seq winner-vec) (seq (get result "orders")))
-              "the row with the lowest numeric model_id wins")
-          (is (empty? @unseen)
-              "every expected fetch-batch pair-set must be requested")))))
+      (with-redefs [ss.embedders/fetch-batch-size 1]
+        (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
+                                    (constantly {:pgvector :mock :table-name "t" :model nil})
+                                    ss.embedders/fetch-batch stub]
+          (let [result (semantic-search/search-index-embedder
+                        [{:id 10 :name "Orders" :kind :table}
+                         {:id 2  :name "orders" :kind :table}])]
+            (is (= 1 (count result)) "duplicate normalized names collapse to one entry")
+            (is (= (seq winner-vec) (seq (get result "orders")))
+                "the row with the lowest numeric model_id wins")
+            (is (empty? @unseen)
+                "every expected fetch-batch pair-set must be requested"))))))
 
   (testing "cross-model duplicates: lowest model_id wins, model is secondary tie-break"
     ;; :kind :question maps to "card" and :kind :table maps to "table" via entity-type->search-model,
@@ -447,18 +447,18 @@
             [["card" "5"]]  [{:name "Revenue" :model_id "5" :model "card"  :embedding card-vec}]
             ;; table (from :table entity)
             [["table" "5"]] [{:name "revenue" :model_id "5" :model "table" :embedding table-vec}]})]
-      (with-redefs [ss.embedders/try-active-index-state
-                    (constantly {:pgvector :mock :table-name "t" :model nil})
-                    ss.embedders/fetch-batch-size 1
-                    ss.embedders/fetch-batch stub]
-        (let [result (semantic-search/search-index-embedder
-                      [{:id 5 :name "Revenue" :kind :question}
-                       {:id 5 :name "revenue" :kind :table}])]
-          (is (= 1 (count result)))
-          (is (= (seq card-vec) (seq (get result "revenue")))
-              "when model_ids tie, the lexicographically smaller model wins (card < table)")
-          (is (empty? @unseen)
-              "every expected fetch-batch pair-set must be requested"))))))
+      (with-redefs [ss.embedders/fetch-batch-size 1]
+        (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
+                                    (constantly {:pgvector :mock :table-name "t" :model nil})
+                                    ss.embedders/fetch-batch stub]
+          (let [result (semantic-search/search-index-embedder
+                        [{:id 5 :name "Revenue" :kind :question}
+                         {:id 5 :name "revenue" :kind :table}])]
+            (is (= 1 (count result)))
+            (is (= (seq card-vec) (seq (get result "revenue")))
+                "when model_ids tie, the lexicographically smaller model wins (card < table)")
+            (is (empty? @unseen)
+                "every expected fetch-batch pair-set must be requested")))))))
 
 (deftest ^:sequential search-index-embedder-cross-batch-dedup-test
   (testing "duplicates split across separate fetch batches are resolved globally"
@@ -477,21 +477,21 @@
             [["card" "3"]]  [{:name "orders" :model_id "3" :model "card" :embedding winner-vec}]
             ;; different entity, no collision
             [["table" "1"]] [{:name "Products" :model_id "1" :model "table" :embedding other-vec}]})]
-      (with-redefs [ss.embedders/try-active-index-state
-                    (constantly {:pgvector :mock :table-name "t" :model nil})
-                    ss.embedders/fetch-batch-size 1
-                    ss.embedders/fetch-batch stub]
-        (let [result (semantic-search/search-index-embedder
-                      [{:id 7 :name "Orders"   :kind :table}
-                       {:id 3 :name "orders"   :kind :question}
-                       {:id 1 :name "Products" :kind :table}])]
-          (is (= 2 (count result)) "two distinct normalized names survive dedup")
-          (is (= (seq winner-vec) (seq (get result "orders")))
-              "lowest model_id wins across batch boundaries")
-          (is (some? (get result "products"))
-              "non-colliding entity is retained")
-          (is (empty? @unseen)
-              "every expected fetch-batch pair-set must be requested")))))
+      (with-redefs [ss.embedders/fetch-batch-size 1]
+        (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
+                                    (constantly {:pgvector :mock :table-name "t" :model nil})
+                                    ss.embedders/fetch-batch stub]
+          (let [result (semantic-search/search-index-embedder
+                        [{:id 7 :name "Orders"   :kind :table}
+                         {:id 3 :name "orders"   :kind :question}
+                         {:id 1 :name "Products" :kind :table}])]
+            (is (= 2 (count result)) "two distinct normalized names survive dedup")
+            (is (= (seq winner-vec) (seq (get result "orders")))
+                "lowest model_id wins across batch boundaries")
+            (is (some? (get result "products"))
+                "non-colliding entity is retained")
+            (is (empty? @unseen)
+                "every expected fetch-batch pair-set must be requested"))))))
 
   (testing "cross-batch, cross-model duplicates: model_id primary, model secondary"
     ;; Same normalized name from three different batches and three different model types.
@@ -509,19 +509,19 @@
             [["dataset" "5"]] [{:name "revenue" :model_id "5" :model "dataset" :embedding same-id-other-model}]
             ;; low model_id, model "card" — card < dataset so this wins
             [["card" "5"]]    [{:name "REVENUE" :model_id "5" :model "card" :embedding winner-vec}]})]
-      (with-redefs [ss.embedders/try-active-index-state
-                    (constantly {:pgvector :mock :table-name "t" :model nil})
-                    ss.embedders/fetch-batch-size 1
-                    ss.embedders/fetch-batch stub]
-        (let [result (semantic-search/search-index-embedder
-                      [{:id 12 :name "Revenue" :kind :table}
-                       {:id 5  :name "revenue" :kind :model}
-                       {:id 5  :name "REVENUE" :kind :question}])]
-          (is (= 1 (count result)) "all three collapse to one normalized name")
-          (is (= (seq winner-vec) (seq (get result "revenue")))
-              "model_id 5 + model card wins (lowest id, then lexicographic: card < dataset)")
-          (is (empty? @unseen)
-              "every expected fetch-batch pair-set must be requested"))))))
+      (with-redefs [ss.embedders/fetch-batch-size 1]
+        (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
+                                    (constantly {:pgvector :mock :table-name "t" :model nil})
+                                    ss.embedders/fetch-batch stub]
+          (let [result (semantic-search/search-index-embedder
+                        [{:id 12 :name "Revenue" :kind :table}
+                         {:id 5  :name "revenue" :kind :model}
+                         {:id 5  :name "REVENUE" :kind :question}])]
+            (is (= 1 (count result)) "all three collapse to one normalized name")
+            (is (= (seq winner-vec) (seq (get result "revenue")))
+                "model_id 5 + model card wins (lowest id, then lexicographic: card < dataset)")
+            (is (empty? @unseen)
+                "every expected fetch-batch pair-set must be requested")))))))
 
 (deftest ^:parallel prefer-new-row-test
   (let [prefer? #'ss.embedders/prefer-new-row?]
@@ -544,19 +544,21 @@
       false? {:mid nil :model_id "xyz" :model "card"}  {:mid nil :model_id "abc" :model "card"})))
 
 (deftest ^:sequential meta-embedding-model-absent-when-unavailable-test
-  (with-redefs [complexity/enumerate-catalogs (constantly {:library [] :universe [] :metabot []})]
+  (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                              (constantly {:library [] :universe [] :metabot []})]
     (testing ":embedding-model key is absent from :meta when the search index is unreachable"
-      (with-redefs [ss.embedders/try-active-index-state (constantly nil)]
+      (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state (constantly nil)]
         ;; Pass the real search-index-embedder so the identity check in complexity-scores succeeds,
         ;; but the embedder returns {} because try-active-index-state is nil.
         (let [{:keys [meta]} (complexity/complexity-scores :embedder semantic-search/search-index-embedder)]
           (is (not (contains? meta :embedding-model))))))
     (testing ":embedding-model key is present in :meta when the active model is non-nil"
-      (with-redefs [ss.embedders/try-active-index-state
-                    (constantly {:pgvector   :mock
-                                 :table-name "mock_table"
-                                 :model      {:provider "openai" :model-name "text-embedding-3-small"}})
-                    ss.embedders/fetch-batch (constantly [])]
+      (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
+                                  (constantly {:pgvector   :mock
+                                               :table-name "mock_table"
+                                               :model      {:provider   "openai"
+                                                            :model-name "text-embedding-3-small"}})
+                                  ss.embedders/fetch-batch (constantly [])]
         (let [{:keys [meta]} (complexity/complexity-scores :embedder semantic-search/search-index-embedder)]
           (is (= {:provider "openai" :model-name "text-embedding-3-small"}
                  (:embedding-model meta))))))))
@@ -564,21 +566,20 @@
 (deftest ^:sequential active-embedding-model-reads-from-active-index-test
   (testing "active-embedding-model returns the model from the active index, not the configured setting"
     (let [active-model {:provider "openai" :model-name "text-embedding-ada-002"}]
-      ;; try-active-index-state is private, so we use with-redefs + var for sequential tests.
-      (with-redefs [ss.embedders/try-active-index-state
-                    (constantly {:pgvector   :mock
-                                 :table-name "mock_table"
-                                 :model      active-model})]
+      (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
+                                  (constantly {:pgvector   :mock
+                                               :table-name "mock_table"
+                                               :model      active-model})]
         (is (= {:provider "openai" :model-name "text-embedding-ada-002"}
                (semantic-search/active-embedding-model))))))
   (testing "active-embedding-model returns nil when the index state has no model"
-    (with-redefs [ss.embedders/try-active-index-state
-                  (constantly {:pgvector   :mock
-                               :table-name "mock_table"
-                               :model      nil})]
+    (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
+                                (constantly {:pgvector   :mock
+                                             :table-name "mock_table"
+                                             :model      nil})]
       (is (nil? (semantic-search/active-embedding-model)))))
   (testing "active-embedding-model returns nil when the index is unreachable"
-    (with-redefs [ss.embedders/try-active-index-state (constantly nil)]
+    (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state (constantly nil)]
       (is (nil? (semantic-search/active-embedding-model))))))
 
 (defn- complexity-events!
@@ -703,21 +704,22 @@
 (deftest ^:sequential emit-snowplow-includes-embedding-model-meta-test
   (testing "every event's parameters carry embedding_model_provider/name when the search-index embedder is active"
     (snowplow-test/with-fake-snowplow-collector
-      (with-redefs [ss.embedders/try-active-index-state
-                    (constantly {:pgvector   :mock
-                                 :table-name "mock_table"
-                                 :model      {:provider "openai" :model-name "text-embedding-3-small"}})
-                    ss.embedders/fetch-batch (constantly [])]
-        (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
-                                    (constantly {:library  [(entity :name "orders")]
-                                                 :universe [(entity :name "orders")]
-                                                 :metabot  []})]
-          (snowplow-test/pop-event-data-and-user-id!)
-          (complexity/complexity-scores :embedder semantic-search/search-index-embedder)
-          (let [events (complexity-events!)]
-            (is (seq events) "sanity: events were emitted")
-            (is (every? #(= "openai" (get-in % ["parameters" "embedding_model_provider"])) events))
-            (is (every? #(= "text-embedding-3-small" (get-in % ["parameters" "embedding_model_name"])) events))))))))
+      (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
+                                  (constantly {:pgvector   :mock
+                                               :table-name "mock_table"
+                                               :model      {:provider   "openai"
+                                                            :model-name "text-embedding-3-small"}})
+                                  ss.embedders/fetch-batch (constantly [])
+                                  complexity/enumerate-catalogs
+                                  (constantly {:library  [(entity :name "orders")]
+                                               :universe [(entity :name "orders")]
+                                               :metabot  []})]
+        (snowplow-test/pop-event-data-and-user-id!)
+        (complexity/complexity-scores :embedder semantic-search/search-index-embedder)
+        (let [events (complexity-events!)]
+          (is (seq events) "sanity: events were emitted")
+          (is (every? #(= "openai" (get-in % ["parameters" "embedding_model_provider"])) events))
+          (is (every? #(= "text-embedding-3-small" (get-in % ["parameters" "embedding_model_name"])) events)))))))
 
 (deftest ^:sequential emit-snowplow-failure-is-swallowed-test
   (testing "emission failure is caught; complexity-scores still returns the score and logs a warning"
