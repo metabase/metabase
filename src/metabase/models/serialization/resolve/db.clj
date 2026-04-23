@@ -4,10 +4,8 @@
   These are the default resolvers used during normal serdes export/import
   against the application database."
   (:require
-   [clojure.tools.logging :as log]
    [metabase.models.serialization :as serdes]
    [metabase.models.serialization.resolve :as resolve]
-   [metabase.sync.core :as sync]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -92,7 +90,6 @@
   (when table-id
     (if-let [db-id (t2/select-one-fn :id :model/Database :name db-name)]
       (or (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id db-id)
-          (:id (sync/create-table! {:id db-id} {:name table-name :schema schema :db_id db-id}))
           (throw (ex-info (format "table id present, but no table found: %s" table-id)
                           {:table-id table-id})))
       (throw (ex-info (format "table id present, but database not found: %s" table-id)
@@ -103,24 +100,9 @@
   "Given [db-name schema table-name field-name ...], return numeric field_id."
   [resolver [db-name schema table-name & fields :as field-id]]
   (when field-id
-    ;; resolve to existing
-    (or (let [table-id (resolve/import-table-fk resolver [db-name schema table-name])
-              field-q  (serdes/recursively-find-field-q table-id (reverse fields))]
-          (t2/select-one-pk :model/Field field-q))
-        (do (log/info "Inserting row")
-            (let [db-id (or (t2/select-one-fn :id :model/Database :name db-name)
-                            (throw (ex-info (str "Unknown database: " db-name) {:db db-name})))
-                  {table-id :id} (or (t2/select-one :model/Table
-                                                    :name table-name
-                                                    :schema schema
-                                                    :db_id db-id)
-                                     (sync/create-table! {:id db-id}
-                                                         {:name table-name :schema schema :db_id db-id}))]
-              (t2/insert-returning-pk! :model/Field {:table_id      table-id
-                                                      ;; hack: not dealing with nested fields yet
-                                                     :name          (first fields)
-                                                     :base_type     :type/*
-                                                     :database_type "*"}))))))
+    (let [table-id (resolve/import-table-fk resolver [db-name schema table-name])
+          field-q  (serdes/recursively-find-field-q table-id (reverse fields))]
+      (t2/select-one-pk :model/Field field-q))))
 
 ;;; ============================================================
 ;;; Resolver constructors

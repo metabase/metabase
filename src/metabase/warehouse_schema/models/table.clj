@@ -675,8 +675,7 @@
                       (-> path second :id))
         table-name  (-> path last :id)
         db-id       (t2/select-one-pk :model/Database :name db-name)]
-    (or (t2/select-one :model/Table :name table-name :db_id db-id :schema schema-name)
-        (t2/insert-returning-instance! :model/Table :name table-name :db_id db-id :schema schema-name))))
+    (t2/select-one :model/Table :name table-name :db_id db-id :schema schema-name)))
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
