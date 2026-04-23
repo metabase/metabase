@@ -199,7 +199,7 @@
   (let [date-format (when date-enabled (date-format-for-options options))
         time-format (when time-enabled (time-format-for-options options))
         format-list (if (and date-format time-format)
-                      (concat date-format [", "] time-format)
+                      (concat date-format [" "] time-format)
                       ;; At most one format is given; use that one.
                       ;; If neither is set, emit a warning and use ISO standard format.
                       (or date-format
