@@ -62,7 +62,7 @@ function DownloadMetadataButton() {
 
 function DownloadFieldValuesButton() {
   const handleDownload = () => {
-    downloadFromUrl("/api/database/field-values", "field-values.json");
+    downloadFromUrl("/api/database/field-values", "field_values.json");
   };
 
   return (
