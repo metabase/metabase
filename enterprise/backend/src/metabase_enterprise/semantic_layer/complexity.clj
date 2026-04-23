@@ -388,8 +388,12 @@
                                            :key     (dotted-key :total)
                                            :score   (:total result))])]
                  event)]
-    ;; `mapv` is eager, so every submission is attempted before `every?` checks the results.
-    (every? identity (mapv (partial analytics/track-event! :snowplow/data_complexity) events))))
+    ;; Submit every event — `(f event)` comes first in the `and` so it always runs, even after
+    ;; a prior failure has pinned `all-ok?` to false.
+    (reduce (fn [all-ok? event]
+              (and (analytics/track-event! :snowplow/data_complexity event) all-ok?))
+            true
+            events)))
 
 (defn score-from-entities
   "Pure: compute the full complexity score from pre-built entity vectors and an embedder. No DB
