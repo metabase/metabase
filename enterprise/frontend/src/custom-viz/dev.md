@@ -115,9 +115,3 @@ If you need to publish manually (e.g. for a one-off local build), you need an np
 ```bash
 bun run release
 ```
-
-### Testing the resolver locally
-
-```bash
-./bin/custom-viz/resolve-release.test.sh
-```
