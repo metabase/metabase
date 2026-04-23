@@ -5,7 +5,6 @@ import { InteractiveQuestionInternal } from "embedding-sdk-bundle/components/pub
 import { StaticQuestionInternal } from "embedding-sdk-bundle/components/public/StaticQuestion";
 import type {
   MetabotChartProps,
-  MetabotErrorMessage,
   MetabotMessage,
   UseMetabotResult,
 } from "embedding-sdk-bundle/types/metabot";
@@ -67,10 +66,7 @@ export const useMetabot = (): UseMetabotResult => {
     resetConversation: agent.resetConversation,
 
     messages,
-    errorMessages: agent.errorMessages.filter(
-      (errorMessage): errorMessage is MetabotErrorMessage =>
-        errorMessage.type === "alert" || errorMessage.type === "message",
-    ),
+    errorMessages: agent.errorMessages,
     isProcessing: agent.isDoingScience,
 
     CurrentChart,
