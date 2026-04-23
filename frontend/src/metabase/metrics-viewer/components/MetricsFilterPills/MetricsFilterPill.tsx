@@ -1,3 +1,4 @@
+import cx from "classnames";
 import type { HTMLAttributes, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
@@ -19,6 +20,7 @@ export const MetricsFilterPill = forwardRef(function MetricsFilterPill(
     children,
     colors,
     fallbackIcon,
+    onClick,
     onRemoveClick,
     ...props
   }: MetricsFilterPillProps,
@@ -28,13 +30,15 @@ export const MetricsFilterPill = forwardRef(function MetricsFilterPill(
     <Pill
       {...props}
       ref={ref}
-      className={S.root}
+      className={cx(S.root, !!onClick && S.clickable)}
       size="xs"
       h="lg"
       px="sm"
+      fw="normal"
       data-testid="metrics-viewer-filter-pill"
       withRemoveButton={!!onRemoveClick}
       onRemove={onRemoveClick}
+      onClick={onClick}
       removeButtonProps={{
         mr: 0,
         "aria-label": t`Remove`,

@@ -7,3 +7,7 @@
 .root:hover {
   background-color: var(--mb-color-background-secondary);
 }
+
+.clickable {
+  cursor: pointer;
+}
