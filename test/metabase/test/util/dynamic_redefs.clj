@@ -78,7 +78,17 @@
 (defmacro with-dynamic-fn-redefs
   "A thread-safe version of with-redefs. It only supports functions, and adds a fair amount of overhead.
    It works by replacing each original definition with a proxy the first time it is redefined.
-   This proxy uses a dynamic mapping to check whether the function is currently redefined."
+   This proxy uses a dynamic mapping to check whether the function is currently redefined.
+
+   Limitations:
+   - Functions only. Multimethods, plain value defs, keywords and collections will throw.
+   - If the replacement calls the redefined var (to delegate to the original), capture it
+     via [[original-fn]] rather than `@#'the-var` or a bare symbol reference — the latter
+     resolve to the proxy itself once installed, causing runaway recursion.
+   - Only threads that inherit the calling thread's dynamic bindings see the replacement.
+     `future`, `core.async/go`, and `core.async/thread` convey bindings automatically; raw
+     `Thread`, quartz/cron workers, and unwrapped `ExecutorService` tasks do not. For those
+     keep `with-redefs` — the root swap is visible to every thread."
   [bindings & body]
   (let [var->definition (bindings->var->definition bindings)]
     `(do
