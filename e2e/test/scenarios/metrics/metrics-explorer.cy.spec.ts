@@ -403,7 +403,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("{end}, xyznonexistent");
       H.MetricsViewer.searchResults().should(
         "contain.text",
-        "No results found",
+        "No search results",
       );
     });
 
@@ -413,7 +413,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("Count of");
       H.MetricsViewer.searchResults().should(
         "contain.text",
-        "No results found",
+        "No search results",
       );
 
       H.MetricsViewer.searchInput().clear().type("Test Measure");
@@ -426,7 +426,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("Test Measure");
       H.MetricsViewer.searchResults().should(
         "contain.text",
-        "No results found",
+        "No search results",
       );
 
       H.MetricsViewer.searchInput().clear();
