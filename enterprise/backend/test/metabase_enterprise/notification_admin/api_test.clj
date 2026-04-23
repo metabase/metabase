@@ -450,7 +450,16 @@
                                           :action           "archive"})]
           (is (= 2 (:updated resp)))
           (is (false? (t2/select-one-fn :active :model/Notification (:id n1))))
-          (is (false? (t2/select-one-fn :active :model/Notification (:id n2)))))))))
+          (is (false? (t2/select-one-fn :active :model/Notification (:id n2))))
+          (testing "publishes :event/notification-update per notification so the admin action is audited"
+            (doseq [n [n1 n2]]
+              (is (= {:topic    :notification-update
+                      :user_id  (mt/user->id :crowberto)
+                      :model    "Notification"
+                      :model_id (:id n)
+                      :details  {:previous {:active true}
+                                 :new      {:active false}}}
+                     (mt/latest-audit-log-entry :notification-update (:id n)))))))))))
 
 (deftest bulk-unarchive-test
   (testing "POST /bulk with action=unarchive flips :active to true for each id"

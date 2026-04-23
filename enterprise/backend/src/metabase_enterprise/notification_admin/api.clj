@@ -7,8 +7,10 @@
   (:require
    [honey.sql.helpers :as sql.helpers]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.notification.api :as notification-api]
    [metabase.notification.models :as models.notification]
    [metabase.request.core :as request]
    [metabase.util.malli.registry :as mr]
@@ -229,27 +231,38 @@
   (api/check-superuser)
   (api/check-404 (get-notification-detail id)))
 
-(defn- bulk-update!
-  [action owner-id ids]
+(defn- action->update-map
+  [action owner-id]
   (case (keyword action)
-    :archive      (t2/update! :model/Notification
-                              :id           [:in ids]
-                              :payload_type :notification/card
-                              {:active false})
-    :unarchive    (t2/update! :model/Notification
-                              :id           [:in ids]
-                              :payload_type :notification/card
-                              {:active true})
+    :archive      {:active false}
+    :unarchive    {:active true}
     :change-owner (do (api/check (integer? owner-id) [400 "owner_id required for change-owner"])
-                      (t2/update! :model/Notification
-                                  :id           [:in ids]
-                                  :payload_type :notification/card
-                                  {:creator_id owner-id}))))
+                      {:creator_id owner-id})))
+
+(defn- bulk-update!
+  "Apply `update-map` to all card-type notifications in `ids` in a single SQL update. Returns the
+  hydrated before-state so the caller can drive post-commit side effects via
+  [[notification-api/publish-notification-update!]]. Select + update run in one transaction so
+  the snapshot matches what the update started from."
+  [update-map ids]
+  (t2/with-transaction [_conn]
+    (let [before (-> (t2/select :model/Notification
+                                :id           [:in ids]
+                                :payload_type :notification/card)
+                     models.notification/hydrate-notification
+                     vec)]
+      (t2/update! :model/Notification
+                  :id           [:in ids]
+                  :payload_type :notification/card
+                  update-map)
+      before)))
 
 (api.macros/defendpoint :post "/bulk" :- ::bulk-response
-  "Bulk-archive, -unarchive, or -change-owner a set of notifications. Runs inside a transaction.
-  The per-notification `:active` flip goes through `:model/Notification`'s `before-update` hook,
-  which in turn creates / tears down the Quartz triggers — no manual trigger work needed here."
+  "Bulk-archive, -unarchive, or -change-owner a set of notifications. The per-notification
+  `:active` flip goes through `:model/Notification`'s `before-update` hook, which creates / tears
+  down the Quartz triggers. Recipient emails and `:event/notification-update` audit events are
+  published via the shared [[notification-api/publish-notification-update!]] helper so this
+  endpoint's side-effect contract can't drift from `PUT /api/notification/:id`."
   [_route _query
    {:keys [notification_ids action owner_id]} :-
    [:map
@@ -257,6 +270,13 @@
     [:action           [:enum "archive" "unarchive" "change-owner"]]
     [:owner_id         {:optional true} ms/PositiveInt]]]
   (api/check-superuser)
-  (t2/with-transaction [_conn]
-    (bulk-update! action owner_id notification_ids))
+  (let [update-map (action->update-map action owner_id)
+        before     (bulk-update! update-map notification_ids)
+        after      (->> (t2/select :model/Notification :id [:in (mapv :id before)])
+                        models.notification/hydrate-notification
+                        (m/index-by :id))]
+    (doseq [b    before
+            :let [a (get after (:id b))]
+            :when a]
+      (notification-api/publish-notification-update! a b)))
   {:updated (count notification_ids)})
