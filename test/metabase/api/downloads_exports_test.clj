@@ -817,7 +817,7 @@
                                                     :pivot_results true)
                   sheet      (read-xlsx result)]
               (is (= [["Category" "Created At: Month" "Sum of Price" "Average of Rating"]
-                      ["Doohickey" "May 1, 2016, 12:00 AM" "144.12" "2.97"]
+                      ["Doohickey" "May 1, 2016, 12:00 AM" "144.12" "2.966666667"]
                       ["Doohickey" "June 1, 2016, 12:00 AM" "82.92" "3.6"]]
                      (take 3 sheet))))))))))
 
@@ -1201,8 +1201,8 @@
                  "January 1, 2018, 12:00 AM"
                  "January 1, 2019, 12:00 AM"
                  "Row totals"]
-                ["Doohickey" "632.14" "854.19" "496.43" "203.13" "2,185.89"]
-                ["Gadget" "679.83" "1,059.11" "844.51" "435.75" "3,019.2"]]
+                ["Doohickey" "632.14" "854.19" "496.43" "203.13" "2185.89"]
+                ["Gadget" "679.83" "1059.11" "844.51" "435.75" "3019.2"]]
                (take 3 (card-download card {:export-format :xlsx :format-rows false :pivot true}))))))))
 
 (deftest unformatted-downloads-and-exports-keep-numbers-as-numbers
