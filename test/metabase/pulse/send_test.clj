@@ -636,10 +636,10 @@
                                              :channel_type "slack"
                                              :details      {:channel "#general"}}]
         (let [original-render-noti (mt/original-fn #'channel/render-notification)]
-          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [& args]
-                                                                    (if (= :channel/slack (first args))
-                                                                      (throw (ex-info "Slack failed" {}))
-                                                                      (apply original-render-noti args)))]
+          (with-redefs [channel/render-notification (fn [& args]
+                                                      (if (= :channel/slack (first args))
+                                                        (throw (ex-info "Slack failed" {}))
+                                                        (apply original-render-noti args)))]
             ;; slack failed but email should still be sent
             (is (= {:channel/email 1}
                    (update-vals

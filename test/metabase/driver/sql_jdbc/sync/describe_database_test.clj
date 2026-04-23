@@ -136,7 +136,7 @@
     (sync/sync-database! (mt/db))
     (is (= 1 (count-active-tables-in-db (mt/id))))
     ;; We have to mock this as H2 doesn't have the notion of a user connecting to it
-    (mt/with-dynamic-fn-redefs [sql-jdbc.sync.interface/have-select-privilege? (constantly false)]
+    (with-redefs [sql-jdbc.sync.interface/have-select-privilege? (constantly false)]
       (sync/sync-database! (mt/db))
       (is (= 0 (count-active-tables-in-db (mt/id)))
           "We shouldn't sync tables for which we don't have select privilege"))))

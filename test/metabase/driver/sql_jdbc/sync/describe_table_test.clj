@@ -240,9 +240,9 @@
 (deftest calculated-semantic-type-test
   (mt/test-drivers (apply disj (sql-jdbc-drivers-using-default-describe-table-or-fields-impl)
                           (tqpt/timeseries-drivers))
-    (mt/with-dynamic-fn-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_driver _database-type column-name]
-                                                                                (when (= (u/lower-case-en column-name) "longitude")
-                                                                                  :type/Longitude))]
+    (with-redefs [sql-jdbc.sync.interface/column->semantic-type (fn [_driver _database-type column-name]
+                                                                  (when (= (u/lower-case-en column-name) "longitude")
+                                                                    :type/Longitude))]
       (is (= [["longitude" :type/Longitude]]
              (->> (describe-fields-for-table (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))
                   (filter :semantic-type)
