@@ -20,8 +20,6 @@ export function getQuestionUrl(
   question: Question,
   { originalQuestion, query, creationType }: UrlBuilderOpts = {},
 ) {
-  question = question.omitTransientCardIds();
-
   if (
     // the question is unsaved
     !question.isSaved() ||
