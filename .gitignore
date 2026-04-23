@@ -122,9 +122,6 @@ dev/serialization_deltas/
 .clerk
 mise.local.toml
 
-# semantic-layer: raw appdb dumps pulled from prod stats instance (hundreds of MB, private data)
-/enterprise/backend/test_resources/semantic_layer/appdb_dump/
-
 # lsp: ignore all but the config file
 **/.lsp/*
 !**/.lsp/config.edn

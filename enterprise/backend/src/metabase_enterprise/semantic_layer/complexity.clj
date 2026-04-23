@@ -430,12 +430,9 @@
         `:meta`, or nil to omit the key. Callers that know what embedding model they used should
         pass it so benchmark consumers can pin to it.
      `:metabot-entities` — when non-nil, scored separately as the `:metabot` catalog. When nil
-        (default), `:metabot` reuses the `:universe` score so the response shape is stable without
-        paying for a redundant pass — callers loading entities from a representation file have no
-        way to reconstruct Metabot's visibility filters and should either pass a pre-filtered
-        vector here or accept the universe approximation. In the fallback case the response
-        `:meta` includes `:metabot-source :universe-fallback` so benchmark consumers can tell an
-        approximated `:metabot` score apart from a properly-filtered one."
+        (default), we assume this means that metabot has no additional filtering configured, and
+        reuse the `:universe` score. In the fallback case the response `:meta` includes
+        `:metabot-source :universe-fallback` so benchmark consumers recognise this scenario."
   [library-entities universe-entities embedder {:keys [embedding-model-meta metabot-entities]}]
   (let [universe-score     (score-catalog universe-entities embedder)
         metabot-fallback?  (nil? metabot-entities)]
