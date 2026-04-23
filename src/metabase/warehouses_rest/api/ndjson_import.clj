@@ -1,17 +1,18 @@
 (ns metabase.warehouses-rest.api.ndjson-import
-  "Streaming NDJSON-import infrastructure shared by the POST endpoints in
+  "Streaming NDJSON request/response framing for the POST endpoints in
   `metabase.warehouses-rest.api`. Handles request body parsing, per-batch transactional
   processing, response body streaming, and exception classification into a contract-shaped
-  error NDJSON line. See `METADATA_IMPORT_API_CONTRACT.md` for the shape of the response."
+  error NDJSON line. The domain-specific batch processors live in
+  `metabase.warehouses-rest.metadata-import-core`."
   (:require
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.warehouses-rest.metadata-import-core :as core]
    [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)
    (java.io BufferedReader BufferedWriter InputStream InputStreamReader OutputStream OutputStreamWriter Writer)
    (java.nio.charset StandardCharsets)
-   (java.sql SQLException)
    (java.util ArrayList)))
 
 (set! *warn-on-reflection* true)
@@ -19,23 +20,6 @@
 (def content-type
   "Content-Type for NDJSON request and response bodies."
   "application/x-ndjson; charset=utf-8")
-
-(defn- unique-violation?
-  "True if `e` or any cause is a SQL unique-constraint violation. Handles Postgres and H2 via
-  SQLState \"23505\" (SQL:2003 standard) and MySQL/MariaDB via SQLState \"23000\" + vendor error
-  code 1062."
-  [^Throwable e]
-  (loop [^Throwable cause e]
-    (cond
-      (nil? cause) false
-      (instance? SQLException cause)
-      (let [sql-ex ^SQLException cause]
-        (or (case (.getSQLState sql-ex)
-              "23505" true
-              "23000" (= 1062 (.getErrorCode sql-ex))
-              false)
-            (recur (.getCause cause))))
-      :else (recur (.getCause cause)))))
 
 (defn- request-reader
   "Wrap a request `:body` `InputStream` in a UTF-8 `BufferedReader`. Returns nil if `body` is nil.
@@ -54,17 +38,6 @@
   "Wrap the streaming-response `OutputStream` in a `BufferedWriter` for writing NDJSON lines."
   ^BufferedWriter [^OutputStream os]
   (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8)))
-
-(defn bad-input!
-  "Throw an `ex-info` with `:kind :invalid_input` for a required field that's missing or of the
-  wrong type."
-  [line-num field-name detail & extras]
-  (throw (ex-info (format "invalid_input: %s" field-name)
-                  (apply hash-map
-                         :kind :invalid_input
-                         :line line-num
-                         :detail detail
-                         extras))))
 
 (defn- parse-line!
   "Parse one NDJSON line. On malformed JSON, throws an `ex-info` with `:kind :malformed_json` and
@@ -123,27 +96,11 @@
       (error-line kind (:line data) (or (:detail data) (.getMessage t))
                   (select-keys data echo-keys))
 
-      (unique-violation? t)
+      (core/unique-violation? t)
       (error-line :unique_violation nil (.getMessage t) nil)
 
       :else
       (error-line :server_error nil (.getMessage t) nil))))
-
-(defn wrap-row-error
-  "Tag an exception from a per-row processor with `:line` and an echo key so the error NDJSON line
-  points at the offending row. Already-classified `ExceptionInfo` (one with `:kind` in ex-data)
-  passes through unchanged — it already has its line and echo extras from the throw site.
-  Anything else is wrapped as `ex-info` with `:kind` pre-classified via `unique-violation?`."
-  [^Throwable e line-num echo-extras]
-  (let [data (when (instance? ExceptionInfo e) (ex-data e))]
-    (if (:kind data)
-      e
-      (ex-info (.getMessage e)
-               (merge echo-extras
-                      {:kind   (if (unique-violation? e) :unique_violation :server_error)
-                       :line   line-num
-                       :detail (.getMessage e)})
-               e))))
 
 (defn stream-import!
   "Shared driver for streaming NDJSON imports. `process-batch!` is called once per batch with
