@@ -4,6 +4,7 @@ import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";
 import type {
   MathOperator,
+  SegmentId,
   TemporalUnit,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -72,6 +73,7 @@ export interface SerializedDefinitionInfo {
   breakoutTemporalUnit?: TemporalUnit;
   breakoutBinning?: string;
   filters?: SerializedUrlFilter[];
+  segments?: SegmentId[];
 }
 
 export function applySerializedDefinitionInfo(
@@ -81,6 +83,7 @@ export function applySerializedDefinitionInfo(
     breakoutTemporalUnit,
     breakoutBinning,
     filters,
+    segments,
   }: SerializedDefinitionInfo,
 ): MetricDefinition {
   let result = definition;
@@ -127,6 +130,21 @@ export function applySerializedDefinitionInfo(
     }
   }
 
+  if (segments?.length) {
+    const availableById = new Map(
+      LibMetric.availableSegments(result).map((segment) => [
+        LibMetric.segmentMetadataId(segment),
+        segment,
+      ]),
+    );
+    for (const segmentId of segments) {
+      const segment = availableById.get(segmentId);
+      if (segment) {
+        result = LibMetric.addSegmentFilter(result, segment);
+      }
+    }
+  }
+
   return result;
 }
 
@@ -138,6 +156,7 @@ interface SerializedExpressionSubToken {
   op?: MathOperator;
   value?: number;
   filters?: SerializedUrlFilter[];
+  segments?: SegmentId[];
 }
 
 interface SerializedExpressionEntry {
@@ -159,6 +178,7 @@ interface SerializedSource {
   breakoutTemporalUnit?: TemporalUnit;
   breakoutBinning?: string;
   filters?: SerializedUrlFilter[];
+  segments?: SegmentId[];
 }
 
 type SerializedFormulaEntity = SerializedExpressionEntry | SerializedSource;
@@ -210,6 +230,7 @@ function serializeSubToken(
       type: "metric",
       sourceId: token.sourceId,
       filters: annotatedSource.filters,
+      segments: annotatedSource.segments,
     };
   }
   if (token.type === "constant") {
@@ -225,13 +246,15 @@ function deserializeSubToken(
   token: SerializedExpressionSubToken,
 ): ExpressionSubToken | null {
   if (token.type === "metric" && token.sourceId) {
+    const hasInfo = token.filters || token.segments;
     return {
       type: "metric",
       sourceId: token.sourceId as MetricSourceId,
       count: 0,
-      serializedDefinitionInfo: token.filters
+      serializedDefinitionInfo: hasInfo
         ? {
             filters: token.filters,
+            segments: token.segments,
           }
         : undefined,
     };
@@ -258,6 +281,7 @@ export function deserializeFormulaEntities(
 
   for (const entity of serializedState.formulaEntities) {
     if (entity.type === "metric" || entity.type === "measure") {
+      const hasInfo = entity.breakout || entity.filters || entity.segments;
       entities.push({
         id:
           entity.type === "metric"
@@ -265,15 +289,15 @@ export function deserializeFormulaEntities(
             : `measure:${entity.id}`,
         type: "metric" as const,
         definition: null,
-        serializedDefinitionInfo:
-          entity.breakout || entity.filters
-            ? {
-                breakout: entity.breakout,
-                breakoutTemporalUnit: entity.breakoutTemporalUnit,
-                breakoutBinning: entity.breakoutBinning,
-                filters: entity.filters,
-              }
-            : undefined,
+        serializedDefinitionInfo: hasInfo
+          ? {
+              breakout: entity.breakout,
+              breakoutTemporalUnit: entity.breakoutTemporalUnit,
+              breakoutBinning: entity.breakoutBinning,
+              filters: entity.filters,
+              segments: entity.segments,
+            }
+          : undefined,
       });
     }
     if (entity.type === "expression") {
@@ -420,6 +444,23 @@ function annotateSource(
     }));
   }
 
+  const segmentIds: SegmentId[] = [];
+  for (const filterClause of LibMetric.filters(entry.definition)) {
+    if (!LibMetric.isSegmentFilter(filterClause)) {
+      continue;
+    }
+    const metadata = LibMetric.segmentMetadataForFilter(
+      entry.definition,
+      filterClause,
+    );
+    if (metadata) {
+      segmentIds.push(LibMetric.segmentMetadataId(metadata));
+    }
+  }
+  if (segmentIds.length > 0) {
+    source.segments = segmentIds;
+  }
+
   return source;
 }
 
@@ -475,6 +516,7 @@ const expressionSubTokenSchema =
     op: { key: "o", optional: true },
     value: { key: "v", optional: true },
     filters: { key: "F", schema: sourceFilterSchema, optional: true },
+    segments: { key: "S", optional: true },
   });
 
 const formulaEntitySchema = defineCompactSchema<SerializedFormulaEntity>({
@@ -484,6 +526,7 @@ const formulaEntitySchema = defineCompactSchema<SerializedFormulaEntity>({
   breakoutTemporalUnit: { key: "u", optional: true },
   breakoutBinning: { key: "B", optional: true },
   filters: { key: "F", schema: sourceFilterSchema, optional: true },
+  segments: { key: "s", optional: true },
   name: { key: "n", optional: true },
   tokens: { key: "T", schema: expressionSubTokenSchema, optional: true },
 });

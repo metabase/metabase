@@ -6,6 +6,7 @@
    [metabase.lib-metric.operators :as operators]
    [metabase.lib-metric.types.isa :as types.isa]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
 
@@ -132,6 +133,114 @@
   ([definition filter-clause instance-uuid]
    (let [inst-filter {:lib/uuid instance-uuid :filter filter-clause}]
      (update definition :filters (fnil conj []) inst-filter))))
+
+;;; -------------------------------------------------- Segments --------------------------------------------------
+
+(defn- leaf-table-id
+  "Resolve the source table-id for an expression leaf ([:metric _ id] or [:measure _ id])."
+  [provider leaf]
+  (let [leaf-type (definition/expression-leaf-type leaf)
+        leaf-id   (definition/expression-leaf-id leaf)
+        md-type   (case leaf-type
+                    :metric  :metadata/metric
+                    :measure :metadata/measure
+                    nil)]
+    (when md-type
+      (some-> (first (lib.metadata.protocols/metadatas
+                      provider
+                      {:lib/type md-type :id #{leaf-id}}))
+              :table-id))))
+
+(defn- leaf-table-groups
+  "For an expression leaf, return a seq of [table-id group] pairs covering the source
+   table plus every joined table reachable via the leaf's dimensions. `group` is the
+   dimension-group descriptor (shape: {:id :type :display-name}) for that table, or
+   nil if no dimension mapped to the source table. Pairs are returned sorted by
+   table-id for deterministic iteration."
+  [provider leaf]
+  (let [leaf-type (definition/expression-leaf-type leaf)
+        leaf-id   (definition/expression-leaf-id leaf)
+        source-id (leaf-table-id provider leaf)
+        dims      (case leaf-type
+                    :metric  (dimension/dimensions-for-metric provider leaf-id)
+                    :measure (dimension/dimensions-for-measure provider leaf-id)
+                    nil)
+        by-table  (reduce (fn [acc dim]
+                            (let [tid (perf/get-in dim [:dimension-mapping :table-id])]
+                              (if (and tid (not (contains? acc tid)))
+                                (assoc acc tid (:group dim))
+                                acc)))
+                          {}
+                          dims)
+        ;; Ensure source table is represented even if it contributed no dimensions
+        ;; (e.g. a pure count(*) metric).
+        by-table  (cond-> by-table
+                    (and source-id (not (contains? by-table source-id)))
+                    (assoc source-id nil))]
+    (sort-by key by-table)))
+
+(defn available-segments
+  "Return available Segments for a metric definition, scoped to the source table AND
+   any joined tables reachable via the definition's dimensions. Returns a sequence of
+   Segment metadata maps (de-duplicated by :id), each annotated with:
+
+     - `:lib-metric/instance-uuid`   — the expression leaf's uuid (so callers can
+       attach the segment to the correct instance filter).
+     - `:lib-metric/dimension-group` — the dimension-group descriptor for the
+       segment's table, so the FE can bucket the segment into the matching filter
+       section. nil for source tables that contributed no dimensions."
+  [definition]
+  (let [provider (:metadata-provider definition)
+        leaves   (definition/expression-leaves (:expression definition))]
+    (->> leaves
+         (mapcat (fn [leaf]
+                   (let [uuid (definition/expression-leaf-uuid leaf)]
+                     (mapcat (fn [[table-id group]]
+                               (map (fn [segment]
+                                      (assoc segment
+                                             :lib-metric/instance-uuid uuid
+                                             :lib-metric/dimension-group group))
+                                    (lib.metadata.protocols/segments provider table-id)))
+                             (leaf-table-groups provider leaf)))))
+         (reduce (fn [{:keys [seen acc]} segment]
+                   (if (contains? seen (:id segment))
+                     {:seen seen :acc acc}
+                     {:seen (conj seen (:id segment))
+                      :acc  (conj acc segment)}))
+                 {:seen #{} :acc []})
+         :acc)))
+
+(defn segment-clause?
+  "True if `filter-clause` is a segment reference, i.e. `[:segment _opts id]`."
+  [filter-clause]
+  (and (vector? filter-clause)
+       (= :segment (first filter-clause))))
+
+(defn segment-id-from-clause
+  "Return the segment id from a `[:segment _opts id]` clause, or nil."
+  [filter-clause]
+  (when (segment-clause? filter-clause)
+    (nth filter-clause 2 nil)))
+
+(defn segment-metadata-for-clause
+  "Return the segment metadata referenced by a `[:segment _opts id]` filter-clause, or nil."
+  [definition filter-clause]
+  (when-let [segment-id (segment-id-from-clause filter-clause)]
+    (first (lib.metadata.protocols/metadatas
+            (:metadata-provider definition)
+            {:lib/type :metadata/segment :id #{segment-id}}))))
+
+(defn add-segment-filter
+  "Add a segment as a filter on a metric definition. `segment-metadata` is a segment
+   metadata map (must have `:id`). If the metadata carries a `:lib-metric/instance-uuid`
+   the filter is attached to that instance; otherwise the definition's sole leaf uuid is
+   used. The resulting filter clause is `[:segment {:lib/uuid ...} id]`."
+  [definition segment-metadata]
+  (let [segment-id   (:id segment-metadata)
+        instance-uuid (or (:lib-metric/instance-uuid segment-metadata)
+                          (definition/expression-leaf-uuid (:expression definition)))
+        filter-clause (lib/ensure-uuid [:segment {} segment-id])]
+    (add-filter definition filter-clause instance-uuid)))
 
 ;;; -------------------------------------------------- Filter Clause Helpers --------------------------------------------------
 

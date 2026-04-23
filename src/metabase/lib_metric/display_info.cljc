@@ -104,6 +104,15 @@
               :is-calculated (= source :source/expressions)
               :is-implicitly-joinable (= source :source/implicitly-joinable)}))))
 
+;;; -------------------------------------------------- Segment --------------------------------------------------
+
+(defmethod display-info-method :metadata/segment
+  [definition segment]
+  (let [group (:lib-metric/dimension-group segment)]
+    (cond-> (default-display-info definition segment)
+      (:filter-positions segment) (assoc :filter-positions (:filter-positions segment))
+      group                       (assoc :group group))))
+
 ;;; -------------------------------------------------- Temporal Bucket --------------------------------------------------
 
 (defn- temporal-bucket-display-info

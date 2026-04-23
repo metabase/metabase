@@ -7,6 +7,7 @@ import type {
   JsMetricDefinition,
   MeasureId,
   MetricId,
+  SegmentId,
 } from "metabase-types/api";
 
 import type {
@@ -35,6 +36,8 @@ import type {
   NumberFilterParts,
   ProjectionClause,
   RelativeDateFilterParts,
+  SegmentDisplayInfo,
+  SegmentMetadata,
   SourceInstance,
   SpecificDateFilterParts,
   StringFilterParts,
@@ -202,6 +205,37 @@ export function filter(
     ) as MetricDefinition;
   }
   return LibMetric.filter(definition, filterClause) as MetricDefinition;
+}
+
+export function availableSegments(
+  definition: MetricDefinition,
+): SegmentMetadata[] {
+  return LibMetric.availableSegments(definition) as SegmentMetadata[];
+}
+
+export function addSegmentFilter(
+  definition: MetricDefinition,
+  segment: SegmentMetadata,
+): MetricDefinition {
+  return LibMetric.addSegmentFilter(definition, segment) as MetricDefinition;
+}
+
+export function isSegmentFilter(filterClause: FilterClause): boolean {
+  return Boolean(LibMetric.isSegmentFilter(filterClause));
+}
+
+export function segmentMetadataForFilter(
+  definition: MetricDefinition,
+  filterClause: FilterClause,
+): SegmentMetadata | null {
+  return LibMetric.segmentMetadataForFilter(
+    definition,
+    filterClause,
+  ) as SegmentMetadata | null;
+}
+
+export function segmentMetadataId(segment: SegmentMetadata): SegmentId {
+  return LibMetric.segmentMetadataId(segment) as SegmentId;
 }
 
 export function stringFilterClause(parts: StringFilterParts): FilterClause {
@@ -686,6 +720,10 @@ export function displayInfo(
   definition: MetricDefinition,
   binningStrategy: BinningStrategy,
 ): BinningStrategyDisplayInfo;
+export function displayInfo(
+  definition: MetricDefinition,
+  segment: SegmentMetadata,
+): SegmentDisplayInfo;
 export function displayInfo(
   definition: MetricDefinition,
   filterParts: Displayable,
