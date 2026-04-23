@@ -305,7 +305,7 @@
                                 :limit     limit})]
     (map #(update % :query json/decode+kw) rows)))
 
-(api.macros/defendpoint :get "/query-activity"
+(api.macros/defendpoint :get "/query-execution"
   "Get recent query executions for the current user with resolved source table and card names."
   [_route-params _query-params]
   (api/check-superuser)
