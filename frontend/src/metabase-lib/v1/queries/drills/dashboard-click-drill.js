@@ -151,7 +151,7 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
   const originalQuestion = targetQuestion;
 
   return !isTargetQuestionNative
-    ? ML_Urls.getUrlWithParameters(
+    ? ML_Urls.getQuestionUrlWithParameters(
         targetQuestion,
         originalQuestion,
         parameters,

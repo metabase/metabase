@@ -37,7 +37,7 @@ export function getQuestionUrl(
   }
 }
 
-export function getUrlWithParameters(
+export function getQuestionUrlWithParameters(
   question: Question,
   originalQuestion: Question,
   parameters: ParameterWithTarget[],
