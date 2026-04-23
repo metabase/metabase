@@ -1,10 +1,10 @@
 import slugg from "slugg";
 
+import { isTransientCardId } from "metabase/common/utils/card";
 import { stringifyHashOptions } from "metabase/utils/browser";
 import MetabaseSettings from "metabase/utils/settings";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { isTransientCardId } from "metabase-lib/v1/Question";
 import type {
   DashCardId,
   DashboardId,

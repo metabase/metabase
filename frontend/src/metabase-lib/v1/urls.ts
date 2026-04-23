@@ -1,3 +1,5 @@
+/* eslint-disable no-restricted-imports */
+import { isTransientCardId } from "metabase/common/utils/card";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
@@ -6,7 +8,6 @@ import { remapParameterValuesToTemplateTags } from "metabase-lib/v1/parameters/u
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 
 import type Question from "./Question";
-import { isTransientCardId } from "./Question";
 import type NativeQuery from "./queries/NativeQuery";
 
 type UrlBuilderOpts = {
