@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-complexity-score.api :as api]
+   [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase.metabot.config :as metabot.config]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -197,11 +198,11 @@
           (mt/with-temp-vals-in-db :model/Metabot (internal-metabot-id)
                                    {:use_verified_content use-verified? :collection_id nil}
             (is (= {:verified-only? expected-verified? :collection-id nil}
-                   (#'api/internal-metabot-scope))))))))
+                   (metabot-scope/internal-metabot-scope))))))))
   (testing ":collection-id is read straight from the internal Metabot row regardless of premium features"
     (mt/with-temp [:model/Collection {coll-id :id} {:name "metabot scope test coll"}]
       (mt/with-premium-features #{}
         (mt/with-temp-vals-in-db :model/Metabot (internal-metabot-id)
                                  {:use_verified_content false :collection_id coll-id}
           (is (= {:verified-only? false :collection-id coll-id}
-                 (#'api/internal-metabot-scope))))))))
+                 (metabot-scope/internal-metabot-scope))))))))
