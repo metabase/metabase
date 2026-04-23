@@ -21,7 +21,6 @@ import {
   PLUGIN_DB_ROUTING,
   PLUGIN_DEPENDENCIES,
   PLUGIN_TABLE_EDITING,
-  PLUGIN_WORKSPACES,
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
 import { getUserIsAdmin } from "metabase/selectors/user";
@@ -137,12 +136,6 @@ function DatabaseEditAppInner({
                   />
 
                   <PLUGIN_TABLE_EDITING.AdminDatabaseTableEditingSection
-                    database={database}
-                    settingsAvailable={settingsAvailable?.settings}
-                    updateDatabase={updateDatabase}
-                  />
-
-                  <PLUGIN_WORKSPACES.AdminDatabaseWorkspacesSection
                     database={database}
                     settingsAvailable={settingsAvailable?.settings}
                     updateDatabase={updateDatabase}

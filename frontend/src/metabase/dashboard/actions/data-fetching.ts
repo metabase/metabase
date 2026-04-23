@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { automagicDashboardsApi, dashboardApi } from "metabase/api";
+import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
@@ -25,6 +26,7 @@ import {
 } from "metabase/dashboard/utils";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
@@ -49,7 +51,6 @@ import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   CardId,
@@ -61,7 +62,6 @@ import type {
   ParameterValuesMap,
   QuestionDashboardCard,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 export const FETCH_DASHBOARD_CARD_DATA =
   "metabase/dashboard/FETCH_DASHBOARD_CARD_DATA";
@@ -320,18 +320,7 @@ export const fetchCardDataAction = createAsyncThunk<
       cancelled: deferred.promise,
     };
 
-    // make the actual request
-    if (datasetQuery.type === "endpoint") {
-      result = await fetchDataOrError(
-        MetabaseApi.datasetEndpoint(
-          {
-            endpoint: datasetQuery.endpoint,
-            parameters: datasetQuery.parameters,
-          },
-          queryOptions,
-        ),
-      );
-    } else if (dashboardType === "public") {
+    if (dashboardType === "public") {
       result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           PublicApi.dashboardCardQuery,

@@ -191,21 +191,16 @@ export function useMetricsViewer({
     return buildSeries({
       formulaEntities: state.formulaEntities,
       definitions: state.definitions,
-      metricSlots,
-      dimensionMapping: activeTab.dimensionMapping,
       display: activeTab.display,
       resultsByEntityIndex,
-      modifiedDefinitionsBySlotIndex,
       sourceBreakoutColors,
       extraVizSettings: activeTab.visualizationSettings,
     });
   }, [
     state.formulaEntities,
     state.definitions,
-    metricSlots,
     activeTab,
     resultsByEntityIndex,
-    modifiedDefinitionsBySlotIndex,
     sourceBreakoutColors,
   ]);
 
@@ -294,10 +289,11 @@ export function useMetricsViewer({
     () =>
       getAvailableDimensionsForPicker(
         definitionsBySourceId,
+        sourceOrder,
         metricSlots,
         existingTabDimensionIds,
       ),
-    [definitionsBySourceId, metricSlots, existingTabDimensionIds],
+    [definitionsBySourceId, sourceOrder, metricSlots, existingTabDimensionIds],
   );
 
   const addMetric = useCallback(

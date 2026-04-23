@@ -1,9 +1,11 @@
 import {
+  type EditorState,
   MapMode,
   RangeSet,
   RangeValue,
   StateEffect,
   StateField,
+  type Transaction,
 } from "@codemirror/state";
 import {
   Decoration,
@@ -15,12 +17,8 @@ import {
 
 import type { MetricDefinition } from "metabase-lib/metric";
 
-import type {
-  MetricSourceId,
-  MetricsViewerFormulaEntity,
-} from "../../../types/viewer-state";
-import type { MetricIdentityEntry, MetricNameMap } from "../utils";
-import { parseFullTextWithPositions, traverseMetricTokens } from "../utils";
+import type { MetricSourceId } from "../../../types/viewer-state";
+import type { MetricIdentityEntry } from "../utils";
 
 import S from "./MetricSearchInput.module.css";
 
@@ -45,33 +43,20 @@ class MetricTokenWidget extends WidgetType {
   }
 }
 
-export const setMetricNames = StateEffect.define<MetricNameMap>();
-
-const metricNamesField = StateField.define<MetricNameMap>({
-  create: () => ({}),
-  update(entries, tr) {
-    for (const effect of tr.effects) {
-      if (effect.is(setMetricNames)) {
-        return effect.value;
-      }
-    }
-    return entries;
-  },
-});
-
 // ── Identity tracking ──────────────────────────────────────────────────────
 
 class MetricIdentity extends RangeValue {
   override mapMode = MapMode.TrackDel;
-  // Don't absorb text inserted at range boundaries — the identity
-  // must track exactly the original token span, not grow with adjacent edits.
+  // Prevent the range from absorbing adjacent text insertions —
+  // without this, typing right next to a metric would extend its range.
   override startSide = 1;
   override endSide = -1;
 
   constructor(
     readonly sourceId: MetricSourceId,
     readonly definition: MetricDefinition | null,
-    readonly slotIndex: number,
+    readonly slotIndex: number | undefined,
+    readonly customName: string | undefined,
   ) {
     super();
   }
@@ -80,7 +65,8 @@ class MetricIdentity extends RangeValue {
     return (
       this.sourceId === other.sourceId &&
       this.definition === other.definition &&
-      this.slotIndex === other.slotIndex
+      this.slotIndex === other.slotIndex &&
+      this.customName === other.customName
     );
   }
 }
@@ -88,53 +74,56 @@ class MetricIdentity extends RangeValue {
 export const setMetricIdentities =
   StateEffect.define<RangeSet<MetricIdentity>>();
 
+export const addMetricIdentity = StateEffect.define<MetricIdentityEntry>();
+
 export const metricIdentityField = StateField.define<RangeSet<MetricIdentity>>({
   create: () => RangeSet.empty,
   update(identities, tr) {
+    // Full reset — replaces all identities. Any addMetricIdentity effects
+    // in the same transaction are intentionally ignored.
     for (const effect of tr.effects) {
       if (effect.is(setMetricIdentities)) {
         return effect.value;
       }
     }
+
+    let current = identities;
     if (tr.docChanged) {
-      return identities.map(tr.changes);
+      current = current.map(tr.changes);
     }
-    return identities;
+
+    for (const effect of tr.effects) {
+      if (effect.is(addMetricIdentity)) {
+        const { from, to, sourceId, definition, slotIndex, customName } =
+          effect.value;
+        const newRange = new MetricIdentity(
+          sourceId,
+          definition,
+          slotIndex,
+          customName,
+        ).range(from, to);
+        current = current.update({ add: [newRange] });
+      }
+    }
+
+    return current;
   },
 });
 
-export function buildMetricIdentities(
-  text: string,
-  metricNames: MetricNameMap,
-  entities: MetricsViewerFormulaEntity[],
+export function identitiesFromEntries(
+  entries: MetricIdentityEntry[],
 ): RangeSet<MetricIdentity> {
-  const ranges: ReturnType<MetricIdentity["range"]>[] = [];
-  let slotCounter = 0;
-
-  traverseMetricTokens(text, metricNames, entities, (visit) => {
-    const slotIndex = slotCounter++;
-    const sourceId =
-      visit.kind === "standalone" ? visit.entity.id : visit.exprToken.sourceId;
-    const definition =
-      visit.kind === "standalone"
-        ? visit.entity.definition
-        : (visit.exprToken.definition ?? null);
-
-    ranges.push(
-      new MetricIdentity(sourceId, definition, slotIndex).range(
-        visit.positioned.from,
-        visit.positioned.to,
-      ),
-    );
-  });
-
+  const ranges = entries.map((entry) =>
+    new MetricIdentity(
+      entry.sourceId,
+      entry.definition,
+      entry.slotIndex,
+      entry.customName,
+    ).range(entry.from, entry.to),
+  );
   return RangeSet.of(ranges, true);
 }
 
-/**
- * Reads the current metric identities from the CodeMirror state.
- * Positions are already in current-document coordinates (mapped automatically).
- */
 export function readMetricIdentities(view: EditorView): MetricIdentityEntry[] {
   const identities = view.state.field(metricIdentityField);
   const result: MetricIdentityEntry[] = [];
@@ -146,6 +135,7 @@ export function readMetricIdentities(view: EditorView): MetricIdentityEntry[] {
       to,
       definition: value.definition,
       slotIndex: value.slotIndex,
+      customName: value.customName,
     });
   });
   return result;
@@ -155,30 +145,18 @@ export function readMetricIdentities(view: EditorView): MetricIdentityEntry[] {
 
 type MetricRange = { from: number; to: number; name: string };
 
-function computeMetricTokenRanges(
-  docText: string,
-  docLength: number,
-  metricNames: MetricNameMap,
-): MetricRange[] {
-  if (Object.keys(metricNames).length === 0) {
-    return [];
-  }
+function computeMetricTokenRanges(state: EditorState): MetricRange[] {
+  const identities = state.field(metricIdentityField);
+  const docLength = state.doc.length;
+  const ranges: MetricRange[] = [];
 
-  const tokens = parseFullTextWithPositions(docText, metricNames);
-  return tokens
-    .filter(
-      (t) =>
-        t.type === "metric" &&
-        t.from >= 0 &&
-        t.to <= docLength &&
-        t.from < t.to,
-    )
-    .sort((a, b) => a.from - b.from)
-    .map((t) => ({
-      from: t.from,
-      to: t.to,
-      name: docText.slice(t.from, t.to),
-    }));
+  identities.between(0, docLength, (from, to) => {
+    if (from < to) {
+      ranges.push({ from, to, name: state.doc.sliceString(from, to) });
+    }
+  });
+
+  return ranges;
 }
 
 function rangesToDecorations(ranges: MetricRange[]): DecorationSet {
@@ -193,32 +171,30 @@ function rangesToDecorations(ranges: MetricRange[]): DecorationSet {
   return Decoration.set(decorations);
 }
 
-/** Stores the raw metric ranges for lookup by keymap handlers. */
+function identitiesChanged(tr: Transaction): boolean {
+  return (
+    tr.docChanged ||
+    tr.effects.some((e) => e.is(setMetricIdentities) || e.is(addMetricIdentity))
+  );
+}
+
 const metricTokenRangesField = StateField.define<MetricRange[]>({
   create: () => [],
   update(ranges, tr) {
-    const metricNames = tr.state.field(metricNamesField);
-    const metricNamesChanged = tr.effects.some((e) => e.is(setMetricNames));
-    if (tr.docChanged || metricNamesChanged) {
-      return computeMetricTokenRanges(
-        tr.newDoc.toString(),
-        tr.newDoc.length,
-        metricNames,
-      );
+    if (!identitiesChanged(tr)) {
+      return ranges;
     }
-    return ranges;
+    return computeMetricTokenRanges(tr.state);
   },
 });
 
-/** Derives replace decorations from the metric ranges field (no re-parse). */
 const metricDecorationsField = StateField.define<DecorationSet>({
   create: () => Decoration.none,
-  update(deco, tr) {
-    const metricNamesChanged = tr.effects.some((e) => e.is(setMetricNames));
-    if (tr.docChanged || metricNamesChanged) {
-      return rangesToDecorations(tr.state.field(metricTokenRangesField));
+  update(decorations, tr) {
+    if (!identitiesChanged(tr)) {
+      return decorations;
     }
-    return deco;
+    return rangesToDecorations(tr.state.field(metricTokenRangesField));
   },
   provide: (f) => EditorView.decorations.from(f),
 });
@@ -294,7 +270,6 @@ const metricTokenKeymap = keymap.of([
 ]);
 
 export const metricTokenHighlight = [
-  metricNamesField,
   metricIdentityField,
   metricTokenRangesField,
   metricDecorationsField,

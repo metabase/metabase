@@ -7,7 +7,6 @@ type TabName =
   | "jobs"
   | "runs"
   | "dependencies"
-  | "workspace"
   | "dependency-diagnostics"
   | "schema-viewer"
   | "glossary"
@@ -33,8 +32,6 @@ export const getCurrentTab = (pathname: string): TabName => {
       return "runs";
     case pathname.startsWith(Urls.transformList()):
       return "transforms";
-    case pathname.startsWith(Urls.dataStudioWorkspaceList()):
-      return "workspace";
     default:
       return "data";
   }

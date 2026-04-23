@@ -38,13 +38,13 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
 
   it("should load a metabase locale", () => {
     cy.visit({
-      url: `${CLIENT_HOST}/interactive-question?locale=es&questionId=1`,
+      url: `${CLIENT_HOST}/interactive-question?locale=en-ZZ&questionId=1`,
     });
 
     cy.findByTestId("interactive-question-result-toolbar", {
       timeout: TIMEOUT_MS,
     }).within(() => {
-      expect(cy.findByText("Tabla").should("exist"));
+      expect(cy.findByText("[zz] Table").should("exist"));
     });
   });
 
@@ -59,18 +59,20 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     cy.findByTestId("interactive-question-result-toolbar", {
       timeout: TIMEOUT_MS,
     }).within(() => {
-      cy.findByText("Filtro").click();
+      cy.findByTestId("filter-dropdown-button").click();
     });
 
     cy.get('[data-element-id="mantine-popover"]')
       .should("have.length.above", 0)
       .last()
       .within(() => {
+        // "Started At" is the column display name from the database, stable across locales.
         cy.findByText("Started At").click();
-        cy.findByText(/Rango de fechas relativo…/).click();
+        cy.findByTestId("date-picker-type-relative").click();
       });
 
     cy.findByTestId("date-filter-picker").within(() => {
+      // Dayjs Spanish month abbreviation — this is the actual thing under test.
       cy.findByText(/^dic.*2024/).should("exist");
     });
   });
@@ -86,17 +88,19 @@ describe("Embedding SDK: shared Host Apps compatibility tests", () => {
     cy.findByTestId("interactive-question-result-toolbar", {
       timeout: TIMEOUT_MS,
     }).within(() => {
-      cy.findByText("Filtro").click();
+      cy.findByTestId("filter-dropdown-button").click();
     });
     cy.get('[data-element-id="mantine-popover"]')
       .should("have.length.above", 0)
       .last()
       .within(() => {
+        // "Started At" is the column display name from the database, stable across locales.
         cy.findByText("Started At").click();
-        cy.findByText(/Rango de fechas fijo…/).click();
+        cy.findByTestId("date-picker-type-specific").click();
       });
 
     cy.findByTestId("date-filter-picker").within(() => {
+      // Dayjs Spanish month name — this is the actual thing under test.
       cy.findByText("enero 2025").should("exist");
     });
   });

@@ -1,12 +1,17 @@
 import { useCallback, useState } from "react";
-import { t } from "ttag";
+import { jt, t } from "ttag";
 
 import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import { useAdminSetting } from "metabase/api/utils";
-import { Box, Stack, Switch, Text, TextInput } from "metabase/ui";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { useDocsUrl } from "metabase/common/hooks";
+import { Box, Flex, Stack, Switch, Text, TextInput } from "metabase/ui";
 
-const getMcpClients = () =>
+import { CursorInstallLink } from "./CursorInstallLink";
+import { McpServerUrlSection } from "./MCPServerUrlSection";
+
+const getMcpClients = (enabledClients: string[]) =>
   [
     {
       key: "claude",
@@ -14,7 +19,13 @@ const getMcpClients = () =>
     },
     {
       key: "cursor-vscode",
-      label: t`Cursor and VS Code`,
+      label: (
+        <Stack gap="xs">
+          <span>{t`Cursor and VS Code`}</span>
+
+          {enabledClients.includes("cursor-vscode") && <CursorInstallLink />}
+        </Stack>
+      ),
     },
     {
       key: "chatgpt",
@@ -22,21 +33,60 @@ const getMcpClients = () =>
     },
   ] as const;
 
-export const McpAppsSettings = () => (
-  <SettingsSection
-    title={t`MCP apps`}
-    // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin UI
-    description={t`Allow MCP clients to connect to your Metabase instance by enabling CORS for their sandbox domains.`}
-  >
-    <CommonMcpClientsSection />
+export const McpAppsSettings = ({ id }: { id?: string }) => {
+  const {
+    value: mcpEnabled,
+    updateSetting,
+    isLoading,
+  } = useAdminSetting("mcp-enabled?");
+  // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- Admin settings
+  const { url: mcpDocsUrl } = useDocsUrl("ai/mcp");
 
-    <CustomMcpOriginsSection />
-  </SettingsSection>
-);
+  const isEnabled = mcpEnabled !== false;
+
+  return (
+    <SettingsSection
+      id={id}
+      title={
+        <Flex align="center" gap="md" justify="space-between" w="100%">
+          <div>{t`MCP server`}</div>
+          <Switch
+            aria-label={t`MCP server`}
+            checked={isEnabled}
+            disabled={isLoading}
+            onChange={(event) =>
+              updateSetting({
+                key: "mcp-enabled?",
+                value: event.target.checked,
+              })
+            }
+            size="sm"
+            w="auto"
+          />
+        </Flex>
+      }
+      description={
+        // eslint-disable-next-line metabase/no-literal-metabase-strings -- admin UI
+        jt`Allow MCP clients to connect to your Metabase instance. ${(
+          <ExternalLink key="docs" href={mcpDocsUrl}>
+            {t`Learn more`}
+          </ExternalLink>
+        )}`
+      }
+    >
+      {isEnabled && (
+        <Stack gap="lg">
+          <CommonMcpClientsSection />
+
+          <CustomMcpOriginsSection />
+        </Stack>
+      )}
+      <McpServerUrlSection />
+    </SettingsSection>
+  );
+};
 
 function CommonMcpClientsSection() {
-  const mcpClients = getMcpClients();
-
   const { value: savedValue, updateSetting } = useAdminSetting(
     "mcp-apps-cors-enabled-clients",
   );
@@ -44,6 +94,8 @@ function CommonMcpClientsSection() {
   const [enabledClients, setEnabledClients] = useState<string[]>(
     savedValue ?? [],
   );
+
+  const mcpClients = getMcpClients(enabledClients);
 
   const handleToggle = useCallback(
     (clientKey: string, checked: boolean) => {

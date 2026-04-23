@@ -61,13 +61,19 @@ export function MetricSearchInput({
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ReactCodeMirrorRef>(null);
 
-  const { metricNames, metricNamesRef, ...metricHandlers } =
-    useMetricNameTracking({
-      definitions,
-      onAddMetric,
-      onRemoveMetric,
-      onSwapMetric,
-    });
+  const {
+    metricNames,
+    metricNamesRef,
+    handleAddMetric,
+    handleRemoveMetric,
+    handleSwapMetric,
+    setSearchMetricNames,
+  } = useMetricNameTracking({
+    definitions,
+    onAddMetric,
+    onRemoveMetric,
+    onSwapMetric,
+  });
 
   const {
     editText,
@@ -81,6 +87,7 @@ export function MetricSearchInput({
     pendingFocusRef,
     handleInputFocus,
     handleInputBlur,
+    handleEditExpression,
     handleChange,
     handleSelect,
     handleRemoveItem,
@@ -97,10 +104,9 @@ export function MetricSearchInput({
     onFormulaEntitiesChange,
     selectedMetrics,
     definitions,
-    metricNames,
     metricNamesRef,
-    handleAddMetric: metricHandlers.handleAddMetric,
-    handleRemoveMetric: metricHandlers.handleRemoveMetric,
+    handleAddMetric,
+    handleRemoveMetric,
     editorRef,
     containerRef,
   });
@@ -156,7 +162,7 @@ export function MetricSearchInput({
                       metric={metric}
                       colors={metricColors[entryIndex]}
                       definitionEntry={definition}
-                      onSwap={metricHandlers.handleSwapMetric}
+                      onSwap={handleSwapMetric}
                       onRemove={(_id, _sourceType) =>
                         handleRemoveItem(entryIndex)
                       }
@@ -174,16 +180,21 @@ export function MetricSearchInput({
                   : undefined;
 
                 return (
-                  <span key={`${entry.id}-${entryIndex}`}>
+                  <span
+                    key={`${entry.id}-${entryIndex}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <MetricExpressionPill
                       expressionEntry={entry}
                       metricNames={metricNames}
                       colors={expressionColors}
-                      onClick={(e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        handleContainerClick(e);
+                      onNameChange={(newName) => {
+                        const updated = [...formulaEntities];
+                        updated[entryIndex] = { ...entry, name: newName };
+                        onFormulaEntitiesChange(updated);
                       }}
                       onRemove={() => handleRemoveItem(entryIndex)}
+                      onEdit={() => handleEditExpression(entryIndex)}
                     />
                   </span>
                 );
@@ -247,6 +258,7 @@ export function MetricSearchInput({
                     externalSearchText={currentWord}
                     onHasSelectionChange={handleDropdownHasSelectionChange}
                     onClose={() => setIsOpen(false)}
+                    setSearchMetricNames={setSearchMetricNames}
                   />
                 )}
               </Popover.Dropdown>

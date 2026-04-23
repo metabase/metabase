@@ -10,7 +10,7 @@
   "scripts": {
     "build": "esbuild src/index.ts --bundle --outfile=dist/index.cjs --platform=node --target=node16",
     "generate-changelog": "tsx generate-changelog.ts",
-    "prettier": "prettier --write",
+    "format": "oxfmt --write",
     "release-offline": "tsx release-offline.ts",
     "test:unit": "jest --testPathPattern unit",
     "test:integration": "jest --testPathPattern integration",
@@ -38,10 +38,11 @@
     "@types/jest": "^29.5.5",
     "@types/semver": "^7.5.8",
     "jest": "^29.7.0",
-    "prettier": "^3.0.2"
+    "oxfmt": "^0.38.0"
   },
   "resolutions": {
     "axios": "1.15.0",
+    "follow-redirects": "^1.16.0",
     "form-data": "^4.0.4"
   }
 }

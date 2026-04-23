@@ -1,6 +1,5 @@
 export * from "./source-ids";
 export * from "./dimension-filters";
-export * from "./geo-dimensions";
 export * from "./dimension-lookup";
 export * from "./definition-builder";
 export * from "./definition-entries";
