@@ -143,17 +143,6 @@
               {:lib/type :option/join.strategy, :strategy :inner-join}]
              (vec strategies))))))
 
-(deftest ^:parallel required-native-extras-test
-  (let [db                (update meta/database :features conj :native-requires-specified-collection)
-        metadata-provider (lib.tu/mock-metadata-provider {:database db})
-        extras            (lib.js/required-native-extras (:id db) metadata-provider)]
-    ;; apparently #js ["collection"] is not equal to #js ["collection"]
-    (is (= js/Array
-           (type extras))
-        "should be a JS array")
-    (is (= ["collection"]
-           (js->clj extras)))))
-
 (defn- add-undefined-params
   "This simulates the FE setting some parameters to js/undefined."
   [template-tags param-name]

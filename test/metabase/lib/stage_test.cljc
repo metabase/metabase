@@ -66,13 +66,7 @@
                                  lib/append-stage
                                  (lib/order-by 1 (meta/field-metadata :venues :name) :asc))]
     (is (= 0 (count (lib/order-bys query-with-new-stage 0))))
-    (is (= 1 (count (lib/order-bys query-with-new-stage 1))))
-    (is (= query
-           (-> query-with-new-stage
-               (lib/filter (lib/= 1 (meta/field-metadata :venues :name)))
-               (lib/drop-stage))))
-    (testing "Dropping with 1 stage should no-op"
-      (is (= query (lib/drop-stage query))))))
+    (is (= 1 (count (lib/order-bys query-with-new-stage 1))))))
 
 (deftest ^:parallel drop-empty-stages-test
   (let [base  (lib.tu/venues-query)

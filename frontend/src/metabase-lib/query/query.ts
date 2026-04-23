@@ -41,10 +41,6 @@ export function toLegacyQuery(query: Query): LegacyDatasetQuery {
   return ML.legacy_query(query);
 }
 
-export function withDifferentTable(query: Query, tableId: TableId): Query {
-  return ML.with_different_table(query, tableId);
-}
-
 export function suggestedName(query: Query): string {
   return ML.suggestedName(query);
 }
@@ -66,10 +62,6 @@ export const hasClauses = (query: Query, stageIndex: number): boolean => {
 
 export function appendStage(query: Query): Query {
   return ML.append_stage(query);
-}
-
-export function dropStage(query: Query): Query {
-  return ML.drop_stage(query);
 }
 
 export function dropEmptyStages(query: Query): Query {
