@@ -1046,7 +1046,7 @@
 (deftest updating-card-updates-metadata-2
   (let [query (updating-card-updates-metadata-query)]
     (testing "Updating other parts but not query does not update the metadata"
-      (let [orig   @#'card.metadata/legacy-result-metadata-future
+      (let [orig   (mt/original-fn #'card.metadata/legacy-result-metadata-future)
             called (atom 0)]
         (mt/with-dynamic-fn-redefs [card.metadata/legacy-result-metadata-future (fn [q]
                                                                                   (swap! called inc)

@@ -1157,7 +1157,7 @@
                    :model/Database {db-b-id :id} {:name "pf-db-b" :engine :h2}
                    :model/Table    {t-a-id :id}  {:db_id db-a-id :name "ta" :schema "PUBLIC"}
                    :model/Table    {t-b-id :id}  {:db_id db-b-id :name "tb" :schema "PUBLIC"}]
-      (let [orig-import-fields (deref #'api.database/import-fields!)]
+      (let [orig-import-fields (mt/original-fn #'api.database/import-fields!)]
         (mt/with-dynamic-fn-redefs [api.database/import-fields! (fn [state fields incoming-by-id in-tbl->target path-lookup]
                                                                   (if (some #(= t-b-id (:table_id %)) fields)
                                                                     (throw (ex-info "injected failure for DB-B" {}))
@@ -1187,7 +1187,7 @@
                    :model/Table    {t-a-id :id}  {:db_id db-a-id :name "t" :schema "PUBLIC"}
                    :model/Table    {t-b-id :id}  {:db_id db-b-id :name "t" :schema "PUBLIC"}]
       (let [calls          (atom [])
-            orig-build-pm  (deref #'api.database/build-target-field-pathmap)]
+            orig-build-pm  (mt/original-fn #'api.database/build-target-field-pathmap)]
         (mt/with-dynamic-fn-redefs [api.database/build-target-field-pathmap (fn [ids]
                                                                               (swap! calls conj (set ids))
                                                                               (orig-build-pm ids))]

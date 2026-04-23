@@ -243,7 +243,7 @@
           (notification.tu/with-captured-channel-send!
             (let [sent-pulse-ids (atom #{})
                   send-pulse-called (atom 0)
-                  original-send-pulse!* @#'task.send-pulses/send-pulse!*]
+                  original-send-pulse!* (mt/original-fn #'task.send-pulses/send-pulse!*)]
               (mt/with-dynamic-fn-redefs [;; run the job every second - must be before creating PulseChannel
                                           u.cron/schedule-map->cron-string (constantly "* * * 1/1 * ? *")
                                           task.send-pulses/send-pulse!*    (fn [pulse-id channel-ids]

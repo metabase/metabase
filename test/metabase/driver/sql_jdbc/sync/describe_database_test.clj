@@ -283,7 +283,7 @@
                                                  :+fns [jdbc-describe-database]
                                                  :-features [:table-privileges]})
         (let [closed-first (volatile! false)
-              execute-select-probe-query @#'sql-jdbc.describe-database/execute-select-probe-query
+              execute-select-probe-query (mt/original-fn #'sql-jdbc.describe-database/execute-select-probe-query)
               all-tables (driver/describe-database driver/*driver* (mt/id))]
           (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/execute-select-probe-query
                                       (fn [driver ^Connection conn query]

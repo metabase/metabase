@@ -28,7 +28,7 @@
     (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
       (let [test-db-id (mt/id)  ;; Get the test database ID
             connection-count (volatile! 0)
-            orig-do-with-resolved-connection-data-source @#'sql-jdbc.execute/do-with-resolved-connection-data-source]
+            orig-do-with-resolved-connection-data-source (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection-data-source)]
         (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
                                     (fn [driver db opts]
                         ;; Only count connections for our test database because on startup the audit-db will be
@@ -62,7 +62,7 @@
     (mt/test-drivers (descendants driver/hierarchy :sql-jdbc)
       (let [test-db-id               (mt/id)
             captured-connection-type (volatile! nil)
-            orig-fn                  @#'sql-jdbc.execute/do-with-resolved-connection-data-source]
+            orig-fn                  (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection-data-source)]
         (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
                                     (fn [driver db opts]
                                       (when (and (= db test-db-id) (:keep-open? opts))
