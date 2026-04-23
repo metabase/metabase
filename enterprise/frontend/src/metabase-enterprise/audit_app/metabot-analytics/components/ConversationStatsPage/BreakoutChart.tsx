@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -14,7 +15,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { VIEW_CONVERSATIONS } from "../../constants";
 import { useAuditTable } from "../../hooks/useAuditTable";
 
-import S from "./BreakoutChart.module.css";
+import S from "./ChartCard.module.css";
 import {
   type UsageStatsMetric,
   applyDateFilter,
@@ -167,7 +168,9 @@ export function BreakoutChart({
 
   return (
     <Card
-      className={S.visualization}
+      className={cx(S.visualization, {
+        [S.nonClickable]: !onDimensionClick,
+      })}
       withBorder
       shadow="none"
       px="lg"

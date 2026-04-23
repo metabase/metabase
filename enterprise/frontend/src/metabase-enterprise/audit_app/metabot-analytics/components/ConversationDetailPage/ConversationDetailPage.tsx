@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import type { WithRouterProps } from "react-router";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
-import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
@@ -44,7 +43,6 @@ import {
   Stack,
   Text,
   Title,
-  Tooltip,
 } from "metabase/ui";
 import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
 import { useSelector } from "metabase/utils/redux";
@@ -58,6 +56,8 @@ import type { DatasetQuery } from "metabase-types/api";
 
 import { useGetMetabotConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
+
+import S from "./ConversationDetailPage.module.css";
 
 type StatCardProps = {
   label: string;
@@ -107,6 +107,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   const userName = conversation.user
     ? getUserName(conversation.user) || t`Unknown`
     : t`Unknown`;
+  const firstName = conversation.user?.first_name?.trim() || userName;
   const totalTokens = conversation.total_tokens ?? 0;
   const messageCount = conversation.message_count ?? 0;
   const searchCount = conversation.search_count ?? 0;
@@ -132,17 +133,31 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
             <Flex align="baseline">
               <Title order={2}>{t`Conversation with ${userName}`}</Title>
               {conversation.user && (
-                <Tooltip label={t`View user`}>
-                  <ActionIcon
-                    component={ForwardRefLink}
-                    to={Urls.editUser(conversation.user)}
-                    variant="subtle"
-                    color="text-secondary"
-                    aria-label={t`Open user profile`}
-                  >
-                    <Icon name="external" size={16} />
-                  </ActionIcon>
-                </Tooltip>
+                <Menu shadow="md" position="bottom-start" withinPortal>
+                  <Menu.Target>
+                    <ActionIcon
+                      variant="subtle"
+                      color="text-secondary"
+                      aria-label={t`User actions`}
+                    >
+                      <Icon name="ellipsis" size={16} />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      component={ForwardRefLink}
+                      to={`/admin/metabot/usage-auditing/conversations?user=${conversation.user.id}`}
+                    >
+                      {t`See all of ${firstName}'s conversations`}
+                    </Menu.Item>
+                    <Menu.Item
+                      component={ForwardRefLink}
+                      to={Urls.editUser(conversation.user)}
+                    >
+                      {t`View ${firstName}'s details`}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
               )}
             </Flex>
             <Flex gap="lg" align="center" wrap="wrap">
@@ -160,7 +175,8 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                   </Text>
                 </Flex>
               )}
-              {userGroupsInfo.userGroups.length > 0 && (
+              {(userGroupsInfo.userGroups.length > 0 ||
+                userGroupsInfo.isAdmin) && (
                 <Flex gap="xs" align="center">
                   <Icon name="group" size={16} c="text-tertiary" />
                   <UserGroupsMenu {...userGroupsInfo} />
@@ -465,25 +481,50 @@ function useUserGroupsInfo(userId: number | undefined) {
 
   return useMemo(() => {
     if (userId == null || !membershipsByUser || !groups) {
-      return { allGroups: [], userGroups: [], selectedGroupIds: [] };
+      return { userGroups: [], isAdmin: false };
     }
     const memberships = membershipsByUser[userId] ?? [];
     const selectedGroupIds = memberships.map((m) => m.group_id);
-    const userGroups = groups
-      .filter((g) => selectedGroupIds.includes(g.id) && !isDefaultGroup(g))
-      // admin first, rest in the API's stable order
-      .sort((a, b) => Number(isAdminGroup(b)) - Number(isAdminGroup(a)));
-    return { allGroups: groups, userGroups, selectedGroupIds };
+    const isAdmin = groups.some(
+      (g) => selectedGroupIds.includes(g.id) && isAdminGroup(g),
+    );
+    const userGroups = groups.filter(
+      (g) =>
+        selectedGroupIds.includes(g.id) &&
+        !isDefaultGroup(g) &&
+        !isAdminGroup(g),
+    );
+    return { userGroups, isAdmin };
   }, [userId, membershipsByUser, groups]);
 }
 
 function UserGroupsMenu({
-  allGroups,
   userGroups,
-  selectedGroupIds,
+  isAdmin,
 }: ReturnType<typeof useUserGroupsInfo>) {
-  if (userGroups.length === 0) {
+  if (userGroups.length === 0 && !isAdmin) {
     return null;
+  }
+
+  const n = userGroups.length;
+  const otherGroupsLabel =
+    n === 1
+      ? userGroups[0].name
+      : ngettext(msgid`${n} other group`, `${n} other groups`, n);
+  const summaryText = isAdmin
+    ? n === 0
+      ? t`Admin`
+      : t`Admin and ${otherGroupsLabel}`
+    : n === 1
+      ? userGroups[0].name
+      : ngettext(msgid`${n} group`, `${n} groups`, n);
+
+  if (userGroups.length === 0) {
+    return (
+      <Text size="md" c="text-secondary">
+        {summaryText}
+      </Text>
+    );
   }
 
   return (
@@ -496,18 +537,16 @@ function UserGroupsMenu({
           c="text-secondary"
           size="md"
           fw="normal"
+          className={S.groupsTarget}
         >
           <Flex component="span" align="center" gap={4}>
-            <GroupSummary
-              groups={allGroups}
-              selectedGroupIds={selectedGroupIds}
-            />
+            <span>{summaryText}</span>
             <Icon name="chevrondown" size={10} c="text-tertiary" />
           </Flex>
         </Anchor>
       </Menu.Target>
       <Menu.Dropdown miw="14rem">
-        <Menu.Label>{t`Groups`}</Menu.Label>
+        <Menu.Label>{t`View a group's permissions`}</Menu.Label>
         {userGroups.map((group) => (
           <Menu.Item
             key={group.id}

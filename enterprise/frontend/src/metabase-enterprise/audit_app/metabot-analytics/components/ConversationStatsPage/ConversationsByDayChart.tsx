@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
@@ -11,7 +12,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { VIEW_CONVERSATIONS } from "../../constants";
 import { useAuditTable } from "../../hooks/useAuditTable";
 
-import S from "./ConversationsByDayChart.module.css";
+import S from "./ChartCard.module.css";
 import {
   type UsageStatsMetric,
   applyDateFilter,
@@ -112,7 +113,9 @@ export function ConversationsByDayChart({
 
   return (
     <Card
-      className={S.visualization}
+      className={cx(S.visualization, {
+        [S.nonClickable]: !onDimensionClick,
+      })}
       withBorder
       shadow="none"
       px="lg"
