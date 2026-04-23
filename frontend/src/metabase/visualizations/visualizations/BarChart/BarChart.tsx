@@ -26,8 +26,11 @@ const BarViz: Omit<VisualizationDefinition, "isSensible" | "checkRenderable"> =
     },
   };
 
-Object.assign(BarChart, getCartesianChartDefinition(BarViz));
-
-export function BarChart(props: VisualizationProps) {
+function BarChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
+
+export const BarChart = Object.assign(
+  BarChartComponent,
+  getCartesianChartDefinition(BarViz),
+);

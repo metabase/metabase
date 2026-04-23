@@ -18,7 +18,7 @@ import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/Car
 import { SANKEY_CHART_DEFINITION } from "./chart-definition";
 import { useChartEvents } from "./events";
 
-export const SankeyChart = ({
+const SankeyChartComponent = ({
   rawSeries,
   settings,
   fontFamily,
@@ -84,4 +84,7 @@ export const SankeyChart = ({
   );
 };
 
-Object.assign(SankeyChart, SANKEY_CHART_DEFINITION);
+export const SankeyChart = Object.assign(
+  SankeyChartComponent,
+  SANKEY_CHART_DEFINITION,
+);

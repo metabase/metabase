@@ -53,6 +53,7 @@ import { TableInteractive } from "../../components/TableInteractive";
 import type {
   ColumnSettingDefinition,
   ComputedVisualizationSettings,
+  VisualizationDefinition,
   VisualizationProps,
 } from "../../types";
 
@@ -69,9 +70,9 @@ interface TableState {
 }
 
 export class Table extends Component<TableProps, TableState> {
-  static getUiName = () => t`Table`;
-  static identifier = "table";
-  static iconName = "table2";
+  static getUiName: VisualizationDefinition["getUiName"] = () => t`Table`;
+  static identifier: VisualizationDefinition["identifier"] = "table";
+  static iconName: VisualizationDefinition["iconName"] = "table2";
   static canSavePng = false;
 
   static minSize = getMinSize("table");

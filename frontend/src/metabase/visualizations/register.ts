@@ -44,6 +44,7 @@ export default function () {
   // @ts-expect-error: migrate Map to tsx
   registerVisualization(Map);
   registerVisualization(Funnel);
+  // @ts-expect-error: ObjectDetail uses its own OwnProps shape; migrate props to VisualizationProps
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
   registerVisualization(SankeyChart);
