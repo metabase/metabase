@@ -73,7 +73,7 @@ export function AdvisoryList({
             <Badge size="sm" className={S.countBadge}>
               {affecting.length}
             </Badge>
-            <Title order={4}>{t`Affecting your instance`}</Title>
+            <Title order={4}>{t`Issues impacting your instance`}</Title>
           </Group>
           <AdvisorySection
             advisories={affecting}
@@ -86,7 +86,7 @@ export function AdvisoryList({
         <Box>
           <Group align="normal">
             <Title order={4} mb="md">
-              {t`Issues not affecting your instance`}
+              {t`Issues not impacting your instance`}
             </Title>
             {onAcknowledgeAll && undismissedNotAffecting.length > 0 && (
               <Button
