@@ -5,7 +5,7 @@ import { useListDatabasesQuery } from "metabase/api";
 import { TreeTable, useTreeTableInstance } from "metabase/ui";
 import type { WorkspaceDatabaseDraft } from "metabase-types/api";
 
-import { type DatabaseMappingRow, getColumns, toMappingRow } from "./utils";
+import { type DatabaseMappingRow, getColumns, getRows } from "./utils";
 
 type DatabaseMappingListProps = {
   mappings: WorkspaceDatabaseDraft[];
@@ -22,7 +22,7 @@ export function DatabaseMappingList({
     [databasesResponse],
   );
 
-  const rows = useMemo(() => mappings.map(toMappingRow), [mappings]);
+  const rows = useMemo(() => getRows(mappings), [mappings]);
   const columns = useMemo(
     () => getColumns(availableDatabases),
     [availableDatabases],

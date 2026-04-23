@@ -84,24 +84,13 @@ export function WorkspaceStatusSection({
           {getStatusIcon(workspace)}
           <Text>{getStatusMessage(workspace)}</Text>
         </Group>
-        {isProvisioned ? (
-          <Button
-            variant="filled"
-            disabled={isInProgress}
-            onClick={handleUnprovision}
-          >
-            {getButtonLabel(workspace)}
-          </Button>
-        ) : (
-          <Button
-            variant="filled"
-            color="brand"
-            disabled={isInProgress}
-            onClick={handleProvision}
-          >
-            {getButtonLabel(workspace)}
-          </Button>
-        )}
+        <Button
+          variant={isProvisioned ? "default" : "outline"}
+          disabled={isInProgress}
+          onClick={isProvisioned ? handleUnprovision : handleProvision}
+        >
+          {getButtonLabel(workspace)}
+        </Button>
       </Group>
       {modalContent}
     </TitleSection>

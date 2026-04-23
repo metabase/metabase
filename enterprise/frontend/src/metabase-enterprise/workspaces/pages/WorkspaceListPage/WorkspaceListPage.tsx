@@ -10,13 +10,14 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { Button, Flex, Icon, Stack, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import * as Urls from "metabase/utils/urls";
-import { useListWorkspacesQuery } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
+
+import { useFetchWorkspaceList } from "../../hooks/use-fetch-workspace-list";
 
 import { WorkspaceList } from "./WorkspaceList";
 
 export function WorkspaceListPage() {
-  const { data: workspaces = [], error, isLoading } = useListWorkspacesQuery();
+  const { workspaces, error, isLoading } = useFetchWorkspaceList();
 
   if (error) {
     return <LoadingAndErrorWrapper loading={false} error={error} />;

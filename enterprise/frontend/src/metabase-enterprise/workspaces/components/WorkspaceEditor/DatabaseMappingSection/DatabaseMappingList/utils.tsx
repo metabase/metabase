@@ -57,8 +57,8 @@ export function getColumns(
 
 export const COLUMN_WIDTHS = [0.34, 0.33, 0.33];
 
-export function toMappingRow(
-  mapping: WorkspaceDatabaseDraft,
-): DatabaseMappingRow {
-  return { ...mapping, id: mapping.database_id };
+export function getRows(
+  mappings: WorkspaceDatabaseDraft[],
+): DatabaseMappingRow[] {
+  return mappings.map((mapping) => ({ ...mapping, id: mapping.database_id }));
 }
