@@ -2,7 +2,6 @@ import {
   type ListItem as BreakoutListItem,
   getBreakoutListItem,
 } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/BreakoutColumnList";
-import { useBreakoutQueryHandlers } from "metabase/query_builder/hooks";
 import { isNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -17,52 +16,59 @@ export interface SDKBreakoutItem extends BreakoutListItem {
 }
 
 export const useBreakoutData = (): SDKBreakoutItem[] => {
-  const { updateQuestion, ...interactiveQuestionContext } =
-    useSdkQuestionContext();
+  const {
+    updateAndNormalizeQuestion,
+    lastVisibleStageIndex: stageIndex,
+    ...interactiveQuestionContext
+  } = useSdkQuestionContext();
   const question = interactiveQuestionContext.question as Question;
-  const onQueryChange = (query: Lib.Query) => {
+  const onQueryChange = (nextQuery: Lib.Query) => {
     if (question) {
-      updateQuestion(question.setQuery(query), { run: true });
+      updateAndNormalizeQuestion(question.setQuery(nextQuery), { run: true });
     }
   };
 
   const query = question?.query();
-  const stageIndex = -1;
 
-  const { onUpdateBreakout, onRemoveBreakout, onReplaceBreakouts } =
-    useBreakoutQueryHandlers({ query, onQueryChange, stageIndex });
+  if (!query) {
+    return [];
+  }
+  const breakouts = Lib.breakouts(query, stageIndex);
 
-  const breakouts = query ? Lib.breakouts(query, stageIndex) : [];
+  return breakouts
+    .map((breakout) => getBreakoutListItem(query, stageIndex, breakout))
+    .filter(isNotNull)
+    .map((item, index) => {
+      const removeBreakout = () => {
+        if (item.breakout) {
+          const nextQuery = Lib.removeClause(query, stageIndex, item.breakout);
+          onQueryChange(nextQuery);
+        }
+      };
 
-  const items: BreakoutListItem[] = query
-    ? breakouts
-        .map((breakout) => getBreakoutListItem(query, stageIndex, breakout))
-        .filter(isNotNull)
-    : [];
+      const updateBreakout = (column: Lib.ColumnMetadata) => {
+        if (item.breakout) {
+          const nextQuery = Lib.replaceClause(
+            query,
+            stageIndex,
+            item.breakout,
+            column,
+          );
+          onQueryChange(nextQuery);
+        }
+      };
 
-  return items.map((item, index) => {
-    const removeBreakout = () => {
-      if (item.breakout) {
-        return onRemoveBreakout(item.breakout);
-      }
-    };
+      const replaceBreakoutColumn = (column: Lib.ColumnMetadata) => {
+        const nextQuery = Lib.replaceBreakouts(query, stageIndex, column);
+        onQueryChange(nextQuery);
+      };
 
-    const updateBreakout = (column: Lib.ColumnMetadata) => {
-      if (item.breakout) {
-        return onUpdateBreakout(item.breakout, column);
-      }
-    };
-
-    const replaceBreakoutColumn = (column: Lib.ColumnMetadata) => {
-      return onReplaceBreakouts(column);
-    };
-
-    return {
-      ...item,
-      breakoutIndex: index,
-      removeBreakout,
-      updateBreakout,
-      replaceBreakoutColumn,
-    };
-  });
+      return {
+        ...item,
+        breakoutIndex: index,
+        removeBreakout,
+        updateBreakout,
+        replaceBreakoutColumn,
+      };
+    });
 };
