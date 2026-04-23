@@ -747,7 +747,7 @@
                      #"You do not have permissions to run this query"
                      (run-forbidden-query)))))))))))
 
-(deftest cached-results-rff-preserves-fresh-accumulator-test
+(deftest ^:parallel cached-results-rff-preserves-fresh-accumulator-test
   (testing "On cache hit, the rff chain's accumulator (with any modifications from middlewares
             like update-viz-settings) must not be clobbered by the replayed cached final-metadata
             map. Before the fix, `([acc row] (vreset! final-metadata row))` returned the row,
@@ -756,9 +756,7 @@
           ;; An rff that injects a sentinel `:fresh` into metadata, the same shape
           ;; `update-viz-settings` uses to inject fresh viz-settings on cache hit.
           fresh-injecting-rff (fn [metadata]
-                                (let [inner (qp.reducible/default-rff
-                                             (assoc metadata :fresh "fresh-value"))]
-                                  inner))
+                                (qp.reducible/default-rff (assoc metadata :fresh "fresh-value")))
           rf ((cached-results-rff fresh-injecting-rff (byte-array 1))
               {:last-ran (t/zoned-date-time) :cache-version "v1" :cols [{:name "x"}]})
           ;; Simulate a cached replay: two actual row vectors, then the final cached
