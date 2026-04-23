@@ -1,10 +1,14 @@
 (ns metabase-enterprise.workspaces.api-test
   (:require
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws-core]
    [metabase-enterprise.workspaces.provisioning :as provisioning]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(use-fixtures :each (fn [f]
+                      (mt/with-premium-features #{:workspaces}
+                        (f))))
 
 (defn- ws-db-payload
   ([] (ws-db-payload {}))
