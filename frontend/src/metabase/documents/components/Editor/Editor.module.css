@@ -211,3 +211,56 @@
     border-radius: var(--mantine-radius-xs);
   }
 }
+
+.editorContent :global(.collaboration-carets__caret) {
+  /* Discrete border props preserve the extension's inline `border-color:
+     <user-color>` — the `border-left` shorthand would reset it to currentColor. */
+  position: relative;
+  border-color: var(--mb-color-brand);
+  border-left-width: 1.5px;
+  border-left-style: solid;
+  border-right-width: 1.5px;
+  border-right-style: solid;
+  margin-left: -1.5px;
+  margin-right: -1.5px;
+  pointer-events: none;
+  word-break: normal;
+  box-sizing: border-box;
+}
+
+.editorContent :global(.collaboration-carets__label) {
+  /* Fallback so chip is visible when extension didn't receive a user.color. */
+  background-color: var(--mb-color-brand);
+  position: absolute;
+  top: -1.4em;
+  left: -1.5px;
+  white-space: nowrap;
+  color: var(--mb-color-white);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 1px 6px;
+  border-radius: 4px 4px 4px 0;
+  user-select: none;
+  pointer-events: none;
+  /* Fade the label after the caret is idle. The extension remounts the widget
+     on each awareness tick, re-firing the animation so it stays visible while
+     the remote user is active. */
+  animation: collab-caret-label-fade 1s ease-out 3s forwards;
+}
+
+.editorContent
+  :global(.collaboration-carets__caret:hover .collaboration-carets__label) {
+  animation: none;
+  opacity: 1;
+}
+
+@keyframes collab-caret-label-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+.editorContent :global(.ProseMirror-yjs-selection) {
+  border-radius: 2px;
+}

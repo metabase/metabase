@@ -13,7 +13,7 @@ import type * as Y from "yjs";
 
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { getMentionsCache } from "metabase/documents/selectors";
-import { userColor } from "metabase/documents/utils/userColor";
+import { getAwarenessUser } from "metabase/documents/utils/awareness";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
 import type { State } from "metabase/redux/store";
@@ -183,12 +183,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
               Collaboration.configure({ document: ydoc, field: "default" }),
               CollaborationCaret.configure({
                 provider,
-                user: currentUser
-                  ? {
-                      name: currentUser.common_name ?? "User",
-                      color: userColor(currentUser.id),
-                    }
-                  : { name: "User", color: "#888888" },
+                user: getAwarenessUser(currentUser),
               }),
             ]
           : []),
@@ -218,6 +213,19 @@ export const Editor: React.FC<EditorProps> = React.memo(
       // without this dep.
       [collabEnabled],
     );
+
+    // Editor is built once per collab toggle, so if currentUser loads after
+    // mount the initial CollaborationCaret config captured a null user.
+    // Push to awareness on every change to recover.
+    useEffect(() => {
+      if (!provider || !currentUser) {
+        return;
+      }
+      provider.awareness?.setLocalStateField(
+        "user",
+        getAwarenessUser(currentUser),
+      );
+    }, [provider, currentUser]);
 
     // Handle content updates when initialContent changes. Skipped in collab mode —
     // the Y.Doc is the source of truth; setContent here would clobber it.
