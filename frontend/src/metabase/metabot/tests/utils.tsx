@@ -194,8 +194,7 @@ export function setup(
   // `authConfig` + `reduxStore` (e.g. `useMetabot().CurrentChart`) resolve in
   // this non-SDK test harness. Tests that specifically need a clean store
   // should cleanup() in their own afterEach.
-  const metabaseProviderPropsStore = ensureMetabaseProviderPropsStore();
-  metabaseProviderPropsStore.cleanup();
+  ensureMetabaseProviderPropsStore().cleanup();
   const seededStore = ensureMetabaseProviderPropsStore();
   seededStore.initialize({
     authConfig: {
