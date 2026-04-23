@@ -18,8 +18,8 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private job-key     (jobs/key "metabase-enterprise.data-complexity-score.task.complexity-score.job"))
-(def ^:private trigger-key (triggers/key "metabase-enterprise.data-complexity-score.task.complexity-score.trigger"))
+(def ^:private job-key     (jobs/key "metabase.task.data-complexity-score.job"))
+(def ^:private trigger-key (triggers/key "metabase.task.data-complexity-score.trigger"))
 
 (defn- current-fingerprint
   "String capturing everything that changes the meaning of an emitted score — mirror of the Snowplow
