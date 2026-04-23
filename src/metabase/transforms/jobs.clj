@@ -126,7 +126,7 @@
 (defn run-transforms!
   "Run a series of transforms and their dependencies.
 
-  Transforms are dispatched concurrently up to `transform-job-concurrency`, respecting the DAG:
+  Transforms are dispatched concurrently up to `transform-run-job-concurrency`, respecting the DAG:
   a transform is only started once all of its dependencies have succeeded. If a dependency
   failed, dependents are recorded as failures (transitively) without being executed.
 
@@ -134,7 +134,7 @@
   Returns a map with :status and a collection of :failures if failed."
   [run-id transform-ids-to-run {:keys [run-method start-promise user-id]}]
   (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
-        n           (max 1 (transforms.settings/transform-job-concurrency))
+        n           (max 1 (transforms.settings/transform-run-job-concurrency))
         succeeded   (volatile! #{})
         failed      (volatile! #{})
         in-flight   (volatile! #{})

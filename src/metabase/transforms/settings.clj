@@ -17,7 +17,7 @@
   :encryption :no
   :audit      :getter)
 
-(setting/defsetting transform-job-concurrency
+(setting/defsetting transform-run-job-concurrency
   (deferred-tru "Maximum number of transforms a single transform-job run may execute in parallel.")
   :type       :integer
   :visibility :internal

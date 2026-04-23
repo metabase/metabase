@@ -529,7 +529,7 @@
             live     (atom 0)
             max-live (atom 0)
             bump     (fn [] (let [n (swap! live inc)] (swap! max-live max n)))]
-        (mt/with-temporary-setting-values [transforms.settings/transform-job-concurrency 4]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-concurrency 4]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
                         jobs/run-transform! (fn [_run-id _run-method _user-id _transform]
                                               (bump)
@@ -543,7 +543,7 @@
       (let [plan  [{:id 1} {:id 2}]
             deps  {1 #{} 2 #{1}}
             order (atom [])]
-        (mt/with-temporary-setting-values [transforms.settings/transform-job-concurrency 4]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-concurrency 4]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
                         jobs/run-transform! (fn [_ _ _ transform]
                                               (when (= 1 (:id transform))
@@ -555,7 +555,7 @@
     (testing "Dependents of a failed transform are skipped transitively"
       (let [plan [{:id 1} {:id 2} {:id 3}]
             deps {1 #{} 2 #{1} 3 #{2}}]
-        (mt/with-temporary-setting-values [transforms.settings/transform-job-concurrency 4]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-concurrency 4]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
                         jobs/run-transform! (fn [_ _ _ transform]
                                               (when (= 1 (:id transform))
@@ -571,7 +571,7 @@
             live     (atom 0)
             max-live (atom 0)
             bump     (fn [] (let [n (swap! live inc)] (swap! max-live max n)))]
-        (mt/with-temporary-setting-values [transforms.settings/transform-job-concurrency 2]
+        (mt/with-temporary-setting-values [transforms.settings/transform-run-job-concurrency 2]
           (with-redefs [jobs/get-plan       (fn [_] {:order plan :deps deps})
                         jobs/run-transform! (fn [_ _ _ _]
                                               (bump)
