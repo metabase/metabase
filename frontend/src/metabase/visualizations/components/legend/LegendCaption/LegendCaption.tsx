@@ -137,12 +137,7 @@ export const LegendCaption = ({
           }
           maw="22em"
         >
-          <LegendDescriptionIcon
-            name="info"
-            className={cx(CS.hoverChild, CS.hoverChildSmooth)}
-            mt="3px"
-            mr="md"
-          />
+          <LegendDescriptionIcon name="info" mt="3px" mr="md" />
         </Tooltip>
       )}
       <LegendRightContent>
