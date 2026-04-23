@@ -7,9 +7,10 @@ import { t } from "ttag";
 import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
-import { useDispatch } from "metabase/redux";
-import { Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
+import { Button, Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
+import { useDispatch } from "metabase/utils/redux";
 
+import { useRefreshDataComplexityScoresMutation } from "../../api";
 import {
   VIEW_CONVERSATIONS,
   VIEW_GROUP_MEMBERS,
@@ -32,6 +33,7 @@ import {
   buildSourceBreakoutQuery,
   buildTenantBreakoutQuery,
 } from "./query-utils";
+import { DataComplexityCards } from "./DataComplexityCards";
 import type { ChartDataSources, ChartProps } from "./types";
 import { statsUrlStateConfig } from "./utils";
 
@@ -211,10 +213,12 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
 
   return (
     <MetabotAdminLayout fullWidth>
-      <SettingsPageWrapper mt="sm">
+      <SettingsPageWrapper mt="sm" title={t`Usage stats`}>
+        <DataComplexityHeader />
+        <DataComplexityCards />
         <Flex align="center" justify="space-between">
-          <Title order={2} display="flex" style={{ alignItems: "center" }}>
-            {t`Usage stats`}
+          <Title order={3} display="flex" style={{ alignItems: "center" }}>
+            {t`Usage metrics`}
           </Title>
 
           <ConversationFilters
@@ -314,5 +318,30 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         </SimpleGrid>
       </SettingsPageWrapper>
     </MetabotAdminLayout>
+  );
+}
+
+export function DataComplexityHeader() {
+  const [
+    refreshDataComplexityScores,
+    { isLoading: refreshDataComplexityScoresLoading },
+  ] = useRefreshDataComplexityScoresMutation();
+
+  return (
+    <Flex align="center" justify="space-between">
+      <Title order={3} display="flex" style={{ alignItems: "center" }}>
+        {t`Data complexity`}
+      </Title>
+
+      <Flex gap="sm" wrap="wrap" align="center">
+        <Button
+          variant="default"
+          onClick={() => refreshDataComplexityScores()}
+          loading={refreshDataComplexityScoresLoading}
+        >
+          {t`Refresh`}
+        </Button>
+      </Flex>
+    </Flex>
   );
 }

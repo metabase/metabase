@@ -1,9 +1,11 @@
 import { EnterpriseApi } from "metabase-enterprise/api/api";
+import { invalidateTags, tag } from "metabase-enterprise/api/tags";
 
 import type {
   ConversationDetail,
   ConversationsRequest,
   ConversationsResponse,
+  DataComplexityScoresResponse,
 } from "./types";
 
 export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
@@ -24,10 +26,30 @@ export const metabotAnalyticsApi = EnterpriseApi.injectEndpoints({
         url: `/api/ee/metabot-analytics/conversations/${id}`,
       }),
     }),
+    getDataComplexityScores: builder.query<DataComplexityScoresResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/ee/data-complexity-score/complexity",
+      }),
+      providesTags: () => [tag("data-complexity-scores")],
+    }),
+    refreshDataComplexityScores: builder.mutation<
+      DataComplexityScoresResponse,
+      void
+    >({
+      query: () => ({
+        method: "POST",
+        url: "/api/ee/data-complexity-score/complexity/refresh",
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [tag("data-complexity-scores")]),
+    }),
   }),
 });
 
 export const {
   useListMetabotConversationsQuery,
   useGetMetabotConversationQuery,
+  useGetDataComplexityScoresQuery,
+  useRefreshDataComplexityScoresMutation,
 } = metabotAnalyticsApi;
