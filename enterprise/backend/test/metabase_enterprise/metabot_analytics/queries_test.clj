@@ -213,7 +213,8 @@
         (is (= "create_sql_query" (-> rows first :tool)))))))
 
 (deftest slackbot-shape-blocks-are-filtered-test
-  (testing "slackbot persists :_type 'TOOL_CALL' blocks; the :type filter excludes them"
+  (testing "legacy slackbot rows wrote :_type 'TOOL_CALL' blocks with no recoverable structured-output;
+            the :type filter excludes them and the extractor yields nothing for those historical rows"
     (with-stubbed-tables! []
       (fn []
         (let [rows (analytics.queries/messages->generated-queries
@@ -228,6 +229,44 @@
                               :tool_call_id "slack-call-1"
                               :content      "<result>...</result>"}]}])]
           (is (= [] rows)))))))
+
+(deftest slackbot-native-shape-blocks-are-extracted-test
+  (testing "going-forward slackbot rows are persisted via store-native-parts!, so they carry
+            the same :type 'tool-input'/'tool-output' block shape as in-app rows and the
+            analytics extractor handles them identically"
+    (with-stubbed-tables! ["orders"]
+      (fn []
+        (let [data [{:type "tool-input"
+                     :id "call-search"
+                     :function "search"
+                     :arguments {:query "orders"}}
+                    {:type "tool-output"
+                     :id "call-search"
+                     :result {:output "<result>orders</result>"}}
+                    {:type "tool-input"
+                     :id "call-sql"
+                     :function "create_sql_query"
+                     :arguments {:database_id 1 :sql_query "SELECT 1 FROM orders"}}
+                    {:type "tool-output"
+                     :id "call-sql"
+                     :result {:output            "<result>sql</result>"
+                              :structured-output {:query-id      "qid-slack"
+                                                  :query-content "SELECT 1 FROM orders"
+                                                  :query         {:database 1
+                                                                  :type     :native
+                                                                  :native   {:query "SELECT 1 FROM orders"}}
+                                                  :database      1}}}]
+              message {:id 200 :data data}]
+          (testing "count-tool-invocations reaches tool names directly by :function"
+            (is (= 1 (analytics.queries/count-tool-invocations [message] "search")))
+            (is (= 1 (analytics.queries/count-tool-invocations
+                      [message] analytics.queries/new-query-tool-names))))
+          (testing "messages->generated-queries surfaces the SQL tool call"
+            (let [rows (analytics.queries/messages->generated-queries [message])]
+              (is (= 1 (count rows)))
+              (is (= "create_sql_query" (-> rows first :tool)))
+              (is (= "qid-slack" (-> rows first :query_id)))
+              (is (= "SELECT 1 FROM orders" (-> rows first :sql))))))))))
 
 ;;; ------------------------- aggregation -------------------------
 
