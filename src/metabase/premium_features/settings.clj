@@ -96,6 +96,9 @@
          ~docstring
          ~@(mapcat identity options)))))
 
+(define-premium-feature workspaces
+  "x")
+
 (define-premium-feature hide-embed-branding?
   "Logo Removal and Full App Embedding. Should we hide the 'Powered by Metabase' attribution on the embedding pages?
    `true` if we have a valid premium embedding token."
