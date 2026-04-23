@@ -84,8 +84,7 @@ describe("MetabotFeatureAccessPage", () => {
     HTMLElement.prototype.getBoundingClientRect;
 
   beforeAll(() => {
-    // @tanstack/react-virtual needs a non-zero viewport to render rows in JSDOM.
-    // See https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
+    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
     HTMLElement.prototype.getBoundingClientRect = jest
       .fn()
       .mockReturnValue({ height: 400, width: 800, top: 0, left: 0 });

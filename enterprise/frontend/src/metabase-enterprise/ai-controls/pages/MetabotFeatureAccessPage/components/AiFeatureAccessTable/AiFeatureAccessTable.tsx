@@ -2,7 +2,11 @@ import { useMemo } from "react";
 import { c, t } from "ttag";
 
 import { Box, Card, TreeTable } from "metabase/ui";
-import { isDefaultGroup } from "metabase/utils/groups";
+import {
+  isAdminGroup,
+  isDefaultGroup,
+  isDefaultTenantGroup,
+} from "metabase/utils/groups";
 
 import { AdvancedGroupModeButton } from "./AdvancedGroupMode";
 import S from "./AiFeatureAccessTable.module.css";
@@ -16,21 +20,18 @@ export function AiFeatureAccessTable(props: AiFeatureAccessTableProps) {
   const visibleGroups = useMemo(() => {
     if (advanced) {
       return groups.filter(
-        (g) =>
-          !isDefaultGroup(g) && g.magic_group_type !== "all-external-users",
+        (group) => !isDefaultGroup(group) && !isDefaultTenantGroup(group),
       );
     }
 
     if (activeTab === "tenant-groups") {
       return groups.filter(
-        (g) =>
-          g.magic_group_type === "admin" ||
-          g.magic_group_type === "all-external-users",
+        (group) => isAdminGroup(group) || isDefaultTenantGroup(group),
       );
     }
 
     return groups.filter(
-      (g) => g.magic_group_type === "admin" || isDefaultGroup(g),
+      (group) => isAdminGroup(group) || isDefaultGroup(group),
     );
   }, [groups, advanced, activeTab]);
 
