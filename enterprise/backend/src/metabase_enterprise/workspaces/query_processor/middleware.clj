@@ -16,6 +16,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.sql-tools.core :as sql-tools]))
 
 (set! *warn-on-reflection* true)
@@ -28,6 +29,9 @@
   :feature :workspaces
   [{{remapping :workspace-remapping} :middleware :as query}]
   (cond
+    qp.middleware.enterprise/*skip-workspace-remapping?*
+    query
+
     ;; Not in a workspace that requires remapping, or no tables to remap.
     (or (not remapping) (empty? (:tables remapping)))
     query
@@ -63,7 +67,7 @@
    schema before the final table reference resolves to the workspace copy."
   :feature :workspaces
   [{db-id :database, mp :lib/metadata, :as query}]
-  (let [mappings (when db-id
+  (let [mappings (when (and db-id (not qp.middleware.enterprise/*skip-workspace-remapping?*))
                    (ws.table-remapping/all-mappings-for-db db-id))]
     (cond
       (empty? mappings)

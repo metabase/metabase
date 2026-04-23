@@ -292,3 +292,88 @@
                                                 :to_schema       "ws_feature_off"
                                                 :to_table_name   "orders_copy"}]
           (is (= query (qp.middleware.enterprise/apply-workspace-table-remapping query))))))))
+
+(deftest skip-workspace-remapping-var-short-circuits-mbql-test
+  (testing "apply-workspace-table-remapping is a no-op when *skip-workspace-remapping?* is bound true, even with matching rows"
+    (let [mp       (mt/metadata-provider)
+          db-id    (mt/id)
+          orders   (lib.metadata/table mp (mt/id :orders))
+          {from-schema :schema
+           from-name   :name} orders
+          query    (lib/query mp orders)]
+      (mt/with-temp [:model/TableRemapping _ {:database_id     db-id
+                                              :from_schema     from-schema
+                                              :from_table_name from-name
+                                              :to_schema       "ws_skip_test"
+                                              :to_table_name   "orders_copy"}]
+        (binding [qp.middleware.enterprise/*skip-workspace-remapping?* true]
+          (let [remapped (ws.qp.middleware/apply-workspace-table-remapping query)
+                sql      (:query (qp.compile/compile remapped))]
+            (testing "query is returned structurally unchanged"
+              (is (= query remapped)))
+            (testing "compiled SQL references the original schema/table, not a workspace copy"
+              (is (str/includes? sql from-name))
+              (is (not (str/includes? sql "ws_skip_test")))
+              (is (not (str/includes? sql "orders_copy"))))))))))
+
+(deftest skip-workspace-remapping-var-short-circuits-native-test
+  (testing "native branch of apply-workspace-table-remapping is a no-op when the skip var is true"
+    (binding [driver/*driver* :h2]
+      (let [mp        (mt/metadata-provider)
+            db-id     (mt/id)
+            orders    (lib.metadata/table mp (mt/id :orders))
+            {from-schema :schema
+             from-name   :name} orders
+            sql-input (str "SELECT * FROM \"" from-schema "\".\"" from-name "\"")
+            query     (lib/native-query mp sql-input)]
+        (mt/with-temp [:model/TableRemapping _ {:database_id     db-id
+                                                :from_schema     from-schema
+                                                :from_table_name from-name
+                                                :to_schema       "ws_skip_test"
+                                                :to_table_name   "orders_copy"}]
+          (binding [qp.middleware.enterprise/*skip-workspace-remapping?* true]
+            (let [remapped (ws.qp.middleware/apply-workspace-table-remapping query)]
+              (is (= query remapped))
+              (is (= sql-input (get-in remapped [:stages 0 :native]))))))))))
+
+(deftest skip-workspace-remapping-var-short-circuits-legacy-test
+  (testing "apply-workspace-remapping (legacy) is a no-op when the skip var is true, even with a :workspace-remapping middleware key"
+    (binding [driver/*driver* :h2]
+      (let [mp       (mt/metadata-provider)
+            orders   (lib.metadata/table mp (mt/id :orders))
+            {from-schema :schema
+             from-name   :name} orders
+            sql-input (str "SELECT * FROM \"" from-schema "\".\"" from-name "\"")
+            query    (-> (lib/native-query mp sql-input)
+                         (assoc-in [:middleware :workspace-remapping]
+                                   {:tables {{:schema from-schema :table from-name}
+                                             {:schema "ws_skip_test" :table "orders_copy"}}}))]
+        (binding [qp.middleware.enterprise/*skip-workspace-remapping?* true]
+          (let [remapped (ws.qp.middleware/apply-workspace-remapping query)]
+            (is (= query remapped))
+            (is (= sql-input (get-in remapped [:stages 0 :native])))))))))
+
+(deftest dataset-native-endpoint-returns-presentation-identifiers-test
+  (testing "POST /api/dataset/native returns the presentation (pre-remap) schema/table, not the physical workspace copy"
+    (mt/with-premium-features #{:workspaces}
+      (let [mp        (mt/metadata-provider)
+            db-id     (mt/id)
+            orders    (lib.metadata/table mp (mt/id :orders))
+            {from-schema :schema
+             from-name   :name} orders
+            to-schema "ws_native_endpoint_test"
+            to-name   "orders_copy"]
+        (mt/with-temp [:model/TableRemapping _ {:database_id     db-id
+                                                :from_schema     from-schema
+                                                :from_table_name from-name
+                                                :to_schema       to-schema
+                                                :to_table_name   to-name}]
+          (let [response (mt/user-http-request :crowberto :post 200 "dataset/native"
+                                               (assoc (mt/mbql-query orders {:limit 1})
+                                                      :pretty false))
+                sql      (:query response)]
+            (testing "compiled SQL references the presentation identifiers the user authored against"
+              (is (str/includes? sql from-name)))
+            (testing "compiled SQL does not leak the physical workspace-isolated identifiers"
+              (is (not (str/includes? sql to-schema)))
+              (is (not (str/includes? sql to-name))))))))))

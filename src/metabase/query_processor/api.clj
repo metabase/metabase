@@ -25,6 +25,7 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.schema :as qp.schema]
@@ -205,11 +206,15 @@
                                            [:pretty   {:default true} [:maybe :boolean]]]]
   (model-persistence/with-persisted-substituion-disabled
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
-    (let [driver (driver.u/database->driver database)
-          prettify (partial driver/prettify-native-form driver)
-          compiled (qp.compile/compile-with-inline-parameters query)]
-      (cond-> compiled
-        pretty (update :query prettify)))))
+    ;; Show the presentation identifiers the user authored against (e.g. `analytics.real_table`) rather
+    ;; than the physical workspace-isolated identifiers (`mb__isolation_…`). Safe because this endpoint
+    ;; does not execute the query; it just returns the compiled SQL for display.
+    (binding [qp.middleware.enterprise/*skip-workspace-remapping?* true]
+      (let [driver (driver.u/database->driver database)
+            prettify (partial driver/prettify-native-form driver)
+            compiled (qp.compile/compile-with-inline-parameters query)]
+        (cond-> compiled
+          pretty (update :query prettify))))))
 
 ;; Hackathon code imitating a subset of metabase-enterprise.dependencies.native-validation.
 
