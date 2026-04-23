@@ -8,7 +8,7 @@
    [metabase.collections-rest.settings :as collections-rest.settings]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
-   [metabase.collections.test-utils :refer [without-library]]
+   [metabase.collections.test-utils :refer [with-library-not-synced without-library]]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -2731,6 +2731,32 @@
               "Root collection without parent should have nil namespace when not specified")
           (is (= "snippets" (:namespace root-collection-with-ns))
               "Root collection should use explicitly provided namespace"))))))
+
+(deftest create-child-collection-of-library-collection-test
+  (testing "POST /api/collection"
+    (testing "Child collection of library collection should inherit the :type"
+      (mt/with-model-cleanup [:model/Collection]
+        (collection/create-library-collection!)
+        (with-library-not-synced
+          (doseq [[entity-id collection-type] [[@#'collection/library-data-entity-id    "library-data"]
+                                               [@#'collection/library-metrics-entity-id "library-metrics"]]]
+            (let [;; Create a parent collection with snippets namespace
+                  lib-root         (t2/select-one :model/Collection :entity_id entity-id)
+                  child-collection (mt/user-http-request :crowberto :post 200 "collection"
+                                                       ;; Deliberately not setting `:type` here - it's automatic.
+                                                         {:name      "Child Collection"
+                                                          :parent_id (u/the-id lib-root)})
+                  child-id         (:id child-collection)]
+              (is (= collection-type (:type child-collection))
+                  "Children of the Library's magic collections inherit their :type")
+              (is (=? {:id   number?
+                       :name "Grandchild Collection"
+                       :type collection-type}
+                      (mt/user-http-request :crowberto :post 200 "collection"
+                                          ;; Likewise, deliberately no `:type`.
+                                            {:name      "Grandchild Collection"
+                                             :parent_id child-id}))
+                  "Grandchild collection should also inherit the :type of their non-magic parent"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUT /api/collection/:id                                             |
