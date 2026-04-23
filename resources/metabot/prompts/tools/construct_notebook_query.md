@@ -94,6 +94,15 @@ order-by:
   - [desc, {}, [field, {}, [Sample, PUBLIC, ORDERS, CREATED_AT]]]
 ```
 
+**Order by an aggregation** — use the literal aggregation expression in `order-by`; we will rewrite it to an aggregation reference for you. Always re-state the aggregation **identically** to how it appears in the `aggregation:` list (same operator, same args, options can be `{}`):
+```yaml
+aggregation:
+  - [sum, {}, [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]]
+order-by:
+  - [desc, {}, [sum, {}, [field, {}, [Sample, PUBLIC, ORDERS, TOTAL]]]]
+```
+The inner `order-by` clause must match one of the entries in `aggregation:`. If it doesn't match anything (e.g. you ordered by `[avg, ...]` but only added `[sum, ...]`), you'll get a validation error — add the missing aggregation, or order by the matching one.
+
 **Limit:**
 ```yaml
 limit: 50

@@ -206,6 +206,126 @@
         (assoc "database" db-name)))))
 
 ;;; ============================================================
+;;; Pass 2.7 -- rewrite inline aggregation expressions in `order-by` to aggregation refs
+;;;
+;;; Background: when the user asks for something like "top categories by total revenue", the
+;;; LLM tends to write `order-by` by re-stating the aggregation expression inline:
+;;;
+;;;   aggregation: [[sum, {}, [field, {}, [..., TOTAL]]]]
+;;;   order-by:    [[desc, {}, [sum, {}, [field, {}, [..., TOTAL]]]]]   # <-- inline copy
+;;;
+;;; In MBQL 5 / legacy MBQL the `order-by` direction must wrap an aggregation **reference**,
+;;; not the aggregation expression itself. The `lib.normalize` step accepts the inline form
+;;; structurally, but `lib/->legacy-MBQL` produces a query that fails legacy-schema validation
+;;; the moment something downstream re-loads it (e.g. when the chart is opened, the QP
+;;; round-trips through legacy MBQL and explodes with `Invalid output: {:query {:order-by ...}}`).
+;;;
+;;; This pass detects the pattern, structurally matches each `order-by` inner clause against
+;;; the stage's `aggregation` list (ignoring options-map differences), and:
+;;;   * stamps a UUID into the matching aggregation's options (if it doesn't already have one);
+;;;   * replaces the inline `order-by` aggregation with `["aggregation" {} "<that-uuid>"]`.
+;;;
+;;; This does NOT introduce general placeholder-UUID handling (Phase 2 step 10 — `@agg-N`
+;;; references); we only resolve the very specific "order-by re-states the aggregation inline"
+;;; mistake. If the LLM writes a `["aggregation" {} "..."]` ref directly, we leave it alone.
+;;; ============================================================
+
+(defn- strip-clause-options
+  "Recursively remove the options map (slot at position 1) from every clause-like vector in
+  `form`. Used as a structural-equality key so we can match an inline `order-by` aggregation
+  against the stage's `aggregation` entry without being thrown off by `lib/uuid` differences
+  or unrelated option keys.
+
+  Walks via `postwalk` and uses the same `clause-like?` predicate as the options-insertion
+  pass, so map-entries, FK-paths, and non-clause vectors are left alone."
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (and (vector? node)
+              (not (map-entry? node))
+              (clause-like? node)
+              (>= (count node) 2)
+              (map? (nth node 1)))
+       (into [(first node)] (subvec node 2))
+       node))
+   form))
+
+(defn- ensure-aggregation-uuid
+  "Return a tuple `[stamped-aggregation uuid]`. If the aggregation already has a `lib/uuid` in
+  its options, reuse it; otherwise generate one and assoc it in. Always returns the UUID for
+  use in the corresponding aggregation reference."
+  [aggregation]
+  (let [opts (when (and (vector? aggregation) (>= (count aggregation) 2) (map? (nth aggregation 1)))
+               (nth aggregation 1))
+        existing (get opts "lib/uuid")
+        uuid     (or existing (str (random-uuid)))]
+    (if existing
+      [aggregation uuid]
+      [(assoc aggregation 1 (assoc (or opts {}) "lib/uuid" uuid)) uuid])))
+
+(defn- aggregation-ref-clause?
+  "True if `clause` is already an `[\"aggregation\" {opts} \"<uuid>\"]` reference. We never
+  rewrite these."
+  [clause]
+  (and (vector? clause)
+       (>= (count clause) 3)
+       (= "aggregation" (first clause))))
+
+(defn- order-by-direction-clause?
+  "True if `clause` is `[\"asc\" {} <inner>]` or `[\"desc\" {} <inner>]`."
+  [clause]
+  (and (vector? clause)
+       (>= (count clause) 3)
+       (contains? #{"asc" "desc"} (first clause))))
+
+(defn- rewrite-order-by-inline-aggs-in-stage
+  "Apply the inline-agg-in-`order-by` rewrite to a single string-keyed stage map. Returns the
+  updated stage. No-op when the stage has no `order-by` or no `aggregation`."
+  [stage]
+  (let [aggs    (get stage "aggregation")
+        ord     (get stage "order-by")]
+    (if-not (and (vector? aggs) (seq aggs) (vector? ord) (seq ord))
+      stage
+      ;; Build a structural-key → index lookup over the aggregations once.
+      (let [agg-key->idx (into {}
+                               (map-indexed (fn [i a] [(strip-clause-options a) i]))
+                               aggs)
+            ;; Mutable-style accumulators: walk order-by, simultaneously collecting any
+            ;; aggregations that need a UUID stamped in.
+            *aggs* (atom aggs)
+            new-ord
+            (mapv
+             (fn [direction-clause]
+               (if-not (order-by-direction-clause? direction-clause)
+                 direction-clause
+                 (let [inner (nth direction-clause 2)]
+                   (cond
+                     ;; Already an aggregation ref — leave it alone.
+                     (aggregation-ref-clause? inner)
+                     direction-clause
+
+                     ;; Inline aggregation that matches one of the stage's aggregations.
+                     (and (vector? inner)
+                          (contains? agg-key->idx (strip-clause-options inner)))
+                     (let [idx (get agg-key->idx (strip-clause-options inner))
+                           [stamped uuid] (ensure-aggregation-uuid (nth @*aggs* idx))]
+                       (swap! *aggs* assoc idx stamped)
+                       (assoc direction-clause 2 ["aggregation" {} uuid]))
+
+                     :else
+                     direction-clause))))
+             ord)]
+        (assoc stage "aggregation" @*aggs* "order-by" new-ord)))))
+
+(defn- rewrite-order-by-inline-aggs*
+  "Top-level pass for inline-aggregation-in-order-by repair. Walks every stage in the query
+  (not just `stages[0]`) since the same mistake can appear in multi-stage queries."
+  [query]
+  (if-not (and (map? query) (vector? (get query "stages")))
+    query
+    (update query "stages" #(mapv rewrite-order-by-inline-aggs-in-stage %))))
+
+;;; ============================================================
 ;;; Pass 3 -- auto-wire `source-field` for implicit joins
 ;;;
 ;;; When a field clause references a field on a table *other* than the stage's
@@ -390,18 +510,25 @@
        in the query to match the metadata provider's actual database name. This decouples the
        LLM-authored DB name (which often follows the prompt examples literally) from the real
        DB the query will run against — the MP is the source of truth.
-    4. auto-wire `source-field` on field clauses that reference a foreign table via a single
+    4. rewrite inline aggregation expressions in `order-by` to aggregation references when
+       they match an aggregation in the same stage's `aggregation:` list (synthesising the
+       referenced aggregation's `lib/uuid` if needed).
+    5. auto-wire `source-field` on field clauses that reference a foreign table via a single
        unambiguous FK on the source table (implicit-join resolution).
 
-  Passes 3 and 4 require `mp` (a `MetadataProvider`). They are best-effort no-ops when `mp`
+  Passes 3 and 5 require `mp` (a `MetadataProvider`). They are best-effort no-ops when `mp`
   can't resolve the relevant pieces (so the subsequent validate/resolve stages can surface the
   real error with their own, better messages). Hard FK errors (`:no-fk-path`, `:ambiguous-fk`)
   are raised as `:agent-error?` ex-info so the tool wrapper can relay them to the LLM.
 
-  Guaranteed to be **idempotent**: `(= (repair mp q) (repair mp (repair mp q)))`."
+  Guaranteed to be **idempotent**: `(= (repair mp q) (repair mp (repair mp q)))`. Pass 4
+  satisfies idempotency by stamping a deterministic-once UUID into the matching aggregation
+  (subsequent runs reuse it) and by leaving existing `[\"aggregation\" {} \"<uuid>\"]` refs
+  alone."
   [mp parsed]
   (let [db-name (when mp (:name (lib.metadata/database mp)))]
     (-> parsed
         normalize-shape*
         (rewrite-database-name* db-name)
+        rewrite-order-by-inline-aggs*
         (resolve-implicit-joins* mp))))

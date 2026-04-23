@@ -12,6 +12,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.tools.construct :as construct]
    [metabase.util.yaml :as yaml]))
@@ -203,7 +204,11 @@
                                                        ["field" {}
                                                         ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
                                       "breakout"     [["field" {}
-                                                       ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]})
+                                                       ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                      "order-by"     [["desc" {}
+                                                       ["sum" {}
+                                                        ["field" {}
+                                                         ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]})
               result   (try
                          (construct/execute-representations-query
                           {:type "table" :id 10}
@@ -222,6 +227,68 @@
                 (is (= :mbql/query (:lib/type q)))
                 (is (= 1 (:database q)))
                 (is (= 10 (get-in q [:stages 0 :source-table])))))))))))
+
+(deftest llm-orders-by-inline-aggregation-reproducer-test
+  (testing (str "Reproducer: when the LLM writes `order-by` by re-stating the aggregation\n"
+                "expression inline (`[desc, {}, [sum, {}, [field, {}, FK]]]`) instead of using\n"
+                "an aggregation reference, the construct call appears to succeed but the\n"
+                "resulting query is unrunnable: the legacy-MBQL form has an inline aggregation\n"
+                "in `:order-by`, which legacy MBQL rejects. Triggered by the natural-language\n"
+                "request 'total revenue per product category' \u2014 the LLM adds a sort by\n"
+                "revenue desc and writes the order-by inline.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [yaml-str (query-yaml
+                        {"lib/type" "mbql/query"
+                         "database" "Sample"
+                         "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                      "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                      "aggregation"  [["sum" {}
+                                                       ["field" {}
+                                                        ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
+                                      "breakout"     [["field" {}
+                                                       ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                      "order-by"     [["desc" {}
+                                                       ["sum" {}
+                                                        ["field" {}
+                                                         ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]})
+              ;; Today: `execute-representations-query` succeeds quietly here. The crash
+              ;; happens later, when downstream callers (chart re-load, normalize, QP) try to
+              ;; round-trip the query through legacy MBQL.
+              result   (try
+                         (construct/execute-representations-query
+                          {:type "table" :id 10}
+                          nil
+                          yaml-str)
+                         (catch clojure.lang.ExceptionInfo e e))]
+          (testing "the pipeline produces a runnable query (not just an apparently-resolved one)"
+            (is (not (instance? clojure.lang.ExceptionInfo result))
+                (str "Pipeline failed with: "
+                     (when (instance? clojure.lang.ExceptionInfo result)
+                       (pr-str {:msg (ex-message result) :data (ex-data result)}))))
+            (when-not (instance? clojure.lang.ExceptionInfo result)
+              (let [q          (get-in result [:structured-output :query])
+                    ;; Round-trip through legacy is the gate the production failure hit.
+                    legacy     #_{:clj-kondo/ignore [:discouraged-var]}
+                    (lib/->legacy-MBQL q)
+                    rebuilt    (try (lib/query mp legacy)
+                                    (catch clojure.lang.ExceptionInfo e e))]
+                (testing "order-by uses an aggregation reference, not an inline aggregation"
+                  ;; In MBQL 5: `[:aggregation {} \"<uuid>\"]`. Whatever shape we settle on, an
+                  ;; inline `[:sum [:field ...]]` (a stage-aggregation expression) must NOT
+                  ;; appear inside `:order-by`.
+                  (is (not= :sum
+                            (let [first-ord (first (get-in q [:stages 0 :order-by]))
+                                  ;; first-ord is `[:desc {} <inner>]`; `nth ord 2` is the inner clause
+                                  inner     (when (and (vector? first-ord) (>= (count first-ord) 3))
+                                              (nth first-ord 2))]
+                              (when (vector? inner) (first inner))))
+                      "order-by inner clause should be an aggregation ref, not :sum"))
+                (testing "legacy round-trip succeeds (would fail in production with :order-by [:sum ...])"
+                  (is (not (instance? clojure.lang.ExceptionInfo rebuilt))
+                      (str "legacy-roundtrip failed: "
+                           (when (instance? clojure.lang.ExceptionInfo rebuilt)
+                             (ex-message rebuilt)))))))))))))
 
 (deftest repair-fills-missing-pieces-test
   (testing "LLM-style YAML missing lib/types and {} options still resolves after repair"

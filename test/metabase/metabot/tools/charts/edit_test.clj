@@ -116,6 +116,47 @@
             (is (= query
                    (get-in new-chart-in-memory [:queries 0])))))))))
 
+(deftest construct-notebook-query-llm-orders-by-inline-aggregation-end-to-end-test
+  (testing (str "End-to-end regression for the inline-aggregation-in-order-by failure: the\n"
+                "LLM writes `order-by: [[desc, {}, [sum, {}, [field, {}, FK]]]]` re-stating\n"
+                "the aggregation expression. Repair must rewrite this into an aggregation\n"
+                "reference so the legacy round-trip on the resulting query succeeds.")
+    (mt/with-current-user (test.users/user->id :crowberto)
+      (let [query-data {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["sum" {}
+                                                      ["field" {}
+                                                       ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
+                                     "breakout"     [["field" {}
+                                                      ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                     "order-by"     [["desc" {}
+                                                      ["sum" {}
+                                                       ["field" {}
+                                                        ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
+            query-yaml (yaml/generate-string query-data)
+            result (tools.construct/construct-notebook-query-tool
+                    {:source_entity {:type "table" :id (mt/id :orders)}
+                     :query         query-yaml
+                     :visualization {:chart_type "bar"}})
+            query (get-in result [:structured-output :query])]
+        (testing "order-by inner clause is now an aggregation reference, not :sum"
+          (let [first-ord (first (get-in query [:stages 0 :order-by]))
+                inner     (when (and (vector? first-ord) (>= (count first-ord) 3))
+                            (nth first-ord 2))]
+            (is (= :aggregation (first inner)))))
+        (testing "query compiles AND executes against the real sample DB"
+          ;; The original bug surfaced when the chart was re-loaded and the QP round-tripped
+          ;; through legacy MBQL. `qp/process-query` exercises the same path.
+          (let [qp-result (qp/process-query query)
+                rows      (mt/rows qp-result)]
+            (is (seq rows) "expected at least one row from the grouped+ordered query")
+            ;; Each row is [category, sum]. Sums should be in descending order.
+            (let [sums (mapv second rows)]
+              (is (= sums (vec (reverse (sort sums))))
+                  "sums should be in descending order"))))))))
+
 (deftest construct-notebook-query-llm-uses-prompt-db-name-end-to-end-test
   (testing (str "End-to-end regression for the production failure: the LLM writes\n"
                 "`database: Sample` (the prompt example name) against the real\n"
@@ -133,7 +174,11 @@
                                                       ["field" {}
                                                        ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
                                      "breakout"     [["field" {}
-                                                      ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}
+                                                      ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]
+                                     "order-by"     [["desc" {}
+                                                      ["sum" {}
+                                                       ["field" {}
+                                                        ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
             query-yaml (yaml/generate-string query-data)
             result (tools.construct/construct-notebook-query-tool
                     {:source_entity {:type "table" :id (mt/id :orders)}

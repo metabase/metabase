@@ -215,6 +215,151 @@
       (is (= once twice)))))
 
 ;;; ============================================================
+;;; Pass 2.7 — rewrite inline aggregations in `order-by` to aggregation refs
+;;;
+;;; The LLM tends to write `order-by: [[desc, {}, [sum, {}, [field, {}, FK]]]]`, re-stating
+;;; the aggregation expression inline. The lib stack accepts this in MBQL 5 form but the
+;;; legacy round-trip (which happens whenever the chart is later re-loaded) rejects it.
+;;; Repair detects the pattern and rewrites it to a UUID-based aggregation reference,
+;;; stamping the matching aggregation's `lib/uuid` if needed.
+;;; ============================================================
+
+(defn- uuid-string? [x]
+  (and (string? x)
+       (try (java.util.UUID/fromString x) true (catch Exception _ false))))
+
+(defn- agg-uuid-of [stage idx]
+  (get-in stage ["aggregation" idx 1 "lib/uuid"]))
+
+(deftest rewrite-order-by-inline-agg-happy-path-test
+  (testing "inline aggregation in order-by gets rewritten to an aggregation ref"
+    (let [input    {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  [["sum" {}
+                                                  ["field" {}
+                                                   ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
+                                 "order-by"     [["desc" {}
+                                                  ["sum" {}
+                                                   ["field" {}
+                                                    ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
+          repaired (repair/repair trivial-mp input)
+          stage    (get-in repaired ["stages" 0])
+          agg-uuid (agg-uuid-of stage 0)]
+      (testing "the matched aggregation got a lib/uuid stamped into its options"
+        (is (uuid-string? agg-uuid)))
+      (testing "order-by inner clause is now [\"aggregation\" {} <that-uuid>]"
+        (is (= ["aggregation" {} agg-uuid]
+               (get-in stage ["order-by" 0 2])))))))
+
+(deftest rewrite-order-by-multiple-aggregations-test
+  (testing "order-by entries match the right aggregation by structural equality"
+    (let [input    {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  [["sum" {}
+                                                  ["field" {}
+                                                   ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+                                                 ["count" {}]]
+                                 "order-by"     [["desc" {} ["count" {}]]
+                                                 ["asc" {}
+                                                  ["sum" {}
+                                                   ["field" {}
+                                                    ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
+          repaired (repair/repair trivial-mp input)
+          stage    (get-in repaired ["stages" 0])
+          sum-uuid (agg-uuid-of stage 0)
+          cnt-uuid (agg-uuid-of stage 1)]
+      (is (uuid-string? sum-uuid))
+      (is (uuid-string? cnt-uuid))
+      (is (not= sum-uuid cnt-uuid) "each aggregation gets its own uuid")
+      (is (= ["aggregation" {} cnt-uuid] (get-in stage ["order-by" 0 2]))
+          "first order-by (count) refers to the count aggregation")
+      (is (= ["aggregation" {} sum-uuid] (get-in stage ["order-by" 1 2]))
+          "second order-by (sum TOTAL) refers to the sum aggregation"))))
+
+(deftest rewrite-order-by-reuses-existing-uuid-test
+  (testing "if the matching aggregation already has a lib/uuid, reuse it"
+    (let [existing-uuid "11111111-2222-3333-4444-555555555555"
+          input    {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  [["sum" {"lib/uuid" existing-uuid}
+                                                  ["field" {}
+                                                   ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
+                                 "order-by"     [["desc" {}
+                                                  ["sum" {}
+                                                   ["field" {}
+                                                    ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
+          repaired (repair/repair trivial-mp input)
+          stage    (get-in repaired ["stages" 0])]
+      (is (= existing-uuid (agg-uuid-of stage 0))
+          "the pre-existing uuid is preserved")
+      (is (= ["aggregation" {} existing-uuid] (get-in stage ["order-by" 0 2]))))))
+
+(deftest rewrite-order-by-leaves-existing-aggregation-ref-alone-test
+  (testing "an order-by that already uses [\"aggregation\" {} <uuid>] is left alone"
+    (let [agg-uuid "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+          input    {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  [["sum" {"lib/uuid" agg-uuid}
+                                                  ["field" {}
+                                                   ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
+                                 "order-by"     [["desc" {}
+                                                  ["aggregation" {} agg-uuid]]]}]}]
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest rewrite-order-by-leaves-non-aggregation-orderings-alone-test
+  (testing "order-by on a plain field is left alone"
+    (let [input    {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  [["count" {}]]
+                                 "order-by"     [["asc" {}
+                                                  ["field" {}
+                                                   ["Sample" "PUBLIC" "ORDERS" "ID"]]]]}]}]
+      (is (= input (repair/repair trivial-mp input))))))
+
+(deftest rewrite-order-by-leaves-non-matching-aggregation-alone-test
+  (testing (str "if the inline order-by aggregation does NOT match any aggregation in the\n"
+                "stage, leave it alone (let validation/normalize surface the real error)")
+    (let [input    {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  [["count" {}]]
+                                 "order-by"     [["desc" {}
+                                                  ["sum" {}
+                                                   ["field" {}
+                                                    ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
+          repaired (repair/repair trivial-mp input)]
+      (is (= ["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+             (get-in repaired ["stages" 0 "order-by" 0 2]))))))
+
+(deftest rewrite-order-by-idempotent-test
+  (testing "running repair twice produces the same result (UUID is stable across runs)"
+    (let [input  {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["sum" {}
+                                                ["field" {}
+                                                 ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
+                               "order-by"     [["desc" {}
+                                                ["sum" {}
+                                                 ["field" {}
+                                                  ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]]}]}
+          once   (repair/repair trivial-mp input)
+          twice  (repair/repair trivial-mp once)]
+      (is (= once twice)))))
+
+;;; ============================================================
 ;;; End-to-end repair then parse-and-validate
 ;;; ============================================================
 
