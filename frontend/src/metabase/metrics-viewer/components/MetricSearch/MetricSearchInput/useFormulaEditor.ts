@@ -16,6 +16,7 @@ import {
   createMeasureSourceId,
   createMetricSourceId,
 } from "../../../utils/source-ids";
+import type { MetricSearchDropdownRef } from "../MetricSearchDropdown";
 import {
   ENTITY_SEPARATOR,
   type MetricNameMap,
@@ -52,6 +53,7 @@ type UseFormulaEditorParams = {
   ) => void;
   editorRef: React.RefObject<ReactCodeMirrorRef | null>;
   containerRef: React.RefObject<HTMLDivElement | null>;
+  dropdownRef: React.RefObject<MetricSearchDropdownRef | null>;
 };
 
 export type UseFormulaEditorResult = {
@@ -65,7 +67,7 @@ export type UseFormulaEditorResult = {
   isExpressionDirty: boolean;
   pendingFocusRef: MutableRefObject<boolean>;
   handleInputFocus: () => void;
-  handleInputBlur: () => void;
+  handleInputBlur: (event: React.FocusEvent) => void;
   handleEditExpression: (entityIndex: number) => void;
   handleChange: (newText: string) => void;
   handleSelect: (metric: SelectedMetric) => void;
@@ -91,6 +93,7 @@ export function useFormulaEditor({
   handleRemoveMetric,
   editorRef,
   containerRef,
+  dropdownRef,
 }: UseFormulaEditorParams): UseFormulaEditorResult {
   // editText is the full expression as plain text — only meaningful while focused
   const [editText, setEditText] = useState("");
@@ -300,37 +303,42 @@ export function useFormulaEditor({
     selectedMetrics,
   ]);
 
-  const handleInputBlur = useCallback(() => {
-    // If the text hasn't changed since focus, collapse back to pills view
-    // without requiring the user to click "Run".
-    if (
-      editTextRef.current === textAtFocusRef.current &&
-      !dropdownHasSelectionRef.current
-    ) {
-      isEditingSessionActiveRef.current = false;
-      setIsFocused(false);
-      setIsOpen(false);
-      setCurrentWord("");
-      setEditText("");
+  const handleInputBlur = useCallback(
+    (event: React.FocusEvent) => {
+      // If the text hasn't changed since focus, collapse back to pills view
+      // without requiring the user to click "Run".
+      if (
+        editTextRef.current === textAtFocusRef.current &&
+        !dropdownRef.current?.containerRef.current?.contains(
+          event.relatedTarget,
+        )
+      ) {
+        isEditingSessionActiveRef.current = false;
+        setIsFocused(false);
+        setIsOpen(false);
+        setCurrentWord("");
+        setEditText("");
+        setValidationError(null);
+        setIsExpressionDirty(false);
+        return;
+      }
+
+      const view = editorRef.current?.view;
+      const identities = view ? readMetricIdentities(view) : [];
+      const invalidRanges = findInvalidRanges(
+        editTextRef.current,
+        metricNamesRef.current,
+        identities,
+      );
+      if (invalidRanges.length > 0) {
+        setValidationError(invalidRanges[0].message);
+        return;
+      }
+
       setValidationError(null);
-      setIsExpressionDirty(false);
-      return;
-    }
-
-    const view = editorRef.current?.view;
-    const identities = view ? readMetricIdentities(view) : [];
-    const invalidRanges = findInvalidRanges(
-      editTextRef.current,
-      metricNamesRef.current,
-      identities,
-    );
-    if (invalidRanges.length > 0) {
-      setValidationError(invalidRanges[0].message);
-      return;
-    }
-
-    setValidationError(null);
-  }, [editorRef, metricNamesRef]);
+    },
+    [editorRef, metricNamesRef, dropdownRef],
+  );
 
   const handleChange = useCallback(
     (newText: string) => {

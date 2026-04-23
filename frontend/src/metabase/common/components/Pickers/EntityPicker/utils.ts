@@ -111,6 +111,15 @@ export function getItemFunctions({
       return true;
     }
 
+    if (
+      item.model === OmniPickerFolderModel.Table &&
+      modelSet.has("measure") &&
+      "measures" in item &&
+      (item.measures?.length ?? 0) > 0
+    ) {
+      return true;
+    }
+
     if (item.model === OmniPickerFolderModel.Collection) {
       if (!("here" in item) && !("below" in item)) {
         return false;
@@ -201,6 +210,7 @@ export const validCollectionModels = new Set<CollectionItemModel>([
   "table",
   "snippet",
   "transform",
+  "measure",
 ]);
 
 export const allCollectionModels = Array.from(validCollectionModels);
