@@ -81,7 +81,7 @@
               (let [card {:display :custom:feature-off}]
                 (is (= :table
                        (card/detect-pulse-chart-type card nil multi-col-data))))))))
-      (testing "custom viz with registered plugin and bundle resolves to :javascript_visualization"
+      (testing "custom viz with registered plugin and bundle still falls back to :table (static custom viz not supported)"
         (mt/with-temp [:model/CustomVizPlugin _ {:repo_url     "https://github.com/test/has-bundle"
                                                  :identifier   "has-bundle"
                                                  :display_name "Has Bundle"
@@ -89,23 +89,10 @@
                                                  :enabled      true}]
           (with-redefs [custom-viz-plugin/resolve-bundle (constantly {:content "function(){}" :hash "abc"})]
             (let [card {:display :custom:has-bundle}]
-              (is (= :javascript_visualization
+              (is (= :table
                      (card/detect-pulse-chart-type card nil multi-col-data))))))))))
 
 ;;; ------------------------------------------------ javascript_visualization rendering ------------------------------------------------
-
-(deftest custom-viz-empty-content-falls-back-to-table-test
-  (mt/with-premium-features #{:custom-viz}
-    (testing "when custom viz returns empty content, falls back to table rendering"
-      (let [card {:display :custom:empty-viz :id 1}
-            data {:cols [{:name "x" :base_type :type/Integer} {:name "y" :base_type :type/Integer}]
-                  :rows [[1 2]]}
-            table-result (body/render :table :inline "UTC" card nil data)]
-        (binding [js.svg/*javascript-visualization*
-                  (fn [_cards _viz-settings _custom-bundles]
-                    {:type :svg :content ""})]
-          (let [result (body/render :javascript_visualization :inline "UTC" card nil data)]
-            (is (= (:content table-result) (:content result)))))))))
 
 (deftest custom-viz-bundles-resolved-test
   (mt/with-premium-features #{:custom-viz}
