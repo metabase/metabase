@@ -164,9 +164,10 @@
                                           :email      "metabot-analytics-list-test@metabase.com"
                                           :first_name "Metabot"
                                           :last_name  "Analytics"}}
-               (select-keys convo-1-response [:conversation_id :summary :message_count
-                                              :user_message_count :assistant_message_count :total_tokens
-                                              :profile_id :user])))
+               (-> (select-keys convo-1-response [:conversation_id :summary :message_count
+                                                  :user_message_count :assistant_message_count :total_tokens
+                                                  :profile_id :user])
+                   (update :user select-keys [:id :email :first_name :last_name]))))
         (is (= {:conversation_id         convo-2
                 :message_count           3
                 :user_message_count      1
@@ -238,7 +239,7 @@
                     :email      "crowberto@metabase.com"
                     :first_name "Crowberto"
                     :last_name  "Corv"}
-                   (:user response)))
+                   (select-keys (:user response) [:id :email :first_name :last_name])))
             (is (nil? (:slack_permalink response)))
             (is (= "internal" (:profile_id response))
                 "profile_id comes from the first assistant message, ignoring user-message placeholders")
