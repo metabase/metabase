@@ -85,7 +85,7 @@ export function WorkspaceStatusSection({
           <Text>{getStatusMessage(workspace)}</Text>
         </Group>
         <Button
-          variant={isProvisioned ? "default" : "outline"}
+          variant={isProvisioned ? "default" : "filled"}
           disabled={isInProgress}
           onClick={isProvisioned ? handleUnprovision : handleProvision}
         >
