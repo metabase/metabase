@@ -140,7 +140,7 @@ describe("MetricsFilterPills", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+    await userEvent.click(screen.getByLabelText("Remove"));
 
     expect(mockLibMetric.removeClause).toHaveBeenCalledWith(
       source.definition,
