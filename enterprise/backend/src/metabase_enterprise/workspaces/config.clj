@@ -49,11 +49,10 @@
   workspace workflow cares about — not a blanket dump of every setting."
   [:remote-sync-url :remote-sync-type :remote-sync-branch :remote-sync-token])
 
-(defn- exported-settings
+(defn- remote-sync-settings
   "Snapshot the `exported-setting-keys` on the source instance. Returns nil when
-  `remote-sync-url` is unset — the other three keys are meaningless without it,
-  so there's nothing worth exporting. Otherwise drops individual keys whose value
-  is nil/blank."
+  `remote-sync-url` is unset — the other three keys are meaningless without it.
+  Otherwise drops individual keys whose value is nil/blank."
   []
   (when-let [url (setting/get :remote-sync-url)]
     (when-not (str/blank? url)
@@ -64,6 +63,15 @@
                                  (not (and (string? v) (str/blank? v))))
                         [k v]))))
             exported-setting-keys))))
+
+(defn- exported-settings
+  "Settings block emitted into the exported config. Always pins
+  `disable-sync: true` so the target instance skips its own database syncs
+  (metadata/field-values come from the workspace, not local sync). Merges in the
+  remote-sync keys when the source instance has them configured."
+  []
+  (merge {:disable-sync true}
+         (remote-sync-settings)))
 
 (defn- database-entry [wsd db]
   {:name    (:name db)
@@ -105,12 +113,12 @@
                             :let [db (get dbs-by-id (:database_id wsd))]]
                         [wsd db])]
         {:version 1
-         :config  (cond-> {:databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
-                           :users     [default-user]
-                           :api-keys  [(api-key-entry)]
-                           :workspace {:name      (:name ws)
-                                       :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}
-                    (seq (exported-settings)) (assoc :settings (exported-settings)))}))))
+         :config  {:settings  (exported-settings)
+                   :databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
+                   :users     [default-user]
+                   :api-keys  [(api-key-entry)]
+                   :workspace {:name      (:name ws)
+                               :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}}))))
 
 (defn config->yaml
   "Render a workspace config map as a pretty-printed YAML string."

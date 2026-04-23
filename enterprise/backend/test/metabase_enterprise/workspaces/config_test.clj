@@ -105,7 +105,7 @@
     (is (nil? (config/build-workspace-config Integer/MAX_VALUE)))))
 
 (deftest build-workspace-config-includes-remote-sync-settings-test
-  (testing "Remote-sync settings are copied from the source instance into :config :settings"
+  (testing "Remote-sync settings are copied from source + disable-sync is always pinned true"
     (mt/with-temp [:model/Database {db-id :id}
                    {:name "dw" :engine :postgres :details {:host "h" :port 5432}}
                    :model/Workspace {ws-id :id} {:name "synced"}
@@ -121,14 +121,15 @@
                                          remote-sync-branch "main"
                                          remote-sync-token  "not-real"]
         (let [cfg (config/build-workspace-config ws-id)]
-          (is (= {:remote-sync-url    "https://github.com/metabase/stats-remote-sync"
+          (is (= {:disable-sync       true
+                  :remote-sync-url    "https://github.com/metabase/stats-remote-sync"
                   :remote-sync-type   :read-write
                   :remote-sync-branch "main"
                   :remote-sync-token  "not-real"}
                  (-> cfg :config :settings))))))))
 
-(deftest build-workspace-config-omits-settings-when-url-blank-test
-  (testing "Without remote-sync-url, the :settings section is omitted entirely"
+(deftest build-workspace-config-settings-pins-disable-sync-without-remote-sync-test
+  (testing "Even without remote-sync configured, :settings still pins disable-sync true"
     (mt/with-temp [:model/Database {db-id :id}
                    {:name "dw" :engine :postgres :details {:host "h" :port 5432}}
                    :model/Workspace {ws-id :id} {:name "nosync"}
@@ -141,4 +142,5 @@
                     :status           :provisioned}]
       (mt/with-temporary-setting-values [remote-sync-url ""]
         (let [cfg (config/build-workspace-config ws-id)]
-          (is (not (contains? (:config cfg) :settings))))))))
+          (is (= {:disable-sync true}
+                 (-> cfg :config :settings))))))))
