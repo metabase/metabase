@@ -17,11 +17,13 @@
 
 (defsetting disable-sync
   (deferred-tru
-   (str "Kill-switch: when true, no database sync (metadata, analyze, or field-values) will run on this "
-        "instance, regardless of how it was triggered (scheduled, event-driven, manual, or "
-        "config-file-initiated). Non-sync scheduled jobs (pulses, persist-refresh, search indexing, etc.) "
-        "are unaffected. Intended for file-driven instances where metadata is loaded from disk. Set via "
-        "the `settings:` block of config.yml or the MB_DISABLE_SYNC env var."))
+   (str "Kill-switch for the automatic (scheduled) database-sync task. When true, the Quartz "
+        "sync-and-analyze and update-field-values jobs do not run on their schedule, and new "
+        "Quartz triggers aren't registered (see `should-sync?` in metabase.warehouses.models.database). "
+        "Programmatic, event-driven, and user-triggered syncs (transforms finalizing their output, "
+        "manual 'Sync now' REST calls, etc.) continue to work. Intended for file-driven instances "
+        "where metadata is primarily loaded from disk at startup. Set via the `settings:` block of "
+        "config.yml or the MB_DISABLE_SYNC env var."))
   :type       :boolean
   :default    false
   :visibility :internal

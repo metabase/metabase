@@ -2,6 +2,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.sync.analyze :as analyze]
+   [metabase.sync.field-values :as sync.field-values]
+   [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [toucan2.core :as t2]))
@@ -95,3 +98,33 @@
                                        :schema (:schema remap)
                                        :name   (:name remap)))
                   "no metabase_table row is persisted at the physical (remapped) identity"))))))))
+
+(deftest complete-execution-runs-sync-despite-disable-sync-test
+  (testing
+   "disable-sync gates the automatic scheduled sync task, not sync in general. A transform's
+   post-run sync of its own target is a user-triggered operation and must run even when
+   :disable-sync is true — otherwise the target table row lands in metabase_table but
+   metabase_field stays empty (\"Table '...' has no Fields associated with it\")."
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [metabase.warehouses.settings/disable-sync true]
+        (let [target     {:type "table" :schema nil :name "ds_bypass_target"}
+              sync-calls (atom [])]
+          (mt/with-temp [:model/Transform transform
+                         {:target target
+                          :source {:type  "query"
+                                   :query {:database (mt/id) :type :query :query {:source-table 1}}}}]
+            (mt/with-dynamic-fn-redefs
+              [sync-metadata/sync-table-metadata!
+               (fn [table] (swap! sync-calls conj {:op :metadata :table-id (:id table)}) table)
+               analyze/analyze-table!
+               (fn [table] (swap! sync-calls conj {:op :analyze :table-id (:id table)}) table)
+               sync.field-values/update-field-values-for-table!
+               (fn [table] (swap! sync-calls conj {:op :field-values :table-id (:id table)}) table)]
+              (transforms-base.u/complete-execution! transform {:publish-events? false})
+              (let [ops (into #{} (map :op) @sync-calls)]
+                (is (contains? ops :metadata)
+                    "sync-table-metadata! must run so metabase_field rows get populated")
+                (is (contains? ops :analyze)
+                    "analyze-table! must run so fingerprints/semantic types are populated")
+                (is (contains? ops :field-values)
+                    "update-field-values-for-table! must run so dropdown FieldValues are populated")))))))))

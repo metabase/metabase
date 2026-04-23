@@ -137,12 +137,11 @@
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]
-   (sync-util/when-sync-enabled :sync-fields-for-table table
-     (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
-       (let [db-metadata (fetch-metadata/table-fields-metadata database table)
-             ;; TODO: decouple nested field columns sync from field sync. This will allow
-             ;; describe-fields to be used for field sync for databases with nested field columns
-             ;; Also this should be a driver method, not a sql-jdbc.sync method
-             db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)]
-         {:total-fields   (count db-metadata)
-          :updated-fields (sync-and-update! database table db-metadata)})))))
+   (sync-util/with-error-handling (format "Error syncing Fields for Table ''%s''" (sync-util/name-for-logging table))
+     (let [db-metadata (fetch-metadata/table-fields-metadata database table)
+           ;; TODO: decouple nested field columns sync from field sync. This will allow
+           ;; describe-fields to be used for field sync for databases with nested field columns
+           ;; Also this should be a driver method, not a sql-jdbc.sync method
+           db-metadata (fetch-metadata/include-nested-fields-for-table db-metadata database table)]
+       {:total-fields   (count db-metadata)
+        :updated-fields (sync-and-update! database table db-metadata)}))))

@@ -71,37 +71,33 @@
   ([database                         :- i/DatabaseInstance
     {:keys [scan], :or {scan :full}} :- [:maybe [:map
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
-   (sync-util/when-sync-enabled :sync-database database
-     (tracing/with-span :sync "sync.database" {:db/id (:id database)}
-       (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-         (->> (scan-phases scan)
-              (keep (partial do-phase! database))
-              (doall)))))))
+   (tracing/with-span :sync "sync.database" {:db/id (:id database)}
+     (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
+       (->> (scan-phases scan)
+            (keep (partial do-phase! database))
+            (doall))))))
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
   tables, caller should check if can connect."
   [table :- i/TableInstance]
-  (if (sync-util/sync-disabled?)
-    (do (sync-util/log-sync-refused! :sync-table table) table)
-    (doto table
-      sync-metadata/sync-table-metadata!
-      analyze/analyze-table!
-      sync.field-values/update-field-values-for-table!
-      sync-util/set-initial-table-sync-complete!)))
+  (doto table
+    sync-metadata/sync-table-metadata!
+    analyze/analyze-table!
+    sync.field-values/update-field-values-for-table!
+    sync-util/set-initial-table-sync-complete!))
 
 (mu/defn refingerprint-field!
   "Refingerprint a field, usually after its type changes. Checks if can connect to database, returning
   `:sync/no-connection` if not."
   [field :- i/FieldInstance]
-  (sync-util/when-sync-enabled :refingerprint-field field
-    (let [table    (field/table field)
-          database (table/database table)]
-      ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
-      ;; purposes of creating a new H2 database.
-      (if (binding [driver.settings/*allow-testing-h2-connections* true]
-            (driver.u/can-connect-with-details? (:engine database) (:details database)))
-        (sync-util/with-error-handling (format "Error refingerprinting field %s"
-                                               (sync-util/name-for-logging field))
-          (sync.fingerprint/refingerprint-field! field))
-        :sync/no-connection))))
+  (let [table    (field/table field)
+        database (table/database table)]
+    ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
+    ;; purposes of creating a new H2 database.
+    (if (binding [driver.settings/*allow-testing-h2-connections* true]
+          (driver.u/can-connect-with-details? (:engine database) (:details database)))
+      (sync-util/with-error-handling (format "Error refingerprinting field %s"
+                                             (sync-util/name-for-logging field))
+        (sync.fingerprint/refingerprint-field! field))
+      :sync/no-connection)))

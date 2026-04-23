@@ -41,7 +41,12 @@
 (defn sync-disabled?
   "True when the instance-global `disable-sync` kill-switch is on. Reads the
   [[metabase.warehouses.settings/disable-sync]] setting, which in turn honors the `MB_DISABLE_SYNC` env var and
-  `config.yml` `settings:` block."
+  `config.yml` `settings:` block.
+
+  This gates the *automatic scheduled sync task* only — callers here are the Quartz trigger-time guards in
+  `metabase.sync.task.sync-databases` plus `metabase.warehouses.models.database/should-sync?`. Programmatic and
+  user-triggered sync (transforms finalizing their output, manual 'Sync now' REST calls, `sync/sync-database!`
+  invoked directly from code) run regardless of this flag."
   []
   (boolean (warehouses.settings/disable-sync)))
 
