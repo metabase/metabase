@@ -534,6 +534,7 @@ type PrivilegedSettings = AdminSettings & SettingsManagerSettings;
 
 interface PublicSettings {
   "allowed-iframe-hosts": string;
+  "analytics-pii-retention-enabled"?: boolean;
   "analytics-uuid": string;
   "anon-tracking-enabled": boolean;
   "application-font": string;

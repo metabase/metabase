@@ -9,6 +9,15 @@ export const trackTrackingPermissionChanged = (isEnabled: boolean) => {
   });
 };
 
+export const trackAnalyticsPiiRetentionChanged = (isEnabled: boolean) => {
+  trackSchemaEvent("settings", {
+    event: isEnabled
+      ? "analytics_pii_retention_enabled"
+      : "analytics_pii_retention_disabled",
+    source: "admin",
+  });
+};
+
 export const trackCustomHomepageDashboardEnabled = (
   source: "admin" | "homepage",
 ) => {
