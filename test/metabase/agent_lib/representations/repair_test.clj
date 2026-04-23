@@ -67,33 +67,36 @@
   (testing "clause without options gets {} inserted"
     (is (= ["count" {}]
            (repair/repair trivial-mp ["count"])))
-    (is (= ["sum" {} ["field" {} ["DB" "S" "T" "F"]]]
-           (repair/repair trivial-mp ["sum" ["field" ["DB" "S" "T" "F"]]])))))
+    ;; FK paths use "Sample" here because `repair` also normalises the DB component of every
+    ;; portable FK to match the metadata provider's DB name (`trivial-mp` is named "Sample").
+    ;; See `rewrite-database-name*` in repair.clj for the rationale.
+    (is (= ["sum" {} ["field" {} ["Sample" "S" "T" "F"]]]
+           (repair/repair trivial-mp ["sum" ["field" ["Sample" "S" "T" "F"]]])))))
 
 (deftest do-not-corrupt-fk-paths-test
-  (testing "FK paths (all-string vectors) are left alone"
-    (let [fk ["DB" "PUBLIC" "TBL" "COL"]]
+  (testing "FK paths (all-string vectors) are left alone (modulo DB-name normalization)"
+    (let [fk ["Sample" "PUBLIC" "TBL" "COL"]]
       (is (= fk (repair/repair trivial-mp fk))))
-    (let [fk ["DB" nil "TBL" "COL"]]
+    (let [fk ["Sample" nil "TBL" "COL"]]
       (is (= fk (repair/repair trivial-mp fk)))))
-  (testing "clause containing an FK in its arg position doesn't touch the FK"
-    (let [input  ["field" ["DB" "PUBLIC" "TBL" "COL"]]
+  (testing "clause containing an FK in its arg position doesn't touch the FK shape"
+    (let [input  ["field" ["Sample" "PUBLIC" "TBL" "COL"]]
           output (repair/repair trivial-mp input)]
-      (is (= ["field" {} ["DB" "PUBLIC" "TBL" "COL"]] output)))))
+      (is (= ["field" {} ["Sample" "PUBLIC" "TBL" "COL"]] output)))))
 
 (deftest nested-clause-repair-test
   (testing "options filled in at every nesting level"
     (let [input  ["and"
                   ["="
-                   ["field" ["DB" "S" "T" "A"]]
+                   ["field" ["Sample" "S" "T" "A"]]
                    10]
                   [">"
-                   ["field" ["DB" "S" "T" "B"]]
+                   ["field" ["Sample" "S" "T" "B"]]
                    5]]
           output (repair/repair trivial-mp input)]
       (is (= ["and" {}
-              ["=" {} ["field" {} ["DB" "S" "T" "A"]] 10]
-              [">" {} ["field" {} ["DB" "S" "T" "B"]] 5]]
+              ["=" {} ["field" {} ["Sample" "S" "T" "A"]] 10]
+              [">" {} ["field" {} ["Sample" "S" "T" "B"]] 5]]
              output)))))
 
 (deftest nil-options-replaced-test
@@ -130,6 +133,86 @@
   (testing "a random non-stage map without stage-body keys is untouched"
     (let [input {"foo" "bar"}]
       (is (= input (repair/repair trivial-mp input))))))
+
+;;; ============================================================
+;;; Pass 2.5 — rewrite the database name to match the metadata provider
+;;;
+;;; The LLM tends to follow the prompt examples literally and write `database: Sample`
+;;; (and `[Sample, PUBLIC, ORDERS]` portable FKs) regardless of the actual application DB
+;;; name. Repair normalises the DB component everywhere to whatever the MP says.
+;;; ============================================================
+
+(def ^:private mp-real-name
+  "MP whose DB name is `Sample Database` — mirrors the real production sample DB. Used to
+  exercise the LLM → real-DB-name normalisation path."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 1 :name "Sample Database"}
+    :tables   [{:id 10 :name "ORDERS"   :schema "PUBLIC" :db-id 1}
+               {:id 20 :name "PRODUCTS" :schema "PUBLIC" :db-id 1}]
+    :fields   [{:id 100 :name "ID"         :table-id 10 :base-type :type/Integer}
+               {:id 102 :name "PRODUCT_ID" :table-id 10 :base-type :type/Integer
+                :fk-target-field-id 200}
+               {:id 200 :name "ID"         :table-id 20 :base-type :type/Integer}
+               {:id 201 :name "CATEGORY"   :table-id 20 :base-type :type/Text}]}))
+
+(deftest rewrite-database-name-top-level-test
+  (testing "top-level `database` field is rewritten to the MP's DB name"
+    (let [input  {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]}]}
+          output (repair/repair mp-real-name input)]
+      (is (= "Sample Database" (get output "database"))))))
+
+(deftest rewrite-database-name-portable-fks-test
+  (testing "every portable FK has its DB component rewritten to the MP's DB name"
+    (let [input  {"lib/type" "mbql/query"
+                  "database" "Sample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["sum" {}
+                                                ["field" {}
+                                                 ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
+                               "breakout"     [["field" {}
+                                                ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}
+          output (repair/repair mp-real-name input)]
+      (is (= ["Sample Database" "PUBLIC" "ORDERS"]
+             (get-in output ["stages" 0 "source-table"])))
+      (is (= ["Sample Database" "PUBLIC" "ORDERS" "TOTAL"]
+             (get-in output ["stages" 0 "aggregation" 0 2 2])))
+      (is (= ["Sample Database" "PUBLIC" "PRODUCTS" "CATEGORY"]
+             (get-in output ["stages" 0 "breakout" 0 2]))))))
+
+(deftest rewrite-database-name-no-op-when-already-matching-test
+  (testing "a query that already uses the MP's DB name everywhere is unchanged"
+    (let [input  {"lib/type" "mbql/query"
+                  "database" "Sample Database"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample Database" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["count" {}]]}]}]
+      (is (= input (repair/repair mp-real-name input))))))
+
+(deftest rewrite-database-name-no-op-when-no-mp-test
+  (testing "calling repair with mp=nil leaves the database/FK names untouched"
+    (let [input {"lib/type" "mbql/query"
+                 "database" "AnythingGoes"
+                 "stages"   [{"lib/type"     "mbql.stage/mbql"
+                              "source-table" ["AnythingGoes" "PUBLIC" "ORDERS"]
+                              "aggregation"  [["count" {}]]}]}]
+      (is (= input (repair/repair nil input))))))
+
+(deftest rewrite-database-name-idempotent-test
+  (testing "running repair twice produces the same result"
+    (let [input    {"lib/type" "mbql/query"
+                    "database" "Sample"
+                    "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                 "aggregation"  [["sum" {}
+                                                  ["field" {}
+                                                   ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]}]}
+          once     (repair/repair mp-real-name input)
+          twice    (repair/repair mp-real-name once)]
+      (is (= once twice)))))
 
 ;;; ============================================================
 ;;; End-to-end repair then parse-and-validate

@@ -116,6 +116,44 @@
             (is (= query
                    (get-in new-chart-in-memory [:queries 0])))))))))
 
+(deftest construct-notebook-query-llm-uses-prompt-db-name-end-to-end-test
+  (testing (str "End-to-end regression for the production failure: the LLM writes\n"
+                "`database: Sample` (the prompt example name) against the real\n"
+                "`Sample Database` app DB. Repair must rewrite the DB name everywhere\n"
+                "so the resolver doesn't fail with :unknown-database.")
+    (mt/with-current-user (test.users/user->id :crowberto)
+      ;; Verbatim the YAML the LLM produced in the bug report — just with the actual
+      ;; PRODUCTS.CATEGORY portable FK shape preserved. Note: every portable FK uses
+      ;; `Sample` (the prompt name), not `Sample Database` (the real one).
+      (let [query-data {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["sum" {}
+                                                      ["field" {}
+                                                       ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]]
+                                     "breakout"     [["field" {}
+                                                      ["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]]]}]}
+            query-yaml (yaml/generate-string query-data)
+            result (tools.construct/construct-notebook-query-tool
+                    {:source_entity {:type "table" :id (mt/id :orders)}
+                     :query         query-yaml
+                     :visualization {:chart_type "bar"}})
+            query (get-in result [:structured-output :query])
+            breakout-field (get-in query [:stages 0 :breakout 0])]
+        (testing "the chart was constructed successfully (no :unknown-database error)"
+          (is (some? (:structured-output result)) (pr-str result))
+          (is (= :mbql/query (:lib/type query)))
+          (is (= (mt/id) (:database query)))
+          (is (= (mt/id :orders) (get-in query [:stages 0 :source-table]))))
+        (testing "breakout was resolved to PRODUCTS.CATEGORY with auto-wired source-field"
+          (is (= (mt/id :products :category) (nth breakout-field 2)))
+          (is (= (mt/id :orders :product_id) (:source-field (second breakout-field)))))
+        (testing "query compiles to runnable SQL"
+          (let [{:keys [query]} (qp.compile/compile query)]
+            (is (string? query))
+            (is (str/includes? (u/upper-case-en query) "PRODUCTS"))))))))
+
 (deftest construct-notebook-query-implicit-join-end-to-end-test
   (testing (str "End-to-end: YAML with source-table=ORDERS referencing PRODUCTS.CATEGORY "
                 "gets source-field auto-wired, produces a query that compiles to SQL with "
