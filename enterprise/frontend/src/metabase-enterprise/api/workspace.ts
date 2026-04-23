@@ -31,14 +31,6 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
       providesTags: (workspace) =>
         workspace ? provideWorkspaceTags(workspace) : [],
     }),
-    getWorkspaceConfigYaml: builder.query<string, WorkspaceId>({
-      query: (id) => ({
-        method: "GET",
-        url: `/api/ee/workspace/${id}/config/yaml`,
-        responseHandler: "text",
-      }),
-      providesTags: (_, __, id) => [idTag("workspace", id)],
-    }),
     createWorkspace: builder.mutation<Workspace, CreateWorkspaceRequest>({
       query: (body) => ({
         method: "POST",
@@ -132,8 +124,6 @@ export const workspaceApi = EnterpriseApi.injectEndpoints({
 export const {
   useListWorkspacesQuery,
   useGetWorkspaceQuery,
-  useGetWorkspaceConfigYamlQuery,
-  useLazyGetWorkspaceConfigYamlQuery,
   useCreateWorkspaceMutation,
   useUpdateWorkspaceMutation,
   useDeleteWorkspaceMutation,

@@ -411,3 +411,12 @@ export function openSaveDialog(fileName: string, fileContent: Blob): void {
   URL.revokeObjectURL(url);
   link.remove();
 }
+
+export function downloadFromUrl(url: string, fileName: string): void {
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", fileName);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}

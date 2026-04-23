@@ -2,10 +2,8 @@ import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { Button, Group, Icon, Text } from "metabase/ui";
-import { openSaveDialog } from "metabase/utils/dom";
+import { Button, Group, Text } from "metabase/ui";
 import {
-  useLazyGetWorkspaceConfigYamlQuery,
   useProvisionWorkspaceMutation,
   useUnprovisionWorkspaceMutation,
 } from "metabase-enterprise/api";
@@ -21,13 +19,11 @@ import { TitleSection } from "../../TitleSection";
 
 import { getButtonLabel, getStatusIcon, getStatusMessage } from "./utils";
 
-type WorkspaceStatusSectionProps = {
+type StatusSectionProps = {
   workspace: WorkspaceInfo;
 };
 
-export function WorkspaceStatusSection({
-  workspace,
-}: WorkspaceStatusSectionProps) {
+export function StatusSection({ workspace }: StatusSectionProps) {
   const workspaceId = workspace.id;
   if (workspaceId == null) {
     return null;
@@ -42,17 +38,11 @@ export function WorkspaceStatusSection({
     >
       <Group p="md" justify="space-between" wrap="nowrap">
         <WorkspaceStatus workspace={workspace} />
-        <Group gap="sm" wrap="nowrap">
-          {isProvisioned && <DownloadConfigButton workspaceId={workspaceId} />}
-          {isProvisioned ? (
-            <UnprovisionButton
-              workspace={workspace}
-              workspaceId={workspaceId}
-            />
-          ) : (
-            <ProvisionButton workspace={workspace} workspaceId={workspaceId} />
-          )}
-        </Group>
+        {isProvisioned ? (
+          <UnprovisionButton workspace={workspace} workspaceId={workspaceId} />
+        ) : (
+          <ProvisionButton workspace={workspace} workspaceId={workspaceId} />
+        )}
       </Group>
     </TitleSection>
   );
@@ -145,30 +135,5 @@ function UnprovisionButton({ workspace, workspaceId }: StatusButtonProps) {
       </Button>
       {modalContent}
     </>
-  );
-}
-
-function DownloadConfigButton({ workspaceId }: { workspaceId: WorkspaceId }) {
-  const [fetchConfig] = useLazyGetWorkspaceConfigYamlQuery();
-  const { sendErrorToast } = useMetadataToasts();
-
-  const handleDownload = async () => {
-    const { data, error } = await fetchConfig(workspaceId);
-    if (error || data == null) {
-      sendErrorToast(t`Failed to download config file`);
-      return;
-    }
-    const blob = new Blob([data], { type: "application/yaml" });
-    openSaveDialog("config.yml", blob);
-  };
-
-  return (
-    <Button
-      variant="filled"
-      leftSection={<Icon name="download" />}
-      onClick={handleDownload}
-    >
-      {t`Download config file`}
-    </Button>
   );
 }
