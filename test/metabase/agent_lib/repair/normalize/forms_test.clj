@@ -77,6 +77,74 @@
     (is (= ["field" 42]
            (forms/repair-operator-form identity ["field" "42"])))))
 
+(deftest ^:parallel field-like-map?-test
+  (testing "accepts snake_case and kebab-case, string and keyword keys"
+    (is (true? (forms/field-like-map? {"field_id" 1})))
+    (is (true? (forms/field-like-map? {"field-id" 1})))
+    (is (true? (forms/field-like-map? {:field_id 1})))
+    (is (true? (forms/field-like-map? {:field-id 1}))))
+  (testing "rejects non-field-like maps"
+    (is (false? (forms/field-like-map? {"foo" 1})))
+    (is (false? (forms/field-like-map? {})))
+    (is (false? (forms/field-like-map? nil)))
+    (is (false? (forms/field-like-map? ["field" 1])))))
+
+(deftest ^:parallel repair-field-like-map-test
+  (testing "field_id alone becomes a plain field form"
+    (is (= ["field" 13]
+           (forms/repair-field-like-map {"field_id" 13}))))
+  (testing "temporal_bucket wraps in with-temporal-bucket"
+    (is (= ["with-temporal-bucket" ["field" 13] "month"]
+           (forms/repair-field-like-map {"field_id" 13 "temporal_bucket" "month"}))))
+  (testing "temporal-unit alias is accepted"
+    (is (= ["with-temporal-bucket" ["field" 13] "month"]
+           (forms/repair-field-like-map {"field_id" 13 "temporal-unit" "month"}))))
+  (testing "binning wraps in with-binning"
+    (is (= ["with-binning" ["field" 13] {"strategy" "num-bins" "num-bins" 10}]
+           (forms/repair-field-like-map {"field_id" 13
+                                         "binning"  {"strategy" "num-bins" "num-bins" 10}}))))
+  (testing "direction wraps in asc/desc"
+    (is (= ["asc" ["field" 13]]
+           (forms/repair-field-like-map {"field_id" 13 "direction" "asc"})))
+    (is (= ["desc" ["field" 13]]
+           (forms/repair-field-like-map {"field_id" 13 "direction" "DESC"}))))
+  (testing "combined options nest in canonical order: direction wraps the bucketed/binned field"
+    (is (= ["asc" ["with-temporal-bucket" ["field" 13] "month"]]
+           (forms/repair-field-like-map {"field_id"        13
+                                         "temporal_bucket" "month"
+                                         "direction"       "asc"}))))
+  (testing "keyword keys are also accepted"
+    (is (= ["with-temporal-bucket" ["field" 13] "month"]
+           (forms/repair-field-like-map {:field_id 13 :temporal_bucket "month"}))))
+  (testing "string id is coerced to integer"
+    (is (= ["field" 13]
+           (forms/repair-field-like-map {"field_id" "13"})))))
+
+(deftest ^:parallel repair-operator-form-field-options-map-test
+  (testing "field with temporal-unit option rewrites to with-temporal-bucket wrapper"
+    (is (= ["with-temporal-bucket" ["field" 13] "month"]
+           (forms/repair-operator-form identity ["field" 13 {"temporal-unit" "month"}]))))
+  (testing "field with binning option rewrites to with-binning wrapper"
+    (is (= ["with-binning" ["field" 13] {"strategy" "num-bins" "num-bins" 10}]
+           (forms/repair-operator-form identity
+                                       ["field" 13 {"binning" {"strategy" "num-bins" "num-bins" 10}}]))))
+  (testing "field with both options nests with-binning outside with-temporal-bucket"
+    (is (= ["with-binning"
+            ["with-temporal-bucket" ["field" 13] "month"]
+            {"strategy" "default"}]
+           (forms/repair-operator-form identity
+                                       ["field" 13 {"temporal-unit" "month"
+                                                    "binning"       {"strategy" "default"}}]))))
+  (testing "empty options map leaves field untouched"
+    (is (= ["field" 13]
+           (forms/repair-operator-form identity ["field" 13 {}]))))
+  (testing "keyword option keys are accepted"
+    (is (= ["with-temporal-bucket" ["field" 13] "month"]
+           (forms/repair-operator-form identity ["field" 13 {:temporal-unit "month"}]))))
+  (testing "string field id is still coerced when options are present"
+    (is (= ["with-temporal-bucket" ["field" 13] "month"]
+           (forms/repair-operator-form identity ["field" "13" {"temporal-unit" "month"}])))))
+
 (deftest ^:parallel repair-operator-form-is-null-test
   (testing "is with null becomes is-null"
     (is (= ["is-null" ["field" 1]]
