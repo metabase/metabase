@@ -50,6 +50,11 @@
 
 (set! *warn-on-reflection* true)
 
+;; Forward declaration so `add-schemas` (near the top-of-file helpers) can
+;; reuse the same per-schema permission check used by `/api/database/:id/schemas`
+;; lower in the file.
+(declare can-read-schema?)
+
 (def DBEngineString
   "Schema for a valid database engine name, e.g. `h2` or `postgres`."
   (mu/with-api-error-message
@@ -78,6 +83,37 @@
         db-id->tables (group-by :db_id filtered-tables)]
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
+
+(defn- add-schemas
+  "Hydrate a `:schemas` field on each database with the list of schemas that
+   have visible tables and that the current user can read — the same filtering
+   rules the single-DB `/api/database/:id/schemas` endpoint applies. One SQL
+   query covers the whole list so this is cheaper than the N round-trips a
+   client would otherwise make to populate a database-picker dropdown."
+  [dbs]
+  (if (empty? dbs)
+    dbs
+    (let [db-ids        (map :id dbs)
+          rows          (t2/query {:select-distinct [:db_id :schema]
+                                   :from            [(t2/table-name :model/Table)]
+                                   :where           [:and
+                                                     [:in :db_id db-ids]
+                                                     [:= :active true]
+                                                     [:= :visibility_type nil]]})
+          schemas-by-db (reduce
+                         (fn [m {:keys [db_id schema]}]
+                           (update m db_id (fnil conj []) schema))
+                         {} rows)]
+      (for [db dbs]
+        (let [db-id       (:id db)
+              raw-schemas (get schemas-by-db db-id [])
+              readable    (->> raw-schemas
+                               (filter (partial can-read-schema? db-id))
+                               (map #(if (nil? %) "" %))
+                               distinct
+                               sort
+                               vec)]
+          (assoc db :schemas readable))))))
 
 (mu/defn- add-native-perms-info :- [:maybe
                                     [:sequential
@@ -279,6 +315,7 @@
 
 (defn- dbs-list
   [& {:keys [include-tables?
+             include-schemas?
              include-saved-questions-db?
              include-saved-questions-tables?
              include-editable-data-model?
@@ -312,6 +349,7 @@
                                         :where where-clause})]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
       include-tables?              (add-tables :can-query? can-query? :can-write-metadata? can-write-metadata?)
+      include-schemas?             add-schemas
       can-query?                   (#(filter mi/can-query? %))
       true                         add-can-upload-to-dbs
       true                         (t2/hydrate :router_user_attribute)
@@ -333,6 +371,10 @@
   "Fetch all `Databases`.
 
   * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.
+
+  * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible
+    tables the current user can read), matching the per-DB `/api/database/:id/schemas`
+    response. Lets clients avoid N round-trips when populating a database/schema picker.
 
   * `saved` means we should include the saved questions virtual database. Default: `false`.
 
@@ -359,8 +401,8 @@
            router_database_id can-query can-write-metadata]}
    :- [:map
        [:include                     {:optional true} (mu/with-api-error-message
-                                                       [:maybe [:= "tables"]]
-                                                       (deferred-tru "include must be either empty or the value ''tables''"))]
+                                                       [:maybe [:enum "tables" "schemas"]]
+                                                       (deferred-tru "include must be either empty, ''tables'', or ''schemas''"))]
        [:include_analytics           {:default false} [:maybe :boolean]]
        [:saved                       {:default false} [:maybe :boolean]]
        [:include_editable_data_model {:default false} [:maybe :boolean]]
@@ -370,6 +412,7 @@
        [:can-query                   {:optional true} [:maybe :boolean]]
        [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
   (let [include-tables?                 (= include "tables")
+        include-schemas?                (= include "schemas")
         include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
         has-table-metadata-perms?       (fn [{db-id :id}]
@@ -378,6 +421,7 @@
                                                    :perms/manage-table-metadata
                                                    db-id)))
         db-list-res                     (cond->> (or (dbs-list :include-tables?                 include-tables?
+                                                               :include-schemas?                include-schemas?
                                                                :include-saved-questions-db?     saved
                                                                :include-saved-questions-tables? include-saved-questions-tables?
                                                                :include-editable-data-model?    include_editable_data_model

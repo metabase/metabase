@@ -3,11 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useListDatabaseSchemasQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { useListDatabasesQuery } from "metabase/api";
 import {
   Box,
   Button,
@@ -43,8 +39,15 @@ export function SchemaPickerInput({
   // the DB list instead. Cleared when the popover fully closes.
   const [hasNavigatedBackToDbs, setHasNavigatedBackToDbs] = useState(false);
 
+  // Fetch the full DB list with schemas inline so the picker can populate
+  // both levels of the drill-down without a second round-trip per DB. See
+  // the `include=schemas` branch in /api/database.
   const { data: databasesResponse, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery();
+    useListDatabasesQuery({ include: "schemas" });
+
+  const databases = useMemo(() => {
+    return databasesResponse?.data?.filter((db) => !db.is_saved_questions);
+  }, [databasesResponse]);
 
   // Which database's schemas the popover should currently be listing.
   // - `selectedDatabaseId` is set when the user has clicked a DB row in the
@@ -63,28 +66,21 @@ export function SchemaPickerInput({
       ? databaseId
       : null);
 
-  const schemaQueryDatabaseId =
-    popoverSchemaListDbId ??
-    (databaseId != null && schema == null ? databaseId : null);
-
-  // Single top-level schema query shared by picker flow and button label fallback.
-  const { data: queriedSchemas, isLoading: isLoadingSchemas } =
-    useListDatabaseSchemasQuery(
-      schemaQueryDatabaseId != null ? { id: schemaQueryDatabaseId } : skipToken,
-    );
-
-  // Some drivers can return [""]. Treat blank schema names as no schemas.
-  const normalizedSchemas = useMemo(() => {
-    return (queriedSchemas ?? []).filter(
+  // Schemas for the database currently being previewed in the popover.
+  // Pulled straight out of the list response (`include=schemas`), filtered
+  // to drop blank schema names some drivers emit as "".
+  const schemas = useMemo<SchemaName[] | undefined>(() => {
+    if (popoverSchemaListDbId == null) {
+      return undefined;
+    }
+    const db = databases?.find((d) => d.id === popoverSchemaListDbId);
+    if (db?.schemas == null) {
+      return undefined;
+    }
+    return db.schemas.filter(
       (schemaName): schemaName is SchemaName => schemaName.trim().length > 0,
     );
-  }, [queriedSchemas]);
-
-  const schemas = queriedSchemas == null ? undefined : normalizedSchemas;
-
-  const databases = useMemo(() => {
-    return databasesResponse?.data?.filter((db) => !db.is_saved_questions);
-  }, [databasesResponse]);
+  }, [databases, popoverSchemaListDbId]);
 
   // Auto-select when database has a single schema. Gated on
   // `selectedDatabaseId` (not `popoverSchemaListDbId`) so this only fires
@@ -150,15 +146,6 @@ export function SchemaPickerInput({
 
   const hasSelection = databaseId != null;
 
-  console.log(
-    "databasesResponse",
-    databasesResponse,
-    isLoadingDatabases,
-    isLoadingSchemas,
-    schemas,
-    queriedSchemas,
-  );
-
   return (
     <Box ref={clickOutsideRef}>
       <Popover
@@ -204,11 +191,11 @@ export function SchemaPickerInput({
 
         <Popover.Dropdown p="sm">
           {popoverSchemaListDbId != null ? (
-            isLoadingSchemas ? (
+            schemas == null ? (
               <Stack align="center" justify="center" py="md">
                 <Loader size="sm" />
               </Stack>
-            ) : schemas != null && schemas.length >= 1 ? (
+            ) : schemas.length >= 1 ? (
               <SchemaList
                 schemas={schemas}
                 databaseName={
@@ -274,8 +261,8 @@ interface DatabaseListItemProps {
 }
 
 function DatabaseListItem({ database, onSelect }: DatabaseListItemProps) {
-  const { data: schemas } = useListDatabaseSchemasQuery({ id: database.id });
-  const hasMultipleSchemas = schemas != null && schemas.length > 1;
+  const hasMultipleSchemas =
+    database.schemas != null && database.schemas.length > 1;
 
   return (
     <UnstyledButton
