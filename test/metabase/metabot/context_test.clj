@@ -17,12 +17,12 @@
   (let [used [{:id 1 :name "used1"} {:id 2 :name "used2"}]
         extra [{:id 3 :name "extra1"} {:id 4 :name "extra2"}]
         all-tables (concat used extra)]
-    (with-redefs [table-utils/used-tables (fn [_] used)
-                  table-utils/enhanced-database-tables (fn [_ {:keys [priority-tables all-tables-limit] :or {all-tables-limit 100}}]
-                                                         (let [priority-ids (set (map :id priority-tables))
-                                                               non-priority (remove #(priority-ids (:id %)) all-tables)
-                                                               result (concat priority-tables (take (- all-tables-limit (count priority-tables)) non-priority))]
-                                                           (take all-tables-limit result)))]
+    (mt/with-dynamic-fn-redefs [table-utils/used-tables (fn [_] used)
+                                table-utils/enhanced-database-tables (fn [_ {:keys [priority-tables all-tables-limit] :or {all-tables-limit 100}}]
+                                                                       (let [priority-ids (set (map :id priority-tables))
+                                                                             non-priority (remove #(priority-ids (:id %)) all-tables)
+                                                                             result (concat priority-tables (take (- all-tables-limit (count priority-tables)) non-priority))]
+                                                                         (take all-tables-limit result)))]
       (let [result (#'context/database-tables-for-context {:query users-native-query, :all-tables-limit 3})]
         (is (= used result) "Should only return used tables, in order")
         (is (= (count used) (count result)) "Should return all used tables")
@@ -34,12 +34,12 @@
   (let [used (mapv #(hash-map :id % :name (str "used" %)) (range 1 6)) ; 5 used tables
         extra (mapv #(hash-map :id % :name (str "extra" %)) (range 6 10))
         all-tables (concat used extra)]
-    (with-redefs [table-utils/used-tables (fn [_] used)
-                  table-utils/enhanced-database-tables (fn [_ {:keys [priority-tables all-tables-limit] :or {all-tables-limit 100}}]
-                                                         (let [priority-ids (set (map :id priority-tables))
-                                                               non-priority (remove #(priority-ids (:id %)) all-tables)
-                                                               result (concat priority-tables (take (- all-tables-limit (count priority-tables)) non-priority))]
-                                                           (take all-tables-limit result)))]
+    (mt/with-dynamic-fn-redefs [table-utils/used-tables (fn [_] used)
+                                table-utils/enhanced-database-tables (fn [_ {:keys [priority-tables all-tables-limit] :or {all-tables-limit 100}}]
+                                                                       (let [priority-ids (set (map :id priority-tables))
+                                                                             non-priority (remove #(priority-ids (:id %)) all-tables)
+                                                                             result (concat priority-tables (take (- all-tables-limit (count priority-tables)) non-priority))]
+                                                                         (take all-tables-limit result)))]
       (let [result (#'context/database-tables-for-context {:query users-native-query, :all-tables-limit 3})]
         (is (= used result) "Should return all used tables")
         (is (= (count used) (count result)) "Should return all used tables")
@@ -47,9 +47,9 @@
 
 (deftest database-tables-for-context-no-used-tables
   (let [extra (mapv #(hash-map :id % :name (str "extra" %)) (range 1 5))]
-    (with-redefs [table-utils/used-tables (fn [_] [])
-                  table-utils/enhanced-database-tables (fn [_ opts]
-                                                         (take (:all-tables-limit opts 100) extra))]
+    (mt/with-dynamic-fn-redefs [table-utils/used-tables (fn [_] [])
+                                table-utils/enhanced-database-tables (fn [_ opts]
+                                                                       (take (:all-tables-limit opts 100) extra))]
       (let [result (#'context/database-tables-for-context {:query users-native-query, :all-tables-limit 3})]
         (is (empty? result) "Should return empty when no used tables")))))
 
@@ -57,12 +57,12 @@
   (let [used (mapv #(hash-map :id % :name (str "used" %)) (range 1 4)) ; 3 used tables
         extra (mapv #(hash-map :id % :name (str "extra" %)) (range 4 7))
         all-tables (concat used extra)]
-    (with-redefs [table-utils/used-tables (fn [_] used)
-                  table-utils/enhanced-database-tables (fn [_ {:keys [priority-tables all-tables-limit] :or {all-tables-limit 100}}]
-                                                         (let [priority-ids (set (map :id priority-tables))
-                                                               non-priority (remove #(priority-ids (:id %)) all-tables)
-                                                               result (concat priority-tables (take (- all-tables-limit (count priority-tables)) non-priority))]
-                                                           (take all-tables-limit result)))]
+    (mt/with-dynamic-fn-redefs [table-utils/used-tables (fn [_] used)
+                                table-utils/enhanced-database-tables (fn [_ {:keys [priority-tables all-tables-limit] :or {all-tables-limit 100}}]
+                                                                       (let [priority-ids (set (map :id priority-tables))
+                                                                             non-priority (remove #(priority-ids (:id %)) all-tables)
+                                                                             result (concat priority-tables (take (- all-tables-limit (count priority-tables)) non-priority))]
+                                                                         (take all-tables-limit result)))]
       (let [result (#'context/database-tables-for-context {:query users-native-query, :all-tables-limit 3})]
         (is (= used result) "Should be exactly the used tables, in order")
         (is (= (count used) (count result)))
@@ -70,16 +70,16 @@
 
 (deftest database-tables-for-context-exception-handling
   (testing "Returns empty when table-utils/enhanced-database-tables throws"
-    (with-redefs [table-utils/used-tables (fn [_] [{:id 1}])
-                  table-utils/enhanced-database-tables (fn [_ _] (throw (Exception. "boom")))]
+    (mt/with-dynamic-fn-redefs [table-utils/used-tables (fn [_] [{:id 1}])
+                                table-utils/enhanced-database-tables (fn [_ _] (throw (Exception. "boom")))]
       (let [result (#'context/database-tables-for-context {:query users-native-query})]
         (is (empty? result))))))
 
 (deftest database-tables-for-context-nil-used-tables
   (testing "Handles nil used-tables gracefully"
-    (with-redefs [table-utils/used-tables (fn [_] nil)
-                  table-utils/enhanced-database-tables (fn [_ opts]
-                                                         (take (:all-tables-limit opts 100) [{:id 1} {:id 2}]))]
+    (mt/with-dynamic-fn-redefs [table-utils/used-tables (fn [_] nil)
+                                table-utils/enhanced-database-tables (fn [_ opts]
+                                                                       (take (:all-tables-limit opts 100) [{:id 1} {:id 2}]))]
       (let [result (#'context/database-tables-for-context {:query users-native-query})]
         (is (empty? result) "Should return empty when used-tables is nil")))))
 
@@ -87,8 +87,8 @@
   (testing "Deduplicates tables returned by database-tables"
     (let [used [{:id 1}]
           dup [{:id 1} {:id 1} {:id 2}]]
-      (with-redefs [table-utils/used-tables (fn [_] used)
-                    table-utils/enhanced-database-tables (fn [_ _] dup)]
+      (mt/with-dynamic-fn-redefs [table-utils/used-tables (fn [_] used)
+                                  table-utils/enhanced-database-tables (fn [_ _] dup)]
         (let [result (#'context/database-tables-for-context {:query users-native-query})]
           (is (= [1 2] (map :id result)) "Should preserve order and remove duplicates"))))))
 
@@ -96,7 +96,7 @@
 
 (deftest enhance-context-with-schema-native
   (let [mock-tables [{:id 1 :name "table1"} {:id 2 :name "table2"}]]
-    (with-redefs [context/database-tables-for-context (fn [_] mock-tables)]
+    (mt/with-dynamic-fn-redefs [context/database-tables-for-context (fn [_] mock-tables)]
       (testing "Enhances context with schema for native queries"
         (let [input {:user_is_viewing [{:query users-native-query}]}
               result (#'context/enhance-context-with-schema input)]
@@ -117,7 +117,7 @@
 (deftest enhance-context-with-schema-complete-native-query
   (testing "Enhances context with schema for complete native query structure"
     (let [mock-tables [{:id 1 :name "users"} {:id 2 :name "orders"}]]
-      (with-redefs [context/database-tables-for-context (fn [_] mock-tables)]
+      (mt/with-dynamic-fn-redefs [context/database-tables-for-context (fn [_] mock-tables)]
         (let [input {:user_is_viewing [{:query users-native-query}]}
               result (#'context/enhance-context-with-schema input)]
           (is (= (get-in result [:user_is_viewing 0 :used_tables]) mock-tables)))))))
@@ -125,9 +125,9 @@
 (deftest enhance-context-with-schema-complete-mbql-query
   (testing "Does not enhance context for complete MBQL query structure and doesn't call database-tables-for-context"
     (let [call-count (atom 0)]
-      (with-redefs [context/database-tables-for-context (fn [_]
-                                                          (swap! call-count inc)
-                                                          [{:id 1 :name "should-not-be-used"}])]
+      (mt/with-dynamic-fn-redefs [context/database-tables-for-context (fn [_]
+                                                                        (swap! call-count inc)
+                                                                        [{:id 1 :name "should-not-be-used"}])]
         (let [input {:user_is_viewing [{:query users-mbql-query}]}
               result (#'context/enhance-context-with-schema input)]
           (is (nil? (get-in result [:user_is_viewing 0 :used_tables]))
@@ -139,8 +139,8 @@
   (testing "Enhances context with schema for Python transforms"
     (let [mock-tables [{:id 24 :name "orders" :schema "public"}
                        {:id 31 :name "products" :schema "public"}]]
-      (with-redefs [context/python-transform-tables-for-context
-                    (fn [_] mock-tables)]
+      (mt/with-dynamic-fn-redefs [context/python-transform-tables-for-context
+                                  (fn [_] mock-tables)]
         (let [input {:user_is_viewing [{:type "transform"
                                         :source {:type "python"
                                                  :source-database 2
@@ -153,8 +153,8 @@
 (deftest enhance-context-with-schema-python-transform-no-source-tables
   (testing "Handles Python transform without source-tables"
     (let [called? (atom false)]
-      (with-redefs [context/python-transform-tables-for-context
-                    (fn [_] (reset! called? true) nil)]
+      (mt/with-dynamic-fn-redefs [context/python-transform-tables-for-context
+                                  (fn [_] (reset! called? true) nil)]
         (let [input {:user_is_viewing [{:type "transform"
                                         :source {:type "python"
                                                  :source-database 2
@@ -166,8 +166,8 @@
 (deftest enhance-context-with-schema-python-transform-no-source-database
   (testing "Handles Python transform without source-database"
     (let [called? (atom false)]
-      (with-redefs [context/python-transform-tables-for-context
-                    (fn [_] (reset! called? true) nil)]
+      (mt/with-dynamic-fn-redefs [context/python-transform-tables-for-context
+                                  (fn [_] (reset! called? true) nil)]
         (let [input {:user_is_viewing [{:type "transform"
                                         :source {:type "python"
                                                  :source-tables [{:alias "orders" :table_id 24}]}}]}
@@ -278,10 +278,10 @@
   (testing "Native query inside adhoc still uses SQL parsing path, not MBQL path"
     (let [called-mbql?   (atom false)
           called-native? (atom false)]
-      (with-redefs [context/mbql-source-table-ids
-                    (fn [_] (reset! called-mbql? true) nil)
-                    context/database-tables-for-context
-                    (fn [_] (reset! called-native? true) [{:id 1 :name "t"}])]
+      (mt/with-dynamic-fn-redefs [context/mbql-source-table-ids
+                                  (fn [_] (reset! called-mbql? true) nil)
+                                  context/database-tables-for-context
+                                  (fn [_] (reset! called-native? true) [{:id 1 :name "t"}])]
         (let [input  {:user_is_viewing [{:type  "adhoc"
                                          :query {:database (mt/id)
                                                  :type     "native"

@@ -183,8 +183,8 @@
                                                   :table_schema nil
                                                   :display_name "Name",
                                                   :model :table}]]]]
-      (with-redefs [mi/can-read? (constantly read?)
-                    mi/can-write? (constantly write?)]
+      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly read?)
+                                  mi/can-write? (constantly write?)]
         (is (= expected
                (mapv fixup
                      (mt/with-test-user :rasta
@@ -282,9 +282,9 @@
                    :dataset_query {}
                    :visualization_settings {}}]
                  (mt/with-test-user :rasta
-                   (with-redefs [mi/can-read? (constantly true)
-                                 mi/can-write? (fn ([id] (not= id table-id))
-                                                 ([_ _] true))]
+                   (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)
+                                               mi/can-write? (fn ([id] (not= id table-id))
+                                                               ([_ _] true))]
                      (->> (recent-views (mt/user->id :rasta))
                           (mapv (fn [rv] (cond-> rv
                                            true                                       (assoc :id "ID")
@@ -491,7 +491,7 @@
                            (count model-ids) model recent-views/*recent-views-stored-per-user-per-model*)
             (is (= 2 (count (filter (comp #{out-model} :model)
                                     (mt/with-test-user :rasta
-                                      (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                      (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                         (recent-views (mt/user->id :rasta))))))))))
         (is
          (= {:card recent-views/*recent-views-stored-per-user-per-model*,
@@ -501,7 +501,7 @@
              :table recent-views/*recent-views-stored-per-user-per-model*}
             (frequencies (map :model
                               (mt/with-test-user :rasta
-                                (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                   (recent-views (mt/user->id :rasta)))))))
          "After inserting 3 views of each model, we should have 2 views PER each model.")))))
 
@@ -538,10 +538,10 @@
 
           (doseq [model-id model-ids]
             (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)))
-        (with-redefs [mi/can-read?                              (constantly true)
-                      data-perms/user-has-permission-for-table? (constantly true)]
+        (mt/with-dynamic-fn-redefs [mi/can-read?                              (constantly true)
+                                    data-perms/user-has-permission-for-table? (constantly true)]
           (let [freqs (frequencies (map :model
-                                        (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                        (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                           (mt/with-test-user :rasta (recent-views (mt/user->id :rasta))))))]
             (is (= 3 (:card freqs)))
             (is (= 3 (:dataset freqs)))

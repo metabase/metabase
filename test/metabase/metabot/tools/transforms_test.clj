@@ -80,10 +80,10 @@
                                                        :source {:type "query" :query "SELECT 1"}}
                                            :message "Transform updated successfully."}
                        :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
-      (with-redefs [transforms-write/write-transform-sql (fn [_] base-result)
-                    deps/check-transform-dependencies    (fn [_] {:structured_output {:success true
-                                                                                      :bad_transforms []
-                                                                                      :bad_questions nil}})]
+      (mt/with-dynamic-fn-redefs [transforms-write/write-transform-sql (fn [_] base-result)
+                                  deps/check-transform-dependencies    (fn [_] {:structured_output {:success true
+                                                                                                    :bad_transforms []
+                                                                                                    :bad_questions nil}})]
         (let [result (binding [shared/*memory-atom* memory-atom]
                        (agent-transforms/write-transform-sql-tool
                         {:transform_id 1
@@ -99,14 +99,14 @@
                                                        :source {:type "query" :query "SELECT id FROM orders"}}
                                            :message "Transform updated successfully."}
                        :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
-      (with-redefs [transforms-write/write-transform-sql (fn [_] base-result)
-                    deps/check-transform-dependencies    (fn [_]
-                                                           {:structured_output
-                                                            {:success false
-                                                             :bad_transform_count 1
-                                                             :bad_transforms [{:transform {:id 2 :name "Downstream Transform"}
-                                                                               :errors ["Column 'total' not found"]}]
-                                                             :bad_questions nil}})]
+      (mt/with-dynamic-fn-redefs [transforms-write/write-transform-sql (fn [_] base-result)
+                                  deps/check-transform-dependencies    (fn [_]
+                                                                         {:structured_output
+                                                                          {:success false
+                                                                           :bad_transform_count 1
+                                                                           :bad_transforms [{:transform {:id 2 :name "Downstream Transform"}
+                                                                                             :errors ["Column 'total' not found"]}]
+                                                                           :bad_questions nil}})]
         (let [result (binding [shared/*memory-atom* memory-atom]
                        (agent-transforms/write-transform-sql-tool
                         {:transform_id 1
@@ -125,17 +125,17 @@
                                                        :source {:type "query" :query "SELECT id FROM orders"}}
                                            :message "Transform updated successfully."}
                        :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
-      (with-redefs [transforms-write/write-transform-sql (fn [_] base-result)
-                    deps/check-transform-dependencies    (fn [_]
-                                                           {:structured_output
-                                                            {:success false
-                                                             :bad_transform_count 0
-                                                             :bad_transforms []
-                                                             :bad_question_count 2
-                                                             :bad_questions [{:question {:id 10 :name "Revenue Report"}
-                                                                              :errors ["Column 'total' not found"]}
-                                                                             {:question {:id 11 :name "Monthly Summary"}
-                                                                              :errors ["Column 'total' not found"]}]}})]
+      (mt/with-dynamic-fn-redefs [transforms-write/write-transform-sql (fn [_] base-result)
+                                  deps/check-transform-dependencies    (fn [_]
+                                                                         {:structured_output
+                                                                          {:success false
+                                                                           :bad_transform_count 0
+                                                                           :bad_transforms []
+                                                                           :bad_question_count 2
+                                                                           :bad_questions [{:question {:id 10 :name "Revenue Report"}
+                                                                                            :errors ["Column 'total' not found"]}
+                                                                                           {:question {:id 11 :name "Monthly Summary"}
+                                                                                            :errors ["Column 'total' not found"]}]}})]
         (let [result (binding [shared/*memory-atom* memory-atom]
                        (agent-transforms/write-transform-sql-tool
                         {:transform_id 1
@@ -155,8 +155,8 @@
                                                        :source {:type "query" :query "SELECT 1"}}
                                            :message "Transform updated successfully."}
                        :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
-      (with-redefs [transforms-write/write-transform-sql (fn [_] base-result)
-                    deps/check-transform-dependencies    (fn [_] (throw (Exception. "DB connection failed")))]
+      (mt/with-dynamic-fn-redefs [transforms-write/write-transform-sql (fn [_] base-result)
+                                  deps/check-transform-dependencies    (fn [_] (throw (Exception. "DB connection failed")))]
         (let [result (binding [shared/*memory-atom* memory-atom]
                        (agent-transforms/write-transform-sql-tool
                         {:transform_id 1
@@ -173,8 +173,8 @@
                                                        :source {:type "query" :query "SELECT 1"}}
                                            :message "Transform created successfully."}
                        :data-parts [{:type :data :data-type "transform_suggestion" :version 1}]}]
-      (with-redefs [transforms-write/write-transform-sql (fn [_] base-result)
-                    deps/check-transform-dependencies    (fn [_] (reset! dep-called? true) nil)]
+      (mt/with-dynamic-fn-redefs [transforms-write/write-transform-sql (fn [_] base-result)
+                                  deps/check-transform-dependencies    (fn [_] (reset! dep-called? true) nil)]
         (let [result (binding [shared/*memory-atom* memory-atom]
                        (agent-transforms/write-transform-sql-tool
                         {:edit_action {:mode "replace" :new_content "SELECT 1"}

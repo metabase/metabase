@@ -70,9 +70,9 @@
             pool-cache-key     @#'sql-jdbc.conn/pool-cache-key
             connection-details {:db "mem:connection_test"}
             spec               (mdb/spec :h2 connection-details)]
-        (with-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
-                                                    (original-destroy id destroyed-spec)
-                                                    (reset! destroyed? true))]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.conn/destroy-pool! (fn [id destroyed-spec]
+                                                                  (original-destroy id destroyed-spec)
+                                                                  (reset! destroyed? true))]
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
            spec
@@ -729,7 +729,7 @@
           port   (config/config-int :mb-postgres-aws-iam-test-port)
           user   (config/config-str :mb-postgres-aws-iam-test-user)
           dbname (config/config-str :mb-postgres-aws-iam-test-dbname)]
-      (with-redefs [premium-features/is-hosted? (constantly false)]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
         (testing "Connection details are configured"
           (is (string? host))
           (is (string? user))
@@ -755,7 +755,7 @@
           user   (config/config-str :mb-mysql-aws-iam-test-user)
           dbname (config/config-str :mb-mysql-aws-iam-test-dbname)
           ssl-cert (config/config-str :mb-mysql-aws-iam-test-ssl-cert)]
-      (with-redefs [premium-features/is-hosted? (constantly false)]
+      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
         (testing "Connection details are configured"
           (is (string? host))
           (is (string? user))
@@ -959,8 +959,8 @@
                 (.put cache cache-key (assoc pool-1 :tunnel-session :mock-closed-session)))
 
               ;; Mock ssh-tunnel-open? to return false for our mock session
-              (with-redefs [ssh/ssh-tunnel-open? (fn [pool-spec]
-                                                   (not= :mock-closed-session (:tunnel-session pool-spec)))]
+              (mt/with-dynamic-fn-redefs [ssh/ssh-tunnel-open? (fn [pool-spec]
+                                                                 (not= :mock-closed-session (:tunnel-session pool-spec)))]
                 ;; Next call should detect invalid pool and recreate
                 (let [pool-2 (sql-jdbc.conn/db->pooled-connection-spec db)]
                   (is (= 2 @create-count) "Pool should have been recreated due to closed tunnel")

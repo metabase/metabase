@@ -156,8 +156,8 @@
       (testing "should not attempt to delete if it's not a model"
         (mt/with-temp [:model/Card {id :id} {:type          :question
                                              :dataset_query (mt/mbql-query users)}]
-          (with-redefs [card/disable-implicit-action-for-model! (fn [& _args]
-                                                                  (throw (ex-info "Should not be called" {})))]
+          (mt/with-dynamic-fn-redefs [card/disable-implicit-action-for-model! (fn [& _args]
+                                                                                (throw (ex-info "Should not be called" {})))]
             (is (= 1 (t2/update! :model/Card :id id {:dataset_query (mt/mbql-query users {:limit 1})})))))))))
 
 (deftest disable-implicit-actions-if-needed-test-3
@@ -968,7 +968,7 @@
     (mt/with-premium-features #{}
       (mt/with-temp [:model/Collection collection {}
                      :model/Card       card       {:collection_id (:id collection)}]
-        (with-redefs [audit/default-audit-collection (constantly collection)]
+        (mt/with-dynamic-fn-redefs [audit/default-audit-collection (constantly collection)]
           (mt/with-test-user :rasta
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card))))

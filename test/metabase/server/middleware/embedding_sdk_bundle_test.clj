@@ -5,6 +5,7 @@
    [metabase.config.core :as config]
    [metabase.server.lib.etag-cache :as lib.etag-cache]
    [metabase.server.middleware.embedding-sdk-bundle :as mw.embedding-sdk-bundle]
+   [metabase.test :as mt]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
@@ -113,7 +114,7 @@
 
 (deftest serve-chunk-handler-returns-far-future-cache
   (testing "Chunk handler always returns far-future cache + Content-Type + Vary"
-    (with-redefs [response/resource-response (constantly {:status 200 :headers {} :body "chunk-js"})]
+    (mt/with-dynamic-fn-redefs [response/resource-response (constantly {:status 200 :headers {} :body "chunk-js"})]
       (let [handler (mw.embedding-sdk-bundle/serve-chunk-handler "embedding-sdk-chunk-runtime.a1b2c3d4.js")
             resp    (handler {:headers {}})]
         (is (= 200 (:status resp)))
@@ -122,7 +123,7 @@
         (is (= "Accept-Encoding" (get-in resp [:headers "Vary"]))))))
 
   (testing "Missing chunk resource → 404"
-    (with-redefs [response/resource-response (constantly nil)]
+    (mt/with-dynamic-fn-redefs [response/resource-response (constantly nil)]
       (let [handler (mw.embedding-sdk-bundle/serve-chunk-handler "embedding-sdk-chunk-nonexistent.js")
             resp    (handler {:headers {}})]
         (is (= 404 (:status resp)))

@@ -238,7 +238,7 @@
                                     :email      (mt/random-email)
                                     :password   "p@ssword1"}}
             has-user-setup (atom false)]
-        (with-redefs [setup/has-user-setup (fn [] @has-user-setup)]
+        (mt/with-dynamic-fn-redefs [setup/has-user-setup (fn [] @has-user-setup)]
           (is (not (setup/has-user-setup)))
           (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
             (is (malli= [:map {:closed true} [:id ms/NonBlankString]]

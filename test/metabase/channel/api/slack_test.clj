@@ -13,10 +13,10 @@
 (deftest update-slack-settings-test
   (testing "PUT /api/slack/settings"
     (testing "An admin can set a valid Slack app token to the slack-app-token setting"
-      (with-redefs [slack/valid-token?                                (constantly true)
-                    slack/channel-exists?                             (constantly true)
-                    slack/refresh-channels-and-usernames!             (constantly nil)
-                    slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
+      (mt/with-dynamic-fn-redefs [slack/valid-token?                                (constantly true)
+                                  slack/channel-exists?                             (constantly true)
+                                  slack/refresh-channels-and-usernames!             (constantly nil)
+                                  slack/refresh-channels-and-usernames-when-needed! (constantly nil)]
         (mt/with-temporary-setting-values [slack-app-token nil]
           (mt/user-http-request :crowberto :put 200 "slack/settings" {:slack-app-token "fake-token"})
           (is (= "fake-token" (channel.settings/unobfuscated-slack-app-token))))))))
@@ -72,12 +72,12 @@
 (deftest app-info-test
   (testing "GET /api/slack/app-info"
     (testing "Returns app_id and team_id when Slack is configured"
-      (with-redefs [api.slack/app-info (constantly {:app_id "A12345"
-                                                    :team_id "T67890"
-                                                    :scopes {:actual ["chat:write"]
-                                                             :required ["chat:write"]
-                                                             :missing []
-                                                             :extra []}})]
+      (mt/with-dynamic-fn-redefs [api.slack/app-info (constantly {:app_id "A12345"
+                                                                  :team_id "T67890"
+                                                                  :scopes {:actual ["chat:write"]
+                                                                           :required ["chat:write"]
+                                                                           :missing []
+                                                                           :extra []}})]
         (mt/with-temporary-setting-values [slack-app-token "fake-token"]
           (let [response (mt/user-http-request :crowberto :get 200 "slack/app-info")]
             (is (= {:app_id "A12345"
@@ -139,9 +139,9 @@
                               :url "https://files.slack.com/files-pri/123/diagnostic.json"}]}]]
 
       (testing "should post bug report to Slack with correct blocks"
-        (with-redefs [slack/upload-file! (constantly mock-file-info)
-                      slack/post-chat-message! (constantly nil)
-                      slack/channel-exists? (constantly true)]
+        (mt/with-dynamic-fn-redefs [slack/upload-file! (constantly mock-file-info)
+                                    slack/post-chat-message! (constantly nil)
+                                    slack/channel-exists? (constantly true)]
           (mt/with-temporary-setting-values [slack-bug-report-channel "test-bugs"]
             (let [response (mt/user-http-request :crowberto :post 200 "slack/bug-report"
                                                  {:diagnosticInfo diagnostic-info})]
@@ -151,9 +151,9 @@
                      response))))))
 
       (testing "should handle anonymous reports"
-        (with-redefs [slack/upload-file! (constantly mock-file-info)
-                      slack/post-chat-message! (constantly nil)
-                      slack/channel-exists? (constantly true)]
+        (mt/with-dynamic-fn-redefs [slack/upload-file! (constantly mock-file-info)
+                                    slack/post-chat-message! (constantly nil)
+                                    slack/channel-exists? (constantly true)]
           (mt/with-temporary-setting-values [slack-bug-report-channel "test-bugs"]
             (let [anonymous-info (dissoc diagnostic-info :reporter)
                   anonymous-blocks (walk/postwalk

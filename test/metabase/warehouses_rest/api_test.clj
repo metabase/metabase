@@ -305,9 +305,9 @@
        :model/Table    _           {:db_id db-id}]
       (let [queries    (volatile! [])
             orig-query mdb/query]
-        (with-redefs [mdb/query (fn [hsql]
-                                  (vswap! queries conj hsql)
-                                  (orig-query hsql))]
+        (mt/with-dynamic-fn-redefs [mdb/query (fn [hsql]
+                                                (vswap! queries conj hsql)
+                                                (orig-query hsql))]
           (mt/user-http-request :crowberto :get 200 (format "database/%d/usage_info" db-id)))
         (doseq [q @queries]
           (is (empty? (find-in-clauses q))
@@ -326,8 +326,8 @@
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
     (mt/with-model-cleanup [:model/Database]
-      (let [{db-id :id, :as response} (with-redefs [driver/available?   (constantly true)
-                                                    driver/can-connect? (constantly true)]
+      (let [{db-id :id, :as response} (mt/with-dynamic-fn-redefs [driver/available?   (constantly true)
+                                                                  driver/can-connect? (constantly true)]
                                         (mt/user-http-request :crowberto :post 200 "database"
                                                               (merge
                                                                {:name    db-name
@@ -422,7 +422,7 @@
             exception (Exception. (format "FATAL: database \"%s\" does not exist" dbname))]
         (is (= {:errors {:dbname "check your database name settings"},
                 :message "Looks like the Database name is incorrect."}
-               (with-redefs [driver/can-connect? (fn [& _] (throw exception))]
+               (mt/with-dynamic-fn-redefs [driver/can-connect? (fn [& _] (throw exception))]
                  (mt/user-http-request :crowberto :post 400 "database"
                                        {:name         dbname
                                         :engine       "postgres"
@@ -436,8 +436,8 @@
         (is (= {:errors  {:host "check your host settings"
                           :port "check your port settings"}
                 :message "Hmm, we couldn't connect to the database. Make sure your Host and Port settings are correct."}
-               (with-redefs [driver/available?   (constantly true)
-                             driver/can-connect? (fn [& _] (throw exception))]
+               (mt/with-dynamic-fn-redefs [driver/available?   (constantly true)
+                                           driver/can-connect? (fn [& _] (throw exception))]
                  (mt/user-http-request :crowberto :post 400 "database"
                                        {:name    (mt/random-name)
                                         :engine  (u/qualified-name ::test-driver)
@@ -446,7 +446,7 @@
 (deftest create-db-set-cache-ttl-throw-402-on-oss-test
   (testing "POST /api/database"
     (testing "should throw a 402 error if trying to set `cache_ttl` on OSS"
-      (with-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
+      (mt/with-dynamic-fn-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
         (mt/user-http-request :crowberto :post 402 "database"
                               {:name      (mt/random-name)
                                :engine    (u/qualified-name ::test-driver)
@@ -456,7 +456,7 @@
 (deftest create-db-set-cache-ttl-on-ee-test
   (testing "POST /api/database"
     (testing "should allow setting `cache_ttl` on EE"
-      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+      (mt/with-dynamic-fn-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (is (partial= {:cache_ttl 13}
                       (create-db-via-api! {:cache_ttl 13})))))))
 
@@ -488,7 +488,7 @@
   (testing "POST /api/database"
     (testing "The id captured in the database-create event matches the new db's id"
       (mt/with-premium-features #{:audit-app}
-        (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+        (mt/with-dynamic-fn-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
           (let [{:keys [id] :as _db} (create-db-via-api! {:id 19999999})
                 audit-entry (mt/latest-audit-log-entry "database-create")]
             (is (= id (-> audit-entry :model_id)))
@@ -545,7 +545,7 @@
             (is (=? {:errors {:db "check your connection string"}}
                     (update! 400))))
           (testing "If connection details are valid, we should be able to update the Database"
-            (with-redefs [driver/can-connect? (constantly true)]
+            (mt/with-dynamic-fn-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
               (let [curr-db (t2/select-one [:model/Database :name :engine :details :is_full_sync], :id db-id)]
@@ -573,7 +573,7 @@
 (deftest update-database-test-3
   (testing "PUT /api/database/:id"
     (testing "should not be able to modify `cache_ttl` in OSS"
-      (with-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
+      (mt/with-dynamic-fn-redefs [premium-features/enable-cache-granular-controls? (constantly false)]
         (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
           (let [updates {:cache_ttl 13}]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id) updates))
@@ -583,7 +583,7 @@
 (deftest update-database-test-4
   (testing "PUT /api/database/:id"
     (testing "should be able to set and unset `cache_ttl` in EE"
-      (with-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
+      (mt/with-dynamic-fn-redefs [premium-features/enable-cache-granular-controls? (constantly true)]
         (mt/with-temp [:model/Database {db-id :id} {:engine ::test-driver}]
           (let [updates1 {:cache_ttl 1337}
                 updates2 {:cache_ttl nil}
@@ -615,7 +615,7 @@
   (testing "Check that we get audit log entries that match the db when updating a Database"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Database {db-id :id}]
-        (with-redefs [driver/can-connect? (constantly true)]
+        (mt/with-dynamic-fn-redefs [driver/can-connect? (constantly true)]
           (is (= "Original Database Name" (:name (api-update-database! 200 db-id {:name "Original Database Name"})))
               "A db update occured")
           (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
@@ -1158,11 +1158,11 @@
                    :model/Table    {t-a-id :id}  {:db_id db-a-id :name "ta" :schema "PUBLIC"}
                    :model/Table    {t-b-id :id}  {:db_id db-b-id :name "tb" :schema "PUBLIC"}]
       (let [orig-import-fields (deref #'api.database/import-fields!)]
-        (with-redefs [api.database/import-fields! (fn [state fields incoming-by-id in-tbl->target path-lookup]
-                                                    (if (some #(= t-b-id (:table_id %)) fields)
-                                                      (throw (ex-info "injected failure for DB-B" {}))
-                                                      (orig-import-fields state fields incoming-by-id
-                                                                          in-tbl->target path-lookup)))]
+        (mt/with-dynamic-fn-redefs [api.database/import-fields! (fn [state fields incoming-by-id in-tbl->target path-lookup]
+                                                                  (if (some #(= t-b-id (:table_id %)) fields)
+                                                                    (throw (ex-info "injected failure for DB-B" {}))
+                                                                    (orig-import-fields state fields incoming-by-id
+                                                                                        in-tbl->target path-lookup)))]
           (let [payload {:databases [{:id db-a-id :name "pf-db-a" :engine "h2"}
                                      {:id db-b-id :name "pf-db-b" :engine "h2"}]
                          :tables    [{:id t-a-id :db_id db-a-id :name "ta" :schema "PUBLIC"}
@@ -1188,9 +1188,9 @@
                    :model/Table    {t-b-id :id}  {:db_id db-b-id :name "t" :schema "PUBLIC"}]
       (let [calls          (atom [])
             orig-build-pm  (deref #'api.database/build-target-field-pathmap)]
-        (with-redefs [api.database/build-target-field-pathmap (fn [ids]
-                                                                (swap! calls conj (set ids))
-                                                                (orig-build-pm ids))]
+        (mt/with-dynamic-fn-redefs [api.database/build-target-field-pathmap (fn [ids]
+                                                                              (swap! calls conj (set ids))
+                                                                              (orig-build-pm ids))]
           (let [payload {:databases [{:id db-a-id :name "scope-db-a" :engine "h2"}]
                          :tables    [{:id t-a-id :db_id db-a-id :name "t" :schema "PUBLIC"}]
                          :fields    [{:id 1 :table_id t-a-id :name "c"
@@ -1729,7 +1729,7 @@
 (deftest databases-list-include-saved-questions-tables-test-6
   (testing "GET /api/database?saved=true&include=tables"
     (testing "should work when there are no DBs that support nested queries"
-      (with-redefs [driver.u/supports? (constantly false)]
+      (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
         (is (nil? (fetch-virtual-database)))))))
 
 (deftest ^:parallel databases-list-include-saved-questions-tables-test-7
@@ -1776,7 +1776,7 @@
 (deftest db-metadata-saved-questions-db-test-2
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
     (testing "\nif no eligible Saved Questions exist the endpoint should return empty tables"
-      (with-redefs [api.database/cards-virtual-tables (constantly [])]
+      (mt/with-dynamic-fn-redefs [api.database/cards-virtual-tables (constantly [])]
         (is (= {:name               "Saved Questions"
                 :id                 lib.schema.id/saved-questions-virtual-database-id
                 :features           ["basic-aggregations"]
@@ -2039,7 +2039,7 @@
           ;; Submit a blocking task with a 1-second timeout so it gets cancelled quickly.
           ;; This simulates a stuck sync (e.g., hanging JDBC connection) that exceeds
           ;; the quick-task timeout and gets evicted.
-          (with-redefs [quick-task/task-timeout-ms (constantly 1000)]
+          (mt/with-dynamic-fn-redefs [quick-task/task-timeout-ms (constantly 1000)]
             (quick-task/submit-task! (fn [] (.await blocker-latch))))
           (try
             (mt/user-http-request :crowberto :post 200 (format "database/%d/sync_schema" db-id))
@@ -2077,9 +2077,9 @@
     (mt/with-premium-features #{:audit-app}
       (let [update-field-values-called? (promise)]
         (mt/with-temp [:model/Database db {:engine "h2", :details (:details (mt/db))}]
-          (with-redefs [sync.field-values/update-field-values! (fn [synced-db]
-                                                                 (when (= (u/the-id synced-db) (u/the-id db))
-                                                                   (deliver update-field-values-called? :sync-called)))]
+          (mt/with-dynamic-fn-redefs [sync.field-values/update-field-values! (fn [synced-db]
+                                                                               (when (= (u/the-id synced-db) (u/the-id db))
+                                                                                 (deliver update-field-values-called? :sync-called)))]
             (snowplow-test/with-fake-snowplow-collector
               (mt/user-http-request :crowberto :post 200 (format "database/%d/rescan_values" (u/the-id db)))
               (is (= :sync-called
@@ -2192,10 +2192,10 @@
     (let [call-count (atom 0)
           ssl-values (atom [])
           valid?     (atom false)]
-      (with-redefs [warehouses.util/test-database-connection (fn [_ details & _]
-                                                               (swap! call-count inc)
-                                                               (swap! ssl-values conj (:ssl details))
-                                                               (if @valid? nil {:valid false}))]
+      (mt/with-dynamic-fn-redefs [warehouses.util/test-database-connection (fn [_ details & _]
+                                                                             (swap! call-count inc)
+                                                                             (swap! ssl-values conj (:ssl details))
+                                                                             (if @valid? nil {:valid false}))]
         (testing "with SSL enabled, do not allow non-SSL connections"
           (#'warehouses.util/test-connection-details "postgres" {:ssl true})
           (is (= 1 @call-count))
@@ -2278,7 +2278,7 @@
   (testing "GET /api/database/:id/syncable_schemas"
     (testing "Multiple schemas are ordered by name"
       ;; We need to redef driver/syncable-schemas here because different databases might have different schemas
-      (with-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
+      (mt/with-dynamic-fn-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
         (is (= ["PUBLIC"]
                (mt/user-http-request :crowberto :get 200 (format "database/%d/syncable_schemas" (mt/id)))))
         (testing "Non-admins don't have permission to see syncable schemas"
@@ -2289,7 +2289,7 @@
   (testing "GET /api/database/:id/syncable_schemas"
     (testing "Non-admins can get syncable schemas on the attached DWH"
       (mt/with-temp [:model/Database {id :id} {:is_attached_dwh true}]
-        (with-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
+        (mt/with-dynamic-fn-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
           (is (= ["PUBLIC"]
                  (mt/user-http-request :rasta :get 200 (format "database/%d/syncable_schemas" id)))))))))
 
@@ -2948,20 +2948,20 @@
 (deftest healthcheck-works
   (testing "GET /api/database/:id/healthcheck"
     (mt/with-temp [:model/Database {id :id} {}]
-      (with-redefs [driver/available?   (constantly true)
-                    driver/can-connect? (constantly true)]
+      (mt/with-dynamic-fn-redefs [driver/available?   (constantly true)
+                                  driver/can-connect? (constantly true)]
         (is (= {:status "ok"} (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck"))))))
     (mt/with-temp [:model/Database {id :id} {}]
       (testing "connection throws"
-        (with-redefs [driver/available? (constantly true)
-                      driver/can-connect? (fn [& _args]
-                                            (throw (Exception. "oh no")))]
+        (mt/with-dynamic-fn-redefs [driver/available? (constantly true)
+                                    driver/can-connect? (fn [& _args]
+                                                          (throw (Exception. "oh no")))]
           (is (= {:status "error"
                   :message "oh no"}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck"))))))
       (testing "connection just fails, doesn't throw"
-        (with-redefs [driver/available? (constantly true)
-                      driver/can-connect? (constantly false)]
+        (mt/with-dynamic-fn-redefs [driver/available? (constantly true)
+                                    driver/can-connect? (constantly false)]
           (is (= {:status "error"
                   :message "Failed to connect to Database"}
                  (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck")))))))
@@ -2970,13 +2970,13 @@
         (mt/with-premium-features #{:writable-connection}
           (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}
                                                    :write_data_details {:host "write"}}]
-            (with-redefs [driver/available? (constantly true)
-                          driver/can-connect? (constantly true)]
+            (mt/with-dynamic-fn-redefs [driver/available? (constantly true)
+                                        driver/can-connect? (constantly true)]
               (is (= {:status "ok"}
                      (mt/user-http-request :crowberto :get 200 (str "database/" id "/healthcheck?connection-type=write-data")))))))))
     (testing "connection-type passed but not configured returns 400"
       (mt/with-temp [:model/Database {id :id} {:details {:host "primary"}}]
-        (with-redefs [driver/available? (constantly true)]
+        (mt/with-dynamic-fn-redefs [driver/available? (constantly true)]
           (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=write-data"))))))
     (testing "invalid connection-type value returns 400"
       (mt/with-temp [:model/Database {id :id} {}]
@@ -3204,7 +3204,7 @@
       (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
-          (with-redefs [driver/can-connect? (constantly true)]
+          (mt/with-dynamic-fn-redefs [driver/can-connect? (constantly true)]
             (let [response (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                                  {:write_data_details {:host "write-host"
                                                                        :password "write-pass"
@@ -3219,7 +3219,7 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}
                                                     :write_data_details {:host "write-host"}}]
-          (with-redefs [driver/can-connect? (constantly true)]
+          (mt/with-dynamic-fn-redefs [driver/can-connect? (constantly true)]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                   {:write_data_details nil})
             (let [db (t2/select-one :model/Database :id db-id)]
@@ -3230,7 +3230,7 @@
                                                     :details {:host "localhost"}
                                                     :write_data_details {:host "write-host"
                                                                          :password "original-pass"}}]
-          (with-redefs [driver/can-connect? (constantly true)]
+          (mt/with-dynamic-fn-redefs [driver/can-connect? (constantly true)]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                   {:write_data_details {:host "new-write-host"
                                                         :password secret/protected-password
@@ -3239,7 +3239,7 @@
               (is (= "new-write-host" (get-in db [:write_data_details :host])))
               (is (= "original-pass" (get-in db [:write_data_details :password]))))))))
     (testing "Returns 402 without :writable-connection feature"
-      (with-redefs [premium-features/has-feature? (constantly false)]
+      (mt/with-dynamic-fn-redefs [premium-features/has-feature? (constantly false)]
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
           (mt/user-http-request :crowberto :put 402 (format "database/%d" db-id)
@@ -3251,10 +3251,10 @@
       (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
-          (with-redefs [driver/can-connect? (fn [_engine details]
-                                              (if (:write-data-connection details)
-                                                (throw (Exception. "Write connection failed"))
-                                                true))]
+          (mt/with-dynamic-fn-redefs [driver/can-connect? (fn [_engine details]
+                                                            (if (:write-data-connection details)
+                                                              (throw (Exception. "Write connection failed"))
+                                                              true))]
             (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
                                                  {:write_data_details {:host "totally-bogus-host"
                                                                        :write-data-connection true}})]

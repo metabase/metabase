@@ -54,11 +54,11 @@
                      (token-check/make-checker {:local-ttl (t/seconds 5)
                                                 :soft-ttl  (t/minutes 1)
                                                 :hard-ttl  (t/minutes 2)}))]
-    (with-redefs [token-check/http-fetch (fn [& _]
-                                           (swap! call-count inc)
-                                           (case @response
-                                             :error (throw (ex-info "kaboom" {:ka :boom}))
-                                             :500   {:status 500}))]
+    (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                         (swap! call-count inc)
+                                                         (case @response
+                                                           :error (throw (ex-info "kaboom" {:ka :boom}))
+                                                           :500   {:status 500}))]
       (testing "For timeouts, 5XX errors, etc. we don't cache the result"
         (dotimes [_ 5] (token-check/check-token checker token))
         (is (= 5 @call-count)))
@@ -144,7 +144,7 @@
                            :local-ttl       (t/millis 50)
                            :soft-ttl        (t/millis 200)
                            :hard-ttl        (t/seconds 1)})]
-      (with-redefs [mdb/db-is-set-up? (constantly false)]
+      (mt/with-dynamic-fn-redefs [mdb/db-is-set-up? (constantly false)]
         (is (= {:valid false
                 :canonical? false
                 :status "Unable to validate token"
@@ -157,7 +157,7 @@
                 :error-details "Metabase DB is not yet set up"}
                (token-check/-check-token checker token))))
       (testing "When the db-is-set-up? we are not blocked by the circuit breaker"
-        (with-redefs [mdb/db-is-set-up? (constantly true)]
+        (mt/with-dynamic-fn-redefs [mdb/db-is-set-up? (constantly true)]
           (is (= good-response (token-check/-check-token checker token))))))))
 
 (defn- age-cache-entry!
@@ -186,14 +186,14 @@
                                                    :hard-ttl            (t/hours 36)
                                                    :db-hash-local-cache local-cache}))]
       (try
-        (with-redefs [token-check/http-fetch (fn [& _]
-                                               (swap! call-count inc)
-                                               {:status 200 :body good-body})]
+        (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                             (swap! call-count inc)
+                                                             {:status 200 :body good-body})]
           (is (= good-resp (token-check/check-token checker token)))
           (is (= 1 @call-count)))
-        (with-redefs [token-check/http-fetch (fn [& _]
-                                               (swap! call-count inc)
-                                               (throw (ex-info "network failure!" {})))]
+        (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
+                                                             (swap! call-count inc)
+                                                             (throw (ex-info "network failure!" {})))]
           (testing "Doesn't hit the network inside of cache duration"
             ;; Wait for local-cached-token-checker TTL to expire, but DB-hash-aware cache is still fresh
             (Thread/sleep 60)
@@ -250,46 +250,46 @@
 
 (deftest assert-valid-airgap-user-count-test
   (testing "no limit set - no error"
-    (with-redefs [token-check/max-users-allowed (constantly nil)]
+    (mt/with-dynamic-fn-redefs [token-check/max-users-allowed (constantly nil)]
       (is (nil? (token-check/assert-valid-airgap-user-count!)))))
 
   (testing "under limit - no error"
-    (with-redefs [token-check/max-users-allowed    (constantly 10)
-                  token-check/active-user-count (constantly 5)]
+    (mt/with-dynamic-fn-redefs [token-check/max-users-allowed    (constantly 10)
+                                token-check/active-user-count (constantly 5)]
       (is (nil? (token-check/assert-valid-airgap-user-count!)))))
 
   (testing "at limit - no error"
-    (with-redefs [token-check/max-users-allowed    (constantly 10)
-                  token-check/active-user-count (constantly 10)]
+    (mt/with-dynamic-fn-redefs [token-check/max-users-allowed    (constantly 10)
+                                token-check/active-user-count (constantly 10)]
       (is (nil? (token-check/assert-valid-airgap-user-count!)))))
 
   (testing "over limit - throws"
-    (with-redefs [token-check/max-users-allowed    (constantly 10)
-                  token-check/active-user-count (constantly 11)]
+    (mt/with-dynamic-fn-redefs [token-check/max-users-allowed    (constantly 10)
+                                token-check/active-user-count (constantly 11)]
       (is (thrown-with-msg? Exception
                             #"You have reached the maximum number of users"
                             (token-check/assert-valid-airgap-user-count!))))))
 
 (deftest assert-airgap-allows-user-creation-test
   (testing "no limit set - no error"
-    (with-redefs [token-check/max-users-allowed (constantly nil)]
+    (mt/with-dynamic-fn-redefs [token-check/max-users-allowed (constantly nil)]
       (is (nil? (token-check/assert-airgap-allows-user-creation!)))))
 
   (testing "under limit - no error (room for one more)"
-    (with-redefs [token-check/max-users-allowed    (constantly 10)
-                  token-check/active-user-count (constantly 9)]
+    (mt/with-dynamic-fn-redefs [token-check/max-users-allowed    (constantly 10)
+                                token-check/active-user-count (constantly 9)]
       (is (nil? (token-check/assert-airgap-allows-user-creation!)))))
 
   (testing "at limit - throws (no room for another)"
-    (with-redefs [token-check/max-users-allowed    (constantly 10)
-                  token-check/active-user-count (constantly 10)]
+    (mt/with-dynamic-fn-redefs [token-check/max-users-allowed    (constantly 10)
+                                token-check/active-user-count (constantly 10)]
       (is (thrown-with-msg? Exception
                             #"Adding another user would exceed the maximum"
                             (token-check/assert-airgap-allows-user-creation!)))))
 
   (testing "over limit - throws"
-    (with-redefs [token-check/max-users-allowed    (constantly 10)
-                  token-check/active-user-count (constantly 11)]
+    (mt/with-dynamic-fn-redefs [token-check/max-users-allowed    (constantly 10)
+                                token-check/active-user-count (constantly 11)]
       (is (thrown-with-msg? Exception
                             #"Adding another user would exceed the maximum"
                             (token-check/assert-airgap-allows-user-creation!))))))
@@ -298,9 +298,9 @@
   (testing "send-metering-events! makes a POST request with correct data"
     (let [request-data (atom nil)]
       (mt/with-random-premium-token! [_token]
-        (with-redefs [http/post (fn [url opts]
-                                  (reset! request-data {:url url :opts opts})
-                                  {:status 200 :body "{}"})]
+        (mt/with-dynamic-fn-redefs [http/post (fn [url opts]
+                                                (reset! request-data {:url url :opts opts})
+                                                {:status 200 :body "{}"})]
           (token-check/send-metering-events!)
           (is (some? @request-data) "POST request should have been made")
           (when @request-data
@@ -324,15 +324,15 @@
                       "openai:gpt-4:tokens"                300}
           request-data (atom nil)]
       (mt/with-random-premium-token! [_token]
-        (with-redefs [token-check/metering-stats (constantly {:users          10
-                                                              :external-users 2
-                                                              :internal-users 8
-                                                              :domains        1
-                                                              :metabot-usage  fake-usage
-                                                              :metabot-tokens 800})
-                      http/post                 (fn [_url opts]
-                                                  (reset! request-data opts)
-                                                  {:status 200 :body "{}"})]
+        (mt/with-dynamic-fn-redefs [token-check/metering-stats (constantly {:users          10
+                                                                            :external-users 2
+                                                                            :internal-users 8
+                                                                            :domains        1
+                                                                            :metabot-usage  fake-usage
+                                                                            :metabot-tokens 800})
+                                    http/post                 (fn [_url opts]
+                                                                (reset! request-data opts)
+                                                                {:status 200 :body "{}"})]
           (token-check/send-metering-events!)
           (let [body (json/decode (:body @request-data) keyword)]
             (is (= 10 (:users body))
@@ -346,7 +346,7 @@
 (deftest send-metering-events-error-handling-test
   (testing "send-metering-events! handles errors gracefully"
     (mt/with-random-premium-token! [_token]
-      (with-redefs [http.core/request (fn [& _] (throw (Exception. "Network error")))]
+      (mt/with-dynamic-fn-redefs [http.core/request (fn [& _] (throw (Exception. "Network error")))]
         ;; Should not throw, just log the error
         (is (nil? (token-check/send-metering-events!)))))))
 
@@ -354,9 +354,9 @@
   (testing "send-metering-events! does nothing when no token is set"
     (let [request-made (atom false)]
       (mt/with-temporary-setting-values [premium-embedding-token nil]
-        (with-redefs [http/post (fn [_url _opts]
-                                  (reset! request-made true)
-                                  {:status 200 :body "{}"})]
+        (mt/with-dynamic-fn-redefs [http/post (fn [_url _opts]
+                                                (reset! request-made true)
+                                                {:status 200 :body "{}"})]
           (token-check/send-metering-events!)
           (is (false? @request-made) "No request should be made without a token"))))))
 
@@ -365,15 +365,15 @@
     (let [;; This is a fake airgap token format (starts with "airgap_")
           airgap-token "airgap_eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ90faketoken"
           request-made (atom false)]
-      (with-redefs [token-check/check-token
-                    (constantly {:valid    true
-                                 :status   "fake"
-                                 :features ["test" "fixture"]
-                                 :trial    false})]
+      (mt/with-dynamic-fn-redefs [token-check/check-token
+                                  (constantly {:valid    true
+                                               :status   "fake"
+                                               :features ["test" "fixture"]
+                                               :trial    false})]
         (mt/with-temporary-raw-setting-values [premium-embedding-token airgap-token]
-          (with-redefs [http/post (fn [_url _opts]
-                                    (reset! request-made true)
-                                    {:status 200 :body "{}"})]
+          (mt/with-dynamic-fn-redefs [http/post (fn [_url _opts]
+                                                  (reset! request-made true)
+                                                  {:status 200 :body "{}"})]
             (token-check/send-metering-events!)
             (is (false? @request-made) "No request should be made for airgap tokens")))))))
 
@@ -664,10 +664,10 @@
 (deftest set-premium-embedding-token-canonical-invalid-test
   (testing "When MetaStore says the token is invalid (canonical), throws 400 with MetaStore's message"
     (let [token (tu/random-token)]
-      (with-redefs [token-check/check-token (constantly {:valid        false
-                                                         :status       "Token expired"
-                                                         :error-details "Expired 2024-01-01"
-                                                         :canonical?   true})]
+      (mt/with-dynamic-fn-redefs [token-check/check-token (constantly {:valid        false
+                                                                       :status       "Token expired"
+                                                                       :error-details "Expired 2024-01-01"
+                                                                       :canonical?   true})]
         (let [e (try (token-check/-set-premium-embedding-token! token)
                      nil
                      (catch Exception e e))]
@@ -679,9 +679,9 @@
 (deftest set-premium-embedding-token-non-canonical-failure-test
   (testing "When token validation fails for non-canonical reasons (network etc), throws 503"
     (let [token (tu/random-token)]
-      (with-redefs [token-check/check-token (constantly {:valid         false
-                                                         :status        "Unable to validate token"
-                                                         :error-details "Connection refused"})]
+      (mt/with-dynamic-fn-redefs [token-check/check-token (constantly {:valid         false
+                                                                       :status        "Unable to validate token"
+                                                                       :error-details "Connection refused"})]
         (let [e (try (token-check/-set-premium-embedding-token! token)
                      nil
                      (catch Exception e e))]
@@ -693,9 +693,9 @@
 (deftest set-premium-embedding-token-valid-test
   (testing "When token is valid, no exception is thrown and setting is persisted"
     (let [token (tu/random-token)]
-      (with-redefs [token-check/check-token (constantly {:valid    true
-                                                         :status   "OK"
-                                                         :features ["test"]})]
+      (mt/with-dynamic-fn-redefs [token-check/check-token (constantly {:valid    true
+                                                                       :status   "OK"
+                                                                       :features ["test"]})]
         (mt/with-temporary-setting-values [premium-embedding-token nil]
           (token-check/-set-premium-embedding-token! token)
           (is (= token (premium-features/premium-embedding-token))))))))

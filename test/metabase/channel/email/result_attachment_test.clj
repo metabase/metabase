@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.email.result-attachment :as email.result-attachment]
-   [metabase.permissions.core :as perms])
+   [metabase.permissions.core :as perms]
+   [metabase.test :as mt])
   (:import
    (java.io IOException)))
 
@@ -38,15 +39,15 @@
           part                     {:card   card
                                     :result {:row_count 5
                                              :data      {:rows [[1] [2] [3] [4] [5]]}}}]
-      (with-redefs [perms/download-perms-level (fn [_query user-id]
-                                                 (case (long user-id)
-                                                   1 :no
-                                                   2 :one-million-rows
-                                                   :one-million-rows))
+      (mt/with-dynamic-fn-redefs [perms/download-perms-level (fn [_query user-id]
+                                                               (case (long user-id)
+                                                                 1 :no
+                                                                 2 :one-million-rows
+                                                                 :one-million-rows))
                     ;; Sentinel: if execution reaches the streaming path, the perm check passed.
                     ;; We avoid exercising real CSV streaming machinery in a unit test.
-                    email.result-attachment/create-temp-file! (fn [_]
-                                                                (throw (ex-info "PERM-CHECK-PASSED" {})))]
+                                  email.result-attachment/create-temp-file! (fn [_]
+                                                                              (throw (ex-info "PERM-CHECK-PASSED" {})))]
         (testing "passes perm check when subscription creator has download perms (even if card author does not)"
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo

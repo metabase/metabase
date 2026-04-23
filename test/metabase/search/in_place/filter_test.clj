@@ -403,7 +403,7 @@
 
 (deftest build-filters-indexed-entity-test
   (testing "users that are not sandboxed or impersonated can search for indexed entity"
-    (with-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly false)]
+    (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly false)]
       (is (= [:and
               [:or [:like [:lower :model-index-value.name] "%foo%"]]
               [:inline [:= 1 1]]]
@@ -414,7 +414,7 @@
 
 (deftest build-filters-indexed-entity-test-2
   (testing "otherwise search result is empty"
-    (with-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly true)]
+    (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly true)]
       (is (= [:and
               [:or [:= 0 1]]
               [:inline [:= 1 1]]]

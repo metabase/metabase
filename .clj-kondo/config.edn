@@ -810,6 +810,13 @@
      metabase.lib.convert/->legacy-MBQL {:level :off}
      metabase.lib.core/->legacy-MBQL    {:level :off}}}}
 
+  ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
+  ;; so leave these alone.
+  metabase.lib.aggregation-test
+  {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
+  metabase.util.time-test
+  {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
+
   source-namespaces
   {:linters
    {:metabase/discourage-millis-duration               {:level :warning}

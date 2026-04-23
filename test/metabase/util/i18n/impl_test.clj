@@ -144,7 +144,7 @@
       (binding [config/*disable-setting-cache* true]
         (is (= "en" (i18n.impl/site-locale-from-setting)))
         ;; force an infinite loop: `log/error` will access `:site-locale` recursively to log the message
-        (with-redefs [metabase.settings.models.setting/get-raw-value (fn [& _] (log/error "a message to log") "foo")]
+        (mt/with-dynamic-fn-redefs [metabase.settings.models.setting/get-raw-value (fn [& _] (log/error "a message to log") "foo")]
           (testing "since the encrypted string is an invalid value for a Locale, high-level functions should return nil"
             (is (nil? (i18n/site-locale))
                 `i18n/site-locale)

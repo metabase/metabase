@@ -186,7 +186,7 @@
 
 (deftest openrouter-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
-    (with-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
+    (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
       (mt/with-temporary-setting-values [llm.settings/llm-openrouter-api-key "sk-or-v1-byok"
                                          llm.settings/llm-proxy-base-url    "https://proxy.example"]
         (testing "Prefers BYOK over ai proxy"

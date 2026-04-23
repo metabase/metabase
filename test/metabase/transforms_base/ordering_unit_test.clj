@@ -7,6 +7,7 @@
   `metabase.transforms-base.ordering-test`."
   (:require
    [clojure.test :refer :all]
+   [metabase.test :as mt]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.ordering :as ordering]))
 
@@ -64,22 +65,22 @@
 (deftest transform-ordering-catches-per-transform-failures-test
   (testing "per-transform dep-extraction failures are caught, captured in :failed, and treated as no deps"
     (testing "failure on a start-id: the transform becomes a leaf, its supposed deps are not visited"
-      (with-redefs [transforms-base.i/table-dependencies
-                    (fn [transform]
-                      (if (= (:id transform) 1)
-                        (throw (ex-info "simulated extraction failure" {}))
-                        (:test-deps transform)))]
+      (mt/with-dynamic-fn-redefs [transforms-base.i/table-dependencies
+                                  (fn [transform]
+                                    (if (= (:id transform) 1)
+                                      (throw (ex-info "simulated extraction failure" {}))
+                                      (:test-deps transform)))]
         ;; Transform 1 is tagged but its extractor throws. The walk catches, captures 1 in :failed,
         ;; treats 1 as a leaf, and the supposed downstream dep (2) is never visited.
         (is (= {:dependencies {1 #{}} :not-found #{} :failed #{1}}
                (ordering/transform-ordering #{1} [(tx 1 #{2}) (tx 2 #{})])))))
 
     (testing "failure on a discovered upstream: upstream is still included (the parent's deps found it), but has no further deps of its own"
-      (with-redefs [transforms-base.i/table-dependencies
-                    (fn [transform]
-                      (if (= (:id transform) 1)
-                        (throw (ex-info "simulated upstream failure" {}))
-                        (:test-deps transform)))]
+      (mt/with-dynamic-fn-redefs [transforms-base.i/table-dependencies
+                                  (fn [transform]
+                                    (if (= (:id transform) 1)
+                                      (throw (ex-info "simulated upstream failure" {}))
+                                      (:test-deps transform)))]
         ;; Transform 2 is tagged and depends on 1. 2's extractor succeeds, so the edge 2→1 is
         ;; recorded. Then 1 is visited, its extractor throws, so 1 is captured in :failed and
         ;; treated as a leaf. The parent edge 2→1 is preserved, which is what run-transforms!

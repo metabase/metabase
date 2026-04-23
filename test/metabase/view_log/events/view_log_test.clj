@@ -186,7 +186,7 @@
     (let [call-count (atom 0)
           t2-query-orig t2/query]
       (testing "increment-view-counts!* update the view_count correctly"
-        (with-redefs [t2/query (fn [& args] (swap! call-count inc) (apply t2-query-orig args))]
+        (mt/with-dynamic-fn-redefs [t2/query (fn [& args] (swap! call-count inc) (apply t2-query-orig args))]
           (#'events.view-log/increment-view-counts!* [;; table-id : 1 views, card-id-1: 2 views, card-id 2: 2 views
                                                       {:model :model/Table :id table-id}
                                                       {:model :model/Card  :id card-1-id}

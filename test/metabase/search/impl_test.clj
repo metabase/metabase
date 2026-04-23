@@ -339,9 +339,9 @@
        :model/Card _ {:name search-term}]
       (testing "searching with limit"
         (mt/with-current-user (mt/user->id :crowberto)
-          (with-redefs [search.impl/check-permissions-for-model (fn [_search-ctx search-result]
-                                                                  (and (= "card" (:model search-result))
-                                                                       (= 0 (mod (:id search-result) 2))))]
+          (mt/with-dynamic-fn-redefs [search.impl/check-permissions-for-model (fn [_search-ctx search-result]
+                                                                                (and (= "card" (:model search-result))
+                                                                                     (= 0 (mod (:id search-result) 2))))]
             (let [result (->> (search.impl/search (search.impl/search-context
                                                    {:search-string      search-term
                                                     :limit              4

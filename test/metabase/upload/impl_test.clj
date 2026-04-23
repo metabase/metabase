@@ -449,7 +449,7 @@
                  (test-names-match table "Some File Prefix"))))))
         (testing "Unicode characters are preserved in the display name, even when the table name is slugified"
           (let [csv-file-prefix "出色的"]
-            (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
+            (mt/with-dynamic-fn-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
               (do-with-uploaded-example-csv!
                {:csv-file-prefix csv-file-prefix}
                (fn [model]
@@ -460,8 +460,8 @@
         (testing "The names should be truncated to the right size"
          ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
           (let [max-bytes 15]
-            (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
-                          upload/max-bytes (constantly max-bytes)]
+            (mt/with-dynamic-fn-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
+                                        upload/max-bytes (constantly max-bytes)]
               (doseq [^String c ["a" "出"]]
                 (let [long-csv-file-prefix (apply str (repeat (inc max-bytes) c))
                       char-size            (count (.getBytes ^String c "UTF-8"))]
@@ -721,8 +721,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (when (driver/upload-type->database-type driver/*driver* :metabase.upload/offset-datetime)
         (with-mysql-local-infile-on-and-off
-          (with-redefs [driver/db-default-timezone (constantly "Z")
-                        upload.db/current-database (constantly (mt/db))]
+          (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
+                                      upload.db/current-database (constantly (mt/db))]
             (let [transpose  (fn [m] (apply mapv vector m))
                   [csv-strs expected] (transpose [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
                                                   ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
@@ -964,10 +964,10 @@
     ;; There aren't any officially supported databases yet that don't support `:upload-with-auto-pk`
     ;; So we'll fake it here to test it for 3rd party drivers
     (let [original-supports?-fn driver.u/supports?]
-      (with-redefs [driver.u/supports? (fn [driver feature db]
-                                         (if (= feature :upload-with-auto-pk)
-                                           false
-                                           (original-supports?-fn driver feature db)))]
+      (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [driver feature db]
+                                                       (if (= feature :upload-with-auto-pk)
+                                                         false
+                                                         (original-supports?-fn driver feature db)))]
         (with-mysql-local-infile-on-and-off
           (testing "Upload a CSV file with column names that are reserved by the DB, NOT ignoring them"
             (testing "A single column whose name normalizes to _mb_row_id"
@@ -1335,11 +1335,11 @@
               identity))))
       (testing "Driver error"
         (let [metrics (atom {})]
-          (with-redefs [driver/create-table! (fn [& _args] (throw (Exception. "Boom")))
-                        analytics/inc! (fn
-                                         ([k] (swap! metrics update k (fnil inc 0)))
-                                         ([k v] (when (number? v) (swap! metrics update k (fnil #(+ % v) 0))))
-                                         ([k v _opts] (when (number? v) (swap! metrics update k (fnil #(+ % v) 0)))))]
+          (mt/with-dynamic-fn-redefs [driver/create-table! (fn [& _args] (throw (Exception. "Boom")))
+                                      analytics/inc! (fn
+                                                       ([k] (swap! metrics update k (fnil inc 0)))
+                                                       ([k v] (when (number? v) (swap! metrics update k (fnil #(+ % v) 0))))
+                                                       ([k v _opts] (when (number? v) (swap! metrics update k (fnil #(+ % v) 0)))))]
             (is (thrown-with-msg?
                  Exception
                  #"Boom"
@@ -1652,8 +1652,8 @@
         (with-mysql-local-infile-on-and-off
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for offset datetime columns"
-              (with-redefs [driver/db-default-timezone (constantly "Z")
-                            upload.db/current-database (constantly (mt/db))]
+              (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
+                                          upload.db/current-database (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -2636,11 +2636,11 @@
     (with-uploads-enabled!
       (let [db-id           (mt/id)
             write-cache-key [db-id :write-data]]
-        (with-redefs [driver.conn/effective-connection-type
-                      (fn [_database]
-                        (if (= driver.conn/*connection-type* :write-data)
-                          :write-data
-                          :default))]
+        (mt/with-dynamic-fn-redefs [driver.conn/effective-connection-type
+                                    (fn [_database]
+                                      (if (= driver.conn/*connection-type* :write-data)
+                                        :write-data
+                                        :default))]
           (try
             (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
             (testing "write pool does not exist before upload create"
@@ -2656,11 +2656,11 @@
     (with-uploads-enabled!
       (let [db-id           (mt/id)
             write-cache-key [db-id :write-data]]
-        (with-redefs [driver.conn/effective-connection-type
-                      (fn [_database]
-                        (if (= driver.conn/*connection-type* :write-data)
-                          :write-data
-                          :default))]
+        (mt/with-dynamic-fn-redefs [driver.conn/effective-connection-type
+                                    (fn [_database]
+                                      (if (= driver.conn/*connection-type* :write-data)
+                                        :write-data
+                                        :default))]
           (try
             (let [table (create-upload-table!)]
               (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))

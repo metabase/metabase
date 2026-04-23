@@ -12,6 +12,7 @@
    [metabase.notification.send :as notification.send]
    [metabase.premium-features.core :as premium-features]
    [metabase.premium-features.test-util :as premium-features.test-util]
+   [metabase.test :as mt]
    [metabase.test.data.users :as test.users]
    [metabase.test.util :as tu]
    [metabase.util :as u :refer [prog1]]
@@ -298,7 +299,7 @@
     (testing "error metrics collection"
       (tu/with-prometheus-system! [_ system]
         (binding [retry/*test-time-config-hook* #(assoc % :max-retries 0)]
-          (with-redefs [email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
+          (mt/with-dynamic-fn-redefs [email/send-email! (fn [_ _] (throw (Exception. "test-exception")))]
             (email/send-message!
              :subject      "101 Reasons to use Metabase"
              :recipients   ["test@test.com"]
@@ -373,7 +374,7 @@
 
 (deftest send-message!-cloud-test
   (premium-features.test-util/with-premium-features [:cloud-custom-smtp]
-    (with-redefs [premium-features/is-hosted? (constantly true)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
       (tu/with-temporary-setting-values [email-from-address "standard@metabase.com"
                                          email-from-name "From Name"
                                          email-reply-to ["reply-to@metabase.com" "reply-to-me-too@metabase.com"]
@@ -414,7 +415,7 @@
 
 (deftest throttle-test
   (let [send-email (fn [recipients]
-                     (with-redefs [postal/send-message (fn [& args] (last args))]
+                     (mt/with-dynamic-fn-redefs [postal/send-message (fn [& args] (last args))]
                        (email/send-email!
                         {}
                         (merge {:from    "awesome@metabase.com"

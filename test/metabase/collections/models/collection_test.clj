@@ -407,8 +407,8 @@
 (def ^:dynamic ^:private *visible-collection-ids* #{})
 
 (deftest effective-location-path-test
-  (with-redefs [audit/is-collection-id-audit? (constantly false)
-                collection/visible-collection-ids (fn [& _] *visible-collection-ids*)]
+  (mt/with-dynamic-fn-redefs [audit/is-collection-id-audit? (constantly false)
+                              collection/visible-collection-ids (fn [& _] *visible-collection-ids*)]
     (testing "valid input"
       (doseq [[[path visible-ids] expected] {["/10/20/30/" #{10 20}]    "/10/20/"
                                              ["/10/20/30/" #{10 30}]    "/10/30/"
@@ -809,7 +809,7 @@
 
   (testing "Let's make sure we get an Exception when we try to archive the Custom Reports Collection"
     (mt/with-temp [:model/Collection cr-collection {}]
-      (with-redefs [audit/default-custom-reports-collection (constantly cr-collection)]
+      (mt/with-dynamic-fn-redefs [audit/default-custom-reports-collection (constantly cr-collection)]
         (is (thrown-with-msg?
              Exception
              #"You cannot operate on the Custom Reports Collection."
@@ -1756,8 +1756,8 @@
                    :model/Collection cr-collection    {}
                    :model/Card       cr-card          {:collection_id (:id cr-collection)}
                    :model/Dashboard  cr-dashboard     {:collection_id (:id cr-collection)}]
-      (with-redefs [audit/default-audit-collection          (constantly audit-collection)
-                    audit/default-custom-reports-collection (constantly cr-collection)]
+      (mt/with-dynamic-fn-redefs [audit/default-audit-collection          (constantly audit-collection)
+                                  audit/default-custom-reports-collection (constantly cr-collection)]
         (mt/with-current-user (mt/user->id :crowberto)
           (mt/with-additional-premium-features #{:audit-app}
             (is (not (mi/can-write? audit-collection))
@@ -2063,7 +2063,7 @@
         ;; When no dependencies, the function returns the model
         (let [model (t2/instance :model/Card {:id card-id})]
           ;; Mock to return empty set (new behavior)
-          (with-redefs [collection/non-remote-synced-dependencies (constantly #{})]
+          (mt/with-dynamic-fn-redefs [collection/non-remote-synced-dependencies (constantly #{})]
             (is (= model (collection/check-non-remote-synced-dependencies model))
                 "Should return the model when no dependencies")))))
 
@@ -2071,8 +2071,8 @@
       (mt/with-temp [:model/Card {card-id :id} {:name "Test Card"}
                      :model/Card {dep-card-id :id} {:name "Dependency Card"}]
         ;; Mock to return a set of Card IDs (new behavior)
-        (with-redefs [collection/non-remote-synced-dependencies
-                      (constantly #{dep-card-id})]
+        (mt/with-dynamic-fn-redefs [collection/non-remote-synced-dependencies
+                                    (constantly #{dep-card-id})]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Uses content that is not remote synced."
@@ -2083,7 +2083,7 @@
       (mt/with-temp [:model/Card {card-id :id} {:name "Test Card"}
                      :model/Card {dep-card-id :id} {:name "Dependency Card"}]
         ;; Mock to return a set of Card IDs (new behavior)
-        (with-redefs [collection/non-remote-synced-dependencies (constantly #{dep-card-id})]
+        (mt/with-dynamic-fn-redefs [collection/non-remote-synced-dependencies (constantly #{dep-card-id})]
           (try
             (collection/check-non-remote-synced-dependencies (t2/instance :model/Card {:id card-id}))
             (catch Exception e

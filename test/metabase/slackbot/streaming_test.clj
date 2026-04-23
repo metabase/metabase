@@ -41,17 +41,17 @@
 
 (deftest thread->history-strips-bot-mentions-test
   (testing "User messages have bot mentions stripped"
-    (with-redefs [slackbot.persistence/message-history (constantly {})]
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
       (let [thread {:messages [{:ts "1709567890.000001" :text "<@UBOT123> hello" :user "U123"}]}
             result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
         (is (= [{:role :user :content "hello"}] result))))))
 
 (deftest thread->history-merges-tool-calls-test
   (testing "Bot messages include tool call data from DB before text"
-    (with-redefs [slackbot.persistence/message-history
-                  (constantly {"1709567890.000002"
-                               [{:role :assistant :tool_calls [{:id "tc1" :name "run_query"}]}
-                                {:role :tool :tool_call_id "tc1" :content "42"}]})]
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history
+                                (constantly {"1709567890.000002"
+                                             [{:role :assistant :tool_calls [{:id "tc1" :name "run_query"}]}
+                                              {:role :tool :tool_call_id "tc1" :content "42"}]})]
       (let [thread {:messages [{:ts "1709567890.000002" :text "The answer is 42" :bot_id "B123"}]}
             result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
         (is (= 3 (count result)))
@@ -61,7 +61,7 @@
 
 (deftest thread->history-excludes-thinking-test
   (testing "Thinking placeholder messages are excluded from history"
-    (with-redefs [slackbot.persistence/message-history (constantly {})]
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
       (let [thread {:messages [{:ts "1709567890.000001" :text "question" :user "U123"}
                                {:ts "1709567890.000002" :text "_Thinking..._" :bot_id "B123"}]}
             result (#'slackbot.streaming/thread->history thread "UBOT123" "conv-123")]
@@ -70,7 +70,7 @@
 
 (deftest thread->history-excludes-blank-bot-messages-test
   (testing "Bot messages with blank text are excluded"
-    (with-redefs [slackbot.persistence/message-history (constantly {})]
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history (constantly {})]
       (let [thread {:messages [{:ts "1709567890.000001" :text "" :bot_id "B123"}
                                {:ts "1709567890.000002" :text "   " :bot_id "B123"}
                                {:ts "1709567890.000003" :text "real" :bot_id "B123"}]}
@@ -79,9 +79,9 @@
 
 (deftest thread->history-excludes-soft-deleted-bot-messages-test
   (testing "thread->history excludes bot messages that have been soft-deleted"
-    (with-redefs [slackbot.persistence/message-history  (constantly {})
-                  slackbot.persistence/deleted-message-ids
-                  (fn [_conv-id _ids] #{"1709567890.000002"})]
+    (mt/with-dynamic-fn-redefs [slackbot.persistence/message-history  (constantly {})
+                                slackbot.persistence/deleted-message-ids
+                                (fn [_conv-id _ids] #{"1709567890.000002"})]
       (let [thread {:messages [{:ts "1709567890.000001" :text "User question" :user "U123"}
                                {:ts "1709567890.000002" :text "Deleted bot response" :bot_id "B123"}
                                {:ts "1709567890.000003" :text "Live bot response" :bot_id "B123"}]}
@@ -157,17 +157,17 @@
         event          {:channel "C1" :ts "123.456" :channel_type "im"}]
     (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider
                                        "metabase/anthropic/claude-sonnet-4-6"]
-      (with-redefs [premium-features/token-status
-                    (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
-                                                                               :is-locked   true}}})
-                    slackbot.events/event->reply-context
-                    (constantly {:channel "C1" :thread_ts "123.456"})
-                    slackbot.events/dm?
-                    (constantly true)
-                    slackbot.client/post-thread-reply
-                    (fn [_ message-ctx text & _]
-                      (reset! posted-message {:message-ctx message-ctx :text text})
-                      {:ok true})]
+      (mt/with-dynamic-fn-redefs [premium-features/token-status
+                                  (constantly {:meters {:anthropic:claude-sonnet-4-6:tokens {:meter-value 1000000
+                                                                                             :is-locked   true}}})
+                                  slackbot.events/event->reply-context
+                                  (constantly {:channel "C1" :thread_ts "123.456"})
+                                  slackbot.events/dm?
+                                  (constantly true)
+                                  slackbot.client/post-thread-reply
+                                  (fn [_ message-ctx text & _]
+                                    (reset! posted-message {:message-ctx message-ctx :text text})
+                                    {:ok true})]
         (slackbot.streaming/send-response {:token "xoxb-test"} event)
         (is (= {:message-ctx {:channel "C1" :thread_ts "123.456"}
                 :text        "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."}
@@ -182,12 +182,12 @@
           {:ai-text "Hello!"}
           (fn [{:keys [stop-stream-calls]}]
             (mt/with-temporary-setting-values [llm-metabot-provider "metabase/anthropic/claude-sonnet-4-6"]
-              (with-redefs [premium-features/token-status
-                            (constantly nil)
-                            metabot.persistence/store-message!
-                            (fn [_conv-id _profile-id _messages & {:as opts}]
-                              (swap! store-opts conj opts)
-                              nil)]
+              (mt/with-dynamic-fn-redefs [premium-features/token-status
+                                          (constantly nil)
+                                          metabot.persistence/store-message!
+                                          (fn [_conv-id _profile-id _messages & {:as opts}]
+                                            (swap! store-opts conj opts)
+                                            nil)]
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event-body)
                            event-body)
@@ -208,10 +208,10 @@
           {:ai-text "Hello!"}
           (fn [{:keys [stop-stream-calls]}]
             (mt/with-temporary-setting-values [llm-metabot-provider "anthropic/claude-haiku-4-5"]
-              (with-redefs [metabot.persistence/store-message!
-                            (fn [_conv-id _profile-id _messages & {:as opts}]
-                              (swap! store-opts conj opts)
-                              nil)]
+              (mt/with-dynamic-fn-redefs [metabot.persistence/store-message!
+                                          (fn [_conv-id _profile-id _messages & {:as opts}]
+                                            (swap! store-opts conj opts)
+                                            nil)]
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event-body)
                            event-body)

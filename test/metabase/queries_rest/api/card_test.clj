@@ -1048,9 +1048,9 @@
     (testing "Updating other parts but not query does not update the metadata"
       (let [orig   @#'card.metadata/legacy-result-metadata-future
             called (atom 0)]
-        (with-redefs [card.metadata/legacy-result-metadata-future (fn [q]
-                                                                    (swap! called inc)
-                                                                    (orig q))]
+        (mt/with-dynamic-fn-redefs [card.metadata/legacy-result-metadata-future (fn [q]
+                                                                                  (swap! called inc)
+                                                                                  (orig q))]
           (mt/with-model-cleanup [:model/Card]
             (let [card (mt/user-http-request :crowberto :post 200 "card"
                                              (card-with-name-and-query "card-name"
@@ -2634,15 +2634,15 @@
                                                                 :userland-query?                   true}}}]
     (with-cards-in-readable-collection! card
       (let [orig qp.card/process-query-for-card]
-        (with-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
-                                                       (apply orig card-id export-format
-                                                              :make-run (constantly (fn [{:keys [constraints]} _]
-                                                                                      {:constraints constraints}))
-                                                              options))]
+        (mt/with-dynamic-fn-redefs [qp.card/process-query-for-card (fn [card-id export-format & options]
+                                                                     (apply orig card-id export-format
+                                                                            :make-run (constantly (fn [{:keys [constraints]} _]
+                                                                                                    {:constraints constraints}))
+                                                                            options))]
           (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
             (is (= {:constraints nil}
                    (mt/user-http-request :rasta :post 200 (format "card/%d/query/csv" (u/the-id card))))))
-          (with-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
+          (mt/with-dynamic-fn-redefs [qp.constraints/default-query-constraints (constantly {:max-results 10, :max-results-bare-rows 10})]
             (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
                           "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
                           "gets saved from one that had it -- see #9831)")
@@ -3422,7 +3422,7 @@
   (testing "fallback to field-values"
     (let [mock-default-result {:values          [["field-values"]]
                                :has_more_values false}]
-      (with-redefs [queries.card/mapping->field-values (constantly mock-default-result)]
+      (mt/with-dynamic-fn-redefs [queries.card/mapping->field-values (constantly mock-default-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp
             [:model/Card {source-card-id :id} {}
@@ -4013,10 +4013,10 @@
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
     (let [original-can-read? mi/can-read?]
       (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues {:limit 1})}]
-        (with-redefs [mi/can-read? (fn [& args]
-                                     (if (= :model/Table (apply mi/dispatch-on-model args))
-                                       false
-                                       (apply original-can-read? args)))]
+        (mt/with-dynamic-fn-redefs [mi/can-read? (fn [& args]
+                                                   (if (= :model/Table (apply mi/dispatch-on-model args))
+                                                     false
+                                                     (apply original-can-read? args)))]
           (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" (:id card))))))))))
 
 (deftest pivot-tables-with-model-sources-show-row-totals

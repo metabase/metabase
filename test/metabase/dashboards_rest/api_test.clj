@@ -2953,7 +2953,7 @@
     (let [url (chain-filter-values-url dashboard (:category-name param-keys))]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
-          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+          (mt/with-dynamic-fn-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil] ;; this situation was observed when running constrained chain filters.
               (is (= {:values [["African"] ["American"] ["Artisan"] ["Asian"]] :has_more_values false}
                      (chain-filter-test/take-n-values 4 (mt/user-http-request :rasta :get 200 url)))))))))
@@ -2961,7 +2961,7 @@
     (let [url (chain-filter-values-url dashboard (:category-name param-keys) (:price param-keys) 4)]
       (testing (str "\nGET /api/" url "\n")
         (testing "\nShow me names of categories that have expensive venues (price = 4), while I lack permissions."
-          (with-redefs [chain-filter/use-cached-field-values? (constantly false)]
+          (mt/with-dynamic-fn-redefs [chain-filter/use-cached-field-values? (constantly false)]
             (binding [qp.perms/*card-id* nil]
               (is (= {:values [["Japanese"] ["Steakhouse"]], :has_more_values false}
                      (chain-filter-test/take-n-values 3 (mt/user-http-request :rasta :get 200 url)))))))))))
@@ -3023,7 +3023,7 @@
               ;; HACK: we currently 403 on chain-filter calls that require running a MBQL
               ;; but 200 on calls that we could just use the cache.
               ;; It's not ideal and we definitely need to have a consistent behavior
-              (with-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
+              (mt/with-dynamic-fn-redefs [chain-filter/use-cached-field-values? (fn [_] false)]
                 (is (= {:values          [["African"] ["American"] ["Artisan"]]
                         :has_more_values false}
                        (->> (chain-filter-values-url (:id dashboard) (:category-name param-keys))
@@ -3487,7 +3487,7 @@
   (testing "fallback to chain-filter"
     (let [mock-chain-filter-result {:has_more_values true
                                     :values [["chain-filter"]]}]
-      (with-redefs [parameters.dashboard/chain-filter (constantly mock-chain-filter-result)]
+      (mt/with-dynamic-fn-redefs [parameters.dashboard/chain-filter (constantly mock-chain-filter-result)]
         (testing "if value-field not found in source card"
           (mt/with-temp [:model/Card       {card-id :id} {}
                          :model/Dashboard  dashboard     {:parameters    [{:id                   "abc"
@@ -4891,10 +4891,10 @@
   (testing "Don't throw an error if users doesn't have access to any tables #44043"
     (let [original-can-read? mi/can-read?]
       (mt/with-temp [:model/Dashboard dash {}]
-        (with-redefs [mi/can-read? (fn [& args]
-                                     (if (= :model/Table (apply mi/dispatch-on-model args))
-                                       false
-                                       (apply original-can-read? args)))]
+        (mt/with-dynamic-fn-redefs [mi/can-read? (fn [& args]
+                                                   (if (= :model/Table (apply mi/dispatch-on-model args))
+                                                     false
+                                                     (apply original-can-read? args)))]
           (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id dash))))))))))
 
 (deftest dashboard-field-params-field-names-test
@@ -4953,10 +4953,10 @@
           (reset! uncached-calls (call-count-fn))))
       (testing "cached requests"
         (let [provider-counts (atom {})]
-          (with-redefs [lib.metadata.jvm/application-database-metadata-provider-factory
-                        (fn [database-id]
-                          (swap! provider-counts update database-id (fnil inc 0))
-                          (original-admp database-id))]
+          (mt/with-dynamic-fn-redefs [lib.metadata.jvm/application-database-metadata-provider-factory
+                                      (fn [database-id]
+                                        (swap! provider-counts update database-id (fnil inc 0))
+                                        (original-admp database-id))]
             (t2/with-call-count [call-count-fn]
               (let [load-id (str (random-uuid))]
                 (is (=? expected

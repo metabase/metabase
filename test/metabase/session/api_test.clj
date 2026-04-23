@@ -529,7 +529,7 @@
 
     (testing "Authenticated settings manager"
       (mt/with-test-user :lucky
-        (with-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
+        (mt/with-dynamic-fn-redefs [metabase.settings.models.setting/has-advanced-setting-access? (constantly true)]
           (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-authed-read})))
                  (set (keys (mt/user-http-request :lucky :get 200 "session/properties"))))))))
 
@@ -585,13 +585,13 @@
       (mt/with-model-cleanup [:model/User]
         (t2/insert! :model/User (merge  (mt/with-temp-defaults :model/User) {:email "test@metabase.com" :is_active true}))
         (testing "Google auth works with remember me and rasta"
-          (with-redefs [http/post (constantly
-                                   {:status 200
-                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                 "\"email_verified\":\"true\","
-                                                 "\"given_name\":\"test\","
-                                                 "\"family_name\":\"user\","
-                                                 "\"email\":\"test@metabase.com\"}")})]
+          (mt/with-dynamic-fn-redefs [http/post (constantly
+                                                 {:status 200
+                                                  :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                               "\"email_verified\":\"true\","
+                                                               "\"given_name\":\"test\","
+                                                               "\"family_name\":\"user\","
+                                                               "\"email\":\"test@metabase.com\"}")})]
             (testing "Test that 'remember me' checkbox sets expiration on session"
               (let [response (mt/client-real-response :post 200 "session/google_auth" {:token "foo" :remember true})]
                 (is (some? (get-in response [:cookies session-cookie :expires])) "Session should have expiration set when remember=true"))
@@ -606,13 +606,13 @@
                                                   :is_active true
                                                   :first_name "last"
                                                   :last_name "luser"}]
-          (with-redefs [http/post (constantly
-                                   {:status 200
-                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                 "\"email_verified\":\"true\","
-                                                 "\"given_name\":\"test\","
-                                                 "\"family_name\":\"user\","
-                                                 "\"email\":\"test@metabase.com\"}")})]
+          (mt/with-dynamic-fn-redefs [http/post (constantly
+                                                 {:status 200
+                                                  :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                               "\"email_verified\":\"true\","
+                                                               "\"given_name\":\"test\","
+                                                               "\"family_name\":\"user\","
+                                                               "\"email\":\"test@metabase.com\"}")})]
             (testing "with throttling enabled"
               (is (malli= SessionResponse
                           (mt/client :post 200 "session/google_auth" {:token "foo"})))
@@ -625,13 +625,13 @@
                             (mt/client :post 200 "session/google_auth" {:token "foo"}))))))))
       (testing "Google auth throws exception for a disabled account"
         (mt/with-temp [:model/User _ {:email "test@metabase.com" :is_active false}]
-          (with-redefs [http/post (constantly
-                                   {:status 200
-                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                 "\"email_verified\":\"true\","
-                                                 "\"given_name\":\"test\","
-                                                 "\"family_name\":\"user\","
-                                                 "\"email\":\"test@metabase.com\"}")})]
+          (mt/with-dynamic-fn-redefs [http/post (constantly
+                                                 {:status 200
+                                                  :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                               "\"email_verified\":\"true\","
+                                                               "\"given_name\":\"test\","
+                                                               "\"family_name\":\"user\","
+                                                               "\"email\":\"test@metabase.com\"}")})]
             (is (= {:errors {:_error "Your account is disabled."}}
                    (mt/client :post 401 "session/google_auth" {:token "foo"})))))))))
 

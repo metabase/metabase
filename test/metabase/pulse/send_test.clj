@@ -636,10 +636,10 @@
                                              :channel_type "slack"
                                              :details      {:channel "#general"}}]
         (let [original-render-noti (var-get #'channel/render-notification)]
-          (with-redefs [channel/render-notification (fn [& args]
-                                                      (if (= :channel/slack (first args))
-                                                        (throw (ex-info "Slack failed" {}))
-                                                        (apply original-render-noti args)))]
+          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [& args]
+                                                                    (if (= :channel/slack (first args))
+                                                                      (throw (ex-info "Slack failed" {}))
+                                                                      (apply original-render-noti args)))]
             ;; slack failed but email should still be sent
             (is (= {:channel/email 1}
                    (update-vals
@@ -702,7 +702,7 @@
 (deftest send-skip-alert-test
   (testing "alerts are skipped (#63189)"
     (let [pulse-sent-called? (atom false)]
-      (with-redefs [pulse.send/send-pulse!* (fn [& _args])]
+      (mt/with-dynamic-fn-redefs [pulse.send/send-pulse!* (fn [& _args])]
         (mt/with-temp [:model/Pulse {pulse-id :id
                                      :as pulse}   {:creator_id      (mt/user->id :rasta)
                                                    :name            (mt/random-name)

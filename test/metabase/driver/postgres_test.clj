@@ -1097,8 +1097,8 @@
 (deftest create-schema-if-needed-nil-guard-test
   (testing "create-schema-if-needed! is a no-op when schema is nil or blank (GDGT-2144)"
     (let [executed-queries (atom [])]
-      (with-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec queries]
-                                                  (swap! executed-queries conj queries))]
+      (mt/with-dynamic-fn-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec queries]
+                                                                (swap! executed-queries conj queries))]
         (driver/create-schema-if-needed! :postgres ::fake-conn nil)
         (driver/create-schema-if-needed! :postgres ::fake-conn "")
         (driver/create-schema-if-needed! :postgres ::fake-conn "   ")
@@ -1152,7 +1152,7 @@
 
 (deftest actions-maybe-parse-sql-error-violate-unique-constraint-test
   (testing "violate unique constraint"
-    (with-redefs [postgres.actions/constraint->column-names (constantly ["ranking"])]
+    (mt/with-dynamic-fn-redefs [postgres.actions/constraint->column-names (constantly ["ranking"])]
       (is (=? {:type :metabase.actions.error/violate-unique-constraint,
                :message "Ranking already exists.",
                :errors {"ranking" "This Ranking value already exists."}}
@@ -1553,9 +1553,9 @@
 
 (deftest can-set-ssl-key-via-gui
   (testing "ssl key can be set via the gui (#20319)"
-    (with-redefs [secret/value-as-file!
-                  (fn [driver details secret-property & [_ext]]
-                    (str "file:" secret-property "="  (u/bytes-to-string (:value (#'secret/resolve-secret-map driver details secret-property)))))]
+    (mt/with-dynamic-fn-redefs [secret/value-as-file!
+                                (fn [driver details secret-property & [_ext]]
+                                  (str "file:" secret-property "="  (u/bytes-to-string (:value (#'secret/resolve-secret-map driver details secret-property)))))]
       (is (= "file:ssl-key=/clientkey.pkcs12"
              (:sslkey
               (#'postgres/ssl-params
@@ -1628,7 +1628,7 @@
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                 [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
-                                 (with-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
+                                 (mt/with-dynamic-fn-redefs [sql-jdbc.conn/db->pooled-connection-spec (fn [_] spec)]
                                    (set (sql-jdbc.sync/current-user-table-privileges driver/*driver* spec)))))]
           (try
             (jdbc/execute! conn-spec (str
@@ -1828,7 +1828,7 @@
     (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
-          (with-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT pg_sleep(3)"])]
+          (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT pg_sleep(3)"])]
             (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
               (sql-jdbc.execute/do-with-connection-with-options
                driver/*driver*
