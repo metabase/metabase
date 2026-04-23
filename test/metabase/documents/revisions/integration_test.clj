@@ -204,7 +204,7 @@
 
 (deftest document-revision-event-handler-integration-test
   (testing "Document revision events are published and handled correctly"
-    (let [original-event events/publish-event!
+    (let [original-event (mt/original-fn #'events/publish-event!)
           events-received (atom [])]
       (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic event]
                                                           (swap! events-received conj [topic event])

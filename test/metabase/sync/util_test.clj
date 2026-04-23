@@ -345,7 +345,7 @@
         (t2/update! :model/Table (:id inactive-table) {:initial_sync_status "complete" :active false})
         (let [syncing-chan   (a/chan)
               completed-chan (a/chan)]
-          (let [sync-fields! sync-fields/sync-fields!]
+          (let [sync-fields! (mt/original-fn #'sync-fields/sync-fields!)]
             (mt/with-dynamic-fn-redefs [sync-fields/sync-fields! (fn [database]
                                                                    (a/>!! syncing-chan ::syncing)
                                                                    (sync-fields! database))]
