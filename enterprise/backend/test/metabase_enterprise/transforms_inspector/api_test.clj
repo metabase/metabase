@@ -2,6 +2,7 @@
   "Tests for transform inspector endpoints at /api/ee/transforms/:id/inspect*."
   (:require
    [clojure.test :refer :all]
+   [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -91,3 +92,93 @@
               (is (some? (:errors (mt/user-http-request :lucky :post 400
                                                         (format "ee/transforms/%d/inspect/generic-summary/query" transform-id)
                                                         {})))))))))))
+
+;;; -------------------------------------------------- Metrics --------------------------------------------------
+
+(deftest inspect-metrics-discovery-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
+    (testing "GET /api/ee/transforms/:id/inspect bumps inspector-discovery{status=ok}"
+      (mt/with-prometheus-system! [_ system]
+        (mt/with-temp [:model/Transform {transform-id :id} {}]
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+              (mt/user-http-request :lucky :get 200
+                                    (format "ee/transforms/%d/inspect" transform-id))
+              (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/inspector-discovery
+                                                              {:status "ok"}))))))))))
+
+(deftest inspect-metrics-lens-success-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
+    (testing "GET /api/ee/transforms/:id/inspect/:lens-id bumps inspector-lens{status=ok}"
+      (mt/with-prometheus-system! [_ system]
+        (mt/with-temp [:model/Transform {transform-id :id} {}]
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+              (mt/user-http-request :lucky :get 200
+                                    (format "ee/transforms/%d/inspect/generic-summary" transform-id))
+              (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/inspector-lens
+                                                              {:lens-type "generic-summary"
+                                                               :status    "ok"}))))))))))
+
+(deftest inspect-metrics-lens-error-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
+    (testing "404 from non-applicable lens bumps inspector-lens{status=error}"
+      (mt/with-prometheus-system! [_ system]
+        (mt/with-temp [:model/Transform {transform-id :id} {}]
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+              (mt/user-http-request :lucky :get 404
+                                    (format "ee/transforms/%d/inspect/no-such-lens" transform-id))
+              (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-transforms/inspector-lens
+                                                              {:lens-type "no-such-lens"
+                                                               :status    "error"}))))))))))
+
+(deftest ^:mb/driver-tests inspect-metrics-query-duration-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (testing "POST /api/ee/transforms/:id/inspect/:lens-id/query records duration histogram"
+        (mt/with-prometheus-system! [_ system]
+          (mt/with-temp [:model/Transform {transform-id :id} {}]
+            (mt/with-data-analyst-role! (mt/user->id :lucky)
+              (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+                (let [mp    (mt/metadata-provider)
+                      query (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :orders))) (lib/count))]
+                  (mt/user-http-request :lucky :post 202
+                                        (format "ee/transforms/%d/inspect/generic-summary/query" transform-id)
+                                        {:query query})
+                  (is (pos? (:count (mt/metric-value system :metabase-transforms/inspector-query-duration-ms
+                                                     {:lens-type "generic-summary" :status "ok"})))))))))))))
+
+(deftest inspect-metrics-query-failure-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
+    (testing "POST .../query bumps inspector-query-duration-ms{status=error} when the QP returns {:status :failed}"
+      (mt/with-prometheus-system! [_ system]
+        (mt/with-temp [:model/Transform {transform-id :id} {}]
+          (mt/with-data-analyst-role! (mt/user->id :lucky)
+            (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
+              (mt/user-http-request :lucky :post
+                                    (format "ee/transforms/%d/inspect/generic-summary/query" transform-id)
+                                    {:query {:database (mt/id)
+                                             :type     :query
+                                             :query    {:source-table 99999999}}})
+              (is (pos? (:count (mt/metric-value system :metabase-transforms/inspector-query-duration-ms
+                                                 {:lens-type "generic-summary" :status "error"}))))
+              (is (zero? (:count (mt/metric-value system :metabase-transforms/inspector-query-duration-ms
+                                                  {:lens-type "generic-summary" :status "ok"})))))))))))
+
+(deftest inspect-metrics-scope-test
+  (mt/with-premium-features #{:transforms-basic :transforms-python}
+    (testing "Permission-denied failures do NOT bump inspector counters"
+      (mt/with-prometheus-system! [_ system]
+        (mt/with-temp [:model/Transform {transform-id :id} {}]
+          (mt/user-http-request :rasta :get 403
+                                (format "ee/transforms/%d/inspect" transform-id))
+          (mt/user-http-request :rasta :get 403
+                                (format "ee/transforms/%d/inspect/generic-summary" transform-id))
+          (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-transforms/inspector-discovery
+                                                          {:status "ok"})))
+          (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-transforms/inspector-discovery
+                                                          {:status "error"})))
+          (is (prometheus-test/approx= 0 (mt/metric-value system :metabase-transforms/inspector-lens
+                                                          {:lens-type "generic-summary"
+                                                           :status    "ok"}))))))))
