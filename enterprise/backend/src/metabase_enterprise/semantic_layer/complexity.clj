@@ -1,28 +1,8 @@
 (ns metabase-enterprise.semantic-layer.complexity
-  "Computes a complexity score for the semantic layer of this Metabase instance.
-
-  Three catalogs are scored:
-
+  "Computes the Data Complexity Score for the semantic layer across three catalogs:
     :library  — the curated subset (Cards of type :model and :metric)
     :universe — everything (library entities + all active physical tables)
-    :metabot  — what the internal Metabot can actually surface. Tables are always filtered to
-                Metabot-visible tables (active, `:visibility_type IS NULL`, non-routed database,
-                non-audit) so hidden/routed tables don't inflate the score; this matches the
-                search/table filters Metabot actually applies. Cards optionally narrow further
-                when the caller passes `:metabot-scope {:verified-only? <bool> :collection-id
-                <nil|Long>}` describing how the internal Metabot filters retrieval — restricting
-                Cards to a `collection_id` subtree, to verified-moderation Cards, or both. The
-                caller owns the scope decision — this namespace does not read settings,
-                premium-feature gates, or Metabot rows directly.
-
-  The score and its sub-scores are intentionally additive and close to the original back-of-envelope
-  proposal so v1 output is easy to reason about.
-  See notes in the plan file for deferred tuning ideas.
-
-  The synonym sub-score is delegated to a pluggable embedder — see
-  [[metabase-enterprise.semantic-layer.complexity-embedders]].
-  Default in prod reuses vectors from the semantic-search index so computing a score adds essentially no
-  embedding cost."
+    :metabot  — what the internal Metabot can surface, narrowed by a caller-supplied scope."
   (:require
    [clojure.pprint :as pprint]
    [clojure.string :as str]
@@ -122,55 +102,6 @@
           ;; This is cheaper and less brittle than referencing the collection type constants for every entity type.
           (cons (:id root) (collections/descendant-ids root)))))
 
-(defn- collect-card-entities
-  "Stream Cards matching `filter-kvs` via a reducible select over the minimum columns we need,
-   folding each row straight into an entity map. No `result_metadata` — see [[->card-entity]] — so
-   the per-row footprint is tiny regardless of how many Cards live on the instance.
-
-   `:card_schema` is included because `:model/Card` requires it for post-select hooks even when we
-   don't otherwise use it."
-  [filter-kvs]
-  (into []
-        (map ->card-entity)
-        (apply t2/reducible-select [:model/Card :id :name :type :card_schema] filter-kvs)))
-
-(defn- assemble-table-entities [tables]
-  (let [table-ids     (mapv :id tables)
-        field-counts  (table-field-counts table-ids)
-        measure-names (table-measure-names table-ids)]
-    (mapv #(->table-entity field-counts measure-names %) tables)))
-
-(defn- library-entities
-  "Entities in the `:library` catalog — non-archived model/metric Cards and published Tables that
-   live anywhere in the Library collection tree (excluding audit content, so `:library` stays a
-   subset of `:universe`)."
-  []
-  (let [collection-ids (library-collection-ids)]
-    (if (empty? collection-ids)
-      []
-      (let [card-entities (collect-card-entities [:type          [:in ["metric" "model"]]
-                                                  :archived      false
-                                                  :collection_id [:in collection-ids]
-                                                  :database_id   [:not= audit/audit-db-id]])
-            tables        (t2/select [:model/Table :id :name]
-                                     :active        true
-                                     :is_published  true
-                                     :collection_id [:in collection-ids]
-                                     :db_id         [:not= audit/audit-db-id])]
-        (into card-entities (assemble-table-entities tables))))))
-
-(defn- universe-entities
-  "Entities in the `:universe` catalog — every non-archived model/metric Card and every active
-   physical Table on this instance (excluding audit content)."
-  []
-  (let [card-entities (collect-card-entities [:type         [:in ["metric" "model"]]
-                                              :archived     false
-                                              :database_id  [:not= audit/audit-db-id]])
-        tables        (t2/select [:model/Table :id :name]
-                                 :active true
-                                 :db_id  [:not= audit/audit-db-id])]
-    (into card-entities (assemble-table-entities tables))))
-
 (defn- metabot-collection-scope-ids
   "Set of collection IDs the internal Metabot can see — its `collection_id` plus descendants.
    nil when no collection scope is configured (Metabot retrieves from everywhere). If the
@@ -183,58 +114,94 @@
           (when-let [root (t2/select-one :model/Collection :id collection-id)]
             (collections/descendant-ids root)))))
 
-(defn- metabot-card-entities
-  "Cards the internal Metabot would actually surface — metric/model, non-archived, non-audit,
-   optionally restricted to a `collection_id` subtree and/or to verified-moderation Cards. Mirrors
-   the filters in `metabase.metabot.tools.util/metabot-metrics-and-models-query` (skipping the
-   per-user visible-collection clause — the complexity score is a global signal) so the
-   `:metabot` catalog agrees with what Metabot would actually retrieve."
-  [{:keys [verified-only? collection-id]}]
-  (let [collection-ids (metabot-collection-scope-ids collection-id)
-        where          (cond-> [:and
-                                [:in :report_card.type [:inline ["metric" "model"]]]
-                                [:= :report_card.archived false]
-                                [:not= :report_card.database_id audit/audit-db-id]]
-                         collection-ids (conj [:in :report_card.collection_id collection-ids])
-                         verified-only? (conj [:= :mr.status [:inline "verified"]]))
-        query          (cond-> {:select [:report_card.id :report_card.name :report_card.type :report_card.card_schema]
-                                :from   [[:report_card]]
-                                :where  where}
-                         verified-only? (assoc :left-join
-                                               [[:moderation_review :mr]
-                                                [:and
-                                                 [:= :mr.moderated_item_id :report_card.id]
-                                                 [:= :mr.moderated_item_type [:inline "card"]]
-                                                 [:= :mr.most_recent true]]]))]
-    (into []
-          (map ->card-entity)
-          (t2/reducible-select :model/Card query))))
-
-(defn- metabot-table-entities
-  "Tables the internal Metabot would actually surface. Mirrors the search/table filters applied by
-   `metabase.warehouse_schema.models.table` and `metabase.metabot.table-utils` — active, not hidden
-   (`:visibility_type IS NULL`), not a routed-database table (`db.router_database_id IS NULL`),
-   not the audit DB — so hidden/routed tables don't inflate the `:metabot` catalog."
+(defn- verified-card-id-set
+  "Set of Card ids whose most-recent moderation review is `verified`. Called only when
+   `metabot-scope` requests verified-only filtering — avoids a `moderation_review` join on the
+   universe Card select by pushing the check into a small auxiliary lookup."
   []
-  (t2/select [:model/Table :id :name]
-             {:select    [:metabase_table.id :metabase_table.name]
-              :from      [:metabase_table]
-              :left-join [[:metabase_database :db] [:= :db.id :metabase_table.db_id]]
-              :where     [:and
-                          [:= :metabase_table.active true]
-                          [:= :metabase_table.visibility_type nil]
-                          [:= :db.router_database_id nil]
-                          [:not= :metabase_table.db_id audit/audit-db-id]]}))
+  (into #{}
+        (map :moderated_item_id)
+        (t2/reducible-select :model/ModerationReview
+                             :moderated_item_type "card"
+                             :most_recent         true
+                             :status              "verified")))
 
-(defn- metabot-entities
-  "Entities in the `:metabot` catalog. Cards match Metabot's retrieval (metric/model, non-archived,
-   non-audit, optionally narrowed by `collection_id` subtree and/or verified-moderation). Tables are
-   filtered through [[metabot-table-entities]] so hidden and routed-DB tables are excluded, matching
-   what Metabot/search can actually surface."
-  [scope]
-  (let [card-entities (metabot-card-entities scope)
-        tables        (metabot-table-entities)]
-    (into card-entities (assemble-table-entities tables))))
+(defn- routed-child-database-id-set
+  "Set of database ids whose `router_database_id` is non-nil — the routed child databases whose
+   tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
+   catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
+  []
+  (into #{}
+        (map :id)
+        (t2/reducible-select [:model/Database :id]
+                             :router_database_id [:not= nil])))
+
+(defn- pick-by-row
+  "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
+   reference identity on the kept entity maps so library/metabot vectors share map instances
+   with the universe vector rather than allocating fresh ones."
+  [row-pred rows entities]
+  (into []
+        (keep-indexed (fn [i row] (when (row-pred row) (nth entities i))))
+        rows))
+
+(defn- enumerate-catalogs
+  "One-pass enumeration of all three scoring catalogs. Returns
+   `{:library [...] :universe [...] :metabot [...]}` where entity maps are shared *by reference*
+   across catalogs — a Card or Table that appears in more than one catalog is one map in memory,
+   not three.
+
+   An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3×
+   per scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]],
+   each a `GROUP BY` scan over `metabase_field` / `measure`. We now fetch the universe superset
+   once and derive the `:library` and `:metabot` subsets by in-memory filter, which collapses 6
+   DB round-trips + 2 auxiliaries into 4 + up-to-2 and lets the aggregates run once each.
+
+   `metabot-scope` is `{:verified-only? <bool> :collection-id <nil|Long>}` describing how the
+   internal Metabot narrows its Cards further — it only adds filters, never widens. The caller
+   owns the scope decision (premium-feature gate + Metabot row lookup); this namespace does not
+   read settings, premium-feature gates, or Metabot rows directly."
+  [{:keys [verified-only? collection-id]}]
+  (let [library-cids      (library-collection-ids)
+        metabot-cids      (metabot-collection-scope-ids collection-id)
+        verified-ids      (when verified-only? (verified-card-id-set))
+        routed-db-ids     (routed-child-database-id-set)
+        ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`) are
+        ;; selected purely to drive the in-memory library/metabot derivations below — they're
+        ;; ignored by `->card-entity` / `->table-entity`. `:card_schema` is required by
+        ;; `:model/Card`'s post-select hooks even when we don't otherwise use it.
+        universe-cards    (t2/select [:model/Card :id :name :type :collection_id :card_schema]
+                                     :type        [:in ["metric" "model"]]
+                                     :archived    false
+                                     :database_id [:not= audit/audit-db-id])
+        universe-tables   (t2/select [:model/Table :id :name :collection_id :is_published
+                                      :visibility_type :db_id]
+                                     :active true
+                                     :db_id  [:not= audit/audit-db-id])
+        field-counts      (table-field-counts  (mapv :id universe-tables))
+        measure-names     (table-measure-names (mapv :id universe-tables))
+        card-entities     (mapv ->card-entity universe-cards)
+        table-entities    (mapv #(->table-entity field-counts measure-names %) universe-tables)
+        in-library-card?  (fn [{:keys [collection_id]}]
+                            (and (seq library-cids)
+                                 (contains? library-cids collection_id)))
+        in-library-table? (fn [{:keys [collection_id is_published]}]
+                            (and (seq library-cids)
+                                 is_published
+                                 (contains? library-cids collection_id)))
+        in-metabot-card?  (fn [{:keys [collection_id id]}]
+                            (and (or (nil? metabot-cids)
+                                     (contains? metabot-cids collection_id))
+                                 (or (not verified-only?)
+                                     (contains? verified-ids id))))
+        in-metabot-table? (fn [{:keys [visibility_type db_id]}]
+                            (and (nil? visibility_type)
+                                 (not (contains? routed-db-ids db_id))))]
+    {:universe (into card-entities table-entities)
+     :library  (into (pick-by-row in-library-card?  universe-cards  card-entities)
+                     (pick-by-row in-library-table? universe-tables table-entities))
+     :metabot  (into (pick-by-row in-metabot-card?  universe-cards  card-entities)
+                     (pick-by-row in-metabot-table? universe-tables table-entities))}))
 
 ;;; ------------------------------------- scoring -------------------------------------
 
@@ -492,12 +459,15 @@
                              semantic-search/search-index-embedder)
             model-meta     (when (= embedder semantic-search/search-index-embedder)
                              (semantic-search/active-embedding-model))
-            library-ents   (time-phase! "enumerate" "library"  library-entities)
-            universe-ents  (time-phase! "enumerate" "universe" universe-entities)
-            metabot-ents   (time-phase! "enumerate" "metabot"  #(metabot-entities metabot-scope))
-            universe-score (time-phase! "score"     "universe" #(score-catalog universe-ents embedder))
-            library-score  (time-phase! "score"     "library"  #(score-catalog library-ents embedder))
-            metabot-score  (time-phase! "score"     "metabot"  #(score-catalog metabot-ents embedder))
+            {:keys [library universe metabot]}
+            ;; Single enumerate phase — see [[enumerate-catalogs]]. Library ⊆ universe and
+            ;; metabot ⊆ universe, so fetching each catalog separately duplicated DB work; the
+            ;; catalog label `"all"` on the enumerate stage reflects that one pass covers all
+            ;; three. Per-catalog timing only applies to the pure scoring step.
+            (time-phase! "enumerate" "all" #(enumerate-catalogs metabot-scope))
+            universe-score (time-phase! "score" "universe" #(score-catalog universe embedder))
+            library-score  (time-phase! "score" "library"  #(score-catalog library  embedder))
+            metabot-score  (time-phase! "score" "metabot"  #(score-catalog metabot  embedder))
             result         {:library  library-score
                             :universe universe-score
                             :metabot  metabot-score

@@ -169,51 +169,51 @@
                 (format ":error must be a nonblank string when the throwable's message is %s" label))))))))
 
 (deftest ^:sequential complexity-scores-metabot-scope-opt-test
-  (testing ":verified-only? true routes the :metabot catalog through metabot-entities"
+  (testing ":verified-only? true flows the caller's metabot-scope through to enumerate-catalogs"
     (let [captured-scope (atom nil)]
-      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [])
-                                  complexity/universe-entities (constantly [(entity :name "orders")
-                                                                            (entity :name "widgets")])
-                                  complexity/metabot-entities  (fn [scope]
-                                                                 (reset! captured-scope scope)
-                                                                 [(entity :name "orders")])]
+      (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                  (fn [scope]
+                                    (reset! captured-scope scope)
+                                    {:library  []
+                                     :universe [(entity :name "orders") (entity :name "widgets")]
+                                     :metabot  [(entity :name "orders")]})]
         (let [{:keys [universe metabot]} (complexity/complexity-scores
                                           :embedder nil
                                           :metabot-scope {:verified-only? true :collection-id nil})]
           (is (= {:verified-only? true :collection-id nil} @captured-scope)
-              "metabot-entities was invoked with the caller's scope")
+              "enumerate-catalogs was invoked with the caller's scope")
           (is (= 1.0 (get-in metabot  [:components :entity-count :measurement])))
           (is (= 2.0 (get-in universe [:components :entity-count :measurement])))))))
-  (testing ":collection-id alone also routes through metabot-entities (no verified flag required)"
+  (testing ":collection-id alone also flows through to enumerate-catalogs (no verified flag required)"
     (let [captured-scope (atom nil)]
-      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [])
-                                  complexity/universe-entities (constantly [(entity :name "orders")
-                                                                            (entity :name "widgets")])
-                                  complexity/metabot-entities  (fn [scope]
-                                                                 (reset! captured-scope scope)
-                                                                 [(entity :name "orders")])]
+      (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                  (fn [scope]
+                                    (reset! captured-scope scope)
+                                    {:library  []
+                                     :universe [(entity :name "orders") (entity :name "widgets")]
+                                     :metabot  [(entity :name "orders")]})]
         (let [{:keys [metabot]} (complexity/complexity-scores
                                  :embedder nil
                                  :metabot-scope {:verified-only? false :collection-id 42})]
           (is (= {:verified-only? false :collection-id 42} @captured-scope))
           (is (= 1.0 (get-in metabot [:components :entity-count :measurement])))))))
-  (testing "empty scope (or no :metabot-scope opt) still runs metabot-entities so hidden/routed tables are excluded"
+  (testing "empty scope (or no :metabot-scope opt) still runs enumerate-catalogs with that scope so metabot's table-visibility filter still narrows the catalog"
     ;; Regression: we used to reuse the :universe score verbatim when scope was empty. That hid the
     ;; fact that Metabot's table visibility (`:visibility_type nil`, non-routed DB) already narrows
     ;; the catalog even before Card scoping kicks in.
     (doseq [scope [nil {} {:verified-only? false :collection-id nil}]]
       (let [captured-scope (atom ::not-called)]
-        (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [])
-                                    complexity/universe-entities (constantly [(entity :name "orders")
-                                                                              (entity :name "widgets")])
-                                    complexity/metabot-entities  (fn [s]
-                                                                   (reset! captured-scope s)
-                                                                   [(entity :name "orders")])]
+        (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                    (fn [s]
+                                      (reset! captured-scope s)
+                                      {:library  []
+                                       :universe [(entity :name "orders") (entity :name "widgets")]
+                                       :metabot  [(entity :name "orders")]})]
           (let [{:keys [universe metabot]} (complexity/complexity-scores
                                             :embedder nil
                                             :metabot-scope scope)]
             (is (= scope @captured-scope)
-                (format "metabot-entities was invoked with the caller's (possibly empty) scope=%s"
+                (format "enumerate-catalogs was invoked with the caller's (possibly empty) scope=%s"
                         (pr-str scope)))
             (is (= 1.0 (get-in metabot  [:components :entity-count :measurement])))
             (is (= 2.0 (get-in universe [:components :entity-count :measurement])))))))))
@@ -235,7 +235,8 @@
                                         :active true :visibility_type "technical"}
        :model/Table    {routed :id}    {:db_id routed-db :name "routed_table"
                                         :active true :visibility_type nil}]
-      (let [ids (into #{} (map :id) (#'complexity/metabot-table-entities))]
+      (let [metabot-entities (:metabot (#'complexity/enumerate-catalogs nil))
+            ids              (into #{} (comp (filter #(= :table (:kind %))) (map :id)) metabot-entities)]
         (testing "visible non-routed table is included"
           (is (contains? ids visible)))
         (testing "hidden and technical tables are excluded"
@@ -520,8 +521,7 @@
       false? {:mid nil :model_id "xyz" :model "card"}  {:mid nil :model_id "abc" :model "card"})))
 
 (deftest ^:sequential meta-embedding-model-absent-when-unavailable-test
-  (with-redefs [complexity/library-entities  (constantly [])
-                complexity/universe-entities (constantly [])]
+  (with-redefs [complexity/enumerate-catalogs (constantly {:library [] :universe [] :metabot []})]
     (testing ":embedding-model key is absent from :meta when the search index is unreachable"
       (with-redefs [ss.embedders/try-active-index-state (constantly nil)]
         ;; Pass the real search-index-embedder so the identity check in complexity-scores succeeds,
@@ -591,11 +591,13 @@
 (deftest ^:sequential emit-snowplow-publishes-total-and-each-subscore-test
   (testing "one event per (catalog × key) — grand total, group rollups, and leaves — with correct scores"
     (snowplow-test/with-fake-snowplow-collector
-      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")
-                                                                            (entity :name "customers")])
-                                  complexity/universe-entities (constantly [(entity :name "orders")
-                                                                            (entity :name "customers")
-                                                                            (entity :name "widgets")])]
+      (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                  (constantly {:library  [(entity :name "orders")
+                                                          (entity :name "customers")]
+                                               :universe [(entity :name "orders")
+                                                          (entity :name "customers")
+                                                          (entity :name "widgets")]
+                                               :metabot  []})]
         ;; Drain any startup/setting events so we only assert on emissions from the call below.
         (snowplow-test/pop-event-data-and-user-id!)
         (let [{:keys [library universe metabot]} (complexity/complexity-scores :embedder nil)
@@ -624,10 +626,12 @@
   (testing "each leaf event carries the raw pre-score measurement; totals and group-totals do not"
     (snowplow-test/with-fake-snowplow-collector
       ;; Library: 3 entities, one collision pair, 5 fields total.
-      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders"  :field-count 2)
-                                                                            (entity :name "orders"  :field-count 0)
-                                                                            (entity :name "widgets" :field-count 3)])
-                                  complexity/universe-entities (constantly [])]
+      (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                  (constantly {:library  [(entity :name "orders"  :field-count 2)
+                                                          (entity :name "orders"  :field-count 0)
+                                                          (entity :name "widgets" :field-count 3)]
+                                               :universe []
+                                               :metabot  []})]
         (snowplow-test/pop-event-data-and-user-id!)
         (complexity/complexity-scores :embedder nil)
         (let [by-key (->> (complexity-events!)
@@ -648,9 +652,11 @@
 (deftest ^:sequential emit-snowplow-cascades-nil-on-embedder-failure-test
   (testing "embedder failure cascades nil through aggregates without skipping any events"
     (snowplow-test/with-fake-snowplow-collector
-      (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "customers")
-                                                                            (entity :name "clients")])
-                                  complexity/universe-entities (constantly [])]
+      (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                  (constantly {:library  [(entity :name "customers")
+                                                          (entity :name "clients")]
+                                               :universe []
+                                               :metabot  []})]
         (snowplow-test/pop-event-data-and-user-id!)
         (complexity/complexity-scores :embedder (fn [_] (throw (ex-info "embedder boom" {}))))
         (let [by-key (->> (complexity-events!)
@@ -679,8 +685,10 @@
                                  :table-name "mock_table"
                                  :model      {:provider "openai" :model-name "text-embedding-3-small"}})
                     ss.embedders/fetch-batch (constantly [])]
-        (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
-                                    complexity/universe-entities (constantly [(entity :name "orders")])]
+        (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                    (constantly {:library  [(entity :name "orders")]
+                                                 :universe [(entity :name "orders")]
+                                                 :metabot  []})]
           (snowplow-test/pop-event-data-and-user-id!)
           (complexity/complexity-scores :embedder semantic-search/search-index-embedder)
           (let [events (complexity-events!)]
@@ -690,8 +698,10 @@
 
 (deftest ^:sequential emit-snowplow-failure-is-swallowed-test
   (testing "emission failure is caught; complexity-scores still returns the score and logs a warning"
-    (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
-                                complexity/universe-entities (constantly [(entity :name "orders")])
+    (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                (constantly {:library  [(entity :name "orders")]
+                                             :universe [(entity :name "orders")]
+                                             :metabot  []})
                                 analytics/track-event!       (fn [& _] (throw (RuntimeException. "snowplow down")))]
       (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer.complexity :warn]]
         (let [result (complexity/complexity-scores :embedder nil)]
@@ -706,8 +716,10 @@
   (testing "the 'Semantic complexity score' info log fires independently of Snowplow emission"
     ;; Guards two regressions together: local logging being removed, and local logging being
     ;; gated on successful telemetry (so a broken collector would silence the operator-visible log).
-    (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
-                                complexity/universe-entities (constantly [(entity :name "orders")])
+    (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                (constantly {:library  [(entity :name "orders")]
+                                             :universe [(entity :name "orders")]
+                                             :metabot  []})
                                 analytics/track-event!       (fn [& _] (throw (RuntimeException. "snowplow down")))]
       (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer.complexity :info]]
         (complexity/complexity-scores :embedder nil)
@@ -718,8 +730,10 @@
 
 (deftest ^:sequential scheduled-task-logs-score-test
   (testing "the scheduled task body runs complexity-scores so operators see a score line in the logs"
-    (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [(entity :name "orders")])
-                                complexity/universe-entities (constantly [(entity :name "orders")])]
+    (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                (constantly {:library  [(entity :name "orders")]
+                                             :universe [(entity :name "orders")]
+                                             :metabot  []})]
       (mt/with-temporary-setting-values [data-complexity-scoring-enabled true]
         (mt/with-log-messages-for-level [messages [metabase-enterprise.semantic-layer.complexity :info]]
           (#'task.complexity-score/run-scoring! "test-fp")
@@ -972,8 +986,8 @@
 
 (deftest ^:sequential complexity-scores-tags-publish-success-on-result-test
   (testing "complexity-scores stamps publish success/failure via metadata for schedule/boot callers"
-    (mt/with-dynamic-fn-redefs [complexity/library-entities  (constantly [])
-                                complexity/universe-entities (constantly [])]
+    (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
+                                (constantly {:library [] :universe [] :metabot []})]
       (testing "successful publish → ::snowplow-published? true"
         (snowplow-test/with-fake-snowplow-collector
           (let [result (complexity/complexity-scores :embedder nil)]
