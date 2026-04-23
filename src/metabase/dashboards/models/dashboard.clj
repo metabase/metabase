@@ -280,7 +280,12 @@
                                    (update :series #(map :id %)))
             dashboard-card     (update dashcard :series #(map :id %))]
         (dashboard-card/update-dashboard-card! dashboard-card old-dashcard)))
-    (let [new-param-field-ids (params/dashcards->param-field-ids (t2/hydrate new-dashcards :card))]
+    ;; `t2/hydrate` is a no-op when `:card` is already present, so strip any
+    ;; client-supplied value first: a JSON round-trip strings-ifies keyword
+    ;; metadata (`type/Category`, `source/table-defaults`, ...) that
+    ;; `param-target->field-id` later validates against `:metabase.queries.schema/card`.
+    (let [dashcards-for-hydration (map #(dissoc % :card) new-dashcards)
+          new-param-field-ids    (params/dashcards->param-field-ids (t2/hydrate dashcards-for-hydration :card))]
       (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
 
 (defn- legacy-result-metadata-for-query
