@@ -3,8 +3,6 @@ import { merge } from "icepick";
 import type { WritableDraft } from "immer";
 import { match } from "ts-pattern";
 
-import { uuid } from "metabase/utils/uuid";
-
 import type {
   MetabotAgentId,
   MetabotConverstationState,
@@ -64,7 +62,7 @@ export const createConversation = (
     activeToolCalls: [],
     profileOverride: undefined,
     ...overrides,
-    conversationId: overrides?.conversationId ?? uuid(),
+    conversationId: overrides?.conversationId ?? crypto.randomUUID(),
     experimental: {
       developerMessage: "",
       metabotReqIdOverride: undefined,

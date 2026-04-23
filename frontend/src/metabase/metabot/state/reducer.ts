@@ -3,7 +3,6 @@ import { castDraft } from "immer";
 import _ from "underscore";
 
 import { logout } from "metabase/auth/actions";
-import { uuid } from "metabase/utils/uuid";
 import type {
   MetabotCodeEdit,
   MetabotHistory,
@@ -312,7 +311,7 @@ export const metabot = createSlice({
       convo.state = snapshotState ?? {};
       convo.activeToolCalls = activeToolCalls ?? [];
       convo.errorMessages = errorMessages ?? [];
-      convo.conversationId = conversationId ?? uuid();
+      convo.conversationId = conversationId ?? crypto.randomUUID();
       convo.isProcessing = false;
 
       state.reactions.suggestedTransforms = (suggestedTransforms ?? []) as any;

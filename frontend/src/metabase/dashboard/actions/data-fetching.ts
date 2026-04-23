@@ -46,7 +46,6 @@ import { entityCompatibleQuery } from "metabase/utils/entities";
 import type { Deferred } from "metabase/utils/promise";
 import { defer } from "metabase/utils/promise";
 import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
-import { uuid } from "metabase/utils/uuid";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
@@ -485,7 +484,7 @@ export const fetchDashboardCardData =
     }
 
     const selectedTabId = getSelectedTabId(getState());
-    const dashboardLoadId = uuid();
+    const dashboardLoadId = crypto.randomUUID();
     const loadingIds = getLoadingDashCards(getState()).loadingIds;
     const nonVirtualDashcards = getCurrentTabDashboardCards(
       dashboard,
@@ -675,7 +674,7 @@ export const fetchDashboard = createAsyncThunk(
     try {
       let entities;
       let result;
-      const dashboardLoadId = uuid();
+      const dashboardLoadId = crypto.randomUUID();
 
       const dashboardType = getDashboardType(dashId);
       const loadedDashboard = getDashboardById(getState(), dashId);

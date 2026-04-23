@@ -1,7 +1,6 @@
 const { H } = cy;
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
-import { uuid } from "metabase/utils/uuid";
 import type {
   Aggregation,
   Breakout,
@@ -1403,7 +1402,7 @@ function verifyInvalidColumnName(
 
 function createOffsetOptions(name = "offset") {
   return {
-    "lib/uuid": uuid(),
+    "lib/uuid": crypto.randomUUID(),
     name,
     "display-name": name,
   };

@@ -6,7 +6,6 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { Code } from "metabase/ui";
-import { uuid } from "metabase/utils/uuid";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";
 
@@ -18,7 +17,7 @@ const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
       query: "SELECT count(*)\nFROM products\nWHERE category = {{category}}",
       "template-tags": {
         category: {
-          id: uuid(),
+          id: crypto.randomUUID(),
           name: "category",
           "display-name": "Category",
           type: "text",
@@ -35,7 +34,7 @@ const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
       query: "SELECT count(*)\nFROM products\nWHERE {{created_at}}",
       "template-tags": {
         created_at: {
-          id: uuid(),
+          id: crypto.randomUUID(),
           name: "created_at",
           "display-name": "Created At",
           type: "dimension",
@@ -52,7 +51,7 @@ const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
         "SELECT count(*)\nFROM products\n[[WHERE category = {{category}}]]",
       "template-tags": {
         category: {
-          id: uuid(),
+          id: crypto.randomUUID(),
           name: "category",
           "display-name": "Category",
           type: "text",
@@ -69,14 +68,14 @@ const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
         "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND id = {{id}}]]\n  [[AND category = {{category}}]]",
       "template-tags": {
         id: {
-          id: uuid(),
+          id: crypto.randomUUID(),
           name: "id",
           "display-name": "ID",
           type: "number",
           required: false,
         },
         category: {
-          id: uuid(),
+          id: crypto.randomUUID(),
           name: "category",
           "display-name": "Category",
           type: "text",
@@ -93,7 +92,7 @@ const SQL_EXAMPLES: Record<string, NativeDatasetQuery> = {
         "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND {{category}}]]",
       "template-tags": {
         category: {
-          id: uuid(),
+          id: crypto.randomUUID(),
           name: "category",
           "display-name": "Category",
           type: "dimension",
@@ -112,7 +111,7 @@ const MONGO_EXAMPLES: Record<string, NativeDatasetQuery> = {
       query: "[{ $match: { price: {{price}} } }]",
       "template-tags": {
         category: {
-          id: uuid(),
+          id: crypto.randomUUID(),
           name: "price",
           "display-name": "Price",
           type: "number",
@@ -129,7 +128,7 @@ const MONGO_EXAMPLES: Record<string, NativeDatasetQuery> = {
       query: "[{ $match: {{created_at}} }]",
       "template-tags": {
         created_at: {
-          id: uuid(),
+          id: crypto.randomUUID(),
           name: "created_at",
           "display-name": "Created At",
           type: "dimension",
@@ -145,7 +144,7 @@ const MONGO_EXAMPLES: Record<string, NativeDatasetQuery> = {
       query: "[{ $match: { [[ _id: {{id}} ]] } }]",
       "template-tags": {
         category: {
-          id: uuid(),
+          id: crypto.randomUUID(),
           name: "id",
           "display-name": "ID",
           type: "text",
@@ -162,14 +161,14 @@ const MONGO_EXAMPLES: Record<string, NativeDatasetQuery> = {
         "[{ $match: { [[ _id: {{id}} [[, category: {{category}} ]]  ]] } }]",
       "template-tags": {
         id: {
-          id: uuid(),
+          id: crypto.randomUUID(),
           name: "id",
           "display-name": "ID",
           type: "number",
           required: false,
         },
         category: {
-          id: uuid(),
+          id: crypto.randomUUID(),
           name: "category",
           "display-name": "Category",
           type: "text",
@@ -185,7 +184,7 @@ const MONGO_EXAMPLES: Record<string, NativeDatasetQuery> = {
       query: "[{ $match: { $and: [ { _id: 1 } [[, {{category}} ]] ] } }]",
       "template-tags": {
         category: {
-          id: uuid(),
+          id: crypto.randomUUID(),
           name: "category",
           "display-name": "Category",
           type: "dimension",

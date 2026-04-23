@@ -2,7 +2,6 @@ import type {
   MetabaseDashboard,
   SdkDashboardId,
 } from "embedding-sdk-bundle/types/dashboard";
-import { uuid } from "metabase/utils/uuid";
 
 import { propagateErrorResponse } from "./propagate-error-response";
 
@@ -19,7 +18,7 @@ export async function createXrayDashboardFromModel(
   const { modelId, instanceUrl, cookie = "" } = options;
 
   // Queries an auto-generated dashboard layout for the model
-  const dashboardLoadId = uuid();
+  const dashboardLoadId = crypto.randomUUID();
   const url = `${instanceUrl}/api/automagic-dashboards/model/${modelId}?&dashboard_load_id=${dashboardLoadId}`;
 
   let res = await fetch(url, {
