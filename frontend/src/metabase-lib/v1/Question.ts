@@ -7,6 +7,7 @@ import _ from "underscore";
 /* eslint-disable no-restricted-imports */
 import {
   type SerializeCardOptions,
+  isTransientCardId,
   serializeCardForUrl,
 } from "metabase/common/utils/card";
 import { applyParameter } from "metabase/querying/parameters/utils/query";
@@ -868,10 +869,6 @@ class Question {
 
     return new Question(card, metadata, parameterValues);
   }
-}
-
-export function isTransientCardId(id: CardId | string | null | undefined) {
-  return id != null && typeof id === "string" && isNaN(parseInt(id));
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

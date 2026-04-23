@@ -18,6 +18,7 @@ import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   ActionParametersMapping,
   Card,
+  CardId,
   DashboardParameterMapping,
   DatasetQuery,
   LegacyDatasetQuery,
@@ -264,4 +265,8 @@ export function applyParameters(
   }
 
   return datasetQuery;
+}
+
+export function isTransientCardId(id: CardId | string | null | undefined) {
+  return id != null && typeof id === "string" && isNaN(parseInt(id));
 }
