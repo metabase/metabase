@@ -382,7 +382,6 @@
    are eligible for FieldValues."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (sync/check-sync-enabled-or-503!)
   (let [table (api/write-check (t2/select-one :model/Table :id id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
@@ -515,7 +514,6 @@
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (sync/check-sync-enabled-or-503!)
   (let [table    (api/check-404 (t2/select-one :model/Table :id id))
         database (api/check-404 (t2/select-one :model/Database
                                                :id (:db_id table)
