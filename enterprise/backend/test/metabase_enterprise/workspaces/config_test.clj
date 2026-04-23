@@ -39,12 +39,22 @@
                       :schema-filters-type     "inclusion"
                       :schema-filters-patterns "raw_github"}
                      (:details db))))))
-        (testing "bundles a single default admin user"
-          (is (= [{:first_name "Workspace"
-                   :last_name  "Admin"
-                   :email      "workspace@workspace.local"
-                   :password   "password1"}]
+        (testing "bundles a single default admin user marked as superuser"
+          (is (= [{:first_name   "Workspace"
+                   :last_name    "Admin"
+                   :email        "workspace@workspace.local"
+                   :password     "password1"
+                   :is_superuser true}]
                  (-> cfg :config :users))))
+        (testing "bundles an admin api-key whose creator matches the default user"
+          (let [[api-key :as api-keys] (-> cfg :config :api-keys)]
+            (is (= 1 (count api-keys)))
+            (is (= "Workspace API Key" (:name api-key)))
+            (is (= "admin" (:group api-key)))
+            (is (= "workspace@workspace.local" (:creator api-key)))
+            (testing "key is a well-formed mb_... string"
+              (is (string? (:key api-key)))
+              (is (re-matches #"mb_[A-Za-z0-9+/=]{8,251}" (:key api-key))))))
         (testing "workspace entry"
           (is (= "github" (-> cfg :config :workspace :name)))
           (is (= {"Analytics Data Warehouse"

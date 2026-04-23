@@ -359,25 +359,30 @@
                     :input_schemas    ["raw_github"]
                     :status           :provisioned}]
       (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/workspace/" id "/config/json"))]
-        (is (= {:version 1
-                :config  {:databases [{:name    "Analytics Data Warehouse"
-                                       :engine  "postgres"
-                                       :details {:host                    "mbdata.metabase.com"
-                                                 :port                    5432
-                                                 :user                    "mb_isolation_github"
-                                                 :password                "secret"
-                                                 :dbname                  "stitchdata_incoming"
-                                                 :schema-filters-type     "inclusion"
-                                                 :schema-filters-patterns "raw_github"}}]
-                          :users     [{:first_name "Workspace"
-                                       :last_name  "Admin"
-                                       :email      "workspace@workspace.local"
-                                       :password   "password1"}]
-                          :workspace {:name      "github"
-                                      :databases {(keyword "Analytics Data Warehouse")
-                                                  {:input_schemas ["raw_github"]
-                                                   :output_schema "mb_isolation_github"}}}}}
-               resp))))))
+        (is (=? {:version 1
+                 :config  {:databases [{:name    "Analytics Data Warehouse"
+                                        :engine  "postgres"
+                                        :details {:host                    "mbdata.metabase.com"
+                                                  :port                    5432
+                                                  :user                    "mb_isolation_github"
+                                                  :password                "secret"
+                                                  :dbname                  "stitchdata_incoming"
+                                                  :schema-filters-type     "inclusion"
+                                                  :schema-filters-patterns "raw_github"}}]
+                           :users     [{:first_name   "Workspace"
+                                        :last_name    "Admin"
+                                        :email        "workspace@workspace.local"
+                                        :password     "password1"
+                                        :is_superuser true}]
+                           :api-keys  [{:name    "Workspace API Key"
+                                        :key     #(and (string? %) (re-matches #"mb_[A-Za-z0-9+/=]{8,251}" %))
+                                        :group   "admin"
+                                        :creator "workspace@workspace.local"}]
+                           :workspace {:name      "github"
+                                       :databases {(keyword "Analytics Data Warehouse")
+                                                   {:input_schemas ["raw_github"]
+                                                    :output_schema "mb_isolation_github"}}}}}
+                resp))))))
 
 (deftest get-workspace-config-yaml-test
   (testing "GET /ee/workspace/:id/config/yaml returns the same config as a YAML text body"
