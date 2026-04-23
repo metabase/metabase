@@ -36,16 +36,19 @@
   (let [dataset-query (if (and (map? query) (:lib/type query))
                         (lib/->legacy-MBQL query)
                         query)]
-    (-> {:dataset_query dataset-query}
+    (-> {:dataset_query          dataset-query
+         :type                   "question"
+         :visualization_settings {}}
         json/encode
         (.getBytes "UTF-8")
         codecs/bytes->b64-str)))
 
 (defn pseudo-card->link
-  "Convert map with relevant card keys into a link. Relevant keys are e.g. dataset_query, display, displayIsLocked."
+  "Convert map with relevant card keys into a link. Relevant keys are e.g. dataset_query, display, displayIsLocked.
+  `:visualization_settings` defaults to `{}` so the frontend always gets a populated map to read chart settings from."
   [pc]
   (str "/question#"
-       (-> pc
+       (-> (merge {:visualization_settings {}} pc)
            json/encode
            (.getBytes "UTF-8")
            codecs/bytes->b64-str)))
