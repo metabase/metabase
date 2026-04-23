@@ -107,7 +107,7 @@ Allowed iframe hosts.
 - Default: `false`
 - [Configuration file name](./config-file.md): `analytics-pii-retention-enabled`
 
-Enable logging of path, user agent, and IP address of who views your internal data and embeds. This information will be shown in your usage analytics. Embedding hostname is always collected.
+Enable logging of path, user agent, and IP address of who views your internal data and embeds. This information will be shown in your usage analytics.
 
 ### `MB_ANON_TRACKING_ENABLED`
 

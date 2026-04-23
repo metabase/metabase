@@ -108,8 +108,7 @@
 
 (defsetting analytics-pii-retention-enabled
   (deferred-tru (str "Enable logging of path, user agent, and IP address of who views your "
-                     "internal data and embeds. This information will be shown in your usage analytics. "
-                     "Embedding hostname is always collected."))
+                     "internal data and embeds. This information will be shown in your usage analytics."))
   :type       :boolean
   :default    false
   :visibility :admin
