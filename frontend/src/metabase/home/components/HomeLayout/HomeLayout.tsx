@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import { EmbeddingHubHomePage } from "metabase/admin/embedding/embedding-hub";
 import { LighthouseIllustration } from "metabase/common/components/LighthouseIllustration";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
@@ -11,6 +10,7 @@ import { getLandingPageIllustration } from "metabase/selectors/whitelabel";
 import { Box, Button, Icon, Tooltip } from "metabase/ui";
 
 import { CustomHomePageModal } from "../CustomHomePageModal";
+import { EmbeddingHubHomePage } from "../EmbeddingHubHomePage";
 import { HomeGreeting } from "../HomeGreeting";
 
 interface HomeLayoutProps {

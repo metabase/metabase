@@ -1,3 +1,5 @@
+/* eslint-disable metabase/no-literal-metabase-strings -- This string only shows for admins */
+
 import { t } from "ttag";
 
 import type { IconName } from "metabase/ui";

@@ -1,3 +1,4 @@
+/* eslint-disable metabase/no-literal-metabase-strings */
 import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
 
