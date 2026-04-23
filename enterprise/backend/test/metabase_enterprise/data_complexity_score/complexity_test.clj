@@ -529,6 +529,27 @@
             (is (= 1024 (count err))
                 "error is clipped to the schema's maxLength of 1024")))))))
 
+(def ^:private expected-emission-keys-by-level
+  "Hardcoded `key` values emitted per catalog, per level. Derived from the dimension/variable
+  modules rather than from the scorer's return map — lock-step with the scorer would defeat the
+  regression guard (a dropped variable disappears from both sides and slips through)."
+  (let [total    ["total"]
+        scale    ["scale.entity_count" "scale.field_count" "scale.collection_tree_size"
+                  "scale.fields_per_entity" "scale.measure_to_dim_ratio"]
+        nominal  ["nominal.name_collisions" "nominal.repeated_measures"
+                  "nominal.field_level_collisions" "nominal.name_collisions_density"
+                  "nominal.name_concentration"]
+        semantic ["semantic.synonym_pairs" "semantic.synonym_edge_density"
+                  "semantic.synonym_components" "semantic.synonym_largest_component"
+                  "semantic.synonym_avg_component" "semantic.synonym_clustering_coef"
+                  "semantic.synonym_avg_degree" "semantic.synonym_degree_summary"]
+        metadata ["metadata.description_coverage" "metadata.field_description_coverage"
+                  "metadata.semantic_type_coverage" "metadata.curated_metric_coverage"
+                  "metadata.embedding_coverage" "metadata.description_quality"]]
+    {0 total
+     1 (concat total scale nominal metadata)
+     2 (concat total scale nominal semantic metadata)}))
+
 (deftest ^:sequential emit-snowplow-schema-payload-shape-test
   (snowplow-test/with-fake-snowplow-collector
     (doseq [level [0 1 2]]
@@ -547,18 +568,11 @@
           (#'complexity/emit-snowplow! result)
           (let [raw-events           (raw-complexity-events)
                 events               (complexity-events!)
-                expected-keys        (set
-                                      (mapcat
-                                       (fn [[catalog {:keys [dimensions]}]]
-                                         (cons ["total" (name catalog)]
-                                               (for [[dimension {:keys [variables]}] dimensions
-                                                     axis                         (keys variables)]
-                                                 [(#'complexity/dotted-key dimension axis)
-                                                  (name catalog)])))
-                                       [[:library (:library result)]
-                                        [:universe (:universe result)]
-                                        [:metabot (:metabot result)]]))
-                emitted-keys         (set (map (juxt #(get % "key") #(get % "catalog")) events))
+                expected-keys        (frequencies
+                                      (for [c ["library" "universe" "metabot"]
+                                            k (expected-emission-keys-by-level level)]
+                                        [k c]))
+                emitted-keys         (frequencies (map (juxt #(get % "key") #(get % "catalog")) events))
                 total                (first (filter #(and (= "library" (get % "catalog"))
                                                           (= "total" (get % "key")))
                                                     events))
@@ -582,7 +596,9 @@
             (is (every? #(contains? % "score") events)
                 "score is required on every event (nullable for uncomputed leaves)")
             (is (every? #(= level (get-in % ["parameters" "level"])) events))
-            (is (= expected-keys emitted-keys))
+            (is (= expected-keys emitted-keys)
+                "emitted (catalog, key) pairs must match the hardcoded expected set exactly — frequencies
+                 comparison fails if any (catalog, key) is emitted more than once")
             (is (every? #(contains? (schema-enum :event) (get % "event")) events))
             (is (every? #(contains? (schema-enum :catalog) (get % "catalog")) events))
             (if (zero? level)

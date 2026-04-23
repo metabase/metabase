@@ -33,3 +33,16 @@
       ;; (set to nil), the setter unsets the override and we fall back to the default.
       (is (= 2 (settings/effective-level))
           "after (setter! nil), defsetting default wins"))))
+
+(deftest ^:parallel clamp-level-handles-explicit-overrides-test
+  (testing "clamp-level clamps caller-supplied overrides to [0, max-level] so an explicit :level
+            override can't bypass the guard that effective-level applies to the setting read"
+    (doseq [[raw expected] [[nil 0]
+                            [-1 0]
+                            [0 0]
+                            [1 1]
+                            [settings/max-level settings/max-level]
+                            [(inc settings/max-level) settings/max-level]
+                            [9999 settings/max-level]]]
+      (is (= expected (settings/clamp-level raw))
+          (format "raw %s should clamp to %d" (pr-str raw) expected)))))

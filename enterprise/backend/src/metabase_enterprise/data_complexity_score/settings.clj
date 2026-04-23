@@ -54,9 +54,13 @@
   :encryption :no
   :doc        false)
 
+(defn clamp-level
+  "Clamp `raw` to `[0, max-level]`. Use at every level-consuming site — an out-of-range setting or
+  caller-supplied override must never make the scorer skip or crash."
+  ^long [raw]
+  (max 0 (min ^long max-level ^long (or raw 0))))
+
 (defn effective-level
-  "Read the setting, clamp to [0, max-level]. Callers use this so an operator setting an
-  out-of-range value doesn't skip scoring or crash the scorer."
+  "Read the setting and clamp to [0, max-level]."
   ^long []
-  (let [raw (or (semantic-complexity-level) 0)]
-    (max 0 (min ^long max-level ^long raw))))
+  (clamp-level (semantic-complexity-level)))

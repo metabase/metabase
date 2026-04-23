@@ -334,7 +334,7 @@
    {uni-entities :entities uni-coll :collection-count :as _universe-catalog}
    embedder
    {:keys [level embedding-model-meta metabot-catalog]}]
-  (let [level        (or level (settings/effective-level))
+  (let [level        (settings/clamp-level (or level (settings/semantic-complexity-level)))
         empty-result {:library  (empty-score)
                       :universe (empty-score)
                       :metabot  (empty-score)
@@ -375,7 +375,7 @@
     `:metabot-scope` `{:verified-only? <bool> :collection-id <nil|Long>}` — see ns docstring.
     `:level`         override the level setting for this call (rare; mainly for tests)."
   [& {:keys [embedder metabot-scope level] :as opts}]
-  (let [level      (or level (settings/effective-level))
+  (let [level      (settings/clamp-level (or level (settings/semantic-complexity-level)))
         embedder   (if (contains? opts :embedder) embedder semantic-search/search-index-embedder)
         model-meta (when (and (pos? ^long level)
                               (>= ^long level 2)
