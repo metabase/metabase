@@ -635,7 +635,7 @@
          :model/PulseChannel _              {:pulse_id     pulse-id
                                              :channel_type "slack"
                                              :details      {:channel "#general"}}]
-        (let [original-render-noti (var-get #'channel/render-notification)]
+        (let [original-render-noti (mt/original-fn #'channel/render-notification)]
           (mt/with-dynamic-fn-redefs [channel/render-notification (fn [& args]
                                                                     (if (= :channel/slack (first args))
                                                                       (throw (ex-info "Slack failed" {}))
