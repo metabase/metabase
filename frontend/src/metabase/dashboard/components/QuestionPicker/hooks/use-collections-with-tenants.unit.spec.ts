@@ -3,12 +3,12 @@ import { setupCollectionTreeEndpoint } from "__support__/server-mocks/collection
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Collection, CollectionId } from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
 import {
   COLLECTIONS_TOP_LEVEL_ID,
