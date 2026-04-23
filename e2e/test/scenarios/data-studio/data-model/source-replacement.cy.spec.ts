@@ -823,7 +823,9 @@ function getTableId(tableName: string) {
 function openReplacementModal(sourceTableLabel: string) {
   H.DataModel.visitDataStudio();
 
-  H.DataModel.TablePicker.getDatabase("Writable Postgres12").click();
+  H.DataModel.TablePicker.getDatabase("Writable Postgres12")
+    .should("be.visible")
+    .click();
   H.DataModel.TablePicker.getTable(sourceTableLabel).click();
   H.DataModel.TableSection.get().should("be.visible");
 
