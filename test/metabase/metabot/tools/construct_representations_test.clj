@@ -532,3 +532,53 @@
               b      (get-in q [:stages 0 :breakout 0])]
           (is (= :expression (first b)))
           (is (= "HalfTotal" (nth b 2))))))))
+
+;;; ============================================================
+;;; Step-10 contract: aggregation references via 0-based integer index
+;;; ============================================================
+
+(deftest aggregation-ref-integer-index-in-order-by-end-to-end-test
+  (testing (str "`[aggregation, {}, <index>]` in order-by is resolved to the canonical\n"
+                "UUID-keyed MBQL 5 form, and the resolved query validates via lib/query.")
+    (with-mp-and-stubs!
+      (fn []
+        (let [result (construct/execute-representations-query
+                      (query-yaml
+                       {"lib/type" "mbql/query"
+                        "database" "Sample"
+                        "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                     "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                     "aggregation"  [["sum" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]
+                                                     ["count" {}]]
+                                     "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                                     "order-by"     [["desc" {} ["aggregation" {} 0]]]}]}))
+              q      (get-in result [:structured-output :query])
+              sum-agg (get-in q [:stages 0 :aggregation 0])
+              order-ref (get-in q [:stages 0 :order-by 0 2])
+              agg-uuid (get-in sum-agg [1 :lib/uuid])]
+          (testing "target aggregation carries a lib/uuid string"
+            (is (string? agg-uuid)))
+          (testing "order-by ref is :aggregation with matching uuid string and types"
+            (is (= :aggregation (first order-ref)))
+            (is (= agg-uuid (nth order-ref 2)))
+            (is (some? (get-in order-ref [1 :base-type])))))))))
+
+(deftest aggregation-ref-out-of-range-surfaces-agent-error-end-to-end-test
+  (testing "out-of-range integer agg-ref returns an agent-error with clear message"
+    (with-mp-and-stubs!
+      (fn []
+        (try
+          (construct/execute-representations-query
+           (query-yaml
+            {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "order-by"     [["desc" {} ["aggregation" {} 7]]]}]}))
+          (is false "expected throw")
+          (catch clojure.lang.ExceptionInfo e
+            (let [d (ex-data e)]
+              (is (true? (:agent-error? d)))
+              (is (= :aggregation-ref-out-of-range (:error d)))
+              (is (re-find #"count at 0" (ex-message e))))))))))
