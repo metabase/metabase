@@ -624,7 +624,7 @@ describe("scenarios > admin > datamodel > metadata", () => {
 
     cy.findAllByTestId("cell-data")
       .eq(10) // 1st data row, 2nd column (User ID)
-      .should("have.text", "2023-10-07T01:34:35.462-07:00");
+      .should("have.text", "2026-10-07T01:34:35.462-07:00");
   });
 
   describe("column formatting options", () => {

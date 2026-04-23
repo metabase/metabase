@@ -1423,10 +1423,8 @@ describe("issue 31628", () => {
 
         cy.findByRole("tooltip").should("not.exist");
 
-        /**
-         * it should display the period
-         */
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2026");
+        cy.log("it should display the period");
+        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
 
         /**
          * should truncate title and show title tooltip on hover
@@ -1493,10 +1491,8 @@ describe("issue 31628", () => {
 
         cy.findByRole("tooltip").should("not.exist");
 
-        /**
-         * it should display the period
-         */
-        cy.findByTestId("scalar-period").should("have.text", "Apr 2026");
+        cy.log("it should display the period");
+        cy.findByTestId("scalar-period").should("have.text", "Apr 2029");
 
         /**
          * should truncate title and show title tooltip on hover

@@ -53,7 +53,7 @@ describe("issue 6010", () => {
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {
-      cy.findByText("Created At is Jan 1–31, 2024").should("be.visible");
+      cy.findByText("Created At is Jan 1–31, 2027").should("be.visible");
     });
     // FIXME metrics v2 -- check that the values in column Total are above 150
   });
@@ -107,8 +107,8 @@ describe("issue 11435", () => {
       query: `
   SELECT "PUBLIC"."ORDERS"."ID" AS "ID", "PUBLIC"."ORDERS"."USER_ID" AS "USER_ID", "PUBLIC"."ORDERS"."PRODUCT_ID" AS "PRODUCT_ID", "PUBLIC"."ORDERS"."SUBTOTAL" AS "SUBTOTAL", "PUBLIC"."ORDERS"."TAX" AS "TAX", "PUBLIC"."ORDERS"."TOTAL" AS "TOTAL", "PUBLIC"."ORDERS"."DISCOUNT" AS "DISCOUNT", "PUBLIC"."ORDERS"."CREATED_AT" AS "CREATED_AT", "PUBLIC"."ORDERS"."QUANTITY" AS "QUANTITY"
   FROM "PUBLIC"."ORDERS"
-  WHERE ("PUBLIC"."ORDERS"."CREATED_AT" >= timestamp with time zone '2025-03-12 00:00:00.000+03:00'
-         AND "PUBLIC"."ORDERS"."CREATED_AT" < timestamp with time zone '2025-03-13 00:00:00.000+03:00')
+  WHERE ("PUBLIC"."ORDERS"."CREATED_AT" >= timestamp with time zone '2028-03-12 00:00:00.000+03:00'
+         AND "PUBLIC"."ORDERS"."CREATED_AT" < timestamp with time zone '2028-03-13 00:00:00.000+03:00')
   LIMIT 1048575`,
     },
     visualization_settings: {
@@ -135,12 +135,12 @@ describe("issue 11435", () => {
     H.createNativeQuestion(questionDetails, { visitQuestion: true });
     hoverLineDot({ index: 1 });
     H.assertEChartsTooltip({
-      header: "March 11, 2025, 8:45:17.010 PM",
+      header: "March 11, 2028, 5:55:36.759 PM",
       rows: [
         {
           color: "#F9D45C",
           name: "TOTAL",
-          value: "25.03",
+          value: "135.23",
         },
       ],
     });
@@ -413,7 +413,7 @@ describe("issue 23076", () => {
       .should("be.visible")
       .eq(1)
       .invoke("text")
-      .should("eq", "Summen für Mai 2023");
+      .should("eq", "Summen für Mai 2026");
   });
 });
 

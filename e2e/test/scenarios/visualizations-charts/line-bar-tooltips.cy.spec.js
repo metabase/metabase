@@ -20,14 +20,14 @@ function testSumTotalChange(
 ) {
   tooltipSelector("#88BF4D", 0);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2022");
+    H.tooltipHeader("2025");
     H.assertTooltipRow(seriesName, { color: "#88BF4D", value: "42,156.87" });
   });
 
   tooltipSelector("#88BF4D", 1);
 
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2023");
+    H.tooltipHeader("2026");
     H.assertTooltipRow(seriesName, {
       color: "#88BF4D",
       value: "205,256.02",
@@ -59,8 +59,8 @@ const SUM_OF_TOTAL_MONTH_EXCLUDE_MAY_AUG = {
           "temporal-unit": "month-of-year",
         },
       ],
-      "2024-05-02",
-      "2024-08-02",
+      "2027-05-02",
+      "2027-08-02",
     ],
     "source-query": {
       "source-table": ORDERS_ID,
@@ -99,7 +99,7 @@ function testAvgTotalChange(
 ) {
   tooltipSelector("#A989C5", 0);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2022");
+    H.tooltipHeader("2025");
     H.assertTooltipRow(seriesName, {
       color: "#A989C5",
       value: "56.66",
@@ -108,7 +108,7 @@ function testAvgTotalChange(
 
   tooltipSelector("#A989C5", 1);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2022");
+    H.tooltipHeader("2025");
     H.assertTooltipRow(seriesName, {
       color: "#A989C5",
       value: "56.86",
@@ -140,7 +140,7 @@ function testCumSumChange(
   if (testFirstTooltip) {
     showTooltipForCircleInSeries("#88BF4D", 0);
     H.echartsTooltip().within(() => {
-      H.tooltipHeader("2022");
+      H.tooltipHeader("2025");
       H.assertTooltipRow(seriesName, {
         color: "#88BF4D",
         value: "3,236",
@@ -150,7 +150,7 @@ function testCumSumChange(
 
   showTooltipForCircleInSeries("#88BF4D", 1);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2023");
+    H.tooltipHeader("2026");
     H.assertTooltipRow(seriesName, {
       color: "#88BF4D",
       value: "17,587",
@@ -175,7 +175,7 @@ const AVG_DISCOUNT_SUM_DISCOUNT = {
 function testAvgDiscountChange(seriesName = "Average of Discount") {
   showTooltipForCircleInSeries("#509EE3", 0);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2022");
+    H.tooltipHeader("2025");
     H.assertTooltipRow(seriesName, {
       color: "#509EE3",
       value: "5.03",
@@ -184,7 +184,7 @@ function testAvgDiscountChange(seriesName = "Average of Discount") {
 
   showTooltipForCircleInSeries("#509EE3", 1);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2023");
+    H.tooltipHeader("2026");
     H.assertTooltipRow(seriesName, {
       color: "#509EE3",
       value: "5.41",
@@ -196,7 +196,7 @@ function testAvgDiscountChange(seriesName = "Average of Discount") {
 function testSumDiscountChange(seriesName = "Sum of Discount") {
   showTooltipForCircleInSeries("#98D9D9", 0);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2022");
+    H.tooltipHeader("2025");
     H.assertTooltipRow(seriesName, {
       color: "#98D9D9",
       value: "342.09",
@@ -205,7 +205,7 @@ function testSumDiscountChange(seriesName = "Sum of Discount") {
 
   showTooltipForCircleInSeries("#98D9D9", 1);
   H.echartsTooltip().within(() => {
-    H.tooltipHeader("2023");
+    H.tooltipHeader("2026");
     H.assertTooltipRow(seriesName, {
       color: "#98D9D9",
       value: "1,953.08",
@@ -367,7 +367,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       H.cartesianChartCircle().first().trigger("mousemove");
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [{ name: originalName, value: "42,156.87" }],
       });
 
@@ -379,7 +379,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       H.cartesianChartCircle().first().trigger("mousemove");
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [{ name: customName, value: "42,156.87" }],
       });
     });
@@ -407,7 +407,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D");
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [
           { color: "#88BF4D", name: originalSeriesName, value: "42,156.87" },
         ],
@@ -415,7 +415,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#A989C5");
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [
           {
             color: "#A989C5",
@@ -434,7 +434,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D");
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [
           {
             color: "#88BF4D",
@@ -446,7 +446,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#A989C5");
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [
           {
             color: "#A989C5",
@@ -480,7 +480,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       H.cartesianChartCircle().first().trigger("mousemove");
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [
           {
             color: "#A989C5",
@@ -504,7 +504,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       H.cartesianChartCircle().first().trigger("mousemove");
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [
           {
             color: "#A989C5",
@@ -543,7 +543,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       .trigger("mousemove");
 
     // Ensure the tooltip is visible
-    H.assertEChartsTooltip({ header: "2022" });
+    H.assertEChartsTooltip({ header: "2025" });
 
     // Ensuring the circle is not covered by the tooltip element
     cy.get("@firstCircle").then(($circle) => {
@@ -575,7 +575,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       .trigger("mousemove");
 
     // Ensure the tooltip is visible
-    H.assertEChartsTooltip({ header: "2022" });
+    H.assertEChartsTooltip({ header: "2025" });
 
     cy.get("@firstCircle").click();
 
@@ -610,7 +610,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       [...originalSeriesColors, ...addedSeriesColors].forEach((color) => {
         showTooltipForCircleInSeries(color, circleIndex);
         H.assertEChartsTooltip({
-          header: "2023",
+          header: "2026",
           rows: [
             {
               color: originalSeriesColors[0],
@@ -652,7 +652,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       [...originalSeriesColors, ...addedSeriesColors].forEach((color) => {
         showTooltipForCircleInSeries(color, circleIndex);
         H.assertEChartsTooltip({
-          header: "2023",
+          header: "2026",
           rows: [
             {
               color: originalSeriesColors[0],
@@ -702,7 +702,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       H.chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [
           {
             color: "#88BF4D",
@@ -720,7 +720,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       H.chartPathWithFillColor("#88BF4D").first().trigger("mousemove");
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [
           {
             color: "#88BF4D",
@@ -756,7 +756,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForBarInSeries(originalSeriesColor, 0);
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [
           {
             color: "#88BF4D",
@@ -768,7 +768,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForBarInSeries(addedSeriesColor, 0);
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [
           {
             color: "#A989C5",
@@ -787,7 +787,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForBarInSeries(originalSeriesColor, 0);
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [
           {
             color: "#88BF4D",
@@ -799,7 +799,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForBarInSeries(addedSeriesColor, 0);
       H.assertEChartsTooltip({
-        header: "2022",
+        header: "2025",
         rows: [
           {
             color: "#A989C5",
@@ -826,7 +826,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 0);
       H.assertEChartsTooltip({
-        header: "April 2022",
+        header: "April 2025",
         rows: [
           {
             color: "#88BF4D",
@@ -839,7 +839,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 1);
       H.assertEChartsTooltip({
-        header: "May 2022",
+        header: "May 2025",
         rows: [
           {
             color: "#88BF4D",
@@ -860,7 +860,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 0);
       H.assertEChartsTooltip({
-        header: "April 2022",
+        header: "April 2025",
         rows: [
           {
             color: "#88BF4D",
@@ -872,7 +872,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
       testTooltipExcludesText("Compared to previous month");
       showTooltipForCircleInSeries("#88BF4D", 1);
       H.assertEChartsTooltip({
-        header: "June 2022",
+        header: "June 2025",
         rows: [
           {
             color: "#88BF4D",
@@ -885,7 +885,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 2);
       H.assertEChartsTooltip({
-        header: "July 2022",
+        header: "July 2025",
         rows: [
           {
             color: "#88BF4D",
@@ -898,7 +898,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 3);
       H.assertEChartsTooltip({
-        header: "September 2022",
+        header: "September 2025",
         rows: [
           {
             color: "#88BF4D",
@@ -919,7 +919,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 0);
       H.assertEChartsTooltip({
-        header: "April 2022",
+        header: "April 2025",
         rows: [
           {
             color: "#88BF4D",
@@ -932,7 +932,7 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
 
       showTooltipForCircleInSeries("#88BF4D", 1);
       H.assertEChartsTooltip({
-        header: "May 2022",
+        header: "May 2025",
         rows: [
           {
             color: "#88BF4D",
@@ -956,8 +956,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         filter: [
           "between",
           ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
-          "2024-01-01",
-          "2024-05-30",
+          "2027-01-01",
+          "2027-05-30",
         ],
       },
       display: "line",
@@ -974,14 +974,14 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         filter: [
           "between",
           ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
-          "2024-03-01",
-          "2024-03-31",
+          "2027-03-01",
+          "2027-03-31",
         ],
       },
       display: "line",
     };
 
-    const DST_WEEK_CHANGES = [null, "+191.48%", "+4.76%", "-2.36%"];
+    const DST_WEEK_CHANGES = [null, "+27.3%", "-5.8%", "-1.36%"]; // fragile - depends on the year
 
     const SUM_OF_TOTAL_DST_DAY = {
       name: "Q1",
@@ -992,8 +992,8 @@ describe("scenarios > visualizations > line/bar chart > tooltips", () => {
         filter: [
           "between",
           ["field", ORDERS.CREATED_AT, { "base-type": "type/DateTime" }],
-          "2024-03-09",
-          "2024-03-12",
+          "2027-03-09",
+          "2027-03-12",
         ],
       },
       display: "line",

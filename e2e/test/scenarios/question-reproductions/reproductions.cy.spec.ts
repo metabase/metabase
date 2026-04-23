@@ -77,8 +77,8 @@ describe("issue 39487", () => {
       createTimeSeriesQuestionWithFilter([
         "between",
         CREATED_AT_FIELD,
-        "2024-05-01", // 5 day rows
-        "2024-06-01", // 6 day rows
+        "2027-05-01", // 5 day rows
+        "2027-06-01", // 6 day rows
       ]);
 
       cy.log("timeseries filter button");
@@ -92,7 +92,7 @@ describe("issue 39487", () => {
 
       cy.log("filter modal");
       cy.button(/Filter/).click();
-      H.modal().findByText("May 1 – Jun 1, 2024").click();
+      H.modal().findByText("May 1 – Jun 1, 2027").click();
       checkDateRangeFilter();
       H.modal().button("Close").click();
 
@@ -101,9 +101,9 @@ describe("issue 39487", () => {
       H.tableHeaderClick("Created At: Year");
       H.popover().findByText("Filter by this column").click();
       H.popover().findByText("Specific dates…").click();
-      H.popover().findAllByRole("textbox").first().clear().type("2024/05/01");
+      H.popover().findAllByRole("textbox").first().clear().type("2027/05/01");
       // eslint-disable-next-line no-unsafe-element-filtering
-      H.popover().findAllByRole("textbox").last().clear().type("2024/06/01");
+      H.popover().findAllByRole("textbox").last().clear().type("2027/06/01");
       previousButton().click();
       checkDateRangeFilter();
 
@@ -167,7 +167,7 @@ describe("issue 39487", () => {
   function checkDateRangeFilter() {
     measureInitialValues();
 
-    nextButton().click(); // go to 2024-07 - 5 day rows
+    nextButton().click(); // go to 2027-07 - 5 day rows
     assertNoLayoutShift();
   }
 
