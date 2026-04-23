@@ -61,7 +61,11 @@ export function WorkspaceRemappingsTable({
     >
       <TreeTable
         instance={treeTableInstance}
-        emptyState={<ListEmptyState label={t`No remappings yet`} />}
+        emptyState={
+          <ListEmptyState
+            label={t`Transforms create tables in the isolation schema on their first run. Those remappings will show up here.`}
+          />
+        }
         ariaLabel={t`Workspace remappings`}
         onRowClick={handleRowClick}
       />
