@@ -363,35 +363,42 @@
   "One Snowplow event per (catalog × dotted-key) — grand `total`, one `<group>.total` per thematic
   group, and one `<group>.<component>` leaf per sub-score. Aggregate `:score` is nil when any
   contributing leaf couldn't be computed, so consumers see an explicit unknown instead of a
-  silently low-biased total."
+  silently low-biased total.
+
+  Returns true when at least one event was actually delivered to the Snowplow tracker. Returns
+  false when tracking is disabled or every emission failed — the latter is the signal
+  `run-scoring!` uses to leave `data-complexity-scoring-last-fingerprint` unchanged so the next
+  boot or cron retries. [[metabase.analytics.snowplow/track-event!]] already no-ops when disabled
+  and catches its own exceptions, so aggregating its boolean here is sufficient."
   [{:keys [library universe metabot meta]}]
-  (let [base {:event           :data_complexity_scoring
-              :formula_version (:formula-version meta)
-              :parameters      (parameters-map meta)}]
-    (doseq [[catalog result] [[:library library] [:universe universe] [:metabot metabot]]]
-      ;; grand total
-      (analytics/track-event!
-       :snowplow/data_complexity
-       (assoc base :catalog catalog :key (dotted-key :total) :score (:total result)))
-      ;; per-group rollups
-      (doseq [[group entries] (group-by #(component->group (key %)) (:components result))]
-        (analytics/track-event!
-         :snowplow/data_complexity
-         (assoc base
-                :catalog catalog
-                :key     (dotted-key group :total)
-                :score   (nil-safe-sum (map (comp :score val) entries)))))
-      ;; leaves
-      (doseq [[component sub] (:components result)
-              :let [group (component->group component)]]
-        (analytics/track-event!
-         :snowplow/data_complexity
-         (cond-> (assoc base
-                        :catalog     catalog
-                        :key         (dotted-key group component)
-                        :score       (:score sub)
-                        :measurement (:measurement sub))
-           (:error sub) (assoc :error (:error sub))))))))
+  (let [base     {:event           :data_complexity_scoring
+                  :formula_version (:formula-version meta)
+                  :parameters      (parameters-map meta)}
+        track!   (fn [event] (analytics/track-event! :snowplow/data_complexity event))
+        group-rollup-event (fn [catalog group entries]
+                             (assoc base
+                                    :catalog catalog
+                                    :key     (dotted-key group :total)
+                                    :score   (nil-safe-sum (map (comp :score val) entries))))
+        leaf-event (fn [catalog component sub]
+                     (cond-> (assoc base
+                                    :catalog     catalog
+                                    :key         (dotted-key (component->group component) component)
+                                    :score       (:score sub)
+                                    :measurement (:measurement sub))
+                       (:error sub) (assoc :error (:error sub))))
+        events   (for [[catalog result] [[:library library] [:universe universe] [:metabot metabot]]
+                       event (concat [(assoc base :catalog catalog :key (dotted-key :total)
+                                             :score (:total result))]
+                                     (for [[group entries] (group-by #(component->group (key %))
+                                                                     (:components result))]
+                                       (group-rollup-event catalog group entries))
+                                     (for [[component sub] (:components result)]
+                                       (leaf-event catalog component sub)))]
+                   event)]
+    ;; `reduce` forces the lazy seq and accumulates without short-circuiting, so every event is
+    ;; attempted even after the first failure/success.
+    (reduce (fn [acc event] (or (track! event) acc)) false events)))
 
 (defn score-from-entities
   "Pure: compute the full complexity score from pre-built entity vectors and an embedder. No DB
@@ -483,12 +490,13 @@
         (log-scores! result)
         (let [published? (try
                            (emit-snowplow! result)
-                           true
                            (catch Throwable t
                              (log/warn t "Failed to publish complexity score to Snowplow")
                              false))]
-          ;; Tag publish success via metadata so scheduler/boot callers can gate durable side-effects
-          ;; (fingerprint advance) without leaking into the JSON API response shape.
+          ;; `emit-snowplow!` returns true only when at least one event actually reached the
+          ;; tracker (false when Snowplow is disabled or every emission failed) — scheduler/boot
+          ;; callers gate `data-complexity-scoring-last-fingerprint` on this so a disabled
+          ;; collector or transient failure doesn't silently mark the fingerprint as published.
           (with-meta result {::snowplow-published? published?})))
       (finally
         (prometheus/observe! :metabase-data-complexity/scoring-duration-ms

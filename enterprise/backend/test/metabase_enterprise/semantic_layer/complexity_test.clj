@@ -1020,4 +1020,12 @@
         (mt/with-dynamic-fn-redefs [analytics/track-event! (fn [& _] (throw (RuntimeException. "snowplow down")))]
           (let [result (complexity/complexity-scores :embedder nil)]
             (is (false? (:metabase-enterprise.semantic-layer.complexity/snowplow-published?
+                         (meta result)))))))
+      (testing "snowplow disabled → ::snowplow-published? false so the fingerprint stays unadvanced"
+        ;; `track-event!` no-ops when anon-tracking is off; without a real-delivery signal it would
+        ;; look indistinguishable from a successful publish and the fingerprint would advance,
+        ;; silently suppressing the boot-time retry once tracking is turned back on.
+        (mt/with-temporary-setting-values [anon-tracking-enabled false]
+          (let [result (complexity/complexity-scores :embedder nil)]
+            (is (false? (:metabase-enterprise.semantic-layer.complexity/snowplow-published?
                          (meta result))))))))))
