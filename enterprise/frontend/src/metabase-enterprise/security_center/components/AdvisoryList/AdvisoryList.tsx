@@ -86,7 +86,7 @@ export function AdvisoryList({
         <Box>
           <Group align="normal">
             <Title order={4} mb="md">
-              {t`Other alerts`}
+              {t`Issues not affecting your instance`}
             </Title>
             {onAcknowledgeAll && undismissedNotAffecting.length > 0 && (
               <Button
