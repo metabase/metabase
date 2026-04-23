@@ -164,3 +164,43 @@
     (testing "When secret is not set, it does not encrypt the stream"
       (let [encrypted (encryption/maybe-encrypt-for-stream nil (codecs/to-bytes "test string"))]
         (is (= "test string" (codecs/bytes->str encrypted)))))))
+
+(deftest ^:parallel stream-gcm-authentication-test
+  (testing "GCM detects tampered ciphertext"
+    (let [encrypted (encryption/encrypt-for-stream secret (codecs/to-bytes "secret data"))
+          ;; Flip a bit in the ciphertext (after the 32-byte header + 12-byte IV = byte 44+)
+          tampered (aclone encrypted)]
+      (when (> (alength tampered) 50)
+        (aset-byte tampered 50 (unchecked-byte (bit-xor (aget tampered 50) 0xFF)))
+        (is (thrown? Exception
+                     (with-open [stream (encryption/maybe-decrypt-stream secret (ByteArrayInputStream. tampered))]
+                       ;; Must read fully to trigger GCM auth tag verification
+                       (org.apache.commons.io.IOUtils/toByteArray stream)))))))
+  (testing "GCM detects wrong key"
+    (let [encrypted (encryption/encrypt-for-stream secret (codecs/to-bytes "secret data"))]
+      (is (thrown? Exception
+                   (with-open [stream (encryption/maybe-decrypt-stream secret-2 (ByteArrayInputStream. encrypted))]
+                     (org.apache.commons.io.IOUtils/toByteArray stream)))))))
+
+(deftest ^:parallel stream-backward-compatibility-test
+  (testing "Data encrypted with legacy AES-CBC can still be decrypted"
+    ;; Simulate legacy CBC encryption by directly using the old format
+    (let [plaintext "backward compat test"
+          plain-bytes (codecs/to-bytes plaintext)
+          spec "AES/CBC/PKCS5Padding"
+          spec-header (codecs/to-bytes (format "%-32s" spec))
+          cipher (javax.crypto.Cipher/getInstance spec)
+          iv (buddy.core.nonce/random-bytes 16)
+          aes-key (javax.crypto.spec.SecretKeySpec. (buddy.core.bytes/slice secret 32 64) "AES")]
+      (.init cipher javax.crypto.Cipher/ENCRYPT_MODE aes-key (javax.crypto.spec.IvParameterSpec. iv))
+      (let [ciphertext (.doFinal cipher plain-bytes)
+            legacy-blob (byte-array (+ 32 16 (alength ciphertext)))]
+        (System/arraycopy spec-header 0 legacy-blob 0 32)
+        (System/arraycopy iv 0 legacy-blob 32 16)
+        (System/arraycopy ciphertext 0 legacy-blob 48 (alength ciphertext))
+        (with-open [stream (encryption/maybe-decrypt-stream secret (ByteArrayInputStream. legacy-blob))]
+          (is (= plaintext (codecs/bytes->str (org.apache.commons.io.IOUtils/toByteArray stream))))))))
+  (testing "New GCM header is written by encrypt-stream"
+    (let [encrypted (encryption/encrypt-for-stream secret (codecs/to-bytes "test"))
+          header (String. encrypted 0 32)]
+      (is (= "AES/GCM/NoPadding" (clojure.string/trim header))))))
