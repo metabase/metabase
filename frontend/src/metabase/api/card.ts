@@ -31,6 +31,7 @@ import {
   provideCardQueryTags,
   provideCardTags,
   provideParameterValuesTags,
+  tag,
 } from "./tags";
 import { handleQueryFulfilled } from "./utils/lifecycle";
 
@@ -104,6 +105,10 @@ export const cardApi = Api.injectEndpoints({
         }),
         providesTags: (_data, _error, { cardId }) =>
           provideCardQueryTags(cardId),
+        onQueryStarted: (_, { dispatch, queryFulfilled }) =>
+          handleQueryFulfilled(queryFulfilled, () => {
+            dispatch(Api.util.invalidateTags([tag("query-execution")]));
+          }),
       }),
       getRemappedCardParameterValue: builder.query<
         FieldValue,
