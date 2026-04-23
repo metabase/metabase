@@ -44,7 +44,9 @@ yhocuspocus identifies documents by string name. Metabase uses
 `"document:<entity-id>"` — the 21-char NanoID `document.entity_id`. Parsed
 by `collab.persistence/parse-doc-name`. Future protocols (cards,
 dashboards) can claim their own prefixes; unknown prefixes throw
-`ex-info` so regressions surface explicitly.
+`ex-info` so regressions surface explicitly. The authz extension relies
+on this `throw` to reject connections for unrecognized document types
+rather than silently accepting them.
 
 ## Storage
 

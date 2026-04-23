@@ -1,5 +1,5 @@
 import { HocuspocusProvider } from "@hocuspocus/provider";
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import * as Y from "yjs";
 
 export type CollabSession = {
@@ -16,44 +16,52 @@ function buildWsUrl(): string {
 /**
  * Open a collab session for a document when the user has write access.
  *
- * `ydoc` + `provider` are constructed synchronously (via `useMemo`) so they're
- * available on the first render — the TipTap editor's `Collaboration`
- * extension needs a `Y.Doc` at mount time. Returns `null` when no session
- * should be opened (read-only viewer, missing entity-id).
+ * Construction happens in `useEffect` (not `useMemo`) so React 18 Strict
+ * Mode's double-invoke of render doesn't leak a `Y.Doc` + in-flight
+ * WebSocket attempt on every dev mount — the effect's cleanup runs
+ * between the two invocations and tears down any provisional session.
  *
- * The backend gates the feature flag. If `MB_ENABLE_DOCUMENT_COLLAB` is off
- * the upgrade returns 404; the provider stays disconnected and the editor
- * silently continues on the non-collab JSON path it already loaded.
+ * Returns `null` while the session is being set up or when no session
+ * should be opened (read-only viewer, missing entity-id). Errors
+ * (`onAuthenticationFailed` from backend authz, non-normal close codes
+ * from flag-off 404 or dropped connection) are surfaced via `console.warn`
+ * — the editor still works in non-collab mode when the session fails.
  */
 export function useCollabProvider(
   entityId: string | null | undefined,
   canWrite: boolean,
 ): CollabSession | null {
-  const session = useMemo<CollabSession | null>(() => {
+  const [session, setSession] = useState<CollabSession | null>(null);
+
+  useEffect(() => {
     if (!entityId || !canWrite) {
-      return null;
+      return;
     }
     const ydoc = new Y.Doc();
     const provider = new HocuspocusProvider({
       url: buildWsUrl(),
       name: `document:${entityId}`,
       document: ydoc,
+      onAuthenticationFailed: ({ reason }) => {
+        // eslint-disable-next-line no-console
+        console.warn(`[collab] authentication failed: ${reason}`);
+      },
+      onClose: ({ event }) => {
+        if (event.code !== 1000) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[collab] connection closed: code=${event.code} reason=${event.reason}`,
+          );
+        }
+      },
     });
-    return { ydoc, provider };
-  }, [entityId, canWrite]);
-
-  useEffect(() => {
-    if (!session) {
-      return;
-    }
+    setSession({ ydoc, provider });
     return () => {
-      try {
-        session.provider.destroy();
-      } finally {
-        session.ydoc.destroy();
-      }
+      provider.destroy();
+      ydoc.destroy();
+      setSession(null);
     };
-  }, [session]);
+  }, [entityId, canWrite]);
 
   return session;
 }

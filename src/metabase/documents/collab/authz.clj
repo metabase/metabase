@@ -44,6 +44,10 @@
   ;; inherit default methods on Clojure 1.10+, so we implement only the two
   ;; hooks we care about and let the rest pass through as no-ops.
   (reify Extension
+    ;; Return-type hint required: the onAuthenticate method can finish via
+    ;; throw (cond branches that reject) or via `CompletableFuture/completedFuture`.
+    ;; Clojure can't infer a common return type without the explicit hint —
+    ;; compile fails with "had: java.lang.Object" otherwise.
     (^CompletableFuture onAuthenticate [_ ^OnAuthenticatePayload payload]
       (let [ctx      (.getContext payload)
             doc-name (.getDocumentName payload)

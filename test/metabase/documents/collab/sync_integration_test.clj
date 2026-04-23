@@ -118,11 +118,14 @@
                     (send-bytes! ws-b msg))
                   ;; Each client should receive at least one binary response
                   ;; from the server (the SyncReply + loaded state). Wait up
-                  ;; to 3s each.
-                  (let [a-got (.get ^CompletableFuture recv-a 3 TimeUnit/SECONDS)
-                        b-got (.get ^CompletableFuture recv-b 3 TimeUnit/SECONDS)]
-                    (is (some? a-got) "client A received a server broadcast")
-                    (is (some? b-got) "client B received a server broadcast"))
+                  ;; to 3s each. `.get` throws TimeoutException on timeout, so
+                  ;; reaching the assertion already proves a frame arrived —
+                  ;; we additionally assert the frame actually carries bytes
+                  ;; (rules out a phantom empty frame).
+                  (let [^ByteBuffer a-got (.get ^CompletableFuture recv-a 3 TimeUnit/SECONDS)
+                        ^ByteBuffer b-got (.get ^CompletableFuture recv-b 3 TimeUnit/SECONDS)]
+                    (is (pos? (.remaining a-got)) "client A got a non-empty response")
+                    (is (pos? (.remaining b-got)) "client B got a non-empty response"))
                   (finally
                     (try @(.sendClose ws-a WebSocket/NORMAL_CLOSURE "done")
                          (catch Throwable _))

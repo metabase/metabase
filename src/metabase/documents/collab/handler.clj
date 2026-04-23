@@ -77,7 +77,8 @@
                                    (ring.ws/close sock 1011 "document-collab server unavailable")))
                    true
                    (wrap-on-close (fn on-close [code]
-                                    (log/infof "collab: connection closed %s code=%s" conn-id code))))]
+                                    (log/infof "collab: connection closed %s user=%s code=%s"
+                                               conn-id user-id code))))]
     {::ring.ws/listener listener}))
 
 (defn routes

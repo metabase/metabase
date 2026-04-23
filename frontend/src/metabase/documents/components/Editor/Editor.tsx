@@ -126,7 +126,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
         CustomStarterKit.configure({
           // Y-CRDT owns undo/redo when collab is on; disable TipTap's local
           // UndoRedo (aka "history" in PM terms) to avoid double-undo conflicts.
-          ...(collabEnabled ? { undoRedo: false as const } : {}),
+          ...(collabEnabled ? { undoRedo: false } : {}),
           dropcursor: {
             color: DROP_ZONE_COLOR,
             width: 2,
@@ -201,7 +201,7 @@ export const Editor: React.FC<EditorProps> = React.memo(
         extensions,
         // In collab mode the YDoc seeds content — passing initialContent here
         // would conflict with Collaboration's bindings.
-        content: collabEnabled ? "" : initialContent || "",
+        content: collabEnabled ? null : initialContent || "",
         autofocus: false,
         editable,
         immediatelyRender: false,
@@ -212,7 +212,11 @@ export const Editor: React.FC<EditorProps> = React.memo(
           }
         },
       },
-      [],
+      // Re-mount when collab flips on/off: the hook constructs the session
+      // asynchronously in useEffect, so the first render has `ydoc`/`provider`
+      // undefined and the editor would miss the Collaboration extensions
+      // without this dep.
+      [collabEnabled],
     );
 
     // Handle content updates when initialContent changes. Skipped in collab mode —

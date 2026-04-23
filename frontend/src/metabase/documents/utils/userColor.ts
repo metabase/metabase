@@ -23,7 +23,6 @@ function djb2Hash(input: string): number {
   return hash >>> 0;
 }
 
-export function userColor(userId: number | string): string {
-  const key = typeof userId === "number" ? String(userId) : userId;
-  return PALETTE[djb2Hash(key) % PALETTE.length];
+export function userColor(userId: number): string {
+  return PALETTE[djb2Hash(String(userId)) % PALETTE.length];
 }
