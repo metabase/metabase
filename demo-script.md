@@ -39,6 +39,15 @@ create database montreal_demo_dwh;
 \i ~/Downloads/github_raw.sql
 ```
 
+Set up a git repository
+
+```shell
+mkdir /tmp/metabase_assets
+cd /tmp/metabase_assets
+touch README.md
+git init
+```
+
 ```shell
 cat > ./parent_config.yml <<EOF
 version: 1
@@ -60,6 +69,10 @@ config:
         dbname: montreal_demo_dwh
         schema-filters-type: inclusion
         schema-filters-patterns: raw_github
+  settings:
+    remote-sync-url: file:///tmp/metabase_assets
+    remote-sync-type: read-write
+    remote-sync-branch: main
 EOF
 ```
 
@@ -106,6 +119,10 @@ config:
         input_schemas:
         - raw_github
         output_schema: <schema from ws init>
+  settings:
+    remote-sync-url: file:///tmp/metabase_assets
+    remote-sync-type: read-write
+    remote-sync-branch: main
 EOF
 ```
 1. Download metadata.json. It should look like this:
