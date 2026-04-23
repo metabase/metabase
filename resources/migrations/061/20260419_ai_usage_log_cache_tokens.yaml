@@ -1,0 +1,32 @@
+## Track Anthropic prompt-caching token counts on ai_usage_log
+
+databaseChangeLog:
+  - changeSet:
+      id: v61.2026-04-19T00:00:01
+      author: tsplude
+      comment: Add cache_creation_tokens to ai_usage_log for Anthropic prompt caching
+      changes:
+        - addColumn:
+            tableName: ai_usage_log
+            columns:
+              - column:
+                  name: cache_creation_tokens
+                  type: int
+                  remarks: Number of input tokens written to the provider prompt cache (Anthropic cache_creation_input_tokens).
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-04-19T00:00:02
+      author: tsplude
+      comment: Add cache_read_tokens to ai_usage_log for Anthropic prompt caching
+      changes:
+        - addColumn:
+            tableName: ai_usage_log
+            columns:
+              - column:
+                  name: cache_read_tokens
+                  type: int
+                  remarks: Number of input tokens served from the provider prompt cache (Anthropic cache_read_input_tokens).
+                  constraints:
+                    nullable: true

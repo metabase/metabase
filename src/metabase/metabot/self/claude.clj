@@ -14,6 +14,43 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- claude-usage->aisdk-usage
+  "Convert an Anthropic `usage` block into the AISDK `:usage` shape.
+
+  Anthropic reports three disjoint input-token buckets; the total input sent to
+  the model is the sum of all three:
+
+      input_tokens                 — fresh (non-cached) input
+      cache_creation_input_tokens  — input written to the provider cache
+      cache_read_input_tokens      — input served from the provider cache
+
+  We pre-sum these into :promptTokens so downstream analytics and ai_usage_log
+  see a provider-neutral total-input count, matching OpenAI's prompt_tokens
+  semantic (where cache counts are a subset breakdown of the total).
+
+  ai_usage_log column mapping:
+
+    without Anthropic prompt caching:
+      prompt_tokens     := input_tokens
+      completion_tokens := output_tokens
+      total_tokens      := input_tokens + output_tokens
+
+    with Anthropic prompt caching:
+      prompt_tokens     := input_tokens + cache_creation_input_tokens + cache_read_input_tokens
+      completion_tokens := output_tokens
+      total_tokens      := prompt_tokens + completion_tokens
+
+  The two are equivalent when caching is inactive (both cache buckets are 0),
+  so one unified formula is used in code; the split above is purely for reader
+  clarity."
+  [u]
+  {:promptTokens        (+ (:input_tokens u 0)
+                           (:cache_creation_input_tokens u 0)
+                           (:cache_read_input_tokens u 0))
+   :completionTokens    (:output_tokens u 0)
+   :cacheCreationTokens (:cache_creation_input_tokens u 0)
+   :cacheReadTokens     (:cache_read_input_tokens u 0)})
+
 (defn claude->aisdk-chunks-xf
   "Translates Claude /v1/messages streaming events into AI SDK v5 protocol chunks.
 
@@ -57,10 +94,9 @@
          (cond-> result
            ;; close up latest type if incomplete
            @current-type (close!)
-           ;; flush last-known usage if stream ended before message_delta
+           ;; flush last-known usage if stream ended before message_delta.
            @last-usage   (rf {:type  :usage
-                              :usage {:promptTokens     (:input_tokens @last-usage 0)
-                                      :completionTokens (:output_tokens @last-usage 0)}
+                              :usage (claude-usage->aisdk-usage @last-usage)
                               :id    @message-id
                               :model @model-name})
            true          (rf)))
@@ -105,6 +141,7 @@
              ;; but message_delta values are cumulative and include the earlier
              ;; counts.
              ;; https://platform.claude.com/docs/en/build-with-claude/streaming#event-types
+             ;; https://platform.claude.com/docs/en/api/cli/messages#message_delta_usage
              (= t "message_delta")      (u/prog1
                                           (vreset! last-usage (:usage chunk)))
              ;; end of message
@@ -184,6 +221,45 @@
      :description  doc
      :input_schema (mjs/transform params {:additionalProperties false})}))
 
+(defn- add-tools-cache-breakpoint
+  "Attach an ephemeral cache_control marker to the last tool in `tools`.
+  Anthropic caches everything in the request up to and including the block with
+  `cache_control`, so a single breakpoint on the final tool covers the whole
+  tool list."
+  [tools]
+  (if (seq tools)
+    (update tools (dec (count tools)) assoc :cache_control {:type "ephemeral"})
+    tools))
+
+(def ^:private system-cache-breakpoint-sentinel
+  "Literal marker placed in selmer templates to indicate where the static cacheable
+  prefix ends and the dynamic per-request suffix begins. Anthropic-only; ignored
+  by other provider adapters."
+  "<<<METABOT_CACHE_BREAKPOINT>>>")
+
+(defn- system->cached-content-blocks
+  "Wrap a rendered system prompt for Anthropic, applying ephemeral cache_control.
+
+  If `system` contains the cache breakpoint sentinel, split it into two content
+  blocks: a cached static prefix and an uncached dynamic suffix. The model sees
+  the concatenation; the split is purely a wire-protocol device for caching.
+
+  If the sentinel is absent, fall back to a single cached content block covering
+  the whole prompt."
+  [system]
+  (let [idx (.indexOf ^String system ^String system-cache-breakpoint-sentinel)]
+    (if (neg? idx)
+      [{:type          "text"
+        :text          system
+        :cache_control {:type "ephemeral"}}]
+      (let [prefix (str/trimr (subs system 0 idx))
+            suffix (str/triml (subs system (+ idx (count system-cache-breakpoint-sentinel))))]
+        [{:type          "text"
+          :text          prefix
+          :cache_control {:type "ephemeral"}}
+         {:type "text"
+          :text suffix}]))))
+
 (defn- anthropic-errors [res]
   (let [status    (long (:status res 0))
         error-msg (get-in res [:body :error :message])]
@@ -227,11 +303,15 @@
     :or   {model "claude-haiku-4-5"}} :- core/LLMRequestOpts]
   (let [messages  (parts->claude-messages input)
         all-tools (when (seq tools) (mapv tool->claude tools))
+        all-tools (if (and all-tools (not schema))
+                    (add-tools-cache-breakpoint all-tools)
+                    all-tools)
         req       (cond-> {:model         model
                            :max_tokens    (or max-tokens 4096)
                            :stream        true
+                           :cache_control {:type "ephemeral"}
                            :messages      messages}
-                    system            (assoc :system system)
+                    system            (assoc :system (system->cached-content-blocks system))
                     all-tools         (assoc :tools all-tools)
                     (and all-tools
                          tool_choice) (assoc :tool_choice (case (name tool_choice)

@@ -375,13 +375,6 @@ You work with different types of data sources, each with different reliability l
 
 ---
 
-# Important Context
-
-{% if recent_views %}
-
-{{ recent_views|safe }}
-{% endif %}
-
 <entity_linking>
 CRITICAL: Link format MUST use the metabase:// protocol prefix
 
@@ -442,4 +435,13 @@ Every interaction must:
 # Custom Instructions
 
 {{ custom_instructions|safe }}
+{% endif %}
+
+<<<METABOT_CACHE_BREAKPOINT>>>
+
+# Important Context
+
+{% if recent_views %}
+
+{{ recent_views|safe }}
 {% endif %}
