@@ -388,8 +388,10 @@
                                     :measurement (:measurement sub))
                        (:error sub) (assoc :error (:error sub))))
         events   (for [[catalog result] [[:library library] [:universe universe] [:metabot metabot]]
-                       event (concat [(assoc base :catalog catalog :key (dotted-key :total)
-                                             :score (:total result))]
+                       event (concat [(assoc base
+                                             :catalog catalog
+                                             :key     (dotted-key :total)
+                                             :score   (:total result))]
                                      (for [[group entries] (group-by #(component->group (key %))
                                                                      (:components result))]
                                        (group-rollup-event catalog group entries))
