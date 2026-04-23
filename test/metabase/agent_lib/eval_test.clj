@@ -677,3 +677,88 @@
       (is (not (re-find #"named expressions must be non-aggregation only"
                         (:details (ex-data program-error)))))
       (is (= :invalid-generated-program (:error (ex-data program-error)))))))
+
+(deftest ^:parallel field-options-temporal-unit-parity-test
+  (testing "`[\"field\" id {\"temporal-unit\" ...}]` is equivalent to `with-temporal-bucket`"
+    (let [created-at (meta/field-metadata :orders :created-at)
+          program    {:source     {:type "context" :ref "source"}
+                      :operations [["aggregate" ["sum" ["field" (meta/id :orders :total)]]]
+                                   ["breakout" ["field" (meta/id :orders :created-at)
+                                                {"temporal-unit" "month"}]]
+                                   ["order-by" ["field" (meta/id :orders :created-at)
+                                                {"temporal-unit" "month"}] "asc"]]}
+          expected   (-> (tu/query-for-table :orders)
+                         (lib/aggregate (lib/sum (meta/field-metadata :orders :total)))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month))
+                         (lib/order-by (lib/with-temporal-bucket created-at :month) :asc))]
+      (is (= (tu/comparable-query expected)
+             (-> (program/evaluate-program program meta/metadata-provider (tu/table-context :orders))
+                 tu/comparable-query))))))
+
+(deftest ^:parallel field-options-binning-parity-test
+  (testing "`[\"field\" id {\"binning\" ...}]` is equivalent to `with-binning`"
+    (let [total    (meta/field-metadata :orders :total)
+          binning  {:strategy :num-bins :num-bins 10}
+          program  {:source     {:type "context" :ref "source"}
+                    :operations [["aggregate" ["count"]]
+                                 ["breakout" ["field" (meta/id :orders :total)
+                                              {"binning" {"strategy" "num-bins"
+                                                          "num-bins" 10}}]]]}
+          expected (-> (tu/query-for-table :orders)
+                       (lib/aggregate (lib/count))
+                       (lib/breakout (lib/with-binning total binning)))]
+      (is (= (tu/comparable-query expected)
+             (-> (program/evaluate-program program meta/metadata-provider (tu/table-context :orders))
+                 tu/comparable-query))))))
+
+(deftest ^:parallel field-options-combined-parity-test
+  (testing "`[\"field\" id {temporal-unit ... binning ...}]` composes both wrappers"
+    (let [created-at (meta/field-metadata :orders :created-at)
+          program    {:source     {:type "context" :ref "source"}
+                      :operations [["aggregate" ["count"]]
+                                   ["breakout" ["field" (meta/id :orders :created-at)
+                                                {"temporal-unit" "month"
+                                                 "binning"       {"strategy" "default"}}]]]}
+          expected   (-> (tu/query-for-table :orders)
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (-> created-at
+                                           (lib/with-temporal-bucket :month)
+                                           (lib/with-binning {:strategy :default}))))]
+      (is (= (tu/comparable-query expected)
+             (-> (program/evaluate-program program meta/metadata-provider (tu/table-context :orders))
+                 tu/comparable-query))))))
+
+(deftest ^:parallel field-like-map-breakout-and-order-by-vector-wrapper-parity-test
+  (testing "field-like maps inside breakout and a vector-wrapped order-by yield canonical MBQL"
+    (let [created-at (meta/field-metadata :orders :created-at)
+          program    {:source     {:type "context" :ref "source"}
+                      :operations [["aggregate" ["count"]]
+                                   ["breakout" {"field_id"        (meta/id :orders :created-at)
+                                                "temporal_bucket" "month"}]
+                                   ["order-by" [["asc" {"field_id"        (meta/id :orders :created-at)
+                                                        "temporal_bucket" "month"}]]]]}
+          expected   (-> (tu/query-for-table :orders)
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month))
+                         (lib/order-by (lib/with-temporal-bucket created-at :month) :asc))]
+      (is (= (tu/comparable-query expected)
+             (-> (program/evaluate-program program meta/metadata-provider (tu/table-context :orders))
+                 tu/comparable-query))))))
+
+(deftest ^:parallel field-like-map-order-by-with-direction-key-parity-test
+  (testing "an order-by field-like map with a `direction` key yields canonical MBQL"
+    (let [created-at (meta/field-metadata :orders :created-at)
+          program    {:source     {:type "context" :ref "source"}
+                      :operations [["aggregate" ["count"]]
+                                   ["breakout" {"field_id"        (meta/id :orders :created-at)
+                                                "temporal_bucket" "month"}]
+                                   ["order-by" {"field_id"        (meta/id :orders :created-at)
+                                                "temporal_bucket" "month"
+                                                "direction"       "asc"}]]}
+          expected   (-> (tu/query-for-table :orders)
+                         (lib/aggregate (lib/count))
+                         (lib/breakout (lib/with-temporal-bucket created-at :month))
+                         (lib/order-by (lib/with-temporal-bucket created-at :month) :asc))]
+      (is (= (tu/comparable-query expected)
+             (-> (program/evaluate-program program meta/metadata-provider (tu/table-context :orders))
+                 tu/comparable-query))))))
