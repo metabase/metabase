@@ -21,6 +21,7 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useRegisterMetabotTransformContext } from "metabase/transforms/hooks/use-register-transform-metabot-context";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
 import { useDispatch, useSelector } from "metabase/utils/redux";
@@ -37,7 +38,6 @@ import {
   type TransformEditorProps,
 } from "../../components/TransformEditor";
 import { TransformHeader } from "../../components/TransformHeader";
-import { useRegisterMetabotTransformContext } from "../../hooks/use-register-transform-metabot-context";
 import { useSourceState } from "../../hooks/use-source-state";
 import { isCompleteSource } from "../../utils";
 
@@ -127,8 +127,16 @@ function TransformQueryPageBody({
       ? (transform.last_run.message ?? undefined)
       : undefined;
   }, [transform.last_run]);
-
-  useRegisterMetabotTransformContext(transform, source, lastRunError);
+  const pythonTestState = PLUGIN_TRANSFORMS_PYTHON.useTestPythonTransform(
+    source.type === "python" ? source : undefined,
+  );
+  useRegisterMetabotTransformContext(
+    transform,
+    source,
+    source.type === "python"
+      ? (pythonTestState?.executionResult.error?.message ?? lastRunError)
+      : lastRunError,
+  );
 
   const {
     checkData,
@@ -238,6 +246,7 @@ function TransformQueryPageBody({
               proposedSource={
                 proposedSource?.type === "python" ? proposedSource : undefined
               }
+              testState={pythonTestState!}
               uiOptions={{ readOnly }}
               isEditMode={isEditMode}
               transform={transform}
@@ -319,9 +328,14 @@ export function TransformQueryPageEditor({
   onRunTransform,
   onRun,
 }: TransformQueryPageEditorProps) {
+  const pythonTestState = PLUGIN_TRANSFORMS_PYTHON.useTestPythonTransform(
+    source.type === "python" ? source : undefined,
+  );
+
   return source.type === "python" ? (
     <PLUGIN_TRANSFORMS_PYTHON.TransformEditor
       source={source}
+      testState={pythonTestState!}
       uiOptions={uiOptions}
       proposedSource={
         proposedSource?.type === "python" ? proposedSource : undefined

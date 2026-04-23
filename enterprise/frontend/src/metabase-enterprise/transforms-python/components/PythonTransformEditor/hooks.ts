@@ -2,28 +2,22 @@ import { useRef } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
+import type { TestPythonScriptState } from "metabase/plugins";
 import { useExecutePythonMutation } from "metabase-enterprise/api/transform-python";
-import type {
-  PythonTransformSourceDraft,
-  TestPythonTransformResponse,
-} from "metabase-types/api";
-
-type TestPythonScriptState = {
-  isRunning: boolean;
-  isDirty: boolean;
-  executionResult: TestPythonTransformResponse;
-  run: () => void;
-  cancel: () => void;
-};
+import type { PythonTransformSourceDraft } from "metabase-types/api";
 
 export function useTestPythonTransform(
-  source: PythonTransformSourceDraft,
-): TestPythonScriptState {
+  source?: PythonTransformSourceDraft,
+): TestPythonScriptState | undefined {
   const [
     executePython,
     { data = null, error, isLoading: isRunning, originalArgs },
   ] = useExecutePythonMutation();
   const abort = useRef<(() => void) | null>(null);
+
+  if (!source) {
+    return undefined;
+  }
 
   const isDirty = originalArgs?.code !== source.body;
 
