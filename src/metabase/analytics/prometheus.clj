@@ -401,14 +401,14 @@
                        {:description "Number of failed semantic search DLQ retries"})
 
    ;; data-complexity-score timing
-   ;; 1ms → 5min buckets cover both metrics: sub-ms on tiny instances, minutes on huge ones.
+   ;; 1ms → 1min buckets; widen later if real-world runs push past a minute.
    (prometheus/histogram :metabase-data-complexity/scoring-duration-ms
                          {:description "Duration (ms) of a full Data Complexity Score run end-to-end (enumerate + score for all three catalogs + Snowplow publish)."
-                          :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000 120000 300000]})
+                          :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
    (prometheus/histogram :metabase-data-complexity/phase-duration-ms
                          {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring) for one catalog within a Data Complexity Score run."
                           :labels      [:stage :catalog]
-                          :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000 120000 300000]})
+                          :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
 
 ;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
