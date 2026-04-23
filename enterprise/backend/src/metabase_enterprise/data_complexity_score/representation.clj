@@ -102,18 +102,21 @@
         fields-by-table   (group-by :table_id fields)
         meas-by-table     (group-by :table_id measures)
         lib-coll-ids      (library-collection-ids collections)
-        ;; Audit-db filtering only mirrors the live `:universe` path. The live `library-entities`
-        ;; doesn't exclude audit content, so neither do we — Library scope is collection-driven.
+        ;; Mirror the live `enumerate-catalogs`: `:universe` excludes audit content, and `:library`
+        ;; is derived *from* that audit-filtered universe, so it excludes audit content too. The
+        ;; `some?` guard matches SQL `<>`'s three-valued logic — a row with `NULL` `db_id` would
+        ;; have been dropped by `:not= audit/audit-db-id` in Toucan, but `(not= nil id)` is `true`.
+        non-audit-db?     (fn [id] (and (some? id) (not= id audit/audit-db-id)))
         universe-table?   (fn [t] (and (:active t)
-                                       (not= (:db_id t) audit/audit-db-id)))
-        library-table?    (fn [t] (and (:active t)
+                                       (non-audit-db? (:db_id t))))
+        library-table?    (fn [t] (and (universe-table? t)
                                        (:is_published t)
                                        (contains? lib-coll-ids (:collection_id t))))
         model-or-metric?  (fn [c] (and (not (:archived c))
                                        (contains? #{"model" "metric"} (:type c))))
         universe-card?    (fn [c] (and (model-or-metric? c)
-                                       (not= (:database_id c) audit/audit-db-id)))
-        library-card?     (fn [c] (and (model-or-metric? c)
+                                       (non-audit-db? (:database_id c))))
+        library-card?     (fn [c] (and (universe-card? c)
                                        (contains? lib-coll-ids (:collection_id c))))
         ->table           #(->table-entity fields-by-table meas-by-table %)
         library           (concat (mapv ->card-entity (filter library-card?   cards))

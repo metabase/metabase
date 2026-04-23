@@ -239,26 +239,47 @@
                  (set (map :name universe)))))))))
 
 (deftest ^:parallel audit-db-filter-test
-  (testing "audit-db content is filtered from :universe without needing a databases.json,"
-    (testing "and is *not* filtered from :library — matching live `library-entities`."
-      (let [tmp-dir   (doto (java.io.File/createTempFile "audit-rep-" "")
-                        (.delete) (.mkdirs) .deleteOnExit)
-            audit-id  audit/audit-db-id
-            write     (fn [section data]
-                        (spit (java.io.File. ^java.io.File tmp-dir (str section ".json"))
-                              (json/encode data)))]
-        ;; Library root collection at id 1; audit content also placed inside it so the library
-        ;; filter would let it through if not for the (correct) live behavior of *not* checking db.
-        (write "collections"
-               [{:id 1 :type "library" :location "/"}])
-        (write "tables"
-               [{:id 10 :db_id 1        :name "orders"       :active true :is_published true  :collection_id 1}
-                {:id 20 :db_id audit-id :name "audit_events" :active true :is_published true  :collection_id 1}])
-        (write "cards"
-               [{:id 1000 :database_id 1        :type "metric" :name "Revenue"    :archived false :collection_id 1}
-                {:id 1001 :database_id audit-id :type "metric" :name "AuditCount" :archived false :collection_id 1}])
-        (let [{:keys [library universe]} (representation/load-dir (.getAbsolutePath tmp-dir))]
-          (testing ":universe excludes both audit table and audit card"
-            (is (= #{"orders" "Revenue"} (set (map :name universe)))))
-          (testing ":library mirrors live behavior — audit content in a library collection is kept"
-            (is (= #{"orders" "audit_events" "Revenue" "AuditCount"} (set (map :name library))))))))))
+  (testing "audit-db content is filtered from both :universe and :library — the live scorer derives"
+    (testing ":library from an already-audit-filtered :universe superset, so audit content in a"
+      (testing "library collection is dropped even though the collection scope alone would keep it."
+        (let [tmp-dir   (doto (java.io.File/createTempFile "audit-rep-" "")
+                          (.delete) (.mkdirs) .deleteOnExit)
+              audit-id  audit/audit-db-id
+              write     (fn [section data]
+                          (spit (java.io.File. ^java.io.File tmp-dir (str section ".json"))
+                                (json/encode data)))]
+          (write "collections"
+                 [{:id 1 :type "library" :location "/"}])
+          (write "tables"
+                 [{:id 10 :db_id 1        :name "orders"       :active true :is_published true  :collection_id 1}
+                  {:id 20 :db_id audit-id :name "audit_events" :active true :is_published true  :collection_id 1}])
+          (write "cards"
+                 [{:id 1000 :database_id 1        :type "metric" :name "Revenue"    :archived false :collection_id 1}
+                  {:id 1001 :database_id audit-id :type "metric" :name "AuditCount" :archived false :collection_id 1}])
+          (let [{:keys [library universe]} (representation/load-dir (.getAbsolutePath tmp-dir))]
+            (testing ":universe excludes both audit table and audit card"
+              (is (= #{"orders" "Revenue"} (set (map :name universe)))))
+            (testing ":library excludes them too (library ⊆ universe, matching live enumerate-catalogs)"
+              (is (= #{"orders" "Revenue"} (set (map :name library)))))))))))
+
+(deftest ^:parallel nil-db-id-filtered-from-universe-test
+  (testing "Rows with a nil :db_id / :database_id are dropped from :universe and :library — the"
+    (testing "live scorer uses Toucan `:not= audit/audit-db-id`, which compiles to SQL `<>` and"
+      (testing "excludes NULL-db rows via three-valued logic. `(not= nil audit-id)` would keep them,"
+        (testing "so the offline loader must use a nil-safe predicate to preserve the guarantee."
+          (let [tmp-dir (doto (java.io.File/createTempFile "nil-db-rep-" "")
+                          (.delete) (.mkdirs) .deleteOnExit)
+                write   (fn [section data]
+                          (spit (java.io.File. ^java.io.File tmp-dir (str section ".json"))
+                                (json/encode data)))]
+            (write "collections"
+                   [{:id 1 :type "library" :location "/"}])
+            (write "tables"
+                   [{:id 10 :db_id 1   :name "orders"   :active true :is_published true :collection_id 1}
+                    {:id 11 :db_id nil :name "orphaned" :active true :is_published true :collection_id 1}])
+            (write "cards"
+                   [{:id 1000 :database_id 1   :type "metric" :name "Revenue" :archived false :collection_id 1}
+                    {:id 1001 :database_id nil :type "metric" :name "Orphan"  :archived false :collection_id 1}])
+            (let [{:keys [library universe]} (representation/load-dir (.getAbsolutePath tmp-dir))]
+              (is (= #{"orders" "Revenue"} (set (map :name universe))))
+              (is (= #{"orders" "Revenue"} (set (map :name library)))))))))))
