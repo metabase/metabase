@@ -1382,10 +1382,15 @@
 
 (defn- grant-workspace-read-access-sqls
   "Build the sequence of SQL statements that grant `username` read access to every table in each
-  source schema referenced by `tables`. Per source schema we emit three statements:
-  USAGE on the schema, SELECT on all existing tables in the schema, and an ALTER DEFAULT PRIVILEGES
-  covering future tables created by the granting role. Per-table `:name` granularity is intentionally
-  discarded — workspace-scoped users receive schema-wide SELECT."
+  source schema referenced by `tables`. Per source schema we emit three GRANT statements
+  (USAGE, SELECT on existing tables, ALTER DEFAULT PRIVILEGES for future tables) followed by
+  REVOKE statements against the workspace user that strip every schema-modifying privilege.
+  Per-table `:name` granularity is intentionally discarded — workspace-scoped users receive
+  schema-wide SELECT only.
+
+  Note: REVOKEs target the workspace user only, not PUBLIC. On PostgreSQL < 15, PUBLIC has a
+  default CREATE grant on the `public` schema that a per-user REVOKE cannot override, so if
+  `public` is an input schema the workspace user may still CREATE TABLE there."
   [username tables]
   (let [qu             (sql.u/quote-name :postgres :field username)
         source-schemas (into #{} (keep :schema) tables)]
@@ -1393,7 +1398,9 @@
               (let [qs (sql.u/quote-name :postgres :schema s)]
                 [(format "GRANT USAGE ON SCHEMA %s TO %s" qs qu)
                  (format "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s" qs qu)
-                 (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s" qs qu)]))
+                 (format "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s" qs qu)
+                 (format "REVOKE CREATE ON SCHEMA %s FROM %s" qs qu)
+                 (format "REVOKE INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA %s FROM %s" qs qu)]))
             source-schemas)))
 
 (defmethod driver/grant-workspace-read-access! :postgres
