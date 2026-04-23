@@ -14,7 +14,7 @@ function useCurrentWorkspace() {
 }
 
 export function initializePlugin() {
-  if (hasPremiumFeature("workspaces")) {
+  if (hasPremiumFeature("workspaces") || hasPremiumFeature("hosting")) {
     PLUGIN_WORKSPACES.isEnabled = true;
     PLUGIN_WORKSPACES.canManageWorkspaces = getUserIsAdmin;
     PLUGIN_WORKSPACES.getDataStudioWorkspaceRoutes =
