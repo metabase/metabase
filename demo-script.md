@@ -70,7 +70,7 @@ MB_PREMIUM_EMBEDDING_TOKEN=<token> \
 clojure -M:dev:ee:ee-dev:drivers:drivers-dev:run
 ```
 
-1. create a workspace on parent, add the github data
+1. create a workspace on parent through the UI
 1. download config.yaml It should look like this:
 
 ```shell
