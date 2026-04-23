@@ -2,7 +2,7 @@
   (:require
    [metabase.premium-features.core :refer [defenterprise]]))
 
-(def ^:private workspaces-config (atom nil))
+(defonce ^:private workspaces-config (atom nil))
 
 (def ^:private example-config
   {:name "github",
@@ -14,7 +14,7 @@
 
 (defenterprise active?
   "Are we in workspace mode at all?"
-  :feature :workspaces
+  :feature :none
   :fallback :oss
   []
   (boolean @workspaces-config))
