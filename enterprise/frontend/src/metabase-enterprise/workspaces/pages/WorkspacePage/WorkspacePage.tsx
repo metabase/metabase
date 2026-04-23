@@ -10,7 +10,6 @@ import type { Workspace, WorkspaceDatabaseDraft } from "metabase-types/api";
 import { WorkspaceEditor } from "../../components/WorkspaceEditor";
 import { WorkspaceMoreMenu } from "../../components/WorkspaceMoreMenu";
 import { useFetchWorkspace } from "../../hooks/use-fetch-workspace";
-import { isDatabaseProvisioned } from "../../utils";
 
 type WorkspacePageParams = {
   workspaceId: string;
@@ -42,8 +41,6 @@ type WorkspacePageBodyProps = {
 function WorkspacePageBody({ workspace }: WorkspacePageBodyProps) {
   const [updateWorkspace] = useUpdateWorkspaceMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
-
-  const isReadOnly = workspace.databases.some(isDatabaseProvisioned);
 
   const handleNameChange = async (name: string) => {
     if (name === workspace.name) {
@@ -78,7 +75,6 @@ function WorkspacePageBody({ workspace }: WorkspacePageBodyProps) {
     <WorkspaceEditor
       workspace={workspace}
       menu={<WorkspaceMoreMenu workspace={workspace} />}
-      isReadOnly={isReadOnly}
       onNameChange={handleNameChange}
       onDatabasesChange={handleDatabasesChange}
     />

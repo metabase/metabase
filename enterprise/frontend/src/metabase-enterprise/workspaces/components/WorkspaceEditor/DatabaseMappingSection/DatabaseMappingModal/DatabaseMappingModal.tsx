@@ -10,7 +10,7 @@ import {
   FormSelect,
   FormSubmitButton,
 } from "metabase/forms";
-import { Box, Button, Group, Modal, Stack } from "metabase/ui";
+import { Box, Button, Group, Modal, Stack, Tooltip } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type {
   Database,
@@ -35,6 +35,7 @@ type DatabaseMappingModalProps = {
   mapping?: WorkspaceDatabaseDraft;
   databases: Database[];
   opened: boolean;
+  canDelete?: boolean;
   onSubmit: (mapping: WorkspaceDatabaseDraft) => void;
   onDelete?: (mapping: WorkspaceDatabaseDraft) => void;
   onClose: () => void;
@@ -44,6 +45,7 @@ export function DatabaseMappingModal({
   mapping,
   databases,
   opened,
+  canDelete = true,
   onSubmit,
   onDelete,
   onClose,
@@ -60,6 +62,7 @@ export function DatabaseMappingModal({
       <DatabaseMappingForm
         mapping={mapping}
         databases={databases}
+        canDelete={canDelete}
         onSubmit={onSubmit}
         onDelete={onDelete}
         onClose={onClose}
@@ -71,6 +74,7 @@ export function DatabaseMappingModal({
 type DatabaseMappingFormProps = {
   mapping?: WorkspaceDatabaseDraft;
   databases: Database[];
+  canDelete: boolean;
   onSubmit: (mapping: WorkspaceDatabaseDraft) => void;
   onDelete?: (mapping: WorkspaceDatabaseDraft) => void;
   onClose: () => void;
@@ -79,12 +83,13 @@ type DatabaseMappingFormProps = {
 function DatabaseMappingForm({
   mapping,
   databases,
+  canDelete,
   onSubmit,
   onDelete,
   onClose,
 }: DatabaseMappingFormProps) {
   const isNew = mapping == null;
-  const canDelete = !isNew && onDelete != null;
+  const hasDelete = !isNew && onDelete != null;
 
   const handleSubmit = (values: DatabaseMappingFormValues) => {
     onSubmit(getDatabaseMapping(values));
@@ -129,10 +134,20 @@ function DatabaseMappingForm({
                 <DatabaseSchemasSelect databaseId={databaseId} />
               )}
               <Group>
-                {canDelete && (
-                  <Button variant="subtle" color="error" onClick={handleDelete}>
-                    {t`Delete`}
-                  </Button>
+                {hasDelete && (
+                  <Tooltip
+                    label={t`A workspace must have at least one database.`}
+                    disabled={canDelete}
+                  >
+                    <Button
+                      variant="subtle"
+                      color="error"
+                      disabled={!canDelete}
+                      onClick={handleDelete}
+                    >
+                      {t`Delete`}
+                    </Button>
+                  </Tooltip>
                 )}
                 <Box flex={1}>
                   <FormErrorMessage />

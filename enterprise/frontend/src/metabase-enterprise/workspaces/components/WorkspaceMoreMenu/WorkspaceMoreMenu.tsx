@@ -13,7 +13,7 @@ import {
 } from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
-import { isDatabaseUnprovisioned } from "../../utils";
+import { isDatabaseProvisioned, isDatabaseUnprovisioned } from "../../utils";
 
 type WorkspaceMoreMenuProps = {
   workspace: Workspace;
@@ -25,6 +25,7 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
   const [fetchConfig] = useLazyGetWorkspaceConfigYamlQuery();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const dispatch = useDispatch();
+  const isFullyProvisioned = workspace.databases.every(isDatabaseProvisioned);
   const isFullyUnprovisioned = workspace.databases.every(
     isDatabaseUnprovisioned,
   );
@@ -66,12 +67,18 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
           </ActionIcon>
         </Menu.Target>
         <Menu.Dropdown>
-          <Menu.Item
-            leftSection={<Icon name="download" />}
-            onClick={handleDownload}
+          <Tooltip
+            label={t`Provision this workspace before downloading the configuration file.`}
+            disabled={isFullyProvisioned}
           >
-            {t`Download config file`}
-          </Menu.Item>
+            <Menu.Item
+              leftSection={<Icon name="download" />}
+              disabled={!isFullyProvisioned}
+              onClick={handleDownload}
+            >
+              {t`Download config file`}
+            </Menu.Item>
+          </Tooltip>
           <Tooltip
             label={t`Unprovision this workspace before deleting.`}
             disabled={isFullyUnprovisioned}

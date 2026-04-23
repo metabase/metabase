@@ -41,6 +41,7 @@ export function WorkspaceHeader({
         <PaneHeaderInput
           initialValue={workspace.name}
           placeholder={t`New workspace`}
+          isOptional={isNew}
           onChange={onNameChange}
         />
       }

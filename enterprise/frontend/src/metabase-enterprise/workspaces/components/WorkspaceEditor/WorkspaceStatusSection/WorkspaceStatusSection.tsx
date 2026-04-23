@@ -25,9 +25,10 @@ type WorkspaceStatusSectionProps = {
 export function WorkspaceStatusSection({
   workspace,
 }: WorkspaceStatusSectionProps) {
-  const { modalContent, show } = useConfirmation();
+  const workspaceId = workspace.id;
   const [provisionWorkspace] = useProvisionWorkspaceMutation();
   const [unprovisionWorkspace] = useUnprovisionWorkspaceMutation();
+  const { modalContent, show } = useConfirmation();
   const { sendErrorToast } = useMetadataToasts();
 
   const isProvisioning = workspace.databases.some(isDatabaseProvisioning);
@@ -36,7 +37,7 @@ export function WorkspaceStatusSection({
   const isInProgress = isProvisioning || isUnprovisioning;
 
   const handleProvision = () => {
-    if (workspace.id == null) {
+    if (workspaceId == null) {
       return;
     }
 
@@ -46,7 +47,7 @@ export function WorkspaceStatusSection({
       confirmButtonText: t`Provision workspace`,
       confirmButtonProps: { variant: "filled", color: "brand" },
       onConfirm: async () => {
-        const { error } = await provisionWorkspace(workspace.id);
+        const { error } = await provisionWorkspace(workspaceId);
         if (error) {
           sendErrorToast(t`Failed to provision workspace`);
         }
@@ -55,7 +56,7 @@ export function WorkspaceStatusSection({
   };
 
   const handleUnprovision = () => {
-    if (workspace.id == null) {
+    if (workspaceId == null) {
       return;
     }
 
@@ -65,7 +66,7 @@ export function WorkspaceStatusSection({
       confirmButtonText: t`Unprovision workspace`,
       confirmButtonProps: { variant: "filled", color: "error" },
       onConfirm: async () => {
-        const { error } = await unprovisionWorkspace(workspace.id);
+        const { error } = await unprovisionWorkspace(workspaceId);
         if (error) {
           sendErrorToast(t`Failed to unprovision workspace`);
         }

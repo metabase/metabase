@@ -14,7 +14,6 @@ type WorkspaceEditorProps = {
   workspace: WorkspaceInfo;
   menu?: ReactNode;
   actions?: ReactNode;
-  isReadOnly?: boolean;
   onNameChange: (name: string) => void;
   onDatabasesChange: (databases: WorkspaceDatabaseDraft[]) => void;
 };
@@ -23,10 +22,11 @@ export function WorkspaceEditor({
   workspace,
   menu,
   actions,
-  isReadOnly,
   onNameChange,
   onDatabasesChange,
 }: WorkspaceEditorProps) {
+  const isNew = workspace.id == null;
+
   return (
     <PageContainer data-testid="workspace-editor" gap="2.5rem">
       <WorkspaceHeader
@@ -36,12 +36,9 @@ export function WorkspaceEditor({
         onNameChange={onNameChange}
       />
       <Stack gap="3.5rem">
-        {workspace.id != null && (
-          <WorkspaceStatusSection workspace={workspace} />
-        )}
+        {!isNew && <WorkspaceStatusSection workspace={workspace} />}
         <DatabaseMappingSection
-          mappings={workspace.databases}
-          isReadOnly={isReadOnly}
+          workspace={workspace}
           onChange={onDatabasesChange}
         />
       </Stack>

@@ -18,7 +18,11 @@ import type {
 import { WorkspaceEditor } from "../../components/WorkspaceEditor";
 import type { WorkspaceInfo } from "../../types";
 
-import { getInitialWorkspace, isValidWorkspace } from "./utils";
+import {
+  getInitialWorkspace,
+  getSaveErrorMessage,
+  isValidWorkspace,
+} from "./utils";
 
 type NewWorkspacePageProps = {
   route: Route;
@@ -70,6 +74,7 @@ export function NewWorkspacePage({ route }: NewWorkspacePageProps) {
             isValid={isValid}
             isSaving={isSaving}
             isDirty
+            errorMessage={getSaveErrorMessage(workspace)}
             onSave={handleSave}
             onCancel={handleCancel}
           />
