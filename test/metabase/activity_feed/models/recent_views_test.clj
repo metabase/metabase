@@ -183,8 +183,8 @@
                                                   :table_schema nil
                                                   :display_name "Name",
                                                   :model :table}]]]]
-      (mt/with-dynamic-fn-redefs [mi/can-read? (constantly read?)
-                                  mi/can-write? (constantly write?)]
+      (with-redefs [mi/can-read? (constantly read?)
+                    mi/can-write? (constantly write?)]
         (is (= expected
                (mapv fixup
                      (mt/with-test-user :rasta
@@ -282,9 +282,9 @@
                    :dataset_query {}
                    :visualization_settings {}}]
                  (mt/with-test-user :rasta
-                   (mt/with-dynamic-fn-redefs [mi/can-read? (constantly true)
-                                               mi/can-write? (fn ([id] (not= id table-id))
-                                                               ([_ _] true))]
+                   (with-redefs [mi/can-read? (constantly true)
+                                 mi/can-write? (fn ([id] (not= id table-id))
+                                                 ([_ _] true))]
                      (->> (recent-views (mt/user->id :rasta))
                           (mapv (fn [rv] (cond-> rv
                                            true                                       (assoc :id "ID")
@@ -538,8 +538,8 @@
 
           (doseq [model-id model-ids]
             (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id :view)))
-        (mt/with-dynamic-fn-redefs [mi/can-read?                              (constantly true)
-                                    data-perms/user-has-permission-for-table? (constantly true)]
+        (with-redefs [mi/can-read?                              (constantly true)
+                      data-perms/user-has-permission-for-table? (constantly true)]
           (let [freqs (frequencies (map :model
                                         (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                           (mt/with-test-user :rasta (recent-views (mt/user->id :rasta))))))]
