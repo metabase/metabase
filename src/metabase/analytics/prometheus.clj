@@ -512,7 +512,7 @@
                         :labels [:status]})
    (prometheus/counter :metabase-transforms/inspector-lens
                        {:description "Transform Inspector lens retrievals."
-                        :labels [:lens-type :status]})
+                        :labels [:lens-type :complexity :status]})
    (prometheus/histogram :metabase-transforms/inspector-query-duration-ms
                          {:description "Duration in ms of Transform Inspector lens query execution."
                           :labels [:lens-type :status]
