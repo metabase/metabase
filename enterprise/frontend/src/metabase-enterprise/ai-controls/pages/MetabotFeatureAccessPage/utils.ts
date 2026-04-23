@@ -1,5 +1,5 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -7,18 +7,9 @@ import {
   useGetAIControlsGroupPermissionsQuery,
   useUpdateAIControlsGroupPermissionsMutation,
 } from "metabase-enterprise/api";
-import { AIToolKey, type MetabotGroupPermission } from "metabase-types/api";
+import type { AIToolKey, MetabotGroupPermission } from "metabase-types/api";
 
 export type GroupTab = "user-groups" | "tenant-groups";
-
-export const getAIToolItems = (): Array<{ key: AIToolKey; label: string }> => {
-  return [
-    { key: AIToolKey.Metabot, label: t`AI features` },
-    { key: AIToolKey.ChatAndNLQ, label: t`Chat and NLQ` },
-    { key: AIToolKey.SQLGeneration, label: t`SQL generation` },
-    { key: AIToolKey.OtherTools, label: t`Other tools` },
-  ];
-};
 
 const PERMISSIONS_SAVE_DEBOUNCE = 500;
 
@@ -62,25 +53,27 @@ export const useMetabotGroupPermissions = () => {
     }
   }, PERMISSIONS_SAVE_DEBOUNCE);
 
-  const onPermissionChange = (
-    groupId: number,
-    tool: AIToolKey,
-    value: "yes" | "no",
-  ) => {
-    setGroupPermissions((prevPermissions) => {
-      return prevPermissions.map((permission) => {
-        if (permission.group_id === groupId && permission.perm_type === tool) {
-          return {
-            ...permission,
-            perm_value: value,
-          } as MetabotGroupPermission;
-        }
+  const onPermissionChange = useCallback(
+    (groupId: number, tool: AIToolKey, value: "yes" | "no") => {
+      setGroupPermissions((prevPermissions) => {
+        return prevPermissions.map((permission) => {
+          if (
+            permission.group_id === groupId &&
+            permission.perm_type === tool
+          ) {
+            return {
+              ...permission,
+              perm_value: value,
+            } as MetabotGroupPermission;
+          }
 
-        return permission;
+          return permission;
+        });
       });
-    });
-    debouncedUpdatePermissions();
-  };
+      debouncedUpdatePermissions();
+    },
+    [debouncedUpdatePermissions],
+  );
 
   return {
     groupPermissions,

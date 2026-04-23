@@ -7,10 +7,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useSetting } from "metabase/common/hooks";
 import { Group, Stack, Title } from "metabase/ui";
 
-import { AdvancedGroupModeButton } from "./AdvancedGroupMode";
-import { AiFeatureAccessTable } from "./AiFeatureAccessTable";
-import { GearIconMenu } from "./GearIconMenu/GearIconMenu";
-import { GroupCategoryTabs } from "./GroupCategoryTabs";
+import { AiFeatureAccessTable } from "./components/AiFeatureAccessTable";
+import { GearIconMenu } from "./components/GearIconMenu/GearIconMenu";
+import { GroupCategoryTabs } from "./components/GroupCategoryTabs";
 import { type GroupTab, useMetabotGroupPermissions } from "./utils";
 
 export function MetabotFeatureAccessPage() {
@@ -50,7 +49,7 @@ export function MetabotFeatureAccessPage() {
   const error = groupsError || permissionsError;
 
   return (
-    <SettingsPageWrapper mt="sm">
+    <SettingsPageWrapper mt="sm" gap="md">
       <Group justify="space-between" w="100%">
         <Title order={1}>{t`AI feature access`}</Title>
         {advanced && <GearIconMenu />}
@@ -72,8 +71,6 @@ export function MetabotFeatureAccessPage() {
             />
           )}
         </LoadingAndErrorWrapper>
-
-        {!advanced && <AdvancedGroupModeButton />}
       </Stack>
     </SettingsPageWrapper>
   );

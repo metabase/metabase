@@ -13,7 +13,13 @@ export function GearIconMenu() {
     <>
       <Menu position="bottom-end">
         <Menu.Target>
-          <ActionIcon variant="subtle" aria-label={t`Settings`}>
+          <ActionIcon
+            aria-label={t`Settings`}
+            bd="1px solid var(--mb-color-border)"
+            c="text-primary"
+            size="lg"
+            variant="outline"
+          >
             <Icon name="gear" />
           </ActionIcon>
         </Menu.Target>

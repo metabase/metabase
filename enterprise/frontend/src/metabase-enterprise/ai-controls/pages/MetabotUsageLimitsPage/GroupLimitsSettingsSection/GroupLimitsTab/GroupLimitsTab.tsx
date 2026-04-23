@@ -7,10 +7,10 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, NumberInput, Stack, Text } from "metabase/ui";
 import { isDefaultGroup } from "metabase/utils/groups";
-import { AllUsersHigherAccessTooltipIcon } from "metabase-enterprise/ai-controls/components/AllUsersHigherAccessTooltipIcon";
 import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
 import type { GroupInfo } from "metabase-types/api";
 
+import { AllUsersHigherAccessTooltipIcon } from "./AllUsersHigherAccessTooltipIcon";
 import S from "./GroupLimitsTab.module.css";
 import {
   type GroupLimitsMap,
@@ -179,7 +179,6 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
                               showAllUsersOverrideTooltip ? (
                                 <AllUsersHigherAccessTooltipIcon
                                   groupName={allUsersGroup.name}
-                                  variant="group-limits"
                                 />
                               ) : undefined
                             }
