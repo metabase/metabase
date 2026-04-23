@@ -13,11 +13,9 @@ import {
   createMockSettings,
 } from "metabase-types/api/mocks";
 
-import * as analytics from "../../../analytics";
-
 import { CollectUserDataInput } from "./CollectUserDataInput";
 
-const trackingFN = jest.spyOn(analytics, "trackAnalyticsPiiRetentionChanged");
+const { trackSimpleEvent } = jest.requireMock("metabase/utils/analytics");
 
 const SETTING_NAME = "analytics-pii-retention-enabled";
 const SETTING_ENV_VAR_NAME = "MB_ANALYTICS_PII_RETENTION_ENABLED";
@@ -55,6 +53,10 @@ const setup = ({
 };
 
 describe("CollectUserDataInput", () => {
+  beforeEach(() => {
+    trackSimpleEvent.mockClear();
+  });
+
   it("should show the `analytics-pii-retention-enabled` setting toggle", async () => {
     setup({ value: true });
     expect(await screen.findByText("Collect user data")).toBeInTheDocument();
@@ -69,7 +71,11 @@ describe("CollectUserDataInput", () => {
   it("should toggle the `analytics-pii-retention-enabled` setting off", async () => {
     setup({ value: true });
     await userEvent.click(screen.getByRole("switch"));
-    expect(trackingFN).toHaveBeenCalledWith(false);
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "analytics_pii_retention_changed",
+      event_detail: "disabled",
+      triggered_from: "admin",
+    });
 
     const [{ url, body }] = await findRequests("PUT");
     expect(url).toMatch(new RegExp(`/api/setting/${SETTING_NAME}`));
@@ -85,7 +91,11 @@ describe("CollectUserDataInput", () => {
     const [{ url, body }] = await findRequests("PUT");
     expect(url).toMatch(new RegExp(`/api/setting/${SETTING_NAME}`));
     expect(body).toEqual({ value: true });
-    expect(trackingFN).toHaveBeenCalledWith(true);
+    expect(trackSimpleEvent).toHaveBeenCalledWith({
+      event: "analytics_pii_retention_changed",
+      event_detail: "enabled",
+      triggered_from: "admin",
+    });
 
     expect(await screen.findByRole("switch")).toBeChecked();
   });
