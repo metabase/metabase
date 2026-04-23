@@ -388,9 +388,8 @@
                                            :key     (dotted-key :total)
                                            :score   (:total result))])]
                  event)]
-    ;; Avoid short-circuiting - attempt every submission still.
-    ;; Events are never empty, so we don't need to worry about returning true when nothing was attempted.
-    (reduce #(and %1 %2) true (map (partial analytics/track-event! :snowplow/data_complexity) events))))
+    ;; `mapv` is eager, so every submission is attempted before `every?` checks the results.
+    (every? identity (mapv (partial analytics/track-event! :snowplow/data_complexity) events))))
 
 (defn score-from-entities
   "Pure: compute the full complexity score from pre-built entity vectors and an embedder. No DB
