@@ -58,7 +58,9 @@
 
 (deftest happy-path-metadata-test
   (testing "Matching databases + inserts tables and fields with remapped ids"
-    (mt/with-temp [:model/Database db-row {:name (str "SrcDB-" (random-uuid)) :engine :h2}]
+    (mt/with-temp [:model/Database db-row {:name (str "SrcDB-" (random-uuid))
+                                           :engine :h2
+                                           :initial_sync_status "incomplete"}]
       (let [src-db-id     999
             src-tbl-a-id  10
             src-tbl-b-id  11
@@ -66,7 +68,7 @@
             src-fld-name  101
             metadata-path (write-temp-json!
                            {:databases [{:id src-db-id :name (:name db-row) :engine "h2"}]
-                            :tables    [{:id src-tbl-a-id :db_id src-db-id :name "Orders" :schema nil}
+                            :tables    [{:id src-tbl-a-id :db_id src-db-id :name "Orders"}
                                         {:id src-tbl-b-id :db_id src-db-id :name "Products" :schema "public"}]
                             :fields    [{:id src-fld-id :table_id src-tbl-a-id :name "id"
                                          :base_type "type/Integer" :database_type "BIGINT"}
@@ -76,7 +78,9 @@
           (is (= :ok (metadata-file-import/initialize-from-env!))))
         (let [tbl-ids (t2/select-pks-set :model/Table :db_id (:id db-row))]
           (is (= 2 (count tbl-ids)) "two tables landed")
-          (is (= 2 (t2/count :model/Field :table_id [:in tbl-ids])) "two fields landed"))))))
+          (is (= 2 (t2/count :model/Field :table_id [:in tbl-ids])) "two fields landed"))
+        (is (= "complete" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db-row)))
+            "target database's initial_sync_status flipped to complete post-load")))))
 
 (deftest parent-and-fk-remap-test
   (testing "parent_id and fk_target_field_id are resolved to target ids by the finalize pass"
@@ -85,7 +89,7 @@
             src-tbl-id 10
             metadata-path (write-temp-json!
                            {:databases [{:id src-db-id :name (:name db-row) :engine "h2"}]
-                            :tables    [{:id src-tbl-id :db_id src-db-id :name "Orders" :schema nil}]
+                            :tables    [{:id src-tbl-id :db_id src-db-id :name "Orders"}]
                             :fields    [{:id 100 :table_id src-tbl-id :name "id"
                                          :base_type "type/Integer" :database_type "BIGINT"}
                                         {:id 101 :table_id src-tbl-id :name "address"
@@ -120,7 +124,7 @@
             src-fld-id   200
             metadata-path (write-temp-json!
                            {:databases [{:id src-db-id :name (:name db-row) :engine "h2"}]
-                            :tables    [{:id src-tbl-id :db_id src-db-id :name "Colors" :schema nil}]
+                            :tables    [{:id src-tbl-id :db_id src-db-id :name "Colors"}]
                             :fields    [{:id src-fld-id :table_id src-tbl-id :name "hue"
                                          :base_type "type/Text" :database_type "VARCHAR"}]})
             fv-path       (write-temp-json!

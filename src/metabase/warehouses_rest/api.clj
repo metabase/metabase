@@ -47,6 +47,7 @@
    [metabase.warehouse-schema.models.field :refer [readable-fields-only]]
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.api.metadata-import :as metadata-import]
+   [metabase.warehouses-rest.api.metadata-schemas :as md-schemas]
    [metabase.warehouses-rest.api.ndjson-import :as ndjson-import]
    [metabase.warehouses.core :as warehouses]
    [metabase.warehouses.models.database :as database]
@@ -671,39 +672,11 @@
     (.write writer "}")
     (.flush writer)))
 
-(mr/def ::database-info
-  [:map
-   [:id ::lib.schema.id/database]
-   [:name :string]
-   [:engine :string]])
-
-(mr/def ::table-info
-  [:map
-   [:id ::lib.schema.id/table]
-   [:db_id ::lib.schema.id/database]
-   [:name :string]
-   [:schema {:optional true} :string]
-   [:description {:optional true} :string]])
-
-(mr/def ::field-info
-  [:map
-   [:id ::lib.schema.id/field]
-   [:table_id ::lib.schema.id/table]
-   [:name :string]
-   [:parent_id {:optional true} ::lib.schema.id/field]
-   [:fk_target_field_id {:optional true} ::lib.schema.id/field]
-   [:description {:optional true} :string]
-   [:base_type :string]
-   [:database_type {:optional true} :string]
-   [:effective_type {:optional true} :string]
-   [:semantic_type {:optional true} :string]
-   [:coercion_strategy {:optional true} :string]])
-
 (mr/def ::databases-metadata-response
   [:map
-   [:databases [:sequential ::database-info]]
-   [:tables    [:sequential ::table-info]]
-   [:fields    [:sequential ::field-info]]])
+   [:databases [:sequential ::md-schemas/database-info]]
+   [:tables    [:sequential ::md-schemas/table-info]]
+   [:fields    [:sequential ::md-schemas/field-info]]])
 
 (api.macros/defendpoint :get "/metadata"
   :- (server.streaming-response/streaming-response-schema ::databases-metadata-response)
@@ -754,16 +727,9 @@
     (.write writer "}")
     (.flush writer)))
 
-(mr/def ::field-values-info
-  [:map
-   [:field_id ::lib.schema.id/field]
-   [:values [:sequential [:sequential :any]]]
-   [:has_more_values :boolean]
-   [:human_readable_values {:optional true} [:sequential [:maybe :string]]]])
-
 (mr/def ::field-values-response
   [:map
-   [:field_values [:sequential ::field-values-info]]])
+   [:field_values [:sequential ::md-schemas/field-values-info]]])
 
 (api.macros/defendpoint :get "/field-values"
   :- (server.streaming-response/streaming-response-schema ::field-values-response)
