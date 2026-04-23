@@ -88,7 +88,11 @@ describe("Collections plugin utils", () => {
       it("should return the correct icon for an official collection", () => {
         expect(
           getIcon({ model: "collection", authority_level: "official" }),
-        ).toEqual({ name: "official_collection", color: "saturated-yellow" });
+        ).toEqual({
+          name: "official_collection",
+          color: "var(--mb-color-saturated-yellow)",
+          tooltip: "Official collection",
+        });
       });
 
       it("should return the correct icon for a remote synced collection", () => {

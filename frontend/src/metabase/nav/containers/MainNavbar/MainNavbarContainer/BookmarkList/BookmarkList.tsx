@@ -16,9 +16,10 @@ import { Sortable } from "metabase/common/components/Sortable";
 import GrabberS from "metabase/css/components/grabber.module.css";
 import { Bookmarks } from "metabase/entities/bookmarks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, Tooltip } from "metabase/ui";
 import { getIcon } from "metabase/utils/icon";
-import { connect } from "metabase/utils/redux";
+import { connect, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Bookmark } from "metabase-types/api";
 
@@ -82,11 +83,17 @@ const BookmarkItem = ({
 }: BookmarkItemProps) => {
   const isSelected = isBookmarkSelected(bookmark, selectedItem);
   const url = Urls.bookmark(bookmark);
+  const isTenantUser = useSelector(getIsTenantUser);
 
-  const icon = getIcon({
-    model: getBookmarkModel(bookmark),
-    display: bookmark.display,
-  });
+  const icon = getIcon(
+    {
+      model: getBookmarkModel(bookmark),
+      display: bookmark.display,
+      authority_level: bookmark.authority_level,
+      is_remote_synced: bookmark.is_remote_synced,
+    },
+    { isTenantUser },
+  );
   const onRemove = () => onDeleteBookmark(bookmark);
 
   const isIrregularCollection =

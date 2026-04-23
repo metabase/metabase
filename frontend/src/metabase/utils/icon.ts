@@ -67,6 +67,7 @@ export const modelIconMap: Record<IconModel, IconName> = {
 export type IconData = {
   name: IconName;
   color?: ColorName;
+  tooltip?: string;
 };
 
 /** get an Icon for any entity object, doesn't depend on the entity system */
