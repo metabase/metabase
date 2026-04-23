@@ -1,10 +1,17 @@
+import type { KnownDataPart } from "metabase/api/ai-streaming/schemas";
 import type {
   MetabotCodeEdit,
   MetabotHistory,
   MetabotSuggestedTransform,
-  MetabotTodoItem,
   MetabotTransformInfo,
 } from "metabase-types/api";
+
+export type MetabotDataPart = Exclude<KnownDataPart, { type: "state" }>;
+
+export type MetabotDataPartMetadata = {
+  editorTransform?: MetabotTransformInfo;
+  suggestionId?: string;
+};
 
 export type MetabotUserTextChatMessage = {
   id: string;
@@ -29,22 +36,12 @@ export type MetabotAgentTextChatMessage = {
   externalId?: string;
 };
 
-export type MetabotAgentTodoListChatMessage = {
+export type MetabotAgentDataPartMessage = {
   id: string;
   role: "agent";
-  type: "todo_list";
-  payload: MetabotTodoItem[];
-};
-
-export type MetabotAgentEditSuggestionChatMessage = {
-  id: string;
-  role: "agent";
-  type: "edit_suggestion";
-  model: "transform";
-  payload: {
-    editorTransform: MetabotTransformInfo | undefined;
-    suggestedTransform: MetabotSuggestedTransform;
-  };
+  type: "data_part";
+  part: MetabotDataPart;
+  metadata?: MetabotDataPartMetadata;
 };
 
 export type MetabotDebugToolCallMessage = {
@@ -60,8 +57,7 @@ export type MetabotDebugToolCallMessage = {
 
 export type MetabotAgentChatMessage =
   | MetabotAgentTextChatMessage
-  | MetabotAgentTodoListChatMessage
-  | MetabotAgentEditSuggestionChatMessage
+  | MetabotAgentDataPartMessage
   | MetabotDebugToolCallMessage;
 
 export type MetabotUserChatMessage =

@@ -40,9 +40,8 @@ import {
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
-  MetabotAgentEditSuggestionChatMessage,
+  MetabotAgentDataPartMessage,
   MetabotAgentId,
-  MetabotAgentTodoListChatMessage,
   MetabotErrorMessage,
   MetabotUserChatMessage,
   SlashCommand,
@@ -379,19 +378,15 @@ export const sendAgentRequest = createAsyncThunk<
         },
         {
           onDataPart: function handleDataPart(part) {
+            const pushDataPart = (
+              message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
+            ) => dispatch(addAgentMessage({ ...message, agentId }));
+
             match(part)
               // only update the convo state if the request is successful
               .with({ type: "state" }, (part) => (state = part.value))
               .with({ type: "todo_list" }, (part) => {
-                const message: Omit<
-                  MetabotAgentTodoListChatMessage,
-                  "id" | "role"
-                > = {
-                  type: "todo_list",
-                  payload: part.value,
-                };
-
-                dispatch(addAgentMessage({ ...message, agentId }));
+                pushDataPart({ type: "data_part", part });
               })
               .with({ type: "code_edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
@@ -399,6 +394,7 @@ export const sendAgentRequest = createAsyncThunk<
                 if (part.value.buffer_id === "qb") {
                   dispatch(setIsNativeEditorOpen(true));
                 }
+                pushDataPart({ type: "data_part", part });
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
@@ -406,33 +402,34 @@ export const sendAgentRequest = createAsyncThunk<
                 if (!isEmbeddingSdk() && !isWorkspace) {
                   dispatch(push(part.value) as UnknownAction);
                 }
+                pushDataPart({ type: "data_part", part });
               })
-              .with({ type: "transform_suggestion" }, ({ value }) => {
+              .with({ type: "transform_suggestion" }, (part) => {
+                const suggestionId = nanoid();
                 const suggestedTransform = {
-                  ...value,
-                  id: value.id || undefined,
+                  ...part.value,
+                  id: part.value.id || undefined,
                   active: true,
-                  suggestionId: nanoid(),
+                  suggestionId,
                 };
                 dispatch(addSuggestedTransform(suggestedTransform));
 
-                const transform = request.context.user_is_viewing
+                const editorTransform = request.context.user_is_viewing
                   .filter(
                     (t): t is MetabotTransformInfo => t.type === "transform",
                   )
                   .find((t) => t.id === suggestedTransform.id);
-                const message: Omit<
-                  MetabotAgentEditSuggestionChatMessage,
-                  "id" | "role"
-                > = {
-                  type: "edit_suggestion",
-                  model: "transform",
-                  payload: {
-                    editorTransform: transform,
-                    suggestedTransform,
-                  },
-                };
-                dispatch(addAgentMessage({ ...message, agentId }));
+                pushDataPart({
+                  type: "data_part",
+                  part,
+                  metadata: { editorTransform, suggestionId },
+                });
+              })
+              .with({ type: "adhoc_viz" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
+              .with({ type: "static_viz" }, (part) => {
+                pushDataPart({ type: "data_part", part });
               })
               .exhaustive();
           },

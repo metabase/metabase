@@ -85,6 +85,20 @@
              :data [{:type "data-foo" :payload {}}
                     {:type "mystery"}]}))))
 
+  (testing "data parts are converted to data_part chat messages"
+    (let [blocks [{:type "data" :data-type "navigate_to" :data "/question/1"}
+                  {:type "data" :data-type "todo_list"   :version 1 :data [{:id "t1"}]}
+                  {:type "data" :data-type "code_edit"   :version 1 :data {:buffer_id "b" :value "v"}}]
+          result (metabot-persistence/message->chat-messages
+                  {:role :assistant :data blocks})]
+      (is (= 3 (count result)))
+      (is (every? #(= "data_part" (:type %)) result))
+      (is (every? #(= "agent" (:role %)) result))
+      (is (= [{:type "navigate_to" :version 1 :value "/question/1"}
+              {:type "todo_list"   :version 1 :value [{:id "t1"}]}
+              {:type "code_edit"   :version 1 :value {:buffer_id "b" :value "v"}}]
+             (mapv :part result)))))
+
   (testing "nil :data yields no messages"
     (is (= [] (metabot-persistence/message->chat-messages {:role :user :data nil})))))
 

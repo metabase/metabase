@@ -168,6 +168,37 @@
     (is (= "adhoc_viz" streaming/adhoc-viz-type))
     (is (= "static_viz" streaming/static-viz-type))))
 
+(deftest persistable-data-part?-test
+  (testing "state data parts are non-persistable"
+    (is (false? (streaming/persistable-data-part?
+                 (streaming/state-part {:queries {}}))))
+    (is (false? (streaming/persistable-data-part?
+                 {:type :data :data-type "state" :data {}}))))
+
+  (testing "other data parts are persistable"
+    (is (true? (streaming/persistable-data-part?
+                (streaming/navigate-to-part "/question/1"))))
+    (is (true? (streaming/persistable-data-part?
+                (streaming/todo-list-part []))))
+    (is (true? (streaming/persistable-data-part?
+                (streaming/code-edit-part {:buffer_id "b" :value "v"}))))
+    (is (true? (streaming/persistable-data-part?
+                (streaming/transform-suggestion-part {}))))
+    (is (true? (streaming/persistable-data-part?
+                (streaming/adhoc-viz-part {:query {} :link "/q"}))))
+    (is (true? (streaming/persistable-data-part?
+                (streaming/static-viz-part {:entity_id 1})))))
+
+  (testing "non-data parts are persistable (filter is a no-op for them)"
+    (is (true? (streaming/persistable-data-part? {:type :text :text "hi"})))
+    (is (true? (streaming/persistable-data-part? {:type :tool-input})))
+    (is (true? (streaming/persistable-data-part? {:type :tool-output})))
+    (is (true? (streaming/persistable-data-part? {:type :start}))))
+
+  (testing "unknown data-types default to persistable"
+    (is (true? (streaming/persistable-data-part?
+                {:type :data :data-type "some_future_type" :data {}})))))
+
 ;;; Transducer Tests
 
 (deftest expand-reactions-xf-test

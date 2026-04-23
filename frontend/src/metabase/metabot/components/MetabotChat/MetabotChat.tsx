@@ -168,6 +168,7 @@ export const MetabotChat = ({
                 config.preventRetryMessage ? undefined : metabot.retryMessage
               }
               isDoingScience={metabot.isDoingScience}
+              debug={metabot.debugMode}
               showFeedbackButtons={isHosted}
             />
             {/* loading */}
