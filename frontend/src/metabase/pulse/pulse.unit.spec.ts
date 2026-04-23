@@ -1,10 +1,10 @@
-import type { DashboardSubscriptionData } from "metabase/redux/store";
 import {
   type RecipientPickerValue,
   getActivePulseParameters,
   getPulseParameters,
   recipientIsValid,
-} from "metabase/utils/pulse";
+} from "metabase/pulse";
+import type { DashboardSubscriptionData } from "metabase/redux/store";
 import MetabaseSettings from "metabase/utils/settings";
 import type { Parameter } from "metabase-types/api";
 
