@@ -1,7 +1,9 @@
 (ns metabase.channel.email.logo
   (:require
    [clojure.string :as str]
+   [metabase.appearance.core :as appearance]
    [metabase.channel.render.core :as channel.render]
+   [metabase.system.core :as system]
    [metabase.util.jvm :as u.jvm]))
 
 (set! *warn-on-reflection* true)
@@ -20,14 +22,14 @@
   "Create a logo bundle from the application logo URL.
    Returns {:image-src <url-or-cid> :attachment <attachment-map-or-nil>}.
    For data URIs, converts to an embedded attachment for email compatibility.
-   For the default logo asset path, uses the static Metabase logo URL."
+   For the default logo asset path, uses the logo served by the configured Metabase site URL."
   [logo-url]
   (cond
     (nil? logo-url)
     nil
 
     (= logo-url "app/assets/img/logo.svg")
-    {:image-src  "http://static.metabase.com/email_logo.png"
+    {:image-src  (str (system/site-url) "/" (appearance/default-logo-path))
      :attachment nil}
 
     (str/starts-with? logo-url "data:")
