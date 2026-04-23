@@ -101,6 +101,14 @@ x.com`
 
 Allowed iframe hosts.
 
+### `MB_ANALYTICS_PII_RETENTION_ENABLED`
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `analytics-pii-retention-enabled`
+
+Enable logging of path, user agent, and IP address of who views your internal data and embeds. This information will be shown in your usage analytics.
+
 ### `MB_ANON_TRACKING_ENABLED`
 
 - Type: boolean

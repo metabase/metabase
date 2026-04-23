@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/utils/analytics";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/utils/analytics";
 
 export const trackTrackingPermissionChanged = (isEnabled: boolean) => {
   trackSchemaEvent("settings", {
@@ -6,6 +6,14 @@ export const trackTrackingPermissionChanged = (isEnabled: boolean) => {
       ? "tracking_permission_enabled"
       : "tracking_permission_disabled",
     source: "admin",
+  });
+};
+
+export const trackAnalyticsPiiRetentionChanged = (isEnabled: boolean) => {
+  trackSimpleEvent({
+    event: "analytics_pii_retention_changed",
+    event_detail: isEnabled ? "enabled" : "disabled",
+    triggered_from: "admin",
   });
 };
 

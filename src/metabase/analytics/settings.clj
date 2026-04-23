@@ -107,9 +107,8 @@
   :setter     #'-non-table-chart-generated!)
 
 (defsetting analytics-pii-retention-enabled
-  (deferred-tru (str "Controls whether usage analytics collects personally identifiable information "
-                     "(path, user agent, IP address). Embedding hostname is always collected. "
-                     "Disabling this setting stops future collection but does not delete previously collected data."))
+  (deferred-tru (str "Enable logging of path, user agent, and IP address of who views your "
+                     "internal data and embeds. This information will be shown in your usage analytics."))
   :type       :boolean
   :default    false
   :visibility :admin

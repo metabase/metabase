@@ -482,6 +482,7 @@ export type EmbeddingHomepageStatus =
 
 interface AdminSettings {
   "active-users-count"?: number;
+  "analytics-pii-retention-enabled"?: boolean;
   "custom-geojson-enabled": boolean;
   "encryption-enabled": boolean;
   "deprecation-notice-version"?: string;
