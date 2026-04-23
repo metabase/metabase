@@ -4,23 +4,22 @@ import { t } from "ttag";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Button, Group, Icon, Loader, Text } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors";
 import {
   useProvisionWorkspaceMutation,
   useUnprovisionWorkspaceMutation,
 } from "metabase-enterprise/api";
-import type { Workspace } from "metabase-types/api";
 
-import { TitleSection } from "../../../components/TitleSection";
+import type { WorkspaceInfo } from "../../../types";
 import {
   isDatabaseProvisioned,
   isDatabaseProvisioning,
   isDatabaseUnprovisioned,
   isDatabaseUnprovisioning,
 } from "../../../utils";
+import { TitleSection } from "../../TitleSection";
 
 type WorkspaceStatusSectionProps = {
-  workspace: Workspace;
+  workspace: WorkspaceInfo;
 };
 
 export function WorkspaceStatusSection({
@@ -36,10 +35,11 @@ export function WorkspaceStatusSection({
   const isProvisioned = workspace.databases.every(isDatabaseProvisioned);
   const isInProgress = isProvisioning || isUnprovisioning;
 
-  const statusIcon = getStatusIcon(workspace);
-  const message = getStatusMessage(workspace);
-
   const handleProvision = () => {
+    if (workspace.id == null) {
+      return;
+    }
+
     show({
       title: t`Provision this workspace?`,
       message: t`Provisioning creates a temporary schema in each database to run transforms in isolation, and creates a user with read-only access to the selected schemas and write access to the workspace schema.`,
@@ -55,6 +55,10 @@ export function WorkspaceStatusSection({
   };
 
   const handleUnprovision = () => {
+    if (workspace.id == null) {
+      return;
+    }
+
     show({
       title: t`Unprovision this workspace?`,
       message: t`Unprovisioning deletes the workspace user and the temporary schema from each database.`,
@@ -69,34 +73,37 @@ export function WorkspaceStatusSection({
     });
   };
 
-  const buttonLabel = getButtonLabel(workspace);
-  const buttonColor = getButtonColor(workspace);
-
   return (
     <TitleSection
       label={t`Status`}
       description={t`Provision the workspace to make it available for transforms.`}
     >
-      <Group px="xl" py="md" justify="space-between" wrap="nowrap">
+      <Group p="md" justify="space-between" wrap="nowrap">
         <Group gap="sm" wrap="nowrap">
-          {statusIcon}
-          <Text>{message}</Text>
+          {getStatusIcon(workspace)}
+          <Text>{getStatusMessage(workspace)}</Text>
         </Group>
-        <Button
-          variant="filled"
-          color={buttonColor}
-          disabled={isInProgress}
-          onClick={isProvisioned ? handleUnprovision : handleProvision}
-        >
-          {buttonLabel}
-        </Button>
+        {isProvisioned ? (
+          <Button disabled={isInProgress} onClick={handleUnprovision}>
+            {getButtonLabel(workspace)}
+          </Button>
+        ) : (
+          <Button
+            variant="filled"
+            color="brand"
+            disabled={isInProgress}
+            onClick={handleProvision}
+          >
+            {getButtonLabel(workspace)}
+          </Button>
+        )}
       </Group>
       {modalContent}
     </TitleSection>
   );
 }
 
-function getStatusIcon(workspace: Workspace): ReactNode {
+function getStatusIcon(workspace: WorkspaceInfo): ReactNode {
   if (workspace.databases.some(isDatabaseProvisioning)) {
     return <Loader size="sm" />;
   }
@@ -109,7 +116,7 @@ function getStatusIcon(workspace: Workspace): ReactNode {
   return <Icon name="warning" c="warning" />;
 }
 
-function getStatusMessage(workspace: Workspace): string {
+function getStatusMessage(workspace: WorkspaceInfo): string {
   if (workspace.databases.some(isDatabaseProvisioning)) {
     return t`Provisioning this workspace…`;
   }
@@ -125,7 +132,7 @@ function getStatusMessage(workspace: Workspace): string {
   return t`This workspace is partially provisioned.`;
 }
 
-function getButtonLabel(workspace: Workspace): string {
+function getButtonLabel(workspace: WorkspaceInfo): string {
   if (workspace.databases.some(isDatabaseProvisioning)) {
     return t`Provisioning…`;
   }
@@ -136,14 +143,4 @@ function getButtonLabel(workspace: Workspace): string {
     return t`Unprovision workspace`;
   }
   return t`Provision workspace`;
-}
-
-function getButtonColor(workspace: Workspace): ColorName {
-  if (workspace.databases.some(isDatabaseUnprovisioning)) {
-    return "error";
-  }
-  if (workspace.databases.every(isDatabaseProvisioned)) {
-    return "error";
-  }
-  return "brand";
 }

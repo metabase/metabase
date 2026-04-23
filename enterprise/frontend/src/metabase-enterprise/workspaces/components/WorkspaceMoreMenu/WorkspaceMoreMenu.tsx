@@ -1,32 +1,43 @@
-import { useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { ActionIcon, Icon, Menu, Tooltip } from "metabase/ui";
+import { openSaveDialog } from "metabase/utils/dom";
 import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
-import { useDeleteWorkspaceMutation } from "metabase-enterprise/api";
+import {
+  useDeleteWorkspaceMutation,
+  useLazyGetWorkspaceConfigYamlQuery,
+} from "metabase-enterprise/api";
 import type { Workspace } from "metabase-types/api";
 
-import { isDatabaseUnprovisioned } from "../../../utils";
-
-import { WorkspaceConfigModal } from "./WorkspaceConfigModal";
+import { isDatabaseUnprovisioned } from "../../utils";
 
 type WorkspaceMoreMenuProps = {
   workspace: Workspace;
 };
 
 export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
-  const [isConfigOpened, setIsConfigOpened] = useState(false);
   const { modalContent, show } = useConfirmation();
   const [deleteWorkspace] = useDeleteWorkspaceMutation();
+  const [fetchConfig] = useLazyGetWorkspaceConfigYamlQuery();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const dispatch = useDispatch();
   const isFullyUnprovisioned = workspace.databases.every(
     isDatabaseUnprovisioned,
   );
+
+  const handleDownload = async () => {
+    const { data, error } = await fetchConfig(workspace.id);
+    if (error || data == null) {
+      sendErrorToast(t`Failed to download configuration file`);
+      return;
+    }
+    const blob = new Blob([data], { type: "application/yaml" });
+    openSaveDialog("config.yml", blob);
+  };
 
   const handleDelete = () => {
     show({
@@ -56,10 +67,10 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item
-            leftSection={<Icon name="code_block" />}
-            onClick={() => setIsConfigOpened(true)}
+            leftSection={<Icon name="download" />}
+            onClick={handleDownload}
           >
-            {t`Configuration file`}
+            {t`Download config file`}
           </Menu.Item>
           <Tooltip
             label={t`Unprovision this workspace before deleting.`}
@@ -75,11 +86,6 @@ export function WorkspaceMoreMenu({ workspace }: WorkspaceMoreMenuProps) {
           </Tooltip>
         </Menu.Dropdown>
       </Menu>
-      <WorkspaceConfigModal
-        workspace={workspace}
-        opened={isConfigOpened}
-        onClose={() => setIsConfigOpened(false)}
-      />
       {modalContent}
     </>
   );

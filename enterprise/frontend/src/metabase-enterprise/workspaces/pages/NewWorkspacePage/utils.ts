@@ -1,11 +1,14 @@
 import { t } from "ttag";
 
-import type { WorkspaceInfo } from "./types";
+import type { WorkspaceInfo } from "../../types";
 
 export function getInitialWorkspace(): WorkspaceInfo {
   return {
     name: t`New workspace`,
     databases: [],
+    created_at: "",
+    updated_at: "",
+    creator_id: null,
   };
 }
 

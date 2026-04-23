@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase-enterprise.workspaces.models.workspace :as workspace]
    [metabase-enterprise.workspaces.models.workspace-database]
+   [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
@@ -44,3 +45,8 @@
         {:databases (mapv (fn [[wsd db]] (database-entry wsd db)) pairs)
          :workspace {:name      (:name ws)
                      :databases (into {} (map (fn [[wsd db]] (workspace-database-entry wsd db))) pairs)}}))))
+
+(defn config->yaml
+  "Render a workspace config map as a pretty-printed YAML string."
+  [config]
+  (yaml/generate-string config :dumper-options {:flow-style :block}))

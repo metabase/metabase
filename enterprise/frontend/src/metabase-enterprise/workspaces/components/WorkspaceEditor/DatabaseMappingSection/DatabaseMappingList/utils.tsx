@@ -17,11 +17,8 @@ export function getDatabaseColumn(
     width: "auto",
     minWidth: 200,
     accessorFn: (row) => databasesById[row.database_id]?.name ?? "",
-    cell: ({ row }) => {
-      const name =
-        databasesById[row.original.database_id]?.name ??
-        String(row.original.database_id);
-      return <Ellipsified>{name}</Ellipsified>;
+    cell: ({ getValue }) => {
+      return <Ellipsified>{String(getValue())}</Ellipsified>;
     },
   };
 }
@@ -33,9 +30,7 @@ export function getInputSchemasColumn(): TreeTableColumnDef<DatabaseMappingRow> 
     width: "auto",
     minWidth: 200,
     accessorFn: (row) => row.input_schemas.join(", "),
-    cell: ({ row }) => (
-      <Ellipsified>{row.original.input_schemas.join(", ")}</Ellipsified>
-    ),
+    cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
   };
 }
 
@@ -46,9 +41,7 @@ export function getOutputSchemaColumn(): TreeTableColumnDef<DatabaseMappingRow> 
     width: "auto",
     minWidth: 200,
     accessorFn: (row) => row.output_schema ?? "",
-    cell: ({ row }) => (
-      <Ellipsified>{row.original.output_schema ?? ""}</Ellipsified>
-    ),
+    cell: ({ getValue }) => <Ellipsified>{String(getValue())}</Ellipsified>,
   };
 }
 

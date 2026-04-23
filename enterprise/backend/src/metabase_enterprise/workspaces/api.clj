@@ -170,12 +170,20 @@
   (workspace/delete-workspace! id)
   {:id id :deleted true})
 
-(api.macros/defendpoint :get "/:id/config"
-  "Return a downloadable JSON config fragment for this Workspace. Returns 409 if
-  any of the Workspace's databases is still uninitialized."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+(api.macros/defendpoint :get "/:id/config/:format"
+  "Return a downloadable config fragment for this Workspace in the requested
+  format (`json` or `yaml`). Returns 409 if any of the Workspace's databases is
+  still uninitialized."
+  [{:keys [id format]} :- [:map
+                           [:id     ms/PositiveInt]
+                           [:format (ms/enum-decode-keyword [:json :yaml])]]]
   (api/check-superuser)
-  (api/check-404 (config/build-workspace-config id)))
+  (let [result (api/check-404 (config/build-workspace-config id))]
+    (case format
+      :json result
+      :yaml {:status  200
+             :headers {"Content-Type" "application/yaml"}
+             :body    (config/config->yaml result)})))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/workspace` routes"

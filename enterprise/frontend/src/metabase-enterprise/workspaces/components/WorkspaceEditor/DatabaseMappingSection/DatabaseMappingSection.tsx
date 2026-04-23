@@ -10,19 +10,21 @@ import type {
   WorkspaceDatabaseDraft,
 } from "metabase-types/api";
 
-import { isSupportedDatabase } from "../../utils";
-import { TitleSection } from "../TitleSection";
+import { isSupportedDatabase } from "../../../utils";
+import { TitleSection } from "../../TitleSection";
 
 import { DatabaseMappingList } from "./DatabaseMappingList";
 import { DatabaseMappingModal } from "./DatabaseMappingModal";
 
 type DatabaseMappingSectionProps = {
   mappings: WorkspaceDatabaseDraft[];
+  isReadOnly?: boolean;
   onChange: (mappings: WorkspaceDatabaseDraft[]) => void;
 };
 
 export function DatabaseMappingSection({
   mappings,
+  isReadOnly = false,
   onChange,
 }: DatabaseMappingSectionProps) {
   const [isModalOpened, setIsModalOpened] = useState(false);
@@ -41,7 +43,12 @@ export function DatabaseMappingSection({
     mappings,
     selectedDatabaseId,
   );
-  const canAddMapping = newAvailableDatabases.length > 0;
+  const hasAvailableDatabases = newAvailableDatabases.length > 0;
+  const canAddMapping = hasAvailableDatabases && !isReadOnly;
+
+  const addTooltipLabel = isReadOnly
+    ? t`Unprovision this workspace before editing.`
+    : t`No available databases that support workspaces.`;
 
   const handleOpenCreate = () => {
     setSelectedDatabaseId(undefined);
@@ -82,10 +89,7 @@ export function DatabaseMappingSection({
         label={t`Database isolation`}
         description={t`Configure how databases are isolated for this workspace.`}
         rightSection={
-          <Tooltip
-            label={t`No available databases that support workspaces.`}
-            disabled={canAddMapping}
-          >
+          <Tooltip label={addTooltipLabel} disabled={canAddMapping}>
             <Button
               leftSection={<Icon name="add" />}
               disabled={!canAddMapping}
@@ -103,7 +107,7 @@ export function DatabaseMappingSection({
         ) : (
           <DatabaseMappingList
             mappings={mappings}
-            onRowClick={handleOpenEdit}
+            onRowClick={isReadOnly ? undefined : handleOpenEdit}
           />
         )}
       </TitleSection>

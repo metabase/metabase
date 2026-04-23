@@ -1,22 +1,30 @@
 import { hasFeature } from "metabase/admin/databases/utils";
-import type { Database, WorkspaceDatabase } from "metabase-types/api";
+import type { Database, WorkspaceDatabaseDraft } from "metabase-types/api";
 
 export function isSupportedDatabase(database: Database): boolean {
   return hasFeature(database, "workspace");
 }
 
-export function isDatabaseProvisioned(database: WorkspaceDatabase): boolean {
+export function isDatabaseProvisioned(
+  database: WorkspaceDatabaseDraft,
+): boolean {
   return database.status === "provisioned";
 }
 
-export function isDatabaseProvisioning(database: WorkspaceDatabase): boolean {
+export function isDatabaseProvisioning(
+  database: WorkspaceDatabaseDraft,
+): boolean {
   return database.status === "provisioning";
 }
 
-export function isDatabaseUnprovisioning(database: WorkspaceDatabase): boolean {
+export function isDatabaseUnprovisioning(
+  database: WorkspaceDatabaseDraft,
+): boolean {
   return database.status === "unprovisioning";
 }
 
-export function isDatabaseUnprovisioned(database: WorkspaceDatabase): boolean {
+export function isDatabaseUnprovisioned(
+  database: WorkspaceDatabaseDraft,
+): boolean {
   return database.status === "unprovisioned";
 }
