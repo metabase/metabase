@@ -11,7 +11,6 @@ import type NativeQuery from "./queries/NativeQuery";
 type UrlBuilderOpts = {
   originalQuestion?: Question;
   query?: Record<string, any>;
-  includeDisplayIsLocked?: boolean;
   creationType?: string;
 };
 
@@ -47,9 +46,8 @@ export function getQuestionUrlWithParameters(
   >,
   { objectId }: { objectId?: string | number } = {},
 ): string {
-  const includeDisplayIsLocked = true;
   if (parameters.length === 0 && objectId == null) {
-    return getQuestionUrl(question, { includeDisplayIsLocked });
+    return getQuestionUrl(question);
   }
 
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
@@ -62,7 +60,6 @@ export function getQuestionUrlWithParameters(
         parameters,
         parameterValues,
       ),
-      includeDisplayIsLocked,
     });
   }
 
@@ -81,14 +78,10 @@ export function getQuestionUrlWithParameters(
 
     return getQuestionUrl(questionWithParameters, {
       originalQuestion,
-      includeDisplayIsLocked,
       query: objectId === undefined ? {} : { objectId },
     });
   }
 
   const query = getParameterValuesBySlug(parameters, parameterValues);
-  return getQuestionUrl(questionWithParameters.markDirty(), {
-    query,
-    includeDisplayIsLocked,
-  });
+  return getQuestionUrl(questionWithParameters.markDirty(), { query });
 }
