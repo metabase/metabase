@@ -102,7 +102,7 @@ jobs:
 
           PR_NUMBER=${URL##*/}
 
-          echo "::set-output name=pr_number::$PR_NUMBER"
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
       - name: Auto approve PR
         uses: juliangruber/approve-pull-request-action@v1

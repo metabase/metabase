@@ -114,7 +114,6 @@ function MetricToolbarButtons({
         <Button
           component={ForwardRefLink}
           to={Urls.exploreMetric(card.id)}
-          target="_blank"
           leftSection={<Icon name="external" />}
           data-testid="explore-link"
         >

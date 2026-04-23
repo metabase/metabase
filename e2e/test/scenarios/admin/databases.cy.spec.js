@@ -57,7 +57,7 @@ describe(
       it(`should allow to enable and disable workspaces in ${snapshot} database`, () => {
         H.restore(snapshot);
         cy.signInAsAdmin();
-        H.activateToken("bleeding-edge");
+        H.activateToken("pro-self-hosted");
         H.addPostgresDatabase("Test DB");
 
         visitDatabase(WRITABLE_DB_ID);
@@ -92,17 +92,18 @@ describe(
     it("should not show workspaces setting for unsupported mysql database", () => {
       H.restore();
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       visitDatabase(WRITABLE_DB_ID);
 
       cy.findByLabelText("Enable workspaces").should("not.exist");
+      cy.findByRole("heading", { name: "Not found." }).should("exist");
     });
 
     it("should not allow to enable workspaces for a db user that cannot create users/schemas", () => {
       H.restore("postgres-writable");
       cy.signInAsAdmin();
-      H.activateToken("bleeding-edge");
+      H.activateToken("pro-self-hosted");
 
       // Create a limited postgres user without CREATE USER/SCHEMA permissions
       const limitedUser = "limited_user";

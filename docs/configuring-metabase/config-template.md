@@ -203,6 +203,8 @@ config:
     login-page-illustration: default
     login-page-illustration-custom: null
     map-tile-server-url: https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+    mcp-apps-cors-custom-origins: ''
+    mcp-apps-cors-enabled-clients: []
     metabot-slack-signing-secret: null
     native-query-autocomplete-match-style: substring
     nested-field-columns-value-length-limit: 50000
@@ -282,6 +284,7 @@ config:
     slack-connect-client-id: null
     slack-connect-client-secret: null
     slack-connect-enabled: false
+    slack-connect-signing-secret-version: 0
     slack-connect-user-provisioning-enabled: true
     smtp-override-enabled: false
     source-address-header: X-Forwarded-For
