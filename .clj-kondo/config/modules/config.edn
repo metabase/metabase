@@ -2815,6 +2815,31 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/data-complexity-score
+  {:team "Metabot"
+   :api  #{metabase-enterprise.data-complexity-score.api
+           metabase-enterprise.data-complexity-score.init}
+   :uses #{analytics
+           api
+           app-db
+           audit-app
+           collections
+           config
+           metabot
+           premium-features
+           settings
+           startup
+           task
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Measure
+                    :model/Metabot
+                    :model/ModerationReview
+                    :model/Table}}
+
   enterprise/data-studio
   {:team "UX West"
    :api  #{metabase-enterprise.data-studio.api}
@@ -3165,25 +3190,6 @@
            util}
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}
-
-  enterprise/data-complexity-score
-  {:team "Metabot"
-   :api  #{metabase-enterprise.data-complexity-score.api
-           metabase-enterprise.data-complexity-score.init}
-   :uses #{analytics
-           api
-           app-db
-           audit-app
-           collections
-           config
-           metabot
-           premium-features
-           settings
-           startup
-           task
-           util
-           enterprise/semantic-search}
-   :model-imports #{:model/Card :model/Collection :model/Measure :model/Metabot :model/Table}}
 
   enterprise/semantic-search
   {:team "Metabot"
