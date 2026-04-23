@@ -1,12 +1,22 @@
 (ns metabase.test.util.dynamic-redefs
   (:import
-   (clojure.lang Var)))
+   (clojure.lang MultiFn Var)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:dynamic *local-redefs*
   "A thread-local mapping from vars to their most recently bound definition."
   {})
+
+(def ^:private ^:dynamic *proxy-depths*
+  "Thread-local map from redefined var to current recursion depth through its proxy.
+   Used to detect capture bugs that would otherwise manifest as StackOverflowError."
+  {})
+
+(def ^:private max-proxy-depth
+  "If a single var's proxy is re-entered this many times on one thread, assume a capture bug.
+   Generous enough to permit deliberate recursion, low enough to fail fast before SOE."
+  128)
 
 (defn dynamic-value
   "Get the value of this var that is in scope. It is the unpatched version if there is no override."
@@ -27,9 +37,23 @@
   (assert (ifn? @a-var) "Cannot proxy non-functions")
   (assert (not (keyword? @a-var)) "Cannot proxy keywords")
   (assert (not (coll? @a-var)) "Cannot proxy collections")
+  (assert (not (instance? MultiFn @a-var))
+          (str "Cannot proxy multimethods: " a-var ". "
+               "with-dynamic-fn-redefs replaces the var's root with a proxy, which breaks "
+               "dispatch and pollutes the JVM for other tests. Use methodical/add-primary-method "
+               "or a dedicated test dispatch value instead."))
   (fn [& args]
-    (let [current-f (dynamic-value a-var)]
-      (apply current-f args))))
+    (let [depth (get *proxy-depths* a-var 0)]
+      (when (> depth max-proxy-depth)
+        (throw (ex-info (str "with-dynamic-fn-redefs: runaway recursion through proxy for " a-var ". "
+                             "This usually means the replacement fn calls the redefined var directly "
+                             "(closing over the var resolves to the proxy, not the original). "
+                             "Use (metabase.test.util.dynamic-redefs/original-fn " (pr-str a-var) ") "
+                             "to capture the unpatched function.")
+                        {:var a-var, :depth depth})))
+      (binding [*proxy-depths* (assoc *proxy-depths* a-var (inc depth))]
+        (let [current-f (dynamic-value a-var)]
+          (apply current-f args))))))
 
 (defn patch-vars!
   "Rebind the given vars with proxies that wrap the original functions."
