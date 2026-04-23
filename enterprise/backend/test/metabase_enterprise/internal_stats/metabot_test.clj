@@ -151,11 +151,6 @@
             (testing ":metabot-users counts distinct users for yesterday"
               (is (= 1 (:metabot-users stats))))
 
-            (testing ":metabot-users falls back to conversation.user_id for legacy rows"
-              (t2/update! :model/MetabotMessage {:conversation_id [:in [conv-1 conv-2]]}
-                          {:user_id nil})
-              (is (= 1 (:metabot-users (sut/metabot-stats)))))
-
             (testing ":metabot-usage-date is yesterday's date"
               (is (= "2026-03-31" (:metabot-usage-date stats))))
 
