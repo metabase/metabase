@@ -1179,6 +1179,7 @@
   {:team    "Metabot"
    :api     #{metabase.metabot.api
               metabase.metabot.api.entity-analysis
+              metabase.metabot.config
               metabase.metabot.core
               metabase.metabot.init
               metabase.metabot.self
@@ -1224,6 +1225,7 @@
               util
               warehouses}
    :model-exports #{:model/AiUsageLog
+                    :model/Metabot
                     :model/MetabotMessage}
    :model-imports #{:model/Card
                     :model/Collection
@@ -2796,6 +2798,31 @@
    :api  #{}
    :uses #{premium-features}}
 
+  enterprise/data-complexity-score
+  {:team "Metabot"
+   :api  #{metabase-enterprise.data-complexity-score.api
+           metabase-enterprise.data-complexity-score.init}
+   :uses #{analytics
+           api
+           app-db
+           audit-app
+           collections
+           config
+           metabot
+           premium-features
+           settings
+           startup
+           task
+           util
+           enterprise/semantic-search}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Database
+                    :model/Measure
+                    :model/Metabot
+                    :model/ModerationReview
+                    :model/Table}}
+
   enterprise/data-studio
   {:team "UX West"
    :api  #{metabase-enterprise.data-studio.api}
@@ -3156,6 +3183,7 @@
            config
            connection-pool
            llm
+           metabot
            models
            permissions
            premium-features
