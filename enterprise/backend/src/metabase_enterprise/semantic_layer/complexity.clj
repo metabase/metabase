@@ -447,14 +447,14 @@
                  metabot-fallback?    (assoc :metabot-source :universe-fallback))}))
 
 (defn- time-phase!
-  "Run `f`, record duration under `phase` on the timing histogram, return its value."
-  [phase f]
+  "Run `f`, record duration on the per-phase histogram labelled by `stage` and `catalog`, return its value."
+  [stage catalog f]
   (let [timer (u/start-timer)]
     (try
       (f)
       (finally
-        (prometheus/observe! :metabase-data-complexity/scoring-duration-ms
-                             {:phase phase}
+        (prometheus/observe! :metabase-data-complexity/phase-duration-ms
+                             {:stage stage :catalog catalog}
                              (u/since-ms timer))))))
 
 (defn complexity-scores
@@ -492,12 +492,12 @@
                              semantic-search/search-index-embedder)
             model-meta     (when (= embedder semantic-search/search-index-embedder)
                              (semantic-search/active-embedding-model))
-            library-ents   (time-phase! "enumerate-library" library-entities)
-            universe-ents  (time-phase! "enumerate-universe" universe-entities)
-            metabot-ents   (time-phase! "enumerate-metabot" #(metabot-entities metabot-scope))
-            universe-score (time-phase! "score-universe" #(score-catalog universe-ents embedder))
-            library-score  (time-phase! "score-library"  #(score-catalog library-ents embedder))
-            metabot-score  (time-phase! "score-metabot"  #(score-catalog metabot-ents embedder))
+            library-ents   (time-phase! "enumerate" "library"  library-entities)
+            universe-ents  (time-phase! "enumerate" "universe" universe-entities)
+            metabot-ents   (time-phase! "enumerate" "metabot"  #(metabot-entities metabot-scope))
+            universe-score (time-phase! "score"     "universe" #(score-catalog universe-ents embedder))
+            library-score  (time-phase! "score"     "library"  #(score-catalog library-ents embedder))
+            metabot-score  (time-phase! "score"     "metabot"  #(score-catalog metabot-ents embedder))
             result         {:library  library-score
                             :universe universe-score
                             :metabot  metabot-score
@@ -516,7 +516,6 @@
           (with-meta result {::snowplow-published? published?})))
       (finally
         (prometheus/observe! :metabase-data-complexity/scoring-duration-ms
-                             {:phase "total"}
                              (u/since-ms total-timer))))))
 
 (comment
