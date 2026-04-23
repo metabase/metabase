@@ -78,6 +78,7 @@ export type SegmentDisplayInfo = {
   longDisplayName?: string;
   description?: string;
   filterPositions?: number[];
+  group?: DimensionGroup;
 };
 
 export type MetadataProviderable = MetadataProvider | MetricDefinition;
