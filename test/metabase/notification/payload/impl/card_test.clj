@@ -535,10 +535,10 @@
                                   notification.tu/default-slack-handler]}]
 
         (let [original-render-noti (mt/original-fn #'channel/render-notification)]
-          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [& args]
-                                                                    (if (= :channel/slack (first args))
-                                                                      (throw (ex-info "Slack failed" {}))
-                                                                      (apply original-render-noti args)))]
+          (with-redefs [channel/render-notification (fn [& args]
+                                                      (if (= :channel/slack (first args))
+                                                        (throw (ex-info "Slack failed" {}))
+                                                        (apply original-render-noti args)))]
             ;; slack failed but email should still be sent
             (notification.tu/test-send-notification!
              notification

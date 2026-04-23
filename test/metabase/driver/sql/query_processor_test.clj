@@ -277,8 +277,8 @@
 
 (deftest adjust-start-of-week-test
   (driver/with-driver :h2
-    (mt/with-dynamic-fn-redefs [driver/db-start-of-week   (constantly :monday)
-                                setting/get-value-of-type (constantly :sunday)]
+    (with-redefs [driver/db-start-of-week   (constantly :monday)
+                  setting/get-value-of-type (constantly :sunday)]
       (is (= (-> [:dateadd
                   (h2x/literal "day")
                   [:inline -1]
@@ -294,8 +294,8 @@
                  (h2x/with-database-type-info "datetime"))
              (sql.qp/adjust-start-of-week :h2 (fn [x] [:week x]) :created_at))))
     (testing "Do we skip the adjustment if offset = 0"
-      (mt/with-dynamic-fn-redefs [driver/db-start-of-week   (constantly :monday)
-                                  setting/get-value-of-type (constantly :monday)]
+      (with-redefs [driver/db-start-of-week   (constantly :monday)
+                    setting/get-value-of-type (constantly :monday)]
         (is (= [:week :created_at]
                (sql.qp/adjust-start-of-week :h2 (fn [x] [:week x]) :created_at)))))))
 

@@ -125,7 +125,7 @@
                       (== 1 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy false :reason "exception" :connection-type "default"}))) "unhealthy user-input or exception"))))
 
         (testing "failures for exception"
-          (mt/with-dynamic-fn-redefs [driver/can-connect? (fn [& _args] (throw (Exception. "boom")))]
+          (with-redefs [driver/can-connect? (fn [& _args] (throw (Exception. "boom")))]
             (mt/with-prometheus-system! [_ system]
               (database/health-check-database! (mt/db))
               (is (== 0 (mt/metric-value system :metabase-database/status {:driver driver/*driver* :healthy true :connection-type "default"})) "healthy")
@@ -158,10 +158,10 @@
 
             (testing "write connection failure does not prevent default check"
               (let [call-count (atom 0)]
-                (mt/with-dynamic-fn-redefs [driver/can-connect? (fn [& _args]
-                                                                  (if (< (swap! call-count inc) 2)
-                                                                    true
-                                                                    (throw (Exception. "write connection failed"))))]
+                (with-redefs [driver/can-connect? (fn [& _args]
+                                                    (if (< (swap! call-count inc) 2)
+                                                      true
+                                                      (throw (Exception. "write connection failed"))))]
                   (mt/with-prometheus-system! [_ system]
                     (mt/with-temporary-setting-values [db-connection-timeout-ms 30000]
                       (database/health-check-database! (assoc (mt/db) :write_data_details (:details (mt/db))))

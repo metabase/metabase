@@ -422,7 +422,7 @@
             exception (Exception. (format "FATAL: database \"%s\" does not exist" dbname))]
         (is (= {:errors {:dbname "check your database name settings"},
                 :message "Looks like the Database name is incorrect."}
-               (mt/with-dynamic-fn-redefs [driver/can-connect? (fn [& _] (throw exception))]
+               (with-redefs [driver/can-connect? (fn [& _] (throw exception))]
                  (mt/user-http-request :crowberto :post 400 "database"
                                        {:name         dbname
                                         :engine       "postgres"
@@ -545,7 +545,7 @@
             (is (=? {:errors {:db "check your connection string"}}
                     (update! 400))))
           (testing "If connection details are valid, we should be able to update the Database"
-            (mt/with-dynamic-fn-redefs [driver/can-connect? (constantly true)]
+            (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil
                      (:valid (update! 200))))
               (let [curr-db (t2/select-one [:model/Database :name :engine :details :is_full_sync], :id db-id)]
@@ -615,7 +615,7 @@
   (testing "Check that we get audit log entries that match the db when updating a Database"
     (mt/with-premium-features #{:audit-app}
       (mt/with-temp [:model/Database {db-id :id}]
-        (mt/with-dynamic-fn-redefs [driver/can-connect? (constantly true)]
+        (with-redefs [driver/can-connect? (constantly true)]
           (is (= "Original Database Name" (:name (api-update-database! 200 db-id {:name "Original Database Name"})))
               "A db update occured")
           (is (= "Updated Database Name" (:name (api-update-database! 200 db-id {:name "Updated Database Name"})))
@@ -2278,7 +2278,7 @@
   (testing "GET /api/database/:id/syncable_schemas"
     (testing "Multiple schemas are ordered by name"
       ;; We need to redef driver/syncable-schemas here because different databases might have different schemas
-      (mt/with-dynamic-fn-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
+      (with-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
         (is (= ["PUBLIC"]
                (mt/user-http-request :crowberto :get 200 (format "database/%d/syncable_schemas" (mt/id)))))
         (testing "Non-admins don't have permission to see syncable schemas"
@@ -2289,7 +2289,7 @@
   (testing "GET /api/database/:id/syncable_schemas"
     (testing "Non-admins can get syncable schemas on the attached DWH"
       (mt/with-temp [:model/Database {id :id} {:is_attached_dwh true}]
-        (mt/with-dynamic-fn-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
+        (with-redefs [driver/syncable-schemas (constantly #{"PUBLIC"})]
           (is (= ["PUBLIC"]
                  (mt/user-http-request :rasta :get 200 (format "database/%d/syncable_schemas" id)))))))))
 
@@ -3204,7 +3204,7 @@
       (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}}]
-          (mt/with-dynamic-fn-redefs [driver/can-connect? (constantly true)]
+          (with-redefs [driver/can-connect? (constantly true)]
             (let [response (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                                  {:write_data_details {:host "write-host"
                                                                        :password "write-pass"
@@ -3219,7 +3219,7 @@
         (mt/with-temp [:model/Database {db-id :id} {:engine :h2
                                                     :details {:host "localhost"}
                                                     :write_data_details {:host "write-host"}}]
-          (mt/with-dynamic-fn-redefs [driver/can-connect? (constantly true)]
+          (with-redefs [driver/can-connect? (constantly true)]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                   {:write_data_details nil})
             (let [db (t2/select-one :model/Database :id db-id)]
@@ -3230,7 +3230,7 @@
                                                     :details {:host "localhost"}
                                                     :write_data_details {:host "write-host"
                                                                          :password "original-pass"}}]
-          (mt/with-dynamic-fn-redefs [driver/can-connect? (constantly true)]
+          (with-redefs [driver/can-connect? (constantly true)]
             (mt/user-http-request :crowberto :put 200 (format "database/%d" db-id)
                                   {:write_data_details {:host "new-write-host"
                                                         :password secret/protected-password
@@ -3251,10 +3251,10 @@
       (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {db-id :id} {:engine  :h2
                                                     :details {:host "localhost"}}]
-          (mt/with-dynamic-fn-redefs [driver/can-connect? (fn [_engine details]
-                                                            (if (:write-data-connection details)
-                                                              (throw (Exception. "Write connection failed"))
-                                                              true))]
+          (with-redefs [driver/can-connect? (fn [_engine details]
+                                              (if (:write-data-connection details)
+                                                (throw (Exception. "Write connection failed"))
+                                                true))]
             (let [response (mt/user-http-request :crowberto :put 400 (format "database/%d" db-id)
                                                  {:write_data_details {:host "totally-bogus-host"
                                                                        :write-data-connection true}})]

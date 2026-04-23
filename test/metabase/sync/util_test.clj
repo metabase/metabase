@@ -66,8 +66,8 @@
   [f]
   (let [step-info-atom           (atom [])
         created-task-history-ids (atom [])
-        orig-log-fn              @#'sync-util/log-sync-summary
-        origin-update-th!        @#'task-history/update-task-history!]
+        orig-log-fn              (mt/original-fn #'sync-util/log-sync-summary)
+        origin-update-th!        (mt/original-fn #'task-history/update-task-history!)]
     (mt/with-dynamic-fn-redefs [sync-util/log-sync-summary        (fn [operation database operation-metadata]
                                                                     (swap! step-info-atom conj operation-metadata)
                                                                     (orig-log-fn operation database operation-metadata))

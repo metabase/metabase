@@ -13,8 +13,33 @@
   "Unqualified names of vars known to be multimethods. with-dynamic-fn-redefs refuses to proxy
    these at runtime (dispatch breaks and the JVM is polluted for other tests), so the nudge
    would be wrong. Hook can only see unqualified names reliably, so we match on name alone —
-   this is a small, hand-curated list; extend it as new multimethod targets appear in tests."
-  '#{send! can-read? can-query?})
+   extend this list when new multimethod targets appear in tests."
+  '#{send!
+     can-read?
+     can-query?
+     ;; metabase.channel.core
+     render-notification
+     ;; metabase.driver
+     can-connect?
+     create-table!
+     database-supports?
+     db-default-timezone
+     db-start-of-week
+     execute-raw-queries!
+     query-canceled?
+     syncable-schemas
+     table-exists?
+     ;; metabase.driver.sql-jdbc.sync.interface
+     column->semantic-type
+     have-select-privilege?
+     ;; metabase.search.impl
+     check-permissions-for-model
+     ;; metabase.transforms-base.interface
+     table-dependencies
+     ;; metabase.analyze.fingerprint.fingerprinters
+     fingerprinter
+     ;; metabase.upload.impl
+     max-bytes})
 
 (defn- multimethod-lhs?
   "Does any LHS in this binding list name a known multimethod?"

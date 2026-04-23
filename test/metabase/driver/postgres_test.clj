@@ -1097,8 +1097,8 @@
 (deftest create-schema-if-needed-nil-guard-test
   (testing "create-schema-if-needed! is a no-op when schema is nil or blank (GDGT-2144)"
     (let [executed-queries (atom [])]
-      (mt/with-dynamic-fn-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec queries]
-                                                                (swap! executed-queries conj queries))]
+      (with-redefs [driver/execute-raw-queries! (fn [_driver _conn-spec queries]
+                                                  (swap! executed-queries conj queries))]
         (driver/create-schema-if-needed! :postgres ::fake-conn nil)
         (driver/create-schema-if-needed! :postgres ::fake-conn "")
         (driver/create-schema-if-needed! :postgres ::fake-conn "   ")

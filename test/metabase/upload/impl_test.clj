@@ -721,8 +721,8 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (when (driver/upload-type->database-type driver/*driver* :metabase.upload/offset-datetime)
         (with-mysql-local-infile-on-and-off
-          (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
-                                      upload.db/current-database (constantly (mt/db))]
+          (with-redefs [driver/db-default-timezone (constantly "Z")
+                        upload.db/current-database (constantly (mt/db))]
             (let [transpose  (fn [m] (apply mapv vector m))
                   [csv-strs expected] (transpose [["2022-01-01T12:00:00-07"    "2022-01-01T19:00:00Z"]
                                                   ["2022-01-01T12:00:00-07:00" "2022-01-01T19:00:00Z"]
@@ -1335,11 +1335,11 @@
               identity))))
       (testing "Driver error"
         (let [metrics (atom {})]
-          (mt/with-dynamic-fn-redefs [driver/create-table! (fn [& _args] (throw (Exception. "Boom")))
-                                      analytics/inc! (fn
-                                                       ([k] (swap! metrics update k (fnil inc 0)))
-                                                       ([k v] (when (number? v) (swap! metrics update k (fnil #(+ % v) 0))))
-                                                       ([k v _opts] (when (number? v) (swap! metrics update k (fnil #(+ % v) 0)))))]
+          (with-redefs [driver/create-table! (fn [& _args] (throw (Exception. "Boom")))
+                        analytics/inc! (fn
+                                         ([k] (swap! metrics update k (fnil inc 0)))
+                                         ([k v] (when (number? v) (swap! metrics update k (fnil #(+ % v) 0))))
+                                         ([k v _opts] (when (number? v) (swap! metrics update k (fnil #(+ % v) 0)))))]
             (is (thrown-with-msg?
                  Exception
                  #"Boom"
@@ -1620,8 +1620,8 @@
         (with-mysql-local-infile-on-and-off
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for all possible CSV column types"
-              (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
-                                          upload.db/current-database (constantly (mt/db))]
+              (with-redefs [driver/db-default-timezone (constantly "Z")
+                            upload.db/current-database (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -1652,8 +1652,8 @@
         (with-mysql-local-infile-on-and-off
           (mt/with-report-timezone-id! "UTC"
             (testing "Append should succeed for offset datetime columns"
-              (mt/with-dynamic-fn-redefs [driver/db-default-timezone (constantly "Z")
-                                          upload.db/current-database (constantly (mt/db))]
+              (with-redefs [driver/db-default-timezone (constantly "Z")
+                            upload.db/current-database (constantly (mt/db))]
                 (with-upload-table!
                   [table (create-upload-table!
                           {:col->upload-type (columns-with-auto-pk
@@ -2590,7 +2590,7 @@
         expected [:%ce%b1bcd      :%_a2ba0330      :%ce%b1bc_2        :%ce%b1bc_3]
         displays ["αbcdεf"        "αbcdεfg"        "αbc 2 etc"        "αbc 3 xyz"]]
     (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))
-    (mt/with-dynamic-fn-redefs [upload/max-bytes (constantly 10)]
+    (with-redefs [upload/max-bytes (constantly 10)]
       (is (= displays
              ;; The whitespace linter rejects capital greek characters that look like their roman equivalents.
              ;; This is the easiest way to work around the capitalization of alpha.

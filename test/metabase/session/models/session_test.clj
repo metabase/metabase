@@ -51,7 +51,7 @@
     (mt/test-helpers-set-global-values!
       (mt/with-temp [:model/User {user-id :id, email :email, first-name :first_name}]
         (let [device              (str (random-uuid))
-              original-maybe-send (var-get #'metabase.login-history.record/maybe-send-login-from-new-device-email)]
+              original-maybe-send (mt/original-fn #'metabase.login-history.record/maybe-send-login-from-new-device-email)]
           (testing "send email on first login from *new* device (but not first login ever)"
             (mt/with-fake-inbox
               ;; mock out the IP address geocoding function so we can make sure it handles timezones like PST correctly
@@ -118,7 +118,7 @@
 
 (deftest login-email-fall-back-name-test
   (mt/test-helpers-set-global-values!
-    (let [original-maybe-send (var-get #'metabase.login-history.record/maybe-send-login-from-new-device-email)
+    (let [original-maybe-send (mt/original-fn #'metabase.login-history.record/maybe-send-login-from-new-device-email)
           new-login-email (fn [user-id email]
                             (mt/with-fake-inbox
                               (mt/with-dynamic-fn-redefs [request/geocode-ip-addresses (fn [ip-addresses]
