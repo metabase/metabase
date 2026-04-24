@@ -368,7 +368,6 @@
    [:table.db_id       :database_id]
    [:table.schema      :table_schema]
    [:table.name        :table_name]
-   [:table.display_name :table_display_name]
    [:table.description :table_description]])
 
 (defmulti columns-for-model

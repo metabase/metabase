@@ -42,12 +42,7 @@ export function buildEditorExtensions(
       },
       {
         key: "ArrowUp",
-        run: () => {
-          if (refs.dropdownRef.current) {
-            return refs.dropdownRef.current.onArrowUp();
-          }
-          return false;
-        },
+        run: () => refs.dropdownRef.current?.onArrowUp() ?? false,
       },
     ]),
   ];
