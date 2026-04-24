@@ -31,6 +31,7 @@ import {
   getWordAtCursor,
   parseFullText,
   parseFullTextWithPositions,
+  planMetricInsertion,
 } from "./utils";
 
 jest.mock("../../utils/definition-builder", () => ({
@@ -1856,5 +1857,108 @@ describe("parseFullText with identities", () => {
     expect(result).toEqual([
       { id: "metric:3", type: "metric", definition: null },
     ]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// planMetricInsertion
+// ---------------------------------------------------------------------------
+
+describe("planMetricInsertion", () => {
+  it("appends a trailing ', ' when inserting into an empty formula", () => {
+    const plan = planMetricInsertion({
+      docText: "",
+      wordStart: 0,
+      wordEnd: 0,
+      metricName: "Revenue",
+    });
+    expect(plan.insertText).toBe("Revenue, ");
+    expect(plan.replaceFrom).toBe(0);
+    expect(plan.replaceTo).toBe(0);
+    expect(plan.newCursorPos).toBe("Revenue, ".length);
+    expect(plan.metricFrom).toBe(0);
+    expect(plan.metricTo).toBe("Revenue".length);
+    expect(plan.needsLeadingComma).toBe(false);
+    expect(plan.isAtEndOfFormula).toBe(true);
+  });
+
+  it("appends a trailing ', ' when replacing a partial word at the end of the formula", () => {
+    // "Rev" → pick "Revenue"
+    const plan = planMetricInsertion({
+      docText: "Rev",
+      wordStart: 0,
+      wordEnd: 3,
+      metricName: "Revenue",
+    });
+    expect(plan.insertText).toBe("Revenue, ");
+    expect(plan.replaceFrom).toBe(0);
+    expect(plan.replaceTo).toBe(3);
+    expect(plan.isAtEndOfFormula).toBe(true);
+  });
+
+  it("prepends ', ' when chaining after an existing metric name and lands at end of formula", () => {
+    // "Revenue Cos|" cursor after Cos; choosing "Costs" appends the new one
+    const docText = "Revenue Cos";
+    const plan = planMetricInsertion({
+      docText,
+      wordStart: 8,
+      wordEnd: 11,
+      metricName: "Costs",
+    });
+    expect(plan.insertText).toBe(", Costs, ");
+    // Leading ", " replaces the trailing whitespace after "Revenue"
+    expect(plan.replaceFrom).toBe("Revenue".length);
+    expect(plan.replaceTo).toBe(docText.length);
+    expect(plan.needsLeadingComma).toBe(true);
+    expect(plan.isAtEndOfFormula).toBe(true);
+    // Metric range starts after the leading ", "
+    expect(plan.metricFrom).toBe("Revenue, ".length);
+    expect(plan.metricTo).toBe("Revenue, Costs".length);
+  });
+
+  it("does not prepend ', ' after operator characters", () => {
+    // "Revenue + Cos|" — operator "+" precedes, so no leading comma
+    const docText = "Revenue + Cos";
+    const plan = planMetricInsertion({
+      docText,
+      wordStart: 10,
+      wordEnd: 13,
+      metricName: "Costs",
+    });
+    expect(plan.needsLeadingComma).toBe(false);
+    expect(plan.insertText).toBe("Costs, ");
+    expect(plan.isAtEndOfFormula).toBe(true);
+  });
+
+  it("does not append ', ' when replacement occurs in the middle of the formula", () => {
+    // "Rev|enue + Costs" — replacing "Revenue" mid-formula
+    const docText = "Revenue + Costs";
+    const plan = planMetricInsertion({
+      docText,
+      wordStart: 0,
+      wordEnd: 7,
+      metricName: "Profit",
+    });
+    expect(plan.insertText).toBe("Profit");
+    expect(plan.isAtEndOfFormula).toBe(false);
+    expect(plan.replaceTo).toBe(7);
+  });
+
+  it("treats trailing whitespace as end of formula", () => {
+    // "Revenue   " — cursor at end, word is empty
+    const docText = "Revenue   ";
+    const plan = planMetricInsertion({
+      docText,
+      wordStart: docText.length,
+      wordEnd: docText.length,
+      metricName: "Costs",
+    });
+    // Leading separator added because prev char is alphanumeric (via trimEnd)
+    expect(plan.needsLeadingComma).toBe(true);
+    expect(plan.isAtEndOfFormula).toBe(true);
+    expect(plan.insertText).toBe(", Costs, ");
+    // Swallows the trailing whitespace
+    expect(plan.replaceFrom).toBe("Revenue".length);
+    expect(plan.replaceTo).toBe(docText.length);
   });
 });
