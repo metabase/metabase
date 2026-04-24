@@ -22,16 +22,6 @@
         (is (some? (:updated_at plugin)))))))
 
 (deftest permissions-test
-  (testing "read requires superuser"
-    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/perm-test"
-                                                    :identifier   "perm-test"
-                                                    :display_name "perm-test"
-                                                    :status       :active}]
-      (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
-        (binding [api/*is-superuser?* true]
-          (is (true? (mi/can-read? plugin))))
-        (binding [api/*is-superuser?* false]
-          (is (false? (mi/can-read? plugin)))))))
   (testing "write requires superuser"
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/perm-test-2"
                                                     :identifier   "perm-test-2"

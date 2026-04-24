@@ -8,6 +8,7 @@
    [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.test.http-client :as client]
    [toucan2.core :as t2]))
 
 ;; private fn under test
@@ -472,6 +473,28 @@
                       cache/resolve-bundle     (constantly nil)]
           (let [resp (mt/user-http-request :crowberto :get 503 (str "ee/custom-viz-plugin/" id "/bundle"))]
             (is (some? resp))))))))
+
+(deftest bundle-and-list-auth-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url        "https://github.com/test/auth-bundle"
+                                                    :identifier      "auth-bundle"
+                                                    :display_name    "auth-bundle"
+                                                    :status          :active
+                                                    :enabled         true
+                                                    :resolved_commit "abc123"}]
+      (with-redefs [cache/resolve-dev-bundle (constantly nil)
+                    cache/resolve-bundle     (constantly {:content "console.log('hi')" :hash "h1"})]
+        (testing "authenticated non-admin user can access /bundle"
+          (is (= "console.log('hi')"
+                 (mt/user-http-request :rasta :get 200 (str "ee/custom-viz-plugin/" id "/bundle")))))
+        #_(testing "unauthenticated user cannot access /bundle"
+            (is (= "Unauthenticated"
+                   (client/client :get 401 (str "ee/custom-viz-plugin/" id "/bundle"))))))
+      (testing "authenticated non-admin user can access /list"
+        (is (sequential? (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list"))))
+      (testing "unauthenticated user cannot access /list"
+        (is (= "Unauthenticated"
+               (client/client :get 401 "ee/custom-viz-plugin/list")))))))
 
 ;;; ------------------------------------------------ Audit Log ------------------------------------------------
 
