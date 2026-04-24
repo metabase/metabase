@@ -59,7 +59,7 @@
   postgres.ddl/keep-me
   sql.pg-ops/keep-me)
 
-(driver/register! :postgres, :parent :sql-jdbc)
+(driver/register! :postgres, :parent #{:sql-jdbc :sql-mbql5})
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
@@ -595,7 +595,7 @@
   (h2x/maybe-cast (h2x/database-type expr) (h2x/->date expr)))
 
 (defmethod sql.qp/->honeysql [:postgres :convert-timezone]
-  [driver [_ arg target-timezone source-timezone]]
+  [driver [_ _opts arg target-timezone source-timezone]]
   (let [expr         (sql.qp/->honeysql driver (cond-> arg
                                                  (string? arg) u.date/parse))
         timestamptz? (or (sql.qp.u/field-with-tz? arg)
@@ -608,21 +608,20 @@
     (h2x/with-database-type-info expr "timestamp")))
 
 (defmethod sql.qp/->honeysql [:postgres :value]
-  [driver value]
-  (let [[_ raw-value {base-type :base_type, database-type :database_type}] value]
-    (when (some? raw-value)
-      (condp #(isa? %2 %1) base-type
-        :type/PostgresBitString (h2x/cast :varbit raw-value)
-        :type/IPAddress    (h2x/cast :inet raw-value)
-        :type/PostgresEnum (if (quoted? database-type)
-                             (h2x/cast database-type raw-value)
-                             (h2x/quoted-cast database-type raw-value))
-        ((get-method sql.qp/->honeysql [:sql-jdbc :value])
-         driver value)))))
+  [driver [_ {:keys [base-type database-type]} raw-value]]
+  (when (some? raw-value)
+    (condp #(isa? %2 %1) base-type
+      :type/PostgresBitString (h2x/cast :varbit raw-value)
+      :type/IPAddress    (h2x/cast :inet raw-value)
+      :type/PostgresEnum (if (quoted? database-type)
+                           (h2x/cast database-type raw-value)
+                           (h2x/quoted-cast database-type raw-value))
+      ((get-method sql.qp/->honeysql [:sql-jdbc :value])
+       driver [:value raw-value {:base_type base-type :database_type database-type}]))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
-  [driver [_ arg]]
-  (sql.qp/->honeysql driver [:percentile arg 0.5]))
+  [driver [_ _opts arg]]
+  (sql.qp/->honeysql driver (sql.qp/mbql-clause driver :percentile arg 0.5)))
 
 (defmethod sql.qp/datetime-diff [:postgres :year]
   [_driver _unit x y]
@@ -676,12 +675,12 @@
 (sql/register-fn! ::regex-match-first #'format-regex-match-first)
 
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
-  [driver [_ arg pattern]]
+  [driver [_ _opts arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
 
 (defmethod sql.qp/->honeysql [:postgres :split-part]
-  [driver [_ text divider position]]
+  [driver [_ _opts text divider position]]
   (let [position (sql.qp/->honeysql driver position)]
     [:case
      [:< position 1]
@@ -691,7 +690,7 @@
      [:split_part (sql.qp/->honeysql driver text) (sql.qp/->honeysql driver divider) position]]))
 
 (defmethod sql.qp/->honeysql [:postgres :text]
-  [driver [_ value]]
+  [driver [_ _opts value]]
   (h2x/maybe-cast "TEXT" (sql.qp/->honeysql driver value)))
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
@@ -756,11 +755,11 @@
     [::json-query parent-identifier field-type (rest nfc-path)]))
 
 (defmethod sql.qp/->honeysql [:postgres :field]
-  [driver [_ id-or-name opts :as clause]]
+  [driver [_ opts id-or-name]]
   (let [stored-field  (when (integer? id-or-name)
                         (driver-api/field (driver-api/metadata-provider) id-or-name))
         parent-method (get-method sql.qp/->honeysql [:sql :field])
-        identifier    (parent-method driver clause)]
+        identifier    (parent-method driver [:field id-or-name opts])]
     (cond
       (= (:database-type stored-field) "money")
       (pg-conversion identifier :numeric)
@@ -784,7 +783,7 @@
 (defmethod sql.qp/apply-top-level-clause
   [:postgres :breakout]
   [driver clause honeysql-form {breakout-fields :breakout, _fields-fields :fields :as query}]
-  (let [stored-field-ids (map second breakout-fields)
+  (let [stored-field-ids (map last breakout-fields)
         stored-fields    (map #(when (integer? %)
                                  (driver-api/field (driver-api/metadata-provider) %))
                               stored-field-ids)
@@ -801,8 +800,8 @@
 
 (defn- order-by-is-json-field?
   [clause]
-  (let [is-aggregation? (= (-> clause (second) (first)) :aggregation)
-        stored-field-id (-> clause (second) (second))
+  (let [is-aggregation? (= (-> clause (nth 2) (first)) :aggregation)
+        stored-field-id (-> clause (nth 2) (nth 2))
         stored-field    (when (and (not is-aggregation?) (integer? stored-field-id))
                           (driver-api/field (driver-api/metadata-provider) stored-field-id))]
     (and
@@ -813,15 +812,17 @@
   [driver clause]
   (let [new-clause (if (order-by-is-json-field? clause)
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-                     clause)]
-    ((get-method sql.qp/->honeysql [:sql :desc]) driver new-clause)))
+                     clause)
+        [_ opts ordered-clause] new-clause]
+    ((get-method sql.qp/->honeysql [:sql :desc]) driver [:desc ordered-clause opts])))
 
 (defmethod sql.qp/->honeysql [:postgres :asc]
   [driver clause]
   (let [new-clause (if (order-by-is-json-field? clause)
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
-                     clause)]
-    ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
+                     clause)
+        [_ opts ordered-clause] new-clause]
+    ((get-method sql.qp/->honeysql [:sql :asc]) driver [:asc ordered-clause opts])))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

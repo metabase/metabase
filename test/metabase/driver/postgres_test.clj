@@ -87,7 +87,7 @@
            ")"]
           "2021-10-03T09:00:00"
           "2021-10-03T09:00:00"]
-         (as-> [:datetime-diff "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year] <>
+         (as-> (sql.qp/mbql-clause :postgres :datetime-diff "2021-10-03T09:00:00" "2021-10-03T09:00:00" :year) <>
            (sql.qp/->honeysql :postgres <>)
            (sql.qp/format-honeysql :postgres <>)
            (update (vec <>) 0 #(str/split-lines (driver/prettify-native-form :postgres %)))))))
@@ -422,12 +422,12 @@
                                                             :table-id      1
                                                             :nfc-path      ["jsons" "values" "qty"]
                                                             :database-type "integer"})]})
-        (let [field-clause [:field 1 {:binning
-                                      {:strategy  :num-bins
-                                       :num-bins  100
-                                       :min-value 0.75
-                                       :max-value 54.0
-                                       :bin-width 0.75}}]]
+        (let [field-clause [:field {:binning
+                                    {:strategy  :num-bins
+                                     :num-bins  100
+                                     :min-value 0.75
+                                     :max-value 54.0
+                                     :bin-width 0.75}} 1]]
           (is (= ["((FLOOR((((complicated_identifiers.jsons#>> array[?, ?]::text[])::integer - 0.75) / 0.75)) * 0.75) + 0.75)"
                   "values" "qty"]
                  (sql/format-expr (sql.qp/->honeysql :postgres field-clause) {:nested true}))))))))
@@ -840,7 +840,7 @@
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (h2x/with-database-type-info [:cast "toucan" (h2x/identifier :type-name "bird type")]
                                           "bird type")
-             (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))))
+             (sql.qp/->honeysql :postgres [:value {:database-type "bird type", :base-type :type/PostgresEnum} "toucan"]))))))
 
 (deftest enums-test-2
   (mt/test-driver :postgres
