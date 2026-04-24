@@ -125,7 +125,7 @@
           (mt/with-full-data-perms-for-all-users!
             (mt/with-current-user (u/id user)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
-              (is (= true (:has_access (latest-view (u/id user) (u/id table))))))
+              (is (true? (:has_access (latest-view (u/id user) (u/id table))))))
 
             ;; Bind the user again to flush the perms cache
             (mt/with-current-user (u/id user)
@@ -385,7 +385,7 @@
   (testing "is_db_routed is true when destination-database/id is present"
     (let [ei (#'process-userland-query/query-execution-info
               (make-test-query :destination-database/id 42))]
-      (is (= true (:is_db_routed ei)))))
+      (is (true? (:is_db_routed ei)))))
   (testing "is_db_routed is false when destination-database/id is absent"
     (let [ei (#'process-userland-query/query-execution-info (make-test-query))]
       (is (= false (:is_db_routed ei))))))
@@ -412,7 +412,7 @@
   (testing "is_impersonated is true when :impersonation/role present"
     (let [ei (#'process-userland-query/query-execution-info
               (make-test-query :impersonation/role "some_role"))]
-      (is (= true (:is_impersonated ei)))))
+      (is (true? (:is_impersonated ei)))))
   (testing "is_impersonated is false when absent"
     (let [ei (#'process-userland-query/query-execution-info
               (make-test-query))]

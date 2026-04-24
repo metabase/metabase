@@ -63,7 +63,7 @@
 (deftest embeding-mw-bumps-metrics-with-iframe-client-header
   (mt/with-prometheus-system! [_ system]
     ;; X-Metabase-Client header == "embedding-iframe" => iframe context
-    (let [request (mock-request {:client "embedding-sdk-react"})
+    (let [request (mock-request {:client "embedding-iframe"})
           good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
           bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
           exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
@@ -287,19 +287,19 @@
   (let [m (atom {})]
     (analytics.core/with-client! ["client-C"]
       (analytics.core/with-version! ["1.33.7"]
-        (is (= {:embedding_client "client-C"
-                :embedding_version "1.33.7"}
-               (analytics.core/include-sdk-info @m)))
+        (is (=? {:embedding_client  "client-C"
+                 :embedding_version "1.33.7"}
+                (analytics.core/include-sdk-info @m)))
         (swap! m analytics.core/include-sdk-info)))
     ;; unset the vars:
     (analytics.core/with-client! [nil]
       (analytics.core/with-version! [nil]
-        (is (= {:embedding_client "client-C"
-                :embedding_version "1.33.7"} @m))
+        (is (=? {:embedding_client  "client-C"
+                 :embedding_version "1.33.7"} @m))
         (testing "the values in m are used when the vars are not set"
-          (is (= {:embedding_client "client-C"
-                  :embedding_version "1.33.7"}
-                 (analytics.core/include-sdk-info @m))))))))
+          (is (=? {:embedding_client  "client-C"
+                   :embedding_version "1.33.7"}
+                  (analytics.core/include-sdk-info @m))))))))
 
 (deftest include-sdk-info-pii-fields-test
   (let [request (-> (ring.mock/request :get "/api/public/card/1")

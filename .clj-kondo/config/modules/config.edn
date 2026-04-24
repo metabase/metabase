@@ -1797,8 +1797,7 @@
            metabase.request.init
            metabase.request.schema
            metabase.request.user-agent}
-   :uses #{analytics
-           analytics-interface
+   :uses #{analytics-interface
            api
            config
            embedding
