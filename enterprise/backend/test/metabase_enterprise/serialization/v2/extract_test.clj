@@ -22,6 +22,8 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (comment
   ;; Use this spell in your test body to add the given fixtures to the round trip baseline.
   (round-trip-test/add-to-baseline!))
