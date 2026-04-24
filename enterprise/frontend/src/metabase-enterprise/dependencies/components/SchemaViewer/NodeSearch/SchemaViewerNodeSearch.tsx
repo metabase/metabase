@@ -114,9 +114,10 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
             combobox.openDropdown();
             combobox.updateSelectedOptionIndex();
           }}
-          onFocus={(event) => {
-            // Select the previously-chosen label so typing overwrites it.
-            event.currentTarget.select();
+          onFocus={() => {
+            // Clear the previously-chosen label so the dropdown shows the
+            // full list and the user can start typing from an empty state.
+            setQuery("");
             combobox.openDropdown();
           }}
           onBlur={() => combobox.closeDropdown()}
