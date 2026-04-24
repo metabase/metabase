@@ -37,12 +37,12 @@
    bytes it actually buffered, not a client header) and rejects missing files with
    400. Returns the `java.io.File` tempfile."
   ^File [file]
-  (when (> (:size file) cache/max-bundle-bytes)
-    (throw (ex-info (format "Bundle must be less than %dMB." cache/max-bundle-mib)
-                    {:status-code 413})))
   (let [tempfile (:tempfile file)]
     (when-not (instance? File tempfile)
       (throw (ex-info "No file provided" {:status-code 400})))
+    (when (> (:size file) cache/max-bundle-bytes)
+      (throw (ex-info (format "Bundle must be less than %dMB." cache/max-bundle-mib)
+                      {:status-code 413})))
     tempfile))
 
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
