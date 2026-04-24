@@ -98,14 +98,16 @@ for (const key of ["innerHTML", "outerHTML"] as const) {
   }
 }
 
-// CSSStyleDeclaration named property [[Set]] (e.g. style.width = '…') does not
+// CSSStyleDeclaration named property [[Set]] (e.g. style.width = '1004px') does not
 // propagate through near-membrane's Proxy because CSSStyleDeclaration uses WebIDL
-// exotic-object semantics internally. ZRender sets canvas.style.width to the logical
-// pixel size AFTER setting canvas.width to (logical × dpr). When style.width is
-// silently dropped, the canvas renders at its buffer size (e.g. 2008px) instead of
-// the logical size (1004px), causing overflow. Forcing dpr=1 inside the sandbox makes
-// buffer size == logical size, so the style.width failure is harmless.
-const DPR_GETTER = getterOf("devicePixelRatio");
+// exotic-object semantics — the native [[Set]] checks that the receiver IS the
+// CSSStyleDeclaration, not a Proxy of one, and silently does nothing.
+// Fix: intercept canvas.width / canvas.height setters. near-membrane calls our
+// replacement with `this` = the real blue-realm canvas (not a proxy), so we can
+// safely call `this.style.width = …` directly on the real DOM node, bypassing
+// the membrane entirely for the CSS assignment.
+const CANVAS_WIDTH_SETTER = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, "width")?.set;
+const CANVAS_HEIGHT_SETTER = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, "height")?.set;
 
 // Functions plugin code is allowed to call directly from the host window.
 // Endowments (__METABASE_VIZ_API__, __customVizPlugin__) are exempt —
@@ -136,7 +138,7 @@ const ALLOWED_FUNCTIONS = new Set<object>(
     getterOf("navigator"),
     getterOf("location"),
     getterOf("screen"),
-    // devicePixelRatio is handled separately in distortionCallback (returns 1)
+    getterOf("devicePixelRatio"),
     getterOf("innerWidth"),
     getterOf("innerHeight"),
     // JS built-ins that live on window and pass the native-code check.
@@ -239,9 +241,20 @@ export function createPluginSandbox(pluginId: string) {
       if (fname.startsWith("[Symbol.") || fname.startsWith("bound ")) {
         return v;
       }
-      // Force devicePixelRatio=1 — see DPR_GETTER comment above.
-      if (v === DPR_GETTER) {
-        return () => 1;
+      // Intercept canvas buffer setters — see CANVAS_WIDTH_SETTER comment above.
+      // near-membrane passes `this` as the real blue-realm canvas, so we can touch
+      // this.style directly without going through the membrane.
+      if (v === CANVAS_WIDTH_SETTER) {
+        return function (this: HTMLCanvasElement, value: number) {
+          CANVAS_WIDTH_SETTER!.call(this, value);
+          this.style.width = `${value / window.devicePixelRatio}px`;
+        };
+      }
+      if (v === CANVAS_HEIGHT_SETTER) {
+        return function (this: HTMLCanvasElement, value: number) {
+          CANVAS_HEIGHT_SETTER!.call(this, value);
+          this.style.height = `${value / window.devicePixelRatio}px`;
+        };
       }
       if (SANITIZED_SETTERS.has(v)) {
         return SANITIZED_SETTERS.get(v) as object;
@@ -258,8 +271,6 @@ export function createPluginSandbox(pluginId: string) {
       };
     },
     endowments: Object.getOwnPropertyDescriptors({
-      // Covers bare `devicePixelRatio` access (window.dpr is handled in distortionCallback).
-      devicePixelRatio: 1,
       get __customVizPlugin__() {
         return capturedFactory;
       },
