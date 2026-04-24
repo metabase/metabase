@@ -192,6 +192,11 @@
            :dimension (dimension-ref-or-expression dimension-ref)
            :values    (vec values)})
 
+        ;; Segment filters — passthrough, resolved by the query processor.
+        (= :segment operator)
+        {:node/type :filter/mbql
+         :clause    mbql-clause}
+
         ;; Temporal filters
         (operators/temporal? operator)
         (let [[dimension-ref value unit pos-offset-value pos-offset-unit] args
