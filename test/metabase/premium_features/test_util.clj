@@ -21,6 +21,9 @@
                       (thunk)))]
         (if tu.thread-local/*thread-local*
           (thunk)
+          ;; global mode — must use with-redefs so Jetty handler threads (which don't inherit *local-redefs*)
+          ;; see the updated premium features.
+          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
           (with-redefs [token-check/*token-features* (constantly features)]
             (thunk)))))))
 

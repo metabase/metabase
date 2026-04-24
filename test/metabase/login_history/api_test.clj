@@ -51,17 +51,17 @@
                                                :device_description windows-user-agent
                                                :ip_address         "52.206.149.9"}]
         ;; Mock geocoding to avoid external GeoJS dependency
-        (with-redefs [req.util/geocode-ip-addresses
-                      (fn [ip-addresses]
-                        (into {}
-                              (for [ip ip-addresses]
-                                [ip (case ip
-                                      "185.233.100.23" {:description "Paris, France"
-                                                        :timezone    (t/zone-id "Europe/Paris")}
-                                      "52.206.149.9"   {:description "Virginia, United States"
-                                                        :timezone    (t/zone-id "America/New_York")}
-                                      {:description "Unknown location"
-                                       :timezone    nil})])))]
+        (mt/with-dynamic-fn-redefs [req.util/geocode-ip-addresses
+                                    (fn [ip-addresses]
+                                      (into {}
+                                            (for [ip ip-addresses]
+                                              [ip (case ip
+                                                    "185.233.100.23" {:description "Paris, France"
+                                                                      :timezone    (t/zone-id "Europe/Paris")}
+                                                    "52.206.149.9"   {:description "Virginia, United States"
+                                                                      :timezone    (t/zone-id "America/New_York")}
+                                                    {:description "Unknown location"
+                                                     :timezone    nil})])))]
           (is (malli= [:cat
                        ;; localhost ipv6
                        [:map

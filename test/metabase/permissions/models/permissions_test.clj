@@ -251,7 +251,7 @@
   (mt/with-temp [:model/Collection {coll-id :id} {}
                  :model/PermissionsGroup {tenant-group-id :id} {:is_tenant_group true}
                  :model/PermissionsGroup {normal-group-id :id} {:is_tenant_group false}]
-    (with-redefs [audit.impl/is-collection-id-audit? (constantly true)]
+    (mt/with-dynamic-fn-redefs [audit.impl/is-collection-id-audit? (constantly true)]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Tenant groups cannot receive access to non-tenant collections\."
                             (perms/grant-collection-read-permissions! tenant-group-id coll-id)))
       ;; does not throw - it's not a tenant group

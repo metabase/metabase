@@ -68,11 +68,11 @@
 
 (deftest check-health!-test
   (mt/test-drivers (mt/normal-drivers)
-    (with-redefs [quick-task/submit-task! (fn [task] (task))
-                  t2/select (fn [model & args]
-                              (if (and (= model :model/Database) (nil? args))
-                                [(mt/db)]
-                                (apply t2/select model args)))]
+    (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))
+                                t2/select (fn [model & args]
+                                            (if (and (= model :model/Database) (nil? args))
+                                              [(mt/db)]
+                                              (apply t2/select model args)))]
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (testing "status gauge resets"
           (mt/with-prometheus-system! [_ system]
@@ -84,7 +84,7 @@
 
 (deftest health-check-database-test
   (mt/test-drivers (mt/normal-drivers)
-    (with-redefs [quick-task/submit-task! (fn [task] (task))]
+    (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (testing "successes"
           (mt/with-prometheus-system! [_ system]
@@ -136,7 +136,7 @@
   (mt/test-drivers (mt/normal-drivers)
     (when config/ee-available?
       (mt/with-premium-features #{:writable-connection}
-        (with-redefs [quick-task/submit-task! (fn [task] (task))]
+        (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
           (binding [driver.settings/*allow-testing-h2-connections* true]
             (testing "database with write_data_details checks both connections"
               (mt/with-prometheus-system! [_ system]

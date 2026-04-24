@@ -55,13 +55,13 @@
                                               [:context :map]
                                               [:payload :map]])
               renders           (atom [])]
-          (mt/with-dynamic-fn-redefs [channel/render-notification (fn [channel-type notification-payload {:keys [template recipients]}]
-                                                                    (swap! renders conj {:channel-type channel-type
-                                                                                         :notification-payload notification-payload
-                                                                                         :template template
-                                                                                         :recipients recipients})
+          (with-redefs [channel/render-notification (fn [channel-type notification-payload {:keys [template recipients]}]
+                                                      (swap! renders conj {:channel-type channel-type
+                                                                           :notification-payload notification-payload
+                                                                           :template template
+                                                                           :recipients recipients})
                                                                     ;; rendered messages are recipients
-                                                                    recipients)]
+                                                      recipients)]
             (testing "channel/send! are called on rendered messages"
               (is (=? {:channel/metabase-test [{:type :notification-recipient/user :user_id (mt/user->id :crowberto)}
                                                {:type :notification-recipient/user :user_id (mt/user->id :rasta)}]}
@@ -156,7 +156,7 @@
                                 (if (= @retry-count 1)
                                   (throw (Exception. "test-exception"))
                                   (reset! send-args args)))]
-              (mt/with-dynamic-fn-redefs [channel/send! send!]
+              (with-redefs [channel/send! send!]
                 (#'notification.send/send-notification-sync! n))
               (is (some? @send-args))
               (is (=? {:task "channel-send"
@@ -182,8 +182,8 @@
           (testing "and record exception in task history"
             (let [send!       (fn [& _args]
                                 (throw (ex-info "Failed to send" {:metadata 42})))]
-              (mt/with-dynamic-fn-redefs [notification.send/should-skip-retry? (constantly true)
-                                          channel/send!                        send!]
+              (with-redefs [notification.send/should-skip-retry? (constantly true)
+                            channel/send!                        send!]
                 (#'notification.send/send-notification-sync! n))
               (is (=? {:task "channel-send"
                        :status       :failed
@@ -217,7 +217,7 @@
   (testing "send email succeeds hiding SMTP host not set error"
     (let [[hook state] (rt/retry-analytics-config-hook)]
       (binding [retry/*test-time-config-hook* hook]
-        (with-redefs [email/send-email! (fn [& _] (throw (ex-info "Bumm!" {:cause :smtp-host-not-set})))]
+        (mt/with-dynamic-fn-redefs [email/send-email! (fn [& _] (throw (ex-info "Bumm!" {:cause :smtp-host-not-set})))]
           (mt/with-temporary-setting-values [email-smtp-host "fake_smtp_host"
                                              email-smtp-port 587]
             (mt/reset-inbox!)
@@ -254,15 +254,15 @@
     (testing "post slack message succeeds w/o retry"
       (let [[hook state] (rt/retry-analytics-config-hook)]
         (binding [retry/*test-time-config-hook* hook]
-          (with-redefs [slack/post-chat-message! (constantly nil)]
+          (mt/with-dynamic-fn-redefs [slack/post-chat-message! (constantly nil)]
             (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
             (is (= {:success true, :retries 0} @state))))))
     (testing "post slack message succeeds hiding token error, doesn't retry"
       (let [[hook state] (rt/retry-analytics-config-hook)]
         (binding [retry/*test-time-config-hook* hook]
-          (with-redefs [slack/post-chat-message! (fn [& _]
-                                                   (throw (ex-info "Slack API error: token_revoked"
-                                                                   {:error-type :slack/invalid-token})))]
+          (mt/with-dynamic-fn-redefs [slack/post-chat-message! (fn [& _]
+                                                                 (throw (ex-info "Slack API error: token_revoked"
+                                                                                 {:error-type :slack/invalid-token})))]
             (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
             (is (= {:success false, :retries 0} @state))))))
     (testing "post slack message fails b/c retry limit"
@@ -280,10 +280,10 @@
     (testing "post slack message to missing channel fails without retry"
       (let [[hook state] (rt/retry-analytics-config-hook)]
         (binding [retry/*test-time-config-hook* hook]
-          (with-redefs [slack/post-chat-message! (fn [& _]
-                                                   (throw (ex-info "Channel not found"
-                                                                   {:error-type :slack/channel-not-found}))
-                                                   nil)]
+          (mt/with-dynamic-fn-redefs [slack/post-chat-message! (fn [& _]
+                                                                 (throw (ex-info "Channel not found"
+                                                                                 {:error-type :slack/channel-not-found}))
+                                                                 nil)]
             (#'notification.send/channel-send-retrying! 1 :notification/card {:channel_type :channel/slack} fake-slack-notification)
             (is (= {:success false, :retries 0} @state))))))))
 
@@ -439,7 +439,7 @@
     (is (thrown? AssertionError (#'notification.send/avg-interval-seconds "0 0 12 * * ? *" 0))))
 
   (testing "handles one-off schedules correctly"
-    (with-redefs [notification.send/cron->next-execution-times (fn [_ _] [(t/instant)])]
+    (mt/with-dynamic-fn-redefs [notification.send/cron->next-execution-times (fn [_ _] [(t/instant)])]
       (is (= 10 (#'notification.send/avg-interval-seconds "0 0 12 * * ? *" 5))))))
 
 (deftest subscription->deadline-test
@@ -476,6 +476,9 @@
                                         :done?       (fn [cnt] (= cnt %))
                                         :interval-ms 10
                                         :timeout-ms  1000})]
+      ;; dispatcher spawns its own worker threads that don't inherit *local-redefs* —
+      ;; use with-redefs to swap the root so worker threads see the replacement.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [notification.send/send-notification-sync! (fn [notification]
                                                                 ;; fake latency
                                                                 (Thread/sleep 20)
@@ -514,6 +517,8 @@
           (testing "error handling - worker errors don't crash the dispatcher"
             (reset! sent-notifications [])
             (let [error-thrown (atom false)]
+              ;; dispatcher worker thread — see note above
+              #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
               (with-redefs [notification.send/send-notification-sync!
                             (fn [notification]
                               (if (= "F" (:test-value notification))
@@ -680,10 +685,10 @@
   (testing "if there are failure inside the notification thread pool, it should not exhaust the pool (#56379)"
     (let [noti-count (atom 0)
           queue-size (notification.settings/notification-thread-pool-size)]
-      (with-redefs [notification.payload/notification-payload (fn [& _]
-                                                                (assert false))
-                    notification.send/send-notification-sync! (fn [_notification]
-                                                                (swap! noti-count inc))]
+      (mt/with-dynamic-fn-redefs [notification.payload/notification-payload (fn [& _]
+                                                                              (assert false))
+                                  notification.send/send-notification-sync! (fn [_notification]
+                                                                              (swap! noti-count inc))]
 
         (notification.tu/with-card-notification
           [notification {}]
@@ -741,6 +746,8 @@
           dispatcher              (#'notification.send/create-notification-dispatcher 2 queue)
           dispatch-fn             (:dispatch-fn dispatcher)
           shutdown-fn             (:shutdown-fn dispatcher)]
+      ;; dispatcher spawns worker threads without our dynamic binding
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [notification.send/send-notification-sync!
                     (fn [notification]
                       ;; Wait for the latch to be released before processing

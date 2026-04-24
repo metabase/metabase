@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.config.core :as config]
+   [metabase.test :as mt]
    [metabase.version.settings :as version.settings]))
 
 (def prevent? #'version.settings/prevent-upgrade?)
@@ -9,7 +10,7 @@
 (deftest upgrade-threshold-test
   (testing "it is stable but changes across releases"
     (letfn [(threshold [version]
-              (with-redefs [config/current-major-version (constantly version)]
+              (mt/with-dynamic-fn-redefs [config/current-major-version (constantly version)]
                 (version.settings/upgrade-threshold)))]
       ;; asserting that across 10 versions we have at leaset 5 distinct values
       (let [thresholds (into [] (map threshold) (range 50 60))]

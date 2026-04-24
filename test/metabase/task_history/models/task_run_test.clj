@@ -123,7 +123,7 @@
       (let [run-id (task-run/create-task-run! {:run_type    :sync
                                                :entity_type :database
                                                :entity_id   1})]
-        (with-redefs [task-run/current-run-id (constantly run-id)]
+        (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
           (task-history/with-task-history {:task "t1"} :ok)
           (task-history/with-task-history {:task "t2"} :ok))
         (task-history/complete-task-run! run-id)
@@ -133,7 +133,7 @@
       (let [run-id (task-run/create-task-run! {:run_type    :sync
                                                :entity_type :database
                                                :entity_id   1})]
-        (with-redefs [task-run/current-run-id (constantly run-id)]
+        (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
           (task-history/with-task-history {:task "t1"} :ok)
           (try
             (task-history/with-task-history {:task "t2"}
@@ -148,14 +148,14 @@
       (let [run-id (task-run/create-task-run! {:run_type    :sync
                                                :entity_type :database
                                                :entity_id   1})]
-        (with-redefs [task-run/current-run-id (constantly run-id)]
+        (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
           (task-history/with-task-history {:task "t1"} :ok))
         ;; First completion
         (task-history/complete-task-run! run-id)
         (let [first-ended-at (:ended_at (t2/select-one :model/TaskRun :id run-id))]
           (is (= :success (:status (t2/select-one :model/TaskRun :id run-id))))
           ;; Add a failing task and try to complete again
-          (with-redefs [task-run/current-run-id (constantly run-id)]
+          (mt/with-dynamic-fn-redefs [task-run/current-run-id (constantly run-id)]
             (try
               (task-history/with-task-history {:task "t2"}
                 (throw (Exception. "fail")))

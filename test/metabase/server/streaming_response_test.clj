@@ -40,7 +40,7 @@
                                               (.namingPattern "streaming-response-test-thread-pool-%d")
                                               ;; Daemon threads do not block shutdown of the JVM
                                               (.daemon true))))]
-    (with-redefs [thread-pool/thread-pool (constantly pool)]
+    (mt/with-dynamic-fn-redefs [thread-pool/thread-pool (constantly pool)]
       (try
         (thunk)
         (finally

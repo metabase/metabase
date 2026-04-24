@@ -832,8 +832,8 @@
       (t2/delete! :model/DataPermissions :group_id group-id :db_id db-id)
       (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
         ;; Simulate EE returning :blocked for this group's view-data
-        (with-redefs [data-perms/new-database-view-data-permission-levels
-                      (fn [group-ids] (zipmap group-ids (repeat :blocked)))]
+        (mt/with-dynamic-fn-redefs [data-perms/new-database-view-data-permission-levels
+                                    (fn [group-ids] (zipmap group-ids (repeat :blocked)))]
           (data-perms/set-default-database-permissions! {:id db-id} [group])
           (is (= :no (t2/select-one-fn :perm_value :model/DataPermissions
                                        :group_id group-id :db_id db-id
@@ -856,8 +856,8 @@
       (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC" :active true}]
         ;; Delete auto-created view-data permission for table-id-3 so we can test set-default-table-permissions! directly
         (t2/delete! :model/DataPermissions :group_id group-id :table_id table-id-3 :perm_type :perms/view-data)
-        (with-redefs [data-perms/new-table-view-data-permission-levels
-                      (fn [_db-id group-ids] (zipmap group-ids (repeat :blocked)))]
+        (mt/with-dynamic-fn-redefs [data-perms/new-table-view-data-permission-levels
+                                    (fn [_db-id group-ids] (zipmap group-ids (repeat :blocked)))]
           (data-perms/set-default-table-permissions!
            {:id table-id-3 :db_id db-id :schema "PUBLIC"}
            [{:group-id group-id :perm-type :perms/view-data :default-value :unrestricted}]))

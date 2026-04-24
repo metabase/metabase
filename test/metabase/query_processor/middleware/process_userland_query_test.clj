@@ -23,6 +23,9 @@
   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
     (let [original-hash (qp.util/query-hash query)
           result        (promise)]
+      ;; save-execution-metadata!* is invoked from the QP pipeline transducer, which runs on a thread
+      ;; that doesn't inherit *local-redefs* — use with-redefs so worker threads see the replacement.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
       (with-redefs [process-userland-query/save-execution-metadata!*
                     (fn [query-execution]
                       (when-let [^bytes qe-hash (:hash query-execution)]
@@ -175,8 +178,8 @@
 
 (deftest cancel-test
   (let [saved-query-execution? (atom false)]
-    (with-redefs [process-userland-query/save-execution-metadata! (fn [info]
-                                                                    (reset! saved-query-execution? info))]
+    (mt/with-dynamic-fn-redefs [process-userland-query/save-execution-metadata! (fn [info]
+                                                                                  (reset! saved-query-execution? info))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (let [status (atom ::not-started)]
           (binding [qp.pipeline/*canceled-chan* canceled-chan

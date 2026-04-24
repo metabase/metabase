@@ -128,6 +128,18 @@
          (mt/with-dynamic-fn-redefs [also-accidentally-a-function #{:butter-cup}]
            (is (= [:butter-cup] also-accidentally-a-function)))))))
 
+(defmulti a-multimethod {:arglists '([x])} class)
+(defmethod a-multimethod String [_] :string)
+(defmethod a-multimethod Long [_] :long)
+
+(deftest ^:parallel with-dynamic-fn-redefs-multimethod-test
+  (testing "Cannot proxy a multimethod — patching its root would pollute dispatch for other threads"
+    (is (thrown-with-msg?
+         AssertionError
+         #"Cannot proxy multimethods"
+         (mt/with-dynamic-fn-redefs [a-multimethod (constantly :redefined)]
+           (a-multimethod "hi"))))))
+
 (defn mock-me-inner []
   :mock/original)
 
@@ -143,6 +155,29 @@
                                       (orig))))]
       (mock-me-outer)))
   (is (= :mock/redefined (z))))
+
+(defn capture-bug-target [x] (inc x))
+
+(defn counting-target [x]
+  (if (pos? x) (counting-target (dec x)) :done))
+
+(deftest ^:parallel with-dynamic-fn-redefs-capture-bug-test
+  (testing "A replacement that delegates through the var itself is caught as runaway recursion"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"runaway recursion through proxy"
+         (mt/with-dynamic-fn-redefs [capture-bug-target (fn [x] (capture-bug-target (inc x)))]
+           (capture-bug-target 0)))))
+  (testing "The suggested fix — capture via original-fn — works"
+    (let [orig (mt/original-fn #'capture-bug-target)]
+      (mt/with-dynamic-fn-redefs [capture-bug-target (fn [x] (orig (inc x)))]
+        (is (= 3 (capture-bug-target 1)))))))
+
+(deftest ^:parallel with-dynamic-fn-redefs-deliberate-recursion-test
+  (testing "Deliberate recursion through the redefined var works up to the depth threshold"
+    (mt/with-dynamic-fn-redefs [counting-target (fn [x]
+                                                  (if (pos? x) (counting-target (dec x)) :recursed))]
+      (is (= :recursed (counting-target 50))))))
 
 (deftest ^:parallel ordered-subset?-test
   (is (mt/ordered-subset? [1 2 3] [1 2 3]))

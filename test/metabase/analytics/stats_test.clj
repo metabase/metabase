@@ -88,8 +88,8 @@
     "250+"    5000))
 
 (deftest anonymous-usage-stats-test
-  (with-redefs [channel.settings/email-configured? (constantly false)
-                channel.settings/slack-configured? (constantly false)]
+  (mt/with-dynamic-fn-redefs [channel.settings/email-configured? (constantly false)
+                              channel.settings/slack-configured? (constantly false)]
     (mt/with-temporary-setting-values [site-name          "Metabase"
                                        startup-time-millis 1234.0
                                        google-auth-enabled false
@@ -126,8 +126,8 @@
 (deftest anonymous-usage-stats-test-ee-with-values-changed
   ; some settings are behind the whitelabel feature flag
   (mt/with-premium-features #{:whitelabel}
-    (with-redefs [channel.settings/email-configured? (constantly false)
-                  channel.settings/slack-configured? (constantly false)]
+    (mt/with-dynamic-fn-redefs [channel.settings/email-configured? (constantly false)
+                                channel.settings/slack-configured? (constantly false)]
       (mt/with-temporary-setting-values [site-name                   "My Company Analytics"
                                          startup-time-millis          1234.0
                                          google-auth-enabled          false
@@ -455,26 +455,26 @@
 
     (testing "csv-upload-available? currently detects upload availability based on the current MB version"
       (mt/with-temp [:model/Database _ {:engine :postgres}]
-        (with-redefs [config/current-major-version (constantly 46)
-                      config/current-minor-version (constantly 0)]
+        (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 46)
+                                    config/current-minor-version (constantly 0)]
           (is (false? (@#'stats/csv-upload-available?))))
 
-        (with-redefs [config/current-major-version (constantly 47)
-                      config/current-minor-version (constantly 1)]
+        (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 47)
+                                    config/current-minor-version (constantly 1)]
           (is (true? (@#'stats/csv-upload-available?))))))
 
     (mt/with-temp [:model/Database _ {:engine :redshift}]
-      (with-redefs [config/current-major-version (constantly 49)
-                    config/current-minor-version (constantly 5)]
+      (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 49)
+                                  config/current-minor-version (constantly 5)]
         (is (false? (@#'stats/csv-upload-available?))))
 
-      (with-redefs [config/current-major-version (constantly 49)
-                    config/current-minor-version (constantly 6)]
+      (mt/with-dynamic-fn-redefs [config/current-major-version (constantly 49)
+                                  config/current-minor-version (constantly 6)]
         (is (true? (@#'stats/csv-upload-available?))))))
 
   ;; If we can't detect the MB version, return nil
-  (with-redefs [config/current-major-version (constantly nil)
-                config/current-minor-version (constantly nil)]
+  (mt/with-dynamic-fn-redefs [config/current-major-version (constantly nil)
+                              config/current-minor-version (constantly nil)]
     (is (false? (@#'stats/csv-upload-available?)))))
 
 (deftest starburst-legacy-test
@@ -523,19 +523,19 @@
 
 (deftest deployment-model-test
   (testing "deployment model correctly reports cloud/docker/jar"
-    (with-redefs [premium-features.settings/is-hosted? (constantly true)]
+    (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly true)]
       (is (= "cloud" (@#'stats/deployment-model))))
 
     ;; Lets just mock io/file to always return an existing (temp) file, to validate that we're doing a filesystem check
     ;; to determine whether we're in a Docker container
     (mt/with-temp-file [mock-file]
       (spit mock-file "Temp file!")
-      (with-redefs [premium-features.settings/is-hosted? (constantly false)
-                    io/file                              (constantly (java.io.File. mock-file))]
+      (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)
+                                  io/file                              (constantly (java.io.File. mock-file))]
         (is (= "docker" (@#'stats/deployment-model)))))
 
-    (with-redefs [premium-features.settings/is-hosted? (constantly false)
-                  stats/in-docker?                     (constantly false)]
+    (mt/with-dynamic-fn-redefs [premium-features.settings/is-hosted? (constantly false)
+                                stats/in-docker?                     (constantly false)]
       (is (= "jar" (@#'stats/deployment-model))))))
 
 (deftest no-features-enabled-but-not-available-test

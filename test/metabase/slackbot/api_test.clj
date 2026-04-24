@@ -89,7 +89,7 @@
   (testing "POST /api/metabot/slack/events"
     (testing "ack events even when metabot-v3 feature is disabled to prevent Slack retries"
       (tu/with-slackbot-setup
-        (with-redefs [slackbot.settings/unobfuscated-metabot-slack-signing-secret (constantly tu/test-signing-secret)]
+        (mt/with-dynamic-fn-redefs [slackbot.settings/unobfuscated-metabot-slack-signing-secret (constantly tu/test-signing-secret)]
           (let [body     (assoc-in tu/base-dm-event [:event :channel] "D123")
                 response (mt/client :post 200 "metabot/slack/events"
                                     (tu/slack-request-options body)
@@ -119,8 +119,8 @@
     (tu/with-slackbot-setup
       (let [event-body (update tu/base-dm-event :event merge {:subtype "message_deleted"})
             ignored    (atom false)]
-        (with-redefs [slackbot/ignore-event  (fn [_] (reset! ignored true))
-                      slackbot/process-async (fn [& _] (throw (ex-info "process-async should not be called" {})))]
+        (mt/with-dynamic-fn-redefs [slackbot/ignore-event  (fn [_] (reset! ignored true))
+                                    slackbot/process-async (fn [& _] (throw (ex-info "process-async should not be called" {})))]
           (tu/with-slackbot-mocks
             {:ai-text "Should not be called"}
             (fn [{:keys [post-calls]}]
@@ -582,7 +582,7 @@
       (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" "C123" nil)))))
 
     (testing "returns :ignored for unknown Slack user"
-      (with-redefs [slackbot/slack-id->user-id (constantly nil)]
+      (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id (constantly nil)]
         (is (= {:status        :ignored
                 :reason        :unlinked-user
                 :slack-user-id "U-UNKNOWN"
@@ -591,19 +591,19 @@
                (#'slackbot/authorize-delete-request "U-UNKNOWN" "C123" "ts123")))))
 
     (testing "returns :ignored when response is not tracked in the DB"
-      (with-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
-                    slackbot.persistence/response-owner-user-id (constantly nil)]
+      (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
+                                  slackbot.persistence/response-owner-user-id (constantly nil)]
         (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" "C123" "ts123"))))))
 
     (testing "returns :ignored when the requester is not the response owner"
-      (with-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
-                    slackbot.persistence/response-owner-user-id (constantly (mt/user->id :crowberto))]
+      (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id               (constantly (mt/user->id :rasta))
+                                  slackbot.persistence/response-owner-user-id (constantly (mt/user->id :crowberto))]
         (is (= :ignored (:status (#'slackbot/authorize-delete-request "U123" "C123" "ts123"))))))
 
     (testing "returns :authorized when the requester owns the response"
       (let [user-id (mt/user->id :rasta)]
-        (with-redefs [slackbot/slack-id->user-id               (constantly user-id)
-                      slackbot.persistence/response-owner-user-id (constantly user-id)]
+        (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id               (constantly user-id)
+                                    slackbot.persistence/response-owner-user-id (constantly user-id)]
           (is (= {:status          :authorized
                   :channel-id      "C123"
                   :message-ts      "ts123"
@@ -763,13 +763,13 @@
     (let [conversation-id    "conv-123"
           harbormaster-calls (atom [])
           open-view-calls    (atom [])]
-      (with-redefs [slackbot/slack-id->user-id                  (constantly (mt/user->id :rasta))
-                    metabot.feedback/submit-to-harbormaster!  (fn [feedback]
-                                                                (swap! harbormaster-calls conj feedback)
-                                                                true)
-                    slackbot.client/open-view                    (fn [_ params]
-                                                                   (swap! open-view-calls conj params)
-                                                                   {:ok true})]
+      (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id                  (constantly (mt/user->id :rasta))
+                                  metabot.feedback/submit-to-harbormaster!  (fn [feedback]
+                                                                              (swap! harbormaster-calls conj feedback)
+                                                                              true)
+                                  slackbot.client/open-view                    (fn [_ params]
+                                                                                 (swap! open-view-calls conj params)
+                                                                                 {:ok true})]
         (let [action {:action_id "metabot_feedback"
                       :value     (json/encode {:conversation_id conversation-id :positive true})}]
           (#'slackbot/handle-feedback-action
@@ -794,10 +794,10 @@
 (deftest handle-feedback-action-negative-test
   (testing "negative feedback action opens modal with issue type dropdown"
     (let [open-view-calls (atom [])]
-      (with-redefs [slackbot/slack-id->user-id (constantly (mt/user->id :rasta))
-                    slackbot.client/open-view  (fn [_ params]
-                                                 (swap! open-view-calls conj params)
-                                                 {:ok true})]
+      (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id (constantly (mt/user->id :rasta))
+                                  slackbot.client/open-view  (fn [_ params]
+                                                               (swap! open-view-calls conj params)
+                                                               {:ok true})]
         (let [action {:action_id "metabot_feedback"
                       :value     (json/encode {:conversation_id "conv-123" :positive false})}]
           (#'slackbot/handle-feedback-action
@@ -814,13 +814,13 @@
   (testing "feedback action is silently skipped for unauthenticated user"
     (let [harbormaster-calls (atom [])
           open-view-calls    (atom [])]
-      (with-redefs [slackbot/slack-id->user-id                  (constantly nil)
-                    metabot.feedback/submit-to-harbormaster!  (fn [feedback]
-                                                                (swap! harbormaster-calls conj feedback)
-                                                                true)
-                    slackbot.client/open-view                    (fn [_ params]
-                                                                   (swap! open-view-calls conj params)
-                                                                   {:ok true})]
+      (mt/with-dynamic-fn-redefs [slackbot/slack-id->user-id                  (constantly nil)
+                                  metabot.feedback/submit-to-harbormaster!  (fn [feedback]
+                                                                              (swap! harbormaster-calls conj feedback)
+                                                                              true)
+                                  slackbot.client/open-view                    (fn [_ params]
+                                                                                 (swap! open-view-calls conj params)
+                                                                                 {:ok true})]
         (let [action {:action_id "metabot_feedback"
                       :value     (json/encode {:conversation_id "conv-456" :positive false})}
               result (#'slackbot/handle-feedback-action
@@ -837,9 +837,9 @@
 (deftest handle-feedback-modal-submission-test
   (testing "modal submission sends feedback to harbormaster"
     (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                               (swap! harbormaster-calls conj feedback)
-                                                               true)]
+      (mt/with-dynamic-fn-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                             (swap! harbormaster-calls conj feedback)
+                                                                             true)]
         (let [payload {:type "view_submission"
                        :view {:callback_id      "metabot_feedback_modal"
                               :private_metadata (json/encode {:conversation_id "conv-123"
@@ -862,9 +862,9 @@
 
   (testing "modal submission with only freeform text submits"
     (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                               (swap! harbormaster-calls conj feedback)
-                                                               true)]
+      (mt/with-dynamic-fn-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                             (swap! harbormaster-calls conj feedback)
+                                                                             true)]
         (let [payload {:type "view_submission"
                        :view {:callback_id      "metabot_feedback_modal"
                               :private_metadata (json/encode {:conversation_id "conv-123"
@@ -883,9 +883,9 @@
 
   (testing "modal submission with no details still submits basic feedback"
     (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                               (swap! harbormaster-calls conj feedback)
-                                                               true)]
+      (mt/with-dynamic-fn-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                             (swap! harbormaster-calls conj feedback)
+                                                                             true)]
         (let [payload {:type "view_submission"
                        :view {:callback_id      "metabot_feedback_modal"
                               :private_metadata (json/encode {:conversation_id "conv-123"
@@ -904,9 +904,9 @@
 
   (testing "modal submission with only issue type submits"
     (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                               (swap! harbormaster-calls conj feedback)
-                                                               true)]
+      (mt/with-dynamic-fn-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                             (swap! harbormaster-calls conj feedback)
+                                                                             true)]
         (let [payload {:type "view_submission"
                        :view {:callback_id      "metabot_feedback_modal"
                               :private_metadata (json/encode {:conversation_id "conv-123"
@@ -941,9 +941,9 @@
                      :profile_id      "slackbot"
                      :total_tokens    10
                      :data            [{:_type "TEXT" :role "assistant" :content "Here are the results."}]})
-        (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                                 (swap! harbormaster-calls conj feedback)
-                                                                 true)]
+        (mt/with-dynamic-fn-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                               (swap! harbormaster-calls conj feedback)
+                                                                               true)]
           (let [payload {:type "view_submission"
                          :view {:callback_id      "metabot_feedback_modal"
                                 :private_metadata (json/encode {:conversation_id conv-id
@@ -1182,7 +1182,7 @@
         (tu/with-slackbot-mocks
           {:ai-text "Hello!"}
           (fn [_]
-            (with-redefs [slackbot.streaming/send-response (fn [& _] (throw (Exception. "boom")))]
+            (mt/with-dynamic-fn-redefs [slackbot.streaming/send-response (fn [& _] (throw (Exception. "boom")))]
               (let [response (mt/client :post 200 "metabot/slack/events"
                                         (tu/slack-request-options tu/base-dm-event) tu/base-dm-event)]
                 (is (= "ok" response))
@@ -1202,8 +1202,8 @@
         (let [channel-id "C123"
               message-ts "1234567890.000001"
               user-id    (mt/user->id :rasta)]
-          (with-redefs [slackbot.client/update-message (constantly {:ok true})
-                        slackbot.persistence/soft-delete-response! (constantly true)]
+          (mt/with-dynamic-fn-redefs [slackbot.client/update-message (constantly {:ok true})
+                                      slackbot.persistence/soft-delete-response! (constantly true)]
             (#'slackbot/replace-response-with-removed-notice!
              {:token "xoxb-test"} channel-id message-ts user-id)
             (is (prometheus-test/approx= 1 (mt/metric-value system :metabase-slackbot/responses-deleted)))))))))

@@ -13,7 +13,7 @@
     (try
       (testing "Instance creation timestamp is set only once when setting is first fetched"
         (t2/delete! :model/Setting :key "instance-creation")
-        (with-redefs [analytics.settings/first-user-creation (constantly nil)]
+        (mt/with-dynamic-fn-redefs [analytics.settings/first-user-creation (constantly nil)]
           (let [first-value (analytics.settings/instance-creation)]
             (Thread/sleep 10) ;; short sleep since java.time.Instant is not necessarily monotonic
             (is (= first-value

@@ -192,6 +192,6 @@
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/requests))))))
   (testing "increments :metabase-geocoding/errors on failed geocoding"
     (mt/with-prometheus-system! [_ system]
-      (with-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
+      (mt/with-dynamic-fn-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
         (req.util/geocode-ip-addresses ["8.8.8.8"])
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/errors)))))))

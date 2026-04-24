@@ -491,7 +491,7 @@
                            (count model-ids) model recent-views/*recent-views-stored-per-user-per-model*)
             (is (= 2 (count (filter (comp #{out-model} :model)
                                     (mt/with-test-user :rasta
-                                      (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                      (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                         (recent-views (mt/user->id :rasta))))))))))
         (is
          (= {:card recent-views/*recent-views-stored-per-user-per-model*,
@@ -501,7 +501,7 @@
              :table recent-views/*recent-views-stored-per-user-per-model*}
             (frequencies (map :model
                               (mt/with-test-user :rasta
-                                (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                   (recent-views (mt/user->id :rasta)))))))
          "After inserting 3 views of each model, we should have 2 views PER each model.")))))
 
@@ -541,7 +541,7 @@
         (with-redefs [mi/can-read?                              (constantly true)
                       data-perms/user-has-permission-for-table? (constantly true)]
           (let [freqs (frequencies (map :model
-                                        (with-redefs [data-perms/user-has-permission-for-table? (constantly true)]
+                                        (mt/with-dynamic-fn-redefs [data-perms/user-has-permission-for-table? (constantly true)]
                                           (mt/with-test-user :rasta (recent-views (mt/user->id :rasta))))))]
             (is (= 3 (:card freqs)))
             (is (= 3 (:dataset freqs)))

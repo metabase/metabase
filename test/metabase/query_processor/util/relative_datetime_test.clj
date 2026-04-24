@@ -23,7 +23,7 @@
     ;; This was standard before PR #38604, now server side timestamps are used for that. This test confirms that
     ;; server side generated timestamp (ie. new code path) results are equal to old code path results, that were not
     ;; cacheable.
-    (let [honey {:select [[(with-redefs [qp.relative-datetime/use-server-side-relative-datetime? (constantly false)]
+    (let [honey {:select [[(mt/with-dynamic-fn-redefs [qp.relative-datetime/use-server-side-relative-datetime? (constantly false)]
                              (sql.qp/->honeysql driver/*driver* [:relative-datetime value unit]))]
                           [(sql.qp/->honeysql driver/*driver* [:relative-datetime value unit])]]}
           sql (sql/format honey)

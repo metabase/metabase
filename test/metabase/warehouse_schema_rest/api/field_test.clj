@@ -193,7 +193,7 @@
   (testing "PUT /api/field/:id"
     (testing "updating coercion strategies"
       (testing "Refingerprints field when updated"
-        (with-redefs [quick-task/submit-task! (fn [task] (task))]
+        (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
           (mt/dataset integer-coerceable
             (sync/sync-database! (t2/select-one :model/Database :id (mt/id)))
             (let [field-id      (mt/id :t :f)

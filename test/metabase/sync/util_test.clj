@@ -66,15 +66,15 @@
   [f]
   (let [step-info-atom           (atom [])
         created-task-history-ids (atom [])
-        orig-log-fn              @#'sync-util/log-sync-summary
-        origin-update-th!        @#'task-history/update-task-history!]
-    (with-redefs [sync-util/log-sync-summary        (fn [operation database operation-metadata]
-                                                      (swap! step-info-atom conj operation-metadata)
-                                                      (orig-log-fn operation database operation-metadata))
+        orig-log-fn              (mt/original-fn #'sync-util/log-sync-summary)
+        origin-update-th!        (mt/original-fn #'task-history/update-task-history!)]
+    (mt/with-dynamic-fn-redefs [sync-util/log-sync-summary        (fn [operation database operation-metadata]
+                                                                    (swap! step-info-atom conj operation-metadata)
+                                                                    (orig-log-fn operation database operation-metadata))
 
-                  task-history/update-task-history! (fn [th-id startime-ms info]
-                                                      (swap! created-task-history-ids conj th-id)
-                                                      (origin-update-th! th-id startime-ms info))]
+                                task-history/update-task-history! (fn [th-id startime-ms info]
+                                                                    (swap! created-task-history-ids conj th-id)
+                                                                    (origin-update-th! th-id startime-ms info))]
       (f))
     {:operation-results @step-info-atom
      :task-history-ids  @created-task-history-ids}))
@@ -319,10 +319,10 @@
     (testing "If a non-recoverable error occurs during sync, `initial-sync-status` on the database is set to `aborted`"
       (let [_  (t2/update! :model/Database (mt/id) {:initial_sync_status "incomplete"})
             db (t2/select-one :model/Database :id (mt/id))]
-        (with-redefs [sync-metadata/make-sync-steps (fn [_]
-                                                      [(sync-util/create-sync-step
-                                                        "fake-step"
-                                                        (fn [_] (throw (java.net.ConnectException.))))])]
+        (mt/with-dynamic-fn-redefs [sync-metadata/make-sync-steps (fn [_]
+                                                                    [(sync-util/create-sync-step
+                                                                      "fake-step"
+                                                                      (fn [_] (throw (java.net.ConnectException.))))])]
           (sync/sync-database! db)
           (is (= "aborted" (t2/select-one-fn :initial_sync_status :model/Database :id (:id db)))))))
 
@@ -345,10 +345,10 @@
         (t2/update! :model/Table (:id inactive-table) {:initial_sync_status "complete" :active false})
         (let [syncing-chan   (a/chan)
               completed-chan (a/chan)]
-          (let [sync-fields! sync-fields/sync-fields!]
-            (with-redefs [sync-fields/sync-fields! (fn [database]
-                                                     (a/>!! syncing-chan ::syncing)
-                                                     (sync-fields! database))]
+          (let [sync-fields! (mt/original-fn #'sync-fields/sync-fields!)]
+            (mt/with-dynamic-fn-redefs [sync-fields/sync-fields! (fn [database]
+                                                                   (a/>!! syncing-chan ::syncing)
+                                                                   (sync-fields! database))]
               (future
                 (sync/sync-database! (mt/db))
                 (a/>!! completed-chan ::sync-completed))

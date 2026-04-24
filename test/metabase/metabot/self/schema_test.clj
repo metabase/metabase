@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [metabase.metabot.self.features :as features]
-   [metabase.metabot.self.schema :as schema]))
+   [metabase.metabot.self.schema :as schema]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -13,7 +14,7 @@
 
 (deftest ^:synchronized filter-schema-by-features-available-feature-test
   (testing "entry with available feature is kept, :feature prop stripped"
-    (with-redefs [features/feature-available? (constantly true)]
+    (mt/with-dynamic-fn-redefs [features/feature-available? (constantly true)]
       (let [input    [:map [:field {:feature :some-feature} :string]]
             result   (schema/filter-schema-by-features input)
             children (mc/children result)]
@@ -23,7 +24,7 @@
 
 (deftest ^:synchronized filter-schema-by-features-unavailable-feature-test
   (testing "entry with unavailable feature is removed"
-    (with-redefs [features/feature-available? (constantly false)]
+    (mt/with-dynamic-fn-redefs [features/feature-available? (constantly false)]
       (let [input    [:map [:field {:feature :some-feature} :string]]
             result   (schema/filter-schema-by-features input)
             children (mc/children result)]
@@ -31,7 +32,7 @@
 
 (deftest ^:synchronized filter-schema-by-features-no-feature-annotation-test
   (testing "entry without :feature annotation passes through unchanged"
-    (with-redefs [features/feature-available? (fn [_] (throw (ex-info "should not be called" {})))]
+    (mt/with-dynamic-fn-redefs [features/feature-available? (fn [_] (throw (ex-info "should not be called" {})))]
       (let [input    [:map [:field :string]]
             result   (schema/filter-schema-by-features input)
             children (mc/children result)]
@@ -56,7 +57,7 @@
 
 (deftest ^:synchronized filter-schema-by-features-nested-maps-test
   (testing "nested map schemas are also filtered"
-    (with-redefs [features/feature-available? (constantly false)]
+    (mt/with-dynamic-fn-redefs [features/feature-available? (constantly false)]
       (let [input    [:map
                       [:outer :string]
                       [:nested [:map
@@ -73,7 +74,7 @@
 
 (deftest ^:synchronized filter-schema-by-features-non-map-schema-test
   (testing "non-map schemas pass through unchanged"
-    (with-redefs [features/feature-available? (constantly false)]
+    (mt/with-dynamic-fn-redefs [features/feature-available? (constantly false)]
       (let [sequential-schema [:sequential :string]
             string-schema     :string
             enum-schema       [:enum "a" "b"]]
@@ -83,7 +84,7 @@
 
 (deftest ^:synchronized filter-schema-by-features-optional-and-feature-test
   (testing "entry with both :optional and :feature handles both properties"
-    (with-redefs [features/feature-available? (constantly true)]
+    (mt/with-dynamic-fn-redefs [features/feature-available? (constantly true)]
       (let [input    [:map [:field {:optional true :feature :some-feature} :string]]
             result   (schema/filter-schema-by-features input)
             children (mc/children result)
@@ -95,7 +96,7 @@
 
 (deftest ^:synchronized filter-schema-by-features-all-entries-filtered-test
   (testing "all feature-gated entries unavailable results in empty map"
-    (with-redefs [features/feature-available? (constantly false)]
+    (mt/with-dynamic-fn-redefs [features/feature-available? (constantly false)]
       (let [input    [:map {:closed true}
                       [:field1 {:feature :f1} :string]
                       [:field2 {:feature :f2} :int]]
@@ -107,7 +108,7 @@
 
 (deftest ^:synchronized filter-schema-by-features-preserves-map-properties-test
   (testing "map-level properties like :closed are preserved"
-    (with-redefs [features/feature-available? (constantly true)]
+    (mt/with-dynamic-fn-redefs [features/feature-available? (constantly true)]
       (let [input  [:map {:closed true} [:field :string]]
             result (schema/filter-schema-by-features input)
             props  (mc/properties result)]
