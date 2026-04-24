@@ -7,7 +7,7 @@ import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
-import { remapParameterValuesToTemplateTags } from "metabase-lib/v1/parameters/utils/template-tags";
+import { getTemplateTagFromTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { getStructuredQuestionUrlWithParameters } from "metabase-lib/v1/urls";
 import type {
@@ -16,6 +16,7 @@ import type {
   ParameterId,
   ParameterValueOrArray,
   QuestionDashboardCard,
+  TemplateTag,
   VirtualCard,
 } from "metabase-types/api";
 
@@ -118,4 +119,30 @@ export function getParametersMappedToCard(
       },
     ];
   });
+}
+
+// When navigating from a dashboard to a saved native question, dashboard parameters
+// need to be remapped from dashboard-parameter-id keys to template-tag-name keys so
+// the native editor populates its template tags from the URL query string.
+export function remapParameterValuesToTemplateTags(
+  templateTags: TemplateTag[],
+  dashboardParameters: ParameterWithTarget[],
+  parameterValuesByDashboardParameterId: Record<string, any>,
+) {
+  const parameterValues: Record<string, any> = {};
+  const templateTagParametersByName = _.indexBy(templateTags, "name");
+
+  dashboardParameters.forEach((dashboardParameter) => {
+    const { target } = dashboardParameter;
+    const tag = getTemplateTagFromTarget(target);
+
+    if (tag != null && templateTagParametersByName[tag]) {
+      const templateTagParameter = templateTagParametersByName[tag];
+      const parameterValue =
+        parameterValuesByDashboardParameterId[dashboardParameter.id];
+      parameterValues[templateTagParameter.name] = parameterValue;
+    }
+  });
+
+  return parameterValues;
 }
