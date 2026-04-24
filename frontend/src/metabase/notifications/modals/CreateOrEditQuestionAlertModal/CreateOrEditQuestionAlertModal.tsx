@@ -17,6 +17,10 @@ import {
   getAlertTriggerOptions,
   getDefaultQuestionAlertRequest,
 } from "metabase/notifications/utils";
+import {
+  getHasConfiguredAnyChannel,
+  getHasConfiguredEmailOrSlackChannel,
+} from "metabase/pulse";
 import { updateUrl } from "metabase/query_builder/actions/url";
 import {
   getQuestion,
@@ -37,10 +41,6 @@ import {
   rem,
 } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import {
-  getHasConfiguredAnyChannel,
-  getHasConfiguredEmailOrSlackChannel,
-} from "metabase/utils/pulse";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CreateAlertNotificationRequest,

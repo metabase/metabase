@@ -12,6 +12,7 @@ import { useSelector } from "metabase/redux";
 import { getShallowSegments } from "metabase/selectors/metadata";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { modelIconMap } from "metabase/utils/icon";
 
 import ReferenceHeader from "../../components/ReferenceHeader";
 import { getError, getLoading } from "../../selectors";
@@ -68,7 +69,7 @@ export function SegmentList({ style }: SegmentListProps) {
                         name={entity.name}
                         description={entity.description}
                         url={`/reference/segments/${entity.id}`}
-                        icon="segment"
+                        icon={modelIconMap.segment}
                       />
                     ),
                 )}

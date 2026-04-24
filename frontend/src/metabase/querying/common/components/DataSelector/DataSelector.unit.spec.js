@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadata } from "__support__/metadata";
 import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
-import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/components/DataSelector";
+import { UnconnectedDataSelector as DataSelector } from "metabase/querying/common/components/DataSelector";
 import {
   createMockSettingsState,
   createMockState,

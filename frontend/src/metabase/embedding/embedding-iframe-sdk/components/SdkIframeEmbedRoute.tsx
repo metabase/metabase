@@ -19,13 +19,14 @@ import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config"
 import type { SdkDashboardEntityPublicProps } from "embedding-sdk-bundle/types/dashboard";
 import type { SdkQuestionEntityPublicProps } from "embedding-sdk-bundle/types/question";
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
+import { createSnowplowTracker } from "metabase/analytics";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
+import { getUserId } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
-import { createTracker } from "metabase/utils/analytics-untyped";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";
@@ -47,7 +48,7 @@ const onSettingsChanged = (settings: SdkIframeEmbedSettings) => {
 };
 
 const store = getSdkStore();
-createTracker(store);
+createSnowplowTracker(() => getUserId(store.getState()));
 
 export const SdkIframeEmbedRoute = () => {
   const { embedSettings } = useSdkIframeEmbedEventBus({

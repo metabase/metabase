@@ -13,6 +13,7 @@ import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
+import { modelIconMap } from "metabase/utils/icon";
 import * as Urls from "metabase/utils/urls";
 import visualizations from "metabase/visualizations";
 
@@ -57,7 +58,7 @@ const SegmentQuestionsInner = ({ style, table, segment, metadata }) => {
       <ReferenceHeader
         name={t`Questions about ${segment.name}`}
         type="questions"
-        headerIcon="segment"
+        headerIcon={modelIconMap.segment}
       />
       <LoadingAndErrorWrapper loading={!error && isLoading} error={error}>
         {() =>

@@ -4,7 +4,7 @@ import {
   useGetDatabaseQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { DatabaseDataSelector } from "metabase/query_builder/components/DataSelector";
+import { DatabaseDataSelector } from "metabase/querying/common/components/DataSelector";
 import { useSelector } from "metabase/redux";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
