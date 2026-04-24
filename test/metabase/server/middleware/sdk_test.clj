@@ -288,17 +288,17 @@
     (analytics.core/with-client! ["client-C"]
       (analytics.core/with-version! ["1.33.7"]
         (is (=? {:embedding_client  "client-C"
-                 :embedding_version "1.33.7"}
+                 :embedding_sdk_version "1.33.7"}
                 (analytics.core/include-sdk-info @m)))
         (swap! m analytics.core/include-sdk-info)))
     ;; unset the vars:
     (analytics.core/with-client! [nil]
       (analytics.core/with-version! [nil]
         (is (=? {:embedding_client  "client-C"
-                 :embedding_version "1.33.7"} @m))
+                 :embedding_sdk_version "1.33.7"} @m))
         (testing "the values in m are used when the vars are not set"
           (is (=? {:embedding_client  "client-C"
-                   :embedding_version "1.33.7"}
+                   :embedding_sdk_version "1.33.7"}
                   (analytics.core/include-sdk-info @m))))))))
 
 (deftest include-sdk-info-pii-fields-test
