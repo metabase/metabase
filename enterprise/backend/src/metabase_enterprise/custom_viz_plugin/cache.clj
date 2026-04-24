@@ -185,9 +185,9 @@
   ^Path [{:keys [id bundle_hash]}]
   (when bundle_hash
     (let [dir (plugin-cache-dir id bundle_hash)]
-      (when-not (Files/isDirectory dir (into-array java.nio.file.LinkOption []))
+      (when-not (Files/isDirectory dir (into-array LinkOption []))
         (let [bundle-bytes (t2/select-one-fn :bundle :model/CustomVizPlugin :id id)]
-          (when (and bundle-bytes (not (Files/isDirectory dir (into-array java.nio.file.LinkOption []))))
+          (when (and bundle-bytes (not (Files/isDirectory dir (into-array LinkOption []))))
             (unpack-bundle! dir bundle-bytes)
             (evict-other-cache-dirs! id bundle_hash))))
       dir)))
