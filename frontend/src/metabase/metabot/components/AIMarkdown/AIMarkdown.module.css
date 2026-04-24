@@ -1,7 +1,45 @@
 .aiMarkdown {
   line-height: 1.5;
+  min-width: 0;
   max-width: 100%;
+}
+
+.tableWrapper {
+  border: 1px solid var(--mb-color-border);
+  border-radius: 8px;
   overflow: hidden;
+  margin-bottom: 1rem;
+}
+
+.tableContainer {
+  width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.aiMarkdown table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.aiMarkdown th,
+.aiMarkdown td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-top: 1px solid var(--mb-color-border);
+}
+
+.aiMarkdown tr:first-child th {
+  border-top: none;
+}
+
+.aiMarkdown th {
+  font-weight: 700;
+  background: var(--mb-color-background-secondary);
 }
 
 .aiMarkdown pre {

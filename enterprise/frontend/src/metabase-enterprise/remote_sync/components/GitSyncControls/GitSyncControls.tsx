@@ -4,8 +4,8 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Button, Combobox, Icon, Loader, Text, useCombobox } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import {
   useGetHasRemoteChangesQuery,
   useImportChangesMutation,
@@ -30,7 +30,7 @@ type DropdownView = "options" | "branch";
 export const GitSyncControls = () => {
   const dispatch = useDispatch();
   const conflictVariant = useSelector(getSyncConflictVariant);
-  const { isVisible, currentBranch } = useGitSyncVisible();
+  const { isVisible, currentBranch, isBranchSetByEnv } = useGitSyncVisible();
 
   const [importChanges, { isLoading: isImporting }] =
     useImportChangesMutation();
@@ -205,6 +205,7 @@ export const GitSyncControls = () => {
             isPullError={hasRemoteChangesError}
             isLoadingPull={isFetchingRemoteChanges}
             isPushDisabled={!isDirty || isLoading}
+            isSwitchBranchDisabled={isBranchSetByEnv}
             onPullClick={handlePullClick}
             onPushClick={handlePushClick}
             onSwitchBranchClick={handleSwitchBranchClick}

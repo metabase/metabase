@@ -12,10 +12,10 @@ import { Link } from "metabase/common/components/Link";
 import { LoadingSpinner } from "metabase/common/components/LoadingSpinner";
 import CS from "metabase/css/core/index.css";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { connect, useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Text } from "metabase/ui";
 import { formatValue } from "metabase/utils/formatting";
-import { connect, useSelector } from "metabase/utils/redux";
 import MetabaseSettings from "metabase/utils/settings";
 import { MinColumnsError } from "metabase/visualizations/lib/errors";
 import {

@@ -15,12 +15,12 @@ import {
   getIsEditing,
 } from "metabase/dashboard/selectors";
 import { getPulseFormInput } from "metabase/notifications/pulse/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
 } from "metabase/selectors/user";
 import { Box } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 
 export const DashboardHeaderButtonRow = ({
   isPublic = false,

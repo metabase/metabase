@@ -8,6 +8,7 @@
   future we can deprecate that namespace and eventually do away with it entirely."
   (:refer-clojure :exclude [ref every? some select-keys empty? get-in])
   (:require
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema.actions :as actions]
@@ -545,6 +546,28 @@
      :source-query ":source-query is not allowed in MBQL 5, and it's not allowed in the top-level of a stage in any MBQL version"
      :source-table ":source-table is not allowed in the top level of a query, only in MBQL stages"
      :type         ":type is not allowed in MBQL 5, use :lib/type instead."})])
+
+(mr/def ::external-query
+  "Schema for \"External MBQL\" 5 query."
+  [:schema {:registry {::id/database :string
+                       ::id/card :string
+                       ::id/segment :string
+                       ::id/measure :string
+                       ::id/snippet :string
+                       ::id/schema [:or nil? :string]
+                       ::id/table [:cat ::id/database ::id/schema :string]
+                       ::id/field [:cat ::id/database ::id/schema :string [:+ :string]]
+                       ;; this spec has a :multi clause that assumes field IDs
+                       ;; must be integers. the 3 in the update call refers to
+                       ;; the :multi; if that gets moved, this'll need to change
+                       :mbql.clause/field (update (mr/schema :mbql.clause/field) 3
+                                                  conj [:dispatch-type/sequential
+                                                        ::ref/field.id])
+                       ;; similarly we need to get rid of the :lib/uuid key of
+                       ;; a map that's nested in position 2 of an :and schema:
+                       ::common/options (update (mr/schema ::common/options) 2
+                                                mut/dissoc :lib/uuid)}}
+   [:ref ::query]])
 
 (defn native-only-query?
   "Whether MBQL 5 `query` only has a single native stage (and is thus pure-native). This is the equivalent of the old

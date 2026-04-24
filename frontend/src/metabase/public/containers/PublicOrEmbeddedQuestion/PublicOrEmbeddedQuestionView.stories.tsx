@@ -16,12 +16,12 @@ import {
 } from "__support__/visualizations";
 import { Api } from "metabase/api";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import { PivotTable } from "metabase/visualizations/visualizations/PivotTable";

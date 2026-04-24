@@ -15,7 +15,7 @@
    [diehard.core :as dh]
    [environ.core :refer [env]]
    [java-time.api :as t]
-   [metabase.analytics.prometheus :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as app-db]
    [metabase.config.core :as config]
    [metabase.events.core :as events]
@@ -198,7 +198,7 @@
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (cond
-      (http/success? resp) (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :success})
+      (http/success? resp) (do (analytics/inc! :metabase-token-check/attempt {:status :success})
                                (some-> body json/decode+kw (assoc :canonical? true)))
       (<= 400 status 499) (or (some-> body json/decode+kw (assoc :canonical? true))
                               {:valid         false
@@ -206,7 +206,7 @@
                                :status        "Unable to validate token"
                                :error-details "Token validation provided no response"})
       ;; exceptions are not cached.
-      :else (do (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure})
+      :else (do (analytics/inc! :metabase-token-check/attempt {:status :failure})
                 (throw (ex-info "An unknown error occurred when validating token." {:status status
                                                                                     :body body}))))))
 
@@ -487,7 +487,7 @@
            (catch Exception e
              (when-not (-> e ex-data :cause #{:token-check/circuit-breaker :token-check/app-db-not-ready})
                (log/infof "Error checking token: %s" (ex-message e))
-               (analytics/inc-if-initialized! :metabase-token-check/attempt {:status :failure}))
+               (analytics/inc! :metabase-token-check/attempt {:status :failure}))
              {:valid         false
               :canonical?    false
               :status        (tru "Unable to validate token")

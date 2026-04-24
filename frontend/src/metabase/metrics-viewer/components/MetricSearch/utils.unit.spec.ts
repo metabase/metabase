@@ -1152,52 +1152,148 @@ describe("findInvalidRanges — untracked metric detection", () => {
   });
 });
 
-describe("getWordAtCursor — comma handling with metric entries", () => {
+describe("getWordAtCursor", () => {
   const commaMetricNames: MetricNameMap = { "metric:99": "Revenue, Total" };
 
-  it("without entries, comma is always a delimiter", () => {
+  it("falls back to delimiter-based extraction when no metric names are known", () => {
     const text = "Revenue, Total";
-    // cursor at end
-    const result = getWordAtCursor(text, text.length, {});
+    const result = getWordAtCursor(text, text.length, {}, []);
     expect(result.word).toBe("Total");
+    expect(result.start).toBe(9);
+    expect(result.end).toBe(text.length);
   });
 
-  it("with entries, comma inside a known metric name is not a delimiter", () => {
+  it("extracts full metric name when it contains a comma", () => {
     const text = "Revenue, Total";
-    const result = getWordAtCursor(text, text.length, commaMetricNames);
+    const result = getWordAtCursor(text, text.length, commaMetricNames, []);
     expect(result.word).toBe("Revenue, Total");
   });
 
-  it("with entries, separator comma between two metrics is still a delimiter", () => {
+  it("distinguishes separator comma from name-internal comma", () => {
+    // Two separate metrics "Revenue" and "Orders", separated by comma.
+    // Cursor at end is inside the second name, so we should only get "Orders".
     const text = "Revenue, Orders";
-    // cursor at end (inside "Orders")
-    const result = getWordAtCursor(text, text.length, {
-      "metric:1": "Revenue",
-      "metric:2": "Orders",
-    });
+    const result = getWordAtCursor(
+      text,
+      text.length,
+      { "metric:1": "Revenue", "metric:2": "Orders" },
+      [],
+    );
     expect(result.word).toBe("Orders");
   });
 
   it("treats comma as part of metric name when typing a partial match", () => {
-    // User is typing "Revenue, T" which is a prefix of "Revenue, Total"
-    // The comma is NOT a separator because "Revenue" alone is not a known
-    // metric in this set — the only known metric is "Revenue, Total".
+    // User is typing "Revenue, T" which is a prefix of "Revenue, Total".
     const text = "Revenue, T";
-    const result = getWordAtCursor(text, text.length, commaMetricNames);
+    const result = getWordAtCursor(text, text.length, commaMetricNames, []);
     expect(result.word).toBe("Revenue, T");
-  });
-
-  it("math-operator delimiters still work with metric entries", () => {
-    const text = "Revenue, Total + 1";
-    const result = getWordAtCursor(text, text.length, commaMetricNames);
-    expect(result.word).toBe("1");
   });
 
   it("returns full metric name when cursor is in the middle", () => {
     const text = "Revenue, Total";
     // cursor after the comma+space (position 9, inside "Total")
-    const result = getWordAtCursor(text, 9, commaMetricNames);
+    const result = getWordAtCursor(text, 9, commaMetricNames, []);
     expect(result.word).toBe("Revenue, Total");
+  });
+
+  it("matches metric-name prefixes case-insensitively", () => {
+    // User is typing "rev" in lower case; the known metric is "Revenue".
+    const text = "rev";
+    const result = getWordAtCursor(
+      text,
+      text.length,
+      { "metric:1": "Revenue" },
+      [],
+    );
+    expect(result.word).toBe("rev");
+  });
+
+  it("stops at an existing identity on the right (comma separator case)", () => {
+    const metricNames: MetricNameMap = {
+      "metric:1": "Metric1",
+      "metric:2": "Metric2",
+    };
+    const text = "Metric1 + Met, Metric2";
+    const cursorPos = 13; // immediately after "Met"
+    const identities: MetricIdentityEntry[] = [
+      { sourceId: "metric:1", from: 0, to: 7, definition: null, slotIndex: 0 },
+      {
+        sourceId: "metric:2",
+        from: 15,
+        to: 23,
+        definition: null,
+        slotIndex: 1,
+      },
+    ];
+    const result = getWordAtCursor(text, cursorPos, metricNames, identities);
+    expect(result.word).toBe("Met");
+    expect(result.start).toBe(10);
+    expect(result.end).toBe(13);
+  });
+
+  it("treats parens as part of metric name when typing a partial match", () => {
+    const metricNames: MetricNameMap = { "metric:1": "Revenue (new)" };
+    const text = "Revenue (new";
+    const result = getWordAtCursor(text, text.length, metricNames, []);
+    expect(result.word).toBe("Revenue (new");
+    expect(result.start).toBe(0);
+    expect(result.end).toBe(text.length);
+  });
+
+  it("fallback: breaks on math operators and trims surrounding whitespace", () => {
+    const text = "Rev + M";
+    const result = getWordAtCursor(text, text.length, {}, []);
+    expect(result.word).toBe("M");
+    expect(result.start).toBe(6);
+    expect(result.end).toBe(text.length);
+  });
+
+  it("fallback: returns an empty word at the cursor when only whitespace follows a delimiter", () => {
+    const text = "Metric, ";
+    const result = getWordAtCursor(text, text.length, {}, []);
+    expect(result.word).toBe("");
+    expect(result.start).toBe(text.length);
+    expect(result.end).toBe(text.length);
+  });
+
+  it("only splits on delimiters or whitespace", () => {
+    // The trailing 't' in "xyznonexistent" is a prefix of "Test Measure", but we
+    // only split on delimiters or whitespace.
+    const metricNames: MetricNameMap = {
+      "metric:1": "Test Measure",
+      "metric:2": "Count of orders",
+    };
+    const text = "Test Measure, xyznonexistent";
+    const identities: MetricIdentityEntry[] = [
+      { sourceId: "metric:1", from: 0, to: 12, definition: null, slotIndex: 0 },
+    ];
+    const result = getWordAtCursor(text, text.length, metricNames, identities);
+    expect(result.word).toBe("xyznonexistent");
+    expect(result.start).toBe(14);
+    expect(result.end).toBe(text.length);
+  });
+
+  it("handles delimiters directly after the cursor", () => {
+    const metricNames: MetricNameMap = {
+      "metric:1": "Metric1",
+      "metric:2": "Metric2",
+    };
+    const text = "Metric1, Met Metric2";
+    const cursorPos = 12; // immediately after "Met"
+    const identities: MetricIdentityEntry[] = [
+      { sourceId: "metric:1", from: 0, to: 7, definition: null, slotIndex: 0 },
+      {
+        sourceId: "metric:2",
+        from: 13,
+        to: 20,
+        definition: null,
+        slotIndex: 1,
+      },
+    ];
+    const result = getWordAtCursor(text, cursorPos, metricNames, identities);
+    expect(result.word).toBe("Met");
+    expect(result.start).toBe(9);
+    expect(result.end).toBe(12);
   });
 });
 
@@ -1228,8 +1324,16 @@ function identity(
   to: number,
   definition: MetricDefinitionEntry["definition"] = null,
   slotIndex: number = nextSlotIndex++,
+  customName?: string,
 ): MetricIdentityEntry {
-  return { sourceId: metricSourceId, from, to, definition, slotIndex };
+  return {
+    sourceId: metricSourceId,
+    from,
+    to,
+    definition,
+    slotIndex,
+    customName,
+  };
 }
 
 describe("applyTrackedDefinitions", () => {
@@ -1457,6 +1561,113 @@ describe("applyTrackedDefinitions", () => {
       revenueBreakoutDef,
     );
     expect((entities[1] as MetricDefinitionEntry).definition).toBe(revenueDef);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Custom-name propagation through tracked MetricIdentity.customName.
+  //
+  // Custom expression names ride on the MetricIdentity range value — at
+  // edit-session start, buildFullTextWithIdentities stamps the name onto
+  // every metric-token identity that belongs to a renamed expression.
+  // Here we skip the stamping step and inject `customName` directly into
+  // the tracked identities to drive applyTrackedDefinitions in isolation.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  it("preserves a custom expression name when every identity survives", () => {
+    // "Revenue+Geo Revenue" — expression with two metric tokens.
+    const text = "Revenue+Geo Revenue";
+    const parsed = parseFullText(text, metricNames, []);
+    const tracked = [
+      identity(sourceId(1), 0, 7, null, 0, "My sum"),
+      identity(sourceId(2), 8, 19, null, 1, "My sum"),
+    ];
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      metricNames,
+    );
+    const expr = entities[0] as ExpressionDefinitionEntry;
+    expect(isExpressionEntry(expr)).toBe(true);
+    expect(expr.name).toBe("My sum");
+  });
+
+  it("preserves a custom expression name when at least one identity survives", () => {
+    // Same text as above, but only the first token's identity survives
+    // (e.g. the user deleted and retyped the second metric).
+    const text = "Revenue+Geo Revenue";
+    const parsed = parseFullText(text, metricNames, []);
+    const tracked = [identity(sourceId(1), 0, 7, null, 0, "My sum")];
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      metricNames,
+    );
+    expect((entities[0] as ExpressionDefinitionEntry).name).toBe("My sum");
+  });
+
+  it("drops the custom name when every identity of the old expression is deleted", () => {
+    // All tokens retyped from scratch → no tracked identities match.
+    const text = "Revenue+Geo Revenue";
+    const parsed = parseFullText(text, metricNames, []);
+    const { entities } = applyTrackedDefinitions(parsed, [], text, metricNames);
+    const expr = entities[0] as ExpressionDefinitionEntry;
+    // Default name is the auto-derived expression text.
+    expect(expr.name).toBe(buildExpressionText(expr.tokens, metricNames));
+    expect(expr.name).not.toBe("My sum");
+  });
+
+  it("takes the first non-empty custom name when two named expressions merge", () => {
+    // Two previously-separate expressions — "Revenue+5" named "A" and
+    // "Geo Revenue+5" named "B" — collapse into one combined expression.
+    const text = "Revenue+5+Geo Revenue+5";
+    const parsed = parseFullText(text, metricNames, []);
+    const tracked = [
+      identity(sourceId(1), 0, 7, null, 0, "A"),
+      identity(sourceId(2), 10, 21, null, 1, "B"),
+    ];
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      metricNames,
+    );
+    // "First wins" — the earliest token by traversal order decides.
+    expect((entities[0] as ExpressionDefinitionEntry).name).toBe("A");
+  });
+
+  it("does not bleed a custom name across unrelated expression entities", () => {
+    // Before edit: [Expr("Revenue+5", "A"), Metric(Geo Revenue), Expr("Revenue+5", "B")]
+    // User edited the middle Geo Revenue into a brand-new "Revenue+5".
+    // After edit: "Revenue+5, Revenue+5, Revenue+5".
+    //   - First Revenue at [0,7) survived → customName "A".
+    //   - Middle Revenue at [11,18) is brand new → no tracked identity.
+    //   - Third Revenue at [22,29) survived → customName "B".
+    // Expected: entities[0].name === "A", entities[1].name === default,
+    //           entities[2].name === "B".
+    const text = "Revenue+5, Revenue+5, Revenue+5";
+    const parsed = parseFullText(text, metricNames, []);
+    const tracked = [
+      identity(sourceId(1), 0, 7, null, 0, "A"),
+      identity(sourceId(1), 22, 29, null, 2, "B"),
+    ];
+    const { entities } = applyTrackedDefinitions(
+      parsed,
+      tracked,
+      text,
+      metricNames,
+    );
+    expect(entities).toHaveLength(3);
+    const [first, middle, last] = entities as ExpressionDefinitionEntry[];
+    expect(isExpressionEntry(first)).toBe(true);
+    expect(isExpressionEntry(middle)).toBe(true);
+    expect(isExpressionEntry(last)).toBe(true);
+    expect(first.name).toBe("A");
+    expect(last.name).toBe("B");
+    // The middle one must NOT pick up "B" — the whole point of the fix.
+    expect(middle.name).not.toBe("B");
+    expect(middle.name).toBe(buildExpressionText(middle.tokens, metricNames));
   });
 });
 

@@ -25,6 +25,7 @@ import { baseStyle } from "metabase/css/core/base.styled";
 import { HistoryProvider } from "metabase/history";
 import { makeMainReducers } from "metabase/reducers-main";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { RouterProvider } from "metabase/router";
@@ -34,7 +35,6 @@ import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { mutateColors } from "metabase/ui/colors/colors";
 import { ThemeProviderContext } from "metabase/ui/components/theme/ThemeProvider/context";
 import { PUT } from "metabase/utils/api";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 import MetabaseSettings from "metabase/utils/settings";
 
 import { getStore } from "./entities-store";

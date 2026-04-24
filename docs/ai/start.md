@@ -4,7 +4,7 @@ title: "AI in Metabase"
 
 # AI in Metabase
 
-> AI features are available as an add-on on [Metabase Cloud](https://www.metabase.com/features/metabot-ai), or on self-hosted Metabase with your own AI provider API key.
+> AI features are available on [Metabase Cloud](https://www.metabase.com/features/metabot-ai) and on self-hosted Metabase, using either the Metabase AI service or your own AI provider API key. Enable them from **Admin settings > AI**.
 
 ## [Metabot](./metabot.md)
 

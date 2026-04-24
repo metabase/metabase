@@ -8,7 +8,8 @@
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -638,15 +639,15 @@
                                            :model-id    (:id card)
                                            :stats       stats}})
 
-        (analytics/track-event! :snowplow/csvupload
-                                (assoc stats
-                                       :event    :csv-upload-successful
-                                       :model-id (:id card)))
+        (analytics.core/track-event! :snowplow/csvupload
+                                     (assoc stats
+                                            :event    :csv-upload-successful
+                                            :model-id (:id card)))
         (assoc card :table-id (:id table)))
       (catch Throwable e
         (analytics/inc! :metabase-csv-upload/failed)
-        (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
-                                                           :event :csv-upload-failed))
+        (analytics.core/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
+                                                                :event :csv-upload-failed))
 
         (throw e)))))
 
@@ -858,13 +859,13 @@
                                                :table-name  (:name table)
                                                :stats       stats}})
 
-            (analytics/track-event! :snowplow/csvupload (assoc stats :event :csv-append-successful))
+            (analytics.core/track-event! :snowplow/csvupload (assoc stats :event :csv-append-successful))
 
             {:row-count row-count})))
       (catch Throwable e
         (analytics/inc! :metabase-csv-upload/failed)
-        (analytics/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
-                                                           :event :csv-append-failed))
+        (analytics.core/track-event! :snowplow/csvupload (assoc (fail-stats filename file)
+                                                                :event :csv-append-failed))
         (throw e)))))
 
 (defn- can-update-error

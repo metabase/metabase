@@ -1,8 +1,10 @@
 (ns ^:mb/driver-tests metabase-enterprise.transforms-inspector.query-analysis-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.transforms-inspector.lens.join-analysis :as join-analysis]
    [metabase-enterprise.transforms-inspector.query-analysis :as query-analysis]
    [metabase.driver :as driver]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -107,3 +109,38 @@
               "simple table join should resolve to a real table ID")
           (is (nil? (:source-table cte-join))
               "CTE join should not resolve to a real table ID"))))))
+
+(deftest ^:parallel macaw-table->hsql-returns-vector-test
+  (testing "unaliased table wraps the identifier in a single-element vector"
+    (let [result (#'query-analysis/macaw-table->hsql :h2 {:schema "public" :table "orders"})]
+      (is (= [[:metabase.util.honey-sql-2/identifier :table ["PUBLIC" "ORDERS"]]] result))))
+  (testing "aliased table returns [identifier alias]"
+    (let [result (#'query-analysis/macaw-table->hsql :h2 {:schema "public" :table "orders" :table-alias "o"})]
+      (is (= [[:metabase.util.honey-sql-2/identifier :table ["PUBLIC" "ORDERS"]] :O] result)))))
+
+(deftest ^:parallel macaw-table->hsql-compiles-in-from-test
+  (testing "unaliased table compiles in a :from position without illegal-syntax errors"
+    (let [from-table (#'query-analysis/macaw-table->hsql :h2 {:schema "public" :table "orders"})
+          [sql] (sql.qp/format-honeysql :h2 {:select [[[:count :*]]]
+                                             :from   [from-table]})]
+      (is (string? sql))
+      (is (re-find #"(?i)from" sql))
+      (is (re-find #"(?i)orders" sql))))
+  (testing "aliased table compiles in a :from position"
+    (let [from-table (#'query-analysis/macaw-table->hsql :h2 {:schema "public" :table "orders" :table-alias "o"})
+          [sql] (sql.qp/format-honeysql :h2 {:select [[[:count :*]]]
+                                             :from   [from-table]})]
+      (is (string? sql))
+      (is (re-find #"(?i)orders" sql)))))
+
+(deftest ^:parallel build-native-join-step-hsql-compiles-with-unaliased-tables-test
+  (testing "build-native-join-step-hsql output compiles when FROM and JOIN tables come from macaw-table->hsql without aliases"
+    (let [from-table (#'query-analysis/macaw-table->hsql :h2 {:schema "public" :table "orders"})
+          join-table (#'query-analysis/macaw-table->hsql :h2 {:schema "public" :table "products"})
+          joins      [{:strategy       :left-join
+                       :join-table     join-table
+                       :join-condition [:= [:raw "orders.product_id"] [:raw "products.id"]]}]
+          hsql       (#'join-analysis/build-native-join-step-hsql from-table joins)
+          [sql]      (sql.qp/format-honeysql :h2 hsql)]
+      (is (string? sql))
+      (is (re-find #"(?i)left join" sql)))))

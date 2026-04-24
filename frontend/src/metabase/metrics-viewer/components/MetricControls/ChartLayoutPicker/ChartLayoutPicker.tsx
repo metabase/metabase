@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { trackStackedSeriesEnabled } from "metabase/metrics-viewer/analytics";
 import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
 
 import S from "./ChartLayoutPicker.module.css";
@@ -41,7 +42,10 @@ export function ChartLayoutPicker({
           w="2rem"
           variant={isStacked ? "filled" : "subtle"}
           bg={isStacked ? "background-primary" : undefined}
-          onClick={() => onToggle(true)}
+          onClick={() => {
+            onToggle(true);
+            trackStackedSeriesEnabled();
+          }}
           aria-label={t`Stack layout`}
           className={isStacked ? S.selected : undefined}
         >

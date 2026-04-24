@@ -12,11 +12,11 @@ import { Questions } from "metabase/entities/questions";
 import { Schemas } from "metabase/entities/schemas";
 import { Search } from "metabase/entities/search";
 import { Tables } from "metabase/entities/tables";
+import { connect } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { canUserCreateQueries } from "metabase/selectors/user";
 import { Box, Popover } from "metabase/ui";
-import { connect } from "metabase/utils/redux";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getQuestionIdFromVirtualTableId,

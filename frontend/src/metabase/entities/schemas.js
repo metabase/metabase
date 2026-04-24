@@ -11,7 +11,6 @@ import {
 import { Questions } from "metabase/entities/questions";
 import { SchemaSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
-import { createEntity, entityCompatibleQuery } from "metabase/utils/entities";
 import {
   SAVED_QUESTIONS_VIRTUAL_DB_ID,
   getCollectionVirtualSchemaId,
@@ -23,6 +22,8 @@ import {
   parseSchemaId,
 } from "metabase-lib/v1/metadata/utils/schema";
 
+import { createEntity, entityCompatibleQuery } from "./utils";
+
 // This is a weird entity because we don't have actual schema objects
 
 /**
@@ -32,12 +33,12 @@ export const Schemas = createEntity({
   name: "schemas",
   schema: SchemaSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery,
-  },
+  }),
 
   api: {
     list: async ({ dbId, getAll = false, ...args }, dispatch) => {

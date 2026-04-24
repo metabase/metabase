@@ -11,13 +11,16 @@
 
 (p/import-vars
  [metabase.collections.models.collection
+  has-remote-synced-collection?
   check-for-remote-sync-update
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
   create-library-collection!
   descendant-ids
   library-collection
+  library-collection-type
   library-data-collection-type
+  library-metrics-collection-type
   location-path
   moving-from-remote-synced?
   moving-into-remote-synced?

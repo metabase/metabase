@@ -7,7 +7,7 @@ import {
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { deserializeCardFromUrl } from "metabase/utils/card";
+import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";

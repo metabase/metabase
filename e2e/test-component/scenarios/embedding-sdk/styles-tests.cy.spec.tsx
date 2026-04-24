@@ -640,6 +640,49 @@ describe("scenarios > embedding-sdk > styles", () => {
         expectElementToHaveNoAppliedCssRules(tag);
       }
     });
+
+    it("SDK-themed Mantine CSS variables should be scoped to .mb-wrapper and not leak to :root", () => {
+      const SDK_BRAND_HEX = "#bada55";
+
+      cy.mount(
+        <MetabaseProvider
+          authConfig={DEFAULT_SDK_AUTH_PROVIDER_CONFIG}
+          theme={defineMetabaseTheme({ colors: { brand: SDK_BRAND_HEX } })}
+        >
+          <StaticQuestion questionId={ORDERS_QUESTION_ID} />
+        </MetabaseProvider>,
+      );
+
+      getSdkRoot().findByText("Product ID").should("exist");
+
+      const MANTINE_VAR = "--mantine-color-brand-0";
+
+      cy.get(".mb-wrapper")
+        .first()
+        .then(($wrapper) => {
+          const wrapperValue = getComputedStyle($wrapper[0])
+            .getPropertyValue(MANTINE_VAR)
+            .trim()
+            .toLowerCase();
+
+          expect(
+            wrapperValue,
+            `${MANTINE_VAR} must be set on .mb-wrapper from SDK theme`,
+          ).to.not.equal("");
+
+          cy.document().then((doc) => {
+            const rootValue = getComputedStyle(doc.documentElement)
+              .getPropertyValue(MANTINE_VAR)
+              .trim()
+              .toLowerCase();
+
+            expect(
+              rootValue,
+              `SDK-derived ${MANTINE_VAR}=${wrapperValue} must NOT leak to :root (found ${rootValue || "<empty>"})`,
+            ).to.not.equal(wrapperValue);
+          });
+        });
+    });
   });
 });
 

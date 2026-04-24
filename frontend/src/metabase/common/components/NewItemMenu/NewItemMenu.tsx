@@ -2,6 +2,7 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import { Databases } from "metabase/entities/databases";
+import { connect } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
 import type { State } from "metabase/redux/store";
 import { getHasDatabaseWithJsonEngine } from "metabase/selectors/data";
@@ -9,7 +10,6 @@ import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
 } from "metabase/selectors/user";
-import { connect } from "metabase/utils/redux";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 import { NewItemMenuView } from "./NewItemMenuView";

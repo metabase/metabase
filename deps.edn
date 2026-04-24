@@ -90,8 +90,6 @@
                                              :git/sha "ffc4edc482c057cd9412c62f018a41e9140c618b"
                                              :git/url "https://github.com/eerohele/pp"}
   io.github.metabase/macaw                  {:mvn/version "0.2.36"}             ; Parse native SQL queries
-  io.netty/netty-codec-http                 {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
-  io.netty/netty-codec-http2                {:mvn/version "4.2.9.Final"}        ; override of transitive dep from aws s3
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.7"               ; Various statistic measures implemented as transducers
@@ -202,8 +200,13 @@
                                                            org.eclipse.jetty.ee9.websocket/jetty-ee9-websocket-jetty-server]}
   selmer/selmer                             {:mvn/version "1.12.70"}            ; Jinja-like templates for Clojure
   slingshot/slingshot                       {:mvn/version "0.12.2"}             ; enhanced throw/catch, used by other deps
-  software.amazon.awssdk/s3                 {:mvn/version "2.40.13"}             ; AWS SDK v2 for S3
-  software.amazon.awssdk/sts                {:mvn/version "2.36.2"}             ; Required for S3 client to use service account
+  software.amazon.awssdk/s3                 {:mvn/version "2.40.13"              ; AWS SDK v2 for S3
+                                             ;; Metabase uses only sync S3Client (Apache HttpClient) + S3Presigner;
+                                             ;; excluding the async Netty HTTP client removes all transitive netty
+                                             ;; from the main uberjar and avoids version conflicts with driver-bundled netty.
+                                             :exclusions [software.amazon.awssdk/netty-nio-client]}
+  software.amazon.awssdk/sts                {:mvn/version "2.36.2"               ; Required for S3 client to use service account
+                                             :exclusions [software.amazon.awssdk/netty-nio-client]}
   software.amazon.jdbc/aws-advanced-jdbc-wrapper {:mvn/version "2.6.5"}        ; AWS JDBC wrapper for IAM authentication
   stencil/stencil                           {:mvn/version "0.5.0"}              ; Mustache templates for Clojure
   techascent/tech.ml.dataset                {:mvn/version "8.003"}              ; Tabular data processing for chart statistics
@@ -253,7 +256,7 @@
    {cider/cider-nrepl            {:mvn/version "0.58.0"}                    ; nREPL server for CIDER
     clj-http-fake/clj-http-fake  {:mvn/version "1.0.4"
                                   :exclusions  [slingshot/slingshot]}
-    clj-kondo/clj-kondo          {:mvn/version "2025.10.23"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
+    clj-kondo/clj-kondo          {:mvn/version "2026.04.15"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.clojure-goes-fast/clj-async-profiler
     {:mvn/version "1.6.2"}                     ; Enables local profiling and heat map generation
@@ -519,7 +522,7 @@
   ;; Use this to only run Kondo against specific files.
   :kondo
   {:replace-deps
-   {clj-kondo/clj-kondo {:mvn/version "2025.10.23"}}
+   {clj-kondo/clj-kondo {:mvn/version "2026.04.15"}}
 
    :main-opts
    ["-m" "clj-kondo.main"]}

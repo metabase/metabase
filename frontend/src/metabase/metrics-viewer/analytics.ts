@@ -1,4 +1,4 @@
-import { trackSimpleEvent } from "metabase/utils/analytics";
+import { trackSimpleEvent } from "metabase/analytics";
 
 export const trackMetricsViewerMetricAdded = (
   targetId: number | null,
@@ -62,5 +62,12 @@ export const trackMetricsViewerDimensionTabSwitched = () => {
 export const trackMetricsViewerDimensionTabRemoved = () => {
   trackSimpleEvent({
     event: "metrics_viewer_dimension_tab_removed",
+  });
+};
+
+export const trackStackedSeriesEnabled = () => {
+  trackSimpleEvent({
+    event: "stack_series_enabled",
+    triggered_from: "metrics_viewer",
   });
 };

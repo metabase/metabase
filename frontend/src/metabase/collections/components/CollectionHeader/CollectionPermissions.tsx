@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link/Link";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Collection } from "metabase-types/api";
 

@@ -1,4 +1,4 @@
-import { useDispatch, useSelector } from "metabase/utils/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 
 import { getCanRedo, getCanUndo } from "../selectors";
 import { redo, undo } from "../visualizer.slice";

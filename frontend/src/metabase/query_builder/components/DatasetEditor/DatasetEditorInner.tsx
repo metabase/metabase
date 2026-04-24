@@ -48,11 +48,11 @@ import type { DataReferenceItem } from "metabase/querying/components/DataReferen
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import { SnippetSidebar } from "metabase/querying/components/SnippetSidebar";
 import { MODAL_TYPES } from "metabase/querying/constants";
+import { connect, useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Tooltip } from "metabase/ui";
-import { connect, useDispatch } from "metabase/utils/redux";
 import {
   extractRemappings,
   getVisualizationTransformed,

@@ -5,7 +5,7 @@ import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { getDefaultEngineKey } from "metabase/databases/utils/engine";
 import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/embedding-hub/constants";
 import { PLUGIN_DB_ROUTING } from "metabase/plugins";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import type { DatabaseId, Engine, EngineKey } from "metabase-types/api";
 
 interface UseDatabaseConnectionProps {

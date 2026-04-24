@@ -5,8 +5,8 @@ import {
   CombineColumns,
   hasCombinations,
 } from "metabase/querying/components/expressions";
+import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
-import { useDispatch } from "metabase/utils/redux";
 import type { LegacyDrill } from "metabase/visualizations/types";
 import type { ClickActionPopoverProps } from "metabase/visualizations/types/click-actions";
 import * as Lib from "metabase-lib";
