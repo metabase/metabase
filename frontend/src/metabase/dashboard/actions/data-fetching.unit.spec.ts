@@ -384,8 +384,10 @@ describe("fetchDashboardCardData", () => {
       () =>
         new Promise((resolve) => {
           tab1QueryCount++;
-          // Slow query on Tab 1 (simulates a pivot table)
-          setTimeout(() => resolve({ data: [] }), 200);
+          // Slow query on Tab 1 (simulates a pivot table). Must be long
+          // enough that the request is still in-flight when we navigate
+          // back to Tab 1 in the test below.
+          setTimeout(() => resolve({ data: [] }), 500);
         }),
     );
     fetchMock.post(
@@ -439,11 +441,25 @@ describe("fetchDashboardCardData", () => {
       getState as never,
     );
 
-    await Promise.all([tab1Fetch, tab2Fetch]);
+    // Wait for Tab 2's fast query to finish, while Tab 1 is still in-flight
+    await tab2Fetch;
+    expect(tab1QueryCount).toBe(1);
 
-    // Tab 1's query should have been called exactly once (never cancelled
-    // and restarted). Before the fix, the batch cancellation loop would
-    // cancel Tab 1's in-flight request, causing a re-execution.
+    // Navigate back to Tab 1 while its query is still running. The
+    // in-flight request should be detected as a duplicate (same parameters)
+    // and reused — no new query execution.
+    (state.dashboard as DashboardState).selectedTabId = tab1.id;
+    const backToTab1Fetch = fetchDashboardCardData()(
+      dispatch as never,
+      getState as never,
+    );
+
+    await Promise.all([tab1Fetch, backToTab1Fetch]);
+
+    // Tab 1's query should have been called exactly once across the entire
+    // sequence: initial load -> switch to Tab 2 -> switch back to Tab 1.
+    // Before the fix, the batch cancellation loop would cancel Tab 1's
+    // in-flight request, causing a re-execution on return.
     expect(tab1QueryCount).toBe(1);
   });
 });
