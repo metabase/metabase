@@ -26,8 +26,8 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   Card,
   Collection,
@@ -691,7 +691,7 @@ describe("ModelActions", () => {
       });
 
       expect(history?.getCurrentLocation().pathname).toBe(
-        ML_Urls.getQuestionUrl(question),
+        Urls.question(question),
       );
     });
 

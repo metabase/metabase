@@ -51,13 +51,13 @@ import {
   Text,
   TextInput,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import { DocumentMode } from "metabase/visualizations/click-actions/modes/DocumentMode";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView/ErrorView";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";
 import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
 import Question from "metabase-lib/v1/Question";
-import { getQuestionUrl } from "metabase-lib/v1/urls";
 import type { CardDisplayType, Dataset } from "metabase-types/api";
 
 import { CommentsButton } from "../../components/CommentsButton";
@@ -366,7 +366,7 @@ export const CardEmbedComponent = memo(
             isDraftCard ? { ...card, id: null } : card,
             metadata,
           );
-          const url = getQuestionUrl(question);
+          const url = Urls.question(question);
           dispatch(navigateToCardFromDocument(url, document));
         } catch (error) {
           console.error("Failed to navigate to question:", error);

@@ -14,7 +14,6 @@ import {
   isVirtualCardId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { HeadBreadcrumbs } from "../HeaderBreadcrumbs/HeaderBreadcrumbs";
 import HeaderS from "../HeaderBreadcrumbs/HeaderBreadcrumbs.module.css";
@@ -191,7 +190,7 @@ function getTableURL(table: Table) {
       return Urls.card({ id: cardId, name: table.displayName() });
     }
   }
-  return ML_Urls.getQuestionUrl(table.newQuestion());
+  return Urls.question(table.newQuestion());
 }
 
 export function getQuestionIcon(question: Question): IconName {
