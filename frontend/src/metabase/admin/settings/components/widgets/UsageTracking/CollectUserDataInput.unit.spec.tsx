@@ -15,7 +15,7 @@ import {
 
 import { CollectUserDataInput } from "./CollectUserDataInput";
 
-const { trackSimpleEvent } = jest.requireMock("metabase/utils/analytics");
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 const SETTING_NAME = "analytics-pii-retention-enabled";
 const SETTING_ENV_VAR_NAME = "MB_ANALYTICS_PII_RETENTION_ENABLED";
