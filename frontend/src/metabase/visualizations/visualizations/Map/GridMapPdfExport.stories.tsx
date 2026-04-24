@@ -15,12 +15,12 @@ import {
   type MockDashboardContextProps,
 } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
 import {
   createMockDashboardState,
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 import MetabaseSettings from "metabase/utils/settings";
 import { registerVisualization } from "metabase/visualizations";
 import type { Dashboard } from "metabase-types/api";

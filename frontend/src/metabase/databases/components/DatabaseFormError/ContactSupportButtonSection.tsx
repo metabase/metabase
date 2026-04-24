@@ -2,9 +2,9 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { Button, Flex } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { TroubleshootingTip } from "./TroubleshootingTip";
 

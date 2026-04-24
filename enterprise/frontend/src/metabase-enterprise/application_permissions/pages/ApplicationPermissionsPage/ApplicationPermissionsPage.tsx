@@ -6,7 +6,7 @@ import { ApplicationPermissionsHelp } from "metabase/admin/permissions/component
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
 import { Groups } from "metabase/entities/groups";
-import { connect } from "metabase/utils/redux";
+import { connect } from "metabase/redux";
 import {
   initializeApplicationPermissions,
   saveApplicationPermissions,

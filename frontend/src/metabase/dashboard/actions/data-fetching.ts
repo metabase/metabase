@@ -24,9 +24,11 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
+import { entityCompatibleQuery } from "metabase/entities";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
@@ -42,10 +44,8 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import { entityCompatibleQuery } from "metabase/utils/entities";
 import type { Deferred } from "metabase/utils/promise";
 import { defer } from "metabase/utils/promise";
-import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
 import { uuid } from "metabase/utils/uuid";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";

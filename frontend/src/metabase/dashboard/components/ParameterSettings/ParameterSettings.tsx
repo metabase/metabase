@@ -13,6 +13,7 @@ import { TemporalUnitSettings } from "metabase/parameters/components/TemporalUni
 import { ValuesSourceSettings } from "metabase/parameters/components/ValuesSourceSettings";
 import { isSingleOrMultiSelectable } from "metabase/parameters/utils/parameter-type";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
+import { useDispatch } from "metabase/redux";
 import {
   Box,
   type BoxProps,
@@ -24,7 +25,6 @@ import {
   TextInput,
 } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import { useDispatch } from "metabase/utils/redux";
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { isTemporalUnitParameter } from "metabase-lib/v1/parameters/utils/parameter-type";

@@ -255,6 +255,3 @@ jobs:
       version: ${{ inputs.version }}
       commit: ${{ inputs.commit }}
       auto: ${{ inputs.auto }}
-      # for now don't auto-set release channel because we don't want to have
-      # multiple nightlies due to race conditions
-      release-channel: none

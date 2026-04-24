@@ -5,11 +5,11 @@ import { Component } from "react";
 
 import { SidebarLayout } from "metabase/common/components/SidebarLayout";
 import CS from "metabase/css/core/index.css";
+import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import DatabaseList from "metabase/reference/databases/DatabaseList";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
-import { connect } from "metabase/utils/redux";
 
 import { getDatabaseId, getIsEditing } from "../selectors";
 

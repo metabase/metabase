@@ -2,9 +2,9 @@ import { createReducer } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import { PLUGIN_ADMIN_ALLOWED_PATH_GETTERS } from "metabase/plugins";
+import { combineReducers } from "metabase/redux";
 import type { AdminPath, AdminPathKey } from "metabase/redux/store";
 import { refreshCurrentUser } from "metabase/redux/user";
-import { combineReducers } from "metabase/utils/redux";
 import { isNotNull } from "metabase/utils/types";
 
 export const getAdminPaths: () => AdminPath[] = () => {

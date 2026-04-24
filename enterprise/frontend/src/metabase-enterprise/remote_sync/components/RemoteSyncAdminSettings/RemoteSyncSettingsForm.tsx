@@ -21,6 +21,7 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Box,
@@ -32,7 +33,6 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import {
   useCreateLibraryMutation,
   useGetLibraryCollectionQuery,

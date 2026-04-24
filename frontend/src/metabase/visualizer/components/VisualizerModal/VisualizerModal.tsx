@@ -4,8 +4,8 @@ import { t } from "ttag";
 
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { useModalOpen } from "metabase/common/hooks/use-modal-open";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Modal } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { getIsDirty } from "metabase/visualizer/selectors";
 import { initializeVisualizer } from "metabase/visualizer/visualizer.slice";
 import type { CardId, VisualizerVizDefinition } from "metabase-types/api";

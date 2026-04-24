@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 
+import { useDispatch } from "metabase/redux";
 import type { Undo } from "metabase/redux/store/undo";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
-import { useDispatch } from "metabase/utils/redux";
 
 export type ToastArgs = Omit<Undo, "id" | "timeoutId">;
 

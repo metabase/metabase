@@ -17,11 +17,16 @@ import {
   getAlertTriggerOptions,
   getDefaultQuestionAlertRequest,
 } from "metabase/notifications/utils";
+import {
+  getHasConfiguredAnyChannel,
+  getHasConfiguredEmailOrSlackChannel,
+} from "metabase/pulse";
 import { updateUrl } from "metabase/query_builder/actions/url";
 import {
   getQuestion,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import {
@@ -36,11 +41,6 @@ import {
   rem,
 } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import {
-  getHasConfiguredAnyChannel,
-  getHasConfiguredEmailOrSlackChannel,
-} from "metabase/utils/pulse";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CreateAlertNotificationRequest,

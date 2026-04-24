@@ -2,9 +2,9 @@ import { useCallback, useEffect } from "react";
 import { useAsyncFn, useMount } from "react-use";
 
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
+import { connect } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { PublicApi } from "metabase/services";
-import { connect } from "metabase/utils/redux";
 
 import PublicAction from "./PublicAction";
 import {

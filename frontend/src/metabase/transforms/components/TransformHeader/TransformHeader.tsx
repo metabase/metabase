@@ -6,8 +6,8 @@ import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/Da
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { useCollectionPath } from "metabase/data-studio/common/hooks/use-collection-path/useCollectionPath";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import type { StackProps } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Transform } from "metabase-types/api";
 

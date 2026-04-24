@@ -23,6 +23,7 @@ import {
   getDatabasesList,
   getSampleDatabaseId,
 } from "metabase/querying/selectors";
+import { connect, useSelector } from "metabase/redux";
 import { closeNavbar } from "metabase/redux/app";
 import {
   closeQB,
@@ -55,7 +56,6 @@ import {
   getUser,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import { connect, useSelector } from "metabase/utils/redux";
 import type {
   BookmarkId,
   Bookmark as BookmarkType,
