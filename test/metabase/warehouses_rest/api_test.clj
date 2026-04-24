@@ -662,6 +662,22 @@
                                                {:settings {:database-enable-actions true}})
                          [:settings :database-enable-actions]))))))
 
+(deftest ^:synchronized update-database-with-stale-enable-actions-setting-test
+  (testing (str "PUT /api/database/:id should succeed for a DB whose stored :database-enable-actions is true "
+                "but whose driver no longer supports :actions (QUE2-69)")
+    ;; Customer scenario: a Postgres database had `database-enable-actions` enabled, then the engine was
+    ;; swapped to Snowflake (which doesn't support :actions). The orphaned setting remains in storage and
+    ;; now blocks any edits to the connection, because the `before-update` hook on :model/Database rejects
+    ;; the row as soon as it sees the stale setting paired with a driver that doesn't support :actions.
+    (mt/with-temp [:model/Database {db-id :id} {:engine   :h2
+                                                :details  (:details (mt/db))
+                                                :settings {:database-enable-actions true}}]
+      (tx/with-driver-supports-feature! [:h2 :actions false]
+        (is (=? {:name "que2-69-renamed"}
+                (mt/user-http-request :crowberto :put 200
+                                      (format "database/%s" db-id)
+                                      {:name "que2-69-renamed"})))))))
+
 (deftest update-database-settings-only-validates-changed-settings-test
   (testing "PUT /api/database/:id only validates settings that are being changed"
     (testing "should not validate existing settings that aren't being changed"

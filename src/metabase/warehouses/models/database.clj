@@ -430,7 +430,6 @@
         {new-engine        :engine
          new-settings      :settings} changes
         {is-sample?        :is_sample
-         existing-settings :settings
          existing-engine   :engine}   (t2/original database)
         new-engine                    (some-> new-engine keyword)]
     (if (and is-sample?
@@ -461,17 +460,17 @@
 
                  (:uploads_enabled changes)
                  maybe-disable-uploads-for-all-dbs!)
-        ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
-        ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
-        (when (and (:database-enable-actions (or new-settings existing-settings))
+        ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled.
+        ;; Only enforce this when the setting is actually being turned on in this update — otherwise an
+        ;; orphaned setting (e.g. from a prior engine swap) would block all further edits to the DB.
+        (when (and (:database-enable-actions new-settings)
                    (not (driver.u/supports? (or new-engine existing-engine) :actions database)))
           (throw (ex-info (trs "The database does not support actions.")
                           {:status-code     400
                            :existing-engine existing-engine
                            :new-engine      new-engine})))
-        ;; This maintains a constraint that if a driver doesn't support data editing, it can never be enabled
-        ;; If we drop support for a driver, we'd need to add a migration to disable it for all databases
-        (when (and (:database-enable-table-editing (or new-settings existing-settings))
+        ;; Same rationale as the :database-enable-actions check above: only enforce on actual enablement.
+        (when (and (:database-enable-table-editing new-settings)
                    (not (driver.u/supports? (or new-engine existing-engine) :actions/data-editing database)))
           (throw (ex-info (trs "The database does not support table editing.")
                           {:status-code     400
