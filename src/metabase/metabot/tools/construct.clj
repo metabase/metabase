@@ -40,10 +40,9 @@
   sidesteps the MCP `flatten-root-schema` pitfalls hit by more elaborate `:and`/`:fn` wrappers.
 
   Per `repr-plan.md` step 13, this schema intentionally does NOT include `:source_entity` or
-  `:referenced_entities`: the YAML query is self-describing (it carries `database: <name>` at
-  the top level and full portable FK paths everywhere else), so passing a separate entity
-  identifier is redundant and can disagree with the YAML. Database identity is now derived
-  from the YAML's `database:` field via [[resolve-database-id-from-yaml]]."
+  `:referenced_entities`: the YAML query is self-describing, so passing a separate entity
+  identifier is redundant and can disagree with the YAML. Database identity is derived from
+  the first stage's `source-table:` / `source-card:` — see [[resolve-database-id-from-first-stage]]."
   [:map {:closed true}
    [:reasoning {:optional true} :string]
    [:query :string]
@@ -55,8 +54,8 @@
   "Resolve the database ID for a source_entity. Public only so tests can stub it.
 
   Still consumed by [[execute-program]] (the legacy sexp pipeline used by slackbot). The
-  representations pipeline derives database-id from the YAML's `database:` field instead;
-  see [[resolve-database-id-from-yaml]]."
+  representations pipeline derives database-id from the first stage's source instead;
+  see [[resolve-database-id-from-first-stage]]."
   [{:keys [type id]}]
   (case type
     "table"                (:db_id (tools.u/get-table id :db_id))
@@ -65,29 +64,95 @@
     (throw (ex-info (str "Unsupported source_entity type: " type)
                     {:agent-error? true :status-code 400}))))
 
-(defn resolve-database-id-from-yaml
-  "Look up a database id by name, given a parsed (string-keyed) representations query.
-
-  Public only so tests can stub it. Three error paths, all surfaced as `:agent-error? true`
-  so the tool wrapper produces a useful LLM-facing message rather than a stack trace:
-
-    * The query has no `database:` field at the top level (or it isn't a string).
-    * No application database is named `<name>`.
-    * Two or more application databases share the same name. The LLM has no way to
-      disambiguate by name alone, so we refuse to silently pick one.
-
-  Returns the numeric database id on success."
+(defn- first-stage-source-table-fk
+  "Pull the portable `[db schema table]` FK out of `stages[0].source-table`, or `nil`
+  if not present / wrong shape."
   [parsed-query]
-  (let [db-name (get parsed-query "database")]
-    (when-not (string? db-name)
-      (throw (ex-info (tru "Representations query is missing a top-level `database:` field.")
-                      {:agent-error? true
-                       :status-code  400
-                       :error        :missing-database-name})))
-    (let [ids (t2/select-pks-vec :model/Database :name db-name)]
+  (let [fk (get-in parsed-query ["stages" 0 "source-table"])]
+    (when (and (vector? fk)
+               (= 3 (count fk))
+               (string? (nth fk 0)))
+      fk)))
+
+(def ^:private metabase-uri-source-table-pattern
+  "Matches values the LLM sometimes writes into `source-table:` by confusing the Metabase
+  `metabase://<entity-type>/<id>` URIs (which appear in prompts as a way to read entities)
+  with a query source handle. Examples we've observed: `metabase://metric/76`,
+  `metabase://table/123`, `metabase://model/42`, `metabase://question/9`.
+
+  The regex is deliberately permissive — we catch anything starting with `metabase://` so
+  the error message is always the directive one instead of falling through to the generic
+  `:missing-source-in-first-stage` message."
+  #"^metabase://([^/]+)/(\d+)")
+
+(defn- detect-metabase-uri-source-table!
+  "If `stages[0].source-table` is a `metabase://<type>/<id>` URI string, throw a targeted
+  agent-error explaining how to use the referenced entity correctly (typically: the LLM
+  meant to reference a metric — metrics are aggregations, not sources — but wrote the URI
+  as a source). No-op on well-formed sources."
+  [parsed-query]
+  (let [raw (get-in parsed-query ["stages" 0 "source-table"])]
+    (when (string? raw)
+      (when-let [[_ entity-type entity-id] (re-find metabase-uri-source-table-pattern raw)]
+        (let [hint (case entity-type
+                     "metric"
+                     (str "Metrics are aggregations, not sources. To use metric " entity-id
+                          ", put its `base_table_portable_fk` (from `entity_details` on the metric) "
+                          "into `source-table:` and reference the metric as "
+                          "`aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
+                     ("question" "model" "card")
+                     (str "To reference saved " entity-type " " entity-id
+                          " as a query source, put its `portable_entity_id` (a 21-char "
+                          "string from `entity_details`) into `source-card:` — not a URI.")
+                     "table"
+                     (str "Use the portable FK `[<db-name>, <schema>, <table-name>]` from "
+                          "`entity_details` in `source-table:` — not a URI.")
+                     (str "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` "
+                          "or, via `source-card:`, a saved-card `portable_entity_id`."))]
+          (throw (ex-info (tru "`source-table:` does not accept URIs like `{0}`. {1}"
+                               raw hint)
+                          {:agent-error? true
+                           :status-code  400
+                           :error        :uri-in-source-table
+                           :source-table raw
+                           :entity-type  entity-type
+                           :entity-id    entity-id})))))))
+
+(defn- first-stage-source-card-eid
+  "Pull the `source-card:` entity_id string from `stages[0]`, or `nil` if not present."
+  [parsed-query]
+  (let [eid (get-in parsed-query ["stages" 0 "source-card"])]
+    (when (string? eid) eid)))
+
+(defn resolve-database-id-from-first-stage
+  "Resolve the application database id from the first stage's source.
+
+  Public only so tests can stub it. Strategy:
+
+    * If `stages[0].source-table` is a portable FK `[db schema table]`, look up the database
+      by that `db` name. Unknown / ambiguous names surface `:unknown-database` / `:ambiguous-database-name`
+      agent-errors.
+    * Otherwise, if `stages[0].source-card` is an entity_id string, look up the card by entity_id
+      and use its `:database_id`. Unknown entity_id surfaces `:unknown-card`.
+    * Otherwise, surface `:missing-source-in-first-stage`.
+
+  All error paths are raised with `:agent-error? true` so the tool wrapper can relay a clean
+  message to the LLM instead of a stack trace.
+
+  Note: the `database:` field at the top level of the YAML is intentionally NOT consulted.
+  It's a spec-mandated but redundant field (the source already identifies the database); a
+  repair pass stamps it after we've resolved the id via this function. See `repr-plan.md`
+  step 14 follow-up."
+  [parsed-query]
+  (detect-metabase-uri-source-table! parsed-query)
+  (if-let [table-fk (first-stage-source-table-fk parsed-query)]
+    (let [db-name (nth table-fk 0)
+          ids     (t2/select-pks-vec :model/Database :name db-name)]
       (case (count ids)
         0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
-                                    "reported by `entity_details` / metadata tools.")
+                                    "reported by `entity_details` / metadata tools (it appears "
+                                    "as the first element of every portable FK, e.g. "
+                                    "`source-table: [<db-name>, <schema>, <table>]`).")
                                db-name)
                           {:agent-error? true
                            :status-code  400
@@ -102,7 +167,25 @@
                          :status-code  400
                          :error        :ambiguous-database-name
                          :database     db-name
-                         :database-ids (vec (sort ids))}))))))
+                         :database-ids (vec (sort ids))}))))
+    (if-let [eid (first-stage-source-card-eid parsed-query)]
+      (if-let [card (tools.u/get-card-by-entity-id eid)]
+        (:database_id card)
+        (throw (ex-info (tru (str "No saved question or model found with entity_id {0}. Do not invent "
+                                  "or guess entity_ids: call `entity_details` with `entity-type: question` "
+                                  "or `entity-type: model` and the card''s numeric id first, then copy the "
+                                  "exact `portable_entity_id` from the response into `source-card:`.")
+                             (pr-str eid))
+                        {:agent-error? true
+                         :status-code  400
+                         :error        :unknown-card
+                         :entity-id    eid})))
+      (throw (ex-info (tru (str "First stage must have either `source-table:` (as a portable FK "
+                                "`[<db-name>, <schema>, <table>]`) or `source-card:` (as an "
+                                "entity_id string). Neither was found in `stages[0]`."))
+                      {:agent-error? true
+                       :status-code  400
+                       :error        :missing-source-in-first-stage})))))
 
 ;;; --------------------------- Legacy sexp-pipeline scaffolding (step 15 delete) ---------------------------
 ;;;
@@ -111,7 +194,7 @@
 ;;; endpoint migrates in `repr-plan.md` step 15; at that point this entire block goes away
 ;;; along with `construct-program` from the endpoint body schema.
 ;;;
-;;; The repr pipeline (`execute-representations-query`, `resolve-database-id-from-yaml`,
+;;; The repr pipeline (`execute-representations-query`, `resolve-database-id-from-first-stage`,
 ;;; `resolve-source-database-id`, the result-column helpers, the main tool) lives above and
 ;;; below this block.
 ;;; -----------------------------------------------------------------------------------------
@@ -222,11 +305,12 @@
 
   Pipeline:
     1. Parse the YAML string into a portable Clojure data structure.
-    2. Look up the database id from the parsed query's top-level `database:` field
-       ([[resolve-database-id-from-yaml]]) and build an application-DB-backed
+    2. Resolve the database id from the first stage's `source-table:` / `source-card:`
+       ([[resolve-database-id-from-first-stage]]) and build an application-DB-backed
        `MetadataProvider`.
-    3. Run the repair pass (fill in `{}` options, missing `lib/type` markers, auto-wire
-       `source-field` for implicit joins, rewrite inline `order-by` aggregations to refs).
+    3. Run the repair pass (fill in `{}` options, missing `lib/type` markers, stamp the
+       top-level `database:`, auto-wire `source-field` for implicit joins, rewrite inline
+       `order-by` aggregations to refs, etc.).
     4. Structurally validate against the repr schema.
     5. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
@@ -235,8 +319,10 @@
   `:agent-error?` ex-data flag when the LLM input is invalid, so the outer tool wrapper can
   surface a helpful message to the LLM without a stack trace.
 
-  Per `repr-plan.md` step 13, database identity is taken from the YAML alone. There is no
-  `source_entity` parameter — the YAML carries everything needed."
+  Per `repr-plan.md` step 13, there is no `source_entity` parameter — the YAML carries
+  everything needed. Per the step-14 follow-up, there is also no top-level `database:` in the
+  LLM-facing contract: the database is derived from the first stage's source, and a repair
+  pass stamps `database:` into the parsed YAML before lib.schema / resolve need it."
   [yaml-string]
   (let [;; Parse first so we can derive the database-id from the YAML.
         parsed      (try
@@ -245,7 +331,7 @@
                         (throw (ex-info (ex-message e)
                                         (assoc (ex-data e) :agent-error? true)
                                         e))))
-        database-id (resolve-database-id-from-yaml parsed)
+        database-id (resolve-database-id-from-first-stage parsed)
         mp          (lib-be/application-database-metadata-provider database-id)]
     ;; Everything after the MP is built can surface LLM-input errors (lib.schema validation
     ;; in resolve, missing-column complaints from lib/query in `result-columns-for-query`,
@@ -349,7 +435,14 @@
                                 "<instructions>\n" instruction-text "\n</instructions>")))
           query-result)))
     (catch Exception e
-      (log/error e "Failed to construct notebook query")
       (if (:agent-error? (ex-data e))
-        {:output (ex-message e)}
-        {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))}))))
+        ;; Expected agent-facing signal (bad LLM input: unknown table, unknown schema,
+        ;; URI-in-source-table, …). Log at debug only — no stacktrace — since the message
+        ;; is the tool's result and the LLM is expected to self-correct on the next turn.
+        (do
+          (log/debug e "construct_notebook_query returned agent-error to the LLM")
+          {:output (ex-message e)})
+        ;; Genuine unexpected failure — keep full stacktrace.
+        (do
+          (log/error e "Failed to construct notebook query")
+          {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})))))

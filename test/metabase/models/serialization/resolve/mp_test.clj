@@ -31,6 +31,20 @@
                {:id 110 :name "ID"         :table-id 11 :base-type :type/Integer}
                {:id 111 :name "CATEGORY"   :table-id 11 :base-type :type/Text}]}))
 
+(def ^:private mp-with-fk
+  "Same shape as `mp-simple`, but `ORDERS.PRODUCT_ID` carries an FK target pointing
+  at `PRODUCTS.ID`. Used to exercise the FK-candidate hint surfaced by `find-field`
+  when the LLM asks for a column that lives on an FK-reachable table."
+  (lib.tu/mock-metadata-provider
+   {:database {:id 6 :name "Sample"}
+    :tables   [{:id 60 :name "ORDERS"   :schema "PUBLIC" :db-id 6}
+               {:id 61 :name "PRODUCTS" :schema "PUBLIC" :db-id 6}]
+    :fields   [{:id 600 :name "ID"         :table-id 60 :base-type :type/Integer}
+               {:id 602 :name "PRODUCT_ID" :table-id 60 :base-type :type/Integer
+                :fk-target-field-id 610}
+               {:id 610 :name "ID"       :table-id 61 :base-type :type/Integer}
+               {:id 611 :name "CATEGORY" :table-id 61 :base-type :type/Text}]}))
+
 (def ^:private mp-schemaless
   "Schemaless database (e.g. Mongo) \u2014 :schema is nil."
   (lib.tu/mock-metadata-provider
@@ -77,7 +91,7 @@
       (is (= 31 (resolve/import-table-fk r ["DW" "CLEAN" "ORDERS"]))))))
 
 (deftest import-table-fk-error-test
-  (testing "unknown table name"
+  (testing "unknown table name in a valid schema → :unknown-table with substring candidates"
     (let [r (resolve.mp/import-resolver mp-simple)]
       (try
         (resolve/import-table-fk r ["Sample" "PUBLIC" "NOPE"])
@@ -85,14 +99,47 @@
         (catch clojure.lang.ExceptionInfo e
           (let [d (ex-data e)]
             (is (= :unknown-table (:error d)))
-            (is (= 400 (:status-code d))))))))
-  (testing "table name exists but wrong schema"
+            (is (= 400 (:status-code d)))
+            (is (true? (:agent-error? d))))))))
+  (testing "fuzzy substring match surfaces closest table(s) on unknown-table"
+    ;; `ORDER` is a prefix of real `ORDERS` — we should name it.
+    (let [r (resolve.mp/import-resolver mp-simple)]
+      (try
+        (resolve/import-table-fk r ["Sample" "PUBLIC" "ORDER"])
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (= :unknown-table (:error d)))
+            (is (contains? (set (:candidates d)) "PUBLIC.ORDERS")
+                "expected the real ORDERS table to appear in candidates"))))))
+  (testing "schema does not exist in DB → :unknown-schema with available-schemas listed"
+    ;; mp-simple only has schema PUBLIC; asking for OTHER must not be reported as unknown-table.
     (let [r (resolve.mp/import-resolver mp-simple)]
       (try
         (resolve/import-table-fk r ["Sample" "OTHER" "ORDERS"])
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
-          (is (= :unknown-table (:error (ex-data e))))))))
+          (let [d (ex-data e)]
+            (is (= :unknown-schema (:error d)))
+            (is (true? (:agent-error? d)))
+            (is (= ["PUBLIC"] (:available-schemas d))))))))
+  (testing "table exists in OTHER schemas → :unknown-table naming them"
+    ;; In mp-ambiguous-by-schema ORDERS lives in RAW and CLEAN. Asking for schema BOGUS
+    ;; won't even match case 1 (BOGUS !∈ schemas), so we hit case 1 (unknown-schema).
+    ;; Use a schema that DOES exist but where ORDERS is absent — we need a fixture for that.
+    (let [mp (lib.tu/mock-metadata-provider
+              {:database {:id 5 :name "DW2"}
+               :tables   [{:id 50 :name "ORDERS"   :schema "RAW"   :db-id 5}
+                          {:id 51 :name "PRODUCTS" :schema "CLEAN" :db-id 5}]})
+          r  (resolve.mp/import-resolver mp)]
+      (try
+        (resolve/import-table-fk r ["DW2" "CLEAN" "ORDERS"])
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (= :unknown-table (:error d)))
+            (is (= ["RAW.ORDERS"] (:candidates d))
+                "expected the wrong-schema table to be surfaced as a candidate"))))))
   (testing "database name mismatch"
     (let [r (resolve.mp/import-resolver mp-simple)]
       (try
@@ -101,7 +148,34 @@
         (catch clojure.lang.ExceptionInfo e
           (let [d (ex-data e)]
             (is (= :unknown-table (:error d)))
-            (is (= "Sample" (:expected-db d)))))))))
+            (is (= "Sample" (:expected-db d)))
+            (is (true? (:agent-error? d))))))))
+  (testing "token-level fuzzy match surfaces tables with shared stems across schemas"
+    ;; Reproduces the benchmark failure where the LLM asked for `brex_enriched.fct_cards`
+    ;; (a data-warehouse convention name) while the real tables are `brex_data.card` and
+    ;; `brex_enriched.int_brex_card_dim`. Raw substring match only catches the former; we
+    ;; also want the schema-matched `int_brex_card_dim` so the LLM can recover on the next
+    ;; turn without another round of invention.
+    (let [mp (lib.tu/mock-metadata-provider
+              {:database {:id 6 :name "Warehouse"}
+               :tables   [{:id 60 :name "card"              :schema "brex_data"     :db-id 6}
+                          {:id 61 :name "int_brex_card_dim" :schema "brex_enriched" :db-id 6}
+                          {:id 62 :name "int_brex_user_dim" :schema "brex_enriched" :db-id 6}]})
+          r  (resolve.mp/import-resolver mp)]
+      (try
+        (resolve/import-table-fk r ["Warehouse" "brex_enriched" "fct_cards"])
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)
+                cands (set (:candidates d))]
+            (is (= :unknown-table (:error d)))
+            (is (contains? cands "brex_enriched.int_brex_card_dim")
+                "token-level fuzzy + schema boost must surface the real sibling table")
+            (is (contains? cands "brex_data.card")
+                "raw substring / cross-schema match must still be included")
+            (testing "same-schema candidate is ranked first (schema boost)"
+              (is (= "brex_enriched.int_brex_card_dim"
+                     (first (:candidates d)))))))))))
 
 ;;; ============================================================
 ;;; import-field-fk
@@ -145,6 +219,35 @@
         (is false "expected throw")
         (catch clojure.lang.ExceptionInfo e
           (is (= :invalid-field-fk (:error (ex-data e)))))))))
+
+(deftest import-field-fk-surfaces-fk-candidate-hint-test
+  (testing "when the missing column exists on an FK-reachable table, the error message
+           includes the candidate portable path so the LLM can self-correct via the implicit join"
+    ;; Regression: LLM kept writing `[db, schema, <source>, name]` / `[… email]` when the
+    ;; column actually lived on an FK target. Raw "No column" / "unknown-field" was not
+    ;; actionable; now we look up outbound FKs and surface any candidates by portable path.
+    (let [r (resolve.mp/import-resolver mp-with-fk)]
+      (try
+        (resolve/import-field-fk r ["Sample" "PUBLIC" "ORDERS" "CATEGORY"])
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (= :unknown-field (:error d)))
+            (is (true? (:agent-error? d)))
+            (is (= [["Sample" "PUBLIC" "PRODUCTS" "CATEGORY"]] (:fk-candidates d)))
+            (is (re-find #"FK-linked tables" (.getMessage e)))
+            (is (re-find #"PRODUCTS" (.getMessage e))))))))
+
+  (testing "when no FK-reachable table has the column, no misleading hint is attached"
+    (let [r (resolve.mp/import-resolver mp-with-fk)]
+      (try
+        (resolve/import-field-fk r ["Sample" "PUBLIC" "ORDERS" "NOT_ANYWHERE"])
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (let [d (ex-data e)]
+            (is (= :unknown-field (:error d)))
+            (is (nil? (:fk-candidates d)))
+            (is (not (re-find #"FK-linked tables" (.getMessage e))))))))))
 
 ;;; ============================================================
 ;;; export-table-fk / export-field-fk

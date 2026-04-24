@@ -233,6 +233,74 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.9 -- stamp top-level `database:` from the first stage
+;;;
+;;; Rationale: the `representations` spec mandates a top-level `database:` field on every
+;;; query (see `../representations/core-spec/v1/schemas/common/query.yaml`), but every
+;;; database-identifying piece of information is already available in the first stage's
+;;; `source-table:` (a portable FK `[db, schema, table]`) or `source-card:` (an entity_id
+;;; whose card carries a `database_id`). We remove `database:` from the LLM-facing tool
+;;; contract — one less thing for the model to get wrong, one less failure mode where the
+;;; top-level name disagrees with the FKs.
+;;;
+;;; To keep the downstream spec-compliant (lib.schema/Query, validate-query, etc.), this pass
+;;; stamps the top-level `database:` from the first stage. Sources of truth, in order:
+;;;
+;;;   1. `stages[0].source-table[0]` — the db-name component of the portable table FK.
+;;;   2. `stages[0].source-card` — entity_id; look up the card, read its `database_id`, then
+;;;      the database's name via the metadata provider.
+;;;
+;;; **Silent overwrite on conflict.** If the LLM did author a `database:` field and it
+;;; disagrees with what we computed, we overwrite it. The first-stage source is more detailed
+;;; and is what the resolver actually uses; there's no reason to trust a dangling top-level
+;;; name over it.
+;;;
+;;; **No-op when we can't derive anything** (no source-table, and source-card lookup failed /
+;;; absent). The enclosing pipeline's `resolve-database-id-from-first-stage` already raised
+;;; before we got here in that case, but we guard here too for test isolation.
+;;; ============================================================
+
+(defn- db-name-from-source-table
+  "Pull the first element (db-name) out of `stages[0].source-table`, or nil."
+  [query]
+  (let [fk (get-in query ["stages" 0 "source-table"])]
+    (when (and (vector? fk) (>= (count fk) 1) (string? (nth fk 0)))
+      (nth fk 0))))
+
+(defn- db-name-from-mp
+  "Read the canonical database name off the metadata provider, or nil on failure."
+  [mp]
+  (when mp
+    (try
+      (:name (lib.metadata.protocols/database mp))
+      (catch Exception _ nil))))
+
+(defn- infer-top-level-database*
+  "Stamp (or overwrite) the top-level `database:` field on a parsed query.
+
+  Only applies to maps that look like a top-level query — those that have a `stages` key.
+  We intentionally do NOT stamp `database:` on arbitrary maps: the `repair` entry point is
+  sometimes exercised with a non-query input (shape-pass unit tests, plain data), and we
+  must preserve those inputs unchanged modulo the structural repairs.
+
+  Source of truth, in order:
+    1. The metadata provider's database name — authoritative, since the MP was built from the
+       database-id resolved from the first stage. This is always correct when present.
+    2. The raw `stages[0].source-table[0]` string — fallback for the `mp == nil` case (unit
+       tests of this pass in isolation).
+
+  **Silent overwrite on conflict.** If the LLM authored a `database:` field that disagrees
+  with the computed value, we overwrite it: the source is more detailed and is what the
+  resolver actually uses; a dangling top-level name has no independent authority."
+  [query mp]
+  (if-not (and (map? query) (contains? query "stages"))
+    query
+    (if-let [db-name (or (db-name-from-mp mp)
+                         (db-name-from-source-table query))]
+      (assoc query "database" db-name)
+      query)))
+
+;;; ============================================================
 ;;; Pass 2 -- fill in missing `lib/type` markers
 ;;; ============================================================
 
@@ -922,6 +990,12 @@
       normalize-expressions-shape*
       ensure-lib-types*))
 
+(defn- stamp-top-level-database*
+  "Idempotent wrapper around [[infer-top-level-database*]] that takes `[query mp]` in the
+  arg order matching the other mp-taking passes below."
+  [query mp]
+  (infer-top-level-database* query mp))
+
 (defn repair
   "Run the repair pipeline on a parsed (string-keyed, portable) representations query.
 
@@ -954,9 +1028,12 @@
   the schema validator complain.
 
   Note: the database-name normalisation pass (\"Pass 2.5\") that previously lived here was
-  removed in `repr-plan.md` step 13. Database identity is now derived from the YAML's
-  `database:` field directly (see [[metabase.metabot.tools.construct/resolve-database-id-from-yaml]]),
-  which makes the MP guaranteed-consistent with the YAML by construction.
+  removed in `repr-plan.md` step 13, and the top-level `database:` field was removed from
+  the LLM-facing contract in the step-14 follow-up. Database identity is now derived from
+  the first stage's `source-table:` / `source-card:` (see
+  [[metabase.metabot.tools.construct/resolve-database-id-from-first-stage]]), and Pass 1.9
+  stamps `database:` from the MP into the parsed YAML so the downstream resolver and lib
+  schema see a spec-compliant document.
 
   Guaranteed to be **idempotent**: `(= (repair mp q) (repair mp (repair mp q)))`. Pass 3
   satisfies idempotency by stamping a deterministic-once UUID into the matching aggregation
@@ -966,6 +1043,7 @@
   [mp parsed]
   (-> parsed
       normalize-shape*
+      (stamp-top-level-database* mp)
       rewrite-order-by-inline-aggs*
       resolve-aggregation-ref-indexes*
       (resolve-implicit-joins* mp)

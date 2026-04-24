@@ -67,14 +67,11 @@
   (testing "clause without options gets {} inserted"
     (is (= ["count" {}]
            (repair/repair trivial-mp ["count"])))
-    ;; FK paths use "Sample" here because `repair` also normalises the DB component of every
-    ;; portable FK to match the metadata provider's DB name (`trivial-mp` is named "Sample").
-    ;; See `rewrite-database-name*` in repair.clj for the rationale.
     (is (= ["sum" {} ["field" {} ["Sample" "S" "T" "F"]]]
            (repair/repair trivial-mp ["sum" ["field" ["Sample" "S" "T" "F"]]])))))
 
 (deftest do-not-corrupt-fk-paths-test
-  (testing "FK paths (all-string vectors) are left alone (modulo DB-name normalization)"
+  (testing "FK paths (all-string vectors) are left alone"
     (let [fk ["Sample" "PUBLIC" "TBL" "COL"]]
       (is (= fk (repair/repair trivial-mp fk))))
     (let [fk ["Sample" nil "TBL" "COL"]]
@@ -211,19 +208,58 @@
       (is (= input (repair/repair trivial-mp input))))))
 
 ;;; ============================================================
-;;; (Removed) Pass 2.5 — rewrite the database name to match the metadata provider
+;;; Pass 1.9 — stamp top-level `database:` from the first stage's source
 ;;;
-;;; This pass was deleted in `repr-plan.md` step 13. The previous role of the pass was to
-;;; reconcile a YAML `database:` (often `Sample`, copied from the prompt examples) with the
-;;; real MP DB name (often `Sample Database`). Now that the MP is *built from* the YAML's
-;;; `database:` field via `construct/resolve-database-id-from-yaml`, the names are guaranteed
-;;; to agree by construction — the rewrite has nothing to do.
+;;; Introduced in the `repr-plan.md` step-14 follow-up: the LLM-facing tool contract no
+;;; longer asks the model to author `database:`. Instead the construct pipeline derives the
+;;; database-id from `stages[0].source-table[0]` (or `source-card` entity_id), builds an MP,
+;;; and this repair pass stamps `database:` from the MP into the parsed YAML so the repr
+;;; spec / lib.schema are happy downstream.
 ;;;
-;;; A wrong DB name now surfaces a clear `:agent-error?` (`:unknown-database`) at the database
-;;; lookup step, with a message instructing the LLM to use the canonical name from
-;;; `entity_details`. Tests for that behaviour live in `construct_representations_test.clj`
-;;; under `llm-uses-prompt-example-database-name-now-fails-loudly-test`.
+;;; The previous `rewrite-database-name*` pass (deleted in step 13) served a related but
+;;; different role — reconciling a Sample / Sample-Database mismatch. Its concern is
+;;; structurally prevented now: if the user writes the wrong DB name in `source-table[0]`,
+;;; the DB lookup fails at `resolve-database-id-from-first-stage` with `:unknown-database`
+;;; before this repair pass even runs.
 ;;; ============================================================
+
+(deftest stamp-top-level-database-from-source-table-test
+  (testing "Pass 1.9 stamps `database:` onto a query that doesn't have one, using the MP name."
+    (let [input  {"lib/type" "mbql/query"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["count" {}]]}]}
+          output (repair/repair mp-fks input)]
+      (is (= "Sample" (get output "database"))))))
+
+(deftest stamp-top-level-database-overwrites-mismatch-test
+  (testing "Pass 1.9 silently overwrites a stale / wrong `database:` with the MP's canonical name."
+    (let [input  {"lib/type" "mbql/query"
+                  "database" "DatabaseFormerlyKnownAsSample"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["count" {}]]}]}
+          output (repair/repair mp-fks input)]
+      (is (= "Sample" (get output "database"))))))
+
+(deftest stamp-top-level-database-idempotent-test
+  (testing "Pass 1.9 is a fixed point: running it twice gives the same output."
+    (let [input  {"lib/type" "mbql/query"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["count" {}]]}]}
+          once   (repair/repair mp-fks input)
+          twice  (repair/repair mp-fks once)]
+      (is (= once twice)))))
+
+(deftest stamp-top-level-database-no-mp-fallback-test
+  (testing "With no MP we still use the raw `source-table[0]` string as a fallback (unit-test isolation path)."
+    (let [input  {"lib/type" "mbql/query"
+                  "stages"   [{"lib/type"     "mbql.stage/mbql"
+                               "source-table" ["WarehouseX" "PUBLIC" "ORDERS"]
+                               "aggregation"  [["count" {}]]}]}
+          output (repair/repair nil input)]
+      (is (= "WarehouseX" (get output "database"))))))
 
 ;;; ============================================================
 ;;; Pass 2.7 — rewrite inline aggregations in `order-by` to aggregation refs

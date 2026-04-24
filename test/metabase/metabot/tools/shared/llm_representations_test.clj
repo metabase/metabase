@@ -40,7 +40,26 @@
           xml (llm-rep/field->xml field)]
       (is (str/includes? xml "id=\"f1\""))
       (is (str/includes? xml "name=\"\\\"test\\\"\""))
-      (is (str/includes? xml "database_type=\"unknown\"")))))
+      (is (str/includes? xml "database_type=\"unknown\""))))
+
+  (testing "FK columns expose `fk_target_fully_qualified_name` so the LLM can join via the target table"
+    ;; Regression: earlier the `<field>` element rendered no FK hint, so a bare `customer_id`
+    ;; with no context led the LLM to assume related fields (like `email`) lived on the same
+    ;; table and produce `:unknown-field` errors. `->result-column` already computes
+    ;; `:fk_target_portable_fk`; `field->xml` now surfaces it.
+    (let [field {:field_id "892"
+                 :name "customer_id"
+                 :display_name "Customer ID"
+                 :type :string
+                 :database_type "varchar"
+                 :fk_target_portable_fk ["Analytics" "customerio_data" "customer" "id"]}
+          xml (llm-rep/field->xml field)]
+      (is (str/includes? xml "fk_target_fully_qualified_name=\"customerio_data.customer.id\""))))
+
+  (testing "non-FK fields do not render an empty `fk_target_fully_qualified_name` attribute"
+    (let [field {:field_id "1" :name "total" :type :number}
+          xml (llm-rep/field->xml field)]
+      (is (not (str/includes? xml "fk_target_fully_qualified_name"))))))
 
 (deftest collection->xml-test
   (testing "formats collection with name"

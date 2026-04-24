@@ -98,10 +98,21 @@
                    (and (#{:type :base-type} k) (keyword? v)) (clojure.core/name v)
                    :else                                      (str v))))}))
 
+(defn- fully-qualified-name
+  "Get fully qualified name for a table."
+  [database_schema name]
+  (if database_schema
+    (str database_schema "." name)
+    name))
+
 (defn field->xml
   "Format a field/column as XML element.
-   Matches Python Column.llm_representation exactly."
-  [{:keys [field_id name display_name type database_type description]}]
+   Matches Python Column.llm_representation exactly, plus — when the column is a foreign key
+   — a `fk_target_fully_qualified_name` attribute like `schema.table.field_name`. Without this
+   attribute the LLM sees a bare `customer_id` column with no hint that it joins anywhere,
+   and tries to read related fields (e.g. `email`) off the current table, which fails
+   with `:unknown-field`."
+  [{:keys [field_id name display_name type database_type description fk_target_portable_fk]}]
   (render-llm-template
    :field
    {:field_id            field_id
@@ -110,7 +121,13 @@
     :field_display_name  (or display_name name)
     :field_base_type     (when type (clojure.core/name type))
     :field_database_type (database-type-or-unknown database_type)
-    :field_description   description}))
+    :field_description   description
+    :field_fk_target_fqn (when (and (vector? fk_target_portable_fk)
+                                    (>= (count fk_target_portable_fk) 4))
+                           (let [[_db schema table & field-path] fk_target_portable_fk]
+                             (str (fully-qualified-name schema table)
+                                  "."
+                                  (str/join "." field-path))))}))
 
 (defn collection->xml
   "Format collection for LLM consumption.
@@ -148,42 +165,50 @@
 
 (defn- related-table->xml
   "Format a related table for LLM consumption."
-  [{:keys [id name related_by fully_qualified_name fields]}]
+  [{:keys [id name related_by database_name fully_qualified_name fields]}]
   (render-llm-template
    :related_table
-   {:related_table_id         (when (some? id) (str id))
-    :related_table_name       name
-    :related_table_related_by related_by
-    :related_table_fqn        fully_qualified_name
-    :related_table_fields_xml (when (seq fields) (str/join "\n" (map field->xml fields)))}))
+   {:related_table_id            (when (some? id) (str id))
+    :related_table_name          name
+    :related_table_related_by    related_by
+    :related_table_database_name database_name
+    :related_table_fqn           fully_qualified_name
+    :related_table_fields_xml    (when (seq fields) (str/join "\n" (map field->xml fields)))}))
 
 (defn metric->xml
   "Format metric for LLM consumption.
-   Matches Python Metric.get_llm_representation exactly."
+   Matches Python Metric.get_llm_representation exactly, except we additionally surface
+   `database_name`, `base_table_fully_qualified_name`, and `portable_entity_id` as tag
+   attributes — the three pieces of information the LLM needs to correctly use the metric
+   in `construct_notebook_query` (as `aggregation: [[metric, {}, <eid>]]` on top of the
+   metric's base table)."
   [{:keys [id name description verified queryable-dimensions collection
-           default_time_dimension_field]}]
+           default_time_dimension_field database_name base_table_portable_fk
+           portable_entity_id]}]
   (render-llm-template
    :metric
    {:metric_id                     (str id)
     :metric_name                   name
     :metric_verified               (boolean verified)
     :metric_description            description
+    :metric_database_name          database_name
+    :metric_base_table_fqn         (when (and (vector? base_table_portable_fk)
+                                              (= 3 (count base_table_portable_fk)))
+                                     (let [[_db schema table] base_table_portable_fk]
+                                       (fully-qualified-name schema table)))
+    :metric_portable_entity_id     portable_entity_id
     :metric_collection_xml         (when collection (collection->xml collection))
     :metric_default_time_dimension (:name default_time_dimension_field)
     :metric_dimensions_table       (when (seq queryable-dimensions)
                                      (format-fields-table queryable-dimensions))}))
 
-(defn- fully-qualified-name
-  "Get fully qualified name for a table."
-  [database_schema name]
-  (if database_schema
-    (str database_schema "." name)
-    name))
-
 (defn table->xml
   "Format table for LLM consumption.
-   Matches Python Table.get_llm_representation exactly."
-  [{:keys [id name database_id database_engine database_schema
+   Matches Python Table.get_llm_representation exactly, except we additionally surface
+   `database_name` as a tag attribute so the LLM has the human-readable DB name available
+   without a separate `entity_details` call — it's the first slot of every portable FK in
+   the representations-format `construct_notebook_query` tool."
+  [{:keys [id name database_id database_name database_engine database_schema
            description fields related_tables measures segments]}]
   (let [fqn (fully-qualified-name database_schema name)]
     (render-llm-template
@@ -191,6 +216,7 @@
      {:table_id                 (str id)
       :table_name               name
       :table_database_id        (str database_id)
+      :table_database_name      database_name
       :table_database_engine    (database-engine-or-unknown database_engine)
       :table_fqn                fqn
       :table_description        description
@@ -216,9 +242,10 @@
 
 (defn model->xml
   "Format model for LLM consumption.
-   Matches Python Model.get_llm_representation exactly.
+   Matches Python Model.get_llm_representation exactly, except we additionally surface
+   `database_name` as a tag attribute (see [[table->xml]] for the rationale).
    Note: Python uses <metabase-model> tag but closes with </model>."
-  [{:keys [id name description verified fields database_id database_engine
+  [{:keys [id name description verified fields database_id database_name database_engine
            related_tables measures segments portable_entity_id]}]
   (let [fqn (model-fully-qualified-name id name)]
     (render-llm-template
@@ -227,6 +254,7 @@
       :model_name               name
       :model_verified           (boolean verified)
       :model_database_id        (str database_id)
+      :model_database_name      database_name
       :model_database_engine    (database-engine-or-unknown database_engine)
       :model_fqn                fqn
       :model_description        description
@@ -456,9 +484,18 @@
    Includes database_id, database_engine, and fully_qualified_name for table/model results
    to match Python AI Service search output. For saved-question and model results also
    includes `portable_entity_id` so the LLM can paste it verbatim into `source-card:`
-   without an extra `entity_details` call."
+   without an extra `entity_details` call, and (when available) `database_name` — the
+   human-readable name the LLM needs as the first slot of every portable FK in
+   `construct_notebook_query`.
+
+   For metric results we additionally surface `base_table_fully_qualified_name` (the
+   `schema.table` of the table the metric aggregates). Combined with `database_name` this
+   gives the LLM the full portable FK `[database_name, schema, table]` it must put in
+   `source-table:` when using `[metric, {}, <portable_entity_id>]` as an aggregation —
+   without a separate `entity_details` round-trip."
   [{:keys [id type name description verified collection
-           database_id database_engine database_schema portable_entity_id]}]
+           database_id database_name database_engine database_schema portable_entity_id
+           base_table_portable_fk]}]
   (let [fqn (cond
               (#{"table" :table} type)
               (when name (fully-qualified-name database_schema name))
@@ -482,9 +519,14 @@
       :search_description description
       :search_collection_name (:name collection)
       :search_database_id (when database_id (str database_id))
+      :search_database_name database_name
       :search_database_engine engine
       :search_fqn fqn
-      :search_portable_entity_id portable_entity_id})))
+      :search_portable_entity_id portable_entity_id
+      :search_base_table_fqn (when (and (vector? base_table_portable_fk)
+                                        (= 3 (count base_table_portable_fk)))
+                               (let [[_db schema table] base_table_portable_fk]
+                                 (fully-qualified-name schema table)))})))
 
 (defn search-results->xml
   "Format search results as XML wrapped in search-results element."

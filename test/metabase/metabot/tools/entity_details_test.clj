@@ -5,7 +5,8 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
@@ -282,6 +283,37 @@
               (let [segment (first segments)]
                 (is (= segment-id (:id segment)))
                 (is (= "Large Orders" (:name segment)))))))))))
+
+;;; ============================================================
+;;; Base-table surfacing on get-metric-details (regression)
+;;; ============================================================
+
+(deftest get-metric-details-exposes-base-table-test
+  (testing (str "get-metric-details must populate `:base_table_id`, `:base_table_name`, and\n"
+                "`:base_table_portable_fk` so the LLM can write `source-table:` verbatim.\n"
+                "Regression: earlier code read `(some-> (:dataset-query card) :query :source-table)`,\n"
+                "which silently produced nil because the t2 row uses `:dataset_query` (snake_case)\n"
+                "and the query is MBQL 5 with `:stages[0] :source-table`, not legacy `:query`.\n"
+                "The fix reads `:table_id` directly from the card row.")
+    (let [mp (mt/metadata-provider)
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total)))))]
+      (mt/with-temp [:model/Card {metric-id :id} {:dataset_query metric-query
+                                                  :database_id   (mt/id)
+                                                  :name          "Base-table Sample Metric"
+                                                  :type          :metric}]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [output  (:structured-output (entity-details/get-metric-details
+                                             {:metric-id metric-id
+                                              :with-queryable-dimensions? false
+                                              :with-field-values? false}))
+                db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+                orders  (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
+            (is (= (mt/id :orders) (:base_table_id output)))
+            (is (= (:name orders)  (:base_table_name output)))
+            (is (= [db-name (:schema orders) (:name orders)]
+                   (:base_table_portable_fk output))
+                "portable FK should be `[database_name, schema, table_name]`")))))))
 
 ;;; ============================================================
 ;;; Portable entity_id in card details (step 11.2)
