@@ -21,10 +21,10 @@ import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
 import {
   Box,
   Button,
+  FixedSizeIcon,
   Group,
   Icon,
   Loader,
-  Menu,
   Stack,
   Text,
   UnstyledButton,
@@ -216,16 +216,16 @@ function SelectedNodeInfoPanel({
       const targetName = targetNode.data.name;
       return (
         <Group gap="xs" wrap="nowrap">
-          <Text c="text-tertiary" fz="sm">
-            →
-          </Text>
+          <Text c="text-tertiary">→</Text>
           <UnstyledButton
             className={S.fkLink}
             c="brand"
-            fz="sm"
             onClick={() => zoomToNodes([targetNode.id])}
           >
-            {targetName}
+            <Group gap={4} wrap="nowrap" display="inline-flex">
+              <FixedSizeIcon name="table2" />
+              <span>{targetName}</span>
+            </Group>
           </UnstyledButton>
         </Group>
       );
@@ -627,30 +627,11 @@ export function SchemaViewer({
     }
   }, [currentContextKey, setNodes, setEdges]);
 
-  // Right-click on a table node opens a context menu at the cursor. Tracked
-  // as a single piece of state so the menu is controlled from React (rather
-  // than wired through each individual node).
-  const [nodeContextMenu, setNodeContextMenu] = useState<{
-    x: number;
-    y: number;
-    nodeId: string;
-  } | null>(null);
-
-  const handleNodeContextMenu = useCallback(
-    (event: React.MouseEvent, node: SchemaViewerFlowNode) => {
-      event.preventDefault();
-      setNodeContextMenu({
-        x: event.clientX,
-        y: event.clientY,
-        nodeId: node.id,
-      });
-    },
-    [],
+  // Track the node id most recently focused via the Focus node button so the
+  // button can disable itself until the user selects a different node.
+  const [lastFocusedNodeId, setLastFocusedNodeId] = useState<string | null>(
+    null,
   );
-
-  const closeNodeContextMenu = useCallback(() => {
-    setNodeContextMenu(null);
-  }, []);
 
   const handleFocusNode = useCallback(
     (nodeId: string) => {
@@ -671,7 +652,7 @@ export function SchemaViewer({
       // Zoom in on the focal node itself — useZoomToNodes clamps to ≥0.5 so
       // the table stays legible, and keeps the node's header in view.
       setPendingFitNodeIds([nodeId]);
-      setNodeContextMenu(null);
+      setLastFocusedNodeId(nodeId);
     },
     [edges, setNodes, setEdges],
   );
@@ -900,12 +881,9 @@ export function SchemaViewer({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onEdgeClick={handleEdgeClick}
-        onNodeContextMenu={handleNodeContextMenu}
-        onPaneClick={closeNodeContextMenu}
       >
         <Background />
         <MiniMap position="bottom-right" pannable zoomable />
-        {/* <Controls showInteractive={false} /> */}
         <FitToNewNodes
           nodeIds={pendingFitNodeIds}
           onDone={clearPendingFitNodeIds}
@@ -916,7 +894,19 @@ export function SchemaViewer({
         {nodes.length > 0 && <SchemaViewerNodeLayout />}
         {nodes.length > 0 && (
           <Panel position="bottom-left">
-            <AutoLayoutButton />
+            <Group gap="sm">
+              <AutoLayoutButton />
+              {selectedNodeId != null && (
+                <Button
+                  bg="background-primary"
+                  variant="default"
+                  disabled={selectedNodeId === lastFocusedNodeId}
+                  onClick={() => handleFocusNode(selectedNodeId)}
+                >
+                  {t`Focus node`}
+                </Button>
+              )}
+            </Group>
           </Panel>
         )}
         <SelectedNodeInfoPanel
@@ -955,41 +945,6 @@ export function SchemaViewer({
           </Panel>
         )}
       </ReactFlow>
-      {nodeContextMenu != null && (
-        <Menu
-          opened
-          position="bottom-start"
-          offset={2}
-          onChange={(opened) => {
-            if (!opened) {
-              setNodeContextMenu(null);
-            }
-          }}
-        >
-          <Menu.Target>
-            <div
-              style={{
-                position: "fixed",
-                left: nodeContextMenu.x,
-                top: nodeContextMenu.y,
-                width: 1,
-                height: 1,
-                pointerEvents: "none",
-              }}
-            />
-          </Menu.Target>
-          <Menu.Dropdown p="xs">
-            <Menu.Item
-              fz="sm"
-              py="xs"
-              leftSection={<Icon name="eye_outline" size={14} />}
-              onClick={() => handleFocusNode(nodeContextMenu.nodeId)}
-            >
-              {t`Focus node`}
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
-      )}
     </SchemaViewerContext.Provider>
   );
 }

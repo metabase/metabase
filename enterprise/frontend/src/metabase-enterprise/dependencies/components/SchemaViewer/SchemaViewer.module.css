@@ -19,7 +19,7 @@
 }
 
 .fkLink {
-  &:hover {
+  &:hover span {
     text-decoration: underline;
   }
 }
