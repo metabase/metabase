@@ -29,6 +29,7 @@ import {
   type SdkQuestionProps,
 } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
 import { QuestionAlertsButton } from "embedding-sdk-bundle/components/public/notifications/QuestionAlertsButton";
+import { useMobileLayout } from "embedding-sdk-bundle/hooks/private/use-mobile-layout";
 import { useNormalizeGuestEmbedQuestionOrDashboardComponentProps } from "embedding-sdk-bundle/hooks/private/use-normalize-guest-embed-question-or-dashboard-component-props";
 import { useSdkSelector } from "embedding-sdk-bundle/store";
 import { getIsGuestEmbed } from "embedding-sdk-bundle/store/selectors";
@@ -111,6 +112,8 @@ const StaticQuestionInner = (
 
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
 
+  const { ref: containerRef, isMobile } = useMobileLayout();
+
   const getClickActionMode: ClickActionModeGetter = ({
     question,
   }: {
@@ -138,6 +141,7 @@ const StaticQuestionInner = (
     >
       {children ?? (
         <FlexibleSizeComponent
+          ref={containerRef}
           className={className}
           width={width}
           height={height}
@@ -166,7 +170,8 @@ const StaticQuestionInner = (
 
                 <RenderIfHasContent component={Group} gap="sm" ml="auto">
                   <SdkQuestion.DownloadWidgetDropdown />
-                  <QuestionAlertsButton />
+
+                  {!isMobile && <QuestionAlertsButton />}
                 </RenderIfHasContent>
               </RenderIfHasContent>
 

@@ -490,6 +490,48 @@ describe("scenarios > embedding-sdk > interactive-question", () => {
     });
   });
 
+  describe("mobile layout", () => {
+    it("should hide Filter, Summarize, Breakout and Download dropdowns when the question's container is narrow", () => {
+      cy.intercept("GET", "/api/card/*").as("getCard");
+
+      cy.get<number>("@questionId").then((questionId) => {
+        mountSdkContent(
+          <div style={{ width: 400 }}>
+            <InteractiveQuestion questionId={questionId} withDownloads />
+          </div>,
+        );
+      });
+
+      cy.wait("@getCard");
+
+      getSdkRoot()
+        .findByTestId("interactive-question-result-toolbar")
+        .within(() => {
+          cy.get(".Icon-filter").should("not.exist");
+          cy.get(".Icon-sum").should("not.exist");
+          cy.get(".Icon-arrow_split").should("not.exist");
+          cy.findByTestId("question-download-widget-button").should(
+            "not.exist",
+          );
+        });
+    });
+
+    it("should show Filter, Summarize, Breakout and Download dropdowns when the question's container is wide", () => {
+      mountInteractiveQuestion({ withDownloads: true });
+
+      getSdkRoot()
+        .findByTestId("interactive-question-result-toolbar")
+        .within(() => {
+          cy.get(".Icon-filter").should("be.visible");
+          cy.get(".Icon-sum").should("be.visible");
+          cy.get(".Icon-arrow_split").should("be.visible");
+          cy.findByTestId("question-download-widget-button").should(
+            "be.visible",
+          );
+        });
+    });
+  });
+
   describe("loading behavior for both entity IDs and number IDs (metabase#49581)", () => {
     const successTestCases = [
       {
