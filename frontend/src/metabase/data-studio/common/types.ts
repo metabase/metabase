@@ -24,6 +24,7 @@ export type TreeItem = {
   icon: IconName;
   updatedAt?: string;
   model: TreeItemModel;
+  parentCollectionName?: string;
   data:
     | ((Collection | Omit<CollectionItem, "getUrl">) & {
         model: CollectionItem["model"];

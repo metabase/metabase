@@ -1,3 +1,4 @@
+import type { ExpandedState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 // import _ from "underscore";
@@ -29,6 +30,7 @@ import {
   Card,
   EntityNameCell,
   Flex,
+  Group,
   Icon,
   Stack,
   Text,
@@ -48,7 +50,11 @@ import { LibraryEmptyState } from "../components/LibraryEmptyState";
 import { CreateMenu } from "./CreateMenu";
 import { PublishTableModal } from "./PublishTableModal";
 import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
-import { useErrorHandling, useLibraryCollectionTree } from "./hooks";
+import {
+  useErrorHandling,
+  useLibraryCollectionTree,
+  useLibrarySearch,
+} from "./hooks";
 import { getAccessibleCollection, getWritableCollection } from "./utils";
 
 interface EmptyStateActionProps {
@@ -195,12 +201,23 @@ function LibraryPageContent() {
     error: snippetsError,
   } = useBuildSnippetTree();
 
+  // Server-side search for tables and metrics, client-side for snippets
+  const {
+    tree: searchTree,
+    isActive: isSearchActive,
+    isLoading: isSearchLoading,
+  } = useLibrarySearch(searchQuery, libraryCollection?.id, snippetTree);
+
   const combinedTree = useMemo(
-    () => [...tablesTree, ...metricsTree, ...snippetTree],
-    [tablesTree, metricsTree, snippetTree],
+    () =>
+      isSearchActive
+        ? searchTree
+        : [...tablesTree, ...metricsTree, ...snippetTree],
+    [isSearchActive, searchTree, tablesTree, metricsTree, snippetTree],
   );
 
-  const isLoading = loadingTables || loadingMetrics || loadingSnippets;
+  const isLoading =
+    loadingTables || loadingMetrics || loadingSnippets || isSearchLoading;
   useErrorHandling(tablesError || metricsError || snippetsError);
 
   // Collections with only empty-state children should always be expanded
@@ -273,7 +290,21 @@ function LibraryPageContent() {
             <EntityNameCell
               data-testid={`${row.original.model}-name`}
               icon={row.original.icon}
-              name={row.original.name}
+              name={
+                row.original.parentCollectionName ? (
+                  <Group gap="sm" miw={0} align="center">
+                    <Text truncate>{row.original.name}</Text>
+                    <Group gap="xs">
+                      <Icon name="collection" size={12} c="text-tertiary" />
+                      <Text fz="xs" c="text-tertiary" truncate>
+                        {row.original.parentCollectionName}
+                      </Text>
+                    </Group>
+                  </Group>
+                ) : (
+                  row.original.name
+                )
+              }
             />
           );
         },
@@ -336,6 +367,36 @@ function LibraryPageContent() {
     [getItemHref],
   );
 
+  // Controlled expansion: expand all during search, preserve user state when browsing.
+  // Default to Data and Metrics expanded on initial load.
+  const defaultExpanded = useMemo<ExpandedState>(() => {
+    const ids: ExpandedState = {};
+    if (tableCollection) {
+      ids[`collection:${tableCollection.id}`] = true;
+    }
+    if (metricCollection) {
+      ids[`collection:${metricCollection.id}`] = true;
+    }
+    return ids;
+  }, [tableCollection, metricCollection]);
+
+  const [browseExpanded, setBrowseExpanded] = useState<ExpandedState | null>(
+    null,
+  );
+
+  const expanded = isSearchActive ? true : (browseExpanded ?? defaultExpanded);
+  const onExpandedChange = useCallback(
+    (updater: ExpandedState | ((old: ExpandedState) => ExpandedState)) => {
+      if (!isSearchActive) {
+        setBrowseExpanded((prev) => {
+          const current = prev ?? defaultExpanded;
+          return typeof updater === "function" ? updater(current) : updater;
+        });
+      }
+    },
+    [isSearchActive, defaultExpanded],
+  );
+
   const treeTableInstance = useTreeTableInstance({
     data: combinedTree,
     columns: libraryColumnDef,
@@ -360,11 +421,10 @@ function LibraryPageContent() {
       }
       return false;
     },
-    globalFilter: searchQuery,
-    onGlobalFilterChange: setSearchQuery,
+    expanded,
+    onExpandedChange,
     isFilterable: (node) =>
       node.model !== "collection" && node.model !== "empty-state",
-    // defaultExpanded: effectiveExpandedState,
   });
 
   // Lazy-load subcollection items when expanded
