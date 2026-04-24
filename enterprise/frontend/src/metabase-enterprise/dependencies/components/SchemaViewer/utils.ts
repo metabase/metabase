@@ -233,16 +233,11 @@ export function mergeWithExistingPositions(
   for (const node of incoming) {
     const existing = currentById.get(node.id);
     if (existing != null) {
-      // Preserve position, style (keeps opacity: 1, measured width/height),
-      // and the existing `is_focal` flag — the backend may re-rank focal
-      // tables when the selection grows, but we don't want tables that were
-      // already on the canvas to suddenly light up as a side effect of the
-      // user clicking a FK somewhere else.
+      // Preserve position and style (keeps opacity: 1, measured width/height).
       placedById.set(node.id, {
         ...node,
         position: existing.position,
         style: existing.style,
-        data: { ...node.data, is_focal: existing.data.is_focal },
       });
     }
   }
@@ -283,10 +278,6 @@ export function mergeWithExistingPositions(
       placedById.set(node.id, {
         ...node,
         position,
-        // Tables added via expansion (FK click) shouldn't inherit the
-        // backend's focal highlighting — the user reached them by exploring,
-        // they aren't "the important ones" in any special sense.
-        data: { ...node.data, is_focal: false },
         style: {
           ...node.style,
           opacity: 1, // Visible immediately; no Dagre pass needed.

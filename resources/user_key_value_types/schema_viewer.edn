@@ -2,10 +2,7 @@
  [:value [:or
           ;; Per-database/schema preferences (key = "databaseId:schema")
           [:map
-           [:table_ids {:optional true} [:sequential :int]]
-           [:hops {:optional true} [:int {:min 0 :max 5}]]
-           [:is_compact_mode {:optional true} :boolean]
-           [:explicit_full_mode {:optional true} :boolean]]
+           [:table_ids {:optional true} [:sequential :int]]]
           ;; Last opened database (key = "last_database")
           [:map
            [:databaseId :int]

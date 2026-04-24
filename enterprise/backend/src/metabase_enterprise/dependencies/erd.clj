@@ -50,8 +50,7 @@
   [:map
    [:database-id ms/PositiveInt]
    [:table-ids {:optional true} [:maybe (ms/QueryVectorOf ms/PositiveInt)]]
-   [:schema {:optional true} [:maybe :string]]
-   [:hops {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]])
+   [:schema {:optional true} [:maybe :string]]])
 
 ;;; ---------------------------------------- Phase 1: Resolve focal tables ----------------------------------------
 
@@ -102,11 +101,17 @@
 
 (defn- fetch-readable-tables
   "Fetch tables by IDs, filtering to only those the user can read.
+   When `schema-filter` is non-nil, tables outside that schema are excluded —
+   used to stop BFS propagation at schema boundaries without restricting the
+   focal set, which is loaded unconditionally.
    Returns {:tables-by-id {id -> table}, :table-ids #{ids}}."
-  [table-ids]
+  [table-ids schema-filter]
   (when (seq table-ids)
-    (let [tables   (filter mi/can-read?
-                           (t2/select :model/Table :id [:in table-ids] :active true))
+    (let [where    (cond-> [:and
+                            [:in :id table-ids]
+                            [:= :active true]]
+                     schema-filter (conj [:= :schema schema-filter]))
+          tables   (filter mi/can-read? (t2/select :model/Table {:where where}))
           by-id    (into {} (map (fn [t] [(:id t) t])) tables)]
       {:tables-by-id by-id
        :table-ids    (set (keys by-id))})))
@@ -145,21 +150,26 @@
 
 (defn- fetch-erd-subgraph
   "Iteratively expand from focal tables by following FK relationships for n hops.
-   Each hop fetches only newly-discovered tables and their fields.
+   Each hop fetches only newly-discovered tables and their fields. When `schema`
+   is non-nil, BFS propagation stops at the schema boundary — tables in other
+   schemas still surface via `fk_target_table_id` on fields (through
+   `resolve-external-fk-targets`), but they are not loaded as nodes. The focal
+   set is always loaded regardless of schema.
    Returns {:tables-by-id, :fields-by-table, :field-by-id, :all-table-ids}."
-  [focal-table-ids hops]
+  [focal-table-ids hops schema]
   (loop [tables-by-id    {}
          fields-by-table {}
          field-by-id     {}
          frontier        focal-table-ids
-         remaining-hops  (inc hops)] ;; inc because hop 0 = loading the focal tables themselves
+         remaining-hops  (inc hops) ;; inc because hop 0 = loading the focal tables themselves
+         schema-filter   nil] ;; nil on the focal iter, `schema` on subsequent iters
     (if (or (zero? remaining-hops) (empty? frontier))
       {:tables-by-id   tables-by-id
        :fields-by-table fields-by-table
        :field-by-id    field-by-id
        :all-table-ids  (set (keys tables-by-id))}
       (let [{new-tables-by-id :tables-by-id
-             new-table-ids    :table-ids}  (or (fetch-readable-tables frontier)
+             new-table-ids    :table-ids}  (or (fetch-readable-tables frontier schema-filter)
                                                {:tables-by-id {} :table-ids #{}})
             new-fields                     (fetch-fields-for-tables new-table-ids)
             new-fields-by-table            (group-by :table_id new-fields)
@@ -170,7 +180,7 @@
             field-by-id'                   (merge field-by-id new-field-by-id)
             ;; Discover next frontier: tables reachable via FKs not yet loaded
             next-frontier                  (discover-fk-targets new-fields (set (keys tables-by-id')) field-by-id')]
-        (recur tables-by-id' fields-by-table' field-by-id' next-frontier (dec remaining-hops))))))
+        (recur tables-by-id' fields-by-table' field-by-id' next-frontier (dec remaining-hops) schema)))))
 
 ;;; ---------------------------------------- Phase 3: Build response ----------------------------------------
 
@@ -277,19 +287,19 @@
 
 ;;; ---------------------------------------- Main entry point ----------------------------------------
 
-(def ^:private max-hops 5)
-(def ^:private default-hops 2)
+(def ^:private default-hops 1)
 
 (defn erd
   "Return an ERD for the given database, optionally scoped to specific tables/schema.
    When `table-ids` is provided, those tables are the focal points.
    When only `database-id` is provided, auto-selects the most connected tables.
-   The `hops` parameter controls how many FK hops to traverse (default: 2, max: 5)."
-  [{:keys [database-id table-ids schema hops]}]
+   When `schema` is set, BFS propagation stops at that schema — cross-schema FK
+   targets are surfaced on fields (so the UI can offer to expand them) but are
+   not loaded as nodes."
+  [{:keys [database-id table-ids schema]}]
   (api/read-check :model/Database database-id)
-  (let [hops            (min (or hops default-hops) max-hops)
-        focal-table-ids (if (seq table-ids)
+  (let [focal-table-ids (if (seq table-ids)
                           (set table-ids)
                           (auto-discover-focal-table-ids database-id schema))
-        subgraph        (fetch-erd-subgraph focal-table-ids hops)]
+        subgraph        (fetch-erd-subgraph focal-table-ids default-hops schema)]
     (build-erd-response subgraph focal-table-ids)))

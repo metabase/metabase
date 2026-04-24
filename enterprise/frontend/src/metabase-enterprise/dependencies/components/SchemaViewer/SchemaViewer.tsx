@@ -76,8 +76,6 @@ const PRO_OPTIONS = {
 const DEFAULT_ZOOM = 0.3;
 const FIT_VIEW_OPTIONS = { minZoom: DEFAULT_ZOOM, maxZoom: DEFAULT_ZOOM };
 
-const DEFAULT_HOPS = 1;
-
 interface FitToNewNodesProps {
   nodeIds: readonly string[] | null;
   onDone: () => void;
@@ -296,11 +294,9 @@ interface SchemaViewerProps {
   databaseId: DatabaseId | undefined;
   schema: string | undefined;
   initialTableIds: ConcreteTableId[] | undefined;
-  initialHops?: number;
 }
 
 interface GetErdQueryParamsArgs extends SchemaViewerProps {
-  hops: number;
   selectedTableIds: ConcreteTableId[] | null;
   isUserModified: boolean;
 }
@@ -308,7 +304,6 @@ interface GetErdQueryParamsArgs extends SchemaViewerProps {
 function getErdQueryParams({
   databaseId,
   schema,
-  hops,
   selectedTableIds,
   isUserModified,
 }: GetErdQueryParamsArgs): GetErdRequest | typeof skipToken {
@@ -323,7 +318,7 @@ function getErdQueryParams({
   ) {
     return skipToken;
   }
-  const params: GetErdRequest = { "database-id": databaseId, hops };
+  const params: GetErdRequest = { "database-id": databaseId };
   if (schema != null) {
     params.schema = schema;
   }
@@ -342,9 +337,7 @@ export function SchemaViewer({
   databaseId,
   schema,
   initialTableIds,
-  initialHops,
 }: SchemaViewerProps) {
-  const [hops, setHops] = useState(initialHops ?? DEFAULT_HOPS);
   // IDs of tables the camera should fit/zoom to next. Populated in two
   // places: (1) the graph-sync effect when FK expansion adds new tables,
   // (2) the onEdgeClick handler to zoom to an edge's source/target.
@@ -366,7 +359,7 @@ export function SchemaViewer({
   // render — the sync effect just reads it on the next ERD response.
   const pendingEdgeIdsToSelectRef = useRef<readonly string[] | null>(null);
 
-  // Persist table selection + hops per database:schema
+  // Persist table selection per database:schema
   const prefsKey = databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
 
   const {
@@ -465,11 +458,18 @@ export function SchemaViewer({
     typeof savedPrefs === "object" &&
     savedPrefs.table_ids != null;
 
+  // Wait until the prefs-restoration effect OR the auto-init effect has had a
+  // chance to populate the selection — otherwise the ERD query fires once with
+  // no table-ids (showing backend-auto-discovered focal tables) and then again
+  // with the real selection, which is a wasted round-trip and a visible flash.
   const shouldWaitForInitialLoad =
     databaseId != null &&
     initialTableIds == null &&
     effectiveSelectedTableIds === null &&
-    (isLoadingPrefs || isFetchingTables);
+    (isLoadingPrefs ||
+      isFetchingTables ||
+      hasPendingPrefsToApply ||
+      (allTables != null && allTables.length > 0));
 
   const { data, isFetching, error } = useGetErdQuery(
     shouldWaitForInitialLoad
@@ -478,7 +478,6 @@ export function SchemaViewer({
           databaseId,
           schema,
           initialTableIds,
-          hops,
           selectedTableIds: effectiveSelectedTableIds,
           isUserModified,
         }),
@@ -514,7 +513,6 @@ export function SchemaViewer({
       ).filter((id) => validTableIdSet.has(id));
 
       if (validatedTableIds.length > 0) {
-        setHops(savedPrefs.hops);
         setTableSelection({
           tableIds: validatedTableIds,
           forDatabaseId: databaseId,
@@ -599,7 +597,6 @@ export function SchemaViewer({
         });
         setSavedPrefs({
           table_ids: newTableIds,
-          hops,
         });
         // Stash the candidate edge IDs so the next graph-sync run can find
         // the FK edge that triggered this expansion and auto-select it.
@@ -611,7 +608,7 @@ export function SchemaViewer({
         }
       }
     },
-    [effectiveSelectedTableIds, databaseId, schema, hops, setSavedPrefs],
+    [effectiveSelectedTableIds, databaseId, schema, setSavedPrefs],
   );
 
   // Clear the canvas whenever the database/schema context changes, regardless
@@ -809,38 +806,7 @@ export function SchemaViewer({
       graph.edges,
     );
 
-    let nextNodes: SchemaViewerFlowNode[];
-    if (merged != null) {
-      nextNodes = merged;
-    } else if (currentNodes.length === 0) {
-      // First load — fresh layout path, nothing to preserve.
-      nextNodes = graph.nodes;
-    } else {
-      const hasOverlap = graph.nodes.some((n) => currentById.has(n.id));
-      if (!hasOverlap) {
-        // Schema switch — fresh layout path.
-        nextNodes = graph.nodes;
-      } else {
-        // Incremental change that the merge couldn't handle. For each
-        // incoming node: if it was already on the canvas, preserve its
-        // previous `is_focal` (the backend may re-rank focal tables when the
-        // selection grows, and we don't want existing nodes to light up as a
-        // side effect of the user clicking a FK somewhere else); if it's a
-        // brand-new table reached by exploring, strip `is_focal` so it
-        // doesn't get the highlighted border either.
-        nextNodes = graph.nodes.map((node) => {
-          const existing = currentById.get(node.id);
-          if (existing != null) {
-            return {
-              ...node,
-              data: { ...node.data, is_focal: existing.data.is_focal },
-            };
-          }
-          return { ...node, data: { ...node.data, is_focal: false } };
-        });
-      }
-    }
-
+    const nextNodes = merged ?? graph.nodes;
     setNodes(nextNodes);
 
     // If this was an incremental add (there was a current canvas and some of

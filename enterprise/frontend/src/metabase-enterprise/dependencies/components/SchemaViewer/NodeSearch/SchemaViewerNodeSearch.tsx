@@ -134,7 +134,6 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
           <Combobox.Empty>{t`No tables found`}</Combobox.Empty>
         ) : (
           <Combobox.Options className={S.options}>
-            {/* <ScrollArea.Autosize mah={320} type="scroll"> */}
             {filteredItems.map((item) => (
               <Combobox.Option
                 value={item.id}
@@ -156,7 +155,6 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
                 </Group>
               </Combobox.Option>
             ))}
-            {/* </ScrollArea.Autosize> */}
           </Combobox.Options>
         )}
       </Combobox.Dropdown>

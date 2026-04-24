@@ -1,1 +1,0 @@
-export { DatabaseSchemaViewerSection } from "./DatabaseSchemaViewerSection";

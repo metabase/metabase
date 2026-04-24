@@ -12,14 +12,13 @@ import * as Urls from "metabase/utils/urls";
 import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 
 import { SchemaViewer } from "../../components/SchemaViewer";
-import { decodeSchemaViewerShareState } from "../../components/SchemaViewer/useSchemaViewerShareUrl";
+import { decodeSchemaViewerShareState } from "../../components/SchemaViewer/shareUrl";
 
 type SchemaViewerPageQuery = {
   "database-id"?: string;
   "table-ids"?: string | string[];
   schema?: string;
   share?: string;
-  hops?: string;
 };
 
 type SchemaViewerPageProps = {
@@ -39,13 +38,10 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
 
   const rawDatabaseId = location?.query?.["database-id"];
   const rawTableIds = location?.query?.["table-ids"];
-  const rawHops = location?.query?.hops;
   const schema = location?.query?.schema;
 
   const databaseId: DatabaseId | undefined =
     rawDatabaseId != null ? Number(rawDatabaseId) : undefined;
-  const initialHops: number | undefined =
-    rawHops != null ? Number(rawHops) : undefined;
 
   const initialTableIds = useMemo(() => {
     if (rawTableIds == null) {
@@ -151,7 +147,6 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
         databaseId={effectiveDatabaseId}
         schema={effectiveSchema}
         initialTableIds={sharedState?.tableIds ?? initialTableIds}
-        initialHops={sharedState?.hops ?? initialHops}
       />
     </Stack>
   );

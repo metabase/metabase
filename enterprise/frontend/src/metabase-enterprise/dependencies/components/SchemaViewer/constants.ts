@@ -1,7 +1,6 @@
 export const ROW_HEIGHT = 48;
 export const HEADER_HEIGHT = 56;
 export const NODE_WIDTH = 320;
-export const NODE_PADDING = 16;
 
 export const MIN_ZOOM = 0.3;
 export const MAX_ZOOM = 1;

@@ -39,5 +39,4 @@ export type GetErdRequest = {
   "database-id": DatabaseId;
   "table-ids"?: TableId[];
   schema?: string;
-  hops?: number;
 };

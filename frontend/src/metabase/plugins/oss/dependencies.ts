@@ -5,7 +5,6 @@ import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder
 import type Question from "metabase-lib/v1/Question";
 import type {
   CheckDependenciesResponse,
-  Database,
   GetDependencyGraphRequest,
   UpdateSnippetRequest,
   UpdateTransformRequest,
@@ -43,10 +42,6 @@ export type UseCheckDependenciesResult<TChange> = {
   handleCloseConfirmation: () => void;
 };
 
-export type DatabaseSchemaViewerSectionProps = {
-  database: Database;
-};
-
 function useCheckDependencies<TChange>({
   onSave,
 }: UseCheckDependenciesProps<TChange>): UseCheckDependenciesResult<TChange> {
@@ -66,7 +61,6 @@ type DependenciesPlugin = {
   getDataStudioSchemaViewerRoutes: () => ReactNode;
   DependencyGraphPage: ComponentType;
   DependencyGraphPageContext: Context<DependencyGraphPageContextType>;
-  DatabaseSchemaViewerSection: ComponentType<DatabaseSchemaViewerSectionProps>;
   CheckDependenciesForm: ComponentType<CheckDependenciesFormProps>;
   CheckDependenciesModal: ComponentType<CheckDependenciesModalProps>;
   CheckDependenciesTitle: ComponentType;
@@ -92,7 +86,6 @@ const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   getDataStudioSchemaViewerRoutes: () => null,
   DependencyGraphPage: PluginPlaceholder,
   DependencyGraphPageContext: createContext({}),
-  DatabaseSchemaViewerSection: PluginPlaceholder,
   CheckDependenciesForm: PluginPlaceholder,
   CheckDependenciesModal: PluginPlaceholder,
   CheckDependenciesTitle: PluginPlaceholder,
