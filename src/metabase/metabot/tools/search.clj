@@ -75,13 +75,78 @@
                                    (update r :collection m/assoc-some :description (get descriptions cid))))))))
 
 (defn- enrich-with-database-engines
-  "Fetch and merge database engine info for search results that have database IDs."
+  "Fetch and merge database engine + name info for search results that have database IDs.
+  `:database_name` is the human-readable name the LLM needs as the first slot of every
+  portable FK in `construct_notebook_query`; surfacing it on every table/model search
+  result means the LLM doesn't need a separate `entity_details` round-trip just to learn
+  the DB name."
   [results]
-  (let [db-ids  (->> results (keep :database_id) distinct)
-        engines (when (seq db-ids)
-                  (t2/select-pk->fn :engine :model/Database :id [:in db-ids]))]
+  (let [db-ids (->> results (keep :database_id) distinct)
+        id->db (when (seq db-ids)
+                 (t2/select-pk->fn (juxt :engine :name) :model/Database :id [:in db-ids]))]
     (cond->> results
-      (seq engines) (mapv (fn [r] (m/assoc-some r :database_engine (get engines (:database_id r))))))))
+      (seq id->db) (mapv (fn [r]
+                           (let [[engine db-name] (get id->db (:database_id r))]
+                             (-> r
+                                 (m/assoc-some :database_engine engine)
+                                 (m/assoc-some :database_name db-name))))))))
+
+(defn- enrich-with-portable-entity-ids
+  "Attach `:portable_entity_id` (the card's `entity_id` NanoID) to saved-question, model,
+  and metric search results so the LLM can use it verbatim as `source-card:` (for
+  questions/models) or inside a `[metric, {}, <entity_id>]` aggregation clause (for
+  metrics) without a follow-up `entity_details` / `read_resource` round-trip."
+  [results]
+  (let [carded-types #{"question" "model" "metric"}
+        card-ids (->> results
+                      (filter #(carded-types (:type %)))
+                      (keep :id)
+                      distinct)
+        id->eid  (when (seq card-ids)
+                   (t2/select-pk->fn :entity_id :model/Card :id [:in card-ids]))]
+    (cond->> results
+      (seq id->eid) (mapv (fn [r]
+                            (if-let [eid (and (carded-types (:type r))
+                                              (get id->eid (:id r)))]
+                              (assoc r :portable_entity_id eid)
+                              r))))))
+
+(defn- enrich-with-metric-base-tables
+  "Attach base-table info (`:base_table_id`, `:base_table_name`, `:base_table_schema`,
+  `:base_table_portable_fk`) to metric search results.
+
+  A metric is a Card whose `:dataset_query` aggregates a specific table; the LLM needs that
+  table's portable FK as the `source-table:` when it wants to use the metric. Without this
+  enrichment the LLM sees the metric's `portable_entity_id` in search but has to either
+  hallucinate the base table (observed failure mode: `[<db>, public, customers]`) or do an
+  extra `entity_details` round-trip. We read the two columns directly from
+  `report_card.table_id` + `metabase_table.{schema,name}` to keep the lookup O(1) extra
+  query per search call, regardless of number of metrics in the result set.
+
+  Requires `:database_name` to already be set on each metric result (done earlier by
+  [[enrich-with-database-engines]]) so we can assemble the full portable FK
+  `[database_name, schema, table]`."
+  [results]
+  (let [metric-ids (->> results (filter #(= "metric" (:type %))) (keep :id) distinct)
+        card-id->table-id (when (seq metric-ids)
+                            (t2/select-pk->fn :table_id :model/Card :id [:in metric-ids]))
+        table-ids (->> card-id->table-id vals (remove nil?) distinct)
+        table-id->info (when (seq table-ids)
+                         (t2/select-pk->fn (juxt :schema :name) :model/Table :id [:in table-ids]))]
+    (cond->> results
+      (seq card-id->table-id)
+      (mapv (fn [r]
+              (if (= "metric" (:type r))
+                (if-let [table-id (get card-id->table-id (:id r))]
+                  (let [[schema table-name] (get table-id->info table-id)
+                        db-name (:database_name r)]
+                    (cond-> (assoc r :base_table_id table-id)
+                      table-name (assoc :base_table_name table-name
+                                        :base_table_schema schema)
+                      (and db-name table-name)
+                      (assoc :base_table_portable_fk [db-name schema table-name])))
+                  r)
+                r))))))
 
 (defn- remove-unreadable-transforms
   "Remove transforms from search results that the user cannot read.
@@ -238,6 +303,8 @@
          (map postprocess-search-result)
          enrich-with-collection-descriptions
          enrich-with-database-engines
+         enrich-with-portable-entity-ids
+         enrich-with-metric-base-tables
          remove-unreadable-transforms)))
 
 (defn- format-search-output

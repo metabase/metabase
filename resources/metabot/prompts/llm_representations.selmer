@@ -13,7 +13,7 @@ Definition: {{segment_definition_description}}{% endif %}{% if segment_definitio
 </segment>
 {% endif %}
 {% if is_field %}
-<field id="{{field_id}}" name="{{field_name_quoted|safe}}" display_name="{{field_display_name}}" type="{{field_base_type}}" database_type="{{field_database_type}}">{% if field_description %}
+<field id="{{field_id}}" name="{{field_name_quoted|safe}}" display_name="{{field_display_name}}" type="{{field_base_type}}" database_type="{{field_database_type}}"{% if field_fk_target_fqn %} fk_target_fully_qualified_name="{{field_fk_target_fqn}}"{% endif %}>{% if field_description %}
 ## Description
 {{field_description}}{% endif %}</field>
 {% endif %}
@@ -22,11 +22,11 @@ Definition: {{segment_definition_description}}{% endif %}{% if segment_definitio
 <description>{{collection_description}}</description>{% endif %}</collection>
 {% endif %}
 {% if is_related_table %}
-<related-table{% if related_table_id %} id="{{related_table_id}}"{% endif %} name="{{related_table_name}}"{% if related_table_related_by %} related_by="{{related_table_related_by}}"{% endif %} fully_qualified_name="{{related_table_fqn}}">{% if related_table_fields_xml %}
+<related-table{% if related_table_id %} id="{{related_table_id}}"{% endif %} name="{{related_table_name}}"{% if related_table_related_by %} related_by="{{related_table_related_by}}"{% endif %}{% if related_table_database_name %} database_name="{{related_table_database_name}}"{% endif %} fully_qualified_name="{{related_table_fqn}}">{% if related_table_fields_xml %}
 {{related_table_fields_xml|safe}}{% endif %}</related-table>
 {% endif %}
 {% if is_metric %}
-<metric id="{{metric_id}}", name="{{metric_name}}" is_verified="{{metric_verified}}">
+<metric id="{{metric_id}}", name="{{metric_name}}" is_verified="{{metric_verified}}"{% if metric_database_name %} database_name="{{metric_database_name}}"{% endif %}{% if metric_base_table_fqn %} base_table_fully_qualified_name="{{metric_base_table_fqn}}"{% endif %}{% if metric_portable_entity_id %} portable_entity_id="{{metric_portable_entity_id}}"{% endif %}>
 {% if metric_collection_xml %}
 The metric is stored in the following collection:
 {{metric_collection_xml|safe}}
@@ -49,7 +49,7 @@ This will help avoid errors due to unexpected data types or formats.
 </metric>
 {% endif %}
 {% if is_table %}
-<table id="{{table_id}}", name="{{table_name}}" database_id="{{table_database_id}}" database_engine="{{table_database_engine}}" fully_qualified_name="{{table_fqn}}">
+<table id="{{table_id}}", name="{{table_name}}" database_id="{{table_database_id}}"{% if table_database_name %} database_name="{{table_database_name}}"{% endif %} database_engine="{{table_database_engine}}" fully_qualified_name="{{table_fqn}}">
 
 ### Description
 {{table_description}}
@@ -93,7 +93,7 @@ This will help avoid errors due to unexpected data types or formats.
 </table>
 {% endif %}
 {% if is_model %}
-<metabase-model id="{{model_id}}" name="{{model_name}}" is_verified="{{model_verified}}" database_id="{{model_database_id}}" database_engine="{{model_database_engine}}" fully_qualified_name="{{model_fqn}}">
+<metabase-model id="{{model_id}}" name="{{model_name}}" is_verified="{{model_verified}}" database_id="{{model_database_id}}"{% if model_database_name %} database_name="{{model_database_name}}"{% endif %} database_engine="{{model_database_engine}}" fully_qualified_name="{{model_fqn}}"{% if model_portable_entity_id %} portable_entity_id="{{model_portable_entity_id}}"{% endif %}>
 
 ### Description
 {{model_description}}
@@ -175,7 +175,7 @@ Chart link: metabase://chart/{{chart_id}}
 </chart>
 {% endif %}
 {% if is_question %}
-<metabase_question id="{{question_id}}" is_verified="{{question_verified}}"{% if question_display_type %} display_type="{{question_display_type}}"{% endif %}>
+<metabase_question id="{{question_id}}" is_verified="{{question_verified}}"{% if question_display_type %} display_type="{{question_display_type}}"{% endif %}{% if question_portable_entity_id %} portable_entity_id="{{question_portable_entity_id}}"{% endif %}>
 <name>{{question_name}}</name>
 {% if question_description %}
 <description>{{question_description}}</description>
@@ -262,7 +262,7 @@ or jargon that may be relevant to the user's questions.
 </user>
 {% endif %}
 {% if is_search_result %}
-<{{search_tag_name}} id="{{search_id}}" name="{{search_name}}"{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}>
+<{{search_tag_name}} id="{{search_id}}" name="{{search_name}}"{% if search_has_verified %} is_verified="{{search_verified}}"{% endif %}{% if search_database_id %} database_id="{{search_database_id}}"{% endif %}{% if search_database_name %} database_name="{{search_database_name}}"{% endif %}{% if search_database_engine %} database_engine="{{search_database_engine}}"{% endif %}{% if search_fqn %} fully_qualified_name="{{search_fqn}}"{% endif %}{% if search_base_table_fqn %} base_table_fully_qualified_name="{{search_base_table_fqn}}"{% endif %}{% if search_portable_entity_id %} portable_entity_id="{{search_portable_entity_id}}"{% endif %}>
 {% if search_description %}
 {{search_description}}
 {% endif %}

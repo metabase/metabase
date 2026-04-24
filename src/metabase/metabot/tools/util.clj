@@ -44,10 +44,42 @@
                                  (lib/display-name query)
                                  lib/display-name-without-id))))
 
+(defn- column-portable-fk
+  "Build the portable FK path `[db-name, schema-or-null, table-name, field-name …]` for a column
+  that has a real numeric `:id`. Returns nil for expression / aggregation columns that don't
+  correspond to a database field."
+  [query column]
+  (when (and (:id column) (:table-id column))
+    (let [table (lib.metadata/table query (:table-id column))
+          db    (lib.metadata/database query)
+          ;; walk the `:parent-id` chain in case this is a JSON-unfolded nested field
+          chain (loop [acc [(:name column)]
+                       pid (:parent-id column)]
+                  (if pid
+                    (let [parent (lib.metadata/field query pid)]
+                      (recur (cons (:name parent) acc) (:parent-id parent)))
+                    acc))]
+      (when (and (:name db) (:name table))
+        (into [(:name db) (:schema table) (:name table)] chain)))))
+
+(defn- fk-target-portable-fk
+  "If `column` is an FK (has a non-nil `:fk-target-field-id`), return the portable FK path of
+  the target field, walking the parent-id chain for JSON-unfolded targets. Returns nil for
+  non-FK columns or when the target can't be resolved."
+  [query column]
+  (when-let [tgt-id (:fk-target-field-id column)]
+    (when-let [tgt (lib.metadata/field query tgt-id)]
+      (column-portable-fk query tgt))))
+
 (defn ->result-column
   "Return tool result column for `column` of `query`.
   Uses the real field `:id` when available, falling back to column name for
-  expression/aggregation columns that don't have a database field ID."
+  expression/aggregation columns that don't have a database field ID.
+
+  Also includes a `:portable_fk` key with the portable foreign-key path
+  `[db-name, schema, table-name, field-name …]` when the column maps to a real database field.
+  The representations-format notebook query tool expects fields to be referenced by this path
+  rather than by numeric id."
   [query column]
   (let [base-type         (some-> (:base-type column) u/qualified-name)
         effective-type    (some-> (:effective-type column) u/qualified-name)
@@ -55,7 +87,11 @@
         coercion-strategy (some-> (:coercion-strategy column) u/qualified-name)
         field-id          (or (:id column)
                               (:lib/desired-column-alias column)
-                              (:lib/source-column-alias column))]
+                              (:lib/source-column-alias column))
+        portable-fk       (try (column-portable-fk query column)
+                               (catch Exception _ nil))
+        fk-target-fk      (try (fk-target-portable-fk query column)
+                               (catch Exception _ nil))]
     (-> {:field_id field-id
          :name (or (:lib/desired-column-alias column)
                    (:lib/source-column-alias column))
@@ -68,6 +104,8 @@
                       :database_type (:database-type column)
                       :coercion_strategy coercion-strategy
                       :field_values (:field-values column)
+                      :portable_fk portable-fk
+                      :fk_target_portable_fk fk-target-fk
                       :table_reference (:table-reference column)))))
 
 (defn find-column-by-field-id
@@ -119,6 +157,16 @@
   [id]
   (-> (t2/select-one :model/Card :id id)
       api/read-check))
+
+(defn get-card-by-entity-id
+  "Retrieve a card by its 21-char NanoID `entity_id`, or `nil` if not found. Used by
+  [[metabase.metabot.tools.construct/resolve-database-id-from-first-stage]] to look up the
+  database-id of a `source-card:` stage before the metadata provider is built.
+
+  Does NOT go through the serdes `lookup-by-id` machinery because we want `nil` on miss
+  (not a thrown exception) so the caller can surface a tool-specific agent error."
+  [entity-id]
+  (t2/select-one :model/Card :entity_id entity-id))
 
 (defn card-query
   "Return a query based on the card with ID `card-id`."

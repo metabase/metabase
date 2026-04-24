@@ -120,6 +120,32 @@
                                    with-queryable-dimensions?      true
                                    with-segments?                  false}}]
    (let [id (:id card)
+         ;; Database metadata so the LLM can build portable FKs — metrics are always
+         ;; referenced from a query targeting a specific database, and the LLM needs the
+         ;; human-readable database name for `source-table:` / field FKs in the same stage.
+         database (lib.metadata/database metadata-provider)
+         database-id (:id database)
+         database-name (:name database)
+         ;; Base table of the metric — the metric is an aggregation defined on top of a
+         ;; specific table. To use the metric, the LLM has to put that table in
+         ;; `source-table:` and reference the metric in `aggregation:`.
+         ;;
+         ;; This arity is called with two shapes of `card`:
+         ;;   1. The t2 row from `get-card` (via the single-arg `metric-details`) —
+         ;;      snake_case, so `:table_id`.
+         ;;   2. A `lib.metadata/card` map forwarded by `convert-metric` (called from
+         ;;      `table-details` while listing available metrics) — that map is a
+         ;;      `SnakeHatingMap`, so the only valid key is kebab-case `:table-id`; reading
+         ;;      `:table_id` on it throws a deprecation-error that would surface to the LLM
+         ;;      as an empty `<resource>` with just `**Error: ...**`.
+         ;; We accept both. `report_card.table_id` / metadata `:table-id` already points
+         ;; to the metric's base table and is kept in sync, so we use it verbatim instead
+         ;; of digging through `:dataset_query`.
+         source-table-id (or (:table-id card) (:table_id card))
+         source-table (when source-table-id
+                        (lib.metadata/table metadata-provider source-table-id))
+         base-table-portable-fk (when (and database-name source-table)
+                                  [database-name (:schema source-table) (:name source-table)])
          query-needed? (or with-default-temporal-breakout? with-queryable-dimensions? with-segments?)
          metric-query (when query-needed?
                         (lib/query metadata-provider (lib.metadata/card metadata-provider id)))
@@ -138,6 +164,19 @@
               :type :metric
               :name (:name card)
               :description (:description card)
+              ;; Database identity — same shape as in `table-details` / `card-details`.
+              :database_id database-id
+              :database_name database-name
+              ;; Base table the metric aggregates. The LLM uses `:base_table_portable_fk`
+              ;; verbatim as `source-table:` in the query that consumes the metric.
+              :base_table_id source-table-id
+              :base_table_name (:name source-table)
+              :base_table_portable_fk base-table-portable-fk
+              ;; Portable entity id — the string the LLM must copy verbatim into a
+              ;; `[metric, {}, <entity_id>]` aggregation clause to reference this metric.
+              ;; Accept both shapes (see `source-table-id` note above): t2 rows use
+              ;; `:entity_id`, `lib.metadata/card` maps use `:entity-id`.
+              :portable_entity_id (or (:entity-id card) (:entity_id card))
               :default_time_dimension_field_id (some-> default-temporal-breakout
                                                        (->> (metabot.tools.u/->result-column metric-query))
                                                        :field_id)
@@ -160,7 +199,11 @@
   ([db-metric metadata-provider options]
    (-> db-metric
        (metric-details metadata-provider (assoc options :with-queryable-dimensions? false))
-       (select-keys  [:id :type :name :description :default_time_dimension_field_id]))))
+       ;; Keep the DB-name / base-table-fk / portable_entity_id fields so callers (incl.
+       ;; `metric->xml`) can surface them to the LLM without a second round-trip.
+       (select-keys [:id :type :name :description :default_time_dimension_field_id
+                     :database_id :database_name :portable_entity_id
+                     :base_table_id :base_table_name :base_table_portable_fk]))))
 
 (declare related-tables)
 
@@ -180,10 +223,14 @@
                      (metabot.tools.u/get-table id :db_id :description :name :schema))]
      (let [query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
            db-id (if metadata-provider (:db-id base) (:db_id base))
-           db-engine (some-> (if metadata-provider
-                               (lib.metadata/database metadata-provider)
-                               (metabot.tools.u/get-database db-id :engine))
-                             :engine name)
+           ;; Database metadata including :name so LLM can build portable FK paths
+           ;; [db-name, schema, table] / [db-name, schema, table, field] that the
+           ;; representations-format construct_notebook_query expects.
+           db (if metadata-provider
+                (lib.metadata/database metadata-provider)
+                (metabot.tools.u/get-database db-id :engine :name))
+           db-engine (some-> db :engine name)
+           db-name (:name db)
            mp (when query-needed?
                 (or metadata-provider
                     (lib-be/application-database-metadata-provider db-id)))
@@ -203,8 +250,12 @@
             :display_name (some->> (:name base)
                                    (u.humanization/name->human-readable-name :simple))
             :database_id db-id
+            :database_name db-name
             :database_engine db-engine
-            :database_schema (:schema base)}
+            :database_schema (:schema base)
+            ;; Portable table FK path matching the representations-format expectation:
+            ;; [db-name, schema-or-null, table-name]. LLM uses this as `source-table`.
+            :portable_fk (when db-name [db-name (:schema base) (:name base)])}
            (m/assoc-some :description (:description base)
                          :related_tables related-tables
                          :metrics (when with-metrics?
@@ -254,7 +305,9 @@
                             :as   options}]
    (let [id (:id base)
          database-id (:database_id base)
-         database-engine (some-> (lib.metadata/database metadata-provider) :engine name)
+         database (lib.metadata/database metadata-provider)
+         database-engine (some-> database :engine name)
+         database-name (:name database)
          card-metadata (lib.metadata/card metadata-provider id)
          dataset-query (get card-metadata :dataset-query)
          query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
@@ -278,7 +331,11 @@
           :display_name (some->> (:name base)
                                  (u.humanization/name->human-readable-name :simple))
           :database_id database-id
+          :database_name database-name
           :database_engine database-engine
+          ;; Portable entity id matching the representations-format expectation: LLM uses this
+          ;; string as the value of `source-card:` in a representations query stage.
+          :portable_entity_id (:entity_id base)
           :verified (verified-review? id "card")}
          (m/assoc-some
           :description (:description base)

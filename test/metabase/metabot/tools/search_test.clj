@@ -317,6 +317,73 @@
                   (is (nil? (get-in no-desc-dash [:collection :description])))
                   (is (= "No Description" (get-in no-desc-dash [:collection :name]))))))))))))
 
+(deftest enrich-with-portable-entity-ids-test
+  (testing "saved-question and model search results expose `portable_entity_id` (the card's NanoID)\nso the LLM can use it verbatim as `source-card:` without a follow-up entity_details call"
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Card {q-id :id q-eid :entity_id} {:name "PortableEID Sample Question"
+                                                                :type :question
+                                                                :database_id (mt/id)
+                                                                :table_id    (mt/id :orders)
+                                                                :dataset_query {:database (mt/id)
+                                                                                :type     :query
+                                                                                :query    {:source-table (mt/id :orders)
+                                                                                           :aggregation  [[:count]]}}}
+                       :model/Card {m-id :id m-eid :entity_id} {:name "PortableEID Sample Model"
+                                                                :type :model
+                                                                :database_id (mt/id)
+                                                                :table_id    (mt/id :orders)
+                                                                :dataset_query {:database (mt/id)
+                                                                                :type     :query
+                                                                                :query    {:source-table (mt/id :orders)}}}
+                       :model/Dashboard {dash-id :id} {:name "PortableEID Sample Dashboard"}]
+          (let [results      (search/search {:term-queries ["PortableEID Sample"]})
+                by-id        (into {} (map (juxt (juxt :id :type) identity)) results)
+                question-res (get by-id [q-id "question"])
+                model-res    (get by-id [m-id "model"])
+                dash-res     (get by-id [dash-id "dashboard"])]
+            (testing "question results carry :portable_entity_id copied from the card's entity_id"
+              (is (some? question-res) "expected the question to appear in search results")
+              (is (= q-eid (:portable_entity_id question-res))))
+            (testing "model results carry :portable_entity_id too"
+              (is (some? model-res) "expected the model to appear in search results")
+              (is (= m-eid (:portable_entity_id model-res))))
+            (testing "dashboard results do NOT get :portable_entity_id (source-card only accepts cards)"
+              (is (some? dash-res) "expected the dashboard to appear in search results")
+              (is (not (contains? dash-res :portable_entity_id))))))))))
+
+(deftest enrich-with-metric-base-tables-test
+  (testing (str "Metric search results carry `base_table_*` fields so the LLM can write\n"
+                "`source-table:` without a separate entity_details call. We look up\n"
+                "`report_card.table_id` → `metabase_table.{schema,name}` and assemble the\n"
+                "portable FK `[database_name, schema, table_name]`. This closes the failure\n"
+                "mode where the LLM saw a metric in search, had its portable_entity_id, but\n"
+                "hallucinated the base table (`[<db>, public, customers]`).")
+    (mt/with-test-user :crowberto
+      (search.tu/with-temp-index-table
+        (mt/with-temp [:model/Card {metric-id :id} {:name        "BaseTable Sample Metric"
+                                                    :type        :metric
+                                                    :database_id (mt/id)
+                                                    :table_id    (mt/id :orders)
+                                                    :dataset_query
+                                                    {:database (mt/id)
+                                                     :type     :query
+                                                     :query    {:source-table (mt/id :orders)
+                                                                :aggregation  [[:count]]}}}]
+          (let [results   (search/search {:term-queries ["BaseTable Sample Metric"]})
+                by-id     (into {} (map (juxt (juxt :id :type) identity)) results)
+                metric-res (get by-id [metric-id "metric"])
+                db-name   (t2/select-one-fn :name :model/Database :id (mt/id))
+                orders-t  (t2/select-one [:model/Table :schema :name] :id (mt/id :orders))]
+            (is (some? metric-res) "metric should appear in search results")
+            (testing "base_table_* fields are populated"
+              (is (= (mt/id :orders) (:base_table_id metric-res)))
+              (is (= (:name orders-t) (:base_table_name metric-res)))
+              (is (= (:schema orders-t) (:base_table_schema metric-res))))
+            (testing "base_table_portable_fk is `[database_name, schema, table_name]`"
+              (is (= [db-name (:schema orders-t) (:name orders-t)]
+                     (:base_table_portable_fk metric-res))))))))))
+
 (deftest remove-unreadable-transforms-test
   (testing "remove-unreadable-transforms correctly filters transforms based on source database access"
     (mt/with-premium-features #{:transforms-basic}
