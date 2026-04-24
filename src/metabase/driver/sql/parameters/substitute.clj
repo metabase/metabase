@@ -59,8 +59,6 @@
               (sql.params.substitution/->replacement-snippet-info driver/*driver* v)]
           [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))))
 
-(declare substitute*)
-
 (defn- substitute-optional [param->value [sql args missing] {subclauses :args}]
   (let [[opt-sql opt-args opt-missing] (substitute* param->value subclauses true)]
     (if (seq opt-missing)

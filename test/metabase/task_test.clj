@@ -120,7 +120,7 @@
 (deftest start-scheduler-no-op-with-env-var-test
   (tu/do-with-unstarted-temp-scheduler!
    (^:once fn* []
-     (testing (format "task/start-scheduler! should no-op When MB_DISABLE_SCHEDULER is set")
+     (testing "task/start-scheduler! should no-op When MB_DISABLE_SCHEDULER is set"
        (testing "Sanity check"
          (is (not (qs/started? (#'task/scheduler)))))
        (mt/with-temp-env-var-value! ["MB_DISABLE_SCHEDULER" "TRUE"]

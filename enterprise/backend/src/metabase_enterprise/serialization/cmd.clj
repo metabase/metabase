@@ -1,5 +1,4 @@
 (ns metabase-enterprise.serialization.cmd
-  (:refer-clojure :exclude [load])
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]

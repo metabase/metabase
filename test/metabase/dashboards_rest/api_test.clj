@@ -3598,7 +3598,7 @@
 (deftest ^:parallel valid-filter-fields-test
   (testing "GET /api/dashboard/params/valid-filter-fields"
     (letfn [(result= [expected {:keys [filtered filtering]}]
-              (testing (format "\nGET dashboard/params/valid-filter-fields")
+              (testing "\nGET dashboard/params/valid-filter-fields"
                 (is (= expected
                        (mt/user-http-request :rasta :get 200 "dashboard/params/valid-filter-fields"
                                              :filtered filtered :filtering filtering)))))]
