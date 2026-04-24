@@ -1,6 +1,6 @@
 ---
 title: File-based development
-summary: "Use the Git-Based File Editing Workflow — a bundle of agent skills with optional Remote Sync — to author Metabase content with an AI agent on your local filesystem, with schema and semantic validation available locally and in CI."
+summary: "Use an agent with skills to create Metabase content on your local machine as YAML files, then upload the files to your Metabase."
 ---
 
 # File-based development
