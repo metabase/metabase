@@ -128,7 +128,7 @@
          (mt/with-dynamic-fn-redefs [also-accidentally-a-function #{:butter-cup}]
            (is (= [:butter-cup] also-accidentally-a-function)))))))
 
-(defmulti a-multimethod (fn [x] (class x)))
+(defmulti a-multimethod {:arglists '([x])} class)
 (defmethod a-multimethod String [_] :string)
 (defmethod a-multimethod Long [_] :long)
 
