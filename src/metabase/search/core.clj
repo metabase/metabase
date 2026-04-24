@@ -41,6 +41,7 @@
 
  [search.spec
   spec
+  specifications
   define-spec]
 
  [search.util
