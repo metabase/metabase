@@ -930,7 +930,6 @@
 
 (deftest reject-multiple-and-non-select-statements-impersonation-test
   (testing "Impersonated native queries with multiple or non-select statements are rejected under impersonation"
-    #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
     (mt/test-drivers (disj (mt/normal-drivers-with-feature :connection-impersonation) :postgres) ;; Postgres is only fixed in >= 60
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
@@ -975,7 +974,7 @@
 
 (deftest reject-non-select-statements-for-admin-on-impersonated-db-test
   (testing "Admin users are also validated on impersonated databases"
-    (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+    (mt/test-drivers (disj (mt/normal-drivers-with-feature :connection-impersonation) :postgres) ;; Postgres is only fixed in >= 60
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
               role-a (u/lower-case-en (mt/random-name))]
