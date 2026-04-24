@@ -1,0 +1,105 @@
+## Re-shape metabot_feedback to support multiple submitters per message.
+##
+## The original table (20260417_metabot_feedback.yaml) keyed feedback by
+## `message_id` alone, enforcing 1:1 between a message and a feedback row.
+## With shared Slack threads, multiple Metabase users can each submit
+## independent feedback on the same assistant message, so we:
+##   - drop the old single-column primary key on `message_id`
+##   - add a surrogate `id` autoincrement PK
+##   - add a `user_id` column (backfilled from the message's author so any
+##     existing dev-env rows survive) and enforce NOT NULL
+##   - add a unique constraint on (`message_id`, `user_id`)
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-24T14:46:00
+      author: noahmoss
+      comment: Drop the single-column primary key on metabot_feedback.message_id
+      changes:
+        - dropPrimaryKey:
+            tableName: metabot_feedback
+      rollback:
+        - addPrimaryKey:
+            tableName: metabot_feedback
+            columnNames: message_id
+            constraintName: pk_metabot_feedback
+
+  - changeSet:
+      id: v61.2026-04-24T14:49:00
+      author: noahmoss
+      comment: Add surrogate id autoincrement PK to metabot_feedback
+      changes:
+        - addColumn:
+            tableName: metabot_feedback
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+                  remarks: Surrogate PK
+      rollback:
+        - dropColumn:
+            tableName: metabot_feedback
+            columnName: id
+
+  - changeSet:
+      id: v61.2026-04-24T14:52:00
+      author: noahmoss
+      comment: Add nullable user_id column to metabot_feedback (submitter)
+      changes:
+        - addColumn:
+            tableName: metabot_feedback
+            columns:
+              - column:
+                  name: user_id
+                  type: int
+                  remarks: 'The Metabase user who submitted the feedback. Unconstrained int (matches metabot_message.user_id precedent) so audit rows survive user deletion.'
+      rollback:
+        - dropColumn:
+            tableName: metabot_feedback
+            columnName: user_id
+
+  - changeSet:
+      id: v61.2026-04-24T14:55:00
+      author: noahmoss
+      comment: Backfill metabot_feedback.user_id from the rated message's author so the pre-multi-user 1:1 rows are attributed to their implicit submitter
+      changes:
+        - sql:
+            sql: UPDATE metabot_feedback SET user_id = (SELECT user_id FROM metabot_message WHERE metabot_message.id = metabot_feedback.message_id) WHERE user_id IS NULL
+      rollback:
+        - sql:
+            sql: UPDATE metabot_feedback SET user_id = NULL
+
+  - changeSet:
+      id: v61.2026-04-24T14:58:00
+      author: noahmoss
+      comment: Enforce NOT NULL on metabot_feedback.user_id now that it is backfilled
+      changes:
+        - addNotNullConstraint:
+            tableName: metabot_feedback
+            columnName: user_id
+            columnDataType: int
+      rollback:
+        - dropNotNullConstraint:
+            tableName: metabot_feedback
+            columnName: user_id
+            columnDataType: int
+
+  - changeSet:
+      id: v61.2026-04-24T15:01:00
+      author: noahmoss
+      comment: Unique constraint on metabot_feedback (message_id, user_id)
+      changes:
+        - addUniqueConstraint:
+            tableName: metabot_feedback
+            columnNames: message_id, user_id
+            constraintName: uq_metabot_feedback_message_id_user_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabot_feedback
+            constraintName: uq_metabot_feedback_message_id_user_id

@@ -1,9 +1,4 @@
 ## Persist Metabot message feedback
-##
-## One row per `(message, submitter)`. A shared Slack thread can yield multiple
-## submissions on the same assistant message (each participant submits
-## independently), so the table is keyed by a surrogate `id` PK with a unique
-## constraint on `(message_id, user_id)`.
 
 databaseChangeLog:
   - logicalFilePath: migrations/061_update_migrations.yaml
@@ -18,29 +13,16 @@ databaseChangeLog:
             remarks: User feedback - positive/negative w/ optional reason + comment
             columns:
               - column:
-                  name: id
-                  type: int
-                  autoIncrement: true
-                  constraints:
-                    primaryKey: true
-                    nullable: false
-                  remarks: Surrogate PK
-              - column:
                   name: message_id
                   type: int
                   constraints:
+                    primaryKey: true
                     nullable: false
                     referencedTableName: metabot_message
                     referencedColumnNames: id
                     foreignKeyName: fk_metabot_feedback_message_id
                     deleteCascade: true
-                  remarks: 'FK to metabot_message.id'
-              - column:
-                  name: user_id
-                  type: int
-                  constraints:
-                    nullable: false
-                  remarks: 'The Metabase user who submitted the feedback. Unconstrained int (matches metabot_message.user_id precedent) so audit rows survive user deletion.'
+                  remarks: 'PK + FK to metabot_message.id — enforces 1:1'
               - column:
                   name: positive
                   type: ${boolean.type}
@@ -73,13 +55,3 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   remarks: 'When the feedback was last updated'
-
-  - changeSet:
-      id: v61.2026-04-17T10:00:01
-      author: sloansparger
-      comment: Unique constraint on metabot_feedback (message_id, user_id)
-      changes:
-        - addUniqueConstraint:
-            tableName: metabot_feedback
-            columnNames: message_id, user_id
-            constraintName: uq_metabot_feedback_message_id_user_id
