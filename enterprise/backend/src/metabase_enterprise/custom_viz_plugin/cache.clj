@@ -14,17 +14,17 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clj-http.client :as http]
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
    [metabase.config.core :as config]
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
+   [metabase.util.files :as u.files]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.nio.file Files Path LinkOption FileVisitOption CopyOption FileAlreadyExistsException)
+   (java.nio.file CopyOption FileAlreadyExistsException Files FileVisitOption Path)
    (java.nio.file.attribute FileAttribute)))
 
 (set! *warn-on-reflection* true)
@@ -66,15 +66,12 @@
 ;;; ------------------------------------------------ Validate Bundle ------------------------------------------------
 
 (defn- delete-recursive! [^Path path]
-  (when (Files/exists path (into-array LinkOption []))
+  (when (u.files/exists? path)
     (with-open [stream (Files/walk path (into-array FileVisitOption []))]
       (doseq [^Path p (rseq (vec (iterator-seq (.iterator stream))))]
         (try (Files/delete p)
              (catch Exception e
                (log/warnf "Failed to delete %s: %s" p (ex-message e))))))))
-
-(defn- regular-file? [^Path path]
-  (Files/isRegularFile path (into-array LinkOption [])))
 
 (defn validate-bundle!
   "Extract an uploaded tar+gzip `bundle-bytes` into a scratch directory and
@@ -95,13 +92,13 @@
                           e))))
       (let [manifest-file (.resolve scratch ^String (manifest/manifest-path))
             bundle-file   (.resolve scratch ^String (dist-path bundle-rel-path))
-            _             (when-not (regular-file? manifest-file)
+            _             (when-not (u.files/regular-file? manifest-file)
                             (throw (ex-info (str (manifest/manifest-path) " not found in bundle")
                                             {:status-code 400})))
             parsed        (or (manifest/parse-manifest (String. (Files/readAllBytes manifest-file) "UTF-8"))
                               (throw (ex-info (str (manifest/manifest-path) " is not valid JSON")
                                               {:status-code 400})))
-            _             (when-not (regular-file? bundle-file)
+            _             (when-not (u.files/regular-file? bundle-file)
                             (throw (ex-info (str (dist-path bundle-rel-path) " not found in bundle")
                                             {:status-code 400})))
             version-str   (get-in parsed [:metabase :version])]
@@ -129,12 +126,11 @@
    rebooted; [[ensure-unpacked!]] will lazily re-extract from the DB on the
    next serve after a wipe."
   ^Path []
-  (let [root (.resolve (.toPath (io/file (System/getProperty "java.io.tmpdir"))) "metabase-custom-viz")]
-    (Files/createDirectories root (into-array FileAttribute []))
-    root))
+  (doto (u.files/get-path (System/getProperty "java.io.tmpdir") "metabase-custom-viz")
+    u.files/create-dir-if-not-exists!))
 
 (defn- plugin-cache-dir ^Path [id ^String bundle-hash]
-  (.resolve (custom-viz-cache-root) (str id "-" bundle-hash)))
+  (u.files/append-to-path (custom-viz-cache-root) (str id "-" bundle-hash)))
 
 (defn- safe-resolve
   "Resolve `rel-path` under `base`, refusing to escape it. Used on the serve
@@ -149,15 +145,12 @@
 (defn- evict-other-cache-dirs!
   "Delete cache dirs for `id` that don't match `keep-hash`."
   [id ^String keep-hash]
-  (let [root  (custom-viz-cache-root)
-        keep  (str id "-" keep-hash)
+  (let [keep   (str id "-" keep-hash)
         prefix (str id "-")]
-    (with-open [stream (Files/list root)]
-      (doseq [^Path child (iterator-seq (.iterator stream))]
-        (let [name (str (.getFileName child))]
-          (when (and (str/starts-with? name prefix)
-                     (not= name keep))
-            (delete-recursive! child)))))))
+    (doseq [^Path child (u.files/files-seq (custom-viz-cache-root))
+            :let [name (str (.getFileName child))]
+            :when (and (str/starts-with? name prefix) (not= name keep))]
+      (delete-recursive! child))))
 
 (defn- unpack-bundle!
   "Extract `bundle-bytes` into `dir`, creating it. Atomic-ish: unpacks into a
@@ -166,7 +159,7 @@
    resolves each entry under the temp dir via `TarArchiveEntry.resolveIn`."
   [^Path dir ^bytes bundle-bytes]
   (let [parent (.getParent dir)
-        _      (Files/createDirectories parent (into-array FileAttribute []))
+        _      (u.files/create-dir-if-not-exists! parent)
         tmp    (Files/createTempDirectory parent (str (.getFileName dir) ".tmp.")
                                           (into-array FileAttribute []))]
     (try
@@ -185,23 +178,20 @@
   ^Path [{:keys [id bundle_hash]}]
   (when bundle_hash
     (let [dir (plugin-cache-dir id bundle_hash)]
-      (when-not (Files/isDirectory dir (into-array LinkOption []))
-        (let [bundle-bytes (t2/select-one-fn :bundle :model/CustomVizPlugin :id id)]
-          (when (and bundle-bytes (not (Files/isDirectory dir (into-array LinkOption []))))
-            (unpack-bundle! dir bundle-bytes)
-            (evict-other-cache-dirs! id bundle_hash))))
+      (when-not (u.files/exists? dir)
+        (when-let [bundle-bytes (t2/select-one-fn :bundle :model/CustomVizPlugin :id id)]
+          (unpack-bundle! dir bundle-bytes)
+          (evict-other-cache-dirs! id bundle_hash)))
       dir)))
 
 (defn purge-plugin-cache!
   "Remove on-disk cache dirs for `plugin` (typically because it's being deleted or
    updated). Safe to call even if no dir exists."
   [{:keys [id]}]
-  (let [root   (custom-viz-cache-root)
-        prefix (str id "-")]
-    (with-open [stream (Files/list root)]
-      (doseq [^Path child (iterator-seq (.iterator stream))]
-        (when (str/starts-with? (str (.getFileName child)) prefix)
-          (delete-recursive! child))))))
+  (let [prefix (str id "-")]
+    (doseq [^Path child (u.files/files-seq (custom-viz-cache-root))
+            :when (str/starts-with? (str (.getFileName child)) prefix)]
+      (delete-recursive! child))))
 
 ;;; ------------------------------------------------ Save Bundle ------------------------------------------------
 
@@ -247,7 +237,7 @@
                                    (:id plugin) (ex-message e))
                         nil))]
     (when-let [^Path file (safe-resolve dir dist-rel-path)]
-      (when (Files/isRegularFile file (into-array java.nio.file.LinkOption []))
+      (when (u.files/regular-file? file)
         (Files/readAllBytes file)))))
 
 (defn get-bundle
