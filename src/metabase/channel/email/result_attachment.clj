@@ -93,7 +93,7 @@
     result :result
     :as part}
    creator-id]
-  (when (and (or (:include_csv card) (:include_xls card))
+  (when (and (or (:include_csv card) (:include_xls card) (:include_ods card))
              (pos-int? (:row_count result))
              (not= (perms/download-perms-level (:dataset_query card) creator-id) :no))
     (let [maybe-realize-data-rows (requiring-resolve 'metabase.channel.shared/maybe-realize-data-rows)
@@ -112,5 +112,10 @@
                                     (create-temp-file-or-throw! "xlsx"))]
             (with-open [os (io/output-stream temp-file)]
               (stream-api-results-to-export-format! os {:export-format :xlsx :format-rows? format-rows :pivot? pivot-results} result))
-            (create-result-attachment-map "xlsx" filename-prefix temp-file))]
+            (create-result-attachment-map "xlsx" filename-prefix temp-file))
+          (when-let [temp-file (and (:include_ods card)
+                                    (create-temp-file-or-throw! "ods"))]
+            (with-open [os (io/output-stream temp-file)]
+              (stream-api-results-to-export-format! os {:export-format :ods :format-rows? format-rows :pivot? pivot-results} result))
+            (create-result-attachment-map "ods" filename-prefix temp-file))]
          (filterv some?))))))

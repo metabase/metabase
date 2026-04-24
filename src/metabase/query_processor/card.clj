@@ -293,8 +293,11 @@
     :public-json-download   nil
     :embedded-json-download nil
     :xlsx-download          nil
+    :ods-download           nil
     :public-xlsx-download   nil
+    :public-ods-download    nil
     :embedded-xlsx-download nil
+    :embedded-ods-download  nil
     :dashboard-subscription nil
     :pulse                  nil
     :map-tiles              nil

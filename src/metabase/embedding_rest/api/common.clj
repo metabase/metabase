@@ -318,6 +318,7 @@
   (case (keyword export-format)
     :csv  :embedded-csv-download
     :xlsx :embedded-xlsx-download
+    :ods  :embedded-ods-download
     :json :embedded-json-download
     :embedded-question))
 
@@ -396,6 +397,7 @@
   (case (keyword export-format)
     :csv  :embedded-csv-download
     :xlsx :embedded-xlsx-download
+    :ods  :embedded-ods-download
     :json :embedded-json-download
     :embedded-dashboard))
 

@@ -24,10 +24,15 @@
    [metabase.pulse.send :as pulse.send]
    [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.settings :as qp.settings]
+   [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
-   (org.apache.poi.ss.usermodel DataFormatter)))
+   (java.io InputStream)
+   (org.apache.commons.io IOUtils)
+   (org.apache.poi.ss.usermodel DataFormatter)
+   (org.odftoolkit.odfdom.doc OdfSpreadsheetDocument)
+   (org.odftoolkit.odfdom.doc.table OdfTable OdfTableCell)))
 
 (set! *warn-on-reflection* true)
 
@@ -47,6 +52,39 @@
                  (->>  (spreadsheet/cell-seq r)
                        (mapv read-cell-with-formatting)))))))
 
+(defn- ods-cell->str
+  "String content of an ODF cell for tests. Treats a cell with no `office:value-type` and
+  blank string as empty (e.g. pre-allocated table slots), not as numeric 0.0."
+  [^OdfTableCell cell]
+  (if (nil? cell)
+    ""
+    (let [s  (.getStringValue cell)
+          vt (or (.getValueType cell) "")]
+      (cond
+        (not (str/blank? s)) s
+        (str/blank? vt) ""
+        :else
+        (let [vt' (str/lower-case vt)]
+          (cond
+            (= "boolean" vt') (str (boolean (.getBooleanValue cell)))
+            (contains? #{"float" "percentage" "currency"} vt') (str (or (.getDoubleValue cell) 0.0))
+            :else s))))))
+
+(defn- read-ods
+  [result]
+  (with-open [^InputStream in (io/input-stream result)]
+    (let [^OdfSpreadsheetDocument doc (OdfSpreadsheetDocument/loadDocument in)
+          ^OdfTable table (or (.getTableByName doc "Query result")
+                              (first (.getTableList doc)))]
+      (when table
+        (let [rows (int (.getRowCount table))
+              cols (int (.getColumnCount table))]
+          (vec
+           (for [r (range rows)]
+             (vec
+              (for [c (range cols)]
+                (ods-cell->str (.getCellByPosition table (int c) (int r))))))))))))
+
 (defn- tabulate-maps
   [result]
   (let [ks (keys (first result))]
@@ -61,6 +99,7 @@
       :csv  (cond-> results
               (not (map? results)) csv/read-csv)
       :xlsx (read-xlsx results)
+      :ods  (read-ods results)
       :json (tabulate-maps results))))
 
 (defn card-download
@@ -143,21 +182,25 @@
           (public-dashcard-download* dashcard))))))
 
 (defn- run-pulse-and-return-attached-csv-data!
-  "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
-  attachment name -> column name -> column data"
+  "Simulate sending the pulse email, get the attached results in `export-format`, and return the
+  payload (string for CSV, byte array for spreadsheet exports) for [[process-results]]."
   [pulse export-format]
   (let [m    (update
               (mt/with-test-user nil
                 (pulse.test-util/with-captured-channel-send-messages!
                   (pulse.send/send-pulse! pulse)))
               :channel/email vec)
-        msgs (get-in m [:channel/email 0 :message])]
+        msgs (get-in m [:channel/email 0 :message])
+        expected-ct (:content-type (qp.si/stream-options export-format))]
     (first (keep
             (fn [{:keys [type content-type content]}]
               (when (and
                      (= :attachment type)
-                     (= (format "text/%s" (name export-format)) content-type))
-                (slurp content)))
+                     (= expected-ct content-type))
+                (if (= :csv export-format)
+                  (slurp content)
+                  (with-open [in (io/input-stream (io/file (.toURI ^java.net.URL content)))]
+                    (IOUtils/toByteArray in)))))
             msgs))))
 
 (defn- alert-attachment!
@@ -171,6 +214,7 @@
                    :model/PulseCard _ (merge
                                        (when (= :csv  export-format) {:include_csv true})
                                        (when (= :xlsx export-format) {:include_xls true})
+                                       (when (= :ods  export-format) {:include_ods true})
                                        {:format_rows format-rows}
                                        {:pivot_results pivot}
                                        {:pulse_id pulse-id
@@ -196,6 +240,7 @@
                      :model/PulseCard _ (merge
                                          (when (= :csv  export-format) {:include_csv true})
                                          (when (= :xlsx export-format) {:include_xls true})
+                                         (when (= :ods  export-format) {:include_ods true})
                                          {:format_rows format-rows}
                                          {:pivot_results pivot}
                                          {:pulse_id          pulse-id
@@ -217,6 +262,7 @@
                      :model/PulseCard _ (merge
                                          (when (= :csv  export-format) {:include_csv true})
                                          (when (= :xlsx export-format) {:include_xls true})
+                                         (when (= :ods  export-format) {:include_ods true})
                                          {:format_rows format-rows}
                                          {:pivot_results pivot}
                                          {:pulse_id          pulse-id

@@ -61,6 +61,7 @@
                        [:card_id                        [:maybe ms/PositiveInt]]
                        [:include_csv   {:optional true} [:maybe ms/BooleanValue]]
                        [:include_xls   {:optional true} [:maybe ms/BooleanValue]]
+                       [:include_ods   {:optional true} [:maybe ms/BooleanValue]]
                        [:format_rows   {:optional true} [:maybe ms/BooleanValue]]
                        [:pivot_results {:optional true} [:maybe ms/BooleanValue]]]]]]]]]
     ;; for testing only

@@ -141,6 +141,7 @@
   (case (keyword export-format)
     :csv  :public-csv-download
     :xlsx :public-xlsx-download
+    :ods  :public-ods-download
     :json :public-json-download
     :public-question))
 

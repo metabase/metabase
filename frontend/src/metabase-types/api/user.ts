@@ -174,8 +174,8 @@ export type UserKeyValue =
       namespace: "last_download_format";
       key: string;
       value: {
-        last_download_format: "csv" | "xlsx" | "json" | "png";
-        last_table_download_format: "csv" | "xlsx" | "json";
+        last_download_format: "csv" | "xlsx" | "ods" | "json" | "png";
+        last_table_download_format: "csv" | "xlsx" | "ods" | "json";
       };
     }
   | {

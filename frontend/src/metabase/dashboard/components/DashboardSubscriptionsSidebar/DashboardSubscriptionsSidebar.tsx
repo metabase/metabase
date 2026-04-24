@@ -80,6 +80,7 @@ const cardsToPulseCards = (
       pivot_results: pulseCard.pivot_results,
       include_csv: pulseCard.include_csv,
       include_xls: pulseCard.include_xls,
+      include_ods: pulseCard.include_ods,
       download_perms: pulseCard.download_perms,
     };
   });

@@ -145,7 +145,7 @@
                                                 (= (:card_id config) result-card-id))
                                               part-configs))]]
     (if result-card-id
-      (update result :card merge (select-keys noti-dashcard [:include_csv :include_xls :format_rows :pivot_results]))
+      (update result :card merge (select-keys noti-dashcard [:include_csv :include_xls :include_ods :format_rows :pivot_results]))
       result)))
 
 (defn- icon-bundle

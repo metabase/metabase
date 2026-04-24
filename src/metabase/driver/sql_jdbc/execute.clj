@@ -765,9 +765,9 @@
 
 (mu/defn- download? :- :boolean
   [context :- [:maybe ::lib.schema.info/context]]
-  (let [download-contexts #{:csv-download :xlsx-download :json-download
-                            :public-csv-download :public-xlsx-download :public-json-download
-                            :embedded-csv-download :embedded-xlsx-download :embedded-json-download
+  (let [download-contexts #{:csv-download :xlsx-download :ods-download :json-download
+                            :public-csv-download :public-xlsx-download :public-ods-download :public-json-download
+                            :embedded-csv-download :embedded-xlsx-download :embedded-ods-download :embedded-json-download
                             :pulse}]
     (boolean (download-contexts context))))
 

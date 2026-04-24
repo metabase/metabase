@@ -148,7 +148,7 @@
 
 (defn- is-attached?
   [card]
-  ((some-fn :include_csv :include_xls) card))
+  ((some-fn :include_csv :include_xls :include_ods) card))
 
 (mu/defn- render-pulse-card-body :- ::body/RenderedPartCard
   [render-type

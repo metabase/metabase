@@ -1,4 +1,4 @@
 [:map
  [:value [:map
-          [:last_download_format [:enum "csv" "xlsx" "json" "png"]]
-          [:last_table_download_format [:enum "csv" "xlsx" "json"]]]]]
+          [:last_download_format [:enum "csv" "xlsx" "ods" "json" "png"]]
+          [:last_table_download_format [:enum "csv" "xlsx" "ods" "json"]]]]]

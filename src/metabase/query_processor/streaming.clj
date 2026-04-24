@@ -12,6 +12,7 @@
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.query-processor.streaming.json :as qp.json]
+   [metabase.query-processor.streaming.ods :as qp.ods]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
@@ -30,6 +31,7 @@
 ;; TODO - consider whether we should lazy-load these!
 (comment qp.csv/keep-me
          qp.json/keep-me
+         qp.ods/keep-me
          qp.xlsx/keep-me)
 
 (defn safe-filename-prefix

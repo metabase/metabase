@@ -42,6 +42,7 @@ export interface AlertCard {
   id: CardId;
   include_csv: boolean;
   include_xls: boolean;
+  include_ods: boolean;
   format_rows?: boolean;
   dashboard_card_id?: DashCardId;
 }
