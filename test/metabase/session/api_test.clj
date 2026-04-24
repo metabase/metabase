@@ -585,13 +585,15 @@
       (mt/with-model-cleanup [:model/User]
         (t2/insert! :model/User (merge  (mt/with-temp-defaults :model/User) {:email "test@metabase.com" :is_active true}))
         (testing "Google auth works with remember me and rasta"
-          (mt/with-dynamic-fn-redefs [http/post (constantly
-                                                 {:status 200
-                                                  :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
-                                                               "\"email_verified\":\"true\","
-                                                               "\"given_name\":\"test\","
-                                                               "\"family_name\":\"user\","
-                                                               "\"email\":\"test@metabase.com\"}")})]
+          ;; client-real-response hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
+          #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+          (with-redefs [http/post (constantly
+                                   {:status 200
+                                    :body   (str "{\"aud\":\"pretend-client-id.apps.googleusercontent.com\","
+                                                 "\"email_verified\":\"true\","
+                                                 "\"given_name\":\"test\","
+                                                 "\"family_name\":\"user\","
+                                                 "\"email\":\"test@metabase.com\"}")})]
             (testing "Test that 'remember me' checkbox sets expiration on session"
               (let [response (mt/client-real-response :post 200 "session/google_auth" {:token "foo" :remember true})]
                 (is (some? (get-in response [:cookies session-cookie :expires])) "Session should have expiration set when remember=true"))

@@ -297,11 +297,13 @@
         (mt/with-temporary-setting-values [slack-connect-user-provisioning-enabled false
                                            site-name "test"]
           (with-successful-oidc!
-            (mt/with-dynamic-fn-redefs [auth-identity/login!
-                                        (fn [_provider _request]
-                                          {:success? false
-                                           :error :user-provisioning-disabled
-                                           :message "Sorry, but you'll need a test account to view this page. Please contact your administrator."})]
+            ;; client-real-response hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
+            #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+            (with-redefs [auth-identity/login!
+                          (fn [_provider _request]
+                            {:success? false
+                             :error :user-provisioning-disabled
+                             :message "Sorry, but you'll need a test account to view this page. Please contact your administrator."})]
             ;; Initiate auth
               (let [init-response (mt/client-full-response :get 302 "/auth/sso/slack-connect"
                                                            {:request-options {:redirect-strategy :none}}

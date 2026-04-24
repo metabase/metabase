@@ -421,13 +421,16 @@
           called-promise                      (promise)
           save-execution-metadata-original    (mt/original-fn #'process-userland-query/save-execution-metadata!*)
           save-query-update-avg-time-original (mt/original-fn #'query/save-query-and-update-average-execution-time!)]
-      (mt/with-dynamic-fn-redefs [process-userland-query/save-execution-metadata!*     (fn [& args]
-                                                                                         (swap! save-execution-metadata-count inc)
-                                                                                         (apply save-execution-metadata-original args)
-                                                                                         (deliver called-promise true))
-                                  query/save-query-and-update-average-execution-time! (fn [& args]
-                                                                                        (swap! update-avg-execution-count inc)
-                                                                                        (apply save-query-update-avg-time-original args))]
+      ;; save-execution-metadata!* and save-query-and-update-average-execution-time! are invoked from
+      ;; the QP pipeline on worker threads that don't inherit *local-redefs* — use with-redefs.
+      #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+      (with-redefs [process-userland-query/save-execution-metadata!*     (fn [& args]
+                                                                           (swap! save-execution-metadata-count inc)
+                                                                           (apply save-execution-metadata-original args)
+                                                                           (deliver called-promise true))
+                    query/save-query-and-update-average-execution-time! (fn [& args]
+                                                                          (swap! update-avg-execution-count inc)
+                                                                          (apply save-query-update-avg-time-original args))]
         (let [query  (assoc (mt/mbql-query venues {:order-by [[:asc $id]] :limit 42})
                             :cache-strategy (assoc (ttl-strategy) :multiplier 5000))
               q-hash (qp.util/query-hash query)]

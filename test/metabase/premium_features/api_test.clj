@@ -80,8 +80,10 @@
 
 (deftest token-refresh-sets-premium-features-cookie-test
   (testing "POST /api/premium-features/token/refresh sets the premium-features-last-updated cookie"
-    (mt/with-dynamic-fn-redefs [premium-features/token-status            (constantly fake-token-status)
-                                premium-features/premium-embedding-token (constantly nil)]
+    ;; user-real-request hits a real Jetty server; handler thread doesn't inherit *local-redefs*.
+    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+    (with-redefs [premium-features/token-status            (constantly fake-token-status)
+                  premium-features/premium-embedding-token (constantly nil)]
       (let [cs (cookies/cookie-store)]
         (mt/user-real-request :crowberto :post 200 "premium-features/token/refresh"
                               {:request-options {:cookie-store cs}})

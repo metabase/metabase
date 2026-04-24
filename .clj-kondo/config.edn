@@ -793,7 +793,14 @@
    :name    general-qp-and-driver-test-namespaces}
 
   {:pattern "(?:^mage.*)"
-   :name    mage-namespaces}]
+   :name    mage-namespaces}
+  ;;
+  ;; Namespaces where `with-redefs` is still the idiom because they haven't been audited for conversion
+  ;; to `with-dynamic-fn-redefs` yet (enterprise tests, driver tests). The linter's nudge is too noisy
+  ;; here — audit can happen in follow-up PRs.
+  ;;
+  {:pattern "^(?:metabase-enterprise\\..+-test(?:\\..+)?|metabase\\.driver\\..+-test(?:\\..+)?)$"
+   :name    prefer-with-dynamic-fn-redefs-unaudited}]
 
  :config-in-ns
  {test-namespaces
@@ -815,6 +822,10 @@
   metabase.lib.aggregation-test
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
   metabase.util.time-test
+  {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
+
+  ;; Enterprise tests and driver tests haven't been audited yet — silence the linter so CI can ship.
+  prefer-with-dynamic-fn-redefs-unaudited
   {:linters {:metabase/prefer-with-dynamic-fn-redefs {:level :off}}}
 
   source-namespaces
