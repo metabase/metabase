@@ -53,6 +53,17 @@
    :model-name       "all-minilm:l6-v2"
    :model-dimensions 384})
 
+(def default-text-variant
+  "Which text form of each entity name gets embedded by the default synonym embedder. `:names-split`
+  rewrites snake/kebab/dotted/camelCase names into space-separated English tokens before sending
+  them to the provider — see [[split-for-embedding]]. Alternatives worth considering (not
+  implemented) include `:names` (raw lowercased name), `:search-text` (type + name + description +
+  schema, as the semantic-search indexer does), or `:typed-split` ([source|value] prefix + split
+  name). The calibration data in the 2026-04-21 analysis summary shows names-split as the best
+  default for both Arctic and MiniLM; the value rides the fingerprint so a future change to a
+  different variant is visible without bumping `formula-version`."
+  :names-split)
+
 (defn provider-embedder
   "Build an embedder that embeds names via `semantic-search/get-embeddings-batch` using
   `model-descriptor` (`{:provider :model-name :model-dimensions}`). For each distinct normalized

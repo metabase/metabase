@@ -19,10 +19,10 @@
 
 (def formula-version
   "Bump when the scoring formula changes in a way that would break historical comparisons.
-   v2 switched the synonym axis to MiniLM-L6-v2 (STS, 0.80) on names-split text, replacing the
-   Arctic-L search-index vectors at 0.90. The model is fixed via `embedders/default-synonym-model`
-   rather than reused from the semantic-search index — precision cutoff vs. retrieval recall."
-  2)
+  Swaps of `embedding-model`, `synonym-threshold`, or `text-variant` don't need a bump — they
+  already ride in the fingerprint + `:meta` + Snowplow parameters, so downstream readers can
+  diff on those fields directly."
+  1)
 
 (def weights
   "Per-axis weights applied to raw measurements. Public because they're part of the scoring
@@ -353,13 +353,14 @@
   String keys (top-level and nested) so they round-trip unchanged — Snowplow's `payload` only
   snake-cases top-level keys, and Cheshire would serialize nested keyword keys with their leading
   colon. Excludes `formula_version` — that stays top-level as the primary cross-version filter."
-  [{:keys [synonym-threshold embedding-model weights]}]
+  [{:keys [synonym-threshold embedding-model text-variant weights]}]
   (cond-> (sorted-map "synonym_threshold" synonym-threshold
                       "weights"           (into (sorted-map)
                                                 (map (fn [[k v]] [(snake k) v]))
                                                 weights))
     embedding-model (assoc "embedding_model_provider" (:provider embedding-model)
-                           "embedding_model_name"     (:model-name embedding-model))))
+                           "embedding_model_name"     (:model-name embedding-model))
+    text-variant    (assoc "text_variant" (snake text-variant))))
 
 (def ^:private max-error-length
   "Matches the Snowplow schema's `error` maxLength — a pathological exception message
@@ -423,9 +424,13 @@
      {:library  {:total n :components {...}}
       :universe {:total n :components {...}}
       :metabot  {:total n :components {...}}
-      :meta     {:formula-version 2
+      :meta     {:formula-version 1
                  :synonym-threshold 0.80
-                 :embedding-model {...}}}
+                 :embedding-model {:provider ... :model-name ...}
+                 :text-variant :names-split}}
+
+   `:embedding-model` and `:text-variant` are present only when the default synonym embedder is
+   in use — an explicit `:embedder` means the caller owns the model + preprocessing narrative.
 
    Options:
      `:embedder` — overrides the synonym-axis embedder (defaults to
@@ -449,8 +454,10 @@
       (let [embedder       (if (contains? opts :embedder)
                              embedder
                              embedders/default-synonym-embedder)
-            model-meta     (when (= embedder embedders/default-synonym-embedder)
+            default?       (= embedder embedders/default-synonym-embedder)
+            model-meta     (when default?
                              (select-keys embedders/default-synonym-model [:provider :model-name]))
+            text-variant   (when default? embedders/default-text-variant)
             {:keys [library universe metabot]}
             ;; Single enumerate phase — see [[enumerate-catalogs]]. Library ⊆ universe and
             ;; metabot ⊆ universe, so fetching each catalog separately duplicated DB work; the
@@ -465,7 +472,8 @@
                             :metabot  metabot-score
                             :meta     (cond-> {:formula-version   formula-version
                                                :synonym-threshold synonym-similarity-threshold}
-                                        model-meta (assoc :embedding-model model-meta))}]
+                                        model-meta   (assoc :embedding-model model-meta)
+                                        text-variant (assoc :text-variant    text-variant))}]
         (log-scores! result)
         (let [published? (try
                            (emit-snowplow! result)

@@ -25,15 +25,17 @@
   "String capturing everything that changes the meaning of an emitted score — mirror of the Snowplow
   `formula_version` + `parameters` fields. Includes `weights` so re-tuning forces a re-score
   without bumping `formula-version`; only structural changes to the scoring algorithm need that.
-  `:embedding-model` is the fixed synonym-axis descriptor — stable across pgvector state changes,
-  so the fingerprint doesn't drift when the search index is rebuilt or unreachable."
+  `:embedding-model` and `:text-variant` are the fixed synonym-axis descriptors — stable across
+  pgvector state changes, so the fingerprint doesn't drift when the search index is rebuilt or
+  unreachable, but a swap to a different model or preprocessing variant does force a re-score."
   []
   (pr-str (into (sorted-map)
                 {:formula-version   complexity/formula-version
                  :synonym-threshold complexity/synonym-similarity-threshold
                  :weights           complexity/weights
                  :embedding-model   (select-keys embedders/default-synonym-model
-                                                 [:provider :model-name])})))
+                                                 [:provider :model-name])
+                 :text-variant      embedders/default-text-variant})))
 
 (defn- run-scoring!
   "One scoring pass. Gated by [[settings/data-complexity-scoring-enabled]] so admins can silence
