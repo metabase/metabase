@@ -1,5 +1,5 @@
 name: Metabot Usage
-description: 'Daily Metabot usage rollup by model: conversations, unique users, user/assistant messages, and total tokens.'
+description: 'Daily Metabot usage rollup by profile: conversations, unique users, user/assistant messages, and total tokens.'
 entity_id: 4HzVsq_6bA31UuCjn8Rse
 created_at: '2026-04-22T08:18:47.309416Z'
 creator_id: internal@metabase.com
@@ -29,9 +29,9 @@ result_metadata:
   name: usage_date
   semantic_type: null
   visibility_type: normal
-- description: LLM model/profile used on this day.
-  display_name: Model
-  name: model
+- description: Metabot profile (e.g. default, embedded) used on this day.
+  display_name: Profile ID
+  name: profile_id
   semantic_type: type/Category
   visibility_type: normal
 - description: Number of distinct conversations with at least one message on this day.

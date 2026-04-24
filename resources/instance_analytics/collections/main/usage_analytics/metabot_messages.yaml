@@ -1,5 +1,5 @@
 name: Metabot Messages
-description: One row per non-deleted Metabot message, with role, model, tokens, user, and the owning conversation.
+description: One row per non-deleted Metabot message, with role, profile, tokens, user, and the owning conversation.
 entity_id: H20MNO_ZroDFEmgYzMLcZ
 created_at: '2026-04-22T05:29:01.750254Z'
 creator_id: internal@metabase.com
@@ -44,9 +44,9 @@ result_metadata:
   name: role
   semantic_type: type/Category
   visibility_type: normal
-- description: LLM model/profile that produced the message.
-  display_name: Model
-  name: model
+- description: Metabot profile (e.g. default, embedded) that produced the message.
+  display_name: Profile ID
+  name: profile_id
   semantic_type: type/Category
   visibility_type: normal
 - description: Total tokens consumed for this message (prompt + completion).
@@ -63,11 +63,6 @@ result_metadata:
   - user_id
   name: user_id
   semantic_type: type/FK
-  visibility_type: normal
-- description: Namespaced user identifier (e.g. user_42) for joining with other analytics views.
-  display_name: User Qualified ID
-  name: user_qualified_id
-  semantic_type: type/Category
   visibility_type: normal
 - description: Slack message timestamp; null for web-originated messages.
   display_name: Slack Msg ID
