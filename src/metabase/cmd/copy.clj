@@ -374,7 +374,6 @@
     :model/FieldUserSettings
     :model/QueryAction
     :model/MetabotConversation
-    :model/MetabotFeedback
     :model/ModelIndexValue})
 
 (defmulti ^:private postgres-id-sequence-name

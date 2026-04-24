@@ -129,24 +129,29 @@
   (slackbot.api/conversation-permalink slack_channel_id slack_thread_ts))
 
 (defn- fetch-conversation-feedback
-  "Return all `metabot_feedback` rows for messages in `conversation-id`, ordered by submission time.
-   The submitter is always the conversation owner (enforced at write), so we don't hydrate a
-   per-row user — callers already know the conversation's user from the detail response."
+  "Return all `metabot_feedback` rows for messages in `conversation-id`, ordered
+   by submission time. Rows are keyed per-`(message, submitter)` — a shared
+   thread can yield multiple rows for the same message — so the submitter is
+   hydrated as `:user` for display."
   [conversation-id]
-  (t2/select :model/MetabotFeedback
-             {:select   [:metabot_feedback.message_id
-                         [:mm.external_id :external_id]
-                         :metabot_feedback.positive
-                         :metabot_feedback.issue_type
-                         :metabot_feedback.freeform_feedback
-                         :metabot_feedback.created_at
-                         :metabot_feedback.updated_at]
-              :from     [:metabot_feedback]
-              :join     [[:metabot_message :mm]
-                         [:= :mm.id :metabot_feedback.message_id]]
-              :where    [:= :mm.conversation_id conversation-id]
-              :order-by [[:metabot_feedback.created_at :asc]
-                         [:metabot_feedback.message_id :asc]]}))
+  (let [rows (t2/select :model/MetabotFeedback
+                        {:select   [:metabot_feedback.id
+                                    :metabot_feedback.message_id
+                                    :metabot_feedback.user_id
+                                    [:mm.external_id :external_id]
+                                    :metabot_feedback.positive
+                                    :metabot_feedback.issue_type
+                                    :metabot_feedback.freeform_feedback
+                                    :metabot_feedback.created_at
+                                    :metabot_feedback.updated_at]
+                         :from     [:metabot_feedback]
+                         :join     [[:metabot_message :mm]
+                                    [:= :mm.id :metabot_feedback.message_id]]
+                         :where    [:= :mm.conversation_id conversation-id]
+                         :order-by [[:metabot_feedback.created_at :asc]
+                                    [:metabot_feedback.message_id :asc]
+                                    [:metabot_feedback.user_id :asc]]})]
+    (t2/hydrate rows :user)))
 
 (defn fetch-conversation-detail
   "Fetch a conversation with its user info, the frontend-ready flattened

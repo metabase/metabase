@@ -40,9 +40,10 @@
     (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]})))
 
 (defn- insert-feedback!
-  [{:keys [message-id positive issue-type freeform created-at updated-at]}]
+  [{:keys [message-id user-id positive issue-type freeform created-at updated-at]}]
   (t2/insert! :model/MetabotFeedback
               (cond-> {:message_id        message-id
+                       :user_id           user-id
                        :positive          positive
                        :issue_type        issue-type
                        :freeform_feedback freeform}
@@ -611,8 +612,8 @@
                                         :role "assistant" :profile-id "gpt-5" :total-tokens 7
                                         :data [{:type "text" :text "second answer"}]})]
             (run! insert-feedback!
-                  [{:message-id msg-1 :positive true  :freeform "great" :created-at jan-2}
-                   {:message-id msg-2 :positive false :issue-type "not-factual"
+                  [{:message-id msg-1 :user-id user-id :positive true  :freeform "great" :created-at jan-2}
+                   {:message-id msg-2 :user-id user-id :positive false :issue-type "not-factual"
                     :freeform "wrong" :created-at jan-3}])
             (let [feedback (:feedback (mt/user-http-request :crowberto :get 200
                                                             (format "ee/metabot-analytics/conversations/%s"
@@ -623,10 +624,73 @@
               (is (= "not-factual" (:issue_type (second feedback))))
               (is (every? (comp string? :external_id) feedback)
                   "each feedback row carries the parent metabot_message.external_id so the admin UI can link to it")
-              (is (every? #(not (contains? % :user)) feedback)
-                  "feedback rows do not hydrate a per-row user — the submitter is always the conversation owner")))
+              (is (every? (comp pos-int? :id) feedback)
+                  "each feedback row has a surrogate id after the multi-user migration")
+              (is (= [user-id user-id] (map :user_id feedback))
+                  "each feedback row carries the submitter's user_id")
+              (is (= [{:id         user-id
+                       :email      "crowberto@metabase.com"
+                       :first_name "Crowberto"
+                       :last_name  "Corv"}
+                      {:id         user-id
+                       :email      "crowberto@metabase.com"
+                       :first_name "Crowberto"
+                       :last_name  "Corv"}]
+                     (map #(select-keys (:user %) [:id :email :first_name :last_name]) feedback))
+                  "submitter is hydrated on each feedback row")))
           (finally
             (delete-conversations! [conversation-id])))))))
+
+(deftest get-conversation-detail-feedback-multi-user-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations/:id returns one feedback row per submitter when multiple users rate the same assistant message"
+      (mt/with-temp [:model/User {participant-id :id} {:email      "metabot-analytics-feedback-participant@metabase.com"
+                                                       :first_name "Feedback"
+                                                       :last_name  "Participant"}]
+        (let [conversation-id (str (random-uuid))
+              owner-id        (mt/user->id :crowberto)
+              apr-1           (offset-date-time "2026-04-10T00:00:00Z")
+              apr-2           (offset-date-time "2026-04-11T00:00:00Z")
+              apr-3           (offset-date-time "2026-04-12T00:00:00Z")]
+          (try
+            (insert-conversation! {:conversation-id conversation-id
+                                   :user-id         owner-id
+                                   :created-at      apr-1
+                                   :summary         "shared thread feedback"})
+            (let [assistant-msg (insert-message! {:conversation-id conversation-id :created-at apr-2
+                                                  :role "assistant" :profile-id "slackbot" :total-tokens 9
+                                                  :data [{:type "text" :text "shared answer"}]})]
+              (run! insert-feedback!
+                    [{:message-id assistant-msg :user-id owner-id :positive true
+                      :freeform "looks good" :created-at apr-2}
+                     {:message-id assistant-msg :user-id participant-id :positive false
+                      :issue-type "not-factual" :freeform "disagree" :created-at apr-3}])
+              (let [feedback (:feedback (mt/user-http-request :crowberto :get 200
+                                                              (format "ee/metabot-analytics/conversations/%s"
+                                                                      conversation-id)))
+                    by-user  (into {} (map (juxt :user_id identity)) feedback)]
+                (is (= 2 (count feedback)))
+                (is (= #{owner-id participant-id} (set (map :user_id feedback)))
+                    "both submitters appear as distinct rows on the same message")
+                (is (= #{assistant-msg} (set (map :message_id feedback)))
+                    "both rows point to the same assistant message")
+                (is (apply distinct? (map :id feedback))
+                    "surrogate ids disambiguate the rows")
+                (is (= {:id         owner-id
+                        :email      "crowberto@metabase.com"
+                        :first_name "Crowberto"
+                        :last_name  "Corv"}
+                       (select-keys (:user (get by-user owner-id)) [:id :email :first_name :last_name])))
+                (is (= {:id         participant-id
+                        :email      "metabot-analytics-feedback-participant@metabase.com"
+                        :first_name "Feedback"
+                        :last_name  "Participant"}
+                       (select-keys (:user (get by-user participant-id)) [:id :email :first_name :last_name])))
+                (is (true? (:positive (get by-user owner-id))))
+                (is (false? (:positive (get by-user participant-id))))
+                (is (= "not-factual" (:issue_type (get by-user participant-id))))))
+            (finally
+              (delete-conversations! [conversation-id]))))))))
 
 (deftest ip-address-test
   (with-ip-address-fixture!
