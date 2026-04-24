@@ -8,6 +8,8 @@
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (deftest table-name-test
   (is (= :custom_viz_plugin (t2/table-name :model/CustomVizPlugin))))
 

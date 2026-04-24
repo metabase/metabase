@@ -24,7 +24,8 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.nio.file Files Path)))
+   (java.nio.file Files Path LinkOption FileVisitOption CopyOption FileAlreadyExistsException)
+   (java.nio.file.attribute FileAttribute)))
 
 (set! *warn-on-reflection* true)
 
@@ -55,9 +56,7 @@
 ;;; ------------------------------------------------ Size Limits ------------------------------------------------
 
 (def ^:const max-bundle-mib
-  "Maximum size of an uploaded plugin bundle, in MiB. The API layer enforces
-   this on the archive bytes up front using the multipart `:size` hint; every
-   other size (per-entry, total uncompressed) is bounded by it transitively."
+  "Maximum size of an uploaded plugin bundle, in MiB."
   5)
 
 (def ^:const max-bundle-bytes
@@ -67,29 +66,26 @@
 ;;; ------------------------------------------------ Validate Bundle ------------------------------------------------
 
 (defn- delete-recursive! [^Path path]
-  (when (Files/exists path (into-array java.nio.file.LinkOption []))
-    (with-open [stream (Files/walk path (into-array java.nio.file.FileVisitOption []))]
+  (when (Files/exists path (into-array LinkOption []))
+    (with-open [stream (Files/walk path (into-array FileVisitOption []))]
       (doseq [^Path p (reverse (vec (.iterator stream)))]
         (try (Files/delete p)
              (catch Exception e
                (log/warnf "Failed to delete %s: %s" p (ex-message e))))))))
 
 (defn- regular-file? [^Path path]
-  (Files/isRegularFile path (into-array java.nio.file.LinkOption [])))
+  (Files/isRegularFile path (into-array LinkOption [])))
 
 (defn validate-bundle!
   "Extract an uploaded tar+gzip `bundle-bytes` into a scratch directory and
    validate its contents against the expected layout. Returns
    `{:bytes bundle-bytes :hash sha :manifest m :version-str v}` on success.
-   Throws ex-info with `:status-code 400` for any user-facing failure.
-
-   The caller is responsible for enforcing the upload size cap — by the time we
-   get here the bytes are known to be under [[max-bundle-bytes]]."
+   Throws ex-info with `:status-code 400` for any user-facing failure."
   [^bytes bundle-bytes]
   (when (or (nil? bundle-bytes) (zero? (alength bundle-bytes)))
     (throw (ex-info "Bundle is empty" {:status-code 400})))
   (let [scratch (Files/createTempDirectory "custom-viz-validate-"
-                                           (into-array java.nio.file.attribute.FileAttribute []))]
+                                           (into-array FileAttribute []))]
     (try
       (try
         (u.compress/untgz bundle-bytes (.toFile scratch))
@@ -134,7 +130,7 @@
    next serve after a wipe."
   ^Path []
   (let [root (.resolve (.toPath (io/file (System/getProperty "java.io.tmpdir"))) "metabase-custom-viz")]
-    (Files/createDirectories root (into-array java.nio.file.attribute.FileAttribute []))
+    (Files/createDirectories root (into-array FileAttribute []))
     root))
 
 (defn- plugin-cache-dir ^Path [id ^String bundle-hash]
@@ -170,18 +166,13 @@
    resolves each entry under the temp dir via `TarArchiveEntry.resolveIn`."
   [^Path dir ^bytes bundle-bytes]
   (let [parent (.getParent dir)
-        _      (Files/createDirectories parent (into-array java.nio.file.attribute.FileAttribute []))
+        _      (Files/createDirectories parent (into-array FileAttribute []))
         tmp    (Files/createTempDirectory parent (str (.getFileName dir) ".tmp.")
-                                          (into-array java.nio.file.attribute.FileAttribute []))]
+                                          (into-array FileAttribute []))]
     (try
       (u.compress/untgz bundle-bytes (.toFile tmp))
-      (try
-        (Files/move tmp dir
-                    (into-array java.nio.file.CopyOption
-                                [java.nio.file.StandardCopyOption/ATOMIC_MOVE]))
-        (catch java.nio.file.AtomicMoveNotSupportedException _
-          (Files/move tmp dir (into-array java.nio.file.CopyOption []))))
-      (catch java.nio.file.FileAlreadyExistsException _
+      (Files/move tmp dir (into-array CopyOption []))
+      (catch FileAlreadyExistsException _
         ;; Another thread won the race; keep their copy and discard ours.
         (delete-recursive! tmp))
       (catch Throwable t
@@ -282,11 +273,9 @@
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
 (defn- allowed-schemes
-  "Set of URL schemes allowed for dev bundle URLs.
-   In dev/test/e2e mode, `file://` and `git://` are also permitted."
+  "Set of URL schemes allowed for dev bundle URLs. "
   []
-  (cond-> #{"http" "https"}
-    (or config/is-dev? config/is-test? config/is-e2e?) (conj "file" "git")))
+  #{"http" "https"})
 
 (defn- validate-url!
   "Validate that a URL uses an allowed scheme. Throws on invalid input."

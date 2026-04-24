@@ -15,6 +15,8 @@
    (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveOutputStream)
    (org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream)))
 
+(set! *warn-on-reflection* true)
+
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
 (use-fixtures :each
@@ -28,11 +30,11 @@
 
 ;;; ------------------------------------------------ Bundle fixtures ------------------------------------------------
 
-(defn- ^bytes make-tgz-bytes
+(defn- make-tgz-bytes
   "Build a minimal valid plugin tar.gz archive in memory.
 
   `entries` is a seq of `[name content]` pairs; content may be a string or byte[]."
-  [entries]
+  ^bytes [entries]
   (with-open [baos (ByteArrayOutputStream.)
               gz   (GzipCompressorOutputStream. baos)
               tar  (TarArchiveOutputStream. gz)]
