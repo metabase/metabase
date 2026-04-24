@@ -93,8 +93,8 @@
           (throw (ex-info (str "Bundle is not a valid tar.gz archive: " (ex-message e))
                           {:status-code 400}
                           e))))
-      (let [manifest-file (.resolve scratch (manifest/manifest-path))
-            bundle-file   (.resolve scratch (dist-path bundle-rel-path))
+      (let [manifest-file (.resolve scratch ^String (manifest/manifest-path))
+            bundle-file   (.resolve scratch ^String (dist-path bundle-rel-path))
             _             (when-not (regular-file? manifest-file)
                             (throw (ex-info (str (manifest/manifest-path) " not found in bundle")
                                             {:status-code 400})))
