@@ -125,6 +125,7 @@
     :model/SourceDimensionDaily              metabase.usage-metadata.models.source-dimension-daily
     :model/SourceDimensionProfileDaily       metabase.usage-metadata.models.source-dimension-profile-daily
     :model/SourceMetricDaily                 metabase.usage-metadata.models.source-metric-daily
+    :model/SourceSegmentCompositeDaily       metabase.usage-metadata.models.source-segment-composite-daily
     :model/SourceSegmentDaily                metabase.usage-metadata.models.source-segment-daily
     :model/User                              metabase.users.models.user
     :model/UserKeyValue                      metabase.user-key-value.models.user-key-value

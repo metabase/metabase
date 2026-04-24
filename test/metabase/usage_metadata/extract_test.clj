@@ -122,6 +122,56 @@
     (is (= {:source-type :card, :source-id 1, :ownership-mode :direct, :field-id (meta/id :checkins :user-id)}
            (select-keys (first rows) [:source-type :source-id :ownership-mode :field-id])))))
 
+(deftest ^:parallel composite-extraction-single-owner-test
+  (testing "a top-level :and clause produces exactly one composite fact on a single-owner query"
+    (let [query (lib/filter (lib.tu/venues-query)
+                            (lib/and (lib/= (meta/field-metadata :venues :price) 4)
+                                     (lib/> (meta/field-metadata :venues :id) 10)))
+          facts (:composites (extract/extract-usage-facts query))]
+      (is (= 1 (count facts)))
+      (let [{:keys [source-type source-id ownership-mode clause atom-fingerprints atom-count]} (first facts)]
+        (is (= :table source-type))
+        (is (= (meta/id :venues) source-id))
+        (is (= :direct ownership-mode))
+        (is (= 2 atom-count))
+        (is (= 2 (count atom-fingerprints)))
+        (is (= atom-fingerprints (vec (sort atom-fingerprints)))
+            "atom-fingerprints should be sorted for stable basket identity")
+        (is (= "and" (first (decode-json clause))))
+        (testing "atom fingerprints round-trip to canonical atom JSON"
+          (is (= #{"=" ">"} (set (map (comp first decode-json) atom-fingerprints)))))))))
+
+(deftest ^:parallel composite-extraction-single-atom-is-skipped-test
+  (testing "single-atom top-level filters emit NO composite (atom rollup already captures them)"
+    (let [query (lib/filter (lib.tu/venues-query)
+                            (lib/= (meta/field-metadata :venues :price) 4))]
+      (is (empty? (:composites (extract/extract-usage-facts query)))))))
+
+(deftest ^:parallel composite-extraction-accumulated-filters-combine-into-one-basket-test
+  (testing "two separate lib/filter calls form a single composite basket (the stage's implicit :and)"
+    (let [query (-> (lib.tu/venues-query)
+                    (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
+                    (lib/filter (lib/> (meta/field-metadata :venues :id) 10)))
+          facts (:composites (extract/extract-usage-facts query))]
+      (is (= 1 (count facts)))
+      (is (= 2 (:atom-count (first facts)))))))
+
+(deftest ^:parallel composite-extraction-multi-owner-test
+  (testing ":and spanning multiple owners yields :mixed + per-owner :projected composite facts"
+    (let [query (lib/filter (lib.tu/query-with-join)
+                            (lib/and (lib/= (meta/field-metadata :venues :price) 1)
+                                     (lib/= (lib/with-join-alias (meta/field-metadata :categories :name) "Cat") "Pizza")))
+          facts (:composites (extract/extract-usage-facts query))]
+      (is (= 3 (count facts)))
+      (is (= 1 (count (filter #(= :mixed (:ownership-mode %)) facts))))
+      (is (= #{{:source-type :table, :source-id (meta/id :venues),      :ownership-mode :projected}
+               {:source-type :table, :source-id (meta/id :categories),  :ownership-mode :projected}}
+             (set (map #(select-keys % [:source-type :source-id :ownership-mode])
+                       (filter #(= :projected (:ownership-mode %)) facts)))))
+      (testing "all projected rows share the same clause+atom fingerprints as the mixed row"
+        (let [fingerprints (into #{} (map (juxt :clause :atom-fingerprints)) facts)]
+          (is (= 1 (count fingerprints))))))))
+
 (deftest ^:parallel cross-source-predicate-produces-mixed-and-projected-test
   (let [query (-> (lib.tu/query-with-join)
                   (lib/filter (lib/= (meta/field-metadata :venues :category-id)

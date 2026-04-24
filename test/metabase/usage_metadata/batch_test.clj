@@ -9,6 +9,7 @@
    [metabase.usage-metadata.models.source-dimension-daily]
    [metabase.usage-metadata.models.source-dimension-profile-daily]
    [metabase.usage-metadata.models.source-metric-daily]
+   [metabase.usage-metadata.models.source-segment-composite-daily]
    [metabase.usage-metadata.models.source-segment-daily]
    [metabase.usage-metadata.settings :as usage-metadata.settings]
    [metabase.usage-metadata.store :as usage-metadata.store]
@@ -130,6 +131,39 @@
         (delete-query! query-hash)
         (delete-query-executions-for-day! bucket-date)
         (delete-day! bucket-date)))))
+
+(defn- composite-orders-query []
+  (mt/mbql-query orders
+    {:filter [:and
+              [:= $orders.product_id 1]
+              [:> $orders.subtotal 0]]
+     :aggregation [[:count]]}))
+
+(deftest process-day!-composite-segment-test
+  (testing "a top-level :and filter writes both atom rollup rows AND one composite rollup row"
+    (let [bucket-date  (t/local-date "2026-04-13")
+          valid-query  (composite-orders-query)
+          query-hash   (lib-be.hash/query-hash valid-query)
+          execution-at (t/offset-date-time "2026-04-13T12:00Z")]
+      (try
+        (delete-query-executions-for-day! bucket-date)
+        (delete-day! bucket-date)
+        (insert-query! query-hash valid-query)
+        (insert-query-execution! query-hash execution-at)
+        (let [result (usage-metadata.batch/process-day! bucket-date)]
+          (is (= 2 (:segment-tuples result)))
+          (is (= 1 (:composite-tuples result))
+              "one composite fact per execution for the two-atom :and clause")
+          (is (= 2 (t2/count :model/SourceSegmentDaily :bucket_date bucket-date)))
+          (is (= 1 (t2/count :model/SourceSegmentCompositeDaily :bucket_date bucket-date)))
+          (let [composite (t2/select-one :model/SourceSegmentCompositeDaily :bucket_date bucket-date)]
+            (is (= :direct (:ownership_mode composite)))
+            (is (= 2 (:atom_count composite)))
+            (is (= 1 (:count composite)))))
+        (finally
+          (delete-query! query-hash)
+          (delete-query-executions-for-day! bucket-date)
+          (delete-day! bucket-date))))))
 
 (deftest process-day!-cross-source-predicate-test
   (let [bucket-date  (t/local-date "2026-04-13")
