@@ -6,8 +6,8 @@ import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { getIsShowDashboardInfoSidebar } from "metabase/dashboard/selectors";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { useSelector } from "metabase/redux";
 import type { ActionIconProps } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 export const DashboardInfoButton = (
   props: ActionIconProps & ButtonHTMLAttributes<HTMLButtonElement>,

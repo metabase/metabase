@@ -14,10 +14,10 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Ellipsified, Flex } from "metabase/ui";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import { useSelector } from "metabase/utils/redux";
 import { isEmpty } from "metabase/utils/validate";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {

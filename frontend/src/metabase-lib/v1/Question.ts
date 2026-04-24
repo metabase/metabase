@@ -5,11 +5,11 @@ import slugg from "slugg";
 import _ from "underscore";
 
 /* eslint-disable no-restricted-imports */
-import { applyParameter } from "metabase/querying/parameters/utils/query";
 import {
   type SerializeCardOptions,
   serializeCardForUrl,
-} from "metabase/utils/card";
+} from "metabase/common/utils/card";
+import { applyParameter } from "metabase/querying/parameters/utils/query";
 import * as Lib from "metabase-lib";
 import type Database from "metabase-lib/v1/metadata/Database";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
@@ -21,7 +21,6 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/v1/queries/NativeQuery";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
-import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   CardDisplayType,
@@ -154,10 +153,10 @@ class Question {
 
     const card = question.card();
     const { id, original_card_id } = card;
-    if (isTransientId(id)) {
+    if (isTransientCardId(id)) {
       question = question.setCard(_.omit(question.card(), "id"));
     }
-    if (isTransientId(original_card_id)) {
+    if (isTransientCardId(original_card_id)) {
       question = question.setCard(_.omit(question.card(), "original_card_id"));
     }
 
@@ -869,6 +868,10 @@ class Question {
 
     return new Question(card, metadata, parameterValues);
   }
+}
+
+export function isTransientCardId(id: CardId | string | null | undefined) {
+  return id != null && typeof id === "string" && isNaN(parseInt(id));
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

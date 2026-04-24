@@ -21,9 +21,9 @@ import {
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useDispatch, useSelector } from "metabase/redux";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center, Group, Icon } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type {
   Database,
@@ -300,7 +300,6 @@ export type TransformQueryPageEditorProps = {
   uiOptions?: TransformEditorProps["uiOptions"];
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
   onRunTransform?: (result: any) => void;
-  /** Custom run handler for Python transforms (used in workspace for dry-run) */
   onRun?: () => void;
 };
 

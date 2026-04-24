@@ -5,9 +5,9 @@ import _ from "underscore";
 
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
 import animationStyles from "metabase/css/core/animation.module.css";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { Flex, Tooltip } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { getHasMetabotLogo } from "../../selectors";
 

@@ -1,4 +1,4 @@
-import { trackSchemaEvent } from "metabase/utils/analytics";
+import { trackSchemaEvent } from "metabase/analytics";
 
 export const trackTrackingPermissionChanged = (isEnabled: boolean) => {
   trackSchemaEvent("settings", {

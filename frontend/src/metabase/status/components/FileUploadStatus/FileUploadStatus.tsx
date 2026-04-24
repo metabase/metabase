@@ -2,9 +2,9 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { useCollectionQuery, useTableQuery } from "metabase/common/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { FileUpload } from "metabase/redux/store/upload";
 import { clearAllUploads, getAllUploads } from "metabase/redux/uploads";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { isEmpty } from "metabase/utils/validate";
 import type { CollectionId, TableId } from "metabase-types/api";
 

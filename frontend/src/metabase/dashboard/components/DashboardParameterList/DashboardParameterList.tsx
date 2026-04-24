@@ -10,7 +10,7 @@ import {
 import { DASHBOARD_PARAMETERS_PDF_EXPORT_NODE_CLASSNAME } from "metabase/dashboard/constants";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getValuePopulatedParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 

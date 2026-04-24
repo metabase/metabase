@@ -4,8 +4,8 @@ import { UpsellCard } from "metabase/common/components/upsells/UpsellCard";
 import { UTM_LOCATION } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
-import { useSelector } from "metabase/utils/redux";
 
 type Props = {
   campaign: string;

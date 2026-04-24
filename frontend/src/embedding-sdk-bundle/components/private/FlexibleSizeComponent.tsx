@@ -1,4 +1,4 @@
-import type { CSSProperties, PropsWithChildren } from "react";
+import { type CSSProperties, type PropsWithChildren, forwardRef } from "react";
 
 import type { CommonStylingProps } from "embedding-sdk-bundle/types/props";
 import { Box } from "metabase/ui";
@@ -23,23 +23,37 @@ export type FlexibleSizeProps = PropsWithChildren<
   }
 >;
 
-export const FlexibleSizeComponent = ({
-  height: propHeight = FLEXIBLE_SIZE_DEFAULT_HEIGHT,
-  width: propWidth = FLEXIBLE_SIZE_DEFAULT_WIDTH,
-  className,
-  style,
-  children,
-}: FlexibleSizeProps) => (
-  <Box h={propHeight} w={propWidth} mih={propHeight} miw={propWidth}>
+export const FlexibleSizeComponent = forwardRef<
+  HTMLDivElement,
+  FlexibleSizeProps
+>(function FlexibleSizeComponent(
+  {
+    height: propHeight = FLEXIBLE_SIZE_DEFAULT_HEIGHT,
+    width: propWidth = FLEXIBLE_SIZE_DEFAULT_WIDTH,
+    className,
+    style,
+    children,
+  },
+  ref,
+) {
+  return (
     <Box
-      h="100%"
-      w="100%"
-      mih="100%"
-      miw="100%"
-      style={style}
-      className={className}
+      ref={ref}
+      h={propHeight}
+      w={propWidth}
+      mih={propHeight}
+      miw={propWidth}
     >
-      {children}
+      <Box
+        h="100%"
+        w="100%"
+        mih="100%"
+        miw="100%"
+        style={style}
+        className={className}
+      >
+        {children}
+      </Box>
     </Box>
-  </Box>
-);
+  );
+});

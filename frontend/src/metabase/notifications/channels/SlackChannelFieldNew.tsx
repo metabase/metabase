@@ -6,9 +6,9 @@ import {
   findChannelId,
   getDisplayNames,
 } from "metabase/notifications/channels/utils";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Autocomplete } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import type { ChannelSpec, NotificationHandlerSlack } from "metabase-types/api";
 
 const CHANNEL_FIELD_NAME = "channel";

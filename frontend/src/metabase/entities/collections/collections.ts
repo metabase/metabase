@@ -16,11 +16,6 @@ import {
 import type { Dispatch, GetState, ReduxAction } from "metabase/redux/store";
 import { CollectionSchema } from "metabase/schema";
 import { getUserPersonalCollectionId } from "metabase/selectors/user";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/utils/entities";
 import type {
   Collection,
   CreateCollectionRequest,
@@ -29,6 +24,8 @@ import type {
   ListCollectionsTreeRequest,
   UpdateCollectionRequest,
 } from "metabase-types/api";
+
+import { createEntity, entityCompatibleQuery, undo } from "../utils";
 
 import getExpandedCollectionsById from "./getExpandedCollectionsById";
 import getInitialCollectionId from "./getInitialCollectionId";
@@ -71,12 +68,12 @@ export const Collections = createEntity({
   // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
   displayNameMany: t`collections`,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetCollectionQuery,
     }),
     useListQuery,
-  },
+  }),
 
   api: {
     list: async (params: ListParams, dispatch: Dispatch) => {

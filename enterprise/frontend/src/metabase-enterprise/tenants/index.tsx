@@ -23,11 +23,11 @@ import {
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_TENANTS,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getIsTenantUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Text } from "metabase/ui";
 import { getGroupNameLocalized } from "metabase/utils/groups";
-import { useSelector } from "metabase/utils/redux";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 

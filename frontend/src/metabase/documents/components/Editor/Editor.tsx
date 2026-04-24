@@ -11,6 +11,7 @@ import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { getMentionsCache } from "metabase/documents/selectors";
 import { isMetabotBlock } from "metabase/documents/utils/editorNodeUtils";
 import { getMentionsCacheKey } from "metabase/documents/utils/mentionsUtils";
+import { useSelector, useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
 import { EditorBubbleMenu } from "metabase/rich_text_editing/tiptap/components/EditorBubbleMenu/EditorBubbleMenu";
@@ -39,7 +40,6 @@ import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/sh
 import { createSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, Loader } from "metabase/ui";
-import { useSelector, useStore } from "metabase/utils/redux";
 
 import S from "./Editor.module.css";
 import { useCardEmbedsTracking, useQuestionSelection } from "./hooks";

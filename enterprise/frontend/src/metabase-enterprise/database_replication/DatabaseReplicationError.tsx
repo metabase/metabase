@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { useSelector } from "metabase/redux";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Button, Flex, Group, Icon, Stack, Text } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 export const DatabaseReplicationError = ({
   error,

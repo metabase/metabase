@@ -1,6 +1,6 @@
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Flex } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, TableId } from "metabase-types/api";
 

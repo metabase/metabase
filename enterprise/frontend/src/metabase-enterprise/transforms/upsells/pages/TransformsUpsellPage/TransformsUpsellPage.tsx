@@ -8,6 +8,7 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { DottedBackground } from "metabase/data-studio/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/data-studio/upsells/components/LineDecorator";
 import type { BillingPeriod } from "metabase/data-studio/upsells/types";
+import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import {
   Card,
@@ -19,7 +20,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { useTransformsBilling } from "../../hooks/useTransformsBilling";
 

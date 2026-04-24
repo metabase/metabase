@@ -24,9 +24,9 @@ import {
   clausesForMode,
   getClauseDefinition,
 } from "metabase/querying/expressions";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, Text } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 
 import { QueryColumnPicker } from "../QueryColumnPicker";
