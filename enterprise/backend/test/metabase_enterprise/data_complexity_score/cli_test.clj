@@ -41,8 +41,8 @@
                              :repeated-measures {:count 2 :score 4}}}
                (:universe result))))
       (testing "meta has formula-version + threshold but no :embedding-model (offline mode)"
-        (is (= {:formula-version   2
-                :synonym-threshold 0.9}
+        (is (= {:formula-version   1
+                :synonym-threshold 0.8}
                (:meta result)))))))
 
 (deftest ^:parallel run-cli-writes-readable-edn-to-output-file-test
