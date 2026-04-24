@@ -10,6 +10,7 @@
         org.babashka/json {:mvn/version "0.1.6"} ;; json parsing
         table/table {:mvn/version "0.5.0"} ;; table printing
         }
+ :pods {org.babashka/postgresql {:version "0.1.0"}}
  :tasks
  {:requires [[mage.cli :as cli]
              [mage.color :as c]]
@@ -260,7 +261,7 @@
   {:doc "Generate XML configuration for Cursive's symbol resolution based on the current clj-kondo lint-as configuration."
    :examples [["./bin/mage generate-cursive-resolve-as" "Generate resolve-as XML configuration"]
               ["./bin/mage generate-cursive-resolve-as > /Users/bgrabow/Library/Application\\ Support/JetBrains/IntelliJIdea2025.3/options/ClojureResolveSettings.xml"
-              "Generate resolve-as XML configuration and install it in your global editor configuration"]]
+               "Generate resolve-as XML configuration and install it in your global editor configuration"]]
    :requires [[mage.cursive-resolve-as :as cursive-resolve-as]]
    :task (task! (cursive-resolve-as/do-it))}
 
@@ -598,6 +599,36 @@
              [nil "--fresh" "Recreate containers from scratch"]]
    :task (task! (jds-dev-env/dev-env! parsed))}
 
+  -nvoxland-dev-env
+  {:doc "Stand up (or tear down) an isolated dev environment for this worktree. Interactive prompts when flags omitted."
+   :examples [["./bin/mage -nvoxland-dev-env" "Interactive TUI to configure infra (saves config)"]
+              ["./bin/mage -nvoxland-dev-env --run" "Configure + launch backend/frontend"]
+              ["./bin/mage -nvoxland-dev-env --run --no-frontend" "Configure + backend only"]
+              ["./bin/mage -nvoxland-dev-env --down" "Stop everything for this worktree"]
+              ["./bin/mage -nvoxland-dev-env --status" "Show running containers and processes"]]
+   :requires [[mage.nvoxland.dev-env :as jds-dev-env]]
+   :options [["-e" "--edition EDITION" "ee or oss (default: prompt)"]
+             ["-t" "--token TOKEN" "Token type: all-features, starter-cloud, pro-cloud, pro-self-hosted, none"]
+             [nil "--app-db DB" "App database: h2, postgres, mysql, mariadb (default: prompt)"]
+             [nil "--with SERVICE" "Warehouse service (repeatable): postgres, mysql, mariadb, mongo, clickhouse, ldap, maildev"
+              :multi true :default nil :update-fn conj]
+             [nil "--bot BOT" "Bot name (enables bot-specific config: Docker containers, bot dirs, Playwright dirs)"]
+             [nil "--run" "Also launch backend + frontend in background"]
+             [nil "--no-frontend" "Skip frontend dev server (only with --run)"]
+             [nil "--down" "Stop everything for this worktree"]
+             [nil "--status" "Show current env status"]
+             [nil "--slot SLOT" "Override port slot (0-99)" :parse-fn Integer/parseInt]
+             [nil "--fresh" "Recreate containers from scratch"]
+             [nil "--worktree PATH" "Target a different worktree (default: current)"]]
+   :task (task! (jds-dev-env/dev-env! parsed))}
+
+  -nvoxland-setup-worktree
+  {:doc "Run final configuration steps after a new worktree is created."
+   :examples [["./bin/mage -nvoxland-setup-worktree --worktree $(pwd)" "Set up the current directory as a worktree"]]
+   :options [[nil "--worktree PATH" "Path to the worktree to set up (required)"]]
+   :requires [[mage.nvoxland.setup-worktree :as setup-worktree]]
+   :task (task! (setup-worktree/setup-worktree! parsed))}
+
   -bgrabow-ci-test-repl
   {:doc "Start a REPL replicating a CI test job environment (Docker + env vars)"
    :examples [["./bin/mage -bgrabow-ci-test-repl" "Interactive selection with fzf"]
@@ -606,6 +637,187 @@
    :requires [[mage.bgrabow.ci-test-repl :as ci-test-repl]]
    :options [["-n" "--dry-run" "Print docker, env, and clojure commands without executing"]]
    :task (task!
-           (let [wj (first (:arguments parsed))
-                 [workflow job] (when wj (clojure.string/split wj (re-pattern "/") 2))]
-             (ci-test-repl/ci-test-repl {:workflow workflow :job job :dry-run? (:dry-run (:options parsed))})))}}}
+          (let [wj (first (:arguments parsed))
+                [workflow job] (when wj (clojure.string/split wj (re-pattern "/") 2))]
+            (ci-test-repl/ci-test-repl {:workflow workflow :job job :dry-run? (:dry-run (:options parsed))})))}
+
+  -fixbot-preflight
+  {:doc "Check prerequisites for the fixbot workflow"
+   :examples [["./bin/mage -fixbot-preflight" "Run all preflight checks"]]
+   :requires [[mage.bot.fixbot-preflight :as preflight]]
+   :task (task! (preflight/preflight!))}
+
+  -bot-status
+  {:doc "Watch and display bot status"
+   :requires [[mage.bot.status :as status]]
+   :arg-schema [:? [:string {:name "file-path"}]]
+   :task (task! (status/run! parsed))}
+
+  -bot-generate-prompt
+  {:doc "Fill a template with placeholders and write an agent prompt"
+   :examples [["./bin/mage -bot-generate-prompt --template dev/bot/fixbot-agent.md --output .bot/fixbot/20260410/prompt.md --set ISSUE_ID=MB-123"
+               "Generate fixbot prompt"]]
+   :requires [[mage.bot.prompt :as bot-prompt]]
+   :options [[nil "--template FILE" "Template file path"]
+             [nil "--output FILE" "Output file path"]
+             [nil "--set KEY=VALUE" "Set a template variable (can be repeated)"
+              :multi true :default [] :update-fn conj]
+             [nil "--set-from-file KEY=PATH" "Set a template variable from a file's contents (can be repeated)"
+              :multi true :default [] :update-fn conj]]
+   :task (task! (bot-prompt/generate-prompt! parsed))}
+
+  -bot-setup
+  {:doc "Install workmux-status hooks in a bot worktree"
+   :examples [["./bin/mage -bot-setup --bot fixbot" "Install hooks for fixbot"]]
+   :requires [[mage.bot.setup :as bot-setup]]
+   :options [[nil "--bot BOT" "Bot name: fixbot, qabot, uxbot"]]
+   :task (task! (bot-setup/setup! parsed))}
+
+  -fixbot-fetch-issue
+  {:doc "Fetch a Linear issue by identifier"
+   :examples [["./bin/mage -fixbot-fetch-issue MB-12345" "Fetch and display issue"]]
+   :requires [[mage.bot.linear :as linear]]
+   :arg-schema [:tuple [:string {:name "issue-id"}]]
+   :task (task! (linear/print-issue! parsed))}
+
+  -fixbot-write-sandbox-settings
+  {:doc "Write container-compatible settings.local.json for sandbox"
+   :examples [["./bin/mage -fixbot-write-sandbox-settings" "Write sandbox settings"]]
+   :requires [[mage.bot.fixbot-preflight :as fixbot]]
+   :task (task! (fixbot/write-sandbox-settings! parsed))}
+
+  ;;; Unified autobot session management
+
+  -autobot-go
+  {:doc "Launch a bot in a autobot session with its own worktree, backend, and frontend (or remote PR env)"
+   :examples [["./bin/mage -autobot-go master --bot qabot --command /qabot"
+               "Launch qabot in a autobot session"]
+              ["./bin/mage -autobot-go my-branch --bot fixbot --command '/fixbot MB-12345' --app-db mysql"
+               "Launch fixbot with MySQL"]
+              ["./bin/mage -autobot-go uxw-291 --bot qabot --command /qabot --pr-env-url https://pr383713.coredev.metabase.com"
+               "Launch qabot against a remote PR preview environment"]]
+   :requires [[mage.bot.autobot :as autobot]]
+   :arg-schema [:tuple [:string {:name "branch-name"}]]
+   :options [[nil "--bot BOT" "Bot name (qabot, fixbot, uxbot, reprobot, cibot)"]
+             [nil "--command CMD" "Inner command to run (e.g., /qabot, '/fixbot MB-12345')"]
+             [nil "--app-db DB" "App database" :default "postgres"]
+             [nil "--base BASE" "Base branch/commit to branch from"]
+             [nil "--pr-env-url URL" "PR preview environment URL (enables remote mode, no local dev-env)"]]
+   :task (task! (autobot/go! parsed))}
+
+  -bot-pr-env-setup
+  {:doc "Configure a worktree for a remote PR preview environment (writes .bot/pr-env.env + caches session token)"
+   :examples [["./bin/mage -bot-pr-env-setup --url https://pr383713.coredev.metabase.com --pr 383713"
+               "Set up this worktree to talk to the given PR preview environment"]]
+   :requires [[mage.bot.pr-env :as pr-env]]
+   :options [[nil "--url URL" "PR preview environment URL"]
+             [nil "--pr PR" "PR number"]]
+   :task (task! (pr-env/setup! parsed))}
+
+  -autobot-stop
+  {:doc "Stop a autobot session (kill tmux + dev env, keep worktree). No args = stop current session."
+   :examples [["./bin/mage -autobot-stop qabot-master" "Stop named session"]
+              ["./bin/mage -autobot-stop" "Stop current session (from inside a autobot session)"]]
+   :requires [[mage.bot.autobot :as autobot]]
+   :arg-schema [:? [:string {:name "name-or-id"}]]
+   :task (task! (autobot/stop! parsed))}
+
+  -autobot-list
+  {:doc "List all autobot sessions with status"
+   :examples [["./bin/mage -autobot-list" "List all sessions"]]
+   :requires [[mage.bot.autobot :as autobot]]
+   :task (task! (autobot/list-all! parsed))}
+
+  -autobot-result
+  {:doc "Print the most recent result.md for a branch+bot combination"
+   :examples [["./bin/mage -autobot-result uxw-291-skip-ldap-for-non-ldap qabot"
+               "Print qabot's latest result.md for the given branch"]]
+   :requires [[mage.bot.autobot :as autobot]]
+   :arg-schema [:tuple [:string {:name "branch"}] [:string {:name "bot"}]]
+   :task (task! (autobot/result! parsed))}
+
+  -autobot-quit
+  {:doc "Tear down and remove a autobot session. No args = remove current session."
+   :examples [["./bin/mage -autobot-quit qabot-master" "Remove named session"]
+              ["./bin/mage -autobot-quit" "Remove current session (from inside a autobot session)"]]
+   :requires [[mage.bot.autobot :as autobot]]
+   :arg-schema [:? [:string {:name "name-or-id"}]]
+   :task (task! (autobot/quit! parsed))}
+
+  ;;; Shared bot tasks
+
+  -bot-fetch-issue
+  {:doc "Fetch a Linear issue by identifier (shared across bots)"
+   :examples [["./bin/mage -bot-fetch-issue MB-12345" "Fetch and display issue"]]
+   :requires [[mage.bot.linear :as bot-linear]]
+   :arg-schema [:tuple [:string {:name "issue-id"}]]
+   :task (task! (bot-linear/print-issue! parsed))}
+
+  -bot-server-info
+  {:doc "Print server configuration (ports, config file, users, API keys) for bot agents"
+   :examples [["./bin/mage -bot-server-info" "Show server info"]]
+   :requires [[mage.bot.server-info :as server-info]]
+   :task (task! (server-info/server-info! parsed))}
+
+  -bot-preflight-health
+  {:doc "Wait for Metabase backend to become healthy (retries for up to 5 minutes)"
+   :examples [["./bin/mage -bot-preflight-health" "Wait for backend health"]]
+   :requires [[mage.bot.preflight :as preflight]]
+   :task (task! (preflight/preflight-health! parsed))}
+
+  -bot-timestamp
+  {:doc "Print the current wall-clock time as YYYYMMDD-HHMMSS (no other output)"
+   :examples [["./bin/mage -bot-timestamp" "Print e.g. 20260413-143022"]]
+   :task (task! (println (.format (java.time.LocalDateTime/now)
+                                  (java.time.format.DateTimeFormatter/ofPattern "yyyyMMdd-HHmmss"))))}
+
+  -bot-repl-eval
+  {:doc "Evaluate Clojure code against the best-available REPL (nREPL first, socket REPL fallback)"
+   :examples [["./bin/mage -bot-repl-eval '(+ 1 2)'" "Auto-discover and eval"]
+              ["./bin/mage -bot-repl-eval --type socket '(metabase.config/current-version)'" "Force socket REPL"]
+              ["./bin/mage -bot-repl-eval --port 50666 '(+ 1 2)'" "Force a specific port"]]
+   :requires [[mage.bot.repl-eval :as repl-eval]]
+   :arg-schema [:? [:string {:name "code"}]]
+   :options [[nil "--code CODE" "Clojure code to eval (alternative to positional arg)"]
+             [nil "--port PORT" "Override discovery and use this port"]
+             [nil "--host HOST" "Override discovery and use this host (socket REPL only)"]
+             [nil "--type TYPE" "Force backend: 'nrepl' or 'socket'. Default: auto-detect."]
+             [nil "--refresh" "Ignore .bot/repl.env cache and re-run discovery"]]
+   :task (task! (repl-eval/repl-eval! parsed))}
+
+  -bot-api-call
+  {:doc "Make an API call to the local Metabase instance"
+   :examples [["./bin/mage -bot-api-call /api/health" "Health check"]
+              ["./bin/mage -bot-api-call /api/card --api-key mb_admin_apikey" "List cards as admin"]
+              ["./bin/mage -bot-api-call /api/card --method POST --api-key mb_admin_apikey --body '{\"dataset_query\":{}}'" "Create a card"]]
+   :requires [[mage.bot.api-call :as api-call]]
+   :arg-schema [:tuple [:string {:name "api-path"}]]
+   :options [[nil "--method METHOD" "HTTP method (GET, POST, PUT, DELETE)" :default "GET"]
+             [nil "--api-key KEY" "API key for x-api-key header"]
+             [nil "--body JSON" "JSON request body"]
+             [nil "--pretty BOOL" "Pretty-print JSON (default true)" :default "true"]
+             [nil "--raw" "Suppress diagnostic preamble on stderr (pure-body stdout for jq/python piping)"]]
+   :task (task! (api-call/api-call! parsed))}
+
+  -bot-git-readonly
+  {:doc "Execute a git or gh command only if it's a read-only operation"
+   :examples [["./bin/mage -bot-git-readonly git log --oneline -10" "View recent commits"]
+              ["./bin/mage -bot-git-readonly git diff origin/master...HEAD" "View branch diff"]
+              ["./bin/mage -bot-git-readonly gh pr view --json title,body" "View current PR"]
+              ["./bin/mage -bot-git-readonly gh pr list" "List open PRs"]]
+   :requires [[mage.bot.git-readonly :as git-readonly]]
+   ;; Bypass task! macro — args are passed through raw to git/gh, not parsed by tools.cli
+   :task (git-readonly/git-readonly! {:arguments (vec *command-line-args*)})}
+
+  -bot-md-to-pdf
+  {:doc "Convert a markdown file to PDF using md-to-pdf"
+   :examples [["./bin/mage -bot-md-to-pdf report.md" "Convert report.md to report.pdf"]
+              ["./bin/mage -bot-md-to-pdf .bot/qabot/20260410/report.md" "Convert with full path"]]
+   :task (let [args (vec *command-line-args*)]
+           (when (empty? args)
+             (println "Usage: ./bin/mage -bot-md-to-pdf <file.md>")
+             (System/exit 1))
+           (let [md-file (first args)
+                 dir     (.getParent (java.io.File. ^String md-file))
+                 fname   (.getName (java.io.File. ^String md-file))]
+             (babashka.tasks/shell {:dir (or dir ".")} "npx" "-y" "md-to-pdf" fname)))}}}

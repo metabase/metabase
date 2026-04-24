@@ -1,0 +1,29 @@
+agent: claude
+
+post_create:
+  # Pull latest changes from origin so the worktree is up to date (only if branch tracks a remote)
+  - bash -c 'git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 && git pull --ff-only || echo "No upstream branch — skipping pull"'
+  # Apply bot.patch so the worktree has the bot tooling (mage tasks, etc.) even if the target branch doesn't
+  - bash -c 'MAIN=$(git rev-parse --git-common-dir | sed "s|/\\.git$||"); "$MAIN/bin/mage" -nvoxland-setup-worktree --worktree "$PWD"'
+  # Dev environment (DB, mise.local.toml, bot dirs)
+  - ./bin/mage -nvoxland-dev-env --app-db {{APP_DB}} --bot {{BOT_NAME}}
+  # Bot hooks (workmux-status hooks.json)
+  - ./bin/mage -bot-setup --bot {{BOT_NAME}}
+
+pre_remove:
+  - ./bin/mage -nvoxland-dev-env --down
+
+panes:
+  - command: <agent>
+    focus: true
+
+  - command: mise x -- clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev 2>&1 | tee .bot/autobot/backend-$(date +%Y%m%d-%H%M%S).log
+    split: horizontal
+    percentage: 30
+
+  - command: mise x -- bun run build-hot 2>&1 | tee .bot/autobot/frontend-$(date +%Y%m%d-%H%M%S).log
+    split: vertical
+
+  - command: mise x -- ./bin/mage -bot-status .bot/autobot/llm-status.txt
+    split: vertical
+    size: 7

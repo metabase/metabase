@@ -13,6 +13,29 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- load-mise-local!
+  "Parse mise.local.toml and merge its [env] values into environ's map.
+  This must run before metabase.config.core loads, which it does since that namespace
+  is loaded lazily via dev/start!."
+  []
+  (let [f (io/file "mise.local.toml")]
+    (when (.exists f)
+      (let [env-vars (->> (line-seq (io/reader f))
+                          (drop-while #(not= % "[env]"))
+                          (drop 1)
+                          (take-while #(not (re-matches #"^\[.*\]$" %)))
+                          (filter #(re-matches #"^\w+ = \".*\"$" %))
+                          (into {} (map (fn [line]
+                                          (let [[_ k v] (re-matches #"^(\w+) = \"(.*)\"$" line)
+                                                kw (-> k
+                                                       clojure.string/lower-case
+                                                       (clojure.string/replace "_" "-")
+                                                       keyword)]
+                                            [kw v])))))]
+        (alter-var-root #'environ.core/env merge env-vars)))))
+
+(load-mise-local!)
+
 (comment
   metabase.core.bootstrap/keep-me
   hashp.preload/keep-me
@@ -69,6 +92,29 @@
                            (Integer/parseInt p)
                            50605)
                 :parse-fn #(Integer/parseInt %)]])
+
+(defn- load-mise-local!
+  "Parse mise.local.toml and merge its [env] values into environ's map.
+  This must run before metabase.config.core loads, which it does since that namespace
+  is loaded lazily via dev/start!."
+  []
+  (let [f (io/file "mise.local.toml")]
+    (when (.exists f)
+      (let [env-vars (->> (line-seq (io/reader f))
+                          (drop-while #(not= % "[env]"))
+                          (drop 1)
+                          (take-while #(not (re-matches #"^\[.*\]$" %)))
+                          (filter #(re-matches #"^\w+ = \".*\"$" %))
+                          (into {} (map (fn [line]
+                                          (let [[_ k v] (re-matches #"^(\w+) = \"(.*)\"$" line)
+                                                kw (-> k
+                                                       clojure.string/lower-case
+                                                       (clojure.string/replace "_" "-")
+                                                       keyword)]
+                                            [kw v])))))]
+        (alter-var-root #'environ.core/env merge env-vars)))))
+
+(load-mise-local!)
 
 (defn -main
   "This is called by the `:dev-start` cli alias.
