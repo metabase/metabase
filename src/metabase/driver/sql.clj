@@ -14,6 +14,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -255,7 +256,8 @@
                         (if is-single-select?
                           (assoc stage :native sql)
                           (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
-                                          {:sql (:native stage)}))))
+                                          {:type qp.error-type/invalid-query
+                                           :sql  (:native stage)}))))
                       stage))
                   stages))))
 
