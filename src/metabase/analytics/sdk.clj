@@ -24,9 +24,19 @@
 
 (def ^:dynamic *version* "Used to track information about the metabase embedding client version." nil)
 
+(defmacro with-version! "Used to track information about the metabase embedding client version."
+  [[value] & body]
+  `(binding [*version* ~value]
+     ~@body))
+
 (defn get-version "Returns [[*version*]]." [] *version*)
 
 (def ^:dynamic *client* "Used to track information about the metabase embedding client." nil)
+
+(defmacro with-client! "Used to track information about the metabase embedding client client."
+  [[value] & body]
+  `(binding [*client* ~value]
+     ~@body))
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
 

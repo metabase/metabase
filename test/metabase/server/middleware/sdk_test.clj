@@ -46,7 +46,7 @@
 (deftest embeding-mw-bumps-metrics-with-react-sdk-client-header
   (mt/with-prometheus-system! [_ system]
     ;; X-Metabase-Client header == "embedding-sdk-react" => SDK context
-    (let [request (mock-request {:client @#'sdk/embedding-sdk-client})
+    (let [request (mock-request {:client "embedding-sdk-react"})
           good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
           bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
           exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
@@ -63,7 +63,7 @@
 (deftest embeding-mw-bumps-metrics-with-iframe-client-header
   (mt/with-prometheus-system! [_ system]
     ;; X-Metabase-Client header == "embedding-iframe" => iframe context
-    (let [request (mock-request {:client @#'sdk/embedding-iframe-client})
+    (let [request (mock-request {:client "embedding-sdk-react"})
           good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
           bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
           exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
