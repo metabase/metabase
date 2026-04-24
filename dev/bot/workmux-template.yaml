@@ -1,0 +1,31 @@
+agent: claude
+
+post_create:
+  # Trust mise.toml early so pane shells don't prompt with "config not trusted"
+  - mise trust
+  # Pull latest changes from origin so the worktree is up to date (only if branch tracks a remote)
+  - bash -c 'git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 && git pull --ff-only || echo "No upstream branch — skipping pull"'
+  # Set up worktree (symlinks, copied files, postgres DB)
+  - bash -c 'MAIN=$(git rev-parse --git-common-dir | sed "s|/\\.git$||"); "$MAIN/bin/mage" -bot-setup-worktree --worktree "$PWD"'
+  # Dev environment (DB, mise.local.toml, bot dirs)
+  - ./bin/mage -bot-dev-env --app-db {{APP_DB}} --bot {{BOT_NAME}}
+  # Bot hooks (workmux-status hooks.json)
+  - ./bin/mage -bot-setup --bot {{BOT_NAME}}
+
+pre_remove:
+  - ./bin/mage -bot-dev-env --down
+
+panes:
+  - command: <agent>
+    focus: true
+
+  - command: clj -M:dev:dev-start:drivers:drivers-dev:ee:ee-dev 2>&1 | tee .bot/autobot/backend-$(date +%Y%m%d-%H%M%S).log
+    split: horizontal
+    percentage: 30
+
+  - command: bun run build-hot 2>&1 | tee .bot/autobot/frontend-$(date +%Y%m%d-%H%M%S).log
+    split: vertical
+
+  - command: ./bin/mage -bot-status .bot/autobot/llm-status.txt
+    split: vertical
+    size: 7
