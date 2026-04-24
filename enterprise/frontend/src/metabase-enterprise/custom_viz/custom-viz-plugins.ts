@@ -34,6 +34,7 @@ import { isCustomVizDisplay } from "metabase-types/guards/visualization";
 import { trackCustomVizSelected } from "./analytics";
 import { applyDefaultVisualizationProps } from "./custom-viz-common";
 import { ensureVizApi } from "./custom-viz-globals";
+import { createPluginSandbox } from "./sandbox";
 
 // ---------------------------------------------------------------------------
 // Plugin loading & registration
@@ -278,16 +279,8 @@ export async function loadCustomVizPlugin(
 
     const text = await res.text();
 
-    // Execute in global scope so `var __customVizPlugin__` assigns to window
-    const script = document.createElement("script");
-    if (window.MetabaseNonce) {
-      script.nonce = window.MetabaseNonce;
-    }
-    script.textContent = text;
-    document.head.appendChild(script);
-    document.head.removeChild(script);
-    const factory = window.__customVizPlugin__;
-    window.__customVizPlugin__ = undefined;
+    const sandbox = createPluginSandbox(String(plugin.id));
+    const factory = sandbox.evaluate(text);
 
     if (typeof factory !== "function") {
       throw new Error(
