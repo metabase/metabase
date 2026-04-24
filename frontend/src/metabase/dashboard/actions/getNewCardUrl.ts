@@ -1,12 +1,15 @@
 import _ from "underscore";
 
 import type { StoreDashboard } from "metabase/redux/store";
+import * as Urls from "metabase/utils/urls";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
-import * as ML_Urls from "metabase-lib/v1/urls";
+import { remapParameterValuesToTemplateTags } from "metabase-lib/v1/parameters/utils/template-tags";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import { getStructuredQuestionUrlWithParameters } from "metabase-lib/v1/urls";
 import type {
   Card,
   Dashboard,
@@ -68,17 +71,25 @@ export const getNewCardUrl = ({
   // This try/catch block is a temporary workaround for metabase#43990.
   // Please remove it once the underlying issue is fixed.
   try {
-    const url = ML_Urls.getQuestionUrlWithParameters(
+    const { isNative } = Lib.queryDisplayInfo(nextQuestion.query());
+    if (isNative) {
+      const nativeQuery = nextQuestion.legacyNativeQuery() as NativeQuery;
+      return Urls.question(nextQuestion, {
+        query: remapParameterValuesToTemplateTags(
+          nativeQuery.templateTags(),
+          parametersMappedToCard,
+          parameterValues,
+        ),
+      });
+    }
+
+    return getStructuredQuestionUrlWithParameters(
       nextQuestion,
       previousQuestion,
       parametersMappedToCard,
       parameterValues,
-      {
-        objectId,
-      },
+      { objectId },
     );
-
-    return url;
   } catch (error) {
     return undefined;
   }
