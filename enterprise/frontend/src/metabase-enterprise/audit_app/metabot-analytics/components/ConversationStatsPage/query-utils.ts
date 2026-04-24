@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -329,65 +328,4 @@ export function buildSourceBreakoutQuery({
 export function breakoutByColumn(query: Query, columnName: string): Query {
   const col = findColumn(query, columnName, Lib.breakoutableColumns);
   return col ? Lib.breakout(query, 0, col) : query;
-}
-
-export function breakoutByColumnWithBucket(
-  query: Query,
-  columnName: string,
-  bucketName: string,
-): Query {
-  const col = findColumn(query, columnName, Lib.breakoutableColumns);
-  if (!col) {
-    return query;
-  }
-  const bucket = Lib.availableTemporalBuckets(query, 0, col).find((b) => {
-    return Lib.displayInfo(query, 0, b).shortName === bucketName;
-  });
-  const bucketed = bucket ? Lib.withTemporalBucket(col, bucket) : col;
-  return Lib.breakout(query, 0, bucketed);
-}
-
-export type TimeseriesBreakoutQueryOpts = StatsFilters & {
-  provider: MetadataProvider;
-  table: TableMetadata | CardMetadata;
-  groupMembersTable: TableMetadata | CardMetadata;
-  breakoutColumn: string;
-  bucketName: string;
-};
-
-export function buildTimeseriesBreakoutQuery({
-  provider,
-  table,
-  groupMembersTable,
-  dateFilter,
-  userId,
-  groupId,
-  metric,
-  breakoutColumn,
-  bucketName,
-}: TimeseriesBreakoutQueryOpts): Query {
-  let q = Lib.queryFromTableOrCardMetadata(provider, table);
-  q = applyDateFilter(q, dateFilter);
-  q = applyUserFilter(q, userId);
-  q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
-  q = groupId != null ? applyGroupIdFilter(q, groupId) : q;
-  q = applyUsageStatsAggregation(q, metric);
-  q = breakoutByColumnWithBucket(q, breakoutColumn, bucketName);
-  return q;
-}
-
-export function isSingleDayFilter(dateFilter: DateFilterValue): boolean {
-  if (dateFilter.type === "relative") {
-    return dateFilter.unit === "day" && Math.abs(dateFilter.value) <= 1;
-  }
-  if (dateFilter.type === "specific" && !dateFilter.hasTime) {
-    const { operator, values } = dateFilter;
-    if (operator === "=") {
-      return true;
-    }
-    if (operator === "between") {
-      return dayjs(values[0]).isSame(values[1], "day");
-    }
-  }
-  return false;
 }
