@@ -1,9 +1,9 @@
 /* eslint-disable react/prop-types */
 import { Component } from "react";
 
+import { connect } from "metabase/redux";
 import { fetchRemapping } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
-import { connect } from "metabase/utils/redux";
 
 const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),

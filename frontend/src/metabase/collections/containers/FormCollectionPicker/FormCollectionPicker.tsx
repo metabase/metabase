@@ -21,8 +21,8 @@ import { TransformCollectionName } from "metabase/common/components/TransformCol
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Collections } from "metabase/entities/collections";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { Button, Icon, Input, type InputWrapperProps } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import type { CollectionId, CollectionNamespace } from "metabase-types/api";
 
 interface FormCollectionPickerProps extends InputWrapperProps {

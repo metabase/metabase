@@ -8,11 +8,11 @@ import { FormSelect } from "metabase/forms/components/FormSelect";
 import { FormTextarea } from "metabase/forms/components/FormTextarea";
 import { useMetabotName } from "metabase/metabot/hooks";
 import { getMetabotId, getMetabotState } from "metabase/metabot/state";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Button, Group, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
-import { useSelector } from "metabase/utils/redux";
 import type { MetabotFeedback } from "metabase-types/api";
 
 // Issue types that require free text feedback

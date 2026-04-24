@@ -4,8 +4,8 @@ import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { setDashboardAttributes } from "metabase/dashboard/actions";
 import { trackDashboardWidthChange } from "metabase/dashboard/analytics";
 import { getDashboard, getDashboardId } from "metabase/dashboard/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Popover, Stack, Switch } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 
 // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
 const EXTRA_BUTTONS_DESCRIPTION = t`Toggle width`;

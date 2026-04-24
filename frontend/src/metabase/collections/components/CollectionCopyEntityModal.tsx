@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { Collections } from "metabase/entities/collections";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import { entityTypeForObject } from "metabase/entities/utils";
-import { connect } from "metabase/utils/redux";
+import { connect } from "metabase/redux";
 
 function mapStateToProps(state: any, props: any) {
   return {

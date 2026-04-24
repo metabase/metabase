@@ -3,9 +3,9 @@ import { createRef } from "react";
 import type { Action } from "redux-actions";
 import _ from "underscore";
 
+import { createAction, createThunkAction } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import type { Undo } from "metabase/redux/store/undo";
-import { createAction, createThunkAction } from "metabase/utils/redux";
 
 const ADD_UNDO = "metabase/questions/ADD_UNDO";
 const DISMISS_UNDO = "metabase/questions/DISMISS_UNDO";

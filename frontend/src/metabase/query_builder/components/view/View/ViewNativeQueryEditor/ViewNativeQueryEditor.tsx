@@ -8,8 +8,8 @@ import type {
   SelectionRange,
   SidebarFeatures,
 } from "metabase/querying/editor/types";
+import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";

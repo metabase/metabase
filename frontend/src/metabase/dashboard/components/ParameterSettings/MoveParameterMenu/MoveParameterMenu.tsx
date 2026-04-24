@@ -4,9 +4,9 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Flex, Group, Icon, type IconName, Select, Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import visualizations from "metabase/visualizations";
 import type { BaseDashboardCard, ParameterId } from "metabase-types/api";
 

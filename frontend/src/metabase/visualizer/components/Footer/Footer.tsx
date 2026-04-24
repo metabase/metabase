@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useDispatch, useSelector } from "metabase/redux";
 import { Button, Flex } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import {
   getDatasets,
   getIsLoading,

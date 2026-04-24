@@ -24550,6 +24550,590 @@
         "tags" : [ "/api/ee/content-translation" ]
       }
     },
+    "/api/ee/data-complexity-score/complexity" : {
+      "get" : {
+        "operationId" : "get-api-ee-data-complexity-score-complexity",
+        "summary" : "GET /api/ee/data-complexity-score/complexity",
+        "description" : "Return the current Data Complexity Score for this instance.\n  Superuser-only, expensive, and emits Snowplow events for benchmark consumers. Concurrent\n  requests on the same JVM fast-fail with HTTP 409 — a scoring pass walks the full app-db\n  catalog and one in-flight run per node is enough. The guard is per-JVM, so in a clustered\n  deployment each node can still run one pass concurrently.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "library" : {
+                      "type" : "object",
+                      "properties" : {
+                        "components" : {
+                          "type" : "object",
+                          "properties" : {
+                            "entity-count" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            },
+                            "field-count" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            },
+                            "name-collisions" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            },
+                            "repeated-measures" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            },
+                            "synonym-pairs" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            }
+                          },
+                          "required" : [ "entity-count", "name-collisions", "synonym-pairs", "field-count", "repeated-measures" ]
+                        },
+                        "total" : {
+                          "oneOf" : [ {
+                            "type" : "integer",
+                            "minimum" : 0
+                          }, {
+                            "type" : "null"
+                          } ]
+                        }
+                      },
+                      "required" : [ "total", "components" ]
+                    },
+                    "meta" : {
+                      "type" : "object",
+                      "properties" : {
+                        "embedding-model" : {
+                          "oneOf" : [ {
+                            "type" : "object",
+                            "properties" : {
+                              "model-name" : {
+                                "type" : "string"
+                              },
+                              "provider" : {
+                                "type" : "string"
+                              }
+                            },
+                            "required" : [ "provider", "model-name" ]
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "formula-version" : {
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "synonym-threshold" : {
+                          "type" : "number"
+                        }
+                      },
+                      "required" : [ "formula-version", "synonym-threshold" ]
+                    },
+                    "metabot" : {
+                      "type" : "object",
+                      "properties" : {
+                        "components" : {
+                          "type" : "object",
+                          "properties" : {
+                            "entity-count" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            },
+                            "field-count" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            },
+                            "name-collisions" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            },
+                            "repeated-measures" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            },
+                            "synonym-pairs" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            }
+                          },
+                          "required" : [ "entity-count", "name-collisions", "synonym-pairs", "field-count", "repeated-measures" ]
+                        },
+                        "total" : {
+                          "oneOf" : [ {
+                            "type" : "integer",
+                            "minimum" : 0
+                          }, {
+                            "type" : "null"
+                          } ]
+                        }
+                      },
+                      "required" : [ "total", "components" ]
+                    },
+                    "universe" : {
+                      "type" : "object",
+                      "properties" : {
+                        "components" : {
+                          "type" : "object",
+                          "properties" : {
+                            "entity-count" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            },
+                            "field-count" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            },
+                            "name-collisions" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            },
+                            "repeated-measures" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            },
+                            "synonym-pairs" : {
+                              "anyOf" : [ {
+                                "type" : "object",
+                                "properties" : {
+                                  "measurement" : {
+                                    "type" : "number"
+                                  },
+                                  "score" : {
+                                    "type" : "integer",
+                                    "minimum" : 0
+                                  }
+                                },
+                                "required" : [ "measurement", "score" ],
+                                "additionalProperties" : false
+                              }, {
+                                "type" : "object",
+                                "properties" : {
+                                  "error" : {
+                                    "type" : "string"
+                                  },
+                                  "measurement" : {
+                                    "type" : "null"
+                                  },
+                                  "score" : {
+                                    "type" : "null"
+                                  }
+                                },
+                                "required" : [ "measurement", "score", "error" ],
+                                "additionalProperties" : false
+                              } ]
+                            }
+                          },
+                          "required" : [ "entity-count", "name-collisions", "synonym-pairs", "field-count", "repeated-measures" ]
+                        },
+                        "total" : {
+                          "oneOf" : [ {
+                            "type" : "integer",
+                            "minimum" : 0
+                          }, {
+                            "type" : "null"
+                          } ]
+                        }
+                      },
+                      "required" : [ "total", "components" ]
+                    }
+                  },
+                  "required" : [ "library", "universe", "metabot", "meta" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/data-complexity-score" ]
+      }
+    },
     "/api/ee/data-studio/table/publish-tables" : {
       "post" : {
         "operationId" : "post-api-ee-data-studio-table-publish-tables",

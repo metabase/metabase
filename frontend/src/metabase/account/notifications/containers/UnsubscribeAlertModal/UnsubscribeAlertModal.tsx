@@ -9,8 +9,8 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { UnsubscribeConfirmModal } from "metabase/notifications/modals/UnsubscribeConfirmModal";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { Notification, User } from "metabase-types/api";
 
 import { getAlertId } from "../../selectors";

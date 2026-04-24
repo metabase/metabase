@@ -6,6 +6,7 @@ import _ from "underscore";
 import { trackMetricPageShowMoreClicked } from "metabase/browse/metrics/analytics";
 import { useMetricDimensionQuery } from "metabase/metrics/common/hooks";
 import type { DimensionType } from "metabase/metrics/common/utils/dimension-types";
+import { useDispatch } from "metabase/redux";
 import {
   Button,
   Flex,
@@ -15,7 +16,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSkeleton from "metabase/visualizations/components/skeletons/ChartSkeleton";

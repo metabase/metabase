@@ -10,8 +10,8 @@ import type {
 } from "metabase/common/components/tree/types";
 import { getCollectionIcon } from "metabase/entities/collections/utils";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getIsTenantUser } from "metabase/selectors/user";
-import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Collection } from "metabase-types/api";
 

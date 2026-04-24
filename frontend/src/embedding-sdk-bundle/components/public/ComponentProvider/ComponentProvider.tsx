@@ -22,9 +22,9 @@ import { useInstanceLocale } from "metabase/common/hooks/use-instance-locale";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
 import { isEmbeddingThemeV1 } from "metabase/embedding-sdk/theme";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
+import { MetabaseReduxProvider, useSelector } from "metabase/redux";
 import { setOptions } from "metabase/redux/embed";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
-import { MetabaseReduxProvider, useSelector } from "metabase/utils/redux";
 import { initializePlugins } from "sdk-ee-plugins";
 
 import { SCOPED_CSS_RESET } from "../../private/PublicComponentStylesWrapper";

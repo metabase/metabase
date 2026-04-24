@@ -8,7 +8,7 @@ import {
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 
 import { trackQueryFixClicked } from "../../analytics";
 
@@ -23,8 +23,8 @@ jest.mock("../../analytics", () => ({
   trackQueryFixClicked: jest.fn(),
 }));
 
-jest.mock("metabase/utils/redux", () => ({
-  ...jest.requireActual("metabase/utils/redux"),
+jest.mock("metabase/redux", () => ({
+  ...jest.requireActual("metabase/redux"),
   useDispatch: jest.fn(),
 }));
 

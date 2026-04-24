@@ -4,8 +4,8 @@ import PropTypes from "prop-types";
 import { Component } from "react";
 
 import CS from "metabase/css/core/index.css";
+import { connect } from "metabase/redux";
 import { parseDataUri } from "metabase/utils/data-url";
-import { connect } from "metabase/utils/redux";
 import {
   getIsDefaultMetabaseLogo,
   getLogoUrl,

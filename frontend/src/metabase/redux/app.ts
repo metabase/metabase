@@ -5,6 +5,7 @@ import {
 } from "@reduxjs/toolkit";
 import { LOCATION_CHANGE, push } from "react-router-redux";
 
+import { combineReducers, handleActions } from "metabase/redux";
 import type {
   DetailViewState,
   Dispatch,
@@ -17,7 +18,6 @@ import {
   openInBlankWindow,
   shouldOpenInBlankWindow,
 } from "metabase/utils/dom";
-import { combineReducers, handleActions } from "metabase/utils/redux";
 
 interface LocationChangeAction {
   type: string; // "@@router/LOCATION_CHANGE"
