@@ -34,4 +34,25 @@ describe("AIMarkdown", () => {
     // Verify it's rendered as a smart link by checking for the icon
     expect(screen.getByRole("img", { name: /icon/ })).toBeInTheDocument();
   });
+
+  it("should render GFM tables", async () => {
+    setup({
+      children: `
+| Name | Value |
+| --- | --- |
+| Revenue | $42 |
+| Profit | $12 |
+      `.trim(),
+    });
+
+    expect(await screen.findByRole("table")).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Name" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Value" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Revenue" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "$42" })).toBeInTheDocument();
+  });
 });
