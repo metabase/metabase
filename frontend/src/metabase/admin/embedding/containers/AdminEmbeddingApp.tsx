@@ -3,6 +3,7 @@ import type { Location } from "history";
 import { AdminSettingsLayout } from "metabase/common/components/AdminLayout/AdminSettingsLayout";
 
 import { EmbeddingNav } from "../components/EmbeddingNav";
+import { useEnsureDefaultEmbeddingThemes } from "../hooks";
 
 const SIDEBAR_HIDDEN_PATHS = new Set([
   "/admin/embedding/setup-guide/permissions",
@@ -22,6 +23,8 @@ export const AdminEmbeddingApp = ({
   location: Location;
   children: React.ReactNode;
 }) => {
+  useEnsureDefaultEmbeddingThemes();
+
   const shouldHideSidebar =
     SIDEBAR_HIDDEN_PATHS.has(location.pathname) ||
     SIDEBAR_HIDDEN_PATH_PREFIXES.some((prefix) =>

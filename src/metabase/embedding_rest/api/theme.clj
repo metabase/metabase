@@ -3,12 +3,15 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.embedding.settings :as embedding.settings]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defonce ^:private seed-defaults-lock (Object.))
 
 (mr/def ::EmbeddingTheme
   [:map
@@ -73,3 +76,22 @@
     (t2/insert-returning-instance! :model/EmbeddingTheme
                                    {:name (tru "Copy of {0}" (:name source-theme))
                                     :settings (:settings source-theme)})))
+
+(api.macros/defendpoint :post "/seed-defaults" :- :nil
+  "Seed default embedding themes on first call, using the payloads built by the frontend from the
+  `METABASE_LIGHT_THEME` / `METABASE_DARK_THEME` constants.
+
+  Idempotent: guarded by the `default-embedding-themes-seeded` setting. Once flipped, subsequent calls
+  are no-ops even if the admin has since deleted the seeded themes, so deletions are preserved."
+  [_route-params
+   _query-params
+   {:keys [themes]} :- [:map
+                        [:themes [:sequential [:map
+                                               [:name     ms/NonBlankString]
+                                               [:settings :map]]]]]]
+  (locking seed-defaults-lock
+    (t2/with-transaction [_conn]
+      (when-not (embedding.settings/default-embedding-themes-seeded)
+        (t2/insert! :model/EmbeddingTheme themes)
+        (embedding.settings/default-embedding-themes-seeded! true))))
+  nil)

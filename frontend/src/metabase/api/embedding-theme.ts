@@ -1,11 +1,12 @@
 import type {
   CreateEmbeddingThemeRequest,
   EmbeddingTheme,
+  SeedDefaultEmbeddingThemesRequest,
   UpdateEmbeddingThemeRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { idTag, invalidateTags, listTag } from "./tags";
+import { idTag, invalidateTags, listTag, tag } from "./tags";
 
 export const embeddingThemeApi = Api.injectEndpoints({
   endpoints: (builder) => ({
@@ -63,6 +64,21 @@ export const embeddingThemeApi = Api.injectEndpoints({
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("embed-theme")]),
     }),
+    seedDefaultEmbeddingThemes: builder.mutation<
+      void,
+      SeedDefaultEmbeddingThemesRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: `/api/embed-theme/seed-defaults`,
+        body,
+      }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [
+          listTag("embed-theme"),
+          tag("session-properties"),
+        ]),
+    }),
   }),
 });
 
@@ -73,4 +89,5 @@ export const {
   useUpdateEmbeddingThemeMutation,
   useDeleteEmbeddingThemeMutation,
   useCopyEmbeddingThemeMutation,
+  useSeedDefaultEmbeddingThemesMutation,
 } = embeddingThemeApi;
