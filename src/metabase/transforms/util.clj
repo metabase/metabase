@@ -9,6 +9,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
@@ -116,11 +117,17 @@
   (try
     (when-not (driver/schema-exists? driver db-id output-schema)
       (driver/create-schema-if-needed! driver conn-spec output-schema))
-    (let [source-range-params (transforms-base.u/get-source-range-params transform)]
+    (let [source-range-params  (transforms-base.u/get-source-range-params transform)
+          transform-timeout    (transforms.settings/transform-timeout)
+          transform-timeout-ms (u/minutes->ms transform-timeout)]
       (transforms-base.u/save-run-checkpoint-range! run-id source-range-params)
-      (canceling/chan-start-timeout-vthread! run-id (transforms.settings/transform-timeout))
+      (canceling/chan-start-timeout-vthread! run-id transform-timeout)
       (let [cancel-chan (a/promise-chan)
-            ret (binding [qp.pipeline/*canceled-chan* cancel-chan]
+            ret (binding [qp.pipeline/*canceled-chan*          cancel-chan
+                          driver.settings/*query-timeout-ms*   transform-timeout-ms
+                          ;; Match the query timeout so a single slow socket read (or a driver that waits for
+                          ;; the full server-side query) does not get killed before the transform's own deadline.
+                          driver.settings/*network-timeout-ms* (max driver.settings/*network-timeout-ms* transform-timeout-ms)]
                   (canceling/chan-start-run! run-id cancel-chan)
                   (run-transform! cancel-chan source-range-params))]
         (transforms-base.u/save-watermark! (:id transform) source-range-params)

@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -14,8 +16,11 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.canceling :as transforms.canceling]
    [metabase.transforms.execute :as transforms.execute]
+   [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.util :as transforms.u]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -404,6 +409,89 @@
       (mt/with-temp [:model/Table table {:transform_id nil}]
         (let [hydrated (t2/hydrate table :transform)]
           (is (nil? (:transform hydrated))))))))
+
+(deftest jdbc-unreturned-connection-timeout-covers-transform-timeout-test
+  (testing "the c3p0 unreturnedConnectionTimeout default is at least as long as transform-timeout.
+            Per-query timeouts are enforced via Statement.setQueryTimeout; this pool setting only acts as a
+            leak-detector, so it must not undercut a legitimate long transform."
+    ;; transform-timeout is premium-gated; without the feature flag its getter returns the default regardless of
+    ;; any `with-temporary-setting-values` override, which would silently defeat these assertions.
+    (mt/with-premium-features #{:transforms-basic}
+      (mt/with-temporary-setting-values [jdbc-data-warehouse-unreturned-connection-timeout-seconds nil]
+        (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 20)]
+          (testing "transform-timeout larger than query-timeout -> transform-timeout wins"
+            (mt/with-temporary-setting-values [transform-timeout 240]
+              (is (= (* 240 60)
+                     (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)))))
+          (testing "query-timeout larger than transform-timeout -> query-timeout wins"
+            (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 60)]
+              (mt/with-temporary-setting-values [transform-timeout 10]
+                (is (= (* 60 60)
+                       (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)))))))
+        (testing "an explicit override still wins over the computed default"
+          (mt/with-temporary-setting-values [jdbc-data-warehouse-unreturned-connection-timeout-seconds 15
+                                             transform-timeout                                         240]
+            (is (= 15 (driver.settings/jdbc-data-warehouse-unreturned-connection-timeout-seconds)))))))))
+
+;; Not ^:parallel: the kondo linter flags `set-statement-query-timeout!` (`!`-suffixed, so classified "destructive")
+;; when used inside a parallel test. The call site here only mutates a local proxy Statement and is safe, but marking
+;; synchronous avoids growing the whitelist.
+(deftest set-statement-query-timeout!-test
+  (testing "the helper that populates Statement.setQueryTimeout reads *query-timeout-ms* and converts to seconds.
+            Proved via a mock Statement so the test is deterministic and independent of any driver's enforcement
+            semantics."
+    (let [captured-seconds (atom nil)
+          mock-stmt        (proxy [java.sql.Statement] []
+                             (setQueryTimeout [secs] (reset! captured-seconds secs)))
+          set-timeout!     @#'sql-jdbc.execute/set-statement-query-timeout!]
+      (testing "default dynamic scope"
+        (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 3)]
+          (set-timeout! mock-stmt)
+          (is (= (* 3 60) @captured-seconds))))
+      (testing "transform-scope rebinding lands in the Statement"
+        (binding [driver.settings/*query-timeout-ms* (u/minutes->ms 90)]
+          (set-timeout! mock-stmt)
+          (is (= (* 90 60) @captured-seconds))))
+      (testing "a throwing driver does not propagate the exception"
+        (let [throwing-stmt (proxy [java.sql.Statement] []
+                              (setQueryTimeout [_] (throw (java.sql.SQLFeatureNotSupportedException.))))]
+          (is (nil? (set-timeout! throwing-stmt))))))))
+
+(deftest statement-or-prepared-statement-round-trips-query-timeout-test
+  (testing "statement-or-prepared-statement creates a Statement whose .getQueryTimeout reflects the currently
+            bound *query-timeout-ms*, for every SQL-JDBC driver supported in CI."
+    (mt/test-drivers (into #{} (filter #(isa? driver/hierarchy % :sql-jdbc)) (mt/normal-drivers))
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver* (mt/db) {:write? false}
+       (fn [^java.sql.Connection conn]
+         (doseq [minutes [3 90]]
+           (binding [driver.settings/*query-timeout-ms* (u/minutes->ms minutes)]
+             (with-open [^java.sql.Statement stmt (sql-jdbc.execute/statement-or-prepared-statement
+                                                   driver/*driver* conn "SELECT 1" [] nil)]
+               (is (= (* minutes 60) (.getQueryTimeout stmt))
+                   (str "driver " driver/*driver* " did not round-trip " minutes "min via setQueryTimeout"))))))))))
+
+(deftest run-cancelable-transform!-propagates-timeout-to-driver-test
+  (testing "run-cancelable-transform! rebinds *query-timeout-ms* for the whole transform body, so any driver that
+            reads the dynamic var at query time (SQL JDBC via setQueryTimeout, Mongo/Druid/BigQuery directly) sees
+            the transform timeout instead of db-query-timeout."
+    (let [driver-observed-timeout-ms (atom nil)]
+      (with-redefs [driver/schema-exists?                            (constantly true)
+                    driver/create-schema-if-needed!                  (constantly nil)
+                    transforms-base.u/get-source-range-params        (constantly nil)
+                    transforms-base.u/save-run-checkpoint-range!     (constantly nil)
+                    transforms-base.u/save-watermark!                (constantly nil)
+                    transforms.canceling/chan-start-timeout-vthread! (constantly nil)
+                    transforms.canceling/chan-start-run!             (constantly nil)
+                    transforms.canceling/chan-end-run!               (constantly nil)
+                    transform-run/succeed-started-run!               (constantly nil)]
+        (mt/with-premium-features #{:transforms-basic}
+          (mt/with-temporary-setting-values [transform-timeout 90]
+            (transforms.u/run-cancelable-transform!
+             1 {:id 1} :h2 {:db-id 1 :conn-spec nil :output-schema "x"}
+             (fn [_cancel-chan _range-params]
+               (reset! driver-observed-timeout-ms driver.settings/*query-timeout-ms*))))))
+      (is (= (u/minutes->ms 90) @driver-observed-timeout-ms)))))
 
 (deftest ^:parallel massage-sql-query-test
   (testing "massage-sql-query sets disable-remaps? and disable-max-results?"
