@@ -48,27 +48,6 @@ databaseChangeLog:
         - sql: DROP VIEW IF EXISTS v_metabot_messages
 
   - changeSet:
-      id: v61.2026-04-01T10:00:02
-      author: noahmoss
-      runOnChange: true
-      comment: Create v_metabot_usage view for AI analytics
-      changes:
-        - sqlFile:
-            dbms: postgresql
-            path: ../instance_analytics_views/metabot_usage/v1/postgres-metabot_usage.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: mysql,mariadb
-            path: ../instance_analytics_views/metabot_usage/v1/mysql-metabot_usage.sql
-            relativeToChangelogFile: true
-        - sqlFile:
-            dbms: h2
-            path: ../instance_analytics_views/metabot_usage/v1/h2-metabot_usage.sql
-            relativeToChangelogFile: true
-      rollback:
-        - sql: DROP VIEW IF EXISTS v_metabot_usage
-
-  - changeSet:
       id: v61.2026-04-01T10:00:03
       author: tyler
       runOnChange: true

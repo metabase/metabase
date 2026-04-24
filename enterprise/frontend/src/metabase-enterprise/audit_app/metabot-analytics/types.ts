@@ -60,6 +60,9 @@ export type GeneratedQuery = {
 };
 
 export type ConversationFeedback = MetabotFeedback & {
+  id: number;
+  user_id: number;
+  user?: MetabotUserInfo | null;
   external_id: string | null;
 };
 

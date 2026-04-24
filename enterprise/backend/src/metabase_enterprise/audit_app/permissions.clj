@@ -31,7 +31,6 @@
     "v_view_log"
     "v_metabot_conversations"
     "v_metabot_messages"
-    "v_metabot_usage"
     "v_ai_usage_log"})
 
 (defenterprise check-audit-db-permissions

@@ -1,0 +1,125 @@
+name: AI Usage Log
+description: One row per LLM round-trip with per-call tokens, source, model, profile, and more.
+entity_id: joMVMZY847nXW3WBi-zIn
+created_at: '2026-04-24T20:05:45.950203Z'
+creator_id: internal@metabase.com
+display: table
+collection_id: vG58R8k-QddHWA7_47umn
+collection_position: 23
+query_type: query
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_ai_usage_log
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - source-table:
+    - Internal Metabase Database
+    - public
+    - v_ai_usage_log
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- description: Primary key from ai_usage_log.id.
+  display_name: Usage Log ID
+  name: usage_log_id
+  semantic_type: type/PK
+  visibility_type: normal
+- description: Timestamp of this LLM round-trip.
+  display_name: Created At
+  name: created_at
+  semantic_type: type/CreationTimestamp
+  visibility_type: normal
+- description: Originating surface for the call (e.g. metabot_agent, slackbot, document_generate_content, oss-sql-gen).
+  display_name: Source
+  name: source
+  semantic_type: type/Category
+  visibility_type: normal
+- description: Provider/model identifier returned by the LLM (e.g. anthropic/claude-sonnet-4-20250514).
+  display_name: Model
+  name: model
+  semantic_type: type/Category
+  visibility_type: normal
+- description: Metabot profile that issued the call (e.g. internal, slackbot).
+  display_name: Profile ID
+  name: profile_id
+  semantic_type: type/Category
+  visibility_type: normal
+- description: Prompt tokens consumed for this call.
+  display_name: Prompt Tokens
+  name: prompt_tokens
+  semantic_type: type/Quantity
+  visibility_type: normal
+- description: Completion tokens generated for this call.
+  display_name: Completion Tokens
+  name: completion_tokens
+  semantic_type: type/Quantity
+  visibility_type: normal
+- description: Total tokens for this call (prompt + completion).
+  display_name: Total Tokens
+  name: total_tokens
+  semantic_type: type/Quantity
+  visibility_type: normal
+- description: ID of the owning Metabot conversation, if any (null for non-conversational and most Slack-originated calls).
+  display_name: Conversation ID
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_metabot_conversations
+  - conversation_id
+  name: conversation_id
+  semantic_type: type/FK
+  visibility_type: normal
+- description: ID of the user who triggered the call (null for system/Quartz calls).
+  display_name: User ID
+  fk_target_field_id:
+  - Internal Metabase Database
+  - public
+  - v_users
+  - user_id
+  name: user_id
+  semantic_type: type/FK
+  visibility_type: normal
+- description: Synthetic 'user_<id>' string used as a stable bucket key in by-user breakouts.
+  display_name: User Qualified ID
+  name: user_qualified_id
+  semantic_type: type/Category
+  visibility_type: normal
+- description: Display name of the user (full name when set, otherwise email).
+  display_name: User Display Name
+  name: user_display_name
+  semantic_type: type/Name
+  visibility_type: normal
+- description: Name of one permissions group the user belongs to (excluding All Users); used for cohort breakdowns.
+  display_name: Group Name
+  name: group_name
+  semantic_type: type/Category
+  visibility_type: normal
+- description: IP address of the originating Metabot conversation, when one exists.
+  display_name: IP Address
+  name: ip_address
+  semantic_type: null
+  visibility_type: normal
+- description: Tenant ID associated with the call, if any.
+  display_name: Tenant ID
+  name: tenant_id
+  semantic_type: type/FK
+  visibility_type: normal
+- description: Stable identifier for a single user turn; multiple usage_log rows share a request_id across agent iterations.
+  display_name: Request ID
+  name: request_id
+  semantic_type: type/Category
+  visibility_type: normal
+visualization_settings:
+  column_settings: null
+card_schema: 23
+serdes/meta:
+- id: joMVMZY847nXW3WBi-zIn
+  label: ai_usage_log
+  model: Card
+metabase_version: v1.57.1-SNAPSHOT (9afffd8)
+type: model
