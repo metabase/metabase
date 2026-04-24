@@ -1,0 +1,30 @@
+name: request_id
+display_name: Request ID
+description: Stable identifier for a single user turn; multiple usage_log rows share a request_id across agent iterations.
+created_at: '2026-04-24T19:39:29.861736Z'
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_ai_usage_log
+database_type: varchar
+base_type: type/Text
+effective_type: type/Text
+semantic_type: type/Category
+dimensions: []
+position: 15
+custom_position: 0
+database_position: 15
+has_field_values: auto-list
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_ai_usage_log
+  model: Table
+- id: request_id
+  model: Field
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false
