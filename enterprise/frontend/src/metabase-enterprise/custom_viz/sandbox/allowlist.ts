@@ -1,3 +1,14 @@
+function ownFunctionsOf(
+  obj: object,
+  pick: (d: PropertyDescriptor) => unknown,
+): object[] {
+  return Object.getOwnPropertyNames(obj).flatMap((key) => {
+    const d = Object.getOwnPropertyDescriptor(obj, key);
+    const fn = d && pick(d);
+    return typeof fn === "function" ? [fn] : [];
+  });
+}
+
 export function getterOf(key: string): object | undefined {
   return (
     Object.getOwnPropertyDescriptor(window, key)?.get ??
@@ -6,27 +17,26 @@ export function getterOf(key: string): object | undefined {
 }
 
 export function allGettersOf(proto: object): object[] {
-  return Object.getOwnPropertyNames(proto).flatMap((key) => {
-    const get = Object.getOwnPropertyDescriptor(proto, key)?.get;
-    return get ? [get] : [];
-  });
+  return ownFunctionsOf(proto, (d) => d.get);
 }
 
 export function allMethodsOf(obj: object): object[] {
-  return Object.getOwnPropertyNames(obj).flatMap((key) => {
-    const fn = Object.getOwnPropertyDescriptor(obj, key)?.value;
-    return fn && typeof fn === "function" ? [fn] : [];
-  });
+  return ownFunctionsOf(obj, (d) => d.value);
 }
 
 export function allSettersOf(proto: object): object[] {
-  return Object.getOwnPropertyNames(proto).flatMap((key) => {
-    const set = Object.getOwnPropertyDescriptor(proto, key)?.set;
-    return set ? [set] : [];
-  });
+  return ownFunctionsOf(proto, (d) => d.set);
 }
 
-// This list only needs to cover what plugin code + bundled libs call directly.
+// eslint-disable-next-line no-console -- plugin sandboxes may log for debugging
+const CONSOLE_METHODS = [
+  console.log,
+  console.warn,
+  console.error,
+  console.info,
+];
+
+// Covers what plugin code + bundled libs call directly.
 // Endowments (__METABASE_VIZ_API__, __customVizPlugin__) are exempt —
 // they are injected directly and never pass through distortionCallback.
 export const ALLOWED_FUNCTIONS = new Set<object>(
@@ -44,12 +54,7 @@ export const ALLOWED_FUNCTIONS = new Set<object>(
     window.ResizeObserver,
     window.MutationObserver,
     window.IntersectionObserver,
-    // eslint-disable-next-line no-console -- allowed in plugin sandbox
-    console.log,
-    console.warn,
-    console.error,
-    // eslint-disable-next-line no-console -- allowed in plugin sandbox
-    console.info,
+    ...CONSOLE_METHODS,
     getterOf("navigator"),
     getterOf("location"),
     getterOf("screen"),
