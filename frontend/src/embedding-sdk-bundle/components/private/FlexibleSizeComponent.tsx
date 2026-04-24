@@ -37,9 +37,14 @@ export const FlexibleSizeComponent = forwardRef<
   ref,
 ) {
   return (
-    <Box h={propHeight} w={propWidth} mih={propHeight} miw={propWidth}>
+    <Box
+      ref={ref}
+      h={propHeight}
+      w={propWidth}
+      mih={propHeight}
+      miw={propWidth}
+    >
       <Box
-        ref={ref}
         h="100%"
         w="100%"
         mih="100%"
