@@ -224,9 +224,13 @@ saved later when it is ready."
            (log/debug "Not inferring result metadata for Card: query was not updated")
            card)
 
-         ;; passing in metadata => use that metadata, but replace any placeholder idents in it.
-         (or (and (not-empty changes) (contains? changes :result_metadata))
-             (and (empty? changes) metadata))
+         ;; passing in non-nil metadata => use that metadata, but replace any placeholder idents in it.
+         ;; if the provided metadata is `nil` (for example, because `normalize-card` silently stripped invalid
+         ;; stored metadata earlier in `before-insert`/`before-update`), fall through to inference instead of
+         ;; persisting the `nil`.
+         (and (some? metadata)
+              (or (and (not-empty changes) (contains? changes :result_metadata))
+                  (empty? changes)))
          (do
            (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
            card)
