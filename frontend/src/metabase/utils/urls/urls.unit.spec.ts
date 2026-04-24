@@ -1,3 +1,5 @@
+import type { Bookmark, CollectionId } from "metabase-types/api";
+
 import {
   bookmark,
   browseDatabase,
@@ -11,8 +13,7 @@ import {
   model,
   modelDetail,
   modelEditor,
-} from "metabase/utils/urls";
-import type { Bookmark, CollectionId } from "metabase-types/api";
+} from ".";
 
 describe("urls", () => {
   describe("question", () => {
