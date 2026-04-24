@@ -19,13 +19,17 @@ import S from "./ChartCard.module.css";
 import {
   type UsageStatsMetric,
   applyDateFilter,
+  applyGroupFilter,
   applyUsageStatsAggregation,
+  applyUserFilter,
   findColumn,
   getMetricSeriesSettings,
 } from "./query-utils";
 
 type Props = {
   dateFilter: DateFilterValue;
+  userId?: number;
+  groupName?: string;
   breakoutColumn: string;
   title: string;
   display?: VisualizationDisplay;
@@ -47,6 +51,8 @@ const CLICKABLE_MODE: ClickActionsMode = {
 
 export function BreakoutChart({
   dateFilter,
+  userId,
+  groupName,
   breakoutColumn,
   title,
   display = "row",
@@ -68,6 +74,8 @@ export function BreakoutChart({
     let q = Lib.queryFromTableOrCardMetadata(provider, table);
 
     q = applyDateFilter(q, dateFilter);
+    q = applyUserFilter(q, userId);
+    q = applyGroupFilter(q, groupName);
     const { query: aggregated, orderColumnName } = applyUsageStatsAggregation(
       q,
       metric,
@@ -87,7 +95,7 @@ export function BreakoutChart({
     }
 
     return q;
-  }, [provider, table, dateFilter, breakoutColumn, metric]);
+  }, [provider, table, dateFilter, userId, groupName, breakoutColumn, metric]);
 
   const jsQuery = useMemo(() => (query ? Lib.toJsQuery(query) : null), [query]);
 

@@ -9,7 +9,11 @@ import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/Met
 import { Card, Flex, Title } from "metabase/ui";
 
 import { useListMetabotConversationsQuery } from "../../api";
-import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
+import {
+  ConversationFilters,
+  DEFAULT_GROUP,
+  useFilterOptions,
+} from "../ConversationFilters";
 
 import { ConversationsTable } from "./ConversationsTable";
 import { PAGE_SIZE, urlStateConfig } from "./utils";
@@ -23,6 +27,14 @@ export function ConversationsPage({ location }: WithRouterProps) {
   const sortingOptions = { sort_column, sort_direction };
   const { userOptions, groupOptions } = useFilterOptions();
 
+  const groupId =
+    group && group !== DEFAULT_GROUP ? parseInt(group, 10) : undefined;
+
+  // Exclude-shape date filters (e.g. "exclude-days-Mon") can't be expressed
+  // as a single [start, end) range that the list endpoint accepts; drop them
+  // instead of surfacing a 400. Stats charts still apply them natively.
+  const dateParam = date && !date.startsWith("exclude-") ? date : undefined;
+
   const {
     data: conversationsData,
     isLoading,
@@ -34,6 +46,8 @@ export function ConversationsPage({ location }: WithRouterProps) {
       "sort-by": sort_column,
       "sort-dir": sort_direction,
       "user-id": user ? parseInt(user, 10) : undefined,
+      "group-id": groupId,
+      date: dateParam,
     },
     { refetchOnMountOrArgChange: true },
   );

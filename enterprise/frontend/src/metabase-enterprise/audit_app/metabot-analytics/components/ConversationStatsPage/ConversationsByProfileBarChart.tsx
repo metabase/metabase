@@ -6,6 +6,8 @@ import { type UsageStatsMetric, getChartTitle } from "./query-utils";
 
 type Props = {
   dateFilter: DateFilterValue;
+  userId?: number;
+  groupName?: string;
   metric: UsageStatsMetric;
   viewName?: string;
   onDimensionClick?: (value: unknown) => void;
@@ -13,6 +15,8 @@ type Props = {
 
 export function ConversationsByProfileBarChart({
   dateFilter,
+  userId,
+  groupName,
   metric,
   viewName,
   onDimensionClick,
@@ -20,6 +24,8 @@ export function ConversationsByProfileBarChart({
   return (
     <BreakoutChart
       dateFilter={dateFilter}
+      userId={userId}
+      groupName={groupName}
       breakoutColumn="profile_id"
       title={getChartTitle(metric, "profile")}
       display="bar"

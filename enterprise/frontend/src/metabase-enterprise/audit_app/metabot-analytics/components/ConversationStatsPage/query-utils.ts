@@ -106,6 +106,49 @@ export function applyDateFilter(
   return Lib.filter(query, 0, clause);
 }
 
+export function applyUserFilter(
+  query: Query,
+  userId: number | undefined,
+  columnName = "user_id",
+): Query {
+  if (userId == null) {
+    return query;
+  }
+  const col = findColumn(query, columnName, Lib.filterableColumns);
+  if (!col) {
+    return query;
+  }
+  return Lib.filter(
+    query,
+    0,
+    Lib.numberFilterClause({ operator: "=", column: col, values: [userId] }),
+  );
+}
+
+export function applyGroupFilter(
+  query: Query,
+  groupName: string | undefined,
+  columnName = "group_name",
+): Query {
+  if (!groupName) {
+    return query;
+  }
+  const col = findColumn(query, columnName, Lib.filterableColumns);
+  if (!col) {
+    return query;
+  }
+  return Lib.filter(
+    query,
+    0,
+    Lib.stringFilterClause({
+      operator: "=",
+      column: col,
+      values: [groupName],
+      options: {},
+    }),
+  );
+}
+
 /**
  * Add a sum aggregation for the given column name.
  */
