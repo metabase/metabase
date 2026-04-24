@@ -1,6 +1,7 @@
 import { Handle, Position, useReactFlow } from "@xyflow/react";
+import cx from "classnames";
 
-import { Box, Group } from "metabase/ui";
+import { Box, FixedSizeIcon, Group, type IconName } from "metabase/ui";
 import type { ConcreteTableId, ErdField } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../SchemaViewerContext";
@@ -11,15 +12,41 @@ import { getNodeId } from "../utils";
 
 import S from "./SchemaViewerFieldRow.module.css";
 
+// Map a Postgres / warehouse database_type to a Metabase icon name. The
+// icons mirror `getColumnIcon`'s output but don't rely on base/effective_type
+// because `ErdField` only carries `database_type`.
+function getIconForDbType(dbType: string): IconName {
+  const t = dbType.toLowerCase();
+  if (/^bool/.test(t)) {
+    return "io";
+  }
+  if (/(timestamp|date|time)/.test(t)) {
+    return "calendar";
+  }
+  if (
+    /(int|numeric|decimal|double|float|real|serial|bigint|smallint|money)/.test(
+      t,
+    )
+  ) {
+    return "int";
+  }
+  if (/(uuid|text|varchar|char|string|json|xml|bytea)/.test(t)) {
+    return "string";
+  }
+  return "unknown";
+}
+
 interface SchemaViewerFieldRowProps {
   field: ErdField;
   isConnected: boolean;
+  isSelectedInEdge?: boolean;
   hasSelfRefTarget?: boolean;
 }
 
 export function SchemaViewerFieldRow({
   field,
   isConnected,
+  isSelectedInEdge,
   hasSelfRefTarget,
 }: SchemaViewerFieldRowProps) {
   const { visibleTableIds, onExpandToTable } = useSchemaViewerContext();
@@ -33,6 +60,12 @@ export function SchemaViewerFieldRow({
     field.semantic_type === "type/PK" || field.semantic_type === "PK";
   const isFK =
     field.semantic_type === "type/FK" || field.semantic_type === "FK";
+
+  const icon: IconName = isPK
+    ? "label"
+    : isFK
+      ? "connections"
+      : getIconForDbType(field.database_type);
 
   // FK field that has a target table not yet on the canvas
   const canExpand =
@@ -106,7 +139,7 @@ export function SchemaViewerFieldRow({
   return (
     <Group
       className={S.row}
-      gap="xs"
+      gap="sm"
       wrap="nowrap"
       h={ROW_HEIGHT}
       px="lg"
@@ -114,16 +147,22 @@ export function SchemaViewerFieldRow({
       onClick={isClickable ? handleClick : undefined}
       style={{ cursor: isClickable ? "pointer" : undefined }}
     >
+      <FixedSizeIcon
+        name={icon}
+        size={16}
+        c={isSelectedInEdge ? "brand" : "text-secondary"}
+        style={{ flexShrink: 0 }}
+      />
       <Box
-        className={S.name}
+        className={cx(S.name, { [S.linkable]: isClickable })}
         fz="sm"
-        fw={isPK ? "bold" : "normal"}
-        c={isClickable ? "brand" : undefined}
+        fw={isPK || isSelectedInEdge ? "bold" : "normal"}
+        c={isSelectedInEdge ? "brand" : undefined}
         style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}
       >
         {field.name}
       </Box>
-      <Box fz="sm" c="text-tertiary" style={{ flexShrink: 0 }}>
+      <Box fz="sm" c="text-secondary" style={{ flexShrink: 0 }}>
         {field.database_type.toLowerCase()}
       </Box>
       {canExpand && <Box className={S.expandIndicator} />}

@@ -29,16 +29,6 @@
   background-color: var(--mb-color-background-secondary);
 }
 
-@keyframes schema-viewer-edge-animation {
-  from {
-    stroke-dashoffset: 20;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
 .centerLoader {
   position: absolute;
   inset: 0;
@@ -46,8 +36,4 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
-}
-
-.reactFlow :global(.react-flow__edge-path.schema-viewer-edge-march) {
-  animation: schema-viewer-edge-animation 3s linear infinite;
 }

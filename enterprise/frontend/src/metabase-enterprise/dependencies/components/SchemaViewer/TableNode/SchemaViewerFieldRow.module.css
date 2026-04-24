@@ -1,6 +1,11 @@
 .row {
   position: relative;
   white-space: nowrap;
+  border-bottom: 1px solid rgba(7, 23, 34, 0.14);
+
+  &:last-child {
+    border-bottom: none;
+  }
 
   &[data-expandable] {
     &:hover {
@@ -12,6 +17,13 @@
 .name {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Hint that a FK field can be clicked to navigate to its target table.
+   Underline only — no color change — matches the mockup treatment of
+   foreign-key field names as subtly link-like. */
+.linkable {
+  text-decoration: underline;
 }
 
 .handle {

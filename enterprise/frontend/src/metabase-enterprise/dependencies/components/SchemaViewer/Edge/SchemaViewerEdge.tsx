@@ -24,7 +24,13 @@ type SymbolProps = {
   scale?: number;
 };
 
-function OneSourceSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps) {
+function OneSourceSymbol({
+  x,
+  y,
+  stroke,
+  strokeWidth,
+  scale = 1,
+}: SymbolProps) {
   const gap = GAP * scale;
   const h = H * scale;
   return (
@@ -40,7 +46,13 @@ function OneSourceSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps) 
   );
 }
 
-function ManySourceSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps) {
+function ManySourceSymbol({
+  x,
+  y,
+  stroke,
+  strokeWidth,
+  scale = 1,
+}: SymbolProps) {
   const gap = GAP * scale;
   const w = W * scale;
   const h = H * scale;
@@ -68,7 +80,13 @@ function ManySourceSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps)
   );
 }
 
-function OneTargetSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps) {
+function OneTargetSymbol({
+  x,
+  y,
+  stroke,
+  strokeWidth,
+  scale = 1,
+}: SymbolProps) {
   const gap = GAP * scale;
   const h = H * scale;
   return (
@@ -84,7 +102,13 @@ function OneTargetSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps) 
   );
 }
 
-function ManyTargetSymbol({ x, y, stroke, strokeWidth, scale = 1 }: SymbolProps) {
+function ManyTargetSymbol({
+  x,
+  y,
+  stroke,
+  strokeWidth,
+  scale = 1,
+}: SymbolProps) {
   const gap = GAP * scale;
   const w = W * scale;
   const h = H * scale;
@@ -131,19 +155,57 @@ type SymbolWrapperProps = {
   scale?: number;
 };
 
-function SourceSymbol({ type, x, y, stroke, strokeWidth, scale }: SymbolWrapperProps) {
+function SourceSymbol({
+  type,
+  x,
+  y,
+  stroke,
+  strokeWidth,
+  scale,
+}: SymbolWrapperProps) {
   return type === "many" ? (
-    <ManySourceSymbol x={x} y={y} stroke={stroke} strokeWidth={strokeWidth} scale={scale} />
+    <ManySourceSymbol
+      x={x}
+      y={y}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      scale={scale}
+    />
   ) : (
-    <OneSourceSymbol x={x} y={y} stroke={stroke} strokeWidth={strokeWidth} scale={scale} />
+    <OneSourceSymbol
+      x={x}
+      y={y}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      scale={scale}
+    />
   );
 }
 
-function TargetSymbol({ type, x, y, stroke, strokeWidth, scale }: SymbolWrapperProps) {
+function TargetSymbol({
+  type,
+  x,
+  y,
+  stroke,
+  strokeWidth,
+  scale,
+}: SymbolWrapperProps) {
   return type === "many" ? (
-    <ManyTargetSymbol x={x} y={y} stroke={stroke} strokeWidth={strokeWidth} scale={scale} />
+    <ManyTargetSymbol
+      x={x}
+      y={y}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      scale={scale}
+    />
   ) : (
-    <OneTargetSymbol x={x} y={y} stroke={stroke} strokeWidth={strokeWidth} scale={scale} />
+    <OneTargetSymbol
+      x={x}
+      y={y}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
+      scale={scale}
+    />
   );
 }
 
@@ -154,7 +216,6 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
   const isInitialized = useNodesInitialized();
   const isSelfRef = props.source === props.target;
   const isHidden = !isInitialized;
-  const animationClass = "schema-viewer-edge-march";
   const selected = props.selected ?? false;
 
   const relationship = props.data?.relationship ?? "many-to-one";
@@ -162,13 +223,14 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
   const stroke = selected
     ? (palette["brand"] ?? "var(--mb-color-brand)")
     : (palette["border"] ?? "currentColor");
-  const strokeWidth = selected ? 2.5 : 1.5;
+  const strokeWidth = selected ? 2 : 1;
   const scale = 1;
 
   const style = useMemo(
     () => ({
       strokeWidth,
       stroke,
+      strokeDasharray: "9 9",
       ...(isHidden ? { visibility: "hidden" as const } : {}),
     }),
     [stroke, strokeWidth, isHidden],
@@ -218,7 +280,7 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
         d={edgePath}
         fill="none"
         style={style}
-        className={`react-flow__edge-path ${animationClass}`}
+        className="react-flow__edge-path"
       />
       {!isHidden && (
         <g data-testid="schema-viewer-edge-symbols">
