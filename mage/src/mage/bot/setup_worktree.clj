@@ -146,44 +146,19 @@
           (throw e))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Bot patch
-
-(defn- apply-bot-patch!
-  "If bot.patch exists in the main worktree, apply it to the new worktree.
-   Uses --3way merge so it can handle target branches that have their own changes
-   to files the patch touches. Idempotent: if already applied, skip silently."
-  [main-path worktree-root]
-  (let [patch-file (str main-path "/bot.patch")]
-    (cond
-      (not (fs/exists? patch-file))
-      (println (c/yellow "No bot.patch found, skipping"))
-
-      (zero? (:exit (shell/sh* {:quiet? true :dir worktree-root}
-                               "git" "apply" "--reverse" "--check" patch-file)))
-      (println (c/green "bot.patch already applied, skipping"))
-
-      :else
-      (let [{:keys [exit]} (shell/sh* {:dir worktree-root}
-                                      "git" "apply" "--3way" patch-file)]
-        (if (zero? exit)
-          (println (c/green "Applied bot.patch (3-way merge)"))
-          (println (c/red "Failed to apply bot.patch — conflicts could not be resolved")))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Main entry point
 
 (defn setup-worktree!
   "Run final configuration steps after a new worktree is created."
   [{:keys [options]}]
   (let [worktree-root (or (:worktree options)
-                          (do (println (c/red "Usage: ./bin/mage -nvoxland-setup-worktree --worktree <path-to-worktree>"))
+                          (do (println (c/red "Usage: ./bin/mage -bot-setup-worktree --worktree <path-to-worktree>"))
                               (System/exit 1)))
         main-path     (main-worktree-path)]
     (println (c/bold (c/green "Setting up worktree: ") (c/cyan (worktree-name worktree-root))))
     (println)
     (println (c/cyan "Main repo: ") main-path)
     (println)
-    (apply-bot-patch! main-path worktree-root)
     (create-symlinks! main-path worktree-root)
     (copy-dirs! main-path worktree-root)
     (copy-files! main-path worktree-root)
@@ -194,4 +169,4 @@
     (create-postgres-db! worktree-root)
     (println)
     (println (c/green "Done."))
-    (println (c/cyan "Run ./bin/mage -nvoxland-dev-env to configure the dev environment."))))
+    (println (c/cyan "Run ./bin/mage -bot-dev-env to configure the dev environment."))))

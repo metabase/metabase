@@ -14,10 +14,14 @@
 (set! *warn-on-reflection* true)
 
 (defn- discover-port
-  "Discover MB_JETTY_PORT using shared env resolution, default 3000."
+  "Discover MB_JETTY_PORT using shared env resolution. Exits if unresolved."
   []
   (or (bot-env/resolve-env "MB_JETTY_PORT")
-      "3000"))
+      (do
+        (println (c/red "Could not resolve MB_JETTY_PORT for this worktree."))
+        (println (c/yellow "Run ./bin/mage -bot-dev-env to configure the dev environment,"))
+        (println (c/yellow "or export MB_JETTY_PORT in your shell."))
+        (u/exit 1))))
 
 (defn- local-url [path]
   (str "http://localhost:" (discover-port) path))

@@ -7,6 +7,7 @@
    [babashka.http-client :as http]
    [babashka.json :as json]
    [clojure.string :as str]
+   [mage.bot.preflight :as preflight]
    [mage.color :as c]
    [mage.util :as u]))
 
@@ -122,8 +123,9 @@
   [{:keys [options]}]
   (let [{:keys [url pr]} options]
     (when (or (str/blank? url) (str/blank? pr))
-      (println (c/red "Usage: ./bin/mage -bot-pr-env-setup --url <URL> --pr <PR_NUMBER>"))
+      (println (c/red "Usage: ./bin/mage -bot-pr-env --url <URL> --pr <PR_NUMBER>"))
       (u/exit 1))
+    (preflight/check-mise!)
     (let [cfg {:base-url url
                :pr-num   pr
                :username default-username

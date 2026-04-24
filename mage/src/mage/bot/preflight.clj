@@ -1,5 +1,5 @@
 (ns mage.bot.preflight
-  "Composable preflight checks shared across bot types (fixbot, uxbot, qabot)."
+  "Composable preflight checks shared across bot types."
   (:require
    [clojure.string :as str]
    [mage.bot.env :as bot-env]
@@ -8,6 +8,28 @@
    [mage.util :as u]))
 
 (set! *warn-on-reflection* true)
+
+(defn check-mise!
+  "Check that mise is installed and activated in the current shell (so that
+   managed tools like clj, bun, bb resolve on PATH without a `mise x --` prefix).
+   Exits on failure."
+  []
+  (when-not (u/can-run? "mise")
+    (println (c/red "mise is not installed."))
+    (println "Install it: https://mise.jdx.dev/getting-started.html")
+    (u/exit 1))
+  (let [needed  ["clj" "bun" "bb"]
+        missing (binding [u/*skip-warning* true]
+                  (doall (remove u/can-run? needed)))]
+    (when (seq missing)
+      (println (c/red "mise does not appear to be activated in this shell."))
+      (println (c/red (str "Not on PATH: " (str/join ", " missing))))
+      (println)
+      (println "Activate mise in your shell profile, for example:")
+      (println "  eval \"$(mise activate zsh)\"    # zsh")
+      (println "  eval \"$(mise activate bash)\"   # bash")
+      (println "Then re-run in a shell where mise is active.")
+      (u/exit 1))))
 
 (defn check-workmux!
   "Check that workmux is installed. Exits on failure."
