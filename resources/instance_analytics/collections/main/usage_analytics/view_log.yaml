@@ -59,6 +59,9 @@ dataset_query:
       - [Internal Metabase Database, public, v_view_log, embedding_path]
     - - field
       - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, user_agent]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
       - [Internal Metabase Database, public, v_view_log, sanitized_user_agent]
     - - field
       - {base-type: type/Text, effective-type: type/Text}
@@ -284,6 +287,21 @@ result_metadata:
   fk_target_field_id: null
   id: [Internal Metabase Database, public, v_view_log, embedding_path]
   name: embedding_path
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: User Agent
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, user_agent]
+  - {base-type: type/Text}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_view_log, user_agent]
+  name: user_agent
   semantic_type: null
   settings: null
   visibility_type: normal

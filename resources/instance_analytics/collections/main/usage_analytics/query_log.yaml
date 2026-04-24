@@ -110,6 +110,9 @@ dataset_query:
       - [Internal Metabase Database, public, v_query_log, embedding_path]
     - - field
       - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_query_log, user_agent]
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
       - [Internal Metabase Database, public, v_query_log, sanitized_user_agent]
     - - field
       - {base-type: type/Text, effective-type: type/Text}
@@ -587,6 +590,21 @@ result_metadata:
 - base_type: type/Text
   coercion_strategy: null
   description: null
+  display_name: User Agent
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, user_agent]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, user_agent]
+  name: user_agent
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
   display_name: Sanitized User Agent
   effective_type: type/Text
   field_ref:
@@ -649,6 +667,7 @@ visualization_settings:
   - {enabled: true, name: tenant_id}
   - {enabled: true, name: embedding_hostname}
   - {enabled: true, name: embedding_path}
+  - {enabled: true, name: user_agent}
   - {enabled: true, name: sanitized_user_agent}
   - {enabled: true, name: ip_address}
   table.pivot_column: error
