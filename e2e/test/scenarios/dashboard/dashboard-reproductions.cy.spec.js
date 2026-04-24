@@ -5,6 +5,7 @@ const { H } = cy;
 import { SAMPLE_DB_ID, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ORDERS_COUNT_QUESTION_ID,
+  ORDERS_DASHBOARD_DASHCARD_ID,
   ORDERS_DASHBOARD_ID,
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -51,7 +52,7 @@ describe("issue 12578", () => {
     H.popover().findByText("1 minute").click();
 
     // Mock slow card request
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+    cy.intercept("POST", "/api/dashboard/*/card-query-batch", (req) => {
       req.on("response", (res) => {
         res.setDelay(99999);
       });
@@ -166,7 +167,7 @@ describe("issue 12926", () => {
   };
 
   function slowDownDashcardQuery() {
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+    cy.intercept("POST", "/api/dashboard/*/card-query-batch", (req) => {
       req.on("response", (res) => {
         res.setDelay(5000);
       });
@@ -174,10 +175,15 @@ describe("issue 12926", () => {
   }
 
   function restoreDashcardQuery() {
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) => {
+    cy.intercept("POST", "/api/dashboard/*/card-query-batch", (req) => {
       // calling req.continue() will make cypress skip all previously added intercepts
       req.continue();
     }).as("dashcardQueryRestored");
+    // Card re-runs triggered by `undoRemoveCardFromDashboard` hit the
+    // per-card endpoint.
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query", (req) =>
+      req.continue(),
+    ).as("dashcardQueryRestoredSingle");
   }
 
   function removeCard() {
@@ -205,13 +211,16 @@ describe("issue 12926", () => {
         cy.visit(`/dashboard/${dashboard_id}`);
       });
 
+      // The batch endpoint uses fetch + AbortController rather than XHR.abort,
+      // so we spy on AbortController.abort to verify the in-flight request
+      // gets cancelled when the card is removed.
       cy.window().then((win) => {
-        cy.spy(win.XMLHttpRequest.prototype, "abort").as("xhrAbort");
+        cy.spy(win.AbortController.prototype, "abort").as("abortCtrl");
       });
 
       removeCard();
 
-      cy.get("@xhrAbort").should("have.been.calledOnce");
+      cy.get("@abortCtrl").should("have.been.called");
     });
 
     it("should re-fetch the query when doing undo on the removal", () => {
@@ -229,7 +238,7 @@ describe("issue 12926", () => {
 
       H.undo();
 
-      cy.wait("@dashcardQueryRestored");
+      cy.wait("@dashcardQueryRestoredSingle");
 
       H.getDashboardCard().findByText(queryResult);
     });
@@ -320,14 +329,53 @@ describe("issue 13736", () => {
 
       cy.intercept(
         "POST",
-        `/api/dashboard/*/dashcard/*/card/${failingQuestionId}/query`,
-        {
-          statusCode: 500,
-          body: {
-            cause: "some error",
-            data: {},
-            message: "some error",
-          },
+        `/api/dashboard/${dashboardId}/card-query-batch`,
+        (req) => {
+          req.continue((res) => {
+            // The batch endpoint emits NDJSON (one JSON object per line) with
+            // card-begin/card-rows/card-end/card-error/complete events. Rewrite
+            // the failing card's begin/rows/end into a single card-error.
+            const seenError = new Set();
+            const body = res.body
+              .split("\n")
+              .map((line) => {
+                if (!line) {
+                  return line;
+                }
+                try {
+                  const event = JSON.parse(line);
+                  if (event.card_id !== failingQuestionId) {
+                    return line;
+                  }
+                  if (
+                    event.type === "card-begin" ||
+                    event.type === "card-rows" ||
+                    event.type === "card-end"
+                  ) {
+                    if (seenError.has(event.dashcard_id)) {
+                      return "";
+                    }
+                    seenError.add(event.dashcard_id);
+                    return JSON.stringify({
+                      type: "card-error",
+                      dashcard_id: event.dashcard_id,
+                      card_id: failingQuestionId,
+                      error: {
+                        cause: "some error",
+                        data: {},
+                        message: "some error",
+                      },
+                    });
+                  }
+                  return line;
+                } catch {
+                  return line;
+                }
+              })
+              .filter((line, i, all) => line !== "" || i === all.length - 1)
+              .join("\n");
+            res.send(body);
+          });
         },
       );
 
@@ -525,7 +573,7 @@ describe("issue 17879", () => {
     }).then(({ dashboard }) => {
       cy.intercept(
         "POST",
-        `/api/dashboard/${dashboard.id}/dashcard/*/card/*/query`,
+        `/api/dashboard/${dashboard.id}/card-query-batch`,
       ).as("getCardQuery");
 
       H.visitDashboard(dashboard.id);
@@ -568,9 +616,7 @@ describe("issue 17879", () => {
     H.restore();
     cy.signInAsAdmin();
 
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("should map dashcard date parameter to correct date range filter in target question - month -> day (metabase#17879)", () => {
@@ -614,7 +660,7 @@ describe("issue 21830", () => {
     cy.intercept(
       {
         method: "POST",
-        url: "/api/dashboard/*/dashcard/*/card/*/query",
+        url: "/api/dashboard/*/card-query-batch",
         middleware: true,
       },
       (req) => {
@@ -720,7 +766,7 @@ describe("issue 29076", () => {
   beforeEach(() => {
     H.restore();
 
-    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as("cardQuery");
+    H.interceptDashboardCardRequests({ alias: "cardQuery" });
 
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
@@ -764,6 +810,7 @@ describe("issue 29076", () => {
     H.assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
     H.assertDatasetReqIsSandboxed({
       requestAlias: "@cardQuery",
+      dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
       columnId: ORDERS.USER_ID,
       columnAssertion: Number(USERS.sandboxed.login_attributes.attr_uid),
     });
@@ -1040,9 +1087,7 @@ describe("issue 34382", () => {
     H.restore();
     cy.signInAsNormalUser();
 
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("should preserve filter value when navigating between the dashboard and the query builder with auto-apply disabled (metabase#34382)", () => {
@@ -1339,9 +1384,7 @@ describe("issue 39863", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
   });
 
   it("should not rerun queries when switching tabs and there are no parameter changes", () => {
@@ -1525,9 +1568,7 @@ describe("issue 42165", () => {
     cy.signInAsAdmin();
 
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
 
     H.createDashboardWithQuestions({
       dashboardDetails: {
@@ -2060,9 +2101,7 @@ describe("issue 62170", () => {
       cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as(
         "dashboardLoad",
       );
-      cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-        "cardDataRefresh",
-      );
+      H.interceptDashboardCardRequests({ alias: "cardDataRefresh" });
     });
 
     // Wait for initial dashboard load

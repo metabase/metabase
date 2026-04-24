@@ -24,7 +24,9 @@ describe("scenarios > embedding > full app", () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     cy.intercept("POST", "/api/card/*/query").as("getCardQuery");
-    cy.intercept("POST", "/api/dashboard/**/query").as("getDashCardQuery");
+    cy.intercept("POST", "/api/dashboard/*/card-query-batch").as(
+      "getDashCardBatch",
+    );
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
     cy.intercept("GET", "/api/automagic-dashboards/**").as("getXrayDashboard");
   });
@@ -1992,7 +1994,7 @@ const visitQuestionUrl = (urlOptions) => {
 const visitDashboardUrl = (urlOptions) => {
   H.visitFullAppEmbeddingUrl(urlOptions);
   cy.wait("@getDashboard");
-  cy.wait("@getDashCardQuery");
+  cy.wait("@getDashCardBatch");
 };
 
 const visitXrayDashboardUrl = (urlOptions) => {

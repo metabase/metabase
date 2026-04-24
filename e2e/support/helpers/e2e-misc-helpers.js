@@ -205,31 +205,18 @@ function visitDashboardById(dashboard_id, config) {
     }
 
     if (canViewDashboard && validQuestions) {
-      // If dashboard has valid questions (GUI or native),
-      // we need to alias each request and wait for their reponses
-      const aliases = validQuestions.map(
-        ({ id, card_id, card: { display } }) => {
-          const baseUrl =
-            display === "pivot"
-              ? `/api/dashboard/pivot/${dashboard_id}`
-              : `/api/dashboard/${dashboard_id}`;
-
-          const interceptUrl = `${baseUrl}/dashcard/${id}/card/${card_id}/query`;
-
-          const alias = "dashcardQuery" + id;
-
-          cy.intercept("POST", interceptUrl).as(alias);
-
-          return `@${alias}`;
-        },
-      );
+      // Dashboard uses a batch endpoint to fetch all card data in one request
+      cy.intercept(
+        "POST",
+        `/api/dashboard/${dashboard_id}/card-query-batch`,
+      ).as("batchQuery");
 
       cy.visit({
         url: `/dashboard/${dashboard_id}`,
         qs: config.params,
       });
 
-      cy.wait(aliases);
+      cy.wait("@batchQuery");
     } else {
       // For a dashboard:
       //  - without questions (can be empty or markdown only) or

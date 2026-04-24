@@ -56,6 +56,7 @@ import {
   fetchDashboard,
   fetchDashboardCardDataAction,
   markCardAsSlow,
+  receiveBatchCardResult,
   setDashboardAttributes,
   setDocumentTitle,
   setShowLoadingCompleteFavicon,
@@ -397,6 +398,17 @@ export const loadingDashCards = createReducer(
           };
         }
       })
+      .addCase(receiveBatchCardResult, (state, { payload }) => {
+        const { dashcard_id } = payload;
+        const loadingIds = state.loadingIds.filter((id) => id !== dashcard_id);
+        return {
+          ...state,
+          loadingIds,
+          ...(loadingIds.length === 0
+            ? { endTime: performance.now(), loadingStatus: "complete" }
+            : {}),
+        };
+      })
       .addCase(cancelFetchCardData, (state, action) => {
         const { dashcard_id } = action.payload;
         const loadingIds = state.loadingIds.filter((id) => id !== dashcard_id);
@@ -426,6 +438,22 @@ export const dashcardData = createReducer(
         if (dashcard_id && card_id) {
           return assocIn(state, [dashcard_id, card_id], result);
         }
+      })
+      .addCase(receiveBatchCardResult, (state, { payload }) => {
+        const { dashcard_id, card_id, result } = payload;
+        // Mutate the Immer draft directly instead of using icepick's assocIn.
+        // `assocIn` shallow-clones `state`, which under Immer retains refs to
+        // nested proxy drafts. Those proxies get revoked when Immer finalizes
+        // this reducer, so the next dispatch that reads the same nested slot
+        // blows up with "Cannot perform 'get' on a proxy that has been revoked".
+        const mutable = state as Record<
+          DashCardId,
+          Record<Card["id"], unknown>
+        >;
+        if (mutable[dashcard_id] == null) {
+          mutable[dashcard_id] = {};
+        }
+        mutable[dashcard_id][card_id] = result;
       })
       .addCase(clearCardData, (state, action) => {
         const { cardId, dashcardId } = action.payload;

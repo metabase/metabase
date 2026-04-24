@@ -18,13 +18,11 @@ describe("scenarios > dashboard > filters > query stages", () => {
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/dashboard/**").as("getDashboard");
     cy.intercept("PUT", "/api/dashboard/**").as("updateDashboard");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashboardData",
-    );
-    cy.intercept("GET", "/api/public/dashboard/*/dashcard/*/card/*").as(
+    H.interceptDashboardCardRequests({ alias: "dashboardData" });
+    cy.intercept("GET", "/api/public/dashboard/*/card-query-batch*").as(
       "publicDashboardData",
     );
-    cy.intercept("GET", "/api/embed/dashboard/*/dashcard/*/card/*").as(
+    cy.intercept("GET", "/api/embed/dashboard/*/card-query-batch*").as(
       "embeddedDashboardData",
     );
   });
@@ -244,7 +242,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("1st stage explicit join", () => {
           QSHelpers.setup1stStageExplicitJoinFilter();
           QSHelpers.apply1stStageExplicitJoinFilter();
-          cy.wait(["@dashboardData", "@dashboardData"]);
+          cy.wait("@dashboardData");
 
           QSHelpers.verifyDashcardCellValues({
             dashcardIndex: 0,
@@ -358,7 +356,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("2nd stage custom column", () => {
           QSHelpers.setup2ndStageCustomColumnFilter();
           QSHelpers.apply2ndStageCustomColumnFilter();
-          cy.wait(["@dashboardData", "@dashboardData"]);
+          cy.wait("@dashboardData");
 
           QSHelpers.verifyDashcardCellValues({
             dashcardIndex: 0,
@@ -376,7 +374,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
         it("2nd stage aggregation", () => {
           QSHelpers.setup2ndStageAggregationFilter();
           QSHelpers.apply2ndStageAggregationFilter();
-          cy.wait(["@dashboardData", "@dashboardData"]);
+          cy.wait("@dashboardData");
 
           QSHelpers.verifyDashcardCellValues({
             dashcardIndex: 0,
@@ -419,7 +417,7 @@ describe("scenarios > dashboard > filters > query stages", () => {
             cy.findByLabelText("Gadget").click();
             cy.button("Add filter").click();
           });
-          cy.wait(["@dashboardData", "@dashboardData"]);
+          cy.wait("@dashboardData");
 
           QSHelpers.verifyDashcardCellValues({
             dashcardIndex: 0,

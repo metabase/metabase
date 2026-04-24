@@ -161,7 +161,11 @@
                         deduped-cols)]
     [ordered-cols output-order]))
 
-(mu/defn- streaming-rff :- ::qp.schema/rff
+(mu/defn streaming-rff :- ::qp.schema/rff
+  "Build a reducing function that drives a [[StreamingResultsWriter]]. Callers are responsible for
+  constructing the writer, providing an OutputStream, and binding `qp.pipeline/*result*` to handle
+  completion (e.g. calling `finish!`). Used internally by [[do-with-streaming-rff]] and by the
+  batch dashboard endpoint which drives multiple writers over a single shared output stream."
   [results-writer :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [[ordered-cols output-order] (order-cols cols viz-settings)

@@ -8,7 +8,8 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.test :as qp]
    [metabase.search.ingestion :as search.ingestion]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (comment
   strategies/keep-me)
@@ -181,3 +182,40 @@
                 (let [q (#'qp.card/query-for-card card4 [] {} {} {})]
                   (is (=? {:type :ttl :multiplier 200}
                           (:cache-strategy q))))))))))))
+
+(deftest warm-question-cache-configs-test
+  (mt/with-premium-features #{:cache-granular-controls}
+    (mt/with-temp [:model/Card        {c1 :id} {:dataset_query (mt/mbql-query venues)}
+                   :model/Card        {c2 :id} {:dataset_query (mt/mbql-query venues)}
+                   :model/Card        {c3 :id} {:dataset_query (mt/mbql-query venues)}
+                   :model/CacheConfig _        {:model    "question"
+                                                :model_id c1
+                                                :strategy :ttl
+                                                :config   {:multiplier 100 :min_duration_ms 0}}
+                   :model/CacheConfig _        {:model    "question"
+                                                :model_id c2
+                                                :strategy :duration
+                                                :config   {:duration 5 :unit "minutes"}}]
+      (testing "warming populates cache for all card IDs, including nil for cards without configs"
+        (binding [strategies/*cache-strategy-cache* (atom {})]
+          (strategies/warm-question-cache-configs! #{c1 c2 c3})
+          (let [cache @strategies/*cache-strategy-cache*]
+            (is (some? (get cache [::strategies/question-config c1]))
+                "card with config should be cached")
+            (is (some? (get cache [::strategies/question-config c2]))
+                "card with config should be cached")
+            (is (contains? cache [::strategies/question-config c3])
+                "card without config should still have a cache entry")
+            (is (nil? (get cache [::strategies/question-config c3]))
+                "card without config should have nil cached"))))
+
+      (testing "after warming, find-question-cache-config doesn't hit DB"
+        (binding [strategies/*cache-strategy-cache* (atom {})]
+          (strategies/warm-question-cache-configs! #{c1 c2 c3})
+          (t2/with-call-count [call-count]
+            ;; These should all be served from the cache atom
+            (#'strategies/find-question-cache-config c1)
+            (#'strategies/find-question-cache-config c2)
+            (#'strategies/find-question-cache-config c3)
+            (is (zero? (call-count))
+                "no DB calls should occur after warming")))))))

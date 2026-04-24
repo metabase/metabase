@@ -631,3 +631,113 @@ export function clickBehaviorSidebar(
 
   return cy.findByTestId("click-behavior-sidebar");
 }
+
+// ---- Batch card query helpers ----
+
+interface InterceptBatchOptions {
+  alias?: string;
+  dashboardId?: string | number;
+}
+
+/**
+ * Intercept dashboard card query traffic under a single alias. This covers:
+ *   1. The batch endpoint (`/api/dashboard/:id/card-query-batch`) — fired once
+ *      per dashboard load/filter change to hydrate all cards at once.
+ *   2. The legacy per-card endpoint (`/api/dashboard/:id/dashcard/:dashcardId/card/:cardId/query`)
+ *      — still used by the QB when a saved question is opened from a dashboard
+ *      context (see `runQuestionQuery` in frontend/src/metabase/services.js).
+ * Replaces: cy.intercept("POST", "/api/dashboard/\*\/dashcard/\*\/card/\*\/query").as("dashcardQuery")
+ */
+export function interceptDashboardCardRequests({
+  alias = "dashcardQuery",
+  dashboardId = "*",
+}: InterceptBatchOptions = {}) {
+  const idSegment = dashboardId === "*" ? "[^/]+" : String(dashboardId);
+  const pattern = new RegExp(
+    `/api/dashboard/${idSegment}/(card-query-batch|dashcard/[^/]+/card/[^/]+/query)`,
+  );
+  cy.intercept("POST", pattern).as(alias);
+}
+
+interface BatchCardResult {
+  type: "card-result";
+  dashcard_id: number;
+  card_id: number;
+  result: Record<string, unknown>;
+}
+
+interface BatchCardError {
+  type: "card-error";
+  dashcard_id: number;
+  card_id: number;
+  error: Record<string, unknown>;
+}
+
+interface BatchComplete {
+  type: "complete";
+  total: number;
+  succeeded: number;
+  failed: number;
+}
+
+interface ParsedBatchResponse {
+  results: BatchCardResult[];
+  errors: BatchCardError[];
+  complete: BatchComplete | undefined;
+  interception: Cypress.Interception;
+}
+
+interface WaitBatchOptions {
+  alias?: string;
+  expectedCards?: number;
+}
+
+/**
+ * Wait for a batch card query and parse the NDJSON response.
+ * Returns parsed card results for assertions.
+ *
+ * Usage:
+ *   interceptDashboardCardRequests();
+ *   // ... trigger dashboard load or filter change ...
+ *   waitForDashboardCardRequests({ expectedCards: 2 }).then(({ results }) => {
+ *     expect(results[0].result.data.rows).to.have.length.greaterThan(0);
+ *   });
+ */
+export function waitForDashboardCardRequests({
+  alias = "dashcardQuery",
+  expectedCards,
+}: WaitBatchOptions = {}): Cypress.Chainable<ParsedBatchResponse> {
+  return cy.wait(`@${alias}`).then((interception: Cypress.Interception) => {
+    const body = interception.response?.body;
+    const text = typeof body === "string" ? body : JSON.stringify(body);
+    const lines = text
+      .split("\n")
+      .filter((line: string) => line.trim().length > 0);
+
+    const parsed = lines
+      .map((line: string) => {
+        try {
+          return JSON.parse(line);
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+
+    const results = parsed.filter(
+      (l: Record<string, unknown>) => l.type === "card-result",
+    ) as BatchCardResult[];
+    const errors = parsed.filter(
+      (l: Record<string, unknown>) => l.type === "card-error",
+    ) as BatchCardError[];
+    const complete = parsed.find(
+      (l: Record<string, unknown>) => l.type === "complete",
+    ) as BatchComplete | undefined;
+
+    if (expectedCards !== undefined) {
+      expect(results).to.have.length(expectedCards);
+    }
+
+    return { results, errors, complete, interception };
+  });
+}

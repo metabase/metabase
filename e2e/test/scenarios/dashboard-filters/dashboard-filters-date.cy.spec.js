@@ -1,8 +1,5 @@
 const { H } = cy;
-import {
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 import * as DateFilter from "../native-filters/helpers/e2e-date-filter-helpers";
 
@@ -11,6 +8,7 @@ import { DASHBOARD_DATE_FILTERS } from "./shared/dashboard-filters-date";
 describe("scenarios > dashboard > filters > date", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/table/*/query_metadata").as("metadata");
+    H.interceptDashboardCardRequests({ alias: "batchQuery" });
 
     H.restore();
     cy.signInAsAdmin();
@@ -49,7 +47,7 @@ describe("scenarios > dashboard > filters > date", () => {
         });
 
         H.clearFilterWidget(index);
-        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
+        cy.wait("@batchQuery");
       },
     );
   });

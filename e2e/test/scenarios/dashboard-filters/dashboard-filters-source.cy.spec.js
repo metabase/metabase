@@ -396,7 +396,8 @@ describe("scenarios > dashboard > filters", () => {
           cy.signInAsSandboxedUser();
           H.visitDashboard(card.dashboard_id);
           H.assertDatasetReqIsSandboxed({
-            requestAlias: `@dashcardQuery${card.id}`,
+            requestAlias: "@batchQuery",
+            dashcardId: card.id,
           });
         });
       },

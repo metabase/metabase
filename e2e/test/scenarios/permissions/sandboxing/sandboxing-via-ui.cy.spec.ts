@@ -71,9 +71,7 @@ describe(
     beforeEach(() => {
       cy.intercept("/api/card/*/query").as("cardQuery");
 
-      cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
-        "dashcardQuery",
-      );
+      H.interceptDashboardCardRequests({ alias: "dashcardQuery" });
       cy.intercept("POST", "/api/dataset").as("datasetQuery");
       H.restore("sandboxing-snapshot" as any);
     });

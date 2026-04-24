@@ -11,9 +11,7 @@ describe("scenarios > dashboard > visualizer > filters", () => {
 
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
 
     cy.signInAsNormalUser();
 

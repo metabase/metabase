@@ -6,7 +6,10 @@ import {
   setupDashboardQueryMetadataEndpoint,
   setupNotificationChannelsEndpoints,
 } from "__support__/server-mocks";
-import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
+import {
+  setupDashboardCardQueryBatchEndpoint,
+  setupDashcardQueryEndpoints,
+} from "__support__/server-mocks/dashcard";
 import { renderWithProviders } from "__support__/ui";
 import { DashboardContextProvider } from "metabase/dashboard/context";
 import type { DashboardCard } from "metabase-types/api";
@@ -124,6 +127,10 @@ function setupDashboardRelatedEndpoints(
   );
 
   setupDashcardQueryEndpoints(dashboardId, tableDashcard, createMockDataset());
+  setupDashboardCardQueryBatchEndpoint(
+    dashboardId,
+    dashcards.map((dc) => ({ id: dc.id, card_id: dc.card_id as number })),
+  );
 
   return dashboardId;
 }

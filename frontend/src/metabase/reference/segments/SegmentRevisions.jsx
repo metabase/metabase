@@ -12,6 +12,7 @@ import { Revision } from "metabase/querying/segments/components/revisions/Revisi
 import * as metadataActions from "metabase/redux/metadata";
 import { getShallowTables as getTables } from "metabase/selectors/metadata";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
+import { modelIconMap } from "metabase/utils/icon";
 import { connect } from "metabase/utils/redux";
 
 import ReferenceHeader from "../components/ReferenceHeader";
@@ -75,7 +76,7 @@ class SegmentRevisions extends Component {
       <div style={style} className={CS.full} data-testid="segment-revisions">
         <ReferenceHeader
           name={t`Revision history for ${this.props.segment.name}`}
-          headerIcon="segment"
+          headerIcon={modelIconMap.segment}
         />
         <LoadingAndErrorWrapper
           loading={!loadingError && loading}

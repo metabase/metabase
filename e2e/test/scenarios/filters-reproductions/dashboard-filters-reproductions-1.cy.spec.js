@@ -116,16 +116,11 @@ describe("issue 8030 + 32444", () => {
     });
   };
 
-  const interceptRequests = ({ dashboard_id, card1_id, card2_id }) => {
+  const interceptRequests = ({ dashboard_id }) => {
     cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as("getDashboard");
-    cy.intercept(
-      "POST",
-      `/api/dashboard/${dashboard_id}/dashcard/*/card/${card1_id}/query`,
-    ).as("getCardQuery1");
-    cy.intercept(
-      "POST",
-      `/api/dashboard/${dashboard_id}/dashcard/*/card/${card2_id}/query`,
-    ).as("getCardQuery2");
+    cy.intercept("POST", `/api/dashboard/${dashboard_id}/card-query-batch`).as(
+      "getBatch",
+    );
   };
 
   const addFilterValue = (value) => {
@@ -143,12 +138,14 @@ describe("issue 8030 + 32444", () => {
     it("should not reload dashboard cards not connected to a filter (metabase#8030)", () => {
       createQuestionsAndDashboard().then(
         ({ dashboard_id, card1_id, card2_id }) => {
-          interceptRequests({ dashboard_id, card1_id, card2_id });
+          interceptRequests({ dashboard_id });
           setFilterMapping({ dashboard_id, card1_id, card2_id }).then(() => {
             cy.visit(`/dashboard/${dashboard_id}`);
             cy.wait("@getDashboard");
-            cy.wait("@getCardQuery1");
-            cy.wait("@getCardQuery2");
+            cy.wait("@getBatch").then(({ request }) => {
+              const cardIds = request.body.cards.map((c) => c.card_id);
+              expect(cardIds).to.have.members([card1_id, card2_id]);
+            });
 
             cy.findByText(filterDetails.name).click();
             H.dashboardParametersPopover().within(() => {
@@ -156,9 +153,11 @@ describe("issue 8030 + 32444", () => {
               cy.findByPlaceholderText("Enter an ID").type("1");
               cy.button("Add filter").click();
             });
-            cy.wait("@getCardQuery1");
-            cy.get("@getCardQuery1.all").should("have.length", 2);
-            cy.get("@getCardQuery2.all").should("have.length", 1);
+            cy.wait("@getBatch").then(({ request }) => {
+              const cardIds = request.body.cards.map((c) => c.card_id);
+              expect(cardIds).to.deep.equal([card1_id]);
+            });
+            cy.get("@getBatch.all").should("have.length", 2);
           });
         },
       );
@@ -177,13 +176,14 @@ describe("issue 8030 + 32444", () => {
       }).then(({ dashboard }) => {
         cy.intercept(
           "POST",
-          `/api/dashboard/${dashboard.id}/dashcard/*/card/*/query`,
-        ).as("getCardQuery");
+          `/api/dashboard/${dashboard.id}/card-query-batch`,
+        ).as("getBatch");
 
         H.visitDashboard(dashboard.id);
+        cy.wait("@getBatch").then(({ request }) => {
+          expect(request.body.cards).to.have.length(2);
+        });
         H.editDashboard(dashboard.id);
-
-        cy.get("@getCardQuery.all").should("have.length", 2);
 
         H.setFilter("Text or Category", "Is");
         H.selectDashboardFilter(
@@ -200,13 +200,15 @@ describe("issue 8030 + 32444", () => {
 
         H.saveDashboard();
 
-        cy.wait("@getCardQuery");
-        cy.get("@getCardQuery.all").should("have.length", 4);
+        cy.wait("@getBatch");
+        cy.get("@getBatch.all").should("have.length", 2);
 
         addFilterValue("Aerodynamic Bronze Hat");
 
-        cy.wait("@getCardQuery");
-        cy.get("@getCardQuery.all").should("have.length", 5);
+        cy.wait("@getBatch").then(({ request }) => {
+          expect(request.body.cards).to.have.length(1);
+        });
+        cy.get("@getBatch.all").should("have.length", 3);
       });
     });
   });
@@ -1735,9 +1737,7 @@ describe("issue 25374", () => {
 
   beforeEach(() => {
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card//*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests({ alias: "dashcardQuery" });
 
     H.restore();
     cy.signInAsAdmin();
@@ -1928,7 +1928,7 @@ describe("issue 25908", () => {
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.intercept(
           "POST",
-          `/api/dashboard/${dashboard_id}/dashcard/${id}/card/${card_id}/query`,
+          `/api/dashboard/${dashboard_id}/card-query-batch`,
         ).as("dashcardQuery");
 
         cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
@@ -2309,7 +2309,7 @@ describe("issues 29347, 29346", () => {
   describe("regular dashboards", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/dashboard/*").as("dashboard");
-      cy.intercept("POST", "/api/dashboard/**/card/*/query").as("cardQuery");
+      H.interceptDashboardCardRequests({ alias: "cardQuery" });
     });
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
@@ -2340,7 +2340,9 @@ describe("issues 29347, 29346", () => {
   describe("embedded dashboards", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/embed/dashboard/*").as("dashboard");
-      cy.intercept("GET", "/api/embed/dashboard/**/card/*").as("cardQuery");
+      cy.intercept("GET", "/api/embed/dashboard/*/card-query-batch*").as(
+        "cardQuery",
+      );
     });
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {
@@ -2399,7 +2401,9 @@ describe("issues 29347, 29346", () => {
   describe("public dashboards", () => {
     beforeEach(() => {
       cy.intercept("GET", "/api/public/dashboard/*").as("dashboard");
-      cy.intercept("GET", "/api/public/dashboard/**/card/*").as("cardQuery");
+      cy.intercept("GET", "/api/public/dashboard/*/card-query-batch*").as(
+        "cardQuery",
+      );
     });
 
     it("should be able to filter on remapped values (metabase#29347, metabase#29346)", () => {

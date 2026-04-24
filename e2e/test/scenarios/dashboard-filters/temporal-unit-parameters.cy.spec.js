@@ -212,9 +212,7 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
     H.restore();
     cy.signInAsNormalUser();
 
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "cardQuery",
-    );
+    H.interceptDashboardCardRequests({ alias: "cardQuery" });
     cy.intercept("GET", "/api/card/*/query_metadata").as("queryMetadata");
   });
 

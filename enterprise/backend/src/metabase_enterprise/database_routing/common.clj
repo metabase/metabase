@@ -7,10 +7,47 @@
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
+;;; ----------------------------------------- Request-scoped cache -----------------------------------------
+
+(def ^:dynamic *routing-cache*
+  "When bound to an atom (via [[with-routing-cache]]), caches database routing lookups so they aren't
+  repeated across calls within the same scope. nil outside of a cached context."
+  nil)
+
+(defn- cached
+  "Look up `k` in [[*cache*]], computing `(f)` on miss. Passes through to `(f)` when `*cache*` is unbound."
+  [k f]
+  (if-not *routing-cache*
+    (f)
+    (let [v (get @*routing-cache* k ::miss)]
+      (if (identical? v ::miss)
+        (let [result (f)]
+          (swap! *routing-cache* assoc k result)
+          result)
+        v))))
+
+(defmacro with-routing-cache
+  "Bind a database routing lookup cache for the duration of `body`. Repeated calls to
+  [[router-db-or-id->destination-db-id]] and [[check-allowed-access!]] within the same
+  cache scope will reuse results for the same db combination."
+  [& body]
+  `(binding [*routing-cache* (atom {})]
+     ~@body))
+
+(defenterprise routing-batch-cache-bindings
+  "Returns a Var->atom bindings map for the routing request-scoped cache, suitable for
+  conveying to worker threads via `with-bindings`."
+  :feature :database-routing
+  []
+  {#'*routing-cache* (atom {})})
+
+;;; ----------------------------------------------------------------------------------------------------------
+
 (defn- user-attribute
   "Which user attribute should we use for this RouterDB?"
   [db-or-id]
-  (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id (u/the-id db-or-id)))
+  (cached [::router-user-attr (u/the-id db-or-id)]
+          (fn [] (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id (u/the-id db-or-id)))))
 
 (def ^:dynamic ^:private *database-routing-on* :unset)
 
@@ -59,11 +96,13 @@
   routed to. If the database is not a Router Database, returns `nil`. If the database is a Router Database but no
   current user exists, an exception will be thrown."
   [db-or-id]
-  (router-db-or-id->destination-db-id*
-   (nil? @api/*current-user*)
-   (api/current-user-attributes)
-   api/*is-superuser?*
-   db-or-id))
+  (cached [::destination-db-id (u/the-id db-or-id) api/*current-user-id*]
+          (fn []
+            (router-db-or-id->destination-db-id*
+             (nil? @api/*current-user*)
+             (api/current-user-attributes)
+             api/*is-superuser?*
+             db-or-id))))
 
 ;; We want, at all times, a guarantee that we are not hitting a router *or* destination database without being
 ;; intentional about it. It would be bad to EITHER:
@@ -106,7 +145,8 @@
 
 (defn- is-disallowed-destination-db-access?
   [db-or-id]
-  (and (t2/exists? :model/Database :id db-or-id :router_database_id [:not= nil])
+  (and (cached [::is-destination-db (u/the-id db-or-id)]
+               (fn [] (t2/exists? :model/Database :id db-or-id :router_database_id [:not= nil])))
        (not= *database-routing-on* :on)))
 
 (defenterprise check-allowed-access!

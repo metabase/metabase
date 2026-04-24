@@ -423,8 +423,11 @@ const getQuestionDescription = (
   response: DatasetResponse,
   questions: CollectionItem[],
 ) => {
-  // Extract the card ID from the response URL
-  const cardId = Number(response?.url?.match(/\/card\/(\d+)/)?.[1]);
+  // Batch-synthesized responses stash the card id on the outer object; fall back
+  // to parsing the URL for non-batch (card) responses.
+  const cardId =
+    (response as unknown as { cardId?: number }).cardId ??
+    Number(response?.url?.match(/\/card\/(\d+)/)?.[1]);
   const questionName = (questions.find((q) => q.id === cardId) as any)?.name as
     | string
     | undefined;
@@ -537,14 +540,59 @@ export const getDashcardResponses = (
   H.visitDashboard(checkNotNull(dashboard).id);
 
   expect(questions.length).to.be.greaterThan(0);
-  return cy
-    .wait(new Array(questions.length).fill("@dashcardQuery"))
-    .then((interceptions) => {
-      const responses = interceptions.map(
-        (i) => i.response as unknown as DashcardQueryResponse,
-      );
-      return { questions, responses };
-    });
+  // The batch endpoint returns one NDJSON stream for all dashcards; parse it
+  // into per-question responses that look like the old per-card results so
+  // downstream assertion helpers don't need to change.
+  return cy.wait("@dashcardQuery").then((interception) => {
+    const responses = parseBatchResponseAsDashcardResponses(
+      interception,
+      questions,
+    );
+    return { questions, responses };
+  });
+};
+
+const parseBatchResponseAsDashcardResponses = (
+  interception: Cypress.Interception,
+  questions: SimpleCollectionItem[],
+): DashcardQueryResponse[] => {
+  const body = interception.response?.body;
+  const text = typeof body === "string" ? body : JSON.stringify(body);
+  const messages = text
+    .split("\n")
+    .filter((line: string) => line.trim().length > 0)
+    .map((line: string) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+
+  return questions.map((question) => {
+    const beginMsg = messages.find(
+      (m: any) => m.type === "card-begin" && m.card_id === question.id,
+    );
+    const endMsg = messages.find(
+      (m: any) => m.type === "card-end" && m.card_id === question.id,
+    );
+    const rows = messages
+      .filter((m: any) => m.type === "card-rows" && m.card_id === question.id)
+      .flatMap((m: any) => m.rows);
+    return {
+      body: {
+        ...(endMsg ?? {}),
+        data: { ...(beginMsg?.data ?? {}), ...(endMsg?.data ?? {}), rows },
+        json_query: (endMsg?.json_query ?? beginMsg?.json_query ?? {}) as any,
+      } as any,
+      // stash the card id so getQuestionDescription can find the name
+      cardId: question.id,
+      url: interception.request?.url ?? "",
+      headers: interception.response?.headers ?? {},
+      statusCode: interception.response?.statusCode ?? 200,
+    } as unknown as DashcardQueryResponse;
+  });
 };
 
 export const getCardResponses = (questions: SimpleCollectionItem[]) => {

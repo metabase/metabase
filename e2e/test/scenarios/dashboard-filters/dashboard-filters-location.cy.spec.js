@@ -1,8 +1,5 @@
 const { H } = cy;
-import {
-  ORDERS_DASHBOARD_DASHCARD_ID,
-  ORDERS_DASHBOARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 
 import {
   addWidgetStringFilter,
@@ -13,6 +10,7 @@ import { DASHBOARD_LOCATION_FILTERS } from "./shared/dashboard-filters-location"
 
 describe("scenarios > dashboard > filters > location", () => {
   beforeEach(() => {
+    H.interceptDashboardCardRequests({ alias: "batchQuery" });
     H.restore();
     cy.signInAsAdmin();
 
@@ -43,7 +41,7 @@ describe("scenarios > dashboard > filters > location", () => {
         });
 
         H.clearFilterWidget(index);
-        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
+        cy.wait("@batchQuery");
       },
     );
   });

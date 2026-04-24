@@ -587,10 +587,10 @@ describe("scenarios > home > custom homepage", () => {
         "GET",
         `/api/dashboard/${ORDERS_DASHBOARD_ID}/query_metadata*`,
       ).as("getDashboardMetadata");
-      cy.intercept(
-        "POST",
-        `/api/dashboard/${ORDERS_DASHBOARD_ID}/dashcard/*/card/*/query`,
-      ).as("runDashCardQuery");
+      H.interceptDashboardCardRequests({
+        alias: "runDashCardQuery",
+        dashboardId: ORDERS_DASHBOARD_ID,
+      });
 
       cy.visit("/");
       H.dashboardGrid()

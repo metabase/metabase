@@ -1,12 +1,14 @@
 (ns ^:mb/driver-tests metabase.embedding-rest.api.preview-embed-test
   (:require
    [buddy.sign.jwt :as jwt]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.embedding-rest.api.preview-embed :as api.preview-embed]
    [metabase.query-processor.pivot.test-util :as api.pivots]
    [metabase.test :as mt]
+   [metabase.test.http-client :as test.client]
    [metabase.tiles.api-test :as tiles.api-test]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -736,3 +738,44 @@
                                                  card-id)
                      :latField (tiles.api-test/encoded-lat-field-ref)
                      :lonField (tiles.api-test/encoded-lon-field-ref)))))))))
+
+;;; --------------------- GET /api/preview_embed/dashboard/:token/card-query-batch ----------------------
+
+(defn- batch-url [dashboard-id & [additional-token-params]]
+  (str "preview_embed/dashboard/"
+       (embed-test/dash-token dashboard-id (merge {:_embedding_params {}}
+                                                  additional-token-params))
+       "/card-query-batch"))
+
+(defn- parse-ndjson [^String body]
+  (into []
+        (comp (map str/trim)
+              (remove str/blank?)
+              (map json/decode+kw))
+        (str/split-lines body)))
+
+(deftest batch-card-query-test
+  (testing "GET /api/preview_embed/dashboard/:token/card-query-batch"
+    (embed-test/with-embedding-enabled-and-new-secret-key!
+      (embed-test/with-temp-dashcard [dashcard]
+        (testing "admin can run a batch query through the preview endpoint"
+          ;; bypass parse-response so NDJSON isn't collapsed to the first line
+          (with-redefs [test.client/parse-response identity]
+            (let [lines (parse-ndjson
+                         (mt/user-http-request :crowberto :get 202
+                                               (batch-url (:dashboard_id dashcard))))]
+              (is (some #(= "card-end" (:type %)) lines))
+              (is (some #(and (= "complete" (:type %))
+                              (pos? (:total %))
+                              (zero? (:failed %))) lines)))))
+
+        (testing "non-admin is rejected"
+          (is (= "You don't have permissions to do that."
+                 (mt/user-http-request :rasta :get 403
+                                       (batch-url (:dashboard_id dashcard))))))
+
+        (testing "fails when embedding is disabled"
+          (is (= "Embedding is not enabled."
+                 (mt/with-temporary-setting-values [enable-embedding-static false]
+                   (mt/user-http-request :crowberto :get 400
+                                         (batch-url (:dashboard_id dashcard)))))))))))

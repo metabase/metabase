@@ -36,6 +36,7 @@
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
+   [metabase.query-processor.core :as qp.core]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -1396,6 +1397,37 @@
   (actions/execute-dashcard! dashboard-id dashcard-id parameters))
 
 ;;; ---------------------------------- Running the query associated with a Dashcard ----------------------------------
+
+(def ^:private BatchCardSpec
+  [:map
+   [:dashcard_id ms/PositiveInt]
+   [:card_id     ms/PositiveInt]])
+
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/:dashboard-id/card-query-batch"
+  "Run queries for multiple cards on a dashboard in a single request. Results are streamed back as NDJSON
+   (newline-delimited JSON) as each card query completes.
+
+   Each line in the response is one of:
+   - `{\"type\":\"card-result\",\"dashcard_id\":N,\"card_id\":N,\"result\":{...}}` — successful card query result
+   - `{\"type\":\"card-error\",\"dashcard_id\":N,\"card_id\":N,\"error\":{...}}` — per-card error
+   - `{\"type\":\"complete\",\"total\":N,\"succeeded\":N,\"failed\":N}` — final summary"
+  [{:keys [dashboard-id]} :- [:map
+                              [:dashboard-id ms/PositiveInt]]
+   _query-params
+   {:keys [dashboard_load_id], :as body} :- [:map
+                                             [:dashboard_load_id {:optional true} [:maybe ms/NonBlankString]]
+                                             [:parameters        {:optional true} [:maybe [:sequential ParameterWithID]]]
+                                             [:ignore_cache      {:optional true} [:maybe :boolean]]
+                                             [:cards             {:optional true} [:maybe [:sequential BatchCardSpec]]]]]
+  (with-dashboard-load-id dashboard_load_id
+    (qp.core/process-batch-queries
+     {:dashboard-id dashboard-id
+      :parameters   (:parameters body)
+      :ignore-cache (:ignore_cache body)
+      :cards        (some->> (:cards body)
+                             (mapv (fn [{:keys [dashcard_id card_id]}]
+                                     {:dashcard-id dashcard_id :card-id card_id})))})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

@@ -132,9 +132,7 @@ describe("issue 16334", () => {
     H.restore();
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests({ alias: "dashcardQuery" });
   });
 
   it("should not change the visualization type in a targetted question with mapped filter (metabase#16334)", () => {
@@ -463,9 +461,7 @@ describe("issue 17160", () => {
     visitSourceDashboard();
 
     cy.get("@targetDashboardId").then((id) => {
-      cy.intercept("POST", `/api/dashboard/${id}/dashcard/*/card/*/query`).as(
-        "targetDashcardQuery",
-      );
+      H.interceptDashboardCardRequests({ alias: "targetDashcardQuery" });
 
       cy.findAllByText("click-behavior-dashboard-label").eq(0).click();
       cy.wait("@targetDashcardQuery");
@@ -691,9 +687,7 @@ describe("issue 29304", () => {
     beforeEach(() => {
       H.restore();
       cy.signInAsAdmin();
-      cy.intercept("api/dashboard/*/dashcard/*/card/*/query").as(
-        "getDashcardQuery",
-      );
+      H.interceptDashboardCardRequests({ alias: "getDashcardQuery" });
       cy.intercept("api/dashboard/*").as("getDashboard");
       cy.clock();
     });

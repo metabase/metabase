@@ -25,21 +25,14 @@ describe("dashboard card fetching", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests({ alias: "dashcardQuery" });
   });
 
-  it("should pass same dashboard_load_id to every query to enable metadata cache sharing", () => {
+  it("should include a dashboard_load_id with the batch card query", () => {
     createDashboardWithCards({ cards }).then(H.visitDashboard);
 
-    cy.wait(["@dashcardQuery", "@dashcardQuery"]).then((interceptions) => {
-      const query1 = interceptions[0].request.body;
-      const query2 = interceptions[1].request.body;
-
-      expect(query1.dashboard_load_id).to.have.length(36);
-      expect(query2.dashboard_load_id).to.have.length(36);
-      expect(query1.dashboard_load_id).to.equal(query2.dashboard_load_id);
+    cy.wait("@dashcardQuery").then((interception) => {
+      expect(interception.request.body.dashboard_load_id).to.have.length(36);
     });
   });
 });

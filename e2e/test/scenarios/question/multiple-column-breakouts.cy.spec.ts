@@ -266,13 +266,11 @@ describe("scenarios > question > multiple column breakouts", () => {
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
-    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
-    cy.intercept("/api/public/dashboard/*/dashcard/*/card/*").as(
+    H.interceptDashboardCardRequests({ alias: "dashcardQuery" });
+    cy.intercept("/api/public/dashboard/*/card-query-batch*").as(
       "publicDashcardQuery",
     );
-    cy.intercept("/api/embed/dashboard/*/dashcard/*/card/*").as(
+    cy.intercept("/api/embed/dashboard/*/card-query-batch*").as(
       "embedDashcardQuery",
     );
   });

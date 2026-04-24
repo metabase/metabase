@@ -15,8 +15,10 @@
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.core :as qp.core]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
+   [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -419,6 +421,22 @@
      :context       (get-embed-dashboard-context export-format)
      :constraints   constraints
      :middleware    middleware)))
+
+(defn process-batch-queries-for-dashboard
+  "Batch variant of [[process-query-for-dashcard]] for embedded dashboards. Resolves embedding parameters,
+   then delegates to the batch orchestrator."
+  [& {:keys [dashboard-id embedding-params token-params query-params cards]}]
+  {:pre [(integer? dashboard-id) (u/maybe? map? embedding-params)
+         (map? token-params) (map? query-params)]}
+  (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
+        parameters  (resolve-dashboard-parameters dashboard-id slug->value)]
+    (request/as-admin
+      (binding [api/*current-user-id* nil]
+        (qp.core/process-batch-queries
+         {:dashboard-id dashboard-id
+          :parameters   parameters
+          :context      :embedded-dashboard
+          :cards        cards})))))
 
 (defn card-param-values
   "Search for card parameter values. Does security checks to ensure the parameter is on the card and then gets param

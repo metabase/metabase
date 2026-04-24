@@ -6,6 +6,7 @@ import {
   setupDashboardsEndpoints,
   setupDatabaseEndpoints,
 } from "__support__/server-mocks";
+import { setupDashboardCardQueryBatchEndpoint } from "__support__/server-mocks/dashcard";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
 import type { DashboardState, State } from "metabase/redux/store";
@@ -201,7 +202,11 @@ function createMockDispatch(getState: () => Partial<State>) {
   return dispatch;
 }
 
-function setupConcurrencyTest(dashboardId: number, cardCount: number) {
+function setupConcurrencyTest(
+  dashboardId: number,
+  cardCount: number,
+  { isEditing = false }: { isEditing?: boolean } = {},
+) {
   let currentConcurrent = 0;
   let maxConcurrent = 0;
 
@@ -230,6 +235,14 @@ function setupConcurrencyTest(dashboardId: number, cardCount: number) {
     );
   });
 
+  // Non-editing path now uses the streaming batch endpoint. Register a mock
+  // so the per-card code path and the batch code path both have something to
+  // talk to.
+  const batchCalls = setupDashboardCardQueryBatchEndpoint(
+    dashboardId,
+    dashcards.map((dc) => ({ id: dc.id, card_id: dc.card_id as number })),
+  );
+
   const DASHBOARD = createMockDashboard({ id: dashboardId, dashcards });
   const state: Partial<State> = {
     dashboard: createMockDashboardState({
@@ -241,6 +254,7 @@ function setupConcurrencyTest(dashboardId: number, cardCount: number) {
         }),
       },
       dashcards: Object.fromEntries(dashcards.map((dc) => [dc.id, dc])),
+      editingDashboard: isEditing ? DASHBOARD : null,
     }),
     entities: createMockEntitiesState({ databases: [database] }),
     settings: createMockSettingsState(),
@@ -249,14 +263,39 @@ function setupConcurrencyTest(dashboardId: number, cardCount: number) {
   const getState = () => state;
   const dispatch = createMockDispatch(getState);
 
-  return { dispatch, getState, getMaxConcurrent: () => maxConcurrent };
+  return {
+    dispatch,
+    getState,
+    getMaxConcurrent: () => maxConcurrent,
+    dashcards,
+    batchCalls,
+  };
 }
 
 describe("fetchDashboardCardData", () => {
-  it("should make at most 5 api calls simultaneously", async () => {
-    const { dispatch, getState, getMaxConcurrent } = setupConcurrencyTest(
-      100,
+  it("should issue a single batch request for all cards on a normal dashboard", async () => {
+    const dashboardId = 100;
+    const { dispatch, getState, dashcards, batchCalls } = setupConcurrencyTest(
+      dashboardId,
       8,
+    );
+
+    await fetchDashboardCardData()(dispatch as never, getState as never);
+
+    expect(batchCalls).toHaveLength(1);
+
+    const body = JSON.parse(String(batchCalls[0].init?.body ?? "{}"));
+    expect(body.cards).toHaveLength(dashcards.length);
+    expect(
+      body.cards.map((c: { dashcard_id: number }) => c.dashcard_id),
+    ).toEqual(dashcards.map((dc) => dc.id));
+  });
+
+  it("should make at most 5 simultaneous per-card requests on the editing fallback path", async () => {
+    const { dispatch, getState, getMaxConcurrent } = setupConcurrencyTest(
+      101,
+      8,
+      { isEditing: true },
     );
 
     await fetchDashboardCardData()(dispatch as never, getState as never);

@@ -1140,9 +1140,7 @@ describe("issue 34129", () => {
     H.restore();
     cy.signInAsNormalUser();
     cy.intercept("/api/card/*/query").as("cardQuery");
-    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests({ alias: "dashcardQuery" });
   });
 
   it("should support mismatching date filter parameter values when navigating from a dashboard (metabase#34129)", () => {

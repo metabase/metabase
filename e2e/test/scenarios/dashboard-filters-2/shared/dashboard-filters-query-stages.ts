@@ -442,7 +442,7 @@ export function setup1stStageImplicitJoinFromSourceFilter() {
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("16");
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
+  cy.wait("@dashboardData");
 }
 
 export function setup1stStageImplicitJoinFromJoinFilter() {
@@ -467,7 +467,7 @@ export function setup1stStageImplicitJoinFromJoinFilter() {
     cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
+  cy.wait("@dashboardData");
 }
 
 export function setup1stStageCustomColumnFilter() {
@@ -495,7 +495,7 @@ export function setup1stStageCustomColumnFilter() {
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("20");
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
+  cy.wait("@dashboardData");
 }
 
 export function setup1stStageAggregationFilter() {
@@ -523,7 +523,7 @@ export function setup1stStageAggregationFilter() {
     cy.findAllByPlaceholderText("Enter a number").eq(1).type("2");
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
+  cy.wait("@dashboardData");
 }
 
 export function setup1stStageBreakoutFilter() {
@@ -548,7 +548,7 @@ export function setup1stStageBreakoutFilter() {
     cy.findByLabelText("Gadget").click();
     cy.button("Add filter").click();
   });
-  cy.wait(["@dashboardData", "@dashboardData"]);
+  cy.wait("@dashboardData");
 }
 
 export function setup2ndStageExplicitJoinFilter() {
@@ -575,7 +575,7 @@ export function setup2ndStageExplicitJoinFilter() {
       cy.findByPlaceholderText("Search the list").type("abe.gorczany");
       cy.button("Add filter").click();
     });
-  cy.wait(["@dashboardData", "@dashboardData"]);
+  cy.wait("@dashboardData");
 }
 
 export function setup2ndStageCustomColumnFilter() {
@@ -730,12 +730,33 @@ export function getDashboardId(): Cypress.Chainable<number> {
     .then((dashboardId) => dashboardId as unknown as number);
 }
 
-export function waitForPublicDashboardData(requestCount: number) {
-  cy.wait(Array(requestCount).fill("@publicDashboardData"));
+export function waitForPublicDashboardData(expectedCards: number) {
+  assertBatchCompletedCards("@publicDashboardData", expectedCards);
 }
 
-export function waitForEmbeddedDashboardData(requestCount: number) {
-  cy.wait(Array(requestCount).fill("@embeddedDashboardData"));
+export function waitForEmbeddedDashboardData(expectedCards: number) {
+  assertBatchCompletedCards("@embeddedDashboardData", expectedCards);
+}
+
+function assertBatchCompletedCards(alias: string, expectedCards: number) {
+  cy.wait(alias).then(({ request }) => {
+    // GET (public/embed) carries `cards` as a URL query param; POST (normal)
+    // carries it in the JSON body.
+    const fromQuery = (() => {
+      const cards = new URL(request.url).searchParams.get("cards");
+      if (!cards) {
+        return undefined;
+      }
+      try {
+        return JSON.parse(cards) as unknown[];
+      } catch {
+        return undefined;
+      }
+    })();
+    const fromBody = (request.body as { cards?: unknown[] })?.cards;
+    const cards = fromQuery ?? fromBody ?? [];
+    expect(cards, `${alias} cards[]`).to.have.length(expectedCards);
+  });
 }
 
 export function verifyDashcardMappingOptions(

@@ -13,9 +13,7 @@ import {
 
 describe("scenarios > dashboard > filters > location", () => {
   beforeEach(() => {
-    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
+    H.interceptDashboardCardRequests();
 
     H.restore();
     cy.signInAsAdmin();

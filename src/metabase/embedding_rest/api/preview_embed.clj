@@ -171,6 +171,29 @@
      :token-params     token-params
      :query-params     (api.embed.common/parse-query-params query-params))))
 
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/dashboard/:token/card-query-batch"
+  "Run queries for multiple cards on a preview-embedded Dashboard in a single request.
+   Results are streamed back as NDJSON. Mirrors `/api/embed/dashboard/:token/card-query-batch`
+   but requires admin access and reads embedding params from the JWT (`:_embedding_params`)
+   rather than the dashboard row, matching the rest of the preview-embed endpoints."
+  [{:keys [token]} :- [:map [:token api.embed.common/EncodedToken]]
+   query-params    :- :map]
+  (let [unsigned-token (check-and-unsign token)
+        dashboard-id   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        cards-raw      (:cards query-params)
+        parsed-qp      (api.embed.common/parse-query-params (dissoc query-params :cards))
+        cards-parsed   (cond-> cards-raw (string? cards-raw) json/decode+kw)
+        cards          (some->> cards-parsed
+                                (mapv (fn [{:keys [dashcard_id card_id]}]
+                                        {:dashcard-id dashcard_id :card-id card_id})))]
+    (api.embed.common/process-batch-queries-for-dashboard
+     :dashboard-id     dashboard-id
+     :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+     :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+     :query-params     parsed-qp
+     :cards            cards)))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
