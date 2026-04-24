@@ -17,7 +17,10 @@ import {
   setupDatabasesEndpoints,
   setupLastDownloadFormatEndpoints,
 } from "__support__/server-mocks";
-import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
+import {
+  setupDashboardCardQueryBatchEndpoint,
+  setupDashcardQueryEndpoints,
+} from "__support__/server-mocks/dashcard";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { screen } from "__support__/ui";
 import { SdkInternalNavigationProvider } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/SdkInternalNavigationProvider";
@@ -188,6 +191,15 @@ export const setupSdkDashboard = async ({
 
   setupDashcardQueryEndpoints(dashboardId, tableDashcard, createMockDataset());
 
+  const batchCalls = setupDashboardCardQueryBatchEndpoint(
+    dashboardId,
+    dashcards
+      .filter(
+        (dc): dc is DashboardCard & { card_id: number } => dc.card_id != null,
+      )
+      .map((dc) => ({ id: dc.id, card_id: dc.card_id })),
+  );
+
   setupAlertsEndpoints(tableCard, []);
 
   setupNotificationChannelsEndpoints({
@@ -272,5 +284,6 @@ export const setupSdkDashboard = async ({
 
   return {
     dashboard,
+    batchCalls,
   };
 };

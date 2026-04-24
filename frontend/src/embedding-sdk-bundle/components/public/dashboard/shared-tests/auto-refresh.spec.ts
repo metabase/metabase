@@ -1,19 +1,17 @@
 import { waitFor } from "@testing-library/react";
 
-import { findRequests } from "__support__/server-mocks";
 import { screen } from "__support__/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import type { SetupSdkDashboardOptions } from "../tests/setup";
 
 type SetupOpts = Omit<SetupSdkDashboardOptions, "component">;
+type SetupResult = { dashboard: Dashboard; batchCalls: { url: string }[] };
 
 export function addEnterpriseAutoRefreshTests(
-  setup: (options?: SetupOpts) => Promise<{ dashboard: Dashboard }>,
+  setup: (options?: SetupOpts) => Promise<SetupResult>,
 ) {
   describe("autoRefreshInterval property", () => {
-    const DASHBOARD_CARD_QUERY_REQUEST_COUNT = 1;
-
     afterEach(() => {
       jest.useRealTimers();
     });
@@ -21,35 +19,24 @@ export function addEnterpriseAutoRefreshTests(
     it("should support auto-refreshing dashboards for positive integers", async () => {
       jest.useFakeTimers();
 
-      await setup({ props: { autoRefreshInterval: 10 } });
-
-      // Wait for initial dashboard load
-      await waitFor(async () => {
-        const initialRequests = await getDashboardQueryRequests();
-        expect(initialRequests.length).toBe(
-          1 * DASHBOARD_CARD_QUERY_REQUEST_COUNT,
-        );
+      const { batchCalls } = await setup({
+        props: { autoRefreshInterval: 10 },
       });
 
-      // Advance time by the auto-refresh interval (10 seconds)
-      jest.advanceTimersByTime(10_000);
-
-      // Wait for the auto-refresh request to be made
-      await waitFor(async () => {
-        const requestsAfterRefresh = await getDashboardQueryRequests();
-        expect(requestsAfterRefresh.length).toBe(
-          2 * DASHBOARD_CARD_QUERY_REQUEST_COUNT,
-        );
+      await waitFor(() => {
+        expect(batchCalls.length).toBe(1);
       });
 
-      // Advance time again to test multiple refresh cycles
       jest.advanceTimersByTime(10_000);
 
-      await waitFor(async () => {
-        const requestsAfterSecondRefresh = await getDashboardQueryRequests();
-        expect(requestsAfterSecondRefresh.length).toBe(
-          3 * DASHBOARD_CARD_QUERY_REQUEST_COUNT,
-        );
+      await waitFor(() => {
+        expect(batchCalls.length).toBe(2);
+      });
+
+      jest.advanceTimersByTime(10_000);
+
+      await waitFor(() => {
+        expect(batchCalls.length).toBe(3);
       });
     });
 
@@ -71,22 +58,17 @@ export function addEnterpriseAutoRefreshTests(
         jest.useFakeTimers();
 
         // Forces the type, because users can literally pass any type here
-        await setup({ props: { autoRefreshInterval: value as number } });
-
-        // Wait for initial dashboard load
-        await waitFor(async () => {
-          const initialRequests = await getDashboardQueryRequests();
-          expect(initialRequests.length).toBe(
-            DASHBOARD_CARD_QUERY_REQUEST_COUNT,
-          );
+        const { batchCalls } = await setup({
+          props: { autoRefreshInterval: value as number },
         });
 
-        // Advance time significantly
+        await waitFor(() => {
+          expect(batchCalls.length).toBe(1);
+        });
+
         jest.advanceTimersByTime(30_000);
 
-        // Verify no additional requests were made
-        const finalRequests = await getDashboardQueryRequests();
-        expect(finalRequests.length).toBe(DASHBOARD_CARD_QUERY_REQUEST_COUNT);
+        expect(batchCalls.length).toBe(1);
       });
 
       it("should not show the auto-refresh indicator in the dashboard header", async () => {
@@ -102,15 +84,3 @@ export function addEnterpriseAutoRefreshTests(
 }
 
 export const addPremiumAutoRefreshTests = addEnterpriseAutoRefreshTests;
-
-async function getDashboardQueryRequests() {
-  return findRequests("POST").then((requests) =>
-    requests.filter((req) =>
-      req.url.match(
-        new RegExp(
-          "^http://localhost/api/dashboard/\\d+/dashcard/\\d+/card/\\d+/query",
-        ),
-      ),
-    ),
-  );
-}

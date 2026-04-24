@@ -441,7 +441,19 @@ export const dashcardData = createReducer(
       })
       .addCase(receiveBatchCardResult, (state, { payload }) => {
         const { dashcard_id, card_id, result } = payload;
-        return assocIn(state, [dashcard_id, card_id], result);
+        // Mutate the Immer draft directly instead of using icepick's assocIn.
+        // `assocIn` shallow-clones `state`, which under Immer retains refs to
+        // nested proxy drafts. Those proxies get revoked when Immer finalizes
+        // this reducer, so the next dispatch that reads the same nested slot
+        // blows up with "Cannot perform 'get' on a proxy that has been revoked".
+        const mutable = state as Record<
+          DashCardId,
+          Record<Card["id"], unknown>
+        >;
+        if (mutable[dashcard_id] == null) {
+          mutable[dashcard_id] = {};
+        }
+        mutable[dashcard_id][card_id] = result;
       })
       .addCase(clearCardData, (state, action) => {
         const { cardId, dashcardId } = action.payload;

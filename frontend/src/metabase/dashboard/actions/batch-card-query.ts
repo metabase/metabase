@@ -197,7 +197,7 @@ export async function streamBatchCardQuery(
     await api.apiRequestManipulationMiddleware({
       url: config.url,
       method,
-      options: {},
+      options: { hasBody: body != null },
       data: {},
     });
   const url = substituteUrlParams(transformedUrl, transformedData);
