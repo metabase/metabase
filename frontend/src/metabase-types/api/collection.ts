@@ -133,6 +133,7 @@ export interface CollectionItem {
   can_write?: boolean;
   can_restore?: boolean;
   can_delete?: boolean;
+  is_library_root?: boolean;
   can_run_adhoc_query?: boolean; // available only for data picker (#60021)
   "last-edit-info"?: LastEditInfo;
   location?: string | null;

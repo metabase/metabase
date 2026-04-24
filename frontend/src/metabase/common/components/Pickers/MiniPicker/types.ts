@@ -1,6 +1,7 @@
 import type {
   CollectionId,
   CollectionItem,
+  CollectionType,
   DatabaseId,
   SchemaName,
   TableId,
@@ -11,6 +12,8 @@ export type MiniPickerCollectionItem = Pick<
   "id" | "name" | "model" | "here" | "below" | "display" | "collection"
 > & {
   id: CollectionItem["id"] | CollectionId;
+  /** When set, CollectionItemList only shows children whose type matches */
+  childTypeFilter?: NonNullable<CollectionType>;
 };
 
 export type MiniPickerPickableCollectionItem = MiniPickerCollectionItem & {

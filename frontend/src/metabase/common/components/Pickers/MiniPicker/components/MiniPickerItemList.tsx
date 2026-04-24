@@ -117,15 +117,7 @@ function RootItemList() {
     ]).length &&
     shouldShowLibrary
   ) {
-    return (
-      <CollectionItemList
-        parent={{
-          model: "collection",
-          id: libraryCollection.id,
-          name: libraryCollection.name,
-        }}
-      />
-    );
+    return <LibraryRootItemList libraryCollectionId={libraryCollection.id} />;
   }
 
   return (
@@ -157,6 +149,111 @@ function RootItemList() {
           }}
         />
       )}
+    </ItemList>
+  );
+}
+
+/**
+ * Shows the Data and Metrics sections at the library root.
+ * If the user has access to the real root collections (is_library_root),
+ * they render normally. If not, synthetic folders are created to group
+ * any promoted subcollections by their type.
+ */
+function LibraryRootItemList({
+  libraryCollectionId,
+}: {
+  libraryCollectionId: CollectionItem["id"];
+}) {
+  const { setPath } = useMiniPickerContext();
+
+  const { data, isLoading } = useListCollectionItemsQuery({
+    id: libraryCollectionId,
+  });
+
+  const sections = useMemo(() => {
+    type Section = {
+      key: string;
+      name: string;
+      type: "library-data" | "library-metrics";
+      realCollection?: CollectionItem;
+      hasPromotedChildren: boolean;
+    };
+
+    const sectionDefs: Section[] = [
+      {
+        key: "data",
+        name: t`Data`,
+        type: "library-data",
+        hasPromotedChildren: false,
+      },
+      {
+        key: "metrics",
+        name: t`Metrics`,
+        type: "library-metrics",
+        hasPromotedChildren: false,
+      },
+    ];
+
+    const items = data?.data ?? [];
+
+    for (const item of items) {
+      if (item.model !== "collection") {
+        continue;
+      }
+      for (const section of sectionDefs) {
+        if (item.type === section.type) {
+          if (item.is_library_root) {
+            section.realCollection = item;
+          } else {
+            section.hasPromotedChildren = true;
+          }
+        }
+      }
+    }
+
+    return sectionDefs.filter((s) => s.realCollection || s.hasPromotedChildren);
+  }, [data]);
+
+  if (isLoading) {
+    return <MiniPickerListLoader />;
+  }
+
+  return (
+    <ItemList>
+      {sections.map((section) => {
+        const collection = section.realCollection;
+
+        return (
+          <MiniPickerItem
+            key={section.key}
+            name={collection?.name ?? section.name}
+            model="collection"
+            isFolder
+            onClick={() => {
+              if (collection) {
+                setPath([
+                  {
+                    model: "collection",
+                    id: collection.id,
+                    name: collection.name,
+                  },
+                ]);
+              } else {
+                // Synthetic folder — navigate into the library root,
+                // filtering to only show children matching this section's type
+                setPath([
+                  {
+                    model: "collection",
+                    id: libraryCollectionId,
+                    name: section.name,
+                    childTypeFilter: section.type,
+                  },
+                ]);
+              }
+            }}
+          />
+        );
+      })}
     </ItemList>
   );
 }
@@ -277,8 +374,15 @@ function CollectionItemList({ parent }: { parent: MiniPickerCollectionItem }) {
     include_can_run_adhoc_query: true,
   });
 
-  const allItems = data?.data?.filter(canCollectionCardBeUsed) ?? [];
-  const items: CollectionItem[] = allItems.filter((item) => !isHidden(item));
+  const allItems: CollectionItem[] = (data?.data ?? []).filter(
+    (item) => canCollectionCardBeUsed(item) && !isHidden(item),
+  );
+  const typeFilter = parent.childTypeFilter;
+  const items = typeFilter
+    ? allItems.filter(
+        (item) => item.model !== "collection" || item.type === typeFilter,
+      )
+    : allItems;
 
   if (isLoading || isFetching) {
     return <MiniPickerListLoader />;

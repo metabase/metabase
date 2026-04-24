@@ -896,6 +896,7 @@
         (-> (t2/instance :model/Collection row)
             collection/maybe-localize-system-collection-name
             collection/maybe-localize-tenant-collection-name
+            collection/maybe-mark-collection-as-library-root
             (update :archived api/bit->boolean)
             (update :is_remote_synced api/bit->boolean)
             (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
