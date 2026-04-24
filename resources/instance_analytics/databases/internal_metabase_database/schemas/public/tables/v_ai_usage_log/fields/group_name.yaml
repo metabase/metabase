@@ -1,0 +1,30 @@
+name: group_name
+display_name: Group Name
+description: Name of one permissions group the user belongs to (excluding All Users); used for cohort breakdowns.
+created_at: '2026-04-24T19:39:29.861736Z'
+visibility_type: normal
+table_id:
+- Internal Metabase Database
+- public
+- v_ai_usage_log
+database_type: varchar
+base_type: type/Text
+effective_type: type/Text
+semantic_type: type/Category
+dimensions: []
+position: 12
+custom_position: 0
+database_position: 12
+has_field_values: auto-list
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_ai_usage_log
+  model: Table
+- id: group_name
+  model: Field
+database_is_generated: false
+database_is_nullable: true
+database_is_pk: false
