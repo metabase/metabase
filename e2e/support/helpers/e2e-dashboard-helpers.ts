@@ -640,16 +640,23 @@ interface InterceptBatchOptions {
 }
 
 /**
- * Intercept the batch card query endpoint for a normal dashboard.
+ * Intercept dashboard card query traffic under a single alias. This covers:
+ *   1. The batch endpoint (`/api/dashboard/:id/card-query-batch`) — fired once
+ *      per dashboard load/filter change to hydrate all cards at once.
+ *   2. The legacy per-card endpoint (`/api/dashboard/:id/dashcard/:dashcardId/card/:cardId/query`)
+ *      — still used by the QB when a saved question is opened from a dashboard
+ *      context (see `runQuestionQuery` in frontend/src/metabase/services.js).
  * Replaces: cy.intercept("POST", "/api/dashboard/\*\/dashcard/\*\/card/\*\/query").as("dashcardQuery")
  */
 export function interceptDashboardCardRequests({
   alias = "dashcardQuery",
   dashboardId = "*",
 }: InterceptBatchOptions = {}) {
-  cy.intercept("POST", `/api/dashboard/${dashboardId}/card-query-batch`).as(
-    alias,
+  const idSegment = dashboardId === "*" ? "[^/]+" : String(dashboardId);
+  const pattern = new RegExp(
+    `/api/dashboard/${idSegment}/(card-query-batch|dashcard/[^/]+/card/[^/]+/query)`,
   );
+  cy.intercept("POST", pattern).as(alias);
 }
 
 interface BatchCardResult {
