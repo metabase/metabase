@@ -21,58 +21,40 @@ type SymbolProps = {
   y: number;
   stroke: string;
   strokeWidth: number;
-  scale?: number;
 };
 
-function OneSourceSymbol({
-  x,
-  y,
-  stroke,
-  strokeWidth,
-  scale = 1,
-}: SymbolProps) {
-  const gap = GAP * scale;
-  const h = H * scale;
+function OneSourceSymbol({ x, y, stroke, strokeWidth }: SymbolProps) {
   return (
     <line
       data-testid="schema-viewer-edge-symbol-line"
-      x1={x + gap}
-      y1={y - h}
-      x2={x + gap}
-      y2={y + h}
+      x1={x + GAP}
+      y1={y - H}
+      x2={x + GAP}
+      y2={y + H}
       stroke={stroke}
       strokeWidth={strokeWidth}
     />
   );
 }
 
-function ManySourceSymbol({
-  x,
-  y,
-  stroke,
-  strokeWidth,
-  scale = 1,
-}: SymbolProps) {
-  const gap = GAP * scale;
-  const w = W * scale;
-  const h = H * scale;
+function ManySourceSymbol({ x, y, stroke, strokeWidth }: SymbolProps) {
   return (
     <>
       <line
         data-testid="schema-viewer-edge-symbol-line"
-        x1={x + gap + w}
+        x1={x + GAP + W}
         y1={y}
-        x2={x + gap}
-        y2={y - h}
+        x2={x + GAP}
+        y2={y - H}
         stroke={stroke}
         strokeWidth={strokeWidth}
       />
       <line
         data-testid="schema-viewer-edge-symbol-line"
-        x1={x + gap + w}
+        x1={x + GAP + W}
         y1={y}
-        x2={x + gap}
-        y2={y + h}
+        x2={x + GAP}
+        y2={y + H}
         stroke={stroke}
         strokeWidth={strokeWidth}
       />
@@ -80,55 +62,38 @@ function ManySourceSymbol({
   );
 }
 
-function OneTargetSymbol({
-  x,
-  y,
-  stroke,
-  strokeWidth,
-  scale = 1,
-}: SymbolProps) {
-  const gap = GAP * scale;
-  const h = H * scale;
+function OneTargetSymbol({ x, y, stroke, strokeWidth }: SymbolProps) {
   return (
     <line
       data-testid="schema-viewer-edge-symbol-line"
-      x1={x - gap}
-      y1={y - h}
-      x2={x - gap}
-      y2={y + h}
+      x1={x - GAP}
+      y1={y - H}
+      x2={x - GAP}
+      y2={y + H}
       stroke={stroke}
       strokeWidth={strokeWidth}
     />
   );
 }
 
-function ManyTargetSymbol({
-  x,
-  y,
-  stroke,
-  strokeWidth,
-  scale = 1,
-}: SymbolProps) {
-  const gap = GAP * scale;
-  const w = W * scale;
-  const h = H * scale;
+function ManyTargetSymbol({ x, y, stroke, strokeWidth }: SymbolProps) {
   return (
     <>
       <line
         data-testid="schema-viewer-edge-symbol-line"
-        x1={x - gap - w}
+        x1={x - GAP - W}
         y1={y}
-        x2={x - gap}
-        y2={y - h}
+        x2={x - GAP}
+        y2={y - H}
         stroke={stroke}
         strokeWidth={strokeWidth}
       />
       <line
         data-testid="schema-viewer-edge-symbol-line"
-        x1={x - gap - w}
+        x1={x - GAP - W}
         y1={y}
-        x2={x - gap}
-        y2={y + h}
+        x2={x - GAP}
+        y2={y + H}
         stroke={stroke}
         strokeWidth={strokeWidth}
       />
@@ -146,66 +111,23 @@ function getSymbolTypes(relationship: SchemaViewerEdgeData["relationship"]): {
   return { source: "many", target: "one" };
 }
 
-type SymbolWrapperProps = {
+type SymbolWrapperProps = SymbolProps & {
   type: SymbolType;
-  x: number;
-  y: number;
-  stroke: string;
-  strokeWidth: number;
-  scale?: number;
 };
 
-function SourceSymbol({
-  type,
-  x,
-  y,
-  stroke,
-  strokeWidth,
-  scale,
-}: SymbolWrapperProps) {
+function SourceSymbol({ type, x, y, stroke, strokeWidth }: SymbolWrapperProps) {
   return type === "many" ? (
-    <ManySourceSymbol
-      x={x}
-      y={y}
-      stroke={stroke}
-      strokeWidth={strokeWidth}
-      scale={scale}
-    />
+    <ManySourceSymbol x={x} y={y} stroke={stroke} strokeWidth={strokeWidth} />
   ) : (
-    <OneSourceSymbol
-      x={x}
-      y={y}
-      stroke={stroke}
-      strokeWidth={strokeWidth}
-      scale={scale}
-    />
+    <OneSourceSymbol x={x} y={y} stroke={stroke} strokeWidth={strokeWidth} />
   );
 }
 
-function TargetSymbol({
-  type,
-  x,
-  y,
-  stroke,
-  strokeWidth,
-  scale,
-}: SymbolWrapperProps) {
+function TargetSymbol({ type, x, y, stroke, strokeWidth }: SymbolWrapperProps) {
   return type === "many" ? (
-    <ManyTargetSymbol
-      x={x}
-      y={y}
-      stroke={stroke}
-      strokeWidth={strokeWidth}
-      scale={scale}
-    />
+    <ManyTargetSymbol x={x} y={y} stroke={stroke} strokeWidth={strokeWidth} />
   ) : (
-    <OneTargetSymbol
-      x={x}
-      y={y}
-      stroke={stroke}
-      strokeWidth={strokeWidth}
-      scale={scale}
-    />
+    <OneTargetSymbol x={x} y={y} stroke={stroke} strokeWidth={strokeWidth} />
   );
 }
 
@@ -224,7 +146,6 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
     ? (palette["brand"] ?? "var(--mb-color-brand)")
     : (palette["border"] ?? "currentColor");
   const strokeWidth = selected ? 2 : 1;
-  const scale = 1;
 
   const style = useMemo(
     () => ({
@@ -290,7 +211,6 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
             y={props.sourceY}
             stroke={stroke}
             strokeWidth={strokeWidth}
-            scale={scale}
           />
           {isSelfRef ? (
             <SourceSymbol
@@ -299,7 +219,6 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
               y={props.targetY}
               stroke={stroke}
               strokeWidth={strokeWidth}
-              scale={scale}
             />
           ) : (
             <TargetSymbol
@@ -308,7 +227,6 @@ export const SchemaViewerEdge = memo(function SchemaViewerEdge(
               y={props.targetY}
               stroke={stroke}
               strokeWidth={strokeWidth}
-              scale={scale}
             />
           )}
         </g>

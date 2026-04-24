@@ -10,8 +10,8 @@
 }
 
 .infoPanel {
-  /* Push the info panel down past the top-right action group (share +
-     AppSwitcher) so it doesn't overlap with them. */
+  /* Push the info panel down past the top-right AppSwitcher so it
+     doesn't overlap. */
   top: 3.5rem;
   bottom: 1rem;
   max-height: calc(100% - 4.5rem);

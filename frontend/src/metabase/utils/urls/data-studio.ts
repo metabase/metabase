@@ -278,10 +278,6 @@ export function dataStudioErdBase() {
   return `${ROOT_URL}/schema-viewer`;
 }
 
-export function dataStudioErdModel(modelId: CardId) {
-  return `${ROOT_URL}/schema-viewer?model-id=${modelId}`;
-}
-
 export function dataStudioErdDatabase(databaseId: DatabaseId) {
   return `${ROOT_URL}/schema-viewer?database-id=${databaseId}`;
 }
@@ -289,14 +285,10 @@ export function dataStudioErdDatabase(databaseId: DatabaseId) {
 export function dataStudioErdSchema(
   databaseId: DatabaseId,
   schema: SchemaName,
-  tableIds?: TableId[],
 ) {
   const params = new URLSearchParams();
   params.set("database-id", String(databaseId));
   params.set("schema", schema);
-  if (tableIds != null && tableIds.length > 0) {
-    tableIds.forEach(id => params.append("table-ids", String(id)));
-  }
   return `${ROOT_URL}/schema-viewer?${params.toString()}`;
 }
 

@@ -30,7 +30,6 @@
    [:display_name :string]
    [:schema {:optional true} [:maybe :string]]
    [:db_id :int]
-   [:is_focal :boolean]
    [:fields [:sequential ::erd-field]]])
 
 (mr/def ::erd-edge
@@ -62,19 +61,25 @@
   table-perm-columns
   [:id :db_id :is_published :collection_id])
 
+(defn- readable-table-ids-in-scope
+  "Return the set of readable, active table IDs in the given database+schema.
+   When `schema` is nil, returns all readable tables in the database."
+  [database-id schema]
+  (->> (t2/select :model/Table
+                  {:select table-perm-columns
+                   :where  (cond-> [:and
+                                    [:= :db_id database-id]
+                                    [:= :active true]]
+                             schema (conj [:= :schema schema]))})
+       (filter mi/can-read?)
+       (map :id)
+       set))
+
 (defn- auto-discover-focal-table-ids
   "Find the top N tables by FK relationship count using a SQL aggregate query.
    Only considers readable tables. Returns a set of table IDs."
   [database-id schema]
-  (let [readable-ids (->> (t2/select :model/Table
-                                     {:select table-perm-columns
-                                      :where  (cond-> [:and
-                                                       [:= :db_id database-id]
-                                                       [:= :active true]]
-                                                schema (conj [:= :schema schema]))})
-                          (filter mi/can-read?)
-                          (map :id)
-                          set)]
+  (let [readable-ids (readable-table-ids-in-scope database-id schema)]
     (when (empty? readable-ids)
       (throw (ex-info (tru "No tables found in the specified database/schema")
                       {:status-code 404
@@ -234,13 +239,12 @@
 
 (defn build-erd-node
   "Build an ERD node for a table with its fields."
-  [table fields is-focal field-by-id]
+  [table fields field-by-id]
   {:table_id     (:id table)
    :name         (:name table)
    :display_name (:display_name table)
    :schema       (:schema table)
    :db_id        (:db_id table)
-   :is_focal     is-focal
    :fields       (mapv #(build-erd-field % field-by-id) fields)})
 
 (defn build-erd-edges
@@ -266,7 +270,7 @@
 
 (defn build-erd-response
   "Build the ERD response from fetched subgraph data."
-  [{:keys [tables-by-id fields-by-table field-by-id all-table-ids]} focal-table-ids]
+  [{:keys [tables-by-id fields-by-table field-by-id all-table-ids]}]
   (let [all-fields        (mapcat val fields-by-table)
         ;; Extend field-by-id with :table_id for FK targets that weren't loaded
         ;; into the subgraph so their pointers survive into node fields. Edges
@@ -278,7 +282,6 @@
                            (when-let [table (tables-by-id tid)]
                              (build-erd-node table
                                              (get fields-by-table tid [])
-                                             (contains? focal-table-ids tid)
                                              field-by-id+ext))))
                    vec)
         edges (build-erd-edges fields-by-table field-by-id all-table-ids)]
@@ -290,16 +293,36 @@
 (def ^:private default-hops 1)
 
 (defn erd
-  "Return an ERD for the given database, optionally scoped to specific tables/schema.
-   When `table-ids` is provided, those tables are the focal points.
-   When only `database-id` is provided, auto-selects the most connected tables.
+  "Return an ERD for the given database, optionally scoped by schema and/or
+   specific tables.
+
+   Focal-set rules:
+   - `schema` set: focal = all readable tables in that schema, plus any
+     `table-ids` (which are treated as additional focal tables, typically from
+     other schemas the user has expanded into via FK click).
+   - no `schema`, `table-ids` set: those are the focal tables.
+   - neither: auto-select the most FK-connected tables in the database.
+
    When `schema` is set, BFS propagation stops at that schema — cross-schema FK
    targets are surfaced on fields (so the UI can offer to expand them) but are
-   not loaded as nodes."
+   not loaded as nodes unless explicitly listed in `table-ids`."
   [{:keys [database-id table-ids schema]}]
   (api/read-check :model/Database database-id)
-  (let [focal-table-ids (if (seq table-ids)
+  (let [focal-table-ids (cond
+                          (some? schema)
+                          (let [schema-ids (readable-table-ids-in-scope database-id schema)
+                                combined   (into schema-ids (set table-ids))]
+                            (when (empty? combined)
+                              (throw (ex-info (tru "No tables found in the specified database/schema")
+                                              {:status-code 404
+                                               :database-id database-id
+                                               :schema      schema})))
+                            combined)
+
+                          (seq table-ids)
                           (set table-ids)
-                          (auto-discover-focal-table-ids database-id schema))
+
+                          :else
+                          (auto-discover-focal-table-ids database-id nil))
         subgraph        (fetch-erd-subgraph focal-table-ids default-hops schema)]
-    (build-erd-response subgraph focal-table-ids)))
+    (build-erd-response subgraph)))

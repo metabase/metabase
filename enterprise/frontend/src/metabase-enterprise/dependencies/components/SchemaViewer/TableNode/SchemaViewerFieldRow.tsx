@@ -38,16 +38,21 @@ function getIconForDbType(dbType: string): IconName {
 
 interface SchemaViewerFieldRowProps {
   field: ErdField;
-  isConnected: boolean;
+  /** Field participates as the source side of at least one edge. */
+  isSource: boolean;
+  /** Field participates as the target side of at least one non-self-ref edge. */
+  isTarget: boolean;
+  /** Field is the target of at least one self-referential edge. */
+  isSelfRefTarget: boolean;
   isSelectedInEdge?: boolean;
-  hasSelfRefTarget?: boolean;
 }
 
 export function SchemaViewerFieldRow({
   field,
-  isConnected,
+  isSource,
+  isTarget,
+  isSelfRefTarget,
   isSelectedInEdge,
-  hasSelfRefTarget,
 }: SchemaViewerFieldRowProps) {
   const { visibleTableIds, expandingTableIds, onExpandToTable } =
     useSchemaViewerContext();
@@ -177,8 +182,11 @@ export function SchemaViewerFieldRow({
         </Box>
       )}
       {canExpand && !isExpanding && <Box className={S.expandIndicator} />}
-      {/* These handles are invisible in our design, but they're required for proper edge drawing */}
-      {isFK && isConnected && (
+      {/* Handles are invisible but required for React Flow to draw edges.
+          Render them based on actual edge participation (not semantic_type)
+          so edges always find a matching handle even when backend metadata
+          doesn't tag the target field as type/PK. */}
+      {isSource && (
         <Handle
           type="source"
           position={Position.Right}
@@ -186,7 +194,7 @@ export function SchemaViewerFieldRow({
           className={S.handle}
         />
       )}
-      {isPK && isConnected && (
+      {isTarget && (
         <Handle
           type="target"
           position={Position.Left}
@@ -194,7 +202,7 @@ export function SchemaViewerFieldRow({
           className={S.handle}
         />
       )}
-      {isPK && hasSelfRefTarget && (
+      {isSelfRefTarget && (
         <Handle
           type="target"
           position={Position.Right}

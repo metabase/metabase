@@ -22,7 +22,6 @@ import { getSelectOptions } from "./utils";
 type EntrySearchInputProps = {
   searchModels: SearchModel[];
   isGraphFetching: boolean;
-  showModelPicker?: boolean;
   onEntryChange: (entry: DependencyEntry) => void;
   onSearchModelsChange: (searchModels: SearchModel[]) => void;
   onPickerOpen: () => void;
@@ -31,7 +30,6 @@ type EntrySearchInputProps = {
 export function EntrySearchInput({
   searchModels,
   isGraphFetching,
-  showModelPicker = true,
   onEntryChange,
   onSearchModelsChange,
   onPickerOpen,
@@ -106,12 +104,12 @@ export function EntrySearchInput({
       rightSection={
         isSearchFetching || isGraphFetching ? (
           <Loader size="sm" />
-        ) : showModelPicker ? (
+        ) : (
           <SearchModelPicker
             searchModels={searchModels}
             onSearchModelsChange={onSearchModelsChange}
           />
-        ) : undefined
+        )
       }
       renderOption={({ option }) => (
         <DefaultSelectItem

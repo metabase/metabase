@@ -199,7 +199,6 @@ export type UserKeyValue =
       value:
         | {
             table_ids: number[];
-            hops: number;
           }
         | {
             databaseId: number;

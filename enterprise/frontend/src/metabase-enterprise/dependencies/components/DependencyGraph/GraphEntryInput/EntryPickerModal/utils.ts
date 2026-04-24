@@ -1,16 +1,13 @@
 import type {
   OmniPickerCollectionItem,
-  OmniPickerDatabaseItem,
   OmniPickerItem,
   OmniPickerQuestionItem,
-  OmniPickerSchemaItem,
   OmniPickerTableItem,
   OmniPickerValue,
 } from "metabase/common/components/Pickers";
 import type { TransformPickerItem } from "metabase/plugins/oss/transforms";
 import type {
   CardType,
-  DatabaseId,
   DependencyEntry,
   DependencyNode,
   SearchModel,
@@ -18,22 +15,6 @@ import type {
 
 import { getDependencyType } from "../../../../utils";
 import { SEARCH_MODEL_TO_GROUP_TYPE } from "../constants";
-
-export type DatabaseEntry = {
-  type: "database";
-  id: DatabaseId;
-  name: string;
-};
-
-export type SchemaEntry = {
-  type: "schema";
-  id: string;
-  databaseId: DatabaseId;
-  schema: string;
-  name: string;
-};
-
-export type PickerEntry = DependencyEntry | DatabaseEntry | SchemaEntry;
 
 export function getTablePickerItem(
   node: DependencyNode,
@@ -133,28 +114,12 @@ export function getEntryPickerItem(
 
 export function getEntryPickerValue(
   item: OmniPickerItem,
-): PickerEntry | undefined {
-  if (item.model === "database") {
-    const dbItem = item as OmniPickerDatabaseItem;
-    return {
-      type: "database",
-      id: dbItem.id,
-      name: dbItem.name,
-    };
-  }
-
-  if (item.model === "schema") {
-    const schemaItem = item as OmniPickerSchemaItem;
-    return {
-      type: "schema",
-      id: `${schemaItem.database_id}:${schemaItem.id}`,
-      databaseId: schemaItem.database_id,
-      schema: schemaItem.id,
-      name: schemaItem.id,
-    };
-  }
-
-  if (typeof item.id !== "number") {
+): DependencyEntry | undefined {
+  if (
+    typeof item.id !== "number" ||
+    item.model === "database" ||
+    item.model === "schema"
+  ) {
     return;
   }
 

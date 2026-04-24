@@ -60,15 +60,33 @@ function getNodeHeight(node: ErdNode): number {
   return HEADER_HEIGHT + node.fields.length * ROW_HEIGHT;
 }
 
+interface TableEdgeRoles {
+  sourceFieldIds: Set<number>;
+  targetFieldIds: Set<number>;
+  selfRefTargetFieldIds: Set<number>;
+}
+
+const EMPTY_ROLES: TableEdgeRoles = {
+  sourceFieldIds: new Set(),
+  targetFieldIds: new Set(),
+  selfRefTargetFieldIds: new Set(),
+};
+
 function toFlowNode(
   node: ErdNode,
-  connectedFieldIds: Set<number>,
+  roles: TableEdgeRoles,
 ): SchemaViewerFlowNode {
   return {
     id: getNodeId(node),
     type: "schemaViewerTable",
     position: { x: 0, y: 0 },
-    data: { ...node, fields: sortFields(node.fields), connectedFieldIds },
+    data: {
+      ...node,
+      fields: sortFields(node.fields),
+      sourceFieldIds: roles.sourceFieldIds,
+      targetFieldIds: roles.targetFieldIds,
+      selfRefTargetFieldIds: roles.selfRefTargetFieldIds,
+    },
     style: {
       width: NODE_WIDTH,
       height: getNodeHeight(node),
@@ -120,23 +138,36 @@ function getFlowGraphMemoKey(data: ErdResponse): string {
 }
 
 const memoizedToFlowGraph = memoize((data: ErdResponse) => {
-  // Build a map of table_id -> set of field IDs that have edges
-  const connectedByTable = new Map<TableId, Set<number>>();
+  // Per-table roles: which fields act as source, target, or self-ref target
+  // of any edge. Handle rendering keys off this (not off semantic_type) so an
+  // edge whose target field isn't tagged as a PK still gets a matching handle.
+  const rolesByTable = new Map<TableId, TableEdgeRoles>();
+  const ensureRoles = (tableId: TableId): TableEdgeRoles => {
+    let roles = rolesByTable.get(tableId);
+    if (roles == null) {
+      roles = {
+        sourceFieldIds: new Set(),
+        targetFieldIds: new Set(),
+        selfRefTargetFieldIds: new Set(),
+      };
+      rolesByTable.set(tableId, roles);
+    }
+    return roles;
+  };
   for (const edge of data.edges) {
-    if (!connectedByTable.has(edge.source_table_id)) {
-      connectedByTable.set(edge.source_table_id, new Set());
+    ensureRoles(edge.source_table_id).sourceFieldIds.add(edge.source_field_id);
+    const isSelfRef = edge.source_table_id === edge.target_table_id;
+    const targetRoles = ensureRoles(edge.target_table_id);
+    if (isSelfRef) {
+      targetRoles.selfRefTargetFieldIds.add(edge.target_field_id);
+    } else {
+      targetRoles.targetFieldIds.add(edge.target_field_id);
     }
-    if (!connectedByTable.has(edge.target_table_id)) {
-      connectedByTable.set(edge.target_table_id, new Set());
-    }
-    connectedByTable.get(edge.source_table_id)!.add(edge.source_field_id);
-    connectedByTable.get(edge.target_table_id)!.add(edge.target_field_id);
   }
 
-  const emptySet = new Set<number>();
   return {
     nodes: data.nodes.map((node) =>
-      toFlowNode(node, connectedByTable.get(node.table_id) ?? emptySet),
+      toFlowNode(node, rolesByTable.get(node.table_id) ?? EMPTY_ROLES),
     ),
     edges: data.edges.map((edge) => toFlowEdge(edge)),
   };

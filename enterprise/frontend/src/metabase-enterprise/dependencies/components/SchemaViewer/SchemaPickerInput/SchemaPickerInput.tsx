@@ -4,6 +4,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { useDispatch } from "metabase/redux";
 import {
   Box,
   Button,
@@ -15,7 +16,6 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Database, DatabaseId, SchemaName } from "metabase-types/api";
 
@@ -56,7 +56,7 @@ export function SchemaPickerInput({
   //   skip the DB list and show the schema list for the current DB so the
   //   user lands directly on (and can re-pick) their current schema —
   //   unless they've explicitly backed out to the DB list.
-  const popoverSchemaListDbId =
+  const candidateSchemaListDbId =
     selectedDatabaseId ??
     (opened &&
     !hasNavigatedBackToDbs &&
@@ -65,6 +65,20 @@ export function SchemaPickerInput({
     databaseId != null
       ? databaseId
       : null);
+
+  // Fall back to the DB list when we wanted to show a schema list for a DB
+  // that isn't in the loaded set (URL points at a non-existent or unreadable
+  // DB). Otherwise the dropdown would render an infinite loader with no way
+  // to recover.
+  const candidateDbMissing =
+    candidateSchemaListDbId != null &&
+    !isLoadingDatabases &&
+    databases != null &&
+    !databases.some((d) => d.id === candidateSchemaListDbId);
+
+  const popoverSchemaListDbId = candidateDbMissing
+    ? null
+    : candidateSchemaListDbId;
 
   // Schemas for the database currently being previewed in the popover.
   // Pulled straight out of the list response (`include=schemas`), filtered
@@ -146,6 +160,19 @@ export function SchemaPickerInput({
 
   const hasSelection = databaseId != null;
 
+  const currentDb =
+    databaseId != null
+      ? databases?.find((db) => db.id === databaseId)
+      : undefined;
+  // Only show the URL's `schema` as the trigger label when it actually exists
+  // in the DB's schema list. Otherwise (schema was renamed / dropped / the URL
+  // points at a stale value) fall back to the DB name so the label can't
+  // mislead.
+  const schemaExistsOnCurrentDb =
+    schema != null &&
+    schema.length > 0 &&
+    currentDb?.schemas?.includes(schema) === true;
+
   return (
     <Box ref={clickOutsideRef}>
       <Popover
@@ -166,10 +193,13 @@ export function SchemaPickerInput({
               data-testid="schema-picker-button"
               onClick={toggle}
             >
-              {schema != null && schema.length > 0
-                ? schema
-                : (databases?.find((db) => db.id === databaseId)?.name ??
-                  t`Database`)}
+              {isLoadingDatabases ? (
+                <Loader size="xs" />
+              ) : schemaExistsOnCurrentDb ? (
+                schema
+              ) : (
+                (currentDb?.name ?? t`Database`)
+              )}
             </Button>
           ) : (
             <Button

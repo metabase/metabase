@@ -3,31 +3,24 @@ import { t } from "ttag";
 
 import {
   EntityPickerModal,
-  type EntityPickerProps,
   type OmniPickerItem,
 } from "metabase/common/components/Pickers";
-import type { DependencyNode } from "metabase-types/api";
+import type { DependencyEntry, DependencyNode } from "metabase-types/api";
 
 import {
   ENTITY_PICKER_OPTIONS,
   ENTRY_PICKER_MODELS,
   RECENTS_CONTEXT,
 } from "./constants";
-import {
-  type PickerEntry,
-  getEntryPickerItem,
-  getEntryPickerValue,
-} from "./utils";
+import { getEntryPickerItem, getEntryPickerValue } from "./utils";
 
 type EntryPickerModalProps = {
   value: DependencyNode | null;
-  models?: EntityPickerProps["models"];
-  onChange: (value: PickerEntry) => void;
+  onChange: (value: DependencyEntry) => void;
   onClose: () => void;
 };
 export function EntryPickerModal({
   value,
-  models = ENTRY_PICKER_MODELS,
   onChange,
   onClose,
 }: EntryPickerModalProps) {
@@ -45,7 +38,7 @@ export function EntryPickerModal({
   return (
     <EntityPickerModal
       title={t`Pick an item to see its dependencies`}
-      models={models}
+      models={ENTRY_PICKER_MODELS}
       value={selectedItem}
       options={ENTITY_PICKER_OPTIONS}
       recentsContext={RECENTS_CONTEXT}

@@ -6,19 +6,17 @@ import { t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useDispatch } from "metabase/redux";
 import { Stack } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { ConcreteTableId, DatabaseId } from "metabase-types/api";
 
 import { SchemaViewer } from "../../components/SchemaViewer";
-import { decodeSchemaViewerShareState } from "../../components/SchemaViewer/shareUrl";
 
 type SchemaViewerPageQuery = {
   "database-id"?: string;
   "table-ids"?: string | string[];
   schema?: string;
-  share?: string;
 };
 
 type SchemaViewerPageProps = {
@@ -28,13 +26,6 @@ type SchemaViewerPageProps = {
 export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
   usePageTitle(t`Schema viewer`);
   const dispatch = useDispatch();
-
-  const rawShare = location?.query?.share;
-  const sharedState = useMemo(
-    () =>
-      rawShare != null ? decodeSchemaViewerShareState(rawShare) : undefined,
-    [rawShare],
-  );
 
   const rawDatabaseId = location?.query?.["database-id"];
   const rawTableIds = location?.query?.["table-ids"];
@@ -79,12 +70,8 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
     [databasesResponse],
   );
 
-  // Effective database/schema (from shared state or URL)
-  const effectiveDatabaseId = sharedState?.databaseId ?? databaseId;
-  const effectiveSchema = sharedState?.schema ?? schema;
-
   // Redirect to last opened database only on initial load (not when user clears selection)
-  const hasUrlSelection = databaseId != null || rawShare != null;
+  const hasUrlSelection = databaseId != null;
   const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
@@ -133,20 +120,20 @@ export function SchemaViewerPage({ location }: SchemaViewerPageProps) {
 
   // Save current database/schema as last opened
   useEffect(() => {
-    if (effectiveDatabaseId != null) {
+    if (databaseId != null) {
       setLastDatabase({
-        databaseId: effectiveDatabaseId,
-        schema: effectiveSchema,
+        databaseId,
+        schema,
       });
     }
-  }, [effectiveDatabaseId, effectiveSchema, setLastDatabase]);
+  }, [databaseId, schema, setLastDatabase]);
 
   return (
     <Stack h="100%">
       <SchemaViewer
-        databaseId={effectiveDatabaseId}
-        schema={effectiveSchema}
-        initialTableIds={sharedState?.tableIds ?? initialTableIds}
+        databaseId={databaseId}
+        schema={schema}
+        initialTableIds={initialTableIds}
       />
     </Stack>
   );

@@ -1,9 +1,8 @@
-import { type NodeProps, useReactFlow, useStore } from "@xyflow/react";
+import { type NodeProps, useStore } from "@xyflow/react";
 import cx from "classnames";
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback } from "react";
 
 import { Box, FixedSizeIcon, Group, Stack } from "metabase/ui";
-import { isTypePK } from "metabase-lib/v1/types/utils/isa";
 
 import { useSchemaViewerContext } from "../SchemaViewerContext";
 import type { SchemaViewerFlowNode } from "../types";
@@ -14,14 +13,10 @@ import S from "./SchemaViewerTableNode.module.css";
 
 type SchemaViewerTableNodeProps = NodeProps<SchemaViewerFlowNode>;
 
-// Track which node is currently focused for double-click toggle
-let focusedNodeId: string | null = null;
-
 export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   id,
   data,
 }: SchemaViewerTableNodeProps) {
-  const { fitView } = useReactFlow<SchemaViewerFlowNode>();
   const zoomToNodes = useZoomToNodes();
   const { selectedNodeId, onSelectNode } = useSchemaViewerContext();
   // Highlight this node when any edge that touches it is selected. Uses a
@@ -65,17 +60,10 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
   const isUserSelected = selectedNodeId === id;
 
   const handleDoubleClick = useCallback(() => {
-    if (focusedNodeId === id) {
-      // Already focused → zoom back out to show the whole graph
-      fitView({ duration: 300 });
-      focusedNodeId = null;
-    } else {
-      // Focus on this node using the shared zoom rules (≥0.5 zoom, header
-      // kept in the viewport).
-      zoomToNodes([id], { duration: 300 });
-      focusedNodeId = id;
-    }
-  }, [fitView, id, zoomToNodes]);
+    // Focus on this node using the shared zoom rules (≥0.5 zoom, header
+    // kept in the viewport).
+    zoomToNodes([id], { duration: 300 });
+  }, [id, zoomToNodes]);
 
   const handleHeaderClick = useCallback(
     (event: React.MouseEvent) => {
@@ -86,23 +74,6 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
     },
     [id, onSelectNode],
   );
-
-  // Find PK field IDs that are targets of self-referencing FKs
-  const selfRefTargetIds = useMemo(() => {
-    const pkIds = new Set(
-      data.fields.filter((f) => isTypePK(f.semantic_type)).map((f) => f.id),
-    );
-    const targetIds = new Set<number>();
-    for (const field of data.fields) {
-      if (
-        field.fk_target_field_id != null &&
-        pkIds.has(field.fk_target_field_id)
-      ) {
-        targetIds.add(field.fk_target_field_id);
-      }
-    }
-    return targetIds;
-  }, [data.fields]);
 
   return (
     <Stack
@@ -142,9 +113,10 @@ export const SchemaViewerTableNode = memo(function SchemaViewerTableNode({
           <SchemaViewerFieldRow
             key={field.id}
             field={field}
-            isConnected={data.connectedFieldIds.has(field.id)}
+            isSource={data.sourceFieldIds.has(field.id)}
+            isTarget={data.targetFieldIds.has(field.id)}
+            isSelfRefTarget={data.selfRefTargetFieldIds.has(field.id)}
             isSelectedInEdge={selectedFieldIds.has(field.id)}
-            hasSelfRefTarget={selfRefTargetIds.has(field.id)}
           />
         ))}
       </Box>

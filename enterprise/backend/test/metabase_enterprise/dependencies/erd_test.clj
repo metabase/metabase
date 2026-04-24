@@ -10,8 +10,8 @@
 
 (defn- graph-shape
   "Distill an ERD response into a readable topology map.
-   Returns e.g. {:orders  {:focal true  :fk [:people :products]}
-                 :people  {:focal false :fk []}}
+   Returns e.g. {:orders  [:people :products]
+                 :people  []}
    Table names are lowercased keywords, FK targets are sorted."
   [response]
   (let [id->name    (into {} (map (fn [n] [(:table_id n)
@@ -21,9 +21,8 @@
     (into (sorted-map)
           (map (fn [node]
                  [(keyword (u/lower-case-en (:name node)))
-                  {:focal (:is_focal node)
-                   :fk    (vec (sort (keep #(id->name (:target_table_id %))
-                                           (edges-by-src (:table_id node)))))}]))
+                  (vec (sort (keep #(id->name (:target_table_id %))
+                                   (edges-by-src (:table_id node)))))]))
           (:nodes response))))
 
 (defn- erd-request!
@@ -54,29 +53,29 @@
 (deftest erd-graph-single-focal-test
   (mt/with-premium-features #{:dependencies}
     (testing "single focal table expands to FK neighbors"
-      (is (= {:orders   {:focal true  :fk [:people :products]}
-              :people   {:focal false :fk []}
-              :products {:focal false :fk []}}
+      (is (= {:orders   [:people :products]
+              :people   []
+              :products []}
              (graph-shape (erd-request! {:table-ids [(mt/id :orders)]})))))
 
     (testing "table with no outbound FKs stays isolated"
-      (is (= {:products {:focal true :fk []}}
+      (is (= {:products []}
              (graph-shape (erd-request! {:table-ids [(mt/id :products)]})))))))
 
 (deftest erd-graph-multi-focal-test
   (mt/with-premium-features #{:dependencies}
     (testing "two focals sharing an FK target — target discovered once, both have edges"
-      (is (= {:orders   {:focal true  :fk [:people :products]}
-              :people   {:focal false :fk []}
-              :products {:focal false :fk []}
-              :reviews  {:focal true  :fk [:products]}}
+      (is (= {:orders   [:people :products]
+              :people   []
+              :products []
+              :reviews  [:products]}
              (graph-shape (erd-request! {:table-ids [(mt/id :orders) (mt/id :reviews)]})))))
 
-    (testing "when FK target is also focal, is_focal reflects that"
-      (is (= {:orders   {:focal true :fk [:people :products]}
-              :people   {:focal false :fk []}
-              :products {:focal true :fk []}
-              :reviews  {:focal true :fk [:products]}}
+    (testing "selecting an FK target as focal too doesn't duplicate it"
+      (is (= {:orders   [:people :products]
+              :people   []
+              :products []
+              :reviews  [:products]}
              (graph-shape (erd-request! {:table-ids [(mt/id :orders) (mt/id :products) (mt/id :reviews)]})))))))
 
 (deftest erd-graph-field-shape-test
@@ -211,7 +210,7 @@
         (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
                                              :database-id db-id
                                              :table-ids tid)]
-          (is (= {:categories {:focal true :fk [:categories]}}
+          (is (= {:categories [:categories]}
                  (graph-shape response))))))))
 
 ;;; ---------------------------------------- Integration tests ----------------------------------------
@@ -220,14 +219,38 @@
   (mt/with-premium-features #{:dependencies}
     (testing "auto-discovers focal tables when none specified"
       (let [shape (graph-shape (erd-request! {}))]
-        (is (some (fn [[_ v]] (:focal v)) shape))
-        (is (some (fn [[_ v]] (not (:focal v))) shape))))))
+        ;; Auto-discovery should produce a non-empty graph with at least one FK edge
+        ;; (proving BFS expansion from the auto-selected focal set worked).
+        (is (seq shape))
+        (is (some seq (vals shape)))))))
 
 (deftest erd-endpoint-schema-filter-test
   (mt/with-premium-features #{:dependencies}
-    (testing "schema param filters auto-discovery to that schema"
-      (doseq [node (:nodes (erd-request! {:schema "PUBLIC"}))]
-        (is (= "PUBLIC" (:schema node)))))))
+    (testing "schema param loads every readable table in that schema as focal"
+      (let [response     (erd-request! {:schema "PUBLIC"})
+            node-names   (set (map :name (:nodes response)))
+            ;; Sample dataset's PUBLIC schema contains these tables. If the
+            ;; schema param only auto-discovers the top 3 FK-heavy tables,
+            ;; this assertion fails — which is exactly what the new semantics
+            ;; must prevent.
+            expected     #{"CATEGORIES" "CHECKINS" "ORDERS" "PEOPLE"
+                           "PRODUCTS" "REVIEWS" "USERS" "VENUES"}]
+        (doseq [node (:nodes response)]
+          (is (= "PUBLIC" (:schema node))))
+        (is (= expected node-names)
+            "every readable table in the schema is present as a node")))
+
+    (testing "schema plus extra table-ids: all schema tables PLUS the external tables"
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table _        {:db_id db-id :name "p1" :schema "public"}
+                     :model/Table _        {:db_id db-id :name "p2" :schema "public"}
+                     :model/Table {x :id}  {:db_id db-id :name "x"  :schema "other"}]
+        (let [response   (mt/user-http-request :rasta :get 200 "ee/dependencies/erd"
+                                               :database-id db-id
+                                               :schema "public"
+                                               :table-ids x)
+              node-names (set (map :name (:nodes response)))]
+          (is (= #{"p1" "p2" "x"} node-names)))))))
 
 (deftest erd-endpoint-guard-rails-test
   (testing "without :dependencies feature returns 402"
@@ -259,7 +282,7 @@
                                                :table-ids (mt/id :orders)
                                                :table-ids (mt/id :products))]
             (testing "graph shows orders alone, no FK edges"
-              (is (= {:orders {:focal true :fk []}}
+              (is (= {:orders []}
                      (graph-shape response))))
             (testing "no FK field leaks IDs of excluded tables"
               (doseq [field (mapcat :fields (:nodes response))
@@ -285,6 +308,6 @@
                                                :database-id (mt/id)
                                                :table-ids (mt/id :orders))]
             (testing "orders reaches people (readable) but not products (unreadable)"
-              (is (= {:orders {:focal true  :fk [:people]}
-                      :people {:focal false :fk []}}
+              (is (= {:orders [:people]
+                      :people []}
                      (graph-shape response))))))))))

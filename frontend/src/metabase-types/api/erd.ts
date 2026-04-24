@@ -18,7 +18,6 @@ export type ErdNode = {
   display_name: string;
   schema: string | null;
   db_id: DatabaseId;
-  is_focal: boolean;
   fields: ErdField[];
 };
 

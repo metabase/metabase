@@ -10,11 +10,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
-import {
-  skipToken,
-  useListDatabaseSchemaTablesQuery,
-  useListDatabasesQuery,
-} from "metabase/api";
+import { skipToken, useListDatabasesQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
@@ -296,39 +292,31 @@ interface SchemaViewerProps {
   initialTableIds: ConcreteTableId[] | undefined;
 }
 
-interface GetErdQueryParamsArgs extends SchemaViewerProps {
-  selectedTableIds: ConcreteTableId[] | null;
-  isUserModified: boolean;
+interface GetErdQueryParamsArgs {
+  databaseId: DatabaseId | undefined;
+  schema: string | undefined;
+  extraTableIds: readonly ConcreteTableId[];
 }
 
 function getErdQueryParams({
   databaseId,
   schema,
-  selectedTableIds,
-  isUserModified,
+  extraTableIds,
 }: GetErdQueryParamsArgs): GetErdRequest | typeof skipToken {
   if (databaseId == null) {
     return skipToken;
   }
-  // User explicitly cleared all tables - show empty canvas
-  if (
-    isUserModified &&
-    selectedTableIds != null &&
-    selectedTableIds.length === 0
-  ) {
-    return skipToken;
-  }
+  // With no schema and no table-ids the backend auto-discovers; fine.
+  // With a schema, the backend returns all tables in that schema — we only
+  // append `table-ids` for external tables the user has explicitly expanded
+  // into.
+  // With no schema but explicit table-ids, those are the focal set.
   const params: GetErdRequest = { "database-id": databaseId };
   if (schema != null) {
     params.schema = schema;
   }
-  // Include table-ids when user has made a custom selection
-  if (
-    isUserModified &&
-    selectedTableIds != null &&
-    selectedTableIds.length > 0
-  ) {
-    params["table-ids"] = selectedTableIds;
+  if (extraTableIds.length > 0) {
+    params["table-ids"] = [...extraTableIds];
   }
   return params;
 }
@@ -359,212 +347,64 @@ export function SchemaViewer({
   // render — the sync effect just reads it on the next ERD response.
   const pendingEdgeIdsToSelectRef = useRef<readonly string[] | null>(null);
 
-  // Persist table selection per database:schema
+  // External/extra focal table IDs — specifically tables from OTHER schemas
+  // that the user has expanded into via FK click. When a `schema` is set the
+  // backend returns all tables in that schema automatically, so we never put
+  // schema-native tables in this set.
+  // Persisted per (databaseId, schema) so external expansions survive reloads.
   const prefsKey = databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
+  const currentContextKey = prefsKey;
 
-  const {
-    value: savedPrefs,
-    setValue: setSavedPrefs,
-    isLoading: isLoadingPrefs,
-  } = useUserKeyValue({
+  const { value: savedPrefs, setValue: setSavedPrefs } = useUserKeyValue({
     namespace: "schema_viewer",
     key: prefsKey ?? "",
     skip: prefsKey == null,
   });
 
-  // Store selection with its context (database/schema it belongs to)
-  // isUserModified: true when user has manually changed selection (vs auto-initialized from backend)
-  const [tableSelection, setTableSelection] = useState<{
-    tableIds: ConcreteTableId[];
-    forDatabaseId: DatabaseId;
-    forSchema: string | undefined;
-    isUserModified: boolean;
-  } | null>(() => {
-    // Initialize from URL params if provided
-    if (
-      initialTableIds != null &&
-      initialTableIds.length > 0 &&
-      databaseId != null
-    ) {
-      return {
-        tableIds: initialTableIds,
-        forDatabaseId: databaseId,
-        forSchema: schema,
-        isUserModified: true, // URL params count as user-specified
-      };
-    }
-    return null;
-  });
+  // Ref-backed store keyed by `${databaseId}:${schema}` so we don't re-apply
+  // URL ids / saved prefs when the user later clears the set in the same
+  // context (avoids clearing-then-restoring loops).
+  const initializedContextRef = useRef<string | null>(null);
 
-  // Track previous prefsKey to detect database/schema changes synchronously
-  // (effects fire too late and cause stale prefs to be applied to the new context)
-  const prevPrefsKeyRef = useRef(prefsKey);
+  const [extraTableIds, setExtraTableIds] = useState<
+    readonly ConcreteTableId[]
+  >(initialTableIds ?? []);
 
-  // Check if selection matches current database/schema
-  const effectiveSelection = useMemo(() => {
-    if (tableSelection == null) {
-      return null;
-    }
-    if (
-      tableSelection.forDatabaseId !== databaseId ||
-      tableSelection.forSchema !== schema
-    ) {
-      return null;
-    }
-    return {
-      tableIds: tableSelection.tableIds,
-      isUserModified: tableSelection.isUserModified,
-    };
-  }, [tableSelection, databaseId, schema]);
-
-  const effectiveSelectedTableIds = effectiveSelection?.tableIds ?? null;
-  const isUserModified = effectiveSelection?.isUserModified ?? false;
-
-  // Track if we've initialized from the initial ERD response for current context
-  const currentContextKey =
-    databaseId != null ? `${databaseId}:${schema ?? ""}` : null;
-  const initializedContextRef = useRef<string | null>(
-    // Mark as initialized if we got table IDs from URL
-    initialTableIds != null && initialTableIds.length > 0
-      ? currentContextKey
-      : null,
-  );
-
-  // Reset state synchronously during render when database/schema changes.
-  // Using an effect for this causes a race: the prefs restoration effect fires
-  // before the cleanup effect and applies stale savedPrefs to the new context.
-  const appliedPrefsRef = useRef(false);
-  if (prevPrefsKeyRef.current !== prefsKey) {
-    prevPrefsKeyRef.current = prefsKey;
-    appliedPrefsRef.current = false;
+  // When context (database / schema) changes: seed from URL if present, else
+  // clear and wait for saved prefs to arrive (next effect).
+  const prevContextKeyRef = useRef(currentContextKey);
+  if (prevContextKeyRef.current !== currentContextKey) {
+    prevContextKeyRef.current = currentContextKey;
     initializedContextRef.current = null;
+    setExtraTableIds(initialTableIds ?? []);
   }
 
-  // Fetch all tables in the database/schema for the dropdown
-  const { data: allTables, isFetching: isFetchingTables } =
-    useListDatabaseSchemaTablesQuery(
-      databaseId != null && schema != null
-        ? { id: databaseId, schema }
-        : skipToken,
-    );
-
-  // Wait for saved prefs AND allTables before firing the initial ERD query.
-  // Defers the fetch until selection has been initialized (from saved prefs or
-  // from allTables as "select all") to avoid a wasted fetch that would be
-  // immediately replaced once the selection lands.
-  const hasPendingPrefsToApply =
-    !appliedPrefsRef.current &&
-    savedPrefs != null &&
-    typeof savedPrefs === "object" &&
-    savedPrefs.table_ids != null;
-
-  // Wait until the prefs-restoration effect OR the auto-init effect has had a
-  // chance to populate the selection — otherwise the ERD query fires once with
-  // no table-ids (showing backend-auto-discovered focal tables) and then again
-  // with the real selection, which is a wasted round-trip and a visible flash.
-  const shouldWaitForInitialLoad =
-    databaseId != null &&
-    initialTableIds == null &&
-    effectiveSelectedTableIds === null &&
-    (isLoadingPrefs ||
-      isFetchingTables ||
-      hasPendingPrefsToApply ||
-      (allTables != null && allTables.length > 0));
-
-  const { data, isFetching, error } = useGetErdQuery(
-    shouldWaitForInitialLoad
-      ? skipToken
-      : getErdQueryParams({
-          databaseId,
-          schema,
-          initialTableIds,
-          selectedTableIds: effectiveSelectedTableIds,
-          isUserModified,
-        }),
-  );
-
-  // Set of valid table IDs for the current schema (for validating saved prefs)
-  const validTableIdSet = useMemo(() => {
-    if (allTables == null) {
-      return null;
-    }
-    return new Set(allTables.map((t) => t.id as ConcreteTableId));
-  }, [allTables]);
-
-  // Restore saved prefs once loaded (one-time per schema context)
-  // Wait for allTables to validate that saved table IDs still exist
+  // Restore saved prefs once per context (skipped when URL supplied ids).
   useEffect(() => {
+    if (databaseId == null) {
+      return;
+    }
+    if (initializedContextRef.current === currentContextKey) {
+      return;
+    }
+    if (initialTableIds != null && initialTableIds.length > 0) {
+      initializedContextRef.current = currentContextKey;
+      return;
+    }
     if (
-      !appliedPrefsRef.current &&
-      !isLoadingPrefs &&
-      !isFetchingTables &&
       savedPrefs != null &&
       typeof savedPrefs === "object" &&
-      savedPrefs.table_ids != null &&
-      validTableIdSet != null &&
-      initialTableIds == null && // URL params take priority
-      databaseId != null
+      "table_ids" in savedPrefs &&
+      Array.isArray(savedPrefs.table_ids)
     ) {
-      appliedPrefsRef.current = true;
-
-      // Filter out table IDs that no longer exist in the schema
-      const validatedTableIds = (
-        savedPrefs.table_ids as ConcreteTableId[]
-      ).filter((id) => validTableIdSet.has(id));
-
-      if (validatedTableIds.length > 0) {
-        setTableSelection({
-          tableIds: validatedTableIds,
-          forDatabaseId: databaseId,
-          forSchema: schema,
-          isUserModified: true, // Saved prefs = previous user choices
-        });
-        initializedContextRef.current = currentContextKey; // Prevent auto-init overwrite
-      }
-      // If no valid table IDs remain, don't set selection - let backend pick focal tables
+      initializedContextRef.current = currentContextKey;
+      setExtraTableIds(savedPrefs.table_ids as ConcreteTableId[]);
     }
-  }, [
-    isLoadingPrefs,
-    isFetchingTables,
-    savedPrefs,
-    validTableIdSet,
-    initialTableIds,
-    databaseId,
-    schema,
-    currentContextKey,
-  ]);
+  }, [databaseId, currentContextKey, initialTableIds, savedPrefs]);
 
-  // Initialize selection to ALL tables in the schema on first visit
-  // (when there are no URL params and no saved prefs to restore)
-  useEffect(() => {
-    if (
-      allTables != null &&
-      !isFetchingTables &&
-      databaseId != null &&
-      initializedContextRef.current !== currentContextKey &&
-      effectiveSelectedTableIds === null &&
-      !hasPendingPrefsToApply
-    ) {
-      const allTableIds = allTables.map((t) => t.id as ConcreteTableId);
-      if (allTableIds.length > 0) {
-        setTableSelection({
-          tableIds: allTableIds,
-          forDatabaseId: databaseId,
-          forSchema: schema,
-          isUserModified: true, // Treat as user-specified so ERD query sends table-ids
-        });
-        initializedContextRef.current = currentContextKey;
-      }
-    }
-  }, [
-    allTables,
-    isFetchingTables,
-    databaseId,
-    schema,
-    currentContextKey,
-    effectiveSelectedTableIds,
-    hasPendingPrefsToApply,
-  ]);
+  const { data, isFetching, error } = useGetErdQuery(
+    getErdQueryParams({ databaseId, schema, extraTableIds }),
+  );
 
   const [nodes, setNodes, onNodesChange] = useNodesState<SchemaViewerFlowNode>(
     [],
@@ -594,33 +434,35 @@ export function SchemaViewer({
       tableId: ConcreteTableId,
       candidateEdgeIdsToSelect?: readonly string[],
     ) => {
-      if (effectiveSelectedTableIds != null && databaseId != null) {
-        const newTableIds = [...effectiveSelectedTableIds, tableId];
-        setTableSelection({
-          tableIds: newTableIds,
-          forDatabaseId: databaseId,
-          forSchema: schema,
-          isUserModified: true, // User clicked to expand
-        });
-        setSavedPrefs({
-          table_ids: newTableIds,
-        });
-        setExpandingTableIds((prev) => {
-          const next = new Set(prev);
-          next.add(tableId);
-          return next;
-        });
-        // Stash the candidate edge IDs so the next graph-sync run can find
-        // the FK edge that triggered this expansion and auto-select it.
-        if (
-          candidateEdgeIdsToSelect != null &&
-          candidateEdgeIdsToSelect.length > 0
-        ) {
-          pendingEdgeIdsToSelectRef.current = candidateEdgeIdsToSelect;
+      if (databaseId == null) {
+        return;
+      }
+      setExtraTableIds((prev) => {
+        if (prev.includes(tableId)) {
+          return prev;
         }
+        const next = [...prev, tableId];
+        setSavedPrefs({ table_ids: next });
+        return next;
+      });
+      setExpandingTableIds((prev) => {
+        if (prev.has(tableId)) {
+          return prev;
+        }
+        const next = new Set(prev);
+        next.add(tableId);
+        return next;
+      });
+      // Stash the candidate edge IDs so the next graph-sync run can find
+      // the FK edge that triggered this expansion and auto-select it.
+      if (
+        candidateEdgeIdsToSelect != null &&
+        candidateEdgeIdsToSelect.length > 0
+      ) {
+        pendingEdgeIdsToSelectRef.current = candidateEdgeIdsToSelect;
       }
     },
-    [effectiveSelectedTableIds, databaseId, schema, setSavedPrefs],
+    [databaseId, setSavedPrefs],
   );
 
   // Clear the canvas whenever the database/schema context changes, regardless
@@ -769,12 +611,6 @@ export function SchemaViewer({
     return [...unselected, ...selected];
   }, [edges]);
 
-  // User explicitly cleared all tables - show empty canvas
-  const isExplicitlyEmpty =
-    isUserModified &&
-    effectiveSelectedTableIds != null &&
-    effectiveSelectedTableIds.length === 0;
-
   // Latest nodes held in a ref so the sync effect below can read current
   // state without adding `nodes` to its dependency array (which would cause
   // the effect to re-run on every internal React Flow node change — like
@@ -784,8 +620,7 @@ export function SchemaViewer({
   nodesRef.current = nodes;
 
   useEffect(() => {
-    // Clear everything when there's no entry selected or user cleared all tables
-    if (!hasEntry || error != null || isExplicitlyEmpty) {
+    if (!hasEntry || error != null) {
       setNodes([]);
       setEdges([]);
       setExpandingTableIds((prev) => (prev.size === 0 ? prev : new Set()));
@@ -863,15 +698,7 @@ export function SchemaViewer({
         setPendingFitNodeIds(addedIds);
       }
     }
-  }, [
-    hasEntry,
-    graph,
-    error,
-    isExplicitlyEmpty,
-    isFetching,
-    setNodes,
-    setEdges,
-  ]);
+  }, [hasEntry, graph, error, isFetching, setNodes, setEdges]);
 
   return (
     <SchemaViewerContext.Provider value={schemaViewerContextValue}>
