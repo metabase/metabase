@@ -1024,7 +1024,7 @@
 
 (defn- string-filter
   [driver str-filter field arg {:keys [case-sensitive] :or {case-sensitive true} :as options}]
-  (let [casted-field (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare field))]
+  (let [casted-field (sql.qp/->honeysql driver (sql.qp/maybe-cast-uuid-for-text-compare driver field))]
     [str-filter
      (if case-sensitive casted-field [:lower casted-field])
      (get-string-filter-arg driver arg options)]))

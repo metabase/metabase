@@ -1038,6 +1038,7 @@
            metabase.lib.init
            metabase.lib.metadata
            metabase.lib.metadata.protocols
+           metabase.lib.options
            metabase.lib.schema
            metabase.lib.schema.actions
            metabase.lib.schema.aggregation
@@ -1729,6 +1730,7 @@
               metabase.query-processor.streaming.interface
               metabase.query-processor.timezone
               metabase.query-processor.util
+              metabase.query-processor.util.add-alias-info
               metabase.query-processor.util.persisted-cache}
    :uses #{analytics
            analyze

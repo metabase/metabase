@@ -6,6 +6,27 @@ title: Driver interface changelog
 
 ## Metabase 0.61.0
 
+- Added the following driver multimethods to support MBQL5 compilation migration:
+  - `compile-mbql` - Compiles an MBQL inner query to HoneySQL.
+  - `mbql-clause-with-opts` - Returns an MBQL clause in the desired MBQL format of the driver.
+  - `expression-by-name` - Gets an expression from a query or stage (`*inner-query`) by name.
+  - `aggregation-name` - Returns the name of an aggregation clause.
+  - `over-order-by->honeysql` - Returns the HoneySQL for an order by clause in the over clause of a window function.
+  - `clause-value-idx` - Returns the index of the value in a value clause.
+  - `breakout-options-index` - Returns the index of options in a breakout clause.
+  - `field->clause` - Returns an MBQL field clause with the given options.
+  - `to-clause` - Helper to dispatch to `params.ops/to-clause` or `qp.params.ops/to-clause`.
+  - `desugar-filter-clause` - Helper to dispatch to `driver-api/desugar-filter-clause` or `lib/desugar-filter-clause`.
+  - `wrap-value-literals-in-mbql` - Helper to dispatch to `driver-api/wrap-value-literals-in-mbql` or `driver-api/wrap-value-literals-in-mbql5`.
+  - `date-string->filter` - Helper to dispatch to `params.dates/date-string->filter` or `qp.params.dates/date-string->filter`.
+  These methods have implementations for the `:sql` and `:sql-mbql5` drivers. Concrete drivers should not need to
+  implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent, and updating the `sql.qp/->honeysql` methods to handle the clause options argument as the second parameter.
+  See the `:h2` driver in https://github.com/metabase/metabase/pull/71439 for an example. These methods will eventually be deprecated in favour of the `:sql-mbql5`
+  implementations once all drivers have been migrated.
+
+- Added a `driver` parameter to `sql.qp/maybe-cast-uuid-for-text-compare`. Any drivers that call this function should
+  update it to pass in the `driver` parameter now. An example is in the Snowflake driver's `string-filter` function.
+
 - `driver/field-reference-mlv2`, deprecated in 0.57.0, has now been removed.
 
 ## Metabase 0.60.0

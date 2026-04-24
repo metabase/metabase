@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -395,3 +396,26 @@
                     mt/rows
                     (map second)
                     (map sort))))))))
+
+(deftest ^:parallel aggregation-function-inside-expression-in-aggregation-test
+  (testing "should allow using aggregation functions inside expressions in aggregation (metabase#52611)"
+    (mt/test-drivers (mt/normal-driver-select {:+features [:expression-aggregations :binning]})
+      (let [mp       (mt/metadata-provider)
+            orders   (lib.metadata/table mp (mt/id :orders))
+            total    (lib.metadata/field mp (mt/id :orders :total))
+            subtotal (lib.metadata/field mp (mt/id :orders :subtotal))
+            query    (-> (lib/query mp orders)
+                         (lib/aggregate
+                          (lib/case [[(lib/> (lib/sum total) 10) (lib/sum total)]]
+                            (lib/sum subtotal)))
+                         (lib/breakout (lib/with-binning total {:strategy :bin-width :bin-width 20})))]
+        (is (= [[-60 26.96]
+                [0 851.99]
+                [20 71843.32]
+                [40 204530.21]
+                [60 283033.59]
+                [80 233639.15]
+                [100 270513.03]
+                [120 317763.17]
+                [140 128488.72]]
+               (mt/formatted-rows [int 2.0] (qp/process-query query))))))))

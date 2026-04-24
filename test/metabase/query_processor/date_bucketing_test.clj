@@ -1810,7 +1810,7 @@
                      #t "2022-03-31T00:00:00"
                      #t "2022-03-31T00:00:00-00:00"]]
             (testing (format "%d %s ^%s %s" n unit (.getCanonicalName (class t)) (pr-str t))
-              (let [march-31 (sql.qp/->honeysql driver/*driver* [:absolute-datetime t :day])
+              (let [march-31 (sql.qp/->honeysql driver/*driver* (sql.qp/mbql-clause driver/*driver* :absolute-datetime t :day))
                     june-31 (sql.qp/add-interval-honeysql-form driver/*driver* march-31 n unit)
                     checkins (mt/with-metadata-provider (mt/id)
                                (sql.qp/->honeysql driver/*driver* (lib.metadata/table (qp.store/metadata-provider) (mt/id :checkins))))
