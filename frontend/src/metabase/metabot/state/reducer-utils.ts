@@ -3,6 +3,7 @@ import { merge } from "icepick";
 import type { WritableDraft } from "immer";
 import { match } from "ts-pattern";
 
+import { METABOT_PROFILE_OVERRIDES } from "metabase/metabot/constants";
 import { uuid } from "metabase/utils/uuid";
 
 import type {
@@ -43,7 +44,7 @@ const agentOverridesByAgentId: Partial<
   Record<MetabotAgentId, Partial<MetabotConverstationState>>
 > = {
   sql: {
-    profileOverride: "sql",
+    profileOverride: METABOT_PROFILE_OVERRIDES.SQL,
   },
 };
 

@@ -1,3 +1,4 @@
+import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import type { DateFilterValue } from "metabase/querying/common/types";
 
 import { BreakoutChart } from "./BreakoutChart";
@@ -21,6 +22,7 @@ export function ConversationsByProfileChart({
       title={getChartTitle(metric, "profile")}
       metric={metric}
       onDimensionClick={onDimensionClick}
+      transformDimension={renderMetabotProfileLabel}
     />
   );
 }

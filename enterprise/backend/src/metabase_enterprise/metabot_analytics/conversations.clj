@@ -21,7 +21,7 @@
   "Trim a hydrated core_user down to the minimal shape the frontend uses
    (`MetabotUserInfo`)."
   [user]
-  (some-> user (select-keys [:id :email :first_name :last_name])))
+  (some-> user (select-keys [:id :email :first_name :last_name :tenant_id])))
 
 (def ^:private sort-columns
   "Allow-list of API sort keys → HoneySQL column refs, to keep user input out

@@ -1,5 +1,0 @@
-.visualization {
-  & :global(.CardVisualization) {
-    padding: 0;
-  }
-}

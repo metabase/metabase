@@ -1,6 +1,6 @@
 (ns metabase.transforms.crud
   "CRUD operations for transforms. Extracted from `metabase.transforms-rest.api.transform`
-   so that non-REST modules (e.g. metabot-v3, workspaces) can use them without depending
+   so that non-REST modules (e.g. metabot-v3) can use them without depending
    on the `-rest` module."
   (:require
    [clojure.string :as str]
@@ -107,7 +107,7 @@
 
 (defn create-transform!
   "Create new transform in the appdb.
-   Optionally accepts a creator-id to use instead of the current user (for workspace merges)."
+   Optionally accepts a creator-id to use instead of the current user."
   ([body]
    (create-transform! body nil))
   ([body creator-id]

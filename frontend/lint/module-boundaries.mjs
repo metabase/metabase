@@ -37,7 +37,7 @@ const elements = [
   createElement({
     type: "basic",
     name: "mlv2",
-    pattern: "frontend/src/metabase-lib/*/**",
+    pattern: "frontend/src/metabase-lib/**",
   }),
   createElement({ type: "basic", name: "ui", enforceOutgoing: true }),
   createElement({ type: "shared", name: "api" }),
@@ -53,7 +53,7 @@ const elements = [
     enforceOutgoing: true,
   }),
   createElement({ type: "feature", name: "admin" }),
-  createElement({ type: "feature", name: "reference" }),
+  createElement({ type: "feature", name: "reference", enforceOutgoing: true }),
   createElement({
     type: "feature",
     name: "enterprise",

@@ -1262,6 +1262,11 @@
   [reducible]
   (reduce (fn [_ fst] (reduced fst)) nil reducible))
 
+(defn rlast
+  "Return last item from Reducible."
+  [reducible]
+  (reduce (fn [_ x] x) nil reducible))
+
 (defn rconcat
   "Concatenate two Reducibles"
   [r1 r2]

@@ -12,6 +12,7 @@ import {
   FIXED_METABOT_IDS,
   LONG_CONVO_MSG_LENGTH_THRESHOLD,
   METABOT_REQUEST_IDS,
+  type MetabotProfileId,
 } from "../constants";
 
 import type { MetabotAgentId, MetabotUserChatMessage } from "./types";
@@ -96,18 +97,9 @@ export const getMetabotVisible = createSelector(
   (convo) => convo.visible,
 );
 
-const getInternalMessages = createSelector(
+export const getMessages = createSelector(
   getMetabotConversation,
   (convo) => convo.messages,
-);
-
-export const getMessages = createSelector(
-  [getInternalMessages, getDebugMode],
-  (messages, debugMode) => {
-    return debugMode
-      ? messages
-      : messages.filter((msg) => msg.type !== "tool_call");
-  },
 );
 
 export const getDeveloperMessage = createSelector(
@@ -196,9 +188,10 @@ export const getProfileOverride = createSelector(
 
 export const getProfile = createSelector(
   [getProfileOverride, getDebugMode, getLocation],
-  (profileOverride, debugMode, location) => {
+  (profileOverride, debugMode, location): MetabotProfileId | undefined => {
     const isTransformsPage = location.pathname.startsWith(Urls.transformList());
     return match({ debugMode, isTransformsPage })
+      .returnType<MetabotProfileId | undefined>()
       .with(
         { debugMode: false, isTransformsPage: true },
         () => "transforms_codegen",

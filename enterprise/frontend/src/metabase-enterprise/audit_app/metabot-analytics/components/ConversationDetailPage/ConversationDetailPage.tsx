@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import type { WithRouterProps } from "react-router";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
+import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
   useGetAdhocQueryMetadataQuery,
@@ -11,6 +12,8 @@ import {
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import { CodeEditor } from "metabase/common/components/CodeEditor";
 import { DateTime } from "metabase/common/components/DateTime";
+import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { ForwardRefLink } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { MetabotAdminLayout } from "metabase/metabot/components/MetabotAdmin/MetabotAdminLayout";
 import {
@@ -18,14 +21,17 @@ import {
   Messages,
 } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { getIssueTypeLabel } from "metabase/metabot/components/MetabotChat/feedback-issue-types";
+import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import type {
   MetabotAgentTextChatMessage,
   MetabotChatMessage,
 } from "metabase/metabot/state/types";
+import { PLUGIN_TENANTS } from "metabase/plugins";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import {
+  ActionIcon,
   Anchor,
   Badge,
   Box,
@@ -34,20 +40,26 @@ import {
   Flex,
   Icon,
   Loader,
+  Menu,
   SimpleGrid,
   Stack,
   Text,
   Title,
 } from "metabase/ui";
-import { isDefaultGroup } from "metabase/utils/groups";
+import { isAdminGroup, isDefaultGroup } from "metabase/utils/groups";
 import { useSelector } from "metabase/utils/redux";
+import * as Urls from "metabase/utils/urls";
 import { getUserName } from "metabase/utils/user";
+import { useGetTenantQuery } from "metabase-enterprise/api";
+import * as EnterpriseUrls from "metabase-enterprise/urls";
 import Question from "metabase-lib/v1/Question";
 import { getUrl as ML_getUrl } from "metabase-lib/v1/urls";
 import type { DatasetQuery } from "metabase-types/api";
 
 import { useGetMetabotConversationQuery } from "../../api";
 import type { ConversationFeedback, GeneratedQuery } from "../../types";
+
+import S from "./ConversationDetailPage.module.css";
 
 type StatCardProps = {
   label: string;
@@ -76,7 +88,11 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
     error,
   } = useGetMetabotConversationQuery(convoId);
 
-  const userGroupNames = useUserGroupNames(conversation?.user?.id);
+  const userGroupsInfo = useUserGroupsInfo(conversation?.user?.id);
+  const tenantId = conversation?.user?.tenant_id ?? null;
+  const { data: tenant } = useGetTenantQuery(
+    PLUGIN_TENANTS.isEnabled && tenantId != null ? tenantId : skipToken,
+  );
 
   if (isLoading || error) {
     return (
@@ -93,6 +109,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
   const userName = conversation.user
     ? getUserName(conversation.user) || t`Unknown`
     : t`Unknown`;
+  const firstName = conversation.user?.first_name?.trim() || userName;
   const totalTokens = conversation.total_tokens ?? 0;
   const messageCount = conversation.message_count ?? 0;
   const searchCount = conversation.search_count ?? 0;
@@ -115,7 +132,36 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
 
         <Flex justify="space-between" align="flex-start" gap="md">
           <Stack gap="sm">
-            <Title order={2}>{t`Conversation with ${userName}`}</Title>
+            <Flex align="baseline">
+              <Title order={2}>{t`Conversation with ${userName}`}</Title>
+              {conversation.user && (
+                <Menu shadow="md" position="bottom-start" withinPortal>
+                  <Menu.Target>
+                    <ActionIcon
+                      variant="subtle"
+                      color="text-secondary"
+                      aria-label={t`User actions`}
+                    >
+                      <Icon name="ellipsis" size={16} />
+                    </ActionIcon>
+                  </Menu.Target>
+                  <Menu.Dropdown>
+                    <Menu.Item
+                      component={ForwardRefLink}
+                      to={`/admin/metabot/usage-auditing/conversations?user=${conversation.user.id}`}
+                    >
+                      {t`See all of ${firstName}'s conversations`}
+                    </Menu.Item>
+                    <Menu.Item
+                      component={ForwardRefLink}
+                      to={Urls.editUser(conversation.user)}
+                    >
+                      {t`View ${firstName}'s details`}
+                    </Menu.Item>
+                  </Menu.Dropdown>
+                </Menu>
+              )}
+            </Flex>
             <Flex gap="lg" align="center" wrap="wrap">
               <Flex gap="xs" align="center">
                 <Icon name="calendar" size={16} c="text-tertiary" />
@@ -127,27 +173,30 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
                 <Flex gap="xs" align="center">
                   <Icon name="metabot" size={16} c="text-tertiary" />
                   <Text size="md" c="text-secondary">
-                    {firstProfile}
+                    {renderMetabotProfileLabel(firstProfile)}
                   </Text>
                 </Flex>
               )}
-              {userGroupNames.length > 0 && (
+              {(userGroupsInfo.userGroups.length > 0 ||
+                userGroupsInfo.isAdmin) && (
                 <Flex gap="xs" align="center">
                   <Icon name="group" size={16} c="text-tertiary" />
-                  <Text size="md" c="text-secondary">
-                    {userGroupNames.join(", ")}
-                  </Text>
+                  <UserGroupsMenu {...userGroupsInfo} />
                 </Flex>
               )}
-              {conversation.slack_permalink && (
-                <Anchor
-                  href={conversation.slack_permalink}
-                  target="_blank"
-                  rel="noreferrer"
-                  size="md"
-                >
-                  {t`Open in Slack`}
-                </Anchor>
+              {tenant && (
+                <Flex gap="xs" align="center">
+                  <Icon name="company" size={16} c="text-tertiary" />
+                  <Anchor
+                    component={ForwardRefLink}
+                    to={EnterpriseUrls.editTenant(tenant.id)}
+                    c="text-secondary"
+                    size="md"
+                    underline="hover"
+                  >
+                    {tenant.name}
+                  </Anchor>
+                </Flex>
               )}
             </Flex>
           </Stack>
@@ -179,12 +228,21 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
         )}
 
         <Stack gap="md">
-          <Title order={3}>{t`Conversation`}</Title>
+          <Flex align="baseline" justify="space-between">
+            <Title order={3}>{t`Conversation`}</Title>
+            {conversation.slack_permalink && (
+              <ExternalLink href={conversation.slack_permalink}>
+                {t`Open in Slack`}
+              </ExternalLink>
+            )}
+          </Flex>
           <Card withBorder shadow="none" p="xl">
             <Messages
               messages={conversation.chat_messages ?? []}
               errorMessages={[]}
               isDoingScience={false}
+              debug
+              readonly
             />
           </Card>
         </Stack>
@@ -244,6 +302,8 @@ function FeedbackCard({
         {agentResponse && (
           <AgentMessage
             message={agentResponse}
+            debug
+            readonly
             hideActions
             onCopy={noopCopy}
             showFeedbackButtons={false}
@@ -418,20 +478,89 @@ function noopUpdateQuestion(): Promise<void> {
 
 function noopCopy() {}
 
-function useUserGroupNames(userId: number | undefined): string[] {
+function useUserGroupsInfo(userId: number | undefined) {
   const { data: membershipsByUser } = useListUserMembershipsQuery();
   const { data: groups } = useListPermissionsGroupsQuery({});
 
   return useMemo(() => {
     if (userId == null || !membershipsByUser || !groups) {
-      return [];
+      return { userGroups: [], isAdmin: false };
     }
     const memberships = membershipsByUser[userId] ?? [];
-    const groupsById = new Map(
-      groups.filter((g) => !isDefaultGroup(g)).map((g) => [g.id, g.name]),
+    const selectedGroupIds = memberships.map((m) => m.group_id);
+    const isAdmin = groups.some(
+      (g) => selectedGroupIds.includes(g.id) && isAdminGroup(g),
     );
-    return memberships
-      .map((m) => groupsById.get(m.group_id))
-      .filter((name): name is string => Boolean(name));
+    const userGroups = groups.filter(
+      (g) =>
+        selectedGroupIds.includes(g.id) &&
+        !isDefaultGroup(g) &&
+        !isAdminGroup(g),
+    );
+    return { userGroups, isAdmin };
   }, [userId, membershipsByUser, groups]);
+}
+
+function UserGroupsMenu({
+  userGroups,
+  isAdmin,
+}: ReturnType<typeof useUserGroupsInfo>) {
+  if (userGroups.length === 0 && !isAdmin) {
+    return null;
+  }
+
+  const n = userGroups.length;
+  const otherGroupsLabel =
+    n === 1
+      ? userGroups[0].name
+      : ngettext(msgid`${n} other group`, `${n} other groups`, n);
+  const summaryText = isAdmin
+    ? n === 0
+      ? t`Admin`
+      : t`Admin and ${otherGroupsLabel}`
+    : n === 1
+      ? userGroups[0].name
+      : ngettext(msgid`${n} group`, `${n} groups`, n);
+
+  if (userGroups.length === 0) {
+    return (
+      <Text size="md" c="text-secondary">
+        {summaryText}
+      </Text>
+    );
+  }
+
+  return (
+    <Menu shadow="md" position="bottom-start" withinPortal>
+      <Menu.Target>
+        <Anchor
+          component="button"
+          type="button"
+          underline="never"
+          c="text-secondary"
+          size="md"
+          fw="normal"
+          className={S.groupsTarget}
+        >
+          <Flex component="span" align="center" gap={4}>
+            <span>{summaryText}</span>
+            <Icon name="chevrondown" size={10} c="text-tertiary" />
+          </Flex>
+        </Anchor>
+      </Menu.Target>
+      <Menu.Dropdown miw="14rem">
+        <Menu.Label>{t`View a group's permissions`}</Menu.Label>
+        {userGroups.map((group) => (
+          <Menu.Item
+            key={group.id}
+            component={ForwardRefLink}
+            to={getGroupFocusPermissionsUrl(group.id)}
+            leftSection={<Icon name="group" size={14} />}
+          >
+            {group.name}
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
+  );
 }
