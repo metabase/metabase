@@ -1,12 +1,16 @@
 .card {
   overflow: hidden;
-}
 
-.row {
-  cursor: default;
+  .row {
+    cursor: default;
 
-  &:hover {
-    background-color: transparent;
+    &:hover,
+    &:focus,
+    &.rowActive,
+    &.rowActive:hover {
+      /* No row selected effect */
+      background-color: transparent;
+    }
   }
 }
 

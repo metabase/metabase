@@ -1,5 +1,6 @@
 import { useDebouncedCallback } from "@mantine/hooks";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
@@ -7,7 +8,7 @@ import {
   useGetAIControlsGroupPermissionsQuery,
   useUpdateAIControlsGroupPermissionsMutation,
 } from "metabase-enterprise/api";
-import type { AIToolKey, MetabotGroupPermission } from "metabase-types/api";
+import { AIToolKey, type MetabotGroupPermission } from "metabase-types/api";
 
 export type GroupTab = "user-groups" | "tenant-groups";
 
@@ -24,24 +25,35 @@ export const useMetabotGroupPermissions = () => {
   const { sendErrorToast } = useMetadataToasts();
 
   const advanced = permissionsQueryData?.advanced ?? false;
-  const prevAdvancedRef = useRef<boolean | undefined>(undefined);
+  const prevAdvanced = usePrevious(advanced);
+  const modeTransitioned =
+    prevAdvanced !== undefined && prevAdvanced !== advanced;
 
   useEffect(() => {
     const { permissions } = permissionsQueryData || {};
+
     if (!permissions?.length) {
       return;
     }
 
-    const firstPopulate = groupPermissions.length === 0;
-    const modeTransitioned =
-      prevAdvancedRef.current !== undefined &&
-      prevAdvancedRef.current !== advanced;
+    const uninitialized = groupPermissions.length === 0;
 
-    if (firstPopulate || modeTransitioned) {
+    if (uninitialized) {
       setGroupPermissions(permissions);
     }
-    prevAdvancedRef.current = advanced;
-  }, [permissionsQueryData, advanced, groupPermissions.length]);
+  }, [permissionsQueryData, groupPermissions.length]);
+
+  useEffect(() => {
+    const { permissions } = permissionsQueryData || {};
+
+    if (!permissions?.length) {
+      return;
+    }
+
+    if (modeTransitioned) {
+      setGroupPermissions(permissions);
+    }
+  }, [modeTransitioned, permissionsQueryData]);
 
   const debouncedUpdatePermissions = useDebouncedCallback(async () => {
     try {
@@ -56,7 +68,59 @@ export const useMetabotGroupPermissions = () => {
   const onPermissionChange = useCallback(
     (groupId: number, tool: AIToolKey, value: "yes" | "no") => {
       setGroupPermissions((prevPermissions) => {
+        const allToolsDisabledForGroup = prevPermissions
+          .filter(
+            (permission) =>
+              permission.group_id === groupId &&
+              permission.perm_type !== AIToolKey.Metabot,
+          )
+          .every((permission) =>
+            permission.perm_type === tool
+              ? value === "no"
+              : permission.perm_value === "no",
+          );
+
         return prevPermissions.map((permission) => {
+          if (tool === AIToolKey.Metabot && permission.group_id === groupId) {
+            /**
+             * When metabot is enabled for the group, all tools are also enabled.
+             * Likewise, when metabot is disabled for the group, all tools are disabled.
+             */
+            return {
+              ...permission,
+              perm_value: value,
+            };
+          }
+
+          if (
+            permission.perm_type !== tool &&
+            permission.perm_type === AIToolKey.Metabot &&
+            permission.group_id === groupId
+          ) {
+            /**
+             * When metabot is disabled, and then the user enables a tool,
+             * metabot will be automatically enabled for the group.
+             */
+            if (value === "yes" && permission.perm_value === "no") {
+              return {
+                ...permission,
+                perm_value: "yes",
+              };
+            }
+
+            /**
+             * When all features get disabled, disable Metabot for that group.
+             */
+            if (allToolsDisabledForGroup) {
+              return {
+                ...permission,
+                perm_value: "no",
+              };
+            }
+
+            return permission;
+          }
+
           if (
             permission.group_id === groupId &&
             permission.perm_type === tool
@@ -64,7 +128,7 @@ export const useMetabotGroupPermissions = () => {
             return {
               ...permission,
               perm_value: value,
-            } as MetabotGroupPermission;
+            };
           }
 
           return permission;

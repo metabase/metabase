@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useState } from "react";
+import type { ChangeEvent } from "react";
 import { t } from "ttag";
 
 import { Flex, Switch, Text } from "metabase/ui";
@@ -12,14 +12,7 @@ type AiToolCellProps = AiFeatureAccessRow & {
 
 export function AiFeaturesCell(props: AiToolCellProps) {
   const { group, permissions, isAdminGroup, onPermissionChange } = props;
-  const [isEnabled, setIsEnabled] = useState<boolean | undefined>();
-
-  useEffect(() => {
-    // Initialize local state
-    if (permissions[AIToolKey.Metabot] && isEnabled === undefined) {
-      setIsEnabled(permissions[AIToolKey.Metabot].perm_value === "yes");
-    }
-  }, [isEnabled, permissions]);
+  const isEnabled = permissions[AIToolKey.Metabot]?.perm_value === "yes";
 
   return (
     <Flex align="center" gap="sm">
@@ -30,7 +23,6 @@ export function AiFeaturesCell(props: AiToolCellProps) {
         // Admin group is always enabled and can't be changed
         disabled={isAdminGroup}
         onChange={(e: ChangeEvent<HTMLInputElement>) => {
-          setIsEnabled(e.target.checked);
           onPermissionChange(
             group.id,
             AIToolKey.Metabot,
