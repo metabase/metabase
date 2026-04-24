@@ -115,8 +115,9 @@
 
 (deftest feedback-blocks-test
   (testing "feedback-blocks generates correct Slack context_actions block with feedback_buttons"
-    (let [conversation-id "test-conv-123"
-          blocks          (#'slackbot.streaming/feedback-blocks conversation-id)]
+    (let [conversation-id     "test-conv-123"
+          message-external-id "msg-ext-abc"
+          blocks              (#'slackbot.streaming/feedback-blocks conversation-id message-external-id)]
       (is (= 1 (count blocks)))
       (let [{:keys [type block_id elements]} (first blocks)]
         (is (= "context_actions" type))
@@ -126,10 +127,14 @@
           (is (= "feedback_buttons" (:type fb)))
           (is (= "metabot_feedback" (:action_id fb)))
           (testing "positive button"
-            (is (= {:conversation_id conversation-id :positive true}
+            (is (= {:conversation_id     conversation-id
+                    :message_external_id message-external-id
+                    :positive            true}
                    (json/decode (get-in fb [:positive_button :value]) true))))
           (testing "negative button"
-            (is (= {:conversation_id conversation-id :positive false}
+            (is (= {:conversation_id     conversation-id
+                    :message_external_id message-external-id
+                    :positive            false}
                    (json/decode (get-in fb [:negative_button :value]) true)))))))))
 
 (deftest streaming-response-includes-feedback-blocks-test
