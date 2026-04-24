@@ -10,6 +10,7 @@ import Question from "metabase-lib/v1/Question";
 import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   CardId,
+  ParameterValuesMap,
   Card as SavedCard,
   UnsavedCard,
 } from "metabase-types/api";
@@ -24,34 +25,28 @@ type Card = Partial<SavedCard> & {
 
 export type QuestionUrlBuilderParams = {
   mode?: "view" | "notebook" | "query";
-  hash?: SavedCard | UnsavedCard | string;
   query?: Record<string, unknown> | string;
   objectId?: number | string;
+  creationType?: string;
+  parameterValues?: ParameterValuesMap;
+  includeDisplayIsLocked?: boolean;
+  // Route to the unsaved-with-hash URL even though the card has a real id —
+  // used for dirty edits to a saved question that shouldn't land on the saved path.
+  forceUnsaved?: boolean;
 };
 
 export function question(
-  card: Partial<
-    Pick<
-      Card,
-      | "id"
-      | "name"
-      | "type"
-      | "card_id"
-      | "model"
-      | "collection_id"
-      | "dashboard_id"
-    >
-  > | null,
+  card: Partial<Card> | null,
   {
     mode = "view",
-    hash = "",
     query = "",
     objectId,
+    creationType,
+    parameterValues,
+    includeDisplayIsLocked = false,
+    forceUnsaved = false,
   }: QuestionUrlBuilderParams = {},
 ) {
-  hash = encodeIfNeeded(hash, serializeCardForUrl);
-  hash = prefixIfNeeded(hash, "#");
-
   query = encodeIfNeeded(query, getEncodedUrlSearchParams);
   query = prefixIfNeeded(query, "?");
 
@@ -59,8 +54,15 @@ export function question(
   const fallbackPath = isModel ? "model" : "question";
   let path: string = card?.type ?? fallbackPath;
 
-  if (!card || !card.id || isTransientCardId(card.id)) {
+  if (!card || !card.id || isTransientCardId(card.id) || forceUnsaved) {
     const unsavedPath = path === "metric" ? "question" : path;
+    const hash = card?.dataset_query
+      ? `#${serializeCardForUrl(card as SavedCard | UnsavedCard, {
+          creationType,
+          parameterValues,
+          includeDisplayIsLocked,
+        })}`
+      : "";
     return `/${unsavedPath}${query}${hash}`;
   }
 
@@ -96,7 +98,7 @@ export function question(
     path = `${path}/${objectId}`;
   }
 
-  return `${path}${query}${hash}`;
+  return `${path}${query}`;
 }
 
 function encodeIfNeeded<T extends object>(
@@ -117,7 +119,7 @@ function prefixIfNeeded(value: string, prefix: string) {
 }
 
 export function serializedQuestion(card: SavedCard | UnsavedCard, opts = {}) {
-  return question(null, { ...opts, hash: card });
+  return question(card, { ...opts, forceUnsaved: true });
 }
 
 type NewQuestionUrlBuilderParams = QuestionCreatorOpts & {
@@ -191,10 +193,8 @@ export function tableRowsQuery(
     query += `&segment=${segmentId}`;
   }
 
-  // This will result in a URL like "/question#?db=1&table=1"
-  // The QB will parse the querystring and use DB and table IDs to create an ad-hoc question
-  // We should refactor the initializeQB to avoid passing query string to hash as it's pretty confusing
-  return question(null, { hash: query });
+  // QB parses this querystring-in-hash to build an ad-hoc question — confusing, but load-bearing.
+  return `/question#${query}`;
 }
 
 export function xrayModel(id: CardId) {

@@ -1,8 +1,3 @@
-/* eslint-disable no-restricted-imports */
-import {
-  isTransientCardId,
-  serializeCardForUrl,
-} from "metabase/common/utils/card";
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
@@ -23,24 +18,17 @@ export function getQuestionUrl(
   question: Question,
   { originalQuestion, query, creationType }: UrlBuilderOpts = {},
 ) {
-  if (
-    // the question is unsaved
-    !question.isSaved() ||
-    // the question is transient (so not saved)
-    isTransientCardId(question.id()) ||
-    // the question is a new question based on the original question
-    (originalQuestion && question.isDirtyComparedTo(originalQuestion))
-  ) {
-    const hash = serializeCardForUrl(question.cardWithNormalizedQuery(), {
-      includeDisplayIsLocked: true,
-      creationType,
-      parameterValues: question._parameterValues,
-    });
+  const isDirty =
+    originalQuestion != null && question.isDirtyComparedTo(originalQuestion);
 
-    return Urls.question(null, { query, hash });
-  } else {
-    return Urls.question(question.card(), { query });
-  }
+  return Urls.question(question.cardWithNormalizedQuery(), {
+    query,
+    creationType,
+    parameterValues: question._parameterValues,
+    includeDisplayIsLocked: true,
+    // dirty questions should always render as unsaved
+    forceUnsaved: isDirty,
+  });
 }
 
 export function getQuestionUrlWithParameters(

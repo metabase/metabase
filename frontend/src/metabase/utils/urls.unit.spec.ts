@@ -21,12 +21,6 @@ describe("urls", () => {
         expect(question({}, { query: { foo: "bar" } })).toEqual(
           "/question?foo=bar",
         );
-        expect(question({}, { hash: "hash", query: { foo: "bar" } })).toEqual(
-          "/question?foo=bar#hash",
-        );
-        expect(question(null, { hash: "hash", query: { foo: "bar" } })).toEqual(
-          "/question?foo=bar#hash",
-        );
         expect(question(null, { query: { foo: "bar" } })).toEqual(
           "/question?foo=bar",
         );
@@ -103,19 +97,6 @@ describe("urls", () => {
       it("should support query params", () => {
         const url = question({ id: 1 }, { query: "?a=b", objectId: 5 });
         expect(url).toBe("/question/1/5?a=b");
-      });
-
-      it("should support hash", () => {
-        const url = question({ id: 1 }, { hash: "abc", objectId: 5 });
-        expect(url).toBe("/question/1/5#abc");
-      });
-
-      it("should support both hash and query params", () => {
-        const url = question(
-          { id: 1, name: "foo" },
-          { hash: "abc", query: "a=b", objectId: 5 },
-        );
-        expect(url).toBe("/question/1-foo/5?a=b#abc");
       });
     });
   });
