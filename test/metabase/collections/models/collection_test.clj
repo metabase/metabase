@@ -1,5 +1,5 @@
 (ns metabase.collections.models.collection-test
-  (:refer-clojure :exclude [ancestors descendants])
+  (:refer-clojure :exclude [descendants])
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]

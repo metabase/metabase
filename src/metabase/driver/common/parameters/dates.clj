@@ -8,7 +8,7 @@
   in [[metabase.query-processor.parameters.dates]], we should remove the version here to encourage migration to that
   namespace."
   {:deprecated "0.57.0"}
-  (:refer-clojure :exclude [every? some get-in])
+  (:refer-clojure :exclude [every? get-in])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]

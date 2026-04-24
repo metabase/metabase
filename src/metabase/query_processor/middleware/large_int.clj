@@ -3,7 +3,7 @@
   (:refer-clojure :exclude [mapv])
   (:require
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.util.performance :as perf :refer [mapv]])
+   [metabase.util.performance :refer [mapv]])
   (:import
    (clojure.lang BigInt)
    (java.math BigDecimal BigInteger)))
@@ -61,7 +61,7 @@
   "Converts all large integer row values to strings."
   [column-index-mask rf]
   ((map (fn [row]
-          (perf/mapv #(if %2 (maybe-large-int->string %1) %1) row column-index-mask)))
+          (mapv #(if %2 (maybe-large-int->string %1) %1) row column-index-mask)))
    rf))
 
 (defn- maybe-integer-column?

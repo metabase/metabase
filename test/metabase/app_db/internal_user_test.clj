@@ -14,7 +14,7 @@
                            :user_group_memberships
                            (->> (map :id)))
           all-users-id (t2/select-one-pk :model/PermissionsGroup :name "All Users")]
-      (is [all-users-id] memberships))))
+      (is all-users-id memberships))))
 
 (deftest internal-user-is-unmodifiable-via-api-test
   (testing "GET /api/user"
