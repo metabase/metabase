@@ -137,17 +137,14 @@ function findJoinableColumn(
   });
 }
 
-// Join to v_group_members and filter the joined group_id. Equality on the
-// view's own group_name column is lossy — it only exposes each user's
-// alphabetically-first non-All-Users group, so users in multiple groups get
-// silently missed.
-export function applyGroupFilterByJoin(
+// the source view's group_name is lossy (alphabetically-first non-All-Users
+// group only), so callers needing "all groups a user belongs to" join here
+export function joinGroupMembers(
   query: Query,
-  groupId: number | undefined,
   groupMembersTable: TableMetadata | CardMetadata | null | undefined,
   sourceUserIdColumn = "user_id",
 ): Query {
-  if (groupId == null || !groupMembersTable) {
+  if (!groupMembersTable) {
     return query;
   }
 
@@ -180,25 +177,62 @@ export function applyGroupFilterByJoin(
   }
 
   const condition = Lib.joinConditionClause("=", lhsUserId, rhsUserId);
-  const joined = Lib.join(
+  return Lib.join(
     query,
     0,
     Lib.joinClause(groupMembersTable, [condition], innerJoin),
   );
+}
 
-  const groupIdCol = findColumn(joined, "group_id", Lib.filterableColumns);
-  if (!groupIdCol) {
-    return joined;
+// no-op pre-join: group_id only exists on v_group_members
+export function applyGroupIdFilter(
+  query: Query,
+  groupId: number | undefined,
+): Query {
+  if (groupId == null) {
+    return query;
+  }
+  const col = findColumn(query, "group_id", Lib.filterableColumns);
+  if (!col) {
+    return query;
   }
   return Lib.filter(
-    joined,
+    query,
     0,
-    Lib.numberFilterClause({
-      operator: "=",
-      column: groupIdCol,
-      values: [groupId],
-    }),
+    Lib.numberFilterClause({ operator: "=", column: col, values: [groupId] }),
   );
+}
+
+// matches the view's own group_name subquery (WHERE pg.id != 1) so a
+// by-group breakout isn't dominated by an All Users bar
+export function excludeAllUsersGroup(query: Query): Query {
+  const col = findColumn(query, "group_id", Lib.filterableColumns);
+  if (!col) {
+    return query;
+  }
+  return Lib.filter(
+    query,
+    0,
+    Lib.numberFilterClause({ operator: "!=", column: col, values: [1] }),
+  );
+}
+
+// group_name exists on both the source view and v_group_members after the
+// join, so findColumn by name alone is ambiguous
+export function findJoinedGroupMembersColumn(
+  query: Query,
+  columnName: string,
+  columnsFn: (q: Query, stageIndex: number) => ColumnMetadata[],
+): ColumnMetadata | undefined {
+  const nameLower = columnName.toLowerCase();
+  return columnsFn(query, 0).find((col) => {
+    const info = Lib.displayInfo(query, 0, col);
+    if (info.name?.toLowerCase() !== nameLower) {
+      return false;
+    }
+    const longName = info.longDisplayName?.toLowerCase() ?? "";
+    return longName.includes("group_members") || longName.includes("group members");
+  });
 }
 
 /**

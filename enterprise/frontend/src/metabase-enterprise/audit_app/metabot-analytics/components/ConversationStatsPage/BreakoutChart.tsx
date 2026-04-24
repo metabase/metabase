@@ -20,11 +20,14 @@ import S from "./ChartCard.module.css";
 import {
   type UsageStatsMetric,
   applyDateFilter,
-  applyGroupFilterByJoin,
+  applyGroupIdFilter,
   applyUsageStatsAggregation,
   applyUserFilter,
+  excludeAllUsersGroup,
   findColumn,
+  findJoinedGroupMembersColumn,
   getMetricSeriesSettings,
+  joinGroupMembers,
 } from "./query-utils";
 
 type Props = {
@@ -33,6 +36,10 @@ type Props = {
   groupId?: number;
   groupMembersTable?: TableMetadata | CardMetadata | null;
   breakoutColumn: string;
+  // resolve breakoutColumn from the joined v_group_members table instead of
+  // the source view — needed so users in multiple groups contribute to every
+  // group's bar, not just their alphabetically-first
+  breakoutOnJoinedGroupMembers?: boolean;
   title: string;
   display?: VisualizationDisplay;
   metric: UsageStatsMetric;
@@ -57,6 +64,7 @@ export function BreakoutChart({
   groupId,
   groupMembersTable,
   breakoutColumn,
+  breakoutOnJoinedGroupMembers = false,
   title,
   display = "row",
   metric,
@@ -74,18 +82,35 @@ export function BreakoutChart({
     if (!provider || !table) {
       return null;
     }
+    // wait for the joined-table metadata — otherwise findColumn falls back to
+    // the source view's group_name and the chart renders wrong silently
+    if (breakoutOnJoinedGroupMembers && !groupMembersTable) {
+      return null;
+    }
+
     let q = Lib.queryFromTableOrCardMetadata(provider, table);
 
     q = applyDateFilter(q, dateFilter);
     q = applyUserFilter(q, userId);
-    q = applyGroupFilterByJoin(q, groupId, groupMembersTable);
+
+    if (breakoutOnJoinedGroupMembers) {
+      q = joinGroupMembers(q, groupMembersTable);
+      q = excludeAllUsersGroup(q);
+      q = applyGroupIdFilter(q, groupId);
+    } else if (groupId != null && groupMembersTable) {
+      q = joinGroupMembers(q, groupMembersTable);
+      q = applyGroupIdFilter(q, groupId);
+    }
+
     const { query: aggregated, orderColumnName } = applyUsageStatsAggregation(
       q,
       metric,
     );
     q = aggregated;
 
-    const col = findColumn(q, breakoutColumn, Lib.breakoutableColumns);
+    const col = breakoutOnJoinedGroupMembers
+      ? findJoinedGroupMembersColumn(q, breakoutColumn, Lib.breakoutableColumns)
+      : findColumn(q, breakoutColumn, Lib.breakoutableColumns);
     if (col) {
       q = Lib.breakout(q, 0, col);
     }
@@ -106,6 +131,7 @@ export function BreakoutChart({
     groupId,
     groupMembersTable,
     breakoutColumn,
+    breakoutOnJoinedGroupMembers,
     metric,
   ]);
 
