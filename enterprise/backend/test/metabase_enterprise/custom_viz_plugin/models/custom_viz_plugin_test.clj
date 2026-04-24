@@ -23,7 +23,8 @@
 
 (deftest permissions-test
   (testing "read is available to any authenticated user"
-    (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "perm-test"
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/ts-test"
+                                                    :identifier   "perm-test"
                                                     :display_name "perm-test"
                                                     :status       :active}]
       (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
