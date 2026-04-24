@@ -305,7 +305,8 @@
 
 (deftest include-sdk-info-pii-fields-test
   (let [request (-> (ring.mock/request :get "/api/public/card/1")
-                    (ring.mock/header "x-metabase-embed-referrer" "https://app.example.com/dashboard/1?x=y")
+                    (ring.mock/header "origin" "https://app.example.com")
+                    (ring.mock/header "referer" "https://app.example.com/dashboard/1?x=y")
                     (ring.mock/header "user-agent" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
                     (assoc :remote-addr "10.0.0.1"))]
     (testing "PII fields populated when setting enabled and request bound"
@@ -339,8 +340,8 @@
 (deftest embed-referrer-header-precedence-test
   (let [request (-> (ring.mock/request :get "/api/embed/card/1")
                     (ring.mock/header "x-metabase-embed-referrer" "https://embed.example.com/analytics/dash")
-                    (ring.mock/header "origin" "https://fallback-origin.example.com")
-                    (ring.mock/header "referer" "https://fallback-referer.example.com/other/path")
+                    (ring.mock/header "origin" "https://fallback.example.com")
+                    (ring.mock/header "referer" "https://fallback.example.com/other/path")
                     (assoc :remote-addr "10.0.0.1"))]
     (mt/with-temporary-setting-values [analytics-pii-retention-enabled true]
       (request.current/with-current-request request
