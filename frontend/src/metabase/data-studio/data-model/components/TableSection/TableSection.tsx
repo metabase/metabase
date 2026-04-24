@@ -35,9 +35,9 @@ import {
   Tabs,
   Tooltip,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
-import type { DataStudioTableMetadataTab } from "metabase/utils/urls/data-studio";
-import { dependencyGraph } from "metabase/utils/urls/dependencies";
+import * as Urls from "metabase/urls";
+import type { DataStudioTableMetadataTab } from "metabase/urls/data-studio";
+import { dependencyGraph } from "metabase/urls/dependencies";
 import {
   type FieldId,
   type Table,

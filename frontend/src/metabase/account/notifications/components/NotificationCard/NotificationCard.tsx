@@ -11,7 +11,7 @@ import {
   getNotificationEnabledChannelsMap,
 } from "metabase/notifications/utils";
 import { Box, Flex, Group, Icon, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { User } from "metabase-types/api";
 
 import S from "./DashboardNotificationCard.module.css";

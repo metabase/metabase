@@ -716,7 +716,7 @@
                                    "resources/html-entities.edn"
                                    "resources/openapi/.*"
                                    "frontend/src/cljs"
-                                   "frontend/src/metabase/utils/urls\\.unit\\.spec\\.js$"
+                                   "frontend/src/metabase/urls\\.unit\\.spec\\.js$"
                                    "frontend/src/metabase/utils/formatting\\.unit\\.spec\\.js$"
                                    "src/metabase/util/currency\\.cljc$"
                                    "test/metabase/channel/render/png_test.clj"

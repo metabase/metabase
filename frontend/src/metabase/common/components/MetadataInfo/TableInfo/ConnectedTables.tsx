@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type Table from "metabase-lib/v1/metadata/Table";
 
 import { Container, Label, LabelContainer } from "../MetadataInfo.styled";

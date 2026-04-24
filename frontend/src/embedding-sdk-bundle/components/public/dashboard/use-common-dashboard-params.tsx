@@ -11,9 +11,9 @@ import {
 import { navigateBackToDashboard } from "metabase/redux/query-builder";
 import type { StoreDashboard } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Urls from "metabase/urls";
 import { isJWT } from "metabase/utils/jwt";
 import { parseNumber } from "metabase/utils/number";
-import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 import {
   type DashboardId,

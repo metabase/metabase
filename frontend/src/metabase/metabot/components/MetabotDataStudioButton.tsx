@@ -8,8 +8,8 @@ import {
 import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { ActionIcon, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { METAKEY } from "metabase/utils/browser";
-import * as Urls from "metabase/utils/urls";
 
 import { trackMetabotChatOpened } from "../analytics";
 

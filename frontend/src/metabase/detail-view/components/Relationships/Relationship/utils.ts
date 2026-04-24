@@ -1,5 +1,5 @@
+import * as Urls from "metabase/urls";
 import { parseNumber } from "metabase/utils/number";
-import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

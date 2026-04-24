@@ -20,7 +20,7 @@ import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { connect, useSelector } from "metabase/redux";
 import { getIsTenantUser } from "metabase/selectors/user";
 import { Icon, Tooltip } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Bookmark } from "metabase-types/api";
 
 import { SidebarHeading } from "../../MainNavbar.styled";

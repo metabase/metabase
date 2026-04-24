@@ -5,7 +5,7 @@ import _ from "underscore";
 import { isEmbedding } from "metabase/embedding/config";
 import type { State } from "metabase/redux/store";
 import { getLocation } from "metabase/selectors/routing";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { TransformId } from "metabase-types/api";
 
 import {

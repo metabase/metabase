@@ -7,7 +7,7 @@ import {
   PLUGIN_AUDIT,
 } from "metabase/plugins";
 import { Menu } from "metabase/ui";
-import { isInternalUser } from "metabase/utils/urls";
+import { isInternalUser } from "metabase/urls";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { InsightsLink } from "./components/InsightsLink";
