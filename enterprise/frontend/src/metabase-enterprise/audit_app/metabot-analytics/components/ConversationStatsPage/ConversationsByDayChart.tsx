@@ -1,21 +1,19 @@
-import cx from "classnames";
 import { useMemo } from "react";
+import { t } from "ttag";
 
-import { useGetAdhocQueryQuery } from "metabase/api";
-import type { DateFilterValue } from "metabase/querying/common/types";
-import { Card, Skeleton, Text } from "metabase/ui";
-import Visualization from "metabase/visualizations/components/Visualization";
-import type { ClickActionsMode } from "metabase/visualizations/types";
-import type { CardMetadata, TableMetadata } from "metabase-lib";
+import type {
+  CardMetadata,
+  MetadataProvider,
+  TableMetadata,
+} from "metabase-lib";
 import * as Lib from "metabase-lib";
 import { createMockCard } from "metabase-types/api/mocks";
 
-import { VIEW_CONVERSATIONS } from "../../constants";
-import { useAuditTable } from "../../hooks/useAuditTable";
+import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
-import S from "./ChartCard.module.css";
+import { BreakoutChartCard } from "./BreakoutChartCard";
 import {
-  type UsageStatsMetric,
+  type StatsFilters,
   applyDateFilter,
   applyGroupIdFilter,
   applyUsageStatsAggregation,
@@ -27,47 +25,37 @@ import {
   joinGroupMembers,
 } from "./query-utils";
 
-type Props = {
-  dateFilter: DateFilterValue;
-  userId?: number;
-  groupId?: number;
-  groupMembersTable?: TableMetadata | CardMetadata | null;
-  metric: UsageStatsMetric;
-  viewName?: string;
+type Props = StatsFilters & {
+  provider: MetadataProvider;
+  table: TableMetadata | CardMetadata;
+  groupMembersTable: TableMetadata | CardMetadata;
   onDimensionClick?: (value: unknown) => void;
 };
 
-const CLICKABLE_MODE: ClickActionsMode = {
-  actionsForClick: () => [{ name: "custom-click" } as any],
-};
-
 export function ConversationsByDayChart({
+  provider,
+  table,
+  groupMembersTable,
   dateFilter,
   userId,
   groupId,
-  groupMembersTable,
   metric,
-  viewName = VIEW_CONVERSATIONS,
   onDimensionClick,
 }: Props) {
-  const { provider, table } = useAuditTable(viewName);
-
+  const otherLabel = t`Other`;
   const bucketName = isSingleDayFilter(dateFilter) ? "hour" : "day";
 
   const query = useMemo(() => {
-    if (!provider || !table) {
-      return null;
-    }
     let q = Lib.queryFromTableOrCardMetadata(provider, table);
 
     q = applyDateFilter(q, dateFilter);
     q = applyUserFilter(q, userId);
-    if (groupId != null && groupMembersTable) {
+    if (groupId != null) {
       q = joinGroupMembers(q, groupMembersTable);
       q = applyGroupIdFilter(q, groupId);
     }
-    const { query: aggregated } = applyUsageStatsAggregation(q, metric);
-    q = aggregated;
+
+    q = applyUsageStatsAggregation(q, metric);
 
     const createdAtCol = findColumn(q, "created_at", Lib.breakoutableColumns);
     if (createdAtCol) {
@@ -86,20 +74,19 @@ export function ConversationsByDayChart({
   }, [
     provider,
     table,
+    groupMembersTable,
     dateFilter,
     userId,
     groupId,
-    groupMembersTable,
     metric,
     bucketName,
   ]);
 
-  const jsQuery = useMemo(() => (query ? Lib.toJsQuery(query) : null), [query]);
+  const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
 
-  const { data, isFetching } = useGetAdhocQueryQuery(jsQuery ?? ({} as any), {
-    skip: !jsQuery,
-  });
-
+  // ConversationsByDayChart needs custom timeseries options that toBreakoutRawSeries
+  // doesn't model (line vs area, dual-axis tokens, x-axis as timeseries) — so the
+  // rawSeries shape is built inline rather than going through the shared helper.
   const rawSeries = useMemo(() => {
     if (!data?.data || !jsQuery) {
       return null;
@@ -131,36 +118,15 @@ export function ConversationsByDayChart({
     ];
   }, [data, jsQuery, metric]);
 
-  if (isFetching || !rawSeries) {
-    return <Skeleton h={350} />;
-  }
-
   return (
-    <Card
-      className={cx(S.visualization, {
-        [S.nonClickable]: !onDimensionClick,
-      })}
-      withBorder
-      shadow="none"
-      px="lg"
-      pt="md"
-      pb="0"
+    <BreakoutChartCard
+      title={getChartTitle(metric, bucketName)}
+      rawSeries={rawSeries}
+      isFetching={isFetching}
+      display="area"
       h={350}
-    >
-      <Text fw="bold" mb="md">
-        {getChartTitle(metric, bucketName)}
-      </Text>
-      <Visualization
-        rawSeries={rawSeries}
-        isDashboard
-        mode={onDimensionClick ? CLICKABLE_MODE : undefined}
-        handleVisualizationClick={(clicked: any) => {
-          const value = clicked?.dimensions?.[0]?.value;
-          if (value != null && onDimensionClick) {
-            onDimensionClick(value);
-          }
-        }}
-      />
-    </Card>
+      otherLabel={otherLabel}
+      onDimensionClick={onDimensionClick}
+    />
   );
 }
