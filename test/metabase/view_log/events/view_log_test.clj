@@ -43,7 +43,7 @@
               :context    :question}
              (latest-view (u/id user) (u/id card))))
         (testing "tenant_id is nil for user without a tenant"
-          (is (nil? (:tenant_id (latest-view (u/id user) (u/id card))))))))))
+          (is (= nil (:tenant_id (latest-view (u/id user) (u/id card))))))))))
 
 (deftest card-read-tenant-id-test
   (when config/ee-available?
@@ -63,7 +63,7 @@
                    :model/Card card {:creator_id (u/id user)}]
       (testing "A basic card read event is not recorded in OSS"
         (events/publish-event! :event/card-read {:object-id (u/id card) :user-id (u/the-id user) :context :question})
-        (is (nil? (latest-view (u/id user) (u/id card)))
+        (is (= nil (latest-view (u/id user) (u/id card)))
             "view log entries should not be made in OSS")))))
 
 (deftest collection-read-ee-test
@@ -125,13 +125,13 @@
           (mt/with-full-data-perms-for-all-users!
             (mt/with-current-user (u/id user)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
-              (is (true? (:has_access (latest-view (u/id user) (u/id table))))))
+              (is (= true (:has_access (latest-view (u/id user) (u/id table))))))
 
             ;; Bind the user again to flush the perms cache
             (mt/with-current-user (u/id user)
               (data-perms/set-table-permission! (perms-group/all-users) (mt/id :users) :perms/create-queries :no)
               (events/publish-event! :event/table-read {:object table :user-id (u/id user)})
-              (is (false? (:has_access (latest-view (u/id user) (u/id table))))))))))))
+              (is (= false (:has_access (latest-view (u/id user) (u/id table))))))))))))
 
 (deftest dashboard-read-ee-test
   (mt/with-premium-features #{:audit-app}
@@ -150,7 +150,7 @@
                 :context    nil}
                (latest-view (u/id user) (u/id dashboard))))
           (testing "Card read events are not recorded when viewing a dashboard"
-            (is (nil? (latest-view (u/id user) (u/id card))))))))))
+            (is (= nil (latest-view (u/id user) (u/id card))))))))))
 
 (deftest card-read-view-count-test
   (mt/test-helpers-set-global-values!
@@ -370,7 +370,7 @@
                                   :query-hash  (qp.util/query-hash (mt/mbql-query venues {:limit 1}))
                                   :context     :question})
               ei    (#'process-userland-query/query-execution-info query)]
-          (is (nil? (:tenant_id ei))))))))
+          (is (= nil (:tenant_id ei))))))))
 
 (defn- make-test-query
   "Builds a minimal query suitable for `query-execution-info`, with optional overrides merged in."
@@ -385,10 +385,10 @@
   (testing "is_db_routed is true when destination-database/id is present"
     (let [ei (#'process-userland-query/query-execution-info
               (make-test-query :destination-database/id 42))]
-      (is (true? (:is_db_routed ei)))))
+      (is (= true (:is_db_routed ei)))))
   (testing "is_db_routed is false when destination-database/id is absent"
     (let [ei (#'process-userland-query/query-execution-info (make-test-query))]
-      (is (false? (:is_db_routed ei))))))
+      (is (= false (:is_db_routed ei))))))
 
 (deftest query-execution-parameters-test
   (testing "parameters is JSON-encoded when PII retention enabled"
@@ -403,10 +403,20 @@
       (let [params [{:type "text/single" :value "foo"}]
             ei     (#'process-userland-query/query-execution-info
                     (make-test-query :parameters params))]
-        (is (nil? (:parameters ei))))))
+        (is (= nil (:parameters ei))))))
   (testing "parameters is nil when absent"
     (let [ei (#'process-userland-query/query-execution-info (make-test-query))]
-      (is (nil? (:parameters ei))))))
+      (is (= nil (:parameters ei))))))
+
+(deftest query-execution-is-impersonated-test
+  (testing "is_impersonated is true when :impersonation/role present"
+    (let [ei (#'process-userland-query/query-execution-info
+              (make-test-query :impersonation/role "some_role"))]
+      (is (= true (:is_impersonated ei)))))
+  (testing "is_impersonated is false when absent"
+    (let [ei (#'process-userland-query/query-execution-info
+              (make-test-query))]
+      (is (= false (:is_impersonated ei))))))
 
 (deftest public-card-pii-fields-test
   (mt/with-premium-features #{:audit-app}
@@ -442,17 +452,17 @@
               (testing "in view_log"
                 (let [view (latest-view nil (:id card))]
                   (is (= "app.example.com" (:embedding_hostname view)))
-                  (is (nil? (:embedding_path view)))
-                  (is (nil? (:user_agent view)))
-                  (is (nil? (:sanitized_user_agent view)))
-                  (is (nil? (:ip_address view)))))
+                  (is (= nil (:embedding_path view)))
+                  (is (= nil (:user_agent view)))
+                  (is (= nil (:sanitized_user_agent view)))
+                  (is (= nil (:ip_address view)))))
               (testing "in query_execution"
                 (let [qe (latest-qe (:id card))]
                   (is (= "app.example.com" (:embedding_hostname qe)))
-                  (is (nil? (:embedding_path qe)))
-                  (is (nil? (:user_agent qe)))
-                  (is (nil? (:sanitized_user_agent qe)))
-                  (is (nil? (:ip_address qe))))))))))))
+                  (is (= nil (:embedding_path qe)))
+                  (is (= nil (:user_agent qe)))
+                  (is (= nil (:sanitized_user_agent qe)))
+                  (is (= nil (:ip_address qe))))))))))))
 
 (deftest public-dashboard-card-pii-fields-test
   (mt/with-premium-features #{:audit-app}
@@ -510,8 +520,8 @@
       "/api/metabot/something"        "metabot"
       "/api/agent/something"          "agent-api"))
   (testing "route-surface returns nil for non-matching URIs"
-    (is (nil? (sdk/embedding-route "/api/card/1")))
-    (is (nil? (sdk/embedding-route nil)))))
+    (is (= nil (sdk/embedding-route "/api/card/1")))
+    (is (= nil (sdk/embedding-route nil)))))
 
 (defn- ->bool
   "Coerce a value to boolean. MySQL JDBC returns Integer 1/0 for TRUE/FALSE
@@ -551,7 +561,7 @@
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
 
-                (is (false?                    (->bool (:is_preview row))))
+                (is (= false                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
                 (is (= "app.example.com"       (:embedding_hostname row)))
@@ -564,7 +574,7 @@
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
 
-                (is (false?                    (->bool (:is_preview row))))
+                (is (= false                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
                 (is (= "app.example.com"       (:embedding_hostname row)))
@@ -591,7 +601,7 @@
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
 
-                (is (false?                    (->bool (:is_preview row))))
+                (is (= false                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
                 (is (= "app.example.com"       (:embedding_hostname row)))
@@ -604,7 +614,7 @@
                 (is (= "embedding-sdk-react"   (:embedding_client row)))
                 (is (= "public"                (:embedding_route row)))
 
-                (is (false?                    (->bool (:is_preview row))))
+                (is (= false                    (->bool (:is_preview row))))
                 (is (= "1.42.0"                (:embedding_sdk_version row)))
                 (is (= "public"                (:auth_method row)))
                 (is (= "app.example.com"       (:embedding_hostname row)))
