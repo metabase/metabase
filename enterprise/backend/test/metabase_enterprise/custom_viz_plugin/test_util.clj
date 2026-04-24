@@ -10,10 +10,10 @@
 
 (set! *warn-on-reflection* true)
 
-(defn ^bytes make-tgz-bytes
+(defn make-tgz-bytes
   "Build a tar.gz archive in memory from a seq of `[name content]` pairs.
    `content` may be a String or a byte array."
-  [entries]
+  ^bytes [entries]
   ;; The gzip/tar streams must be closed (not just finished) before the byte
   ;; array is final — gzip only emits its trailer on close. Keep `baos` out
   ;; of `with-open` so we can still read from it after the streams close.
@@ -30,11 +30,11 @@
       (.finish tar))
     (.toByteArray baos)))
 
-(defn ^bytes valid-bundle-bytes
+(defn valid-bundle-bytes
   "Build a minimal valid plugin tar.gz archive: manifest at the root with the
    given `identifier` as `name`, a trivial `dist/index.js`, and optional
    `:icon` / `:metabase-version` overrides merged into the manifest."
-  [identifier & [{:keys [icon metabase-version]}]]
+  ^bytes [identifier & [{:keys [icon metabase-version]}]]
   (let [manifest (cond-> {:name identifier}
                    icon             (assoc :icon icon)
                    metabase-version (assoc-in [:metabase :version] metabase-version))]
