@@ -391,7 +391,7 @@ function buildDot() {
   }
   for (const { tierId, label, color } of legendTiers) {
     emit(
-      `      "legend_${tierId}" [label="${label}" fillcolor="${color}" width="1.0"]`,
+      `  "legend_${tierId}" [label="${label}" fillcolor="${color}" width="1.0"]`,
     );
   }
   const legendChain = legendTiers.map((t) => `"legend_${t.tierId}"`).join(" -> ");
