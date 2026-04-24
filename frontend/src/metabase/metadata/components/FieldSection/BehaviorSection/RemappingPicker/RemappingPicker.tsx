@@ -14,7 +14,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import { FieldDataSelector } from "metabase/query_builder/components/DataSelector";
+import { FieldDataSelector } from "metabase/querying/common/components/DataSelector";
 import {
   Alert,
   Button,

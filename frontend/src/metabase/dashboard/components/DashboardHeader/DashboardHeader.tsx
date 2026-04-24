@@ -17,10 +17,10 @@ import {
 } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Flex, Loader } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { Dashboard } from "metabase-types/api";
 
 import { SIDEBAR_NAME } from "../../constants";

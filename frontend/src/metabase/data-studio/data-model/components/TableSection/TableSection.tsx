@@ -24,6 +24,7 @@ import {
   PLUGIN_REMOTE_SYNC,
   PLUGIN_REPLACEMENT,
 } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   Box,
   Button,
@@ -34,7 +35,6 @@ import {
   Tabs,
   Tooltip,
 } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { DataStudioTableMetadataTab } from "metabase/utils/urls/data-studio";
 import { dependencyGraph } from "metabase/utils/urls/dependencies";
@@ -246,7 +246,7 @@ const TableSectionBase = ({
             >{t`Fields`}</Tabs.Tab>
             <Tabs.Tab
               value="segments"
-              leftSection={<Icon name="segment2" />}
+              leftSection={<Icon name="segment" />}
             >{t`Segments`}</Tabs.Tab>
             <Tabs.Tab
               value="measures"

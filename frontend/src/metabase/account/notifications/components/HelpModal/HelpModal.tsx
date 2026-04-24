@@ -3,8 +3,8 @@ import { jt, t } from "ttag";
 import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import { useSelector } from "metabase/utils/redux";
 import Settings from "metabase/utils/settings";
 
 import { ModalMessage } from "./HelpModal.styled";

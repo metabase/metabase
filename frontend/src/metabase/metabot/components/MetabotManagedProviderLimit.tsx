@@ -4,6 +4,7 @@ import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useStoreUrl } from "metabase/common/hooks";
+import { useDispatch } from "metabase/redux";
 import { dismissUndo } from "metabase/redux/undo";
 import {
   Button,
@@ -13,7 +14,6 @@ import {
   Modal,
   Text,
 } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 
 import { MetabotSetupInner } from "./MetabotAdmin/MetabotSetup";
 

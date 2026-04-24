@@ -15,9 +15,9 @@ import type {
   DatabaseFormConfig,
   FormLocation,
 } from "metabase/databases/types";
+import { useDispatch } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
 import { Text } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import type {
   DatabaseData,
   DatabaseEditErrorType,

@@ -8,6 +8,7 @@ import {
   trackUpsellClicked,
   trackUpsellViewed,
 } from "metabase/common/components/upsells/components/analytics";
+import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import {
@@ -23,7 +24,6 @@ import {
   Title,
   rem,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import S from "./UpsellCardContent.module.css";
 

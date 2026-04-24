@@ -5,8 +5,8 @@ import { t } from "ttag";
 import { skipToken } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useHasTokenFeature, useSetting } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { useSelector } from "metabase/utils/redux";
 import {
   useDeleteGsheetsFolderLinkMutation,
   useGetServiceAccountQuery,

@@ -1,5 +1,5 @@
+import { updateMetadata } from "metabase/redux/metadata";
 import { SegmentSchema } from "metabase/schema";
-import { updateMetadata } from "metabase/utils/redux/metadata";
 import type {
   CreateSegmentRequest,
   Segment,

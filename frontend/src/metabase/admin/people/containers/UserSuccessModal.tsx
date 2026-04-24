@@ -10,9 +10,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import CS from "metabase/css/core/index.css";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting, isSsoEnabled } from "metabase/selectors/settings";
 import { Box } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { User } from "metabase-types/api";
 
 import { clearTemporaryPassword } from "../people";

@@ -1,4 +1,4 @@
-import type { RecipientPickerValue } from "metabase/utils/pulse";
+import type { RecipientPickerValue } from "metabase/pulse";
 import { isNotNull } from "metabase/utils/types";
 import type {
   NotificationHandlerEmail,

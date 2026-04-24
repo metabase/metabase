@@ -1,4 +1,4 @@
-import { trackSchemaEvent, trackSimpleEvent } from "metabase/utils/analytics";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 import type {
   DashboardId,
   DashboardWidth,

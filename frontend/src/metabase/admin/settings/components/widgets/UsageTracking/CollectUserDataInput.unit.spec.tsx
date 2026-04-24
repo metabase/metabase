@@ -15,7 +15,7 @@ import {
 
 import { CollectUserDataInput } from "./CollectUserDataInput";
 
-const { trackSimpleEvent } = jest.requireMock("metabase/utils/analytics");
+const { trackSimpleEvent } = jest.requireMock("metabase/analytics");
 
 const SETTING_NAME = "analytics-pii-retention-enabled";
 const SETTING_ENV_VAR_NAME = "MB_ANALYTICS_PII_RETENTION_ENABLED";
@@ -59,7 +59,11 @@ describe("CollectUserDataInput", () => {
 
   it("should show the `analytics-pii-retention-enabled` setting toggle", async () => {
     setup({ value: true });
-    expect(await screen.findByText("Collect user data")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Collect user data to display in usage analytics",
+      ),
+    ).toBeInTheDocument();
     expect(
       await screen.findByText(
         /Enable logging of path, user agent, and IP address of who views your internal data and embeds/,

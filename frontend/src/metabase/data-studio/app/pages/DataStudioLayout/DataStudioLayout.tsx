@@ -12,6 +12,7 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_REMOTE_SYNC,
 } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import {
   canAccessTransforms as canAccessTransformsSelector,
@@ -31,7 +32,6 @@ import {
   Tooltip,
 } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
-import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 
 import S from "./DataStudioLayout.module.css";

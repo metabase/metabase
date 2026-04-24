@@ -9,6 +9,7 @@ import type {
   EmbedResourceType,
   EmbeddingDisplayOptions,
 } from "metabase/public/lib/types";
+import { useSelector } from "metabase/redux";
 import { getSetting, getUpgradeUrl } from "metabase/selectors/settings";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import {
@@ -19,7 +20,6 @@ import {
   Switch,
   Text,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import {
   DashboardDownloadSettings,

@@ -5,10 +5,10 @@ import { t } from "ttag";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
 import { canUseLinkedFilters } from "metabase/parameters/utils/linked-filters";
+import { useSelector } from "metabase/redux";
 import type { IconName } from "metabase/ui";
 import { Tabs } from "metabase/ui";
 import { slugify } from "metabase/utils/formatting";
-import { useSelector } from "metabase/utils/redux";
 import { isFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {

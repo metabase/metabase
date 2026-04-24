@@ -19,9 +19,9 @@ import type {
   EmbeddingParametersValues,
   GuestEmbedResourceType,
 } from "metabase/public/lib/types";
+import { useSelector } from "metabase/redux";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
 import { Paper, Stack, Tabs } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
 
 import { EmbedModalContentStatusBar } from "./EmbedModalContentStatusBar";

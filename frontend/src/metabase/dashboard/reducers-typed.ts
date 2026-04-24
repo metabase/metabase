@@ -10,6 +10,7 @@ import {
 } from "metabase/api";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
+import { handleActions } from "metabase/redux";
 import {
   INITIALIZE,
   RESET,
@@ -26,7 +27,6 @@ import type {
   DashboardSidebarName,
   StoreDashboard,
 } from "metabase/redux/store/dashboard";
-import { handleActions } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,

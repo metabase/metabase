@@ -3,9 +3,9 @@ import _ from "underscore";
 
 import { Collections } from "metabase/entities/collections";
 import { Timelines } from "metabase/entities/timelines";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import NewEventModal from "metabase/timelines/common/components/NewEventModal";
-import { connect } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Collection, TimelineEvent } from "metabase-types/api";
 

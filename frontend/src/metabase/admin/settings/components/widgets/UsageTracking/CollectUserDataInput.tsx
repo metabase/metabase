@@ -8,7 +8,7 @@ export function CollectUserDataInput() {
   return (
     <BaseUsageTrackingSettingToggle
       settingName="analytics-pii-retention-enabled"
-      title={t`Collect user data`}
+      title={t`Collect user data to display in usage analytics`}
       trackChange={trackAnalyticsPiiRetentionChanged}
     />
   );

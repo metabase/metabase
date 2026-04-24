@@ -5,7 +5,7 @@ import {
   useGetSettingsQuery,
   useRefreshTokenStatusMutation,
 } from "metabase/api";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import type { TokenStatusFeature } from "metabase-types/api";
 
 const REFRESH_INTERVAL = 10 * 1000; // 10 seconds
