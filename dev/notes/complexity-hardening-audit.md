@@ -44,3 +44,32 @@ gating, error propagation, batching, and their tests — was lost when the
    batching (commit `f8397030a29`, `d7401ad2f92`).
 5. Restore the four missing tests: empty-batch, empty-streaming-result,
    openai-blank-base-url, explicit-embedder threshold.
+
+## Update — 2026-04-24 — STS migration, option (b)
+
+Rather than restoring the configurable `ee-complexity-synonym-*` settings, we
+hard-wired MiniLM-L6-v2 (STS, 0.80, names-split) as the synonym-axis default
+and dropped the search-index-backed Arctic path entirely. `provider-embedder`
++ `default-synonym-model` live in `complexity-embedders`; `get-embeddings-batch`
+is re-exported from `semantic-search.core`; `formula-version` is now 4.
+
+Effect on the gaps above:
+
+- **(2), (3)** — **obsolete** under this path. Without an `ee-complexity-synonym-*`
+  settings surface, there's no user input to validate and no openai/ai-service
+  readiness to gate; the fixed ollama descriptor is in code.
+- **(4)** — partially obsolete. ollama's `get-embeddings-batch` already loops
+  per text (no native batch API), so `process-embeddings-streaming` doesn't
+  buy anything on the default path. Would matter again only if we add openai
+  as a configurable option.
+- **(1), (5)** — still open.
+  - (1) weights in fingerprint is independent of provider choice.
+  - (5): of the four tests, `empty-batch` survives in spirit as
+    `default-synonym-embedder-degrades-gracefully-test`;
+    `explicit-embedder threshold` would need restoring if we re-add a
+    `:threshold` opt on `complexity-scores` (no plans to).
+- **Production caveat**: MiniLM is not on ai-service. In prod the embedder
+  degrades silently to `{}` until ai-service picks up the model; the synonym
+  axis scores 0 in the meantime. `:meta.embedding-model` still advertises the
+  configured MiniLM descriptor — it's a config, not a liveness probe. Chose
+  this over keeping Arctic@0.90 as a pragmatic fallback.

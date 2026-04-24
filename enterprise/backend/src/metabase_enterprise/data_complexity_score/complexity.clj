@@ -16,25 +16,27 @@
     :scale       size of the catalog (neutral polarity — bigger ≠ worse, but still drives choice-
                  space difficulty)
     :nominal     string-level naming disorder (collisions + density + concentration)
-    :semantic    embedding-level disambiguation (graph analytics over a 0.90-similarity graph)
+    :semantic    embedding-level disambiguation (graph analytics over a 0.80-similarity graph,
+                 MiniLM-L6-v2 STS vectors on names-split text)
     :structural  (not yet implemented — deferred to tier 3)
     :metadata    positive-polarity coverage of descriptions / semantic_types / measures — NOT
                  summed into the aggregate total; reported alongside as a `:coverage` ratio
 
   Cost is controlled by a tier level (see `settings/semantic-complexity-level`): level 1 is cheap
-  DB-only; level 2 adds the semantic graph (reuses the existing pgvector-backed embedder so no
-  extra reads); level ≥ 3 will add structural once implemented.
+  DB-only; level 2 adds the semantic graph (embeds names via ollama/MiniLM on every run — the
+  search index's Arctic vectors are no longer reused); level ≥ 3 will add structural once
+  implemented.
 
   Per-dimension math lives in `metrics/*` namespaces. This file owns enumeration, scope resolution,
   Snowplow emission, and the top-level coordination between dimensions."
   (:require
    [clojure.pprint :as pprint]
+   [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.metrics.metadata :as metrics.metadata]
    [metabase-enterprise.data-complexity-score.metrics.nominal :as metrics.nominal]
    [metabase-enterprise.data-complexity-score.metrics.scale :as metrics.scale]
    [metabase-enterprise.data-complexity-score.metrics.semantic :as metrics.semantic]
    [metabase-enterprise.data-complexity-score.settings :as settings]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase.analytics.core :as analytics]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
@@ -47,8 +49,11 @@
   "Bump when the scoring formula changes in a way that breaks historical comparisons.
    v2 raised the synonym-similarity threshold from 0.30 to 0.90.
    v3 reshaped the output into five dimensions and added density, concentration, graph-analytic,
-   field-level-collision, and metadata-coverage variables."
-  3)
+   field-level-collision, and metadata-coverage variables.
+   v4 switched the synonym axis to MiniLM-L6-v2 (STS, 0.80) on names-split text, replacing the
+   Arctic-L search-index vectors at 0.90. The model is fixed via `embedders/default-synonym-model`
+   rather than reused from the semantic-search index — precision cutoff vs. retrieval recall."
+  4)
 
 ;;; ----------------------------------- enumeration -----------------------------------
 
@@ -376,11 +381,11 @@
     `:level`         override the level setting for this call (rare; mainly for tests)."
   [& {:keys [embedder metabot-scope level] :as opts}]
   (let [level      (settings/clamp-level (or level (settings/semantic-complexity-level)))
-        embedder   (if (contains? opts :embedder) embedder semantic-search/search-index-embedder)
+        embedder   (if (contains? opts :embedder) embedder embedders/default-synonym-embedder)
         model-meta (when (and (pos? ^long level)
                               (>= ^long level 2)
-                              (= embedder semantic-search/search-index-embedder))
-                     (semantic-search/active-embedding-model))
+                              (= embedder embedders/default-synonym-embedder))
+                     (select-keys embedders/default-synonym-model [:provider :model-name]))
         [library universe metabot]
         (if (zero? ^long level)
           [{:entities [] :collection-count 0}

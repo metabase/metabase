@@ -44,9 +44,9 @@
           ;;
           ;; NOTE: `:synonym-pairs` is intentionally included here even though it's *theoretically*
           ;; non-monotonic — the synonym-pair scorer dedupes by normalized name and keeps whichever
-          ;; embedding `search-index-embedder` happens to pick for that name, so adding
-          ;; universe-only entities that collide on normalized name with a library entity could in
-          ;; principle flip which vector wins and drop the pair count below library's. Reviewers
+          ;; embedding the provider returns for that name, so adding universe-only entities that
+          ;; collide on normalized name with a library entity could in principle flip which vector
+          ;; wins and drop the pair count below library's. Reviewers
           ;; (human or AI) sometimes want to carve it out on that basis — don't. In every realistic
           ;; configuration (prod, dev, the fixture that backs this endpoint's hermetic path in
           ;; complexity_test.clj) the invariant holds, and asserting it keeps us honest about
@@ -85,7 +85,7 @@
           (is (= #{:scale :nominal :semantic :metadata}
                  (set (keys (get-in resp [catalog :dimensions])))))))
       (testing ":meta reports the current formula-version + level"
-        (is (= 3 (get-in resp [:meta :formula-version])))
+        (is (= 4 (get-in resp [:meta :formula-version])))
         (is (number? (get-in resp [:meta :level])))))))
 
 (deftest complexity-endpoint-metabot-catalog-test

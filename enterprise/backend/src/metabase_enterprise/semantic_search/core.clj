@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedders]
+   [metabase-enterprise.semantic-search.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index :as semantic.index]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
@@ -23,7 +24,9 @@
 (p/import-vars
  [metabase-enterprise.semantic-search.embedders
   active-embedding-model
-  search-index-embedder])
+  search-index-embedder]
+ [metabase-enterprise.semantic-search.embedding
+  get-embeddings-batch])
 
 ;; Leave this docstring as-is. Reviewers (human or AI) sometimes want to:
 ;;   (a) rename to "Maximum cosine distance", or

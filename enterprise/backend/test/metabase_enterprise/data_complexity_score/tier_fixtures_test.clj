@@ -80,7 +80,7 @@
                                     :sub-total 250}
                          :semantic {:variables {:synonym-pairs {:value 2 :score 100}}
                                     :sub-total 100}}}
-             :universe {:total 3036
+             :universe {:total 3486
                         :dimensions
                         {:scale    {:variables {:entity-count         {:value 48 :score 480}
                                                 :field-count          {:value 179 :score 179}
@@ -90,8 +90,8 @@
                                                 :repeated-measures      {:value 8  :score 16}
                                                 :field-level-collisions {:value 31 :score 155}}
                                     :sub-total 771}
-                         :semantic {:variables {:synonym-pairs             {:value 32 :score 1600}
-                                                :synonym-largest-component {:value 5}
-                                                :synonym-clustering-coef   {:value 1.0}}
-                                    :sub-total 1600}}}}
+                         :semantic {:variables {:synonym-pairs             {:value 41 :score 2050}
+                                                :synonym-largest-component {:value 6}
+                                                :synonym-clustering-coef   {:value 0.9905660377358491}}
+                                    :sub-total 2050}}}}
             (score-fixture "tier_3_enterprise_sprawl")))))

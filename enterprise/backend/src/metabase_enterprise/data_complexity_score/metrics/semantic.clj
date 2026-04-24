@@ -3,10 +3,11 @@
    Complements the nominal dimension: `Gross_Revenue` vs `Net_Sales` have zero nominal overlap
    but high semantic overlap, and an agent still has to choose between them.
 
-   We build one adjacency graph G at similarity-threshold 0.90 (the per-instance precision cutoff
-   calibrated in `test_resources/data_complexity_score/analysis/2026_04_21_data_analysis_summary.md`) and
-   derive every variable from it in a single pass. Cost dominator is the O(N²) edge build; the
-   graph-analytics passes are linear in |V|+|E|.
+   We build one adjacency graph G at similarity-threshold 0.80 — the per-instance precision cutoff
+   calibrated for MiniLM-L6-v2 (STS) on names-split text in
+   `enterprise/backend/test_resources/semantic_layer/analysis/2026_04_21_data_analysis_summary.md`
+   — and derive every variable from it in a single pass. Cost dominator is the O(N²) edge build;
+   the graph-analytics passes are linear in |V|+|E|.
 
    Variables:
      :synonym-pairs              (scored)  edges on G
@@ -26,14 +27,16 @@
 (set! *warn-on-reflection* true)
 
 (def ^:const synonym-similarity-threshold
-  "Cosine similarity at or above which two entity names are flagged as synonyms. Deliberately
+  "Cosine similarity at or above which two entity names are flagged as synonyms, paired with the
+  fixed MiniLM-L6-v2 STS model in `complexity-embedders/default-synonym-model`. Deliberately
   higher than the semantic-search retrieval cutoff (0.30): search optimizes for recall (\"return
   anything plausibly relevant\") while the complexity score needs precision (\"these are
-  confusingly similar\"). 0.90 was chosen by eyeballing sample pairs from the stats appdb at
+  confusingly similar\"). 0.80 was chosen by eyeballing sample pairs from the stats appdb at
   multiple thresholds — see
-  `enterprise/backend/test_resources/data_complexity_score/analysis/2026_04_21_data_analysis_summary.md`
-  for the calibration data."
-  0.90)
+  `enterprise/backend/test_resources/semantic_layer/analysis/2026_04_21_data_analysis_summary.md`
+  for the calibration data (model × threshold × text-variant grid, with MiniLM on names-split at
+  0.80 giving ~61 pairs on the 253-entity library — real signal, essentially no noise)."
+  0.80)
 
 (def weights
   "Per-variable weights contributing to the dimension sub-total."

@@ -59,9 +59,9 @@
                              :sub-total 100}}}
                 (:universe result))))
       (testing "meta has formula-version + level + threshold; no :embedding-model in offline mode"
-        (is (=? {:formula-version   3
+        (is (=? {:formula-version   4
                  :level             2
-                 :synonym-threshold 0.9}
+                 :synonym-threshold 0.8}
                 (:meta result)))
         (is (not (contains? (:meta result) :embedding-model)))))))
 
@@ -111,7 +111,7 @@
       (write "tables"
              [{:id 10 :db_id 1 :name "Alpha" :active true :is_published true :collection_id 1}
               {:id 11 :db_id 1 :name "Beta"  :active true :is_published true :collection_id 1}])
-      ;; Cosine(Alpha, Beta) ≈ 0.995, well above the 0.90 threshold.
+      ;; Cosine(Alpha, Beta) ≈ 0.995, well above the 0.80 threshold.
       (write "embeddings" {"ALPHA"  [1.0 0.0 0.0]
                            " Beta " [0.99 0.1 0.0]})
       (let [result (#'cli/run-cli {:representation-dir (.getAbsolutePath tmp-dir) :level 2})]
@@ -123,7 +123,7 @@
                   (get-in result [:universe :dimensions :semantic :variables :synonym-pairs]))))))))
 
 (deftest ^:parallel synonym-threshold-test
-  (testing "synonym detection requires cosine ≥ 0.90 — a regression to the old 0.30 cutoff would
+  (testing "synonym detection requires cosine ≥ 0.80 — a regression to the old 0.30 cutoff would
             flag mid-similarity pairs that the current formula correctly rejects."
     (let [entities    [(bare-entity 10 "Alpha" :table) (bare-entity 11 "Beta" :table)]
           score-pairs (fn [embeddings]
@@ -131,12 +131,12 @@
                                  (catalog entities) (catalog []) (embedders/file-embedder embeddings)
                                  {:level 2})
                                 [:library :dimensions :semantic :variables :synonym-pairs :value]))]
-      (testing "cosine ≈ 0.50 — above the old 0.30 cutoff, below 0.90: NOT a synonym"
+      (testing "cosine ≈ 0.50 — above the old 0.30 cutoff, below 0.80: NOT a synonym"
         (is (= 0 (score-pairs {"alpha" [1.0 0.0] "beta" [0.5 0.866]}))))
-      (testing "cosine ≈ 0.89 — just below the new threshold: NOT a synonym"
-        (is (= 0 (score-pairs {"alpha" [1.0 0.0] "beta" [0.89 0.456]}))))
-      (testing "cosine ≈ 0.91 — just above the new threshold: IS a synonym"
-        (is (= 1 (score-pairs {"alpha" [1.0 0.0] "beta" [0.91 0.415]})))))))
+      (testing "cosine ≈ 0.79 — just below the new threshold: NOT a synonym"
+        (is (= 0 (score-pairs {"alpha" [1.0 0.0] "beta" [0.79 0.613]}))))
+      (testing "cosine ≈ 0.81 — just above the new threshold: IS a synonym"
+        (is (= 1 (score-pairs {"alpha" [1.0 0.0] "beta" [0.81 0.586]})))))))
 
 (deftest ^:parallel embeddings-path-override-test
   (testing "explicit :embeddings-path resolves relative to the representation dir, not cwd,
