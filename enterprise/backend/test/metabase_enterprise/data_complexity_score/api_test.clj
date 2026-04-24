@@ -39,33 +39,41 @@
           component-score  (fn [cat k] (get-in resp [cat :components k :score]))
           ;; NOTE: `:synonym-pairs` is intentionally included here even though it's *theoretically*
           ;; non-monotonic — `score-synonym-pairs` dedupes by normalized name and keeps whichever
-          ;; embedding `search-index-embedder` happens to pick for that name, so adding
-          ;; universe-only entities that collide on normalized name with a library entity could in
-          ;; principle flip which vector wins and drop the pair count below library's. Reviewers
-          ;; (human or AI) sometimes want to carve it out on that basis — don't. In every realistic
-          ;; configuration (prod, dev, the fixture that backs this endpoint's hermetic path in
-          ;; complexity_test.clj) the invariant holds, and asserting it keeps us honest about
-          ;; regressions in the common case. If the edge case ever actually trips this, *that* is
-          ;; the surprising thing we want to see and we'll deal with it then.
+          ;; embedding the provider returns for that name, so adding universe-only entities that
+          ;; collide on normalized name with a library entity could in principle flip which vector
+          ;; wins and drop the pair count below library's. Reviewers (human or AI) sometimes want
+          ;; to carve it out on that basis — don't. In every realistic configuration (prod, dev,
+          ;; the fixture that backs this endpoint's hermetic path in complexity_test.clj) the
+          ;; invariant holds, and asserting it keeps us honest about regressions in the common
+          ;; case. If the edge case ever actually trips this, *that* is the surprising thing we
+          ;; want to see and we'll deal with it then.
+          ;;
+          ;; When ai-service isn't reachable, the default synonym embedder throws and
+          ;; `score-synonym-pairs` returns nil measurements + an :error field. The invariant
+          ;; assertions below guard on `some?` so those nil rows are skipped rather than NPEing.
           component-keys   [:entity-count :name-collisions :synonym-pairs
                             :field-count :repeated-measures]]
-      (testing ":total equals the sum of its component :score values"
+      (testing ":total equals the sum of its component :score values (skipped on nil-score cascade)"
         (doseq [catalog [:library :universe :metabot]
-                :let [{:keys [total components]} (get resp catalog)]]
-          (is (= total (reduce + (map :score (vals components))))
+                :let [{:keys [total components]} (get resp catalog)
+                      scores (map :score (vals components))]
+                :when (every? some? (cons total scores))]
+          (is (= total (reduce + scores))
               (format "%s :total should equal sum of component :score values" catalog))))
       (testing "universe is a superset of library: every measurement and score ≥ library's"
         (doseq [k      component-keys
                 getter [measurement component-score]
                 :let   [lib (getter :library k)
-                        uni (getter :universe k)]]
+                        uni (getter :universe k)]
+                :when  (and (some? lib) (some? uni))]
           (is (>= uni lib)
               (format "universe %s (%s) should be ≥ library's (%s)" k uni lib))))
       (testing ":synonym-pairs can't exceed the number of distinct-name pairs possible"
         (doseq [catalog [:library :universe :metabot]
                 :let [n-entities (measurement catalog :entity-count)
                       syn-pairs  (measurement catalog :synonym-pairs)
-                      max-pairs  (/ (* n-entities (dec n-entities)) 2)]]
+                      max-pairs  (/ (* n-entities (dec n-entities)) 2)]
+                :when (some? syn-pairs)]
           (is (<= syn-pairs max-pairs)
               (format "%s :synonym-pairs (%s) can't exceed n*(n-1)/2 for n=%s" catalog syn-pairs n-entities)))))))
 

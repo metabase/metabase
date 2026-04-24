@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase-enterprise.semantic-search.db.datasource :as semantic.db.datasource]
    [metabase-enterprise.semantic-search.embedders]
+   [metabase-enterprise.semantic-search.embedding]
    [metabase-enterprise.semantic-search.env :as semantic.env]
    [metabase-enterprise.semantic-search.index-metadata :as semantic.index-metadata]
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
@@ -22,7 +23,9 @@
 (p/import-vars
  [metabase-enterprise.semantic-search.embedders
   active-embedding-model
-  search-index-embedder])
+  search-index-embedder]
+ [metabase-enterprise.semantic-search.embedding
+  get-embeddings-batch])
 
 (defn- fallback-engine
   "Find the highest priority search engine available for fallback."
