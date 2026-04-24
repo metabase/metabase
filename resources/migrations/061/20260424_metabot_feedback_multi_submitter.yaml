@@ -137,6 +137,19 @@ databaseChangeLog:
             columnNames: message_id, user_id
             constraintName: uq_metabot_feedback_message_id_user_id
       rollback:
+        # MySQL/MariaDB treats the unique index on (message_id, user_id) as the
+        # backing index for fk_metabot_feedback_message_id, so the FK has to
+        # come off before the unique constraint can be dropped.
+        - dropForeignKeyConstraint:
+            baseTableName: metabot_feedback
+            constraintName: fk_metabot_feedback_message_id
         - dropUniqueConstraint:
             tableName: metabot_feedback
             constraintName: uq_metabot_feedback_message_id_user_id
+        - addForeignKeyConstraint:
+            baseTableName: metabot_feedback
+            baseColumnNames: message_id
+            constraintName: fk_metabot_feedback_message_id
+            referencedTableName: metabot_message
+            referencedColumnNames: id
+            onDelete: CASCADE
