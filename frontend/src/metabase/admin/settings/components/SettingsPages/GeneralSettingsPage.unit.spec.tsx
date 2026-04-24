@@ -91,8 +91,8 @@ describe("GeneralSettingsPage", () => {
       "Redirect to HTTPS",
       "Custom homepage",
       "Email address for help requests",
-      "Anonymous tracking",
-      "Collect user data",
+      "Send anonymous tracking data to Metabase",
+      "Collect user data to display in usage analytics",
       "Friendly table and field names",
       "Enable X-Ray features",
       "Allowed domains for iframes in dashboards",
@@ -169,12 +169,16 @@ describe("GeneralSettingsPage", () => {
   it("should show Anonymous Tracking input for non-cloud plans", async () => {
     await setup({ isCloudPlan: false });
 
-    expect(screen.getByText("Anonymous tracking")).toBeInTheDocument();
+    expect(
+      screen.getByText("Send anonymous tracking data to Metabase"),
+    ).toBeInTheDocument();
   });
 
   it("should not show Anonymous Tracking input if the plan is cloud", async () => {
     await setup({ isCloudPlan: true });
 
-    expect(screen.queryByText("Anonymous tracking")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Send anonymous tracking data to Metabase"),
+    ).not.toBeInTheDocument();
   });
 });
