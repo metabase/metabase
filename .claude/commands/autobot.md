@@ -6,9 +6,7 @@ The user provided: `$ARGUMENTS`
 
 ### 1. Parse arguments
 
-Parse as: `[new] <branch-name-or-pr-env-url> [from <base-branch>] <inner-command> [inner-args...]`
-
-If the first token is the literal word `new`, consume it and set `NEW=true`. The following token is then the branch name. In `new` mode, if the branch does not already exist locally or on origin, autobot will create it from the base branch (default `origin/master`, or whatever was passed via `from <base>`). Pass `--new` to `-autobot-go` in step 4.
+Parse as: `<branch-name-or-pr-env-url> [from <base-branch>] <inner-command> [inner-args...]`
 
 The first token can be either a branch name OR a PR preview environment URL:
 
@@ -24,17 +22,18 @@ If the first token matches the PR-env URL pattern:
 
 **Note:** PR preview environments are reachable only from the Metabase Tailscale network. If `gh pr view`, the `-bot-git-readonly` call, or the preview URL itself hangs or times out, tell the user to check their Tailscale connection.
 
-If the next two words after the branch/URL are `from <base>`: use `<base>` as the base branch for worktree creation (default: `origin/master`).
+If the next two words after the branch/URL are `from <base>`: use `<base>` as the base branch. The `from <base>` clause is the signal that autobot should **create the branch** from `<base>` if it doesn't exist. If the branch already exists, passing `from <base>` is an error (the base would be silently ignored otherwise). Pass `--base <base>` to `-autobot-go` in step 4.
+
+Without `from`, the branch must already exist locally or on origin.
+
 Next word starting with `/`: inner command (e.g., `/qabot`, `/fixbot`).
 Remaining words: arguments to pass to the inner command.
 
 Examples:
-- `/autobot master /qabot` → branch=master, base=origin/master, command="/qabot"
-- `/autobot new nvoxland3 /qabot` → **new mode**: branch=nvoxland3 (created from origin/master if missing), command="/qabot"
-- `/autobot new my-feature from existing-branch /qabot` → **new mode**: branch=my-feature (created from existing-branch if missing), command="/qabot"
-- `/autobot new-branch from existing-branch /qabot` → branch=new-branch, base=existing-branch, command="/qabot" (branch must already exist — `new-branch` here is a literal branch name, not the `new` keyword)
-- `/autobot my-branch /fixbot MB-12345` → branch=my-branch, base=origin/master, command="/fixbot MB-12345"
-- `/autobot master /uxbot test the dashboard` → branch=master, base=origin/master, command="/uxbot test the dashboard"
+- `/autobot master /qabot` → branch=master (must exist), command="/qabot"
+- `/autobot my-new-branch from origin/master /qabot` → **create** branch=my-new-branch from origin/master, command="/qabot"
+- `/autobot my-new-branch from existing-branch /qabot` → **create** branch=my-new-branch from existing-branch, command="/qabot"
+- `/autobot my-branch /fixbot MB-12345` → branch=my-branch (must exist), command="/fixbot MB-12345"
 - `/autobot https://pr383713.coredev.metabase.com /qabot` → **PR-env mode**: PR=383713, branch=(resolved from PR), command="/qabot", pr-env-url=https://pr383713.coredev.metabase.com
 
 Extract the bot name from the inner command by stripping the leading `/` (e.g., `/qabot` → `qabot`).
@@ -65,12 +64,12 @@ After the discover skill completes, read `.bot/<bot-name>/discover/result.env` a
 
 ### 4. Launch the autobot session
 
-Run (append `--pr-env-url <URL>` if in PR-env mode, `--new` if in new mode):
+Run (append `--pr-env-url <URL>` if in PR-env mode, `--base <base>` only if the user supplied `from <base>`):
 ```
-./bin/mage -autobot-go <BRANCH_NAME> --bot <BOT_NAME> --app-db <APP_DB> --base <BASE_BRANCH> --command "<INNER_COMMAND> <INNER_ARGS>" [--new] [--pr-env-url <PR_ENV_URL>]
+./bin/mage -autobot-go <BRANCH_NAME> --bot <BOT_NAME> --app-db <APP_DB> --command "<INNER_COMMAND> <INNER_ARGS>" [--base <BASE_BRANCH>] [--pr-env-url <PR_ENV_URL>]
 ```
 
-Pass the base branch (default `origin/master`, or whatever was parsed from `from <base>`).
+Only pass `--base` when the user explicitly wrote `from <base>`. Omitting it means "branch must already exist."
 
 This will:
 - Create a worktree based on the branch (or reuse an existing one)

@@ -682,8 +682,7 @@
    :options [[nil "--bot BOT" "Bot name (qabot, fixbot, uxbot, reprobot, cibot)"]
              [nil "--command CMD" "Inner command to run (e.g., /qabot, '/fixbot MB-12345')"]
              [nil "--app-db DB" "App database" :default "postgres"]
-             [nil "--base BASE" "Base branch/commit to branch from"]
-             [nil "--new" "Create the branch from --base if it does not already exist"]
+             [nil "--base BASE" "Base branch/commit to branch from. If set and the branch does not exist, it will be created from this base."]
              [nil "--pr-env-url URL" "PR preview environment URL (enables remote mode, no local dev-env)"]]
    :task (task! (autobot/go! parsed))}
 

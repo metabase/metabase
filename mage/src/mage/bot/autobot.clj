@@ -326,32 +326,46 @@
 (defn- resolve-branch-ref!
   "Fetch from origin and verify the branch exists locally or on origin.
    Returns the ref to pass to workmux add (the branch name if local, or origin/<branch> if remote only).
-   When new? is true and the branch does not exist, creates it locally from base-branch.
-   Otherwise exits with error — never creates a new branch silently."
-  [branch-name {:keys [new? base-branch]}]
+
+   The presence of base-branch means the caller wants the branch CREATED:
+     - If the branch does not exist, creates it locally from base-branch.
+     - If the branch already exists, exits with error (the base would otherwise be silently ignored).
+   Without base-branch, the branch must already exist; otherwise exits with error."
+  [branch-name {:keys [base-branch]}]
   (println (c/yellow "Checking that branch exists: ") branch-name)
   (shell/sh* {:quiet? true} "git" "fetch" "origin" branch-name)
-  (cond
-    (local-branch-exists? branch-name)
-    (do
-      (println (c/green "  Found local branch: ") branch-name)
-      branch-name)
+  (let [local?  (local-branch-exists? branch-name)
+        remote? (remote-branch-exists? branch-name)
+        exists? (or local? remote?)
+        base?   (not (str/blank? base-branch))]
+    (cond
+      (and exists? base?)
+      (do
+        (println (c/red "Branch already exists: ") branch-name)
+        (println (c/red "  Cannot use 'from " base-branch "' (--base " base-branch ") because " branch-name " already exists."))
+        (println (c/red "  Remove 'from <base>' to use the existing branch, or pick a new branch name."))
+        (u/exit 1))
 
-    (remote-branch-exists? branch-name)
-    (let [remote-ref (str "origin/" branch-name)]
-      (println (c/green "  Found remote branch: ") remote-ref)
-      remote-ref)
+      local?
+      (do
+        (println (c/green "  Found local branch: ") branch-name)
+        branch-name)
 
-    new?
-    (create-branch! branch-name (or base-branch "origin/master"))
+      remote?
+      (let [remote-ref (str "origin/" branch-name)]
+        (println (c/green "  Found remote branch: ") remote-ref)
+        remote-ref)
 
-    :else
-    (do
-      (println (c/red "Branch not found: ") branch-name)
-      (println (c/red "  No local branch and no origin/" branch-name " exists."))
-      (println (c/red "  autobot will NOT create new branches — create the branch first,"))
-      (println (c/red "  or pass --new to create it from --base (default origin/master)."))
-      (u/exit 1))))
+      base?
+      (create-branch! branch-name base-branch)
+
+      :else
+      (do
+        (println (c/red "Branch not found: ") branch-name)
+        (println (c/red "  No local branch and no origin/" branch-name " exists."))
+        (println (c/red "  autobot will NOT create new branches — create the branch first,"))
+        (println (c/red "  or pass --base <ref> (from <ref> in /autobot) to create it from that ref."))
+        (u/exit 1)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Launch entry point
@@ -367,8 +381,7 @@
           bot-name     (:bot options)
           command      (:command options)
           app-db       (or (:app-db options) "postgres")
-          base-branch  (or (:base options) "origin/master")
-          new?         (boolean (:new options))
+          base-branch  (:base options)
           pr-env-url   (:pr-env-url options)
           pr-num       (when pr-env-url
                          (second (re-find #"pr(\d+)" pr-env-url)))
@@ -419,8 +432,7 @@
               ;; Fresh launch: verify the branch exists somewhere before creating a worktree.
               ;; Returns the ref to pass to workmux (branch name if local, origin/<name> if remote-only).
               (let [branch-ref (resolve-branch-ref! branch-name
-                                                    {:new?        new?
-                                                     :base-branch base-branch})
+                                                    {:base-branch base-branch})
                     info       (cond-> {"Bot" bot-name "Command" command}
                                  (not pr-env-url) (assoc "App DB" app-db)
                                  pr-env-url       (assoc "PR Env" pr-env-url
