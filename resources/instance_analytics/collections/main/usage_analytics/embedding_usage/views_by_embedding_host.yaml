@@ -43,6 +43,44 @@ dataset_query:
     source-card: P6Ityjj7igswKh4NgZZjz
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Embedding Hostname
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, embedding_hostname]
+  - null
+  id: [Internal Metabase Database, public, v_view_log, embedding_hostname]
+  name: embedding_hostname
+  position: 15
+  semantic_type: type/Category
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_view_log]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 1020
+  lib/deduplicated-name: embedding_hostname
+  lib/desired-column-alias: embedding_hostname
+  lib/from-model?: true
+  lib/original-display-name: Embedding Hostname
+  lib/original-name: embedding_hostname
+  lib/source: source/previous-stage
+  lib/source-column-alias: embedding_hostname
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
 visualization_settings: {column_settings: null, pie.dimension: embedding_hostname, pie.metric: count}
 card_schema: 23
 serdes/meta:

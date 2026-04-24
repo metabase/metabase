@@ -118,75 +118,502 @@ dataset_query:
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
 result_metadata:
-- {description: null, display_name: Entity ID, fk_target_field_id: null, name: entity_id, semantic_type: type/PK, settings: null, visibility_type: normal}
-- {description: null, display_name: Started At, fk_target_field_id: null, name: started_at, semantic_type: type/CreationTimestamp, settings: null, visibility_type: normal}
-- {description: null, display_name: Running Time Seconds, fk_target_field_id: null, name: running_time_seconds, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: Result Rows, fk_target_field_id: null, name: result_rows, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: Is Native, fk_target_field_id: null, name: is_native, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Query Source, fk_target_field_id: null, name: query_source, semantic_type: type/Source, settings: null, visibility_type: normal}
-- {description: null, display_name: Error, fk_target_field_id: null, name: error, semantic_type: null, settings: null, visibility_type: normal}
-- description: null
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, entity_id]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, entity_id]
+  name: entity_id
+  semantic_type: type/PK
+  settings: null
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Started At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, started_at]
+  - {temporal-unit: default}
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, started_at]
+  name: started_at
+  semantic_type: type/CreationTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/Float
+  coercion_strategy: null
+  description: null
+  display_name: Running Time Seconds
+  effective_type: type/Float
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, running_time_seconds]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, running_time_seconds]
+  name: running_time_seconds
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Result Rows
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, result_rows]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, result_rows]
+  name: result_rows
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Is Native
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, is_native]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, is_native]
+  name: is_native
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Query Source
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, query_source]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, query_source]
+  name: query_source
+  semantic_type: type/Source
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Error
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, error]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, error]
+  name: error
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
   display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, user_id]
+  - null
   fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
+  id: [Internal Metabase Database, public, v_query_log, user_id]
   name: user_id
   semantic_type: type/FK
   settings: null
   visibility_type: normal
-- {description: null, display_name: Card ID, fk_target_field_id: null, name: card_id, semantic_type: null, settings: null, visibility_type: details-only}
-- description: null
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Card ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, card_id]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, card_id]
+  name: card_id
+  semantic_type: null
+  settings: null
+  visibility_type: details-only
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
   display_name: Card Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, card_qualified_id]
+  - null
   fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_query_log, card_qualified_id]
   name: card_qualified_id
   semantic_type: type/FK
   settings: null
   visibility_type: normal
-- {description: null, display_name: Dashboard ID, fk_target_field_id: null, name: dashboard_id, semantic_type: null, settings: null, visibility_type: details-only}
-- description: null
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Dashboard ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, dashboard_id]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, dashboard_id]
+  name: dashboard_id
+  semantic_type: null
+  settings: null
+  visibility_type: details-only
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
   display_name: Dashboard Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, dashboard_qualified_id]
+  - null
   fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_query_log, dashboard_qualified_id]
   name: dashboard_qualified_id
   semantic_type: type/FK
   settings: null
   visibility_type: normal
-- {description: null, display_name: Pulse ID, fk_target_field_id: null, name: pulse_id, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: Database ID, fk_target_field_id: null, name: database_id, semantic_type: null, settings: null, visibility_type: details-only}
-- description: null
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Pulse ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, pulse_id]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, pulse_id]
+  name: pulse_id
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Database ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, database_id]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, database_id]
+  name: database_id
+  semantic_type: null
+  settings: null
+  visibility_type: details-only
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
   display_name: Database Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, database_qualified_id]
+  - null
   fk_target_field_id: [Internal Metabase Database, public, v_databases, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_query_log, database_qualified_id]
   name: database_qualified_id
   semantic_type: type/FK
   settings: null
   visibility_type: normal
-- {description: null, display_name: Cache Hit, fk_target_field_id: null, name: cache_hit, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Action ID, fk_target_field_id: null, name: action_id, semantic_type: null, settings: null, visibility_type: details-only}
-- description: null
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Cache Hit
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, cache_hit]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, cache_hit]
+  name: cache_hit
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Action ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, action_id]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, action_id]
+  name: action_id
+  semantic_type: null
+  settings: null
+  visibility_type: details-only
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
   display_name: Action Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, action_qualified_id]
+  - null
   fk_target_field_id: [Internal Metabase Database, public, v_content, entity_qualified_id]
+  id: [Internal Metabase Database, public, v_query_log, action_qualified_id]
   name: action_qualified_id
   semantic_type: type/FK
   settings: null
   visibility_type: normal
-- {description: null, display_name: Query, fk_target_field_id: null, name: query, semantic_type: type/SerializedJSON, settings: null, visibility_type: normal}
-- {description: null, display_name: Embedding Client, fk_target_field_id: null, name: embedding_client, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Is Preview, fk_target_field_id: null, name: is_preview, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Embedding SDK Package Version, fk_target_field_id: null, name: embedding_sdk_version, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Metabase Version, fk_target_field_id: null, name: metabase_version, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Auth Method, fk_target_field_id: null, name: auth_method, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Is Sandboxed, fk_target_field_id: null, name: is_sandboxed, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Is Impersonated, fk_target_field_id: null, name: is_impersonated, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Is Db Routed, fk_target_field_id: null, name: is_db_routed, semantic_type: type/Category, settings: null, visibility_type: normal}
-- {description: null, display_name: Parameters, fk_target_field_id: null, name: parameters, semantic_type: type/Category, settings: null, visibility_type: normal}
-- description: null
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Query
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, query]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, query]
+  name: query
+  semantic_type: type/SerializedJSON
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding Client
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, embedding_client]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, embedding_client]
+  name: embedding_client
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Is Preview
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, is_preview]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, is_preview]
+  name: is_preview
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding SDK Package Version
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, embedding_sdk_version]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, embedding_sdk_version]
+  name: embedding_sdk_version
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Metabase Version
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, metabase_version]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, metabase_version]
+  name: metabase_version
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Auth Method
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, auth_method]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, auth_method]
+  name: auth_method
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Is Sandboxed
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, is_sandboxed]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, is_sandboxed]
+  name: is_sandboxed
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Is Impersonated
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, is_impersonated]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, is_impersonated]
+  name: is_impersonated
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Is Db Routed
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, is_db_routed]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, is_db_routed]
+  name: is_db_routed
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Parameters
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, parameters]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, parameters]
+  name: parameters
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
   display_name: Tenant ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, tenant_id]
+  - null
   fk_target_field_id: [Internal Metabase Database, public, v_tenants, tenant_id]
+  id: [Internal Metabase Database, public, v_query_log, tenant_id]
   name: tenant_id
   semantic_type: type/FK
   settings: null
   visibility_type: normal
-- {description: null, display_name: Embedding Hostname, fk_target_field_id: null, name: embedding_hostname, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: Embedding Path, fk_target_field_id: null, name: embedding_path, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: Sanitized User Agent, fk_target_field_id: null, name: sanitized_user_agent, semantic_type: null, settings: null, visibility_type: normal}
-- {description: null, display_name: IP Address, fk_target_field_id: null, name: ip_address, semantic_type: type/Category, settings: null, visibility_type: normal}
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding Hostname
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, embedding_hostname]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, embedding_hostname]
+  name: embedding_hostname
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Embedding Path
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, embedding_path]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, embedding_path]
+  name: embedding_path
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Sanitized User Agent
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, sanitized_user_agent]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, sanitized_user_agent]
+  name: sanitized_user_agent
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: IP Address
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, ip_address]
+  - null
+  fk_target_field_id: null
+  id: [Internal Metabase Database, public, v_query_log, ip_address]
+  name: ip_address
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
 visualization_settings:
   column_settings: null
   table.cell_column: running_time_seconds

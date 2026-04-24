@@ -204,36 +204,6 @@ dashcards:
   serdes/meta:
   - {id: jm7KgY6IuS6pQjkBZ7WUI, model: Dashboard}
   - {id: t94BPUqDcK5f5_WEuTP-S, model: DashboardCard}
-- entity_id: PljXyyyfScG10byiLANCg
-  card_id: YiHMsA2dv3iQob11DLTIz
-  created_at: '2023-11-01T02:51:46.409464Z'
-  row: 13
-  col: 0
-  size_x: 12
-  size_y: 7
-  inline_parameters: []
-  parameter_mappings:
-  - card_id: YiHMsA2dv3iQob11DLTIz
-    parameter_id: 34ed3a3a
-    target:
-    - dimension
-    - - field
-      - [Internal Metabase Database, public, v_content, name]
-      - {base-type: type/Text, join-alias: Content - Card Qualified}
-    - {stage-number: 0}
-  - card_id: YiHMsA2dv3iQob11DLTIz
-    parameter_id: 81d22d7f
-    target:
-    - dimension
-    - - field
-      - [Internal Metabase Database, public, v_content, entity_id]
-      - {base-type: type/Integer, join-alias: Content - Card Qualified}
-    - {stage-number: 0}
-  series: []
-  visualization_settings: {column_settings: null}
-  serdes/meta:
-  - {id: jm7KgY6IuS6pQjkBZ7WUI, model: Dashboard}
-  - {id: PljXyyyfScG10byiLANCg, model: DashboardCard}
 - entity_id: d6fgUU6_hAqWj_ngoJea_
   card_id: MOAq881VSlM2BhVUv5e_K
   created_at: '2023-11-01T02:47:47.57613Z'
@@ -284,6 +254,36 @@ dashcards:
   serdes/meta:
   - {id: jm7KgY6IuS6pQjkBZ7WUI, model: Dashboard}
   - {id: d6fgUU6_hAqWj_ngoJea_, model: DashboardCard}
+- entity_id: PljXyyyfScG10byiLANCg
+  card_id: YiHMsA2dv3iQob11DLTIz
+  created_at: '2023-11-01T02:51:46.409464Z'
+  row: 13
+  col: 0
+  size_x: 12
+  size_y: 7
+  inline_parameters: []
+  parameter_mappings:
+  - card_id: YiHMsA2dv3iQob11DLTIz
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - [Internal Metabase Database, public, v_content, name]
+      - {base-type: type/Text, join-alias: Content - Card Qualified}
+    - {stage-number: 0}
+  - card_id: YiHMsA2dv3iQob11DLTIz
+    parameter_id: 81d22d7f
+    target:
+    - dimension
+    - - field
+      - [Internal Metabase Database, public, v_content, entity_id]
+      - {base-type: type/Integer, join-alias: Content - Card Qualified}
+    - {stage-number: 0}
+  series: []
+  visualization_settings: {column_settings: null}
+  serdes/meta:
+  - {id: jm7KgY6IuS6pQjkBZ7WUI, model: Dashboard}
+  - {id: PljXyyyfScG10byiLANCg, model: DashboardCard}
 - entity_id: e_bl-8XvvXVu7iAA79eCb
   card_id: 7FLoE9kUELG4Ess6DsSEY
   created_at: '2023-11-13T21:40:46.417186Z'
