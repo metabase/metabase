@@ -139,7 +139,7 @@ export function newQuestion({
   const question = Question.create(options);
   const url = ML_Urls.getQuestionUrl(question, {
     creationType,
-    query: objectId ? { objectId } : undefined,
+    query: objectId === undefined ? {} : { objectId },
   });
   const type = question.type();
 
