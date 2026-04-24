@@ -9,13 +9,58 @@
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
    [metabase.api.common :as api]
    [metabase.metabot.persistence :as metabot-persistence]
+   [metabase.query-processor.parameters.dates :as qp.parameters.dates]
    [metabase.slackbot.api :as slackbot.api]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private default-limit  50)
 (def ^:private default-offset 0)
+
+;; matches the frontend `DEFAULT_GROUP = "1"` — the "All Users" / no-filter
+;; sentinel in ConversationFilters/useFilterOptions.ts
+(def ^:private all-users-group-id 1)
+
+(defn- date-string->constraints
+  "Parse a serialized date-param string (e.g. `past30days`, `2026-04-01~2026-04-15`)
+   into a pair of half-open HoneySQL predicates on `col`. Throws 400 on a
+   malformed string. Returns `nil` when no bound is produced
+   (e.g. some `exclude-*` shapes yield neither start nor end)."
+  [col date-string]
+  (let [{:keys [start end]}
+        (try
+          (qp.parameters.dates/date-string->range date-string {:inclusive-end? false})
+          (catch Exception e
+            (throw (ex-info (tru "Failed to parse datetime value: {0}" date-string)
+                            {:status-code 400}
+                            e))))
+        start (some-> start u.date/parse)
+        end   (some-> end   u.date/parse)
+        parts (cond-> []
+                start (conj [:>= col start])
+                end   (conj [:<  col end]))]
+    (when (seq parts)
+      (into [:and] parts))))
+
+(defn- list-where-clause
+  "Compose a conjunctive WHERE from optional filters. Returns `nil` when no
+   filter applies so the caller can `cond->` cleanly."
+  [{:keys [user-id group-id date]}]
+  (let [clauses (cond-> []
+                  user-id (conj [:= :c.user_id user-id])
+                  (seq date) (conj (date-string->constraints :c.created_at date))
+                  (and group-id (not= group-id all-users-group-id))
+                  (conj [:exists {:select [1]
+                                  :from   [[:permissions_group_membership :pgm]]
+                                  :where  [:and
+                                           [:= :pgm.user_id :c.user_id]
+                                           [:= :pgm.group_id group-id]]}]))
+        clauses (remove nil? clauses)]
+    (when (seq clauses)
+      (into [:and] clauses))))
 
 (defn- trim-user
   "Trim a hydrated core_user down to the minimal shape the frontend uses
@@ -99,12 +144,13 @@
 
 (defn list-conversations
   "Return a paginated `{:data :total :limit :offset}` map of conversation
-   summaries. Supports optional filtering by `user-id` and sorting by an
-   allow-listed `sort-by` column in either direction (defaults to newest-first)."
-  [{:keys [limit offset user-id sort-by sort-dir]}]
+   summaries. Supports optional filtering by `user-id`, `group-id`, and a
+   serialized `date` parameter string, plus sorting by an allow-listed
+   `sort-by` column in either direction (defaults to newest-first)."
+  [{:keys [limit offset user-id group-id date sort-by sort-dir]}]
   (let [limit     (or limit default-limit)
         offset    (or offset default-offset)
-        where     (when user-id [:= :c.user_id user-id])
+        where     (list-where-clause {:user-id user-id :group-id group-id :date date})
         sort-col  (get sort-columns sort-by :c.created_at)
         direction (if (= sort-dir "asc") :asc :desc)
         total     (:count (t2/query-one (cond-> {:select [[[:count :*] :count]]

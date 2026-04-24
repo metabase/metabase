@@ -16,7 +16,9 @@ import S from "./ChartCard.module.css";
 import {
   type UsageStatsMetric,
   applyDateFilter,
+  applyGroupFilter,
   applyUsageStatsAggregation,
+  applyUserFilter,
   findColumn,
   getChartTitle,
   getMetricSeriesSettings,
@@ -25,6 +27,8 @@ import {
 
 type Props = {
   dateFilter: DateFilterValue;
+  userId?: number;
+  groupName?: string;
   metric: UsageStatsMetric;
   viewName?: string;
   onDimensionClick?: (value: unknown) => void;
@@ -36,6 +40,8 @@ const CLICKABLE_MODE: ClickActionsMode = {
 
 export function ConversationsByDayChart({
   dateFilter,
+  userId,
+  groupName,
   metric,
   viewName = VIEW_CONVERSATIONS,
   onDimensionClick,
@@ -51,6 +57,8 @@ export function ConversationsByDayChart({
     let q = Lib.queryFromTableOrCardMetadata(provider, table);
 
     q = applyDateFilter(q, dateFilter);
+    q = applyUserFilter(q, userId);
+    q = applyGroupFilter(q, groupName);
     const { query: aggregated } = applyUsageStatsAggregation(q, metric);
     q = aggregated;
 
@@ -68,7 +76,7 @@ export function ConversationsByDayChart({
     }
 
     return q;
-  }, [provider, table, dateFilter, metric, bucketName]);
+  }, [provider, table, dateFilter, userId, groupName, metric, bucketName]);
 
   const jsQuery = useMemo(() => (query ? Lib.toJsQuery(query) : null), [query]);
 

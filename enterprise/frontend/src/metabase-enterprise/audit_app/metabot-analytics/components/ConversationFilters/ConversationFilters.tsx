@@ -56,7 +56,6 @@ export function ConversationFilters({
         data={groupOptions}
         value={group}
         onChange={onGroupChange}
-        clearable
         searchable
         w={180}
         bdrs="sm"

@@ -206,6 +206,59 @@
       (is (some? (:errors (mt/user-http-request :crowberto :get 400
                                                 (format "%s&sort-by=drop_table" response-path))))))))
 
+(deftest list-conversations-date-filter-test
+  (with-list-conversations-fixture!
+    (fn [{:keys [response-path convo-1 convo-2 convo-3]}]
+      (testing "date=<absolute range> narrows the list to rows inside the half-open [start, end) window"
+        ;; Fixture: convos on Jan 1/2/3. `date-string->range` with inclusive-end? false
+        ;; yields end = the day AFTER Jan 2, so Jan 3 is excluded and Jan 1/2 match.
+        (let [response (mt/user-http-request :crowberto :get 200
+                                             (format "%s&date=2026-01-01~2026-01-02" response-path))
+              ids      (set (map :conversation_id (:data response)))]
+          (is (= 2 (:total response)))
+          (is (= #{convo-1 convo-2} ids))
+          (is (not (contains? ids convo-3)))))
+      (testing "malformed date param returns 400 rather than silently ignoring the filter"
+        (mt/user-http-request :crowberto :get 400
+                              (format "%s&date=not-a-real-range" response-path))))))
+
+(deftest list-conversations-group-filter-test
+  (mt/with-premium-features #{:audit-app}
+    (mt/with-temp [:model/User {user-a :id} {:email "metabot-analytics-group-a@metabase.com"}
+                   :model/User {user-b :id} {:email "metabot-analytics-group-b@metabase.com"}
+                   :model/PermissionsGroup {group-id :id} {:name "Metabot analytics test group"}
+                   :model/PermissionsGroupMembership _ {:user_id user-a :group_id group-id}]
+      (let [convo-a (str (random-uuid))
+            convo-b (str (random-uuid))]
+        (try
+          (insert-conversation! {:conversation-id convo-a :user-id user-a
+                                 :created-at (offset-date-time "2026-05-01T00:00:00Z")
+                                 :summary "member convo"})
+          (insert-conversation! {:conversation-id convo-b :user-id user-b
+                                 :created-at (offset-date-time "2026-05-02T00:00:00Z")
+                                 :summary "non-member convo"})
+          (testing "group-id narrows to conversations owned by members of that group"
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 (format "ee/metabot-analytics/conversations?group-id=%d" group-id))
+                  ids      (set (map :conversation_id (:data response)))]
+              (is (contains? ids convo-a))
+              (is (not (contains? ids convo-b)))))
+          (testing "group-id=1 (All Users) is treated as no-filter and does not restrict results"
+            (let [response (mt/user-http-request :crowberto :get 200
+                                                 "ee/metabot-analytics/conversations?group-id=1")
+                  ids      (set (map :conversation_id (:data response)))]
+              (is (contains? ids convo-a))
+              (is (contains? ids convo-b))))
+          (testing "filters compose: group-id + user-id + date narrow cumulatively"
+            (let [response (mt/user-http-request
+                            :crowberto :get 200
+                            (format "ee/metabot-analytics/conversations?group-id=%d&user-id=%d&date=2026-05-01~2026-05-01"
+                                    group-id user-a))
+                  ids      (set (map :conversation_id (:data response)))]
+              (is (= #{convo-a} ids))))
+          (finally
+            (delete-conversations! [convo-a convo-b])))))))
+
 (deftest get-conversation-detail-test
   (mt/with-premium-features #{:audit-app}
     (testing "GET /api/ee/metabot-analytics/conversations/:id"

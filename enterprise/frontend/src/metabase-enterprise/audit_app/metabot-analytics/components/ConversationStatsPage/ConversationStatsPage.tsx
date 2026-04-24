@@ -11,7 +11,11 @@ import { deserializeDateParameterValue } from "metabase/querying/parameters/util
 import { Flex, SimpleGrid, Tabs, Title } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 
-import { ConversationFilters, useFilterOptions } from "../ConversationFilters";
+import {
+  ConversationFilters,
+  DEFAULT_GROUP,
+  useFilterOptions,
+} from "../ConversationFilters";
 import {
   type UrlState as ConversationsUrlState,
   urlStateConfig as conversationsUrlStateConfig,
@@ -53,6 +57,17 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
   }, [date]);
 
   const { userOptions, groupOptions } = useFilterOptions();
+
+  const userId = useMemo(
+    () => (user ? parseInt(user, 10) : undefined),
+    [user],
+  );
+  const groupName = useMemo(() => {
+    if (!group || group === DEFAULT_GROUP) {
+      return undefined;
+    }
+    return groupOptions.find((g) => g.value === group)?.label;
+  }, [group, groupOptions]);
 
   const viewName = getViewForMetric(metric);
 
@@ -144,6 +159,8 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
 
         <ConversationsByDayChart
           dateFilter={dateFilter}
+          userId={userId}
+          groupName={groupName}
           metric={metric}
           viewName={viewName}
           onDimensionClick={handleDayClick}
@@ -152,11 +169,15 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         <SimpleGrid cols={2} spacing="lg">
           <ConversationsBySourceChart
             dateFilter={dateFilter}
+            userId={userId}
+            groupName={groupName}
             metric={metric}
             viewName={viewName}
           />
           <ConversationsByProfileBarChart
             dateFilter={dateFilter}
+            userId={userId}
+            groupName={groupName}
             metric={metric}
             viewName={viewName}
           />
@@ -165,12 +186,16 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         <SimpleGrid cols={3} spacing="lg">
           <ConversationsByGroupChart
             dateFilter={dateFilter}
+            userId={userId}
+            groupName={groupName}
             metric={metric}
             viewName={viewName}
             h={500}
           />
           <ConversationsByUserChart
             dateFilter={dateFilter}
+            userId={userId}
+            groupName={groupName}
             metric={metric}
             viewName={viewName}
             onDimensionClick={handleUserClick}
@@ -178,6 +203,8 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
           />
           <ConversationsByIPAddressChart
             dateFilter={dateFilter}
+            userId={userId}
+            groupName={groupName}
             metric={metric}
             viewName={viewName}
             h={500}

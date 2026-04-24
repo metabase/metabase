@@ -1,8 +1,13 @@
 import type { DateFilterValue } from "metabase/querying/common/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
+import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
 
 import {
+  applyGroupFilter,
+  applyUserFilter,
   getMetricSeriesSettings,
   getViewForMetric,
   isSingleDayFilter,
@@ -167,5 +172,63 @@ describe("isSingleDayFilter", () => {
       values: [1],
     };
     expect(isSingleDayFilter(value)).toBe(false);
+  });
+});
+
+describe("applyUserFilter", () => {
+  const baseQuery = () =>
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+
+  it("is a no-op when userId is undefined", () => {
+    const q = baseQuery();
+    const result = applyUserFilter(q, undefined, "user_id");
+    expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+
+  it("adds an equality filter on the named column when present (Orders.USER_ID matches case-insensitively)", () => {
+    const q = baseQuery();
+    const result = applyUserFilter(q, 42, "user_id");
+    const [clause, ...rest] = Lib.filters(result, 0);
+    expect(rest).toHaveLength(0);
+    const parts = Lib.numberFilterParts(result, 0, clause);
+    expect(parts?.operator).toBe("=");
+    expect(parts?.values).toEqual([42]);
+  });
+
+  it("is a no-op when the column cannot be found on the query", () => {
+    const q = baseQuery();
+    const result = applyUserFilter(q, 42, "column_that_does_not_exist");
+    expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+});
+
+describe("applyGroupFilter", () => {
+  // Query against PRODUCTS so we can target a real string column (CATEGORY).
+  const productsQuery = () =>
+    Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+    });
+
+  it("is a no-op when groupName is undefined", () => {
+    const result = applyGroupFilter(productsQuery(), undefined, "category");
+    expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+
+  it("adds an equality filter on the named string column when present", () => {
+    const result = applyGroupFilter(productsQuery(), "Admins", "category");
+    const [clause, ...rest] = Lib.filters(result, 0);
+    expect(rest).toHaveLength(0);
+    const parts = Lib.stringFilterParts(result, 0, clause);
+    expect(parts?.operator).toBe("=");
+    expect(parts?.values).toEqual(["Admins"]);
+  });
+
+  it("is a no-op when the column cannot be found on the query", () => {
+    const result = applyGroupFilter(
+      productsQuery(),
+      "Admins",
+      "column_that_does_not_exist",
+    );
+    expect(Lib.filters(result, 0)).toHaveLength(0);
   });
 });
