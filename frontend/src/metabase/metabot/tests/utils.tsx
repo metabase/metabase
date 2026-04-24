@@ -144,6 +144,12 @@ export const erroredResponse = [
   `d:{"finishReason":"error","usage":{}}`,
 ];
 
+// Admin-configured quota exceeded — carries ai_usage_limit_reached error-code
+export const adminQuotaLimitErroredResponse = [
+  `3:{"message":"You have reached your AI usage limit for the current period. Please contact your administrator.","error-code":"ai_usage_limit_reached"}`,
+  `d:{"finishReason":"error","usage":{}}`,
+];
+
 // Setup function for metabot tests
 export function setup(
   options: {

@@ -405,9 +405,28 @@
            (self.core/format-data-line {:data-type "navigate_to" :data {:url "/question/123"}})))))
 
 (deftest format-error-line-test
-  (testing "formats error message as JSON string with 3: prefix"
+  (testing "formats plain error message as a JSON string with 3: prefix"
     (is (= "3:\"Something went wrong\"" (self.core/format-error-line {:error {:message "Something went wrong"}})))
-    (is (= "3:\"Unknown error\"" (self.core/format-error-line {:error "Unknown error"})))))
+    (is (= "3:\"Unknown error\"" (self.core/format-error-line {:error "Unknown error"}))))
+  (testing "formats structured error with error-code as a JSON object"
+    (let [line   (self.core/format-error-line {:error {:message    "You've used all of your included AI service tokens."
+                                                       :error-code "metabase_ai_managed_locked"}})
+          parsed (json/decode+kw (subs line 2))]
+      (is (str/starts-with? line "3:"))
+      (is (= "You've used all of your included AI service tokens." (:message parsed)))
+      (is (= "metabase_ai_managed_locked" (:error-code parsed)))))
+  (testing "formats ai_usage_limit_reached error-code as a JSON object"
+    (let [line   (self.core/format-error-line {:error {:message    "You have reached your AI usage limit."
+                                                       :error-code "ai_usage_limit_reached"}})
+          parsed (json/decode+kw (subs line 2))]
+      (is (str/starts-with? line "3:"))
+      (is (= "You have reached your AI usage limit." (:message parsed)))
+      (is (= "ai_usage_limit_reached" (:error-code parsed)))))
+  (testing "coerces keyword error-code to string"
+    (let [line   (self.core/format-error-line {:error {:message    "Usage limit reached"
+                                                       :error-code :metabase_ai_managed_locked}})
+          parsed (json/decode+kw (subs line 2))]
+      (is (= "metabase_ai_managed_locked" (:error-code parsed))))))
 
 (deftest format-tool-call-line-test
   (testing "formats tool call with toolCallId, toolName, and args"

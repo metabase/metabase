@@ -114,6 +114,16 @@ const handleResponseError = (
       },
       shouldRetry: true,
     }))
+    .with(
+      { "error-code": "ai_usage_limit_reached", message: P.string },
+      ({ message }) => ({
+        errorMessage: {
+          type: "message" as const,
+          message,
+        },
+        shouldRetry: true,
+      }),
+    )
     .with(P.string, (err) => ({
       errorMessage: {
         type: "message" as const,

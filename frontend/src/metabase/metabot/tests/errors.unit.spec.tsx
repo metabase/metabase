@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { METABOT_ERR_MSG } from "metabase/metabot/constants";
 
 import {
+  adminQuotaLimitErroredResponse,
   assertConversation,
   enterChatMessage,
   erroredResponse,
@@ -76,6 +77,19 @@ describe("metabot > errors", () => {
     await assertConversation([
       ["user", "Who is your favorite?"],
       ["agent", /A different billing problem happened/],
+    ]);
+    expect(await input()).toHaveTextContent("Who is your favorite?");
+  });
+
+  it("should show the backend message for admin quota limit errors", async () => {
+    setup();
+    mockAgentEndpoint({ textChunks: adminQuotaLimitErroredResponse });
+
+    await enterChatMessage("Who is your favorite?");
+
+    await assertConversation([
+      ["user", "Who is your favorite?"],
+      ["agent", /You have reached your AI usage limit for the current period/],
     ]);
     expect(await input()).toHaveTextContent("Who is your favorite?");
   });
