@@ -5,7 +5,7 @@ SELECT
     DATE(m.created_at)                                            AS usage_date,
     m.profile_id,
     COUNT(DISTINCT c.id)                                          AS conversation_count,
-    COUNT(DISTINCT c.user_id)                                     AS unique_users,
+    COUNT(DISTINCT COALESCE(m.user_id, c.user_id))                AS unique_users,
     COUNT(CASE WHEN m.role = 'user' THEN 1 END)                   AS user_messages,
     COUNT(CASE WHEN m.role = 'assistant' THEN 1 END)              AS assistant_messages,
     COALESCE(SUM(m.total_tokens), 0)                              AS total_tokens

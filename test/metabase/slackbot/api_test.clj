@@ -834,138 +834,289 @@
             (is (= 0 (count @harbormaster-calls)))
             (is (= 0 (count @open-view-calls)))))))))
 
+(defn- setup-slackbot-feedback!
+  "Insert a `metabot_conversation` with `user-id` as originator and one
+  assistant message with a fresh `external_id`. Returns `{:conv-id
+  :external-id :message-id}`. Caller must `tear-down-slackbot-feedback!`."
+  [user-id]
+  (let [conv-id     (str (random-uuid))
+        external-id (str (random-uuid))]
+    (t2/insert! :model/MetabotConversation {:id conv-id :user_id user-id})
+    (let [msg-id (first (t2/insert-returning-pks!
+                         :model/MetabotMessage
+                         {:conversation_id conv-id
+                          :role            "assistant"
+                          :profile_id      "slackbot"
+                          :external_id     external-id
+                          :total_tokens    5
+                          :data            [{:_type "TEXT" :role "assistant" :content "hi"}]}))]
+      {:conv-id conv-id :external-id external-id :message-id msg-id})))
+
+(defn- tear-down-slackbot-feedback!
+  [conv-id]
+  (t2/delete! :model/MetabotMessage :conversation_id conv-id)
+  (t2/delete! :model/MetabotConversation :id conv-id))
+
+(defn- modal-submission-payload
+  "Build a Slack view_submission payload for the feedback modal. Includes
+  `:message_external_id` only when `external-id` is non-nil; that mirrors the
+  legacy-button code path in production."
+  [{:keys [conv-id external-id user-id positive issue-type freeform
+           channel-id message-ts]
+    :or   {channel-id "C123" message-ts "123.456"}}]
+  {:type "view_submission"
+   :view {:callback_id      "metabot_feedback_modal"
+          :private_metadata (json/encode (cond-> {:conversation_id conv-id
+                                                  :positive        positive
+                                                  :user_id         user-id
+                                                  :channel_id      channel-id
+                                                  :message_ts      message-ts}
+                                           external-id (assoc :message_external_id external-id)))
+          :state            {:values (cond-> {:freeform_feedback {:freeform_input {:value freeform}}}
+                                       issue-type
+                                       (assoc :issue_type
+                                              {:issue_type_select {:selected_option {:value issue-type}}}))}}})
+
 (deftest handle-feedback-modal-submission-test
-  (testing "modal submission sends feedback to harbormaster"
-    (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                               (swap! harbormaster-calls conj feedback)
-                                                               true)]
-        (let [payload {:type "view_submission"
-                       :view {:callback_id      "metabot_feedback_modal"
-                              :private_metadata (json/encode {:conversation_id "conv-123"
-                                                              :positive        false
-                                                              :user_id         (mt/user->id :rasta)
-                                                              :channel_id      "C123"
-                                                              :message_ts      "123.456"})
-                              :state {:values {:issue_type        {:issue_type_select {:selected_option {:value "not-factual"}}}
-                                               :freeform_feedback {:freeform_input {:value "The answer was wrong"}}}}}}
-              result (#'slackbot/handle-feedback-modal-submission payload)]
-          @result
-          (is (= 1 (count @harbormaster-calls)))
-          (is (=? {:feedback          {:positive          false
-                                       :message_id        "conv-123"
-                                       :issue_type        "not-factual"
-                                       :freeform_feedback "The answer was wrong"}
-                   :source            "slack"
-                   :conversation_data {:messages []}}
-                  (first @harbormaster-calls)))))))
+  (let [rasta-id (mt/user->id :rasta)]
+    (testing "negative feedback with issue_type and freeform writes a row and forwards to harbormaster"
+      (let [{:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)
+            harbormaster-calls (atom [])]
+        (try
+          (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                   (swap! harbormaster-calls conj feedback)
+                                                                   true)]
+            (let [payload (modal-submission-payload {:conv-id     conv-id
+                                                     :external-id external-id
+                                                     :user-id     rasta-id
+                                                     :positive    false
+                                                     :issue-type  "not-factual"
+                                                     :freeform    "The answer was wrong"})
+                  result  (#'slackbot/handle-feedback-modal-submission payload)]
+              @result
+              (testing "local metabot_feedback row is written under the submitter's user_id"
+                (let [row (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)]
+                  (is (some? row))
+                  (is (false? (:positive row)))
+                  (is (= "not-factual" (:issue_type row)))
+                  (is (= "The answer was wrong" (:freeform_feedback row)))))
+              (testing "harbormaster payload carries the resolved external_id and submitter"
+                (is (= 1 (count @harbormaster-calls)))
+                (is (=? {:feedback          {:positive          false
+                                             :message_id        external-id
+                                             :issue_type        "not-factual"
+                                             :freeform_feedback "The answer was wrong"}
+                         :source            "slack"
+                         :submitter_user_id rasta-id}
+                        (first @harbormaster-calls))))))
+          (finally (tear-down-slackbot-feedback! conv-id)))))
 
-  (testing "modal submission with only freeform text submits"
-    (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                               (swap! harbormaster-calls conj feedback)
-                                                               true)]
-        (let [payload {:type "view_submission"
-                       :view {:callback_id      "metabot_feedback_modal"
-                              :private_metadata (json/encode {:conversation_id "conv-123"
-                                                              :positive        true
-                                                              :user_id         (mt/user->id :rasta)
-                                                              :channel_id      "C123"
-                                                              :message_ts      "123.456"})
-                              :state {:values {:freeform_feedback {:freeform_input {:value "Great response!"}}}}}}
-              result (#'slackbot/handle-feedback-modal-submission payload)]
-          @result
-          (is (= 1 (count @harbormaster-calls)))
-          (is (=? {:feedback {:positive          true
-                              :freeform_feedback "Great response!"}
-                   :source   "slack"}
-                  (first @harbormaster-calls)))))))
+    (testing "positive feedback with only freeform text submits"
+      (let [{:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)
+            harbormaster-calls (atom [])]
+        (try
+          (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                   (swap! harbormaster-calls conj feedback)
+                                                                   true)]
+            (let [payload (modal-submission-payload {:conv-id     conv-id
+                                                     :external-id external-id
+                                                     :user-id     rasta-id
+                                                     :positive    true
+                                                     :freeform    "Great response!"})
+                  result  (#'slackbot/handle-feedback-modal-submission payload)]
+              @result
+              (is (some? (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)))
+              (is (= 1 (count @harbormaster-calls)))
+              (is (=? {:feedback          {:positive          true
+                                           :message_id        external-id
+                                           :freeform_feedback "Great response!"}
+                       :source            "slack"
+                       :submitter_user_id rasta-id}
+                      (first @harbormaster-calls)))))
+          (finally (tear-down-slackbot-feedback! conv-id)))))
 
-  (testing "modal submission with no details still submits basic feedback"
-    (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                               (swap! harbormaster-calls conj feedback)
-                                                               true)]
-        (let [payload {:type "view_submission"
-                       :view {:callback_id      "metabot_feedback_modal"
-                              :private_metadata (json/encode {:conversation_id "conv-123"
-                                                              :positive        true
-                                                              :user_id         (mt/user->id :rasta)
-                                                              :channel_id      "C123"
-                                                              :message_ts      "123.456"})
-                              :state {:values {:freeform_feedback {:freeform_input {:value nil}}}}}}
-              result (#'slackbot/handle-feedback-modal-submission payload)]
-          @result
-          (is (= 1 (count @harbormaster-calls)))
-          (is (=? {:feedback {:positive          true
-                              :freeform_feedback ""}
-                   :source   "slack"}
-                  (first @harbormaster-calls)))))))
+    (testing "positive feedback with nil freeform is stored as-is locally and coerced to empty string for harbormaster"
+      (let [{:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)
+            harbormaster-calls (atom [])]
+        (try
+          (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                   (swap! harbormaster-calls conj feedback)
+                                                                   true)]
+            (let [payload (modal-submission-payload {:conv-id     conv-id
+                                                     :external-id external-id
+                                                     :user-id     rasta-id
+                                                     :positive    true
+                                                     :freeform    nil})
+                  result  (#'slackbot/handle-feedback-modal-submission payload)]
+              @result
+              (let [row (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)]
+                (is (some? row))
+                (is (nil? (:freeform_feedback row))))
+              (is (= 1 (count @harbormaster-calls)))
+              (is (=? {:feedback {:positive          true
+                                  :freeform_feedback ""}
+                       :source   "slack"}
+                      (first @harbormaster-calls)))))
+          (finally (tear-down-slackbot-feedback! conv-id)))))
 
-  (testing "modal submission with only issue type submits"
-    (let [harbormaster-calls (atom [])]
-      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
-                                                               (swap! harbormaster-calls conj feedback)
-                                                               true)]
-        (let [payload {:type "view_submission"
-                       :view {:callback_id      "metabot_feedback_modal"
-                              :private_metadata (json/encode {:conversation_id "conv-123"
-                                                              :positive        false
-                                                              :user_id         (mt/user->id :rasta)
-                                                              :channel_id      "C123"
-                                                              :message_ts      "123.456"})
-                              :state {:values {:issue_type        {:issue_type_select {:selected_option {:value "ui-bug"}}}
-                                               :freeform_feedback {:freeform_input {:value nil}}}}}}
-              result (#'slackbot/handle-feedback-modal-submission payload)]
-          @result
-          (is (= 1 (count @harbormaster-calls)))
-          (is (=? {:feedback {:positive   false
-                              :issue_type "ui-bug"}
-                   :source   "slack"}
-                  (first @harbormaster-calls)))))))
+    (testing "negative feedback with only issue type submits"
+      (let [{:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)
+            harbormaster-calls (atom [])]
+        (try
+          (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                   (swap! harbormaster-calls conj feedback)
+                                                                   true)]
+            (let [payload (modal-submission-payload {:conv-id     conv-id
+                                                     :external-id external-id
+                                                     :user-id     rasta-id
+                                                     :positive    false
+                                                     :issue-type  "ui-bug"
+                                                     :freeform    nil})
+                  result  (#'slackbot/handle-feedback-modal-submission payload)]
+              @result
+              (is (some? (t2/select-one :model/MetabotFeedback :message_id message-id :user_id rasta-id)))
+              (is (= 1 (count @harbormaster-calls)))
+              (is (=? {:feedback {:positive          false
+                                  :issue_type        "ui-bug"
+                                  :freeform_feedback ""}
+                       :source   "slack"}
+                      (first @harbormaster-calls)))))
+          (finally (tear-down-slackbot-feedback! conv-id)))))
 
-  (testing "feedback includes conversation messages from the database"
-    (let [conv-id            (str (random-uuid))
+    (testing "harbormaster payload includes the conversation's messages"
+      (let [conv-id            (str (random-uuid))
+            external-id        (str (random-uuid))
+            harbormaster-calls (atom [])]
+        (try
+          (t2/insert! :model/MetabotConversation {:id conv-id :user_id rasta-id})
+          (t2/insert! :model/MetabotMessage
+                      {:conversation_id conv-id
+                       :role            "user"
+                       :profile_id      "slackbot"
+                       :total_tokens    0
+                       :data            [{:_type "TEXT" :role "user" :content "What is revenue?"}]})
+          (t2/insert! :model/MetabotMessage
+                      {:conversation_id conv-id
+                       :role            "assistant"
+                       :profile_id      "slackbot"
+                       :external_id     external-id
+                       :total_tokens    10
+                       :data            [{:_type "TEXT" :role "assistant" :content "Here are the results."}]})
+          (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                   (swap! harbormaster-calls conj feedback)
+                                                                   true)]
+            (let [payload (modal-submission-payload {:conv-id     conv-id
+                                                     :external-id external-id
+                                                     :user-id     rasta-id
+                                                     :positive    true
+                                                     :freeform    "Great!"})
+                  result  (#'slackbot/handle-feedback-modal-submission payload)]
+              @result
+              (is (= 1 (count @harbormaster-calls)))
+              (is (=? {:feedback          {:positive          true
+                                           :message_id        external-id
+                                           :freeform_feedback "Great!"}
+                       :source            "slack"
+                       :conversation_data {:messages [{:role        :user
+                                                       :data        [{:_type "TEXT" :role "user" :content "What is revenue?"}]
+                                                       :profile_id  "slackbot"}
+                                                      {:role        :assistant
+                                                       :data        [{:_type "TEXT" :role "assistant" :content "Here are the results."}]
+                                                       :profile_id  "slackbot"}]}}
+                      (first @harbormaster-calls)))))
+          (finally (tear-down-slackbot-feedback! conv-id)))))))
+
+(deftest handle-feedback-modal-submission-multi-user-test
+  (testing "two users in the same conversation can submit independent feedback on the same assistant message"
+    (let [rasta-id (mt/user->id :rasta)
+          lucky-id (mt/user->id :lucky)
+          {:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)
           harbormaster-calls (atom [])]
-      (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
-        (t2/insert! :model/MetabotConversation {:id conv-id :user_id (mt/user->id :rasta)})
+      (try
+        ;; lucky becomes a participant by authoring a user-turn message in the thread
         (t2/insert! :model/MetabotMessage
                     {:conversation_id conv-id
                      :role            "user"
                      :profile_id      "slackbot"
+                     :user_id         lucky-id
                      :total_tokens    0
-                     :data            [{:_type "TEXT" :role "user" :content "What is revenue?"}]})
-        (t2/insert! :model/MetabotMessage
-                    {:conversation_id conv-id
-                     :role            "assistant"
-                     :profile_id      "slackbot"
-                     :total_tokens    10
-                     :data            [{:_type "TEXT" :role "assistant" :content "Here are the results."}]})
+                     :data            [{:_type "TEXT" :role "user" :content "+1"}]})
         (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
                                                                  (swap! harbormaster-calls conj feedback)
                                                                  true)]
-          (let [payload {:type "view_submission"
-                         :view {:callback_id      "metabot_feedback_modal"
-                                :private_metadata (json/encode {:conversation_id conv-id
-                                                                :positive        true
-                                                                :user_id         (mt/user->id :rasta)
-                                                                :channel_id      "C123"
-                                                                :message_ts      "123.456"})
-                                :state {:values {:freeform_feedback {:freeform_input {:value "Great!"}}}}}}
-                result (#'slackbot/handle-feedback-modal-submission payload)]
-            @result
-            (is (= 1 (count @harbormaster-calls)))
-            (is (=? {:feedback          {:positive          true
-                                         :message_id        conv-id
-                                         :freeform_feedback "Great!"}
-                     :source            "slack"
-                     :conversation_data {:messages [{:role        :user
-                                                     :data        [{:_type "TEXT" :role "user" :content "What is revenue?"}]
-                                                     :profile_id  "slackbot"}
-                                                    {:role        :assistant
-                                                     :data        [{:_type "TEXT" :role "assistant" :content "Here are the results."}]
-                                                     :profile_id  "slackbot"}]}}
-                    (first @harbormaster-calls)))))))))
+          (let [rasta-result (#'slackbot/handle-feedback-modal-submission
+                              (modal-submission-payload {:conv-id     conv-id
+                                                         :external-id external-id
+                                                         :user-id     rasta-id
+                                                         :positive    true
+                                                         :freeform    "nice"}))
+                lucky-result (#'slackbot/handle-feedback-modal-submission
+                              (modal-submission-payload {:conv-id     conv-id
+                                                         :external-id external-id
+                                                         :user-id     lucky-id
+                                                         :positive    false
+                                                         :issue-type  "ui-bug"
+                                                         :freeform    "not for me"}))]
+            @rasta-result
+            @lucky-result)
+          (let [rows     (t2/select :model/MetabotFeedback :message_id message-id
+                                    {:order-by [[:user_id :asc]]})
+                by-user  (into {} (map (juxt :user_id identity)) rows)]
+            (is (= 2 (count rows)) "both submissions produce distinct rows")
+            (is (true?  (:positive (get by-user rasta-id))))
+            (is (= "nice" (:freeform_feedback (get by-user rasta-id))))
+            (is (false? (:positive (get by-user lucky-id))))
+            (is (= "ui-bug" (:issue_type (get by-user lucky-id))))
+            (is (= "not for me" (:freeform_feedback (get by-user lucky-id))))
+            (is (= 2 (count @harbormaster-calls)) "harbormaster is called once per submitter")
+            (is (= #{rasta-id lucky-id} (set (map :submitter_user_id @harbormaster-calls))))))
+        (finally (tear-down-slackbot-feedback! conv-id))))))
+
+(deftest handle-feedback-modal-submission-unresolvable-external-id-test
+  (testing "modal submission drops cleanly (no local write, no harbormaster) when external_id cannot be resolved"
+    (let [rasta-id           (mt/user->id :rasta)
+          harbormaster-calls (atom [])]
+      (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                               (swap! harbormaster-calls conj feedback)
+                                                               true)]
+        (let [payload (modal-submission-payload {:conv-id     (str (random-uuid))
+                                                 :external-id nil
+                                                 :user-id     rasta-id
+                                                 :positive    true
+                                                 :freeform    "orphaned"
+                                                 :channel-id  "C-missing"
+                                                 :message-ts  "0.000"})
+              result  (#'slackbot/handle-feedback-modal-submission payload)]
+          (is (nil? result) "handler returns nil and does not schedule async work")
+          (is (zero? (count @harbormaster-calls)) "harbormaster is not called for an unresolvable submission")
+          (is (zero? (t2/count :model/MetabotFeedback :user_id rasta-id
+                               {:where [:in :message_id
+                                        {:select [:id] :from [:metabot_message]
+                                         :where [:= :external_id "nothing-to-match"]}]}))
+              "no feedback row written for unresolvable submissions"))))))
+
+(deftest handle-feedback-modal-submission-lurker-test
+  (testing "modal submission from a non-participant is rejected locally and harbormaster is not called"
+    (let [rasta-id (mt/user->id :rasta)
+          lucky-id (mt/user->id :lucky)
+          {:keys [conv-id external-id message-id]} (setup-slackbot-feedback! rasta-id)
+          harbormaster-calls (atom [])]
+      (try
+        ;; lucky has authored no messages, so can-read? on the conversation rejects
+        (with-redefs [metabot.feedback/submit-to-harbormaster! (fn [feedback]
+                                                                 (swap! harbormaster-calls conj feedback)
+                                                                 true)]
+          (let [result (#'slackbot/handle-feedback-modal-submission
+                        (modal-submission-payload {:conv-id     conv-id
+                                                   :external-id external-id
+                                                   :user-id     lucky-id
+                                                   :positive    true
+                                                   :freeform    "lurking"}))]
+            @result))
+        (is (zero? (count @harbormaster-calls)) "harbormaster is skipped when the local write is rejected")
+        (is (nil? (t2/select-one :model/MetabotFeedback :message_id message-id :user_id lucky-id))
+            "no feedback row is written for a lurker")
+        (finally (tear-down-slackbot-feedback! conv-id))))))
 
 ;; -------------------------------- Visualization Integration Tests --------------------------------
 
