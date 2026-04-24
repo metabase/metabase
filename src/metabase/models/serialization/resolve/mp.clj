@@ -196,7 +196,8 @@
         card          (serdes/lookup-by-id 'Card entity-id)]
     (cond
       (nil? card)
-      (throw (ex-info (tru "No saved question or model found with entity_id {0}." (pr-str entity-id))
+      (throw (ex-info (tru "No saved question or model found with entity_id {0}. Do not invent or guess entity_ids: call `entity_details` with `entity-type: question` or `entity-type: model` and the card''s numeric id first, then copy the exact `portable_entity_id` from the response into `source-card:`."
+                           (pr-str entity-id))
                       {:agent-error? true
                        :status-code  400
                        :error        :unknown-card
