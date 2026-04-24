@@ -31,6 +31,7 @@ const FUNCTION_NAMES: WeakMap<object, string> = (() => {
     [DOMRect.prototype, "DOMRect"],
     [DOMRectReadOnly.prototype, "DOMRectReadOnly"],
     [TextMetrics.prototype, "TextMetrics"],
+    [ResizeObserverEntry.prototype, "ResizeObserverEntry"],
   ];
   for (const [owner, prefix] of targets) {
     for (const key of Object.getOwnPropertyNames(owner)) {
@@ -97,6 +98,15 @@ for (const key of ["innerHTML", "outerHTML"] as const) {
   }
 }
 
+// CSSStyleDeclaration named property [[Set]] (e.g. style.width = '…') does not
+// propagate through near-membrane's Proxy because CSSStyleDeclaration uses WebIDL
+// exotic-object semantics internally. ZRender sets canvas.style.width to the logical
+// pixel size AFTER setting canvas.width to (logical × dpr). When style.width is
+// silently dropped, the canvas renders at its buffer size (e.g. 2008px) instead of
+// the logical size (1004px), causing overflow. Forcing dpr=1 inside the sandbox makes
+// buffer size == logical size, so the style.width failure is harmless.
+const DPR_GETTER = getterOf("devicePixelRatio");
+
 // Functions plugin code is allowed to call directly from the host window.
 // Endowments (__METABASE_VIZ_API__, __customVizPlugin__) are exempt —
 // they are injected directly and never pass through distortionCallback.
@@ -126,7 +136,7 @@ const ALLOWED_FUNCTIONS = new Set<object>(
     getterOf("navigator"),
     getterOf("location"),
     getterOf("screen"),
-    getterOf("devicePixelRatio"),
+    // devicePixelRatio is handled separately in distortionCallback (returns 1)
     getterOf("innerWidth"),
     getterOf("innerHeight"),
     // JS built-ins that live on window and pass the native-code check.
@@ -197,6 +207,7 @@ const ALLOWED_FUNCTIONS = new Set<object>(
     ...allMethodsOf(CanvasRenderingContext2D.prototype), ...allGettersOf(CanvasRenderingContext2D.prototype), ...allSettersOf(CanvasRenderingContext2D.prototype),
     ...allGettersOf(TextMetrics.prototype),
     ...allGettersOf(DOMRect.prototype), ...allGettersOf(DOMRectReadOnly.prototype),
+    ...allGettersOf(ResizeObserverEntry.prototype),
     // CSSStyleDeclaration — style.cssText, style.setProperty, etc.
     ...allGettersOf(CSSStyleDeclaration.prototype), ...allMethodsOf(CSSStyleDeclaration.prototype), ...allSettersOf(CSSStyleDeclaration.prototype),
   ].filter(Boolean) as object[],
@@ -228,6 +239,10 @@ export function createPluginSandbox(pluginId: string) {
       if (fname.startsWith("[Symbol.") || fname.startsWith("bound ")) {
         return v;
       }
+      // Force devicePixelRatio=1 — see DPR_GETTER comment above.
+      if (v === DPR_GETTER) {
+        return () => 1;
+      }
       if (SANITIZED_SETTERS.has(v)) {
         return SANITIZED_SETTERS.get(v) as object;
       }
@@ -243,6 +258,8 @@ export function createPluginSandbox(pluginId: string) {
       };
     },
     endowments: Object.getOwnPropertyDescriptors({
+      // Covers bare `devicePixelRatio` access (window.dpr is handled in distortionCallback).
+      devicePixelRatio: 1,
       get __customVizPlugin__() {
         return capturedFactory;
       },
