@@ -1804,6 +1804,18 @@
             (is (= initial-perms-count final-perms-count)
                 "No new permissions should be created for collections inside personal collections")))))))
 
+(deftest has-remote-synced-collection?-test
+  (testing "Returns false when no remote-synced collections exist"
+    (collection/clear-remote-synced-collection!)
+    (is (false? (collection/has-remote-synced-collection?))))
+  (testing "Returns true when at least one remote-synced collection exists"
+    (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
+      (is (true? (collection/has-remote-synced-collection?)))))
+  (testing "Returns false after clearing remote-synced collections"
+    (mt/with-temp [:model/Collection _ {:name "Synced" :is_remote_synced true}]
+      (collection/clear-remote-synced-collection!)
+      (is (false? (collection/has-remote-synced-collection?))))))
+
 (deftest non-remote-synced-dependencies-no-dependencies-test
   (testing "when model has no dependencies"
     (mt/with-temp [:model/Collection {remote-synced-coll-id :id} {:name "Remote-Synced Collection" :is_remote_synced true}
