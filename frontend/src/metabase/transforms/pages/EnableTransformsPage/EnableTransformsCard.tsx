@@ -3,6 +3,7 @@ import { jt, t } from "ttag";
 import { useListDatabasesQuery } from "metabase/api/database";
 import { Link } from "metabase/common/components/Link";
 import { getPlan } from "metabase/common/utils/plan";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import {
@@ -17,7 +18,6 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 export function EnableTransformsCard({
   onEnableClick,
