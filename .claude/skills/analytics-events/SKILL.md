@@ -15,7 +15,7 @@ Analytics events in Metabase use Snowplow with typed event schemas. All events m
 **Key Files:**
 - `frontend/src/metabase-types/analytics/event.ts` - Event type definitions
 - `frontend/src/metabase-types/analytics/schema.ts` - Schema registry
-- `frontend/src/metabase/analytics.ts` - Core tracking functions
+- `frontend/src/metabase/analytics/` - Core tracking functions (import from `metabase/analytics`)
 - Feature-specific `analytics.ts` files - Tracking function wrappers
 
 ## Quick Checklist
@@ -471,7 +471,7 @@ Event type definitions (all in one place):
 frontend/src/metabase-types/analytics/event.ts
 
 Core tracking utilities:
-frontend/src/metabase/analytics.ts
+frontend/src/metabase/analytics/ (import from `metabase/analytics`)
 ```
 
 ## Real-World Examples

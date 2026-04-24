@@ -10,14 +10,30 @@ const ruleTester = new RuleTester({
   },
 });
 
+const errorMessage = /is only allowed in files named "analytics"/;
+
 const VALID_CASES = [
+  // Non-restricted specifiers may be imported from the barrel anywhere.
+  {
+    code: `import { createSnowplowTracker } from "metabase/analytics";`,
+    filename: "/path/to/app.js",
+  },
+  {
+    code: `import { trackPageView } from "metabase/analytics";`,
+    filename: "/path/to/routes.jsx",
+  },
+  // Restricted specifiers are fine in analytics.* files.
   {
     code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/analytics.ts",
   },
   {
-    code: `import { trackSchemaEvent } from "metabase/analytics";`,
+    code: `import { trackSimpleEvent } from "metabase/analytics";`,
     filename: "/path/to/analytics.tsx",
+  },
+  {
+    code: `import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";`,
+    filename: "frontend/src/metabase/dashboard/analytics.ts",
   },
   {
     code: `import { trackSchemaEvent } from "metabase/analytics";`,
@@ -27,10 +43,7 @@ const VALID_CASES = [
     code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/analytics.jsx",
   },
-  {
-    code: `import { trackSchemaEvent } from "metabase/analytics";`,
-    filename: "frontend/src/metabase/dashboard/analytics.ts",
-  },
+  // Imports of other modules are unaffected.
   {
     code: `import { someOtherFunction } from "metabase/utils/other";`,
     filename: "/path/to/Component.tsx",
@@ -41,64 +54,56 @@ const VALID_CASES = [
   },
 ];
 
-const errorMessage = /are only allowed in files named "analytics"/;
-
 const INVALID_CASES = [
   {
-    name: "Detect import in non-analytics .tsx file",
+    name: "trackSchemaEvent in component",
     code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/Component.tsx",
-    error: errorMessage,
+    errors: [{ message: errorMessage }],
   },
   {
-    name: "Detect import in non-analytics .ts file",
+    name: "trackSimpleEvent in component",
+    code: `import { trackSimpleEvent } from "metabase/analytics";`,
+    filename: "/path/to/Component.tsx",
+    errors: [{ message: errorMessage }],
+  },
+  {
+    name: "trackSchemaEvent in utils.ts",
     code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/utils.ts",
-    error: errorMessage,
+    errors: [{ message: errorMessage }],
   },
   {
-    name: "Detect type import in non-analytics .ts file",
-    code: `import type { SchemaType } from "metabase/analytics";`,
-    filename: "/path/to/utils.ts",
-    error: errorMessage,
-  },
-  {
-    name: "Detect import in non-analytics .js file",
+    name: "trackSchemaEvent in helper.js",
     code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/helper.js",
-    error: errorMessage,
+    errors: [{ message: errorMessage }],
   },
   {
-    name: "Detect import in non-analytics .jsx file",
+    name: "trackSchemaEvent in Component.jsx",
     code: `import { trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/Component.jsx",
-    error: errorMessage,
+    errors: [{ message: errorMessage }],
   },
   {
-    name: "Detect multiple imports from analytics",
+    name: "multiple restricted specifiers flagged individually",
     code: `import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";`,
     filename: "/path/to/DashCard.tsx",
-    error: errorMessage,
+    errors: [{ message: errorMessage }, { message: errorMessage }],
   },
   {
-    name: "Detect default import from analytics",
-    code: `import analytics from "metabase/analytics";`,
+    name: "allowed + restricted mixed — only restricted flagged",
+    code: `import { createSnowplowTracker, trackSchemaEvent } from "metabase/analytics";`,
     filename: "/path/to/Component.tsx",
-    error: errorMessage,
+    errors: [{ message: errorMessage }],
   },
 ];
 
 ruleTester.run("no-analytics-import-outside-analytics-files", rule, {
   valid: VALID_CASES,
-  invalid: INVALID_CASES.map((invalidCase) => {
-    return {
-      code: invalidCase.code,
-      filename: invalidCase.filename,
-      errors: [
-        {
-          message: invalidCase.error,
-        },
-      ],
-    };
-  }),
+  invalid: INVALID_CASES.map(({ code, filename, errors }) => ({
+    code,
+    filename,
+    errors,
+  })),
 });
