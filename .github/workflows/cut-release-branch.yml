@@ -1,0 +1,113 @@
+name: Cut Next Release Branch
+run-name: Cut next release branch (current is v${{ vars.CURRENT_VERSION }})
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cut:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          sparse-checkout: |
+            release
+            .github
+          token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+
+      - name: Preflight
+        id: preflight
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            const { versionRequirements } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const currentRaw = '${{ vars.CURRENT_VERSION }}';
+            const current = Number(currentRaw);
+            if (!Number.isInteger(current) || current <= 0) {
+              throw new Error(`vars.CURRENT_VERSION is not a valid positive integer: "${currentRaw}"`);
+            }
+
+            const next = current + 1;
+            const branch = `release-x.${next}.x`;
+
+            const needsRequirementsUpdate = !(next in versionRequirements);
+
+            try {
+              await github.rest.git.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `heads/${branch}`,
+              });
+              throw new Error(`Branch ${branch} already exists — nothing to cut.`);
+            } catch (err) {
+              if (err.status !== 404) {
+                throw err;
+              }
+            }
+
+            core.setOutput('branch', branch);
+            core.setOutput('next', String(next));
+            core.setOutput('needsRequirementsUpdate', String(needsRequirementsUpdate));
+
+      - name: Cut the branch
+        id: cut
+        run: |
+          BRANCH="${{ steps.preflight.outputs.branch }}"
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git checkout -b "$BRANCH"
+          git commit --allow-empty --no-verify -m "Cut $BRANCH branch"
+          git push -u origin "$BRANCH"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Bump vars.CURRENT_VERSION
+        id: bump
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
+        run: |
+          gh variable set CURRENT_VERSION \
+            --body "${{ steps.preflight.outputs.next }}" \
+            --repo "${{ github.repository }}"
+
+      - name: Notify Slack
+        uses: actions/github-script@v7
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendSlackMessage, mentionSlackTeam } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const branch = '${{ steps.preflight.outputs.branch }}';
+            const next = '${{ steps.preflight.outputs.next }}';
+            const sha = '${{ steps.cut.outputs.sha }}';
+            const bumpFailed = '${{ steps.bump.outcome }}' === 'failure';
+            const needsReqs = '${{ steps.preflight.outputs.needsRequirementsUpdate }}' === 'true';
+
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const shaLink = `<https://github.com/${owner}/${repo}/commit/${sha}|${sha.slice(0, 7)}>`;
+            const team = mentionSlackTeam('releasemanagers');
+
+            const notes = [
+              bumpFailed
+                ? `:warning: Auto-bump of \`CURRENT_VERSION\` to *${next}* failed — please update it manually: <https://github.com/${owner}/${repo}/settings/variables/actions|Actions variables>`
+                : `\`CURRENT_VERSION\` bumped to *${next}*.`,
+              needsReqs
+                ? `:warning: Please add \`versionRequirements[${next}]\` to \`release/src/version-helpers.ts\` (java + node + platforms).`
+                : null,
+            ].filter(Boolean).join('\n');
+
+            const message = `:tree_evergreen: Cut new release branch *${branch}* at ${shaLink} ${team}\n${notes}`;
+
+            await sendSlackMessage({
+              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              message,
+            }).catch(console.error);
