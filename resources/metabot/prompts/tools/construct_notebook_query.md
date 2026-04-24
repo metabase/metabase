@@ -119,11 +119,11 @@ Instead of `source-table:` you can use `source-card:` to query the result of an 
 
 **Mandatory workflow — never skip:**
 
-1. **First call `entity_details`** with `entity-type: question` or `entity-type: model` and the card's numeric id. This is non-negotiable: do it even when you already know the card's numeric id from a previous tool call.
-2. Copy the `portable_entity_id` value **verbatim** from the response into `source-card:`. It is a random-looking 21-character string — treat it as opaque.
-3. Also read the card's `fields` list in the same response and use the exact `name` values when referencing its columns in this query.
+1. **Get the `portable_entity_id` from a tool response.** Both `search` (and its variants) and `read_resource` (for `metabase://question/<id>` / `metabase://model/<id>`) include it directly on the result, as an attribute on the `<question>` / `<metabase_question>` / `<model>` / `<metabase-model>` tag. If the card is already visible in the current `search` results you do **not** need an extra `entity_details` / `read_resource` call — just reuse the id from there.
+2. Copy the `portable_entity_id` value **verbatim** into `source-card:`. It is a random-looking 21-character string — treat it as opaque.
+3. Reference the card's columns by their exact output `name` (from the card's `fields` list). If you don't yet know the column names, call `read_resource` for `metabase://question/<numeric-id>/fields` or `metabase://model/<numeric-id>/fields`.
 
-**Never guess, construct, or abbreviate an entity_id.** If you write an id that `entity_details` did not give you, the tool will reject the query with `:unknown-card`. There is no pattern or convention you can derive it from — only `entity_details` knows it.
+**Never guess, construct, or abbreviate an entity_id.** If you write an id that no tool gave you, the query is rejected with `:unknown-card`. There is no pattern or convention you can derive it from — only the tool responses know it.
 
 ```yaml
 lib/type: mbql/query

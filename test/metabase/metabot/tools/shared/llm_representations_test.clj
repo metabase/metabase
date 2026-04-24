@@ -254,7 +254,18 @@
     (let [model {:id 5 :name "Empty Model" :database_id 1 :database_engine "postgres"}
           xml (llm-rep/model->xml model)]
       (is (not (str/includes? xml "### Measures")))
-      (is (not (str/includes? xml "### Segments"))))))
+      (is (not (str/includes? xml "### Segments")))))
+
+  (testing "includes portable_entity_id when present (for `source-card:` lookups)"
+    (let [model {:id 6 :name "Portable Model" :database_id 1 :database_engine "postgres"
+                 :portable_entity_id "bw41Vx2d-9d7sOScnaKlf"}
+          xml (llm-rep/model->xml model)]
+      (is (str/includes? xml "portable_entity_id=\"bw41Vx2d-9d7sOScnaKlf\""))))
+
+  (testing "omits portable_entity_id when absent"
+    (let [model {:id 7 :name "No EID Model" :database_id 1 :database_engine "postgres"}
+          xml (llm-rep/model->xml model)]
+      (is (not (str/includes? xml "portable_entity_id"))))))
 
 (deftest query->xml-test
   (testing "formats query result matching Python"
@@ -336,7 +347,17 @@
     (let [question {:id 102
                     :name "No Display"}
           xml (llm-rep/question->xml question)]
-      (is (not (str/includes? xml "display_type"))))))
+      (is (not (str/includes? xml "display_type")))))
+  (testing "includes portable_entity_id when present (for `source-card:` lookups)"
+    (let [question {:id 103
+                    :name "Portable Q"
+                    :portable_entity_id "dh9P5mz7vhpqYUPosLPqL"}
+          xml (llm-rep/question->xml question)]
+      (is (str/includes? xml "portable_entity_id=\"dh9P5mz7vhpqYUPosLPqL\""))))
+  (testing "omits portable_entity_id when absent"
+    (let [question {:id 104 :name "No EID"}
+          xml (llm-rep/question->xml question)]
+      (is (not (str/includes? xml "portable_entity_id"))))))
 
 (deftest dashboard->xml-test
   (testing "formats dashboard matching Python"
@@ -429,6 +450,43 @@
       (is (str/includes? xml "database_id=\"1\""))
       (is (str/includes? xml "database_engine=\"postgres\""))
       (is (str/includes? xml "fully_qualified_name=\"{#5}-sales-model\""))))
+
+  (testing "question search result includes portable_entity_id attribute when present"
+    (let [result {:id 175
+                  :type "question"
+                  :name "Orders, Count"
+                  :verified false
+                  :database_id 1
+                  :database_engine "h2"
+                  :portable_entity_id "dh9P5mz7vhpqYUPosLPqL"}
+          xml (llm-rep/search-result->xml result)]
+      (is (str/starts-with? xml "<question"))
+      (is (str/includes? xml "id=\"175\""))
+      (is (str/includes? xml "portable_entity_id=\"dh9P5mz7vhpqYUPosLPqL\""))))
+
+  (testing "model search result includes portable_entity_id attribute when present"
+    (let [result {:id 42
+                  :type "model"
+                  :name "Sales Model"
+                  :verified true
+                  :database_id 1
+                  :database_engine "postgres"
+                  :portable_entity_id "AbCdEfGhIjKlMnOpQrStU"}
+          xml (llm-rep/search-result->xml result)]
+      (is (str/includes? xml "portable_entity_id=\"AbCdEfGhIjKlMnOpQrStU\""))))
+
+  (testing "search result without portable_entity_id simply omits the attribute"
+    (let [result {:id 99 :type "question" :name "Legacy"
+                  :verified false :database_id 1 :database_engine "h2"}
+          xml (llm-rep/search-result->xml result)]
+      (is (not (str/includes? xml "portable_entity_id")))))
+
+  (testing "table search result never carries portable_entity_id"
+    (let [result {:id 10 :type "table" :name "ORDERS"
+                  :verified false :database_id 1 :database_engine "h2"
+                  :database_schema "PUBLIC"}
+          xml (llm-rep/search-result->xml result)]
+      (is (not (str/includes? xml "portable_entity_id")))))
 
   (testing "non-table/model search results omit table-specific attributes"
     (let [result {:id 50
