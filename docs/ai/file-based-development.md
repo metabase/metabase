@@ -86,7 +86,26 @@ There are two ways to get your YAML files into and out of Metabase:
 - **[Remote Sync](../installation-and-operation/remote-sync.md)** — push and pull from inside Metabase. Requires a Read-write development instance and a Read-only production instance.
 - **Serialization API** — `curl`-based export and import. Available on all plans.
 
-Pick one and follow the matching workflow below. Both assume you've completed the [initial setup](#initial-setup).
+Pick one and follow the matching workflow below. Both assume you've completed the [initial setup](#initial-setup), and both use the same prompt patterns to drive the agent.
+
+### Example prompts
+
+Once your repo has the agent skills and a baseline of content, prompt the agent with a structured request:
+
+```
+Use the metabase-representation-format and metabase-database-metadata skills to create new YAML files in this directory:
+
+1. Create a new dashboard called "Support overview" in collections/main/.
+2. Add questions showing total ticket volume, open tickets, and average satisfaction rating.
+```
+
+Or, depending on how capable your model is, try a more open-ended request:
+
+```
+Use the metabase-representation-format and metabase-database-metadata skills to analyze our support data. Look at the tickets, customers, and interactions tables, and create a dashboard that gives an overview of our team's support workload.
+```
+
+The agent will read the representation format spec, check existing files for local conventions, consult `.metabase/databases/` for real column names, and write new YAML.
 
 ## Example workflow with Remote Sync
 
@@ -112,24 +131,7 @@ git checkout feature/support-dashboard
 
 ### 5. Ask the agent to edit or create content
 
-Example prompt:
-
-```
-Use the metabase-representation-format and metabase-database-metadata skills Create new YAML files in this directory:
-
-1. Create a new dashboard called "Support overview" in collections/main/.
-2. Add questions showing total ticket volume, open tickets, and average satisfaction rating.
-```
-
-Depending on how capable your model is, you can also try more open-ended requests:
-
-```
-Use the metabase-representation-format and metabase-database-metadata skills to analyze our support data.
-
-Look at the tickets, customers, and interactions tables, and create a dashboard that gives an overview of our team's support workload.
-```
-
-The agent will read the representation format spec, check existing files for local conventions, consult `.metabase/databases/` for real column names, and write new YAML.
+See [Example prompts](#example-prompts) above for prompt patterns to use here.
 
 ### 6. Validate the YAML files
 
@@ -183,24 +185,7 @@ Commit the extracted YAML so you have a baseline to revert to if the agent goes 
 
 ### 3. Ask the agent to edit or create content
 
-Example prompt:
-
-```
-Use the metabase-representation-format and metabase-database-metadata skills to do the following by editing the YAML files in this directory:
-
-1. Create a new dashboard called "Support overview" in collections/main/.
-2. Add questions showing total ticket volume, open tickets, and average satisfaction rating.
-```
-
-Depending on how capable your model is, you can also try more open-ended requests:
-
-```
-Use the metabase-representation-format and metabase-database-metadata skills to analyze our support data.
-Look at the tickets, customers, and interactions tables, and create a dashboard that gives an overview
-of our team's support workload.
-```
-
-The agent will read the representation format spec, check existing files for local conventions, consult `.metabase/databases/` for real column names, and write new YAML.
+See [Example prompts](#example-prompts) above for prompt patterns to use here.
 
 ### 4. Validate the YAML files
 
@@ -249,13 +234,13 @@ Run both checks locally before pushing. The same checks belong in CI see [CI sca
 
 ### Schema check
 
-Fast, runs freely, and doesn't need database metadata:
+You can run a quick schema check:
 
 ```sh
 npx --yes @metabase/representations validate-schema
 ```
 
-Validates the shape of every YAML file against the Representation Format. The `metabase-representation-format` skill runs this for you automatically after edits; you can also run it yourself at any time.
+The check validates the shape of every YAML file against the Representation Format spec. The `metabase-representation-format` skill should run this check for you automatically after the agent makes any edits.
 
 ### Semantic checker for deeper validation
 
@@ -271,7 +256,7 @@ What it validates beyond schema:
 
 If you've installed the `metabase-semantic-checker` skill, just ask the agent to run the semantic checker, the skill should pick the right image, pass the right flags, and summarize the findings.
 
-Run the semantic checker via Docker:
+You can manually run the semantic checker via Docker like so:
 
 ```sh
 docker pull metabase/metabase-enterprise:latest
@@ -292,7 +277,7 @@ Match the image tag (`:latest`) to your Metabase build.
 
 ### CI example
 
-Hook the schema check into GitHub Actions so your team catches problems on the PR, before anyone pulls the changes into Metabase:
+You can hook the schema check into GitHub Actions so your team catches problems on the PR, before anyone pulls the changes into Metabase:
 
 ```yaml
 # .github/workflows/schema-check.yml
@@ -317,7 +302,7 @@ jobs:
         run: npx --yes @metabase/representations validate-schema
 ```
 
-For the semantic check, add a second workflow that fetches `.metabase/metadata.json` from your Metabase and then runs the Docker command above against the checkout. If you run the semantic check in more than one workflow (for example, a semantic check and per-PR preview environments), factor the metadata fetch into a composite action with day-long caching so you don't hit the API on every push.
+For the semantic check, add a second workflow that fetches `.metabase/metadata.json` from your Metabase and then runs the Docker command above against the checkout. If you run the semantic check in more than one workflow (for example, a semantic check and per-PR preview environments), you should probably factor the database metadata fetch to run and cache once a data so you don't hit the API on every push.
 
 ## Deleting content
 
@@ -326,22 +311,6 @@ Since imports and exports _don't_ delete content, you'll need to delete content 
 1. Delete the content in your production Metabase (in the app's UI).
 2. Push (with Remote Sync) or re-export (without) so the change is reflected in the repo.
 3. Commit the deletion. That way Metabase won't recreate the deleted items the next time it pulls.
-
-
-## Repo layout
-
-| Path                | What it is                                                                                                                                                                                                                         |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `collections/`      | Collections, cards, dashboards, documents, segments, and measures (Representation Format).                                                                                                                                         |
-| `databases/`        | Database-scoped measures and segments that live next to their tables.                                                                                                                                                              |
-| `transforms/`       | Transform jobs and tags.                                                                                                                                                                                                           |
-| `python_libraries/` | Shared Python source files for Python transforms.                                                                                                                                                                                  |
-| `.metabase/`        | **Gitignored.** Fetched on demand. Contains `metadata.json` (raw API response) and `databases/` (extracted YAML tree of schemas, tables, fields, and foreign keys). Can reach multiple GB on large warehouses, so never commit it. |
-| `.env`              | **Gitignored.** Holds `METABASE_URL` and `METABASE_API_KEY` for the database-metadata skill.                                                                                                                                       |
-| `.env.template`     | Committed template. Copy it to `.env` and fill in values.                                                                                                                                                                          |
-| `.claude/skills/`   | Optional. Pre-wired copies of the three agent skills so Claude loads them automatically when you run it from the repo.                                                                                                             |
-
-Top-level folders (`collections/`, `databases/`, `transforms/`, `python_libraries/`) follow the [Metabase Representation Format](https://github.com/metabase/representations). The `.metabase/` folder follows the [Metabase Database Metadata Format](https://github.com/metabase/database-metadata).
 
 ## Further reading
 
