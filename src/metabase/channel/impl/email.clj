@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [hiccup.core :refer [html]]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.channel.core :as channel]
    [metabase.channel.email :as email]
    [metabase.channel.email.logo :as email.logo]
@@ -31,7 +32,7 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod prometheus/known-labels :metabase-notification/template-render [_]
+(defmethod analytics.core/known-labels :metabase-notification/template-render [_]
   (for [template-type [:email/handlebars-text :email/handlebars-resource]]
     {:template-type template-type
      :channel-type  :channel/email}))
@@ -103,9 +104,9 @@
 (defn- render-body
   [{:keys [details] :as _template} payload]
   (let [template-type (keyword (:type details))]
-    (prometheus/inc! :metabase-notification/template-render
-                     {:template-type template-type
-                      :channel-type  :channel/email})
+    (analytics/inc! :metabase-notification/template-render
+                    {:template-type template-type
+                     :channel-type  :channel/email})
     (case template-type
       :email/handlebars-resource
       (handlebars/render (:path details) payload)

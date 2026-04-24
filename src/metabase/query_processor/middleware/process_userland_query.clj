@@ -8,7 +8,8 @@
   (:refer-clojure :exclude [every? empty? get-in])
   (:require
    [java-time.api :as t]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]
@@ -53,7 +54,7 @@
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
   [execution-info]
-  (let [execution-info' (analytics/include-sdk-info execution-info)]
+  (let [execution-info' (analytics.core/include-sdk-info execution-info)]
     (qp.util/with-execute-async
       ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
       ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
@@ -176,7 +177,7 @@
           rff   :- ::qp.schema/rff]
     ;; Update a gauge metric with the present number of queries in the WeakHashMap it maintains.
     ;; This has to live somewhere and while processing each query seems like a natural place.
-    (analytics/set! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
+    (analytics/set-gauge! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
     (if-not (qp.util/userland-query? query)
       (qp query rff)
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))

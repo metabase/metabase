@@ -619,6 +619,8 @@
    (prometheus/counter :metabase-frontend/errors
                        {:description "Number of frontend errors reported by the browser."
                         :labels [:type]})
+   (prometheus/counter :metabase-frontend/analytics-events-dropped
+                       {:description "Number of frontend analytics events dropped before being POSTed to the backend, because the client-side buffer was full."})
    (prometheus/counter :metabase-export/errors
                        {:description "Number of errors during data export."
                         :labels [:format]})])
@@ -757,19 +759,6 @@
    (when-not system
      (setup!))
    (prometheus/inc (:registry system) metric (qualified-vals labels) amount)))
-
-(defn inc-if-initialized!
-  "Call iapetos.core/inc on the metric in the global registry.
-   Inits registry if it's not been initialized yet."
-  ([metric] (when system (inc! metric nil 1)))
-  ([metric labels-or-amount]
-   (when system
-     (if (number? labels-or-amount)
-       (inc! metric nil labels-or-amount)
-       (inc! metric labels-or-amount 1))))
-  ([metric labels amount]
-   (when system
-     (prometheus/inc (:registry system) metric (qualified-vals labels) amount))))
 
 (defn dec!
   "Call iapetos.core/dec on the metric in the global registry.

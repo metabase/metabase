@@ -8,8 +8,8 @@
    [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.semantic-search.core :as semantic-search]
+   [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.util :as u]
@@ -409,9 +409,9 @@
     (try
       (f)
       (finally
-        (prometheus/observe! :metabase-data-complexity/phase-duration-ms
-                             {:stage stage :catalog catalog}
-                             (u/since-ms timer))))))
+        (analytics.interface/observe! :metabase-data-complexity/phase-duration-ms
+                                      {:stage stage :catalog catalog}
+                                      (u/since-ms timer))))))
 
 (defn complexity-scores
   "Compute the complexity score for the `:library`, `:universe`, and `:metabot` catalogs of this
@@ -475,8 +475,8 @@
           ;; partial failure doesn't silently mark the fingerprint as published.
           (with-meta result {::snowplow-published? published?})))
       (finally
-        (prometheus/observe! :metabase-data-complexity/scoring-duration-ms
-                             (u/since-ms total-timer))))))
+        (analytics.interface/observe! :metabase-data-complexity/scoring-duration-ms
+                                      (u/since-ms total-timer))))))
 
 (comment
   (complexity-scores))

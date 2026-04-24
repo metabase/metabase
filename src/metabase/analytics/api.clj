@@ -1,8 +1,10 @@
 (ns metabase.analytics.api
   (:require
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.stats :as stats]
    [metabase.api.macros :as api.macros]
-   [metabase.permissions.core :as perms]))
+   [metabase.permissions.core :as perms]
+   [metabase.util.log :as log]))
 
 ;; I don't think this endpoint is actually used anywhere for anything.
 ;;
@@ -16,3 +18,26 @@
   []
   (perms/check-has-application-permission :monitoring)
   (stats/legacy-anonymous-usage-stats))
+
+(def ^:private InternalAnalyticsEvent
+  [:map
+   [:op     [:enum :inc :dec :set :observe :clear]]
+   [:metric :keyword]
+   [:labels {:optional true} [:maybe [:map-of :keyword :string]]]
+   [:amount {:optional true} [:maybe number?]]])
+
+(api.macros/defendpoint :post "/internal" :- :nil
+  "Receive a batch of internal analytics events from the frontend and record them as Prometheus metrics."
+  [_route-params
+   _query-params
+   {:keys [events]} :- [:map [:events [:sequential InternalAnalyticsEvent]]]]
+  (doseq [{:keys [op metric labels amount]} events]
+    (try
+      (case op
+        :inc     (prometheus/inc! metric labels (or amount 1))
+        :dec     (prometheus/dec! metric labels (or amount 1))
+        :set     (prometheus/set! metric labels amount)
+        :observe (prometheus/observe! metric labels (or amount 1))
+        :clear   (prometheus/clear! metric))
+      (catch Exception e
+        (log/warnf e "Failed to record internal analytics event %s %s" op metric)))))

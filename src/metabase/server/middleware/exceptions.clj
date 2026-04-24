@@ -3,7 +3,7 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.settings :as server.settings]
    [metabase.util.i18n :refer [tru]]
@@ -52,7 +52,7 @@
                                            {:message (.getMessage e)}
                                            other-info))]
     (when (nil? status-code)
-      (prometheus/inc! :metabase-api/unhandled-errors))
+      (analytics/inc! :metabase-api/unhandled-errors))
     {:status  (or status-code 500)
      :headers (mw.security/security-headers)
      :body    body}))
