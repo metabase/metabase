@@ -126,7 +126,7 @@
     (let [sql (apply format format-string args)]
       (log/infof "[BigQuery] %s\n" sql)
       (flush)
-      (#'bigquery/execute-bigquery execute-respond (test-db-details) sql [] nil))))
+      (#'bigquery/execute-bigquery execute-respond (test-db-details) sql [] nil nil))))
 
 (defn execute-params!
   "Execute arbitrary (presumably DDL) SQL statements against the test project. Waits for statement to complete, throwing
@@ -135,7 +135,7 @@
   (driver/with-driver :bigquery-cloud-sdk
     (log/infof "[BigQuery] %s\n" sql)
     (flush)
-    (#'bigquery/execute-bigquery execute-respond (test-db-details) sql params nil)))
+    (#'bigquery/execute-bigquery execute-respond (test-db-details) sql params nil nil)))
 
 (defn- destroy-dataset! [^String dataset-id]
   {:pre [(seq dataset-id)]}
@@ -217,7 +217,7 @@
 
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
   (let [sql (format "SELECT count(*) FROM `%s.%s.%s`" (project-id) dataset-id table-id)]
-    (ffirst (#'bigquery/execute-bigquery execute-respond (test-db-details) sql [] nil))))
+    (ffirst (#'bigquery/execute-bigquery execute-respond (test-db-details) sql [] nil nil))))
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]

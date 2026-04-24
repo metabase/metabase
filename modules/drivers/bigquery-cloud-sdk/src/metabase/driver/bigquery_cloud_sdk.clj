@@ -1,6 +1,7 @@
 (ns metabase.driver.bigquery-cloud-sdk
   (:refer-clojure :exclude [mapv some empty? not-empty])
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.core.async :as a]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -224,6 +225,7 @@
      database
      sql
      params
+     nil
      nil)))
 
 (defn- describe-database-tables
@@ -645,7 +647,36 @@
     (driver-api/system-timezone-id)
     "UTC"))
 
-(defn- build-bigquery-request [^String sql parameters]
+(defn- sanitize-label-value
+  "Sanitize a string for use as a BigQuery job label value.
+   Values can contain only lowercase letters, numeric characters, underscores, and dashes, max 63 chars."
+  [s]
+  (when s
+    (let [sanitized (-> (str s)
+                        u/lower-case-en
+                        (str/replace #"[^a-z0-9_-]" "_"))]
+      (subs sanitized 0 (min 63 (count sanitized))))))
+
+(defn- query->job-labels
+  "Build a map of BigQuery job labels from query info for attribution tracking."
+  [outer-query]
+  (let [{:keys [executed-by card-id card-name dashboard-id query-hash]} (:info outer-query)
+        query-type (case (keyword (:type outer-query))
+                     :query  "mbql"
+                     :native "native"
+                     nil)
+        hash-hex   (when query-hash (codecs/bytes->hex query-hash))]
+    (into {}
+          (remove (comp nil? val))
+          (cond-> {}
+            executed-by  (assoc "metabase-user-id"      (str executed-by))
+            query-type   (assoc "metabase-query-type"    query-type)
+            hash-hex     (assoc "metabase-query-hash"    (subs hash-hex 0 (min 63 (count hash-hex))))
+            card-id      (assoc "metabase-card-id"       (str card-id))
+            card-name    (assoc "metabase-card-name"     (sanitize-label-value card-name))
+            dashboard-id (assoc "metabase-dashboard-id"  (str dashboard-id))))))
+
+(defn- build-bigquery-request [^String sql parameters labels]
   (.build
    (doto (QueryJobConfiguration/newBuilder sql)
       ;; if the query contains a `#legacySQL` directive then use legacy SQL instead of standard SQL
@@ -655,7 +686,8 @@
       ;; effect for RPC (a.k.a. "fast") calls
       ;; there is no equivalent of .setMaxRows on a JDBC Statement; we rely on our middleware to stop
       ;; realizing more rows as per the maximum result size
-     (.setMaxResults *page-size*))))
+     (.setMaxResults *page-size*)
+     (cond-> (seq labels) (.setLabels labels)))))
 
 (defn- reducible-bigquery-results
   [^TableResult page cancel-chan attempt-job-cancel-fn]
@@ -731,14 +763,14 @@
     (respond cols results)))
 
 (defn- execute-bigquery
-  [respond database-details ^String sql parameters cancel-chan]
+  [respond database-details ^String sql parameters cancel-chan labels]
   {:pre [(not (str/blank? sql))]}
   ;; Kicking off two async jobs:
   ;; - Waiting for the cancel-chan to get either a cancel message or to be closed.
   ;; - Running the BigQuery execution in another thread, since it's blocking.
   (let [^BigQuery client (database-details->client database-details)
         result-promise   (promise)
-        request          (build-bigquery-request sql parameters)
+        request          (build-bigquery-request sql parameters labels)
         _                (driver.conn/track-connection-acquisition! database-details)
         job              (.create client (JobInfo/of request) (u/varargs BigQuery$JobOption))
         job-id           (.getJobId job)
@@ -781,7 +813,8 @@
    database :- [:map [:details :map]]
    sql
    parameters
-   cancel-chan]
+   cancel-chan
+   labels]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
@@ -792,7 +825,8 @@
                    details
                    sql
                    parameters
-                   cancel-chan))]
+                   cancel-chan
+                   labels))]
     (try
       (thunk)
       (catch Throwable e
@@ -803,13 +837,16 @@
 
 (defmethod driver/execute-reducible-query :bigquery-cloud-sdk
   [_driver {{sql :query, :keys [params]} :native, :as outer-query} _context respond]
-  (let [database (driver-api/database (driver-api/metadata-provider))]
+  (let [database (driver-api/database (driver-api/metadata-provider))
+        include-tracking? (:include-user-id-and-hash (driver.conn/effective-details database) true)]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
-      (let [sql (if (:include-user-id-and-hash (driver.conn/effective-details database) true)
-                  (str "-- " (driver-api/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
-                  sql)]
-        (*process-native* respond database sql params (driver-api/canceled-chan))))))
+      (let [sql    (if include-tracking?
+                     (str "-- " (driver-api/query->remark :bigquery-cloud-sdk outer-query) "\n" sql)
+                     sql)
+            labels (when include-tracking?
+                     (query->job-labels outer-query))]
+        (*process-native* respond database sql params (driver-api/canceled-chan) labels)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other Driver Method Impls                                            |

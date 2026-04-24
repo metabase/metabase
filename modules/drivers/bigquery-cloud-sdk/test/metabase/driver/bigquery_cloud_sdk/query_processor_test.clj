@@ -235,7 +235,7 @@
 (defn- query->native [query]
   (let [native-query   (atom nil)
         done-exception (Exception. "Done.")]
-    (binding [bigquery/*process-native* (fn [_respond _database sql _parameters _cancel-chan]
+    (binding [bigquery/*process-native* (fn [_respond _database sql _parameters _cancel-chan _labels]
                                           (reset! native-query sql)
                                           (throw done-exception))]
       (try
@@ -302,6 +302,37 @@
                             :limit        1}
                  :info     {:executed-by 1000
                             :query-hash  (byte-array [1 2 3 4])}})))))))
+
+(deftest ^:parallel job-labels-test
+  (testing "query->job-labels builds correct labels from query info"
+    (is (= {"metabase-user-id"     "1000"
+            "metabase-query-type"   "mbql"
+            "metabase-query-hash"   "01020304"
+            "metabase-card-id"      "42"
+            "metabase-card-name"    "my_cool_question"
+            "metabase-dashboard-id" "7"}
+           (#'bigquery/query->job-labels
+            {:type :query
+             :info {:executed-by  1000
+                    :query-hash   (byte-array [1 2 3 4])
+                    :card-id      42
+                    :card-name    "My Cool Question"
+                    :dashboard-id 7}}))))
+  (testing "missing info keys are omitted from labels"
+    (is (= {"metabase-user-id"   "1000"
+            "metabase-query-type" "native"
+            "metabase-query-hash" "01020304"}
+           (#'bigquery/query->job-labels
+            {:type :native
+             :info {:executed-by 1000
+                    :query-hash  (byte-array [1 2 3 4])}}))))
+  (testing "card-name is sanitized for BigQuery label constraints"
+    (is (= "revenue_by_region__q1_2024_"
+           (get (#'bigquery/query->job-labels
+                 {:type :query
+                  :info {:card-id   1
+                         :card-name "Revenue by Region (Q1 2024)"}})
+                "metabase-card-name")))))
 
 (deftest ^:parallel query-with-params-test
   (testing "Can we execute queries with parameters? (EE #277)"
