@@ -1,0 +1,38 @@
+import createVirtualEnvironment from "@locker/near-membrane-dom";
+
+import { makeDistortionCallback } from "./distortions";
+
+export function createPluginSandbox(pluginId: string) {
+  let capturedFactory: unknown;
+
+  const env = createVirtualEnvironment(window, {
+    distortionCallback: makeDistortionCallback(pluginId),
+    endowments: Object.getOwnPropertyDescriptors({
+      get __customVizPlugin__() {
+        return capturedFactory;
+      },
+      set __customVizPlugin__(value: unknown) {
+        capturedFactory = value;
+      },
+      __METABASE_VIZ_API__: window.__METABASE_VIZ_API__,
+    }),
+  });
+
+  return {
+    evaluate(code: string): unknown {
+      try {
+        env.evaluate(code);
+      } catch (e) {
+        // unwrap membrane-proxied Error
+        let message: string;
+        try {
+          message = String((e as { message?: unknown })?.message ?? e);
+        } catch {
+          message = "Unknown error inside plugin sandbox";
+        }
+        throw new Error(message);
+      }
+      return capturedFactory;
+    },
+  };
+}
