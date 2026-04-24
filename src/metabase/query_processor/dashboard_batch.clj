@@ -342,9 +342,7 @@
           card-id->card          (batch-fetch-cards (map :card-id cards))
           card-db-ids            (into {} (map (fn [[id card]] [id (:database_id card)])) card-id->card)
           dashcard-id->viz       (batch-fetch-dashcard-viz (map :dashcard-id cards))
-          ;; Current user info for binding conveyance
           current-user-id        api/*current-user-id*
-          current-user-perms     @api/*current-user-permissions-set*
           metadata-cache         lib-be/*metadata-provider-cache*
           ;; Pre-warm metadata providers so worker threads don't all race to fetch database metadata.
           _                      (doseq [db-id (distinct (vals card-db-ids))]
@@ -364,74 +362,80 @@
           (user-parameter-value/store! current-user-id dashboard-id normalized-params)))
       ;; === Stream results ===
       (streaming-response/streaming-response {:content-type "application/x-ndjson"} [os canceled-chan]
-        (let [pool          (or *thread-pool* @default-thread-pool)
-              queue         (LinkedBlockingQueue. (int queue-capacity))
-              writer-thread (start-writer-thread! queue os)
-              succeeded     (volatile! 0)
-              failed        (volatile! 0)
-              ;; Pre-classify cards into immediately-resolvable errors vs queries to run
-              {to-query true, immediate-errors false}
-              (group-by
-               (fn [{:keys [dashcard-id card-id]}]
-                 (cond
-                   (not (contains? valid-pairs [dashcard-id card-id]))
-                   false ; not in dashboard
+        ;; Establish every request-scoped binding workers should inherit on
+        ;; THIS thread, then use `bound-fn` in the worker so the full binding
+        ;; frame — user context (`*current-user*`, `*is-superuser?*`,
+        ;; `*user-locale*`, ...), permission caches (`*sandboxes-for-user*`,
+        ;; `*permissions-for-user*`), EE cache atoms, metadata cache, plus
+        ;; anything a future dynamic var adds — flows into each worker
+        ;; automatically. Anything we construct here (the EE atoms,
+        ;; `metadata-cache`) must be bound on this thread before `bound-fn`
+        ;; captures it; the rest is already bound by the API middleware.
+        (with-bindings (merge {#'lib-be/*metadata-provider-cache* metadata-cache}
+                              ee-bindings)
+          (let [pool          (or *thread-pool* @default-thread-pool)
+                queue         (LinkedBlockingQueue. (int queue-capacity))
+                writer-thread (start-writer-thread! queue os)
+                succeeded     (volatile! 0)
+                failed        (volatile! 0)
+                ;; Pre-classify cards into immediately-resolvable errors vs queries to run
+                {to-query true, immediate-errors false}
+                (group-by
+                 (fn [{:keys [dashcard-id card-id]}]
+                   (cond
+                     (not (contains? valid-pairs [dashcard-id card-id]))
+                     false ; not in dashboard
 
-                   (and current-user-id
-                        (= :blocked
-                           (perms/most-permissive-database-permission-for-user
-                            current-user-id :perms/view-data (get card-db-ids card-id))))
-                   false ; blocked
+                     (and current-user-id
+                          (= :blocked
+                             (perms/most-permissive-database-permission-for-user
+                              current-user-id :perms/view-data (get card-db-ids card-id))))
+                     false ; blocked
 
-                   :else true))
-               cards)]
-          (try
-            ;; Emit a fully-shaped QP error map (`status`, `error`,
-            ;; `error_type`, ...) — `getDashcardResultsError` needs
-            ;; `error_type` to render the permission icon/message for 403s.
-            (doseq [{:keys [dashcard-id card-id]} immediate-errors]
-              (vswap! failed inc)
-              (batch-ndjson/emit-card-error!
-               queue dashcard-id card-id
-               (if (contains? valid-pairs [dashcard-id card-id])
-                 {:status     403
-                  :message    "You don't have permission to view this card"
-                  :error      "You don't have permission to view this card"
-                  :error_type qp.error-type/missing-required-permissions}
-                 {:status  404
-                  :message "Card not found in dashboard"
-                  :error   "Card not found in dashboard"})))
-            ;; Run queries via claypoole — results flow to the queue as rows arrive.
-            (doseq [result (cp/upmap pool
-                                     (fn [{:keys [dashcard-id card-id]}]
-                                       (if (a/poll! canceled-chan)
-                                         :canceled
-                                         (let [bindings (merge {#'api/*current-user-id*              current-user-id
-                                                                #'api/*current-user-permissions-set* (atom current-user-perms)
-                                                                #'lib-be/*metadata-provider-cache*   metadata-cache}
-                                                               ee-bindings)]
-                                           (with-bindings bindings
-                                             (run-single-card-query
-                                              queue
-                                              {:dashboard-id              dashboard-id
-                                               :card-id                   card-id
-                                               :dashcard-id               dashcard-id
-                                               :dashboard-param-id->param dashboard-param-id->param
-                                               :parameters                parameters
-                                               :ignore-cache              ignore-cache
-                                               :context                   context
-                                               :prefetched-card           (get card-id->card card-id)
-                                               :prefetched-dash-viz       (get dashcard-id->viz dashcard-id)})))))
-                                     (or to-query []))]
-              (case result
-                :success  (vswap! succeeded inc)
-                :failed   (vswap! failed inc)
-                :error    (vswap! failed inc)
-                :canceled nil
-                nil))
-            ;; Completion sentinel + shutdown
-            (let [s @succeeded f @failed]
-              (batch-ndjson/emit-complete! queue {:total (+ s f) :succeeded s :failed f}))
-            (finally
-              (.put queue *done-sentinel*)
-              (.join writer-thread))))))))
+                     :else true))
+                 cards)
+                run-card
+                (bound-fn [{:keys [dashcard-id card-id]}]
+                  (if (a/poll! canceled-chan)
+                    :canceled
+                    (run-single-card-query
+                     queue
+                     {:dashboard-id              dashboard-id
+                      :card-id                   card-id
+                      :dashcard-id               dashcard-id
+                      :dashboard-param-id->param dashboard-param-id->param
+                      :parameters                parameters
+                      :ignore-cache              ignore-cache
+                      :context                   context
+                      :prefetched-card           (get card-id->card card-id)
+                      :prefetched-dash-viz       (get dashcard-id->viz dashcard-id)})))]
+            (try
+              ;; Emit a fully-shaped QP error map (`status`, `error`,
+              ;; `error_type`, ...) — `getDashcardResultsError` needs
+              ;; `error_type` to render the permission icon/message for 403s.
+              (doseq [{:keys [dashcard-id card-id]} immediate-errors]
+                (vswap! failed inc)
+                (batch-ndjson/emit-card-error!
+                 queue dashcard-id card-id
+                 (if (contains? valid-pairs [dashcard-id card-id])
+                   {:status     403
+                    :message    "You don't have permission to view this card"
+                    :error      "You don't have permission to view this card"
+                    :error_type qp.error-type/missing-required-permissions}
+                   {:status  404
+                    :message "Card not found in dashboard"
+                    :error   "Card not found in dashboard"})))
+              ;; Run queries via claypoole — results flow to the queue as rows arrive.
+              (doseq [result (cp/upmap pool run-card (or to-query []))]
+                (case result
+                  :success  (vswap! succeeded inc)
+                  :failed   (vswap! failed inc)
+                  :error    (vswap! failed inc)
+                  :canceled nil
+                  nil))
+              ;; Completion sentinel + shutdown
+              (let [s @succeeded f @failed]
+                (batch-ndjson/emit-complete! queue {:total (+ s f) :succeeded s :failed f}))
+              (finally
+                (.put queue *done-sentinel*)
+                (.join writer-thread)))))))))
