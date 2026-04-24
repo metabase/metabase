@@ -972,3 +972,47 @@
                       "SET ROLE NONE; DROP TABLE table"
                       "SELECT set_config('role', 'none', false); DROP TABLE table"
                       "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;")))))))))))
+
+(deftest reject-non-select-statements-for-admin-on-impersonated-db-test
+  (testing "Admin users are also validated on impersonated databases"
+    (mt/test-drivers (mt/normal-drivers-with-feature :connection-impersonation)
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a (u/lower-case-en (mt/random-name))]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (mt/with-temp [:model/Database database {:engine driver/*driver*,
+                                                     :details (impersonation-details driver/*driver* (mt/db))}]
+              (mt/with-db database
+                (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
+                  (t2/update! :model/Database :id (mt/id) (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
+                (sync/sync-database! database {:scan :schema})
+                (impersonation.util-test/with-impersonations-for-user! :crowberto
+                  {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                   :attributes     {"impersonation_attr" role-a}}
+                  (testing "A single SELECT statement works for admin"
+                    (let [mp (mt/metadata-provider)
+                          run-native-query (fn [table] (->> (-> (lib/query mp (lib.metadata/table mp (mt/id table)))
+                                                                (lib/aggregate (lib/count)))
+                                                            (qp.compile/compile-with-inline-parameters)
+                                                            :query
+                                                            (lib/native-query mp)
+                                                            (qp/process-query)
+                                                            (mt/rows)))]
+                      (is (= [[100]] (run-native-query :venues)))))
+                  (testing "Invalid queries are rejected for admin too"
+                    (are [sql] (thrown?
+                                java.lang.Exception
+                                (-> (lib/native-query (mt/metadata-provider) sql)
+                                    (qp/process-query)
+                                    (mt/rows)))
+                      "SELECT ("
+                      "SELECT 1; SELECT 2"
+                      "SET ROLE NONE"
+                      "DROP TABLE table"
+                      "SET ROLE NONE; DROP TABLE table"
+                      "SELECT set_config('role', 'none', false); DROP TABLE table"
+                      "DO $$ BEGIN EXECUTE 'SET ROLE NONE; DROP TABLE table'; END $$;")))))))))))
