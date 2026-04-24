@@ -59,7 +59,11 @@ describe("CollectUserDataInput", () => {
 
   it("should show the `analytics-pii-retention-enabled` setting toggle", async () => {
     setup({ value: true });
-    expect(await screen.findByText("Collect user data")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Collect user data to display in usage analytics",
+      ),
+    ).toBeInTheDocument();
     expect(
       await screen.findByText(
         /Enable logging of path, user agent, and IP address of who views your internal data and embeds/,

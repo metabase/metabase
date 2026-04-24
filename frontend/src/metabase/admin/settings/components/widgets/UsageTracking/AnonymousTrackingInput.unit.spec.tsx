@@ -56,7 +56,9 @@ const setup = ({
 describe("AnonymousTrackingInput", () => {
   it("should show an anonymous tracking toggle", async () => {
     setup({ value: true });
-    expect(await screen.findByText("Anonymous tracking")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Send anonymous tracking data to Metabase"),
+    ).toBeInTheDocument();
     expect(
       await screen.findByText(/Enable the collection of anonymous usage data/),
     ).toBeInTheDocument();
