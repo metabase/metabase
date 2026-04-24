@@ -4,16 +4,13 @@
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
+   [metabase-enterprise.custom-viz-plugin.test-util :as cvp.tu]
    [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
-   [toucan2.core :as t2])
-  (:import
-   (java.io ByteArrayOutputStream)
-   (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveOutputStream)
-   (org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -27,36 +24,6 @@
 (defmacro ^:private with-dev-mode-enabled [& body]
   `(with-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
      ~@body))
-
-;;; ------------------------------------------------ Bundle fixtures ------------------------------------------------
-
-(defn- make-tgz-bytes
-  "Build a minimal valid plugin tar.gz archive in memory.
-
-  `entries` is a seq of `[name content]` pairs; content may be a string or byte[]."
-  ^bytes [entries]
-  (let [baos (ByteArrayOutputStream.)]
-    (with-open [gz  (GzipCompressorOutputStream. baos)
-                tar (TarArchiveOutputStream. gz)]
-      (doseq [[name content] entries
-              :let [^bytes bs (if (bytes? content) content (.getBytes (str content) "UTF-8"))
-                    entry     (doto (TarArchiveEntry. ^String name)
-                                (.setSize (alength bs)))]]
-        (.putArchiveEntry tar entry)
-        (.write tar bs 0 (alength bs))
-        (.closeArchiveEntry tar))
-      (.finish tar))
-    (.toByteArray baos)))
-
-(defn- valid-bundle-bytes
-  "Build a tar.gz archive with a valid manifest and a trivial index.js."
-  [identifier & [{:keys [icon metabase-version]}]]
-  (make-tgz-bytes
-   [["metabase-plugin.json" (json/encode
-                             (cond-> {:name identifier}
-                               icon             (assoc :icon icon)
-                               metabase-version (assoc-in [:metabase :version] metabase-version)))]
-    ["dist/index.js" "console.log('hi')"]]))
 
 (defn- multipart-upload!
   "POST a multipart `bundle-bytes` tar.gz to `path` as user `user`, expecting `status`."
@@ -106,7 +73,7 @@
                                                       :status       :active}]
         (is (= "You don't have permissions to do that."
                (multipart-upload! :rasta 403 (str "ee/custom-viz-plugin/" id "/bundle")
-                                  (valid-bundle-bytes "auth-test-5"))))))))
+                                  (cvp.tu/valid-bundle-bytes "auth-test-5"))))))))
 
 (deftest feature-flag-test
   (testing "endpoints require :custom-viz premium feature"
@@ -181,7 +148,7 @@
                                                :status       :active}]
         (is (re-find #"identifier.*already exists"
                      (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
-                                        (valid-bundle-bytes "dup-viz"))))))))
+                                        (cvp.tu/valid-bundle-bytes "dup-viz"))))))))
 
 ;;; ------------------------------------------------ CRUD ------------------------------------------------
 
@@ -275,7 +242,7 @@
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
       (testing "successful registration creates plugin and persists manifest fields"
-        (let [zip  (make-tgz-bytes
+        (let [zip  (cvp.tu/make-tgz-bytes
                     [["metabase-plugin.json" (json/encode
                                               {:name     "new-register-viz"
                                                :icon     "icon.svg"
@@ -296,7 +263,7 @@
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
       (testing "POST returns 400 when zip is missing metabase-plugin.json"
-        (let [zip  (make-tgz-bytes [["dist/index.js" "console.log('hi')"]])
+        (let [zip  (cvp.tu/make-tgz-bytes [["dist/index.js" "console.log('hi')"]])
               resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
           (is (re-find #"metabase-plugin\.json" (or (:message resp) (str resp)))))))))
 
@@ -304,7 +271,7 @@
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
       (testing "POST returns 400 when zip is missing dist/index.js"
-        (let [zip  (make-tgz-bytes
+        (let [zip  (cvp.tu/make-tgz-bytes
                     [["metabase-plugin.json" (json/encode {:name "no-bundle-viz"})]])
               resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
           (is (re-find #"index\.js" (or (:message resp) (str resp)))))))))
@@ -313,7 +280,7 @@
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
       (testing "POST returns 400 when manifest has no name field"
-        (let [zip  (make-tgz-bytes
+        (let [zip  (cvp.tu/make-tgz-bytes
                     [["metabase-plugin.json" (json/encode {:icon "icon.svg"})]
                      ["dist/index.js" "console.log('hi')"]])
               resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
@@ -374,7 +341,7 @@
                                                       :status       :active
                                                       :bundle       (.getBytes "old" "UTF-8")
                                                       :bundle_hash  "oldhash"}]
-        (let [zip    (make-tgz-bytes
+        (let [zip    (cvp.tu/make-tgz-bytes
                       [["metabase-plugin.json" (json/encode
                                                 {:name "replace-viz"
                                                  :icon "new-icon.svg"})]
@@ -394,7 +361,7 @@
                                                       :display_name "mismatch-viz"
                                                       :status       :active
                                                       :bundle_hash  "abc"}]
-        (let [zip  (valid-bundle-bytes "some-other-identifier")
+        (let [zip  (cvp.tu/valid-bundle-bytes "some-other-identifier")
               resp (multipart-upload! :crowberto 400
                                       (str "ee/custom-viz-plugin/" id "/bundle") zip)]
           (is (re-find #"does not match" (or (:message resp) (str resp)))))))))
@@ -496,7 +463,7 @@
     (mt/with-model-cleanup [:model/CustomVizPlugin]
       (testing "registering a plugin records a custom-viz-plugin-create audit event"
         (let [resp  (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/"
-                                       (valid-bundle-bytes "audit-create-viz" {:icon "icon.svg"}))
+                                       (cvp.tu/valid-bundle-bytes "audit-create-viz" {:icon "icon.svg"}))
               entry (mt/latest-audit-log-entry "custom-viz-plugin-create" (:id resp))]
           (is (partial=
                {:topic    :custom-viz-plugin-create
@@ -575,7 +542,7 @@
                                                       :bundle       (.getBytes "old" "UTF-8")
                                                       :bundle_hash  "old-sha"}]
         (multipart-upload! :crowberto 200 (str "ee/custom-viz-plugin/" id "/bundle")
-                           (valid-bundle-bytes "audit-replace-viz"))
+                           (cvp.tu/valid-bundle-bytes "audit-replace-viz"))
         (let [entry (mt/latest-audit-log-entry "custom-viz-plugin-update" id)]
           (is (partial=
                {:topic    :custom-viz-plugin-update

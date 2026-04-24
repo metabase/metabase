@@ -3,14 +3,11 @@
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
+   [metabase-enterprise.custom-viz-plugin.test-util :as cvp.tu]
    [metabase.config.core :as config]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [toucan2.core :as t2])
-  (:import
-   (java.io ByteArrayOutputStream)
-   (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveOutputStream)
-   (org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -19,37 +16,11 @@
     (mt/with-temporary-setting-values [custom-viz-enabled true]
       (thunk))))
 
-;;; ------------------------------------------------ Bundle fixtures ------------------------------------------------
-
-(defn- make-tgz-bytes
-  ^bytes [entries]
-  (let [baos (ByteArrayOutputStream.)]
-    (with-open [gz  (GzipCompressorOutputStream. baos)
-                tar (TarArchiveOutputStream. gz)]
-      (doseq [[name content] entries
-              :let [^bytes bs (if (bytes? content) content (.getBytes (str content) "UTF-8"))
-                    entry     (doto (TarArchiveEntry. ^String name)
-                                (.setSize (alength bs)))]]
-        (.putArchiveEntry tar entry)
-        (.write tar bs 0 (alength bs))
-        (.closeArchiveEntry tar))
-      (.finish tar))
-    (.toByteArray baos)))
-
-(defn- valid-bundle-bytes
-  [identifier & [{:keys [icon metabase-version]}]]
-  (let [manifest (cond-> {:name identifier}
-                   icon             (assoc :icon icon)
-                   metabase-version (assoc-in [:metabase :version] metabase-version))]
-    (make-tgz-bytes
-     [["metabase-plugin.json" (json/encode manifest)]
-      ["dist/index.js" "console.log('hi')"]])))
-
 ;;; ------------------------------------------------ validate-bundle! ------------------------------------------------
 
 (deftest validate-bundle-happy-path-test
   (testing "validate-bundle! returns parsed manifest and a stable sha256"
-    (let [bytes (valid-bundle-bytes "my-viz" {:icon "icon.svg"})
+    (let [bytes (cvp.tu/valid-bundle-bytes "my-viz" {:icon "icon.svg"})
           res   (cache/validate-bundle! bytes)]
       (is (= "my-viz" (get-in res [:manifest :name])))
       (is (= "icon.svg" (get-in res [:manifest :icon])))
@@ -61,7 +32,7 @@
 
 (deftest validate-bundle-captures-version-test
   (testing "metabase.version from the manifest is echoed as :version-str"
-    (let [bytes (valid-bundle-bytes "ver-viz" {:metabase-version ">=1.60"})
+    (let [bytes (cvp.tu/valid-bundle-bytes "ver-viz" {:metabase-version ">=1.60"})
           res   (cache/validate-bundle! bytes)]
       (is (= ">=1.60" (:version-str res))))))
 
@@ -77,20 +48,20 @@
 
 (deftest validate-bundle-requires-manifest-test
   (testing "archive without metabase-plugin.json is rejected"
-    (let [bytes (make-tgz-bytes [["dist/index.js" "console.log('hi')"]])]
+    (let [bytes (cvp.tu/make-tgz-bytes [["dist/index.js" "console.log('hi')"]])]
       (is (thrown-with-msg? Exception #"metabase-plugin\.json"
                             (cache/validate-bundle! bytes))))))
 
 (deftest validate-bundle-requires-index-js-test
   (testing "archive without dist/index.js is rejected"
-    (let [bytes (make-tgz-bytes
+    (let [bytes (cvp.tu/make-tgz-bytes
                  [["metabase-plugin.json" (json/encode {:name "no-bundle"})]])]
       (is (thrown-with-msg? Exception #"index\.js"
                             (cache/validate-bundle! bytes))))))
 
 (deftest validate-bundle-requires-manifest-name-test
   (testing "manifest without :name is rejected"
-    (let [bytes (make-tgz-bytes
+    (let [bytes (cvp.tu/make-tgz-bytes
                  [["metabase-plugin.json" (json/encode {:icon "icon.svg"})]
                   ["dist/index.js" "console.log('hi')"]])]
       (is (thrown-with-msg? Exception #"\"name\""
@@ -98,7 +69,7 @@
 
 (deftest validate-bundle-rejects-invalid-json-manifest-test
   (testing "non-JSON manifest is rejected"
-    (let [bytes (make-tgz-bytes
+    (let [bytes (cvp.tu/make-tgz-bytes
                  [["metabase-plugin.json" "not json at all"]
                   ["dist/index.js" "console.log('hi')"]])]
       (is (thrown-with-msg? Exception #"not valid JSON"
@@ -108,7 +79,7 @@
   (testing "plugin requiring incompatible Metabase version is rejected"
     (with-redefs [config/mb-version-info {:tag "v1.60.0"}
                   config/is-dev?         false]
-      (let [bytes (valid-bundle-bytes "bad-ver" {:metabase-version ">=1.99.0"})]
+      (let [bytes (cvp.tu/valid-bundle-bytes "bad-ver" {:metabase-version ">=1.99.0"})]
         (is (thrown-with-msg? Exception #"version"
                               (cache/validate-bundle! bytes)))))))
 
@@ -179,7 +150,7 @@
   (testing "insert-bundle! creates an :active row with derived fields from the manifest"
     (mt/with-premium-features #{:custom-viz}
       (mt/with-model-cleanup [:model/CustomVizPlugin]
-        (let [validated (cache/validate-bundle! (valid-bundle-bytes "new-viz" {:icon "icon.svg"}))
+        (let [validated (cache/validate-bundle! (cvp.tu/valid-bundle-bytes "new-viz" {:icon "icon.svg"}))
               row       (cache/insert-bundle! "new-viz" validated)]
           (is (some? (:id row)))
           (is (= :active (:status row)))
@@ -198,7 +169,7 @@
                                                       :error_message "something"
                                                       :bundle        (.getBytes "old" "UTF-8")
                                                       :bundle_hash   "oldhash"}]
-        (let [validated (cache/validate-bundle! (valid-bundle-bytes "save-viz" {:icon "new.svg"}))
+        (let [validated (cache/validate-bundle! (cvp.tu/valid-bundle-bytes "save-viz" {:icon "new.svg"}))
               row       (cache/save-bundle! {:id id} validated)]
           (is (= :active (:status row))
               "plugin should be active after a successful save")
