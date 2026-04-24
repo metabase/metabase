@@ -1,0 +1,5 @@
+[
+  {"id": 1000, "database_id": 1, "type": "metric", "name": "Revenue", "archived": false, "collection_id": 3},
+  {"id": 1001, "database_id": 1, "type": "metric", "name": "Revenue", "archived": false, "collection_id": 3},
+  {"id": 1002, "database_id": 1, "type": "model",  "name": "Revenue", "archived": false, "collection_id": 4}
+]

@@ -1,0 +1,5 @@
+[
+  {"id": 1, "table_id": 10, "name": "revenue", "archived": false},
+  {"id": 2, "table_id": 11, "name": "revenue", "archived": false},
+  {"id": 3, "table_id": 20, "name": "revenue", "archived": false}
+]

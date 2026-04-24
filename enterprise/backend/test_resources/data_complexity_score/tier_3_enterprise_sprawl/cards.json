@@ -1,0 +1,14 @@
+[{"id":1,"database_id":1,"type":"metric","name":"Revenue","archived":false,"collection_id":3},
+ {"id":2,"database_id":1,"type":"metric","name":"Revenue","archived":false,"collection_id":3},
+ {"id":3,"database_id":1,"type":"metric","name":"MRR","archived":false,"collection_id":3},
+ {"id":4,"database_id":1,"type":"metric","name":"Churn Rate","archived":false,"collection_id":3},
+ {"id":5,"database_id":1,"type":"metric","name":"Pipeline Value","archived":false,"collection_id":3},
+ {"id":6,"database_id":1,"type":"model","name":"Users","archived":false,"collection_id":3},
+ {"id":7,"database_id":1,"type":"model","name":"Customer Overview","archived":false,"collection_id":3},
+ {"id":8,"database_id":1,"type":"model","name":"Subscription Health","archived":false,"collection_id":3},
+
+ {"id":9, "database_id":2,"type":"model","name":"Revenue","archived":false,"collection_id":4},
+ {"id":10,"database_id":2,"type":"metric","name":"Revenue","archived":false,"collection_id":4},
+ {"id":11,"database_id":2,"type":"model","name":"Users","archived":false,"collection_id":6},
+ {"id":12,"database_id":3,"type":"model","name":"Orders","archived":false,"collection_id":5},
+ {"id":13,"database_id":3,"type":"model","name":"Daily Dashboard","archived":false,"collection_id":5}]

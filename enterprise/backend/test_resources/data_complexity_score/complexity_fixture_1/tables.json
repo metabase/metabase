@@ -1,0 +1,8 @@
+[
+  {"id": 10, "db_id": 1, "name": "orders",        "active": true, "is_published": true,  "collection_id": 2},
+  {"id": 11, "db_id": 1, "name": "subscriptions", "active": true, "is_published": true,  "collection_id": 2},
+  {"id": 12, "db_id": 1, "name": "clients",       "active": true, "is_published": true,  "collection_id": 2},
+  {"id": 13, "db_id": 1, "name": "customers",     "active": true, "is_published": true,  "collection_id": 2},
+  {"id": 20, "db_id": 1, "name": "audit_events",  "active": true, "is_published": false, "collection_id": 4},
+  {"id": 21, "db_id": 1, "name": "audit_log",     "active": true, "is_published": false, "collection_id": 4}
+]
