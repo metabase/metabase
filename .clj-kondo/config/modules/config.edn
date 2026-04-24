@@ -2835,6 +2835,7 @@
    :api  #{metabase-enterprise.data-complexity-score.api
            metabase-enterprise.data-complexity-score.init}
    :uses #{analytics
+           analytics-interface
            api
            app-db
            audit-app
