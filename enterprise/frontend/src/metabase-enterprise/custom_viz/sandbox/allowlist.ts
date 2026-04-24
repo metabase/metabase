@@ -28,11 +28,12 @@ export function allSettersOf(proto: object): object[] {
   return ownFunctionsOf(proto, (d) => d.set);
 }
 
-// eslint-disable-next-line no-console -- plugin sandboxes may log for debugging
 const CONSOLE_METHODS = [
+  // eslint-disable-next-line no-console -- plugin sandboxes may log for debugging
   console.log,
   console.warn,
   console.error,
+  // eslint-disable-next-line no-console -- plugin sandboxes may log for debugging
   console.info,
 ];
 
