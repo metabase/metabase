@@ -7,13 +7,19 @@
   Of course the queries can't be executed without a connection to the user's DWH, which is usually impossible."
   (:require
    [clj-http.client :as http]
+   [clojure.data.csv :as csv]
+   [clojure.java.io :as io]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.lib.js.metadata :as lib.js.metadata]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.upload.core :as upload]
+   [metabase.upload.settings :as upload.settings]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 ;; XXX: INSTRUCTIONS:
 ;; - Log into the instance, open DevTools, and navigate to the problem question.
@@ -146,6 +152,63 @@
         :dataset-query
         qp.compile/compile)))
 
+(defn compile-card-time
+  "Given a `MetadataProvider` built by [[metadata-for]] and a card ID, tries to compile that card to e.g. SQL."
+  [metadata-provider card-id]
+  (mu/disable-enforcement
+    (let [dataset-query (-> (lib.metadata/card metadata-provider card-id)
+                            :dataset-query)
+          start (System/nanoTime)
+          _ (qp.compile/compile dataset-query)
+          elapsed-ms (/ (- (System/nanoTime) start) 1e6)]
+      elapsed-ms)))
+
+(defn generate-card-compilation-analysis
+  "`csv-file-name` is the name of the csv file that the results will be saved to locally and uploaded to metabase.
+   `card-ids` are the ids of the cards from the instance you've configured in `my-ctx` that you want to analyze.
+   Use `criterium.core` for more statistically significiant benchmarking. It greatly increases the time to test many cards."
+  [csv-file-name card-ids]
+  (let [num-cards (count card-ids)
+        _ (tap> (format "Processing %d cards" num-cards))
+        card-stats (into {}
+                         (for [[idx card-id] (map-indexed vector card-ids)]
+                           (try
+                             (let [mp (metadata-for my-ctx {:card [card-id]})
+                                   elapsed-ms (compile-card-time mp card-id)
+                                   card-num (inc idx)
+                                   card-pct (-> card-num (/ num-cards) (* 100) double)]
+                               (when (= 0 (mod card-num 10))
+                                 (tap> (format "Processed %.0f%% of %d cards"  card-pct num-cards)))
+                               [card-id {:compilation_time elapsed-ms :error_msg ""}])
+                             (catch Throwable t
+                               (tap> (format "Error on card %d: %s" card-id (.getMessage t)))
+                               [card-id {:compilation_time 0.0 :error_msg (.getMessage t)}]))))
+        _ (tap> (format "Finished processing %d cards" num-cards))
+        cols (-> card-stats vals first keys)
+        header (into ["card_id"] (map name cols))
+        rows (for [[card-id stats] card-stats]
+               (into [(str card-id)]
+                     (map #(str (get stats %)) cols)))]
+    (with-open [w (io/writer csv-file-name)]
+      (csv/write-csv w (cons header rows)))
+    (let [path (str (System/getProperty "user.dir") "/" csv-file-name)
+          file (java.io.File. path)
+          user  (t2/select-one :model/User :is_superuser true :is_active true)
+          {:keys [db_id schema_name table_prefix]} (upload.settings/uploads-settings)]
+      (binding [api/*current-user-id* (:id user)
+                api/*current-user* (delay user)
+                api/*is-superuser?* true
+                api/*current-user-permissions-set* (delay #{"/"})]
+        (upload/create-csv-upload!
+         {:collection-id nil
+          :filename (.getName file)
+          :file file
+          :db-id db_id
+          :schema-name schema_name
+          :table-prefix table_prefix}))
+      (tap> (format "Created and uploaded %s" path)))
+    card-stats))
+
 (comment
   ;; Example calls
   (let [card-id 456
@@ -154,4 +217,41 @@
 
   (let [card-id 456
         mp      (metadata-for my-ctx {:card [card-id]})]
-    (preprocess-card mp card-id)))
+    (preprocess-card mp card-id))
+
+  (let [csv-file-name "card_analysis.csv"
+        card-ids [123 456]]
+    (generate-card-compilation-analysis csv-file-name card-ids))
+
+  "You can look for differences card compilation performance between two csvs with this query"
+  "
+   ```sql
+   with master_stats_2000 as (
+     select card_id, compilation_time,
+     count(*) over() as total_cards,
+     count(*) filter (where error_msg is not null) over() as num_errors,
+     (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY compilation_time)
+      FROM \"public\".\"master_7000_20260410175341\") as median_comp_time,
+     avg(compilation_time) over() as avg_comp_time
+     from \"public\".\"master_7000_20260410175341\"
+   ),
+   ck_stats_2000 as (
+     select card_id, compilation_time,
+     count(*) over() as total_cards,
+     count(*) filter (where error_msg is not null) over() as num_errors,
+     (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY compilation_time)
+      FROM \"public\".\"col_keys_7000_20260410175334\") as median_comp_time,
+     avg(compilation_time) over() as avg_comp_time
+     from \"public\".\"col_keys_7000_20260410175334\"
+   )
+   select count(*) over(),
+   m.card_id, m.compilation_time as master_time, ck.compilation_time as ck_time,
+   m.compilation_time - ck.compilation_time as compilation_diff,
+   m.num_errors as master_errors, ck.num_errors as ck_errors,
+   m.median_comp_time as master_median, ck.median_comp_time as ck_median,
+   m.avg_comp_time as master_avg, ck.avg_comp_time as ck_avg
+   from master_stats_2000 m
+   left join ck_stats_2000 ck
+   on m.card_id = ck.card_id
+   order by compilation_diff asc;
+   ```")
