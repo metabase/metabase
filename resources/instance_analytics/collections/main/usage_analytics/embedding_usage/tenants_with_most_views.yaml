@@ -15,6 +15,11 @@ dataset_query:
   - aggregation:
     - - count
       - {lib/uuid: 2d944947-900e-4f2a-850d-656faa225090}
+    - - distinct
+      - {}
+      - - field
+        - {base-type: type/*, effective-type: type/*, lib/uuid: 5b24d394-804e-47ee-a876-f161af64cb05}
+        - user_id
     breakout:
     - - field
       - {base-type: type/Text, effective-type: type/Text, join-alias: Tenants}
@@ -41,8 +46,8 @@ dataset_query:
       - - =
         - {}
         - - field
-          - {base-type: type/Integer, effective-type: type/Integer}
-          - [Internal Metabase Database, public, v_view_log, tenant_id]
+          - {base-type: type/*, effective-type: type/*, lib/uuid: 5281bd5b-7c6e-4702-90ec-20fd6953ede1}
+          - tenant_id
         - - field
           - {base-type: type/Integer, effective-type: type/Integer, join-alias: Tenants}
           - [Internal Metabase Database, public, v_tenants, tenant_id]
@@ -63,6 +68,7 @@ dataset_query:
 visualization_settings:
   column_settings:
     '["name","count"]': {column_title: Views, show_mini_bar: true}
+    '["name","count_2"]': {column_title: Active users, show_mini_bar: true}
     '["name","name"]': {column_title: Tenant, link_url: question/199, view_as: link}
     '["name","tenant_id"]': {column_title: Tenant ID, link_url: question/199, view_as: link}
   table.cell_column: count
@@ -82,6 +88,7 @@ visualization_settings:
   - enabled: true
     fieldRef: [aggregation, 0]
     name: count
+  - {enabled: true, name: count_2}
   table.pivot: false
   table.pivot_column: name
 card_schema: 23
