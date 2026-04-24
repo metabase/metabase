@@ -90,6 +90,7 @@ export const GitSyncOptionsDropdown = ({
             size="md"
             fz="12px"
             py="md"
+            my="xs"
             style={{ textTransform: "none" }}
             bdrs="sm"
           >{t`Branch set by an environment variable`}</Badge>
