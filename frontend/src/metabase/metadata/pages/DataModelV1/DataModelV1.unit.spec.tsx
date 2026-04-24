@@ -22,8 +22,8 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import * as Urls from "metabase/urls";
 import { checkNotNull } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import registerVisualizations from "metabase/visualizations/register";
 import type {
   Database,

@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 
 import { Anchor, Group, Text } from "metabase/ui";
-import { collection as collectionUrl } from "metabase/utils/urls";
+import { collection as collectionUrl } from "metabase/urls";
 
 import type { CollectionPathSegment } from "../../utils";
 

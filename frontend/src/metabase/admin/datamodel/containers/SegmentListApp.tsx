@@ -15,7 +15,7 @@ import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Segment } from "metabase-types/api";
 
 interface Props {

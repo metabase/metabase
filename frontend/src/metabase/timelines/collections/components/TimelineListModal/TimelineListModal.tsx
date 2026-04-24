@@ -7,7 +7,7 @@ import {
   getSortedTimelines,
 } from "metabase/common/utils/timelines";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 
 import SearchEmptyState from "../SearchEmptyState";

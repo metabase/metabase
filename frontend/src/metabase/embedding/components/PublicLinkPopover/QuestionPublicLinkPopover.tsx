@@ -9,7 +9,7 @@ import {
   trackPublicLinkCopied,
   trackPublicLinkRemoved,
 } from "metabase/public/lib/analytics";
-import { publicQuestion as getPublicQuestionUrl } from "metabase/utils/urls";
+import { publicQuestion as getPublicQuestionUrl } from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { PublicLinkPopover } from "./PublicLinkPopover";

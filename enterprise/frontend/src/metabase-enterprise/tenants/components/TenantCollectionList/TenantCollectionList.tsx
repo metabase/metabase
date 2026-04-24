@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import type { IconName } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { useListTenantsQuery } from "metabase-enterprise/api";
 
 export const TenantCollectionList = () => {

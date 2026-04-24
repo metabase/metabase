@@ -4,9 +4,9 @@ import { useListRecentsQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
+import * as Urls from "metabase/urls";
 import { getIcon } from "metabase/utils/icon";
 import { getName } from "metabase/utils/name";
-import * as Urls from "metabase/utils/urls";
 import type { RecentItem } from "metabase-types/api";
 
 import { isWithinWeeks } from "../../utils";

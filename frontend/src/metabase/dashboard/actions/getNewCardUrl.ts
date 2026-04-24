@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import type { StoreDashboard } from "metabase/redux/store";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";

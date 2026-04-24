@@ -18,8 +18,8 @@ import { Bookmarks } from "metabase/entities/bookmarks";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { connect } from "metabase/redux";
 import { Icon, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { getIcon } from "metabase/utils/icon";
-import * as Urls from "metabase/utils/urls";
 import type { Bookmark } from "metabase-types/api";
 
 import { SidebarHeading } from "../../MainNavbar.styled";

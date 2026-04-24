@@ -5,8 +5,8 @@ import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { IconName } from "metabase/ui";
 import { Group, Icon, Repeat, Skeleton, Stack, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { getIcon } from "metabase/utils/icon";
-import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 
 import { ToggleFullList } from "./ToggleFullList";

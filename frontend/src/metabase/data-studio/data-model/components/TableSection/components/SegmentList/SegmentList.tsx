@@ -6,7 +6,7 @@ import { trackSegmentCreateStarted } from "metabase/data-studio/analytics";
 import { getUserCanWriteSegments } from "metabase/data-studio/selectors";
 import { useSelector } from "metabase/redux";
 import { Button, Group, Icon, Stack } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Table } from "metabase-types/api";
 
 import S from "../../TableSection.module.css";

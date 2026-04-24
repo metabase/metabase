@@ -8,8 +8,8 @@ import { PageContainer } from "metabase/data-studio/common/components/PageContai
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";
 import { Alert, Box, Card, Stack } from "metabase/ui";
+import type * as Urls from "metabase/urls";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import type * as Urls from "metabase/utils/urls";
 import {
   useGetPythonLibraryQuery,
   useUpdatePythonLibraryMutation,

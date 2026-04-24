@@ -1,5 +1,5 @@
 import { coerceCollectionId } from "metabase/collections/utils";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, Dashboard } from "metabase-types/api";
 

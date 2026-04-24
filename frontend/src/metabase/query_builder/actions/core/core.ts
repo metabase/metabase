@@ -23,10 +23,10 @@ import {
 } from "metabase/redux/query-builder";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Urls from "metabase/urls";
 import { clone } from "metabase/utils/clone";
 import { shouldOpenInBlankWindow } from "metabase/utils/dom";
 import { isNotNull } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";

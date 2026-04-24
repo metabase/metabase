@@ -5,7 +5,7 @@ import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Button, Icon, Menu, Tooltip } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 export function TransformToolsMenu() {
   const isAdmin = useSelector(getUserIsAdmin);

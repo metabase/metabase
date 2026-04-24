@@ -12,9 +12,9 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { Select } from "metabase/common/components/Select";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import * as Urls from "metabase/urls";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import type { Database, DatabaseXray } from "metabase-types/api";
 
 import { HomeCaption } from "../HomeCaption";

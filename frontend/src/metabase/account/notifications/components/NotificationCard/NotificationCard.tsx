@@ -18,7 +18,7 @@ import {
   getNotificationEnabledChannelsMap,
 } from "metabase/notifications/utils";
 import { Group, Icon } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { User } from "metabase-types/api";
 
 type NotificationCardProps = {

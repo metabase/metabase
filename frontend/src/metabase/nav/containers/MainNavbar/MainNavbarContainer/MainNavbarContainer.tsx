@@ -30,7 +30,7 @@ import {
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/selectors/user";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";
 

@@ -5,8 +5,8 @@ import { MaybeLink } from "metabase/common/components/Badge/Badge.styled";
 import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
 import { Link } from "metabase/common/components/Link";
 import { Box, Button, Ellipsified, FixedSizeIcon, Flex } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { getIcon } from "metabase/utils/icon";
-import * as Urls from "metabase/utils/urls";
 import type { CacheableModel } from "metabase-types/api";
 
 import type { CacheableItem, UpdateTarget } from "../types";

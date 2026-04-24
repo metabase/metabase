@@ -29,13 +29,13 @@ import {
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Icon } from "metabase/ui";
+import { modelToUrl } from "metabase/urls/modelToUrl";
+import { extractEntityId } from "metabase/urls/utils";
 import {
   type IconModel,
   type ObjectWithModel,
   getIcon,
 } from "metabase/utils/icon";
-import { modelToUrl } from "metabase/utils/urls/modelToUrl";
-import { extractEntityId } from "metabase/utils/urls/utils";
 import type {
   Card,
   CardDisplayType,

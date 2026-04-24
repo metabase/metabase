@@ -2,8 +2,8 @@ import { Link } from "react-router";
 
 import { TableBreadcrumbs } from "metabase/metadata/components";
 import { Box, Flex, Group, Icon } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { modelIconMap } from "metabase/utils/icon";
-import * as Urls from "metabase/utils/urls";
 import type { Segment } from "metabase-types/api";
 
 import { SegmentActionSelect } from "./SegmentActionSelect";

@@ -11,7 +11,7 @@ import {
   trackPublicLinkRemoved,
 } from "metabase/public/lib/analytics";
 import { Box, Popover, Title } from "metabase/ui";
-import { publicDocument as getPublicDocumentUrl } from "metabase/utils/urls/documents";
+import { publicDocument as getPublicDocumentUrl } from "metabase/urls/documents";
 import type { Document } from "metabase-types/api";
 
 import { DocumentPublicLinkPopoverContent } from "./DocumentPublicLinkPopoverContent";

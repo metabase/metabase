@@ -11,8 +11,8 @@ import { EventSandbox } from "metabase/common/components/EventSandbox";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Tooltip } from "metabase/ui";
 import { Flex, type IconName, Skeleton } from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
 import { getIcon } from "metabase/utils/icon";
-import { modelToUrl } from "metabase/utils/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Bookmark,

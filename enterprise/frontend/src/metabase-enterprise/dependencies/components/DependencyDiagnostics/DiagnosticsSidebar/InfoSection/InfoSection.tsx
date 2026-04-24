@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { DateTime } from "metabase/common/components/DateTime";
 import CS from "metabase/css/core/index.css";
 import { Anchor, Box, Card, FixedSizeIcon, Group, Stack } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import type { DependencyNode } from "metabase-types/api";
 

@@ -7,7 +7,7 @@ import type { UseCardDataResult } from "metabase/documents/hooks/use-card-data";
 import { useDraftCardOperations } from "metabase/documents/hooks/use-draft-card-operations";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Card, Document, VisualizationSettings } from "metabase-types/api";
 

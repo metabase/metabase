@@ -10,7 +10,7 @@ import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModa
 import { useCollectionQuery } from "metabase/common/hooks";
 import { Collections } from "metabase/entities/collections";
 import { useDispatch } from "metabase/redux";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Collection, CollectionId } from "metabase-types/api";
 
 export interface MoveCollectionModalProps {

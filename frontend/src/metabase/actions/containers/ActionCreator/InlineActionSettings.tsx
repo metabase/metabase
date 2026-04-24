@@ -15,7 +15,7 @@ import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Switch, Tooltip } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   ActionFormSettings,
   WritebackAction,

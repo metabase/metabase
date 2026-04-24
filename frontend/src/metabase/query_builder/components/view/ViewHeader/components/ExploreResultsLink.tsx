@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { ViewButton } from "metabase/common/components/ViewButton";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
 interface ExploreResultsLinkProps {

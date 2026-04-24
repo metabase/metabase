@@ -7,7 +7,7 @@ import {
   PanelHeaderTitle,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { Button, Group } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 type PythonLibraryEditorHeaderProps = {
   isDirty?: boolean;

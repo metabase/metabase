@@ -4,7 +4,7 @@ import { useListUsersQuery } from "metabase/api";
 import { CollectionListView } from "metabase/common/components/CollectionListView";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
 import type { IconName } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { useGetTenantQuery } from "metabase-enterprise/api";
 
 interface TenantUsersPersonalCollectionListProps {

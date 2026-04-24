@@ -7,7 +7,7 @@ import type { DashboardSubscriptionListItem } from "metabase/account/notificatio
 import { Link } from "metabase/common/components/Link";
 import { formatTitle } from "metabase/notifications/utils";
 import { canArchiveLegacyAlert, formatChannel } from "metabase/pulse";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Channel, User } from "metabase-types/api";
 
 import {

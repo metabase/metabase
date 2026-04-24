@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import type { InsightsMenuItemProps } from "metabase/plugins";
 import { Icon, Menu } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { useGetAuditInfoQuery } from "metabase-enterprise/api";
 
 export const InsightsMenuItem = ({

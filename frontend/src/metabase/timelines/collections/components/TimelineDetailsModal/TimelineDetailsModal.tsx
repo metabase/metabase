@@ -8,9 +8,9 @@ import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getTimelineName } from "metabase/common/utils/timelines";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import ModalHeader from "metabase/timelines/common/components/ModalHeader";
+import * as Urls from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
-import * as Urls from "metabase/utils/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
 import type { MenuItem } from "../../types";

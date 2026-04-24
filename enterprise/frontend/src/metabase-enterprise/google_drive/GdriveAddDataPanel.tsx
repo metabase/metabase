@@ -25,7 +25,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { getSubpathSafeUrl } from "metabase/utils/urls";
+import { getSubpathSafeUrl } from "metabase/urls";
 import { useGetGsheetsFolderQuery } from "metabase-enterprise/api";
 import {
   DriveConnectionDisplay,
