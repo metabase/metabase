@@ -4,8 +4,11 @@
 ## `message_id` alone, enforcing 1:1 between a message and a feedback row.
 ## With shared Slack threads, multiple Metabase users can each submit
 ## independent feedback on the same assistant message, so we:
-##   - drop the old single-column primary key on `message_id`
+##   - drop the `message_id` FK temporarily (MySQL refuses to drop a PK
+##     that is referenced by an FK on the same column)
+##   - drop the single-column primary key on `message_id`
 ##   - add a surrogate `id` autoincrement PK
+##   - re-add the `message_id` → `metabot_message.id` FK
 ##   - add a `user_id` column (backfilled from the message's author so any
 ##     existing dev-env rows survive) and enforce NOT NULL
 ##   - add a unique constraint on (`message_id`, `user_id`)
@@ -15,6 +18,23 @@ databaseChangeLog:
 
   - changeSet:
       id: v61.2026-04-24T14:46:00
+      author: noahmoss
+      comment: Drop FK fk_metabot_feedback_message_id before dropping the PK (MySQL rejects dropping a PK that participates in an FK)
+      changes:
+        - dropForeignKeyConstraint:
+            baseTableName: metabot_feedback
+            constraintName: fk_metabot_feedback_message_id
+      rollback:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_feedback
+            baseColumnNames: message_id
+            constraintName: fk_metabot_feedback_message_id
+            referencedTableName: metabot_message
+            referencedColumnNames: id
+            onDelete: CASCADE
+
+  - changeSet:
+      id: v61.2026-04-24T14:49:00
       author: noahmoss
       comment: Drop the single-column primary key on metabot_feedback.message_id
       changes:
@@ -27,7 +47,7 @@ databaseChangeLog:
             constraintName: pk_metabot_feedback
 
   - changeSet:
-      id: v61.2026-04-24T14:49:00
+      id: v61.2026-04-24T14:52:00
       author: noahmoss
       comment: Add surrogate id autoincrement PK to metabot_feedback
       changes:
@@ -48,7 +68,24 @@ databaseChangeLog:
             columnName: id
 
   - changeSet:
-      id: v61.2026-04-24T14:52:00
+      id: v61.2026-04-24T14:55:00
+      author: noahmoss
+      comment: Re-add FK from metabot_feedback.message_id to metabot_message.id
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: metabot_feedback
+            baseColumnNames: message_id
+            constraintName: fk_metabot_feedback_message_id
+            referencedTableName: metabot_message
+            referencedColumnNames: id
+            onDelete: CASCADE
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: metabot_feedback
+            constraintName: fk_metabot_feedback_message_id
+
+  - changeSet:
+      id: v61.2026-04-24T14:58:00
       author: noahmoss
       comment: Add nullable user_id column to metabot_feedback (submitter)
       changes:
@@ -65,7 +102,7 @@ databaseChangeLog:
             columnName: user_id
 
   - changeSet:
-      id: v61.2026-04-24T14:55:00
+      id: v61.2026-04-24T15:01:00
       author: noahmoss
       comment: Backfill metabot_feedback.user_id from the rated message's author so the pre-multi-user 1:1 rows are attributed to their implicit submitter
       changes:
@@ -76,7 +113,7 @@ databaseChangeLog:
             sql: UPDATE metabot_feedback SET user_id = NULL
 
   - changeSet:
-      id: v61.2026-04-24T14:58:00
+      id: v61.2026-04-24T15:04:00
       author: noahmoss
       comment: Enforce NOT NULL on metabot_feedback.user_id now that it is backfilled
       changes:
@@ -91,7 +128,7 @@ databaseChangeLog:
             columnDataType: int
 
   - changeSet:
-      id: v61.2026-04-24T15:01:00
+      id: v61.2026-04-24T15:07:00
       author: noahmoss
       comment: Unique constraint on metabot_feedback (message_id, user_id)
       changes:
