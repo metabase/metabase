@@ -2,7 +2,6 @@
   (:require
    #?@(:cljs
        (["crc-32" :as CRC32]))
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -31,7 +30,7 @@
         (recur (str \0 s))
         s))))
 
-(mu/defn truncate-alias :- [:string {:min 1, :max 60}]
+(mu/defn truncate-alias :- [:string {:max 60}]
   "Truncate string `s` if it is longer than [[truncate-alias-max-length-bytes]] and append a hex-encoded CRC-32
   checksum of the original string. Truncated string is truncated to [[truncate-alias-max-length-bytes]]
   minus [[truncated-alias-hash-suffix-length]] characters so the resulting string is
@@ -43,7 +42,7 @@
   ([s]
    (truncate-alias s truncate-alias-max-length-bytes))
 
-  ([s         :- ::lib.schema.common/non-blank-string
+  ([s         :- :string
     max-bytes :- [:int {:min 0}]]
    (if (<= (u/string-byte-count s) max-bytes)
      s
@@ -68,11 +67,11 @@
    ;; (f str) => unique-str
    [:=>
     [:cat :string]
-    ::lib.schema.common/non-blank-string]
+    :string]
    ;; (f id str) => unique-str
    [:=>
     [:cat :any :string]
-    ::lib.schema.common/non-blank-string]])
+    :string]])
 
 (mu/defn- untruncated-unique-alias :- :string
   [original :- :string
