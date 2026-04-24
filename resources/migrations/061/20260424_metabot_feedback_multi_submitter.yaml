@@ -113,6 +113,16 @@ databaseChangeLog:
             sql: UPDATE metabot_feedback SET user_id = NULL
 
   - changeSet:
+      id: v61.2026-04-24T15:03:00
+      author: noahmoss
+      comment: Drop any metabot_feedback rows whose rated message has no user_id (unattributable — feedback without a submitter is meaningless). No-op in prod where metabot_feedback has never shipped; cleans up orphans in dev/CI envs that ran the pre-multi-user schema.
+      changes:
+        - sql:
+            sql: DELETE FROM metabot_feedback WHERE user_id IS NULL
+      rollback:
+        - empty: {}
+
+  - changeSet:
       id: v61.2026-04-24T15:04:00
       author: noahmoss
       comment: Enforce NOT NULL on metabot_feedback.user_id now that it is backfilled
