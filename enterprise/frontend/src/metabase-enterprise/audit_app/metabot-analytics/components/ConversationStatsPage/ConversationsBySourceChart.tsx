@@ -13,9 +13,21 @@ import { BreakoutChartCard } from "./BreakoutChartCard";
 import { toBreakoutRawSeries } from "./breakout-raw-series";
 import {
   type StatsFilters,
+  type UsageStatsMetric,
   buildSourceBreakoutQuery,
-  getChartTitle,
 } from "./query-utils";
+
+const TITLES: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`Conversations by source`;
+  },
+  get messages() {
+    return t`Messages by source`;
+  },
+  get tokens() {
+    return t`Tokens by source`;
+  },
+};
 
 type Props = StatsFilters & {
   provider: MetadataProvider;
@@ -64,7 +76,7 @@ export function ConversationsBySourceChart({
 
   return (
     <BreakoutChartCard
-      title={getChartTitle(metric, "source")}
+      title={TITLES[metric]}
       rawSeries={rawSeries}
       isFetching={isFetching}
       display="bar"

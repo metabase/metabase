@@ -376,53 +376,6 @@ export function buildTimeseriesBreakoutQuery({
   return q;
 }
 
-/**
- * Get the chart title for a given metric and dimension.
- * Uses explicit strings for ttag i18n extraction.
- */
-export function getChartTitle(
-  metric: UsageStatsMetric,
-  dimension:
-    | "day"
-    | "hour"
-    | "user"
-    | "group"
-    | "profile"
-    | "source"
-    | "ip_address",
-): string {
-  const titles = {
-    conversations: {
-      day: t`Conversations by day`,
-      hour: t`Conversations by hour`,
-      user: t`Users with most conversations`,
-      group: t`Groups with most conversations`,
-      profile: t`Conversations by profile`,
-      source: t`Conversations by source`,
-      ip_address: t`IP addresses with most conversations`,
-    },
-    messages: {
-      day: t`Messages by day`,
-      hour: t`Messages by hour`,
-      user: t`Users with most messages`,
-      group: t`Groups with most messages`,
-      profile: t`Messages by profile`,
-      source: t`Messages by source`,
-      ip_address: t`IP addresses with most messages`,
-    },
-    tokens: {
-      day: t`Tokens by day`,
-      hour: t`Tokens by hour`,
-      user: t`Users with most tokens`,
-      group: t`Groups with most tokens`,
-      profile: t`Tokens by profile`,
-      source: t`Tokens by source`,
-      ip_address: t`IP addresses with most tokens`,
-    },
-  };
-  return titles[metric][dimension];
-}
-
 export function isSingleDayFilter(dateFilter: DateFilterValue): boolean {
   if (dateFilter.type === "relative") {
     return dateFilter.unit === "day" && Math.abs(dateFilter.value) <= 1;

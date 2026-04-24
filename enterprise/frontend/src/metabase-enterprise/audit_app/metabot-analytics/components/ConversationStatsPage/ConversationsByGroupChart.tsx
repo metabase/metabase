@@ -15,15 +15,27 @@ import { BreakoutChartCard } from "./BreakoutChartCard";
 import { toBreakoutRawSeries } from "./breakout-raw-series";
 import {
   type StatsFilters,
+  type UsageStatsMetric,
   applyDateFilter,
   applyGroupIdFilter,
   applyMetricOrderBy,
   applyUsageStatsAggregation,
   applyUserFilter,
   excludeAllUsersGroup,
-  getChartTitle,
   joinGroupMembers,
 } from "./query-utils";
+
+const TITLES: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`Groups with most conversations`;
+  },
+  get messages() {
+    return t`Groups with most messages`;
+  },
+  get tokens() {
+    return t`Groups with most tokens`;
+  },
+};
 
 function breakoutByJoinedGroupName(query: Query): Query {
   const col = Lib.breakoutableColumns(query, 0).find((col) => {
@@ -80,7 +92,7 @@ export function ConversationsByGroupChart({
 
   return (
     <BreakoutChartCard
-      title={getChartTitle(metric, "group")}
+      title={TITLES[metric]}
       rawSeries={rawSeries}
       isFetching={isFetching}
       display="row"
