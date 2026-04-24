@@ -19,6 +19,7 @@ import type { DataGridStylesProps } from "../DataGrid/types";
 export interface DataGridRowProps<TData> extends DataGridStylesProps {
   row: DataGridRowType<TData>;
   columns: DataGridColumnType<TData>[];
+  striped?: boolean;
   rowMeasureRef?: ((element: Element | null) => void) | undefined;
   zoomedRowIndex: number | undefined;
   pinnedRowsCount: number;
@@ -35,6 +36,7 @@ export interface DataGridRowProps<TData> extends DataGridStylesProps {
 export const DataGridRow = <TData,>({
   row,
   columns,
+  striped = false,
   rowMeasureRef,
   pinnedRowsCount,
   zoomedRowIndex,
@@ -45,6 +47,7 @@ export const DataGridRow = <TData,>({
   classNames,
   styles,
 }: DataGridRowProps<TData>) => {
+  const isStriped = striped && row.origin.index % 2 === 1;
   const rowPositionStyles = getRowPositionStyles(row);
   const paddingLeft = columns[0]?.virtualItem?.start ?? 0;
 
@@ -67,9 +70,11 @@ export const DataGridRow = <TData,>({
       }}
       data-allow-page-break-after="true"
       data-row-selected={row.origin.getIsSelected()}
+      data-row-striped={isStriped ? "true" : undefined}
       className={cx(
         S.row,
         {
+          [S.striped]: isStriped,
           [S.withSeparator]: row.origin.index === pinnedRowsCount - 1,
           [S.active]: zoomedRowIndex === row.origin.index,
         },

@@ -116,6 +116,17 @@ export class Table extends Component<TableProps, TableState> {
       widget: "toggle",
       getDefault: () => false,
     },
+    "table.striped": {
+      get section() {
+        return t`Display`;
+      },
+      get title() {
+        return t`Striped rows`;
+      },
+      inline: true,
+      widget: "toggle",
+      getDefault: () => false,
+    },
     "table.freeze_columns": {
       get section() {
         return t`Display`;
