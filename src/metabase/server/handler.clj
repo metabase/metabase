@@ -13,6 +13,7 @@
    [metabase.server.middleware.misc :as mw.misc]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.server.middleware.premium-features-cache :as mw.pf-cache]
+   [metabase.server.middleware.proxy :as mw.proxy]
    [metabase.server.middleware.request-id :as mw.request-id]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.middleware.session :as mw.session]
@@ -109,6 +110,7 @@
         #'mw.request-id/wrap-request-id              ; Add a unique request ID to the request
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
+        #'mw.proxy/wrap-remote-api-proxy             ; proxies /api/* to remote backend if MB_REMOTE_API_URL is set (dev only)
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias
         wrap-remote-api-proxy-dev-mw                 ; proxies /api/* to remote backend if MB_REMOTE_API_URL is set (dev only)
         ]

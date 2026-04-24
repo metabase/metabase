@@ -5,6 +5,7 @@ import {
   UnreferencedDependencyDiagnosticsPage,
 } from "./pages/DependencyDiagnosticsPage";
 import { DependencyGraphPage } from "./pages/DependencyGraphPage";
+import { SchemaViewerPage } from "./pages/SchemaViewerPage";
 
 export function getDataStudioDependencyRoutes() {
   return <IndexRoute component={DependencyGraphPage} />;
@@ -21,4 +22,8 @@ export function getDataStudioDependencyDiagnosticsRoutes() {
       />
     </>
   );
+}
+
+export function getDataStudioSchemaViewerRoutes() {
+  return <IndexRoute component={SchemaViewerPage} />;
 }

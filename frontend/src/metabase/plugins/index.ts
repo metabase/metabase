@@ -133,6 +133,7 @@ export {
 } from "./oss/transforms";
 export {
   PLUGIN_DEPENDENCIES,
+  type DatabaseSchemaViewerSectionProps,
   type DependencyGraphPageContextType,
   type CheckDependenciesFormProps,
   type CheckDependenciesModalProps,

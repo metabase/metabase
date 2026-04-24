@@ -19,6 +19,7 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import {
   PLUGIN_DATABASE_REPLICATION,
   PLUGIN_DB_ROUTING,
+  PLUGIN_DEPENDENCIES,
   PLUGIN_TABLE_EDITING,
   PLUGIN_WRITABLE_CONNECTION,
 } from "metabase/plugins";
@@ -117,6 +118,10 @@ function DatabaseEditAppInner({
                   <DatabaseConnectionInfoSection database={database} />
 
                   <PLUGIN_WRITABLE_CONNECTION.WritableConnectionInfoSection
+                    database={database}
+                  />
+
+                  <PLUGIN_DEPENDENCIES.DatabaseSchemaViewerSection
                     database={database}
                   />
 

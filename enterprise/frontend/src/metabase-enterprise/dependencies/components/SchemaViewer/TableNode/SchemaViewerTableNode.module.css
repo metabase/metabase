@@ -1,0 +1,36 @@
+.card {
+  --node-border-color: rgba(7, 23, 34, 0.14);
+
+  position: relative;
+  min-width: 20rem;
+  max-width: 20rem;
+  border: 1px solid var(--node-border-color);
+  border-radius: 0.5rem;
+  background: var(--mb-color-white);
+  box-shadow: 0 0.25rem 1.25rem 0 rgba(0, 0, 0, 0.05);
+}
+
+/* Highlight for nodes connected to a currently-selected edge.
+   Uses an outline so the ring doesn't alter the card's box size and push
+   neighboring nodes around. */
+.card.selected {
+  --node-border-color: var(--mb-color-brand);
+
+  outline: 3px solid var(--mb-color-brand);
+}
+
+.card.selected .header {
+  border-bottom-color: var(--mb-color-brand);
+}
+
+.header {
+  border-bottom: 1px solid rgba(7, 23, 34, 0.14);
+}
+
+.focal .header {
+  border-bottom-color: var(--mb-color-brand);
+}
+
+.fields {
+  overflow: visible;
+}

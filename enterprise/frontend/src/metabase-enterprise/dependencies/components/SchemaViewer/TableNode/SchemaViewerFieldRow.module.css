@@ -1,0 +1,43 @@
+.row {
+  position: relative;
+  white-space: nowrap;
+
+  &[data-expandable] {
+    &:hover {
+      background-color: var(--mb-color-background-hover);
+    }
+  }
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.handle {
+  width: 1px;
+  height: 1px;
+  background: transparent;
+  border: none;
+  opacity: 0;
+}
+
+/* Indicator on expandable FK fields — signals the target table can be fetched.
+   Positioned so the circle's center sits on the table node's right border,
+   with half inside and half outside the card. Requires .card (in
+   SchemaViewerTableNode.module.css) to use the default overflow: visible.
+   Uses --node-border-color (declared on .card) so it automatically picks up
+   the focal brand color when the card is focal. */
+.expandIndicator {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translate(50%, -50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--mb-color-white);
+  border: 1.5px solid var(--node-border-color, var(--mb-color-text-secondary));
+  pointer-events: none;
+  z-index: 1;
+}
