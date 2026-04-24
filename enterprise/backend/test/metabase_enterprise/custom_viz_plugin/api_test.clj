@@ -26,9 +26,12 @@
      ~@body))
 
 (defn- multipart-upload!
-  "POST a multipart `bundle-bytes` tar.gz to `path` as user `user`, expecting `status`."
-  [user status path ^bytes bundle-bytes]
-  (mt/user-http-request user :post status path
+  "Send a multipart `bundle-bytes` tar.gz to `path` as user `user`, expecting `status`.
+
+  Defaults to POST (the create-new-plugin endpoint); pass `:method :put` for the
+  replace-bundle endpoint."
+  [user status path ^bytes bundle-bytes & {:keys [method] :or {method :post}}]
+  (mt/user-http-request user method status path
                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
                         {:file bundle-bytes}))
 
@@ -73,7 +76,8 @@
                                                       :status       :active}]
         (is (= "You don't have permissions to do that."
                (multipart-upload! :rasta 403 (str "ee/custom-viz-plugin/" id "/bundle")
-                                  (cvp.tu/valid-bundle-bytes "auth-test-5"))))))))
+                                  (cvp.tu/valid-bundle-bytes "auth-test-5")
+                                  :method :put)))))))
 
 (deftest feature-flag-test
   (testing "endpoints require :custom-viz premium feature"
@@ -335,7 +339,7 @@
 
 (deftest replace-bundle-test
   (mt/with-premium-features #{:custom-viz}
-    (testing "POST /:id/bundle replaces an existing plugin's bundle and refreshes derived fields"
+    (testing "PUT /:id/bundle replaces an existing plugin's bundle and refreshes derived fields"
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "replace-viz"
                                                       :display_name "old name"
                                                       :status       :active
@@ -347,7 +351,8 @@
                                                  :icon "new-icon.svg"})]
                        ["dist/index.js" "console.log('new')"]])
               resp   (multipart-upload! :crowberto 200
-                                        (str "ee/custom-viz-plugin/" id "/bundle") zip)
+                                        (str "ee/custom-viz-plugin/" id "/bundle") zip
+                                        :method :put)
               row    (t2/select-one :model/CustomVizPlugin :id id)]
           (is (= "replace-viz" (:identifier resp)))
           (is (= "new-icon.svg" (:icon row)))
@@ -356,14 +361,15 @@
 
 (deftest replace-bundle-identifier-mismatch-test
   (mt/with-premium-features #{:custom-viz}
-    (testing "POST /:id/bundle refuses a zip whose manifest name differs from the plugin's identifier"
+    (testing "PUT /:id/bundle refuses a zip whose manifest name differs from the plugin's identifier"
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "mismatch-viz"
                                                       :display_name "mismatch-viz"
                                                       :status       :active
                                                       :bundle_hash  "abc"}]
         (let [zip  (cvp.tu/valid-bundle-bytes "some-other-identifier")
               resp (multipart-upload! :crowberto 400
-                                      (str "ee/custom-viz-plugin/" id "/bundle") zip)]
+                                      (str "ee/custom-viz-plugin/" id "/bundle") zip
+                                      :method :put)]
           (is (re-find #"does not match" (or (:message resp) (str resp)))))))))
 
 ;;; ------------------------------------------------ Update / Refresh ------------------------------------------------
@@ -542,7 +548,8 @@
                                                       :bundle       (.getBytes "old" "UTF-8")
                                                       :bundle_hash  "old-sha"}]
         (multipart-upload! :crowberto 200 (str "ee/custom-viz-plugin/" id "/bundle")
-                           (cvp.tu/valid-bundle-bytes "audit-replace-viz"))
+                           (cvp.tu/valid-bundle-bytes "audit-replace-viz")
+                           :method :put)
         (let [entry (mt/latest-audit-log-entry "custom-viz-plugin-update" id)]
           (is (partial=
                {:topic    :custom-viz-plugin-update

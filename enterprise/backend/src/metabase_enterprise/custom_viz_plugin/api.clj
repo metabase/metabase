@@ -245,7 +245,7 @@
                                                               :user-id         api/*current-user-id*})
       (plugin->response result))))
 
-(api.macros/defendpoint :post "/:id/bundle" :- CustomVizPluginResponse
+(api.macros/defendpoint :put "/:id/bundle" :- CustomVizPluginResponse
   "Replace the bundle for an existing plugin. Accepts a multipart tar.gz upload in
    the same format as the `POST /` endpoint. The manifest's `name` field must
    match the plugin's existing `identifier`."
@@ -391,13 +391,13 @@
 
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
   "Re-fetch the manifest from the dev server for a dev-only plugin. For uploaded
-   plugins this is a no-op — to update an upload-backed plugin, POST a new bundle
+   plugins this is a no-op — to update an upload-backed plugin, PUT a new bundle
    to `/:id/bundle`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
   (let [plugin (api/write-check (select-one-plugin :id id))]
     (api/check-400 (dev-only-plugin? plugin)
-                   "Refresh is only supported for dev-only plugins; upload a new bundle to /:id/bundle.")
+                   "Refresh is only supported for dev-only plugins")
     (let [dev-url      (or (cache/resolve-dev-bundle id)
                            (throw (ex-info "No dev server URL configured" {:status-code 404})))
           manifest     (or (cache/fetch-dev-manifest dev-url)
