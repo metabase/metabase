@@ -68,7 +68,7 @@
 (defn- delete-recursive! [^Path path]
   (when (Files/exists path (into-array LinkOption []))
     (with-open [stream (Files/walk path (into-array FileVisitOption []))]
-      (doseq [^Path p (reverse (vec (.iterator stream)))]
+      (doseq [^Path p (rseq (vec (iterator-seq (.iterator stream))))]
         (try (Files/delete p)
              (catch Exception e
                (log/warnf "Failed to delete %s: %s" p (ex-message e))))))))
@@ -153,7 +153,7 @@
         keep  (str id "-" keep-hash)
         prefix (str id "-")]
     (with-open [stream (Files/list root)]
-      (doseq [^Path child (vec (.iterator stream))]
+      (doseq [^Path child (iterator-seq (.iterator stream))]
         (let [name (str (.getFileName child))]
           (when (and (str/starts-with? name prefix)
                      (not= name keep))
@@ -199,7 +199,7 @@
   (let [root   (custom-viz-cache-root)
         prefix (str id "-")]
     (with-open [stream (Files/list root)]
-      (doseq [^Path child (vec (.iterator stream))]
+      (doseq [^Path child (iterator-seq (.iterator stream))]
         (when (str/starts-with? (str (.getFileName child)) prefix)
           (delete-recursive! child))))))
 
@@ -273,7 +273,7 @@
 ;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
 (defn- allowed-schemes
-  "Set of URL schemes allowed for dev bundle URLs. "
+  "Set of URL schemes allowed for dev bundle URLs."
   []
   #{"http" "https"})
 

@@ -125,15 +125,18 @@
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "active-viz"
                                                :display_name "Active Viz"
                                                :status       :active
-                                               :enabled      true}
+                                               :enabled      true
+                                               :bundle_hash  "active-hash"}
                      :model/CustomVizPlugin _ {:identifier   "disabled-viz"
                                                :display_name "Disabled Viz"
                                                :status       :active
-                                               :enabled      false}
+                                               :enabled      false
+                                               :bundle_hash  "disabled-hash"}
                      :model/CustomVizPlugin _ {:identifier   "error-viz"
                                                :display_name "Error Viz"
                                                :status       :error
-                                               :enabled      true}]
+                                               :enabled      true
+                                               :bundle_hash  "error-hash"}]
         (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
               identifiers (set (map :identifier result))]
           (is (contains? identifiers "active-viz"))
@@ -215,14 +218,13 @@
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "dev-sec"
                                                       :display_name "dev-sec"
                                                       :status       :active}]
-        (testing "SECURITY: rejects file:// dev URL via API in prod mode"
-          (with-redefs [config/is-test? false config/is-dev? false]
-            (is (= 400
-                   (:status-code
-                    (ex-data
-                     (try
-                       (cache/set-or-clear-dev-bundle! id "file:///etc/passwd")
-                       (catch Exception e e))))))))
+        (testing "SECURITY: rejects file:// dev URL"
+          (is (= 400
+                 (:status-code
+                  (ex-data
+                   (try
+                     (cache/set-or-clear-dev-bundle! id "file:///etc/passwd")
+                     (catch Exception e e)))))))
         (testing "SECURITY: rejects ftp:// dev URL via API"
           (is (= 400
                  (:status-code
@@ -434,11 +436,13 @@
                                                  :display_name      "Compatible"
                                                  :status            :active
                                                  :enabled           true
+                                                 :bundle_hash       "compat-hash"
                                                  :metabase_version  ">=1.59"}
                        :model/CustomVizPlugin _ {:identifier        "incompat-viz"
                                                  :display_name      "Incompatible"
                                                  :status            :active
                                                  :enabled           true
+                                                 :bundle_hash       "incompat-hash"
                                                  :metabase_version  ">=1.99"}]
           (let [result      (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")
                 identifiers (set (map :identifier result))]
