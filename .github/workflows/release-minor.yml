@@ -44,6 +44,7 @@ jobs:
               getLatestGreenCommit,
               getNextMinorVersion,
               hasCommitBeenReleased,
+              sendAutoMinorFailureMessage,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const currentRelease = Number('${{ vars.CURRENT_VERSION }}');
@@ -98,7 +99,15 @@ jobs:
                   : 'already-released';
 
               console.error(`Auto-minor skipped for v${majorVersion}: ${reason}`);
-              // TODO: wire up Slack notification for skip reasons (mirror sendAutoPatchFailureMessage)
+
+              await sendAutoMinorFailureMessage({
+                channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+                majorVersion,
+                reason,
+                runId: '${{ github.run_id }}',
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              }).catch(console.error);
             }
 
             if (context.eventName === 'workflow_dispatch') {

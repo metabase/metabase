@@ -432,9 +432,11 @@ export const getNextPatchVersion = async ({
     ignorePreReleases: false,
   });
 
-  const nextPatch = findNextPatchVersion(lastRelease);
+  if (!lastRelease) {
+    return undefined;
+  }
 
-  return nextPatch;
+  return findNextPatchVersion(lastRelease);
 };
 
 export const findNextMinorVersion = (version: string) => {
@@ -442,16 +444,18 @@ export const findNextMinorVersion = (version: string) => {
     throw new Error(`Invalid version string: ${version}`);
   }
 
-  const [mainVersion, suffix] = version.split("-");
+  if (isPreReleaseVersion(version)) {
+    throw new Error(
+      `Auto-minor releases are not supported for pre-release versions: ${version}`,
+    );
+  }
 
-  const [major, minor] = mainVersion
+  const [major, minor] = version
     .replace(/(v1|v0)\./, "")
     .split(".")
     .map(Number);
 
-  const baseVersion = `v0.${major}.${(minor || 0) + 1}`;
-
-  return suffix ? `${baseVersion}-${suffix}` : baseVersion;
+  return `v0.${major}.${(minor || 0) + 1}`;
 };
 
 export const getNextMinorVersion = async ({
@@ -469,9 +473,13 @@ export const getNextMinorVersion = async ({
     ignorePreReleases: true,
   });
 
-  const nextMinor = findNextMinorVersion(lastRelease);
+  // No stable release yet for this major (e.g. only vX.NN.0-beta has shipped).
+  // The gold release is cut manually — skip rather than crash the cron.
+  if (!lastRelease) {
+    return undefined;
+  }
 
-  return nextMinor;
+  return findNextMinorVersion(lastRelease);
 };
 
 type SdkVersionInfo = {

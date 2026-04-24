@@ -673,9 +673,6 @@ describe("version-helpers", () => {
       ["v0.50.9", "v0.50.10"],
       ["v1.50.99", "v0.50.100"],
       ["v1.23.0", "v0.23.1"],
-      ["v0.50.1-beta", "v0.50.2-beta"],
-      ["v1.50.0-RC", "v0.50.1-RC"],
-      ["v0.50.2-alpha", "v0.50.3-alpha"],
     ])("%s -> %s", (input, expected) => {
       expect(findNextMinorVersion(input)).toBe(expected);
     });
@@ -686,6 +683,12 @@ describe("version-helpers", () => {
       expect(() => findNextMinorVersion("v0.75.0-gamma")).toThrow();
       expect(() => findNextMinorVersion("v0.75")).toThrow();
       expect(() => findNextMinorVersion("v0.75.f")).toThrow();
+    });
+
+    it("should throw for pre-release versions (auto-minor only runs post-gold)", () => {
+      expect(() => findNextMinorVersion("v0.50.1-beta")).toThrow();
+      expect(() => findNextMinorVersion("v1.50.0-RC")).toThrow();
+      expect(() => findNextMinorVersion("v0.50.2-alpha")).toThrow();
     });
   });
 
