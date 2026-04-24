@@ -21,9 +21,23 @@ import {
   applyMetricOrderBy,
   applyUsageStatsAggregation,
   applyUserFilter,
-  excludeAllUsersGroup,
+  findColumn,
   joinGroupMembers,
 } from "./query-utils";
+
+// matches the view's own group_name subquery (WHERE pg.id != 1) so a
+// by-group breakout isn't dominated by an All Users bar
+export function excludeAllUsersGroup(query: Query): Query {
+  const col = findColumn(query, "group_id", Lib.filterableColumns);
+  if (!col) {
+    return query;
+  }
+  return Lib.filter(
+    query,
+    0,
+    Lib.numberFilterClause({ operator: "!=", column: col, values: [1] }),
+  );
+}
 
 const TITLES: Record<UsageStatsMetric, string> = {
   get conversations() {
