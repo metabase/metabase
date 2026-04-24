@@ -144,6 +144,7 @@ export function NumberInputWidget({
           defaultValue={parameter?.default}
           isValueRequired={parameter?.required ?? false}
           isValid
+          positional={typeof arity === "number" && arity > 1}
         />
       </Footer>
     </Box>
