@@ -3,7 +3,6 @@
   (:require
    [clj-http.client :as http]
    [clojure.core.async :as a]
-   [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin]
@@ -17,7 +16,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.io BufferedReader InputStream InputStreamReader OutputStream)))
+   (java.io BufferedReader File InputStream InputStreamReader OutputStream)
+   (java.nio.file Files)))
 
 (set! *warn-on-reflection* true)
 
@@ -29,20 +29,33 @@
   (api/check (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
              [403 "Custom visualization plugin dev mode is not enabled."]))
 
+;;; ------------------------------------------------ Upload guard ------------------------------------------------
+
+(defn- check-upload!
+  "Validate an incoming multipart `file` part before we spend any IO reading it.
+   Rejects oversized uploads with 413 using the `:size` hint and rejects missing
+   files with 400. Returns the `java.io.File` tempfile."
+  ^File [file]
+  (when (> (or (:size file) 0) cache/max-bundle-bytes)
+    (throw (ex-info (format "Bundle must be less than %dMB." cache/max-bundle-mib)
+                    {:status-code 413})))
+  (let [tempfile (:tempfile file)]
+    (when-not (instance? File tempfile)
+      (throw (ex-info "No file provided" {:status-code 400})))
+    tempfile))
+
 ;;; ------------------------------------------------ Schemas ------------------------------------------------
 
 (def ^:private CustomVizPluginResponse
   [:map
    [:id              ms/PositiveInt]
-   [:repo_url        ms/NonBlankString]
    [:display_name    ms/NonBlankString]
    [:identifier      ms/NonBlankString]
    [:status          [:enum :active :error]]
    [:enabled         :boolean]
    [:icon            {:optional true} [:maybe :string]]
    [:error_message   {:optional true} [:maybe :string]]
-   [:pinned_version  {:optional true} [:maybe :string]]
-   [:resolved_commit {:optional true} [:maybe :string]]
+   [:bundle_hash     {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
    [:dev_only        :boolean]
    [:manifest        {:optional true} [:maybe :any]]
@@ -57,78 +70,96 @@
    [:display_name    ms/NonBlankString]
    [:icon            {:optional true} [:maybe :string]]
    [:bundle_url      ms/NonBlankString]
-   [:resolved_commit {:optional true} [:maybe :string]]
+   [:bundle_hash     {:optional true} [:maybe :string]]
    [:dev_bundle_url  {:optional true} [:maybe :string]]
    [:manifest        {:optional true} [:maybe :any]]])
 
 ;;; ------------------------------------------------ Helpers ------------------------------------------------
 
 (defn- dev-only-plugin?
-  "Returns true if the plugin was created via the dev-only flow (no git repo)."
+  "Returns true if the plugin has no uploaded bundle and is served from a dev URL."
   [plugin]
-  (str/starts-with? (:repo_url plugin) "dev://local/"))
-
-(defn- parse-repo-name
-  "Extract the repository name from a git URL.
-     'https://github.com/user/custom-heatmap'     -> 'custom-heatmap'
-     'https://github.com/user/custom-heatmap.git' -> 'custom-heatmap'"
-  [^String url]
-  (-> url
-      (str/replace #"\.git$" "")
-      (str/split #"[/:]")
-      last))
+  (nil? (:bundle_hash plugin)))
 
 (defn- plugin->response
   "Convert a plugin record to API response format."
   [plugin]
   (-> plugin
       (assoc :dev_only (dev-only-plugin? plugin))
-      ;; already stripped by to-json, but dissocing for extra safety
-      (dissoc :access_token)))
+      ;; never expose the raw bundle bytes
+      (dissoc :bundle)))
 
 (defn- plugin->runtime-response
   "Convert a plugin record to the safe runtime response shape."
-  [{:keys [id identifier display_name icon resolved_commit manifest dev_bundle_url]}]
-  (cond-> {:id              id
-           :identifier      identifier
-           :display_name    display_name
-           :icon            icon
-           :bundle_url      (format "/api/ee/custom-viz-plugin/%d/bundle" id)
-           :resolved_commit resolved_commit
-           :manifest        manifest}
+  [{:keys [id identifier display_name icon bundle_hash manifest dev_bundle_url]}]
+  (cond-> {:id           id
+           :identifier   identifier
+           :display_name display_name
+           :icon         icon
+           :bundle_url   (format "/api/ee/custom-viz-plugin/%d/bundle" id)
+           :bundle_hash  bundle_hash
+           :manifest     manifest}
     dev_bundle_url (assoc :dev_bundle_url dev_bundle_url)))
+
+;; Every selector except the raw `/bundle` serve path wants the full plugin row
+;; *without* the bundle blob — loading a multi-MB archive on every list / update
+;; would be wasteful. These helpers drive that: they target the same column set
+;; as a normal `t2/select` but omit `:bundle`.
+
+(def ^:private non-blob-columns
+  [:id :identifier :display_name :icon :status :error_message :enabled
+   :manifest :metabase_version :bundle_hash :dev_bundle_url
+   :created_at :updated_at])
+
+(defn- select-one-plugin
+  "Like `t2/select-one` on `:model/CustomVizPlugin`, but excludes the bundle blob."
+  [& conditions]
+  (apply t2/select-one (into [:model/CustomVizPlugin] non-blob-columns) conditions))
+
+(defn- select-plugins
+  "Like `t2/select` on `:model/CustomVizPlugin`, but excludes the bundle blob."
+  [& conditions]
+  (apply t2/select (into [:model/CustomVizPlugin] non-blob-columns) conditions))
 
 ;;; ------------------------------------------------ Endpoints ------------------------------------------------
 
 (api.macros/defendpoint :post "/" :- CustomVizPluginResponse
-  "Register a new custom visualization plugin from a git repository.
-   Validates by fetching index.js from the repo."
+  "Register a new custom visualization plugin from an uploaded tar.gz bundle.
+
+  The archive must contain `metabase-plugin.json` at the root and
+  `dist/index.js` for the JS bundle, plus any whitelisted assets under
+  `dist/assets/`. The plugin's `identifier` is taken from the manifest's `name`
+  field."
+  {:multipart true}
   [_route-params
    _query-params
-   {:keys [repo_url access_token pinned_version]} :- [:map
-                                                      [:repo_url       ms/NonBlankString]
-                                                      [:access_token   {:optional true} [:maybe :string]]
-                                                      [:pinned_version {:optional true} [:maybe :string]]]]
+   _body
+   {{file "file"} :multipart-params, :as _request}
+   :- [:map
+       [:multipart-params
+        [:map
+         ["file" [:map
+                  [:filename :string]
+                  [:tempfile (ms/InstanceOfClass File)]]]]]]]
   (api/check-superuser)
-  (cache/validate-repo-url! repo_url)
-  (let [identifier (parse-repo-name repo_url)
-        _          (api/check-400
-                    (not (t2/exists? :model/CustomVizPlugin :repo_url repo_url))
-                    (format "A custom visualization with repo URL \"%s\" already exists." repo_url))
-        _          (api/check-400
-                    (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
-                    (format "A custom visualization with identifier \"%s\" already exists." identifier))
-        plugin (cache/fetch-and-save! {:repo_url       repo_url
-                                       :access_token   access_token
-                                       :identifier     identifier
-                                       :pinned_version pinned_version})]
-    (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
-                                                            :user-id api/*current-user-id*})
-    (plugin->response plugin)))
+  (let [tempfile (check-upload! file)]
+    (try
+      (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
+            validated    (cache/validate-bundle! bundle-bytes)
+            identifier   (get-in validated [:manifest :name])
+            _            (api/check-400
+                          (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
+                          (format "A custom visualization with identifier \"%s\" already exists." identifier))
+            plugin       (cache/insert-bundle! identifier validated)]
+        (events/publish-event! :event/custom-viz-plugin-create {:object  plugin
+                                                                :user-id api/*current-user-id*})
+        (plugin->response (dissoc plugin :bundle)))
+      (finally
+        (try (.delete tempfile) (catch Exception _))))))
 
 (api.macros/defendpoint :post "/dev" :- CustomVizPluginResponse
   "Register a dev-only custom visualization plugin from a local dev server.
-   No git repository is required — the bundle is served from the dev server URL.
+   No bundle upload is required — files are served from the dev server URL.
    Requires custom viz plugin dev mode to be enabled."
   [_route-params
    _query-params
@@ -144,10 +175,6 @@
                                            "metabase-plugin.json is missing a \"name\" field."
                                            "Could not fetch metabase-plugin.json from the dev server.")
                                          {:status-code 400})))
-        sentinel-url (str "dev://local/" identifier)
-        _            (api/check-400
-                      (not (t2/exists? :model/CustomVizPlugin :repo_url sentinel-url))
-                      (format "A custom visualization with repo URL \"%s\" already exists." sentinel-url))
         _            (api/check-400
                       (not (t2/exists? :model/CustomVizPlugin :identifier identifier))
                       (format "A custom visualization with identifier \"%s\" already exists." identifier))
@@ -155,7 +182,6 @@
         icon         (:icon manifest)
         version-str  (get-in manifest [:metabase :version])
         plugin       (first (t2/insert-returning-instances! :model/CustomVizPlugin
-                                                            :repo_url        sentinel-url
                                                             :display_name    display-name
                                                             :identifier      identifier
                                                             :status          :active
@@ -173,7 +199,8 @@
   "List all registered custom visualization plugins."
   []
   (api/check-superuser)
-  (mapv (comp plugin->response api/read-check) (t2/select :model/CustomVizPlugin {:order-by [[:display_name :asc]]})))
+  (->> (select-plugins {:order-by [[:display_name :asc]]})
+       (mapv (comp plugin->response api/read-check))))
 
 (api.macros/defendpoint :get "/list" :- [:sequential CustomVizPluginRuntimeResponse]
   "List active and enabled custom visualization plugins. Available to any authenticated user.
@@ -181,23 +208,22 @@
    Dev-only plugins are excluded when dev mode is disabled."
   []
   (let [dev-mode? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
-        plugins   (mapv api/read-check
-                        (t2/select [:model/CustomVizPlugin
-                                    :id :identifier :display_name :icon :resolved_commit
-                                    :manifest :metabase_version :dev_bundle_url :repo_url]
-                                   :status :active
-                                   :enabled true
-                                   {:order-by [[:display_name :asc]]}))]
+        plugins   (t2/select [:model/CustomVizPlugin
+                              :id :identifier :display_name :icon :bundle_hash
+                              :manifest :metabase_version :dev_bundle_url]
+                             :status :active
+                             :enabled true
+                             {:order-by [[:display_name :asc]]})]
     (->> plugins
          (filter manifest/compatible?)
          (remove #(and (not dev-mode?) (dev-only-plugin? %)))
-         (map plugin->runtime-response))))
+         (mapv (comp plugin->runtime-response api/read-check)))))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
-  "Remove a custom visualization plugin and evict its cached bundle."
+  "Remove a custom visualization plugin and evict its on-disk cache."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [plugin (api/write-check (t2/select-one :model/CustomVizPlugin :id id))]
+  (let [plugin (api/write-check (select-one-plugin :id id))]
     (t2/delete! :model/CustomVizPlugin :id id)
     (cache/purge-plugin-cache! plugin)
     (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
@@ -205,32 +231,60 @@
     nil))
 
 (api.macros/defendpoint :put "/:id" :- CustomVizPluginResponse
-  "Update a custom visualization plugin."
+  "Update a custom visualization plugin. Currently only `enabled` may be toggled."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]
    _query-params
    body :- [:map
-            [:enabled        {:optional true} [:maybe :boolean]]
-            [:access_token   {:optional true} [:maybe :string]]
-            [:pinned_version {:optional true} [:maybe :string]]]]
+            [:enabled {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
-  (let [existing        (api/read-check (t2/select-one :model/CustomVizPlugin :id id))
-        updates         (select-keys body [:enabled :access_token :pinned_version])
-        pinned-changed? (and (contains? updates :pinned_version)
-                             (not= (:pinned_version updates) (:pinned_version existing)))
-        result          (if pinned-changed?
-                          (cache/fetch-and-save! (merge existing updates) updates)
-                          (do (when (seq updates)
-                                (t2/update! :model/CustomVizPlugin id updates))
-                              (t2/select-one :model/CustomVizPlugin :id id)))]
-    (events/publish-event! :event/custom-viz-plugin-update {:object          result
-                                                            :previous-object existing
-                                                            :user-id         api/*current-user-id*})
-    (plugin->response result)))
+  (let [existing (api/write-check (select-one-plugin :id id))
+        updates  (select-keys body [:enabled])]
+    (when (seq updates)
+      (t2/update! :model/CustomVizPlugin id updates))
+    (let [result (select-one-plugin :id id)]
+      (events/publish-event! :event/custom-viz-plugin-update {:object          result
+                                                              :previous-object existing
+                                                              :user-id         api/*current-user-id*})
+      (plugin->response result))))
+
+(api.macros/defendpoint :post "/:id/bundle" :- CustomVizPluginResponse
+  "Replace the bundle for an existing plugin. Accepts a multipart tar.gz upload in
+   the same format as the `POST /` endpoint. The manifest's `name` field must
+   match the plugin's existing `identifier`."
+  {:multipart true}
+  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+   _query-params
+   _body
+   {{file "file"} :multipart-params, :as _request}
+   :- [:map
+       [:multipart-params
+        [:map
+         ["file" [:map
+                  [:filename :string]
+                  [:tempfile (ms/InstanceOfClass File)]]]]]]]
+  (api/check-superuser)
+  (let [existing (api/write-check (select-one-plugin :id id))
+        tempfile (check-upload! file)]
+    (try
+      (let [bundle-bytes (Files/readAllBytes (.toPath tempfile))
+            validated    (cache/validate-bundle! bundle-bytes)
+            new-name     (get-in validated [:manifest :name])]
+        (api/check-400 (= new-name (:identifier existing))
+                       (format "Bundle manifest \"name\" (%s) does not match the plugin's identifier (%s)."
+                               new-name (:identifier existing)))
+        (let [result (cache/save-bundle! existing validated)]
+          (events/publish-event! :event/custom-viz-plugin-update
+                                 {:object          result
+                                  :previous-object existing
+                                  :user-id         api/*current-user-id*})
+          (plugin->response (dissoc result :bundle))))
+      (finally
+        (try (.delete tempfile) (catch Exception _))))))
 
 (api.macros/defendpoint :get "/:id/bundle" :- :any
-  "Serve the cached JS bundle for a plugin.
+  "Serve the JS bundle for a plugin from the on-disk cache.
    Returns application/javascript with ETag and Cache-Control headers.
-   In dev mode, proxies from dev_bundle_url if set."
+   In dev mode, proxies from `dev_bundle_url` if set."
   [{:keys [id], :as _route-params} :- [:map [:id ms/PositiveInt]]
    _query-params
    _body
@@ -238,7 +292,7 @@
    respond
    raise]
   (try
-    (let [plugin  (api/read-check (t2/select-one :model/CustomVizPlugin :id id))
+    (let [plugin  (api/read-check (select-one-plugin :id id))
           dev-url (cache/resolve-dev-bundle id)
           entry   (cache/resolve-bundle plugin)]
       (if entry
@@ -258,7 +312,7 @@
       (raise e))))
 
 (api.macros/defendpoint :get "/:id/asset" :- :any
-  "Serve a static image asset from the plugin's cached assets.
+  "Serve a static image asset from the plugin's bundle.
    The asset path is passed as a `path` query parameter (e.g. `?path=icon.svg`)
    and must match an entry in the manifest's `assets` whitelist.
    Only image files are served.
@@ -270,7 +324,7 @@
    respond
    raise]
   (try
-    (let [plugin       (api/read-check (t2/select-one :model/CustomVizPlugin :id id))
+    (let [plugin       (api/read-check (select-one-plugin :id id))
           content-type (or (manifest/asset-content-type path)
                            (throw (ex-info "Unsupported asset type" {:status-code 404})))
           dev?         (cache/resolve-dev-bundle id)
@@ -300,7 +354,7 @@
    {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
   (api/check-superuser)
   (check-dev-mode-enabled!)
-  (api/read-check (t2/select-one :model/CustomVizPlugin :id id))
+  (api/write-check (select-one-plugin :id id))
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
 
@@ -338,29 +392,29 @@
             (log/debugf "SSE proxy for plugin %d ended: %s" id (ex-message e))))))))
 
 (api.macros/defendpoint :post "/:id/refresh" :- CustomVizPluginResponse
-  "Re-fetch the bundle from the git repository.
-   For dev-only plugins, re-fetches the manifest from the dev server instead."
+  "Re-fetch the manifest from the dev server for a dev-only plugin. For uploaded
+   plugins this is a no-op — to update an upload-backed plugin, POST a new bundle
+   to `/:id/bundle`."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [plugin (api/write-check (t2/select-one :model/CustomVizPlugin :id id))]
-    (if (dev-only-plugin? plugin)
-      ;; dev-only: re-fetch manifest from dev server
-      (let [dev-url  (or (cache/resolve-dev-bundle id)
-                         (throw (ex-info "No dev server URL configured" {:status-code 404})))
-            manifest (or (cache/fetch-dev-manifest dev-url)
-                         (throw (ex-info "Failed to fetch manifest from dev server" {:status-code 502})))
-            version-str  (get-in manifest [:metabase :version])]
-        (t2/update! :model/CustomVizPlugin id
-                    {:display_name     (or (:name manifest) (:identifier plugin))
-                     :icon             (:icon manifest)
-                     :manifest         manifest
-                     :metabase_version version-str}))
-      (cache/fetch-and-save! plugin))
-    (let [result (t2/select-one :model/CustomVizPlugin :id id)]
-      (events/publish-event! :event/custom-viz-plugin-update {:object          result
-                                                              :previous-object plugin
-                                                              :user-id         api/*current-user-id*})
-      (plugin->response result))))
+  (let [plugin (api/write-check (select-one-plugin :id id))]
+    (api/check-400 (dev-only-plugin? plugin)
+                   "Refresh is only supported for dev-only plugins; upload a new bundle to /:id/bundle.")
+    (let [dev-url      (or (cache/resolve-dev-bundle id)
+                           (throw (ex-info "No dev server URL configured" {:status-code 404})))
+          manifest     (or (cache/fetch-dev-manifest dev-url)
+                           (throw (ex-info "Failed to fetch manifest from dev server" {:status-code 502})))
+          version-str  (get-in manifest [:metabase :version])]
+      (t2/update! :model/CustomVizPlugin id
+                  {:display_name     (or (:name manifest) (:identifier plugin))
+                   :icon             (:icon manifest)
+                   :manifest         manifest
+                   :metabase_version version-str})
+      (let [result (select-one-plugin :id id)]
+        (events/publish-event! :event/custom-viz-plugin-update {:object          result
+                                                                :previous-object plugin
+                                                                :user-id         api/*current-user-id*})
+        (plugin->response result)))))
 
 (def routes
   "`/api/ee/custom-viz-plugin` routes."

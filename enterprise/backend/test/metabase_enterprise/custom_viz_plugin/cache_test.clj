@@ -3,38 +3,116 @@
    [clojure.test :refer :all]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
-   [metabase-enterprise.remote-sync.source.git :as rs.git]
    [metabase.config.core :as config]
    [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2])
+  (:import
+   (java.io ByteArrayOutputStream)
+   (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveOutputStream)
+   (org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream)))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :each
   (fn [thunk]
     (mt/with-temporary-setting-values [custom-viz-enabled true]
       (thunk))))
 
-;;; ------------------------------------------------ URL Validation ------------------------------------------------
+;;; ------------------------------------------------ Bundle fixtures ------------------------------------------------
 
-(deftest validate-repo-url-test
-  (testing "accepts http URLs"
-    (is (nil? (cache/validate-repo-url! "http://github.com/user/repo"))))
-  (testing "accepts https URLs"
-    (is (nil? (cache/validate-repo-url! "https://github.com/user/repo"))))
-  (testing "accepts file:// URLs in test mode"
-    (is (nil? (cache/validate-repo-url! "file:///tmp/repo"))))
-  (testing "SECURITY: rejects ssh:// URLs"
-    (is (thrown-with-msg? Exception #"http or https"
-                          (cache/validate-repo-url! "ssh://git@github.com/user/repo"))))
-  (testing "SECURITY: rejects ftp:// URLs"
-    (is (thrown-with-msg? Exception #"http or https"
-                          (cache/validate-repo-url! "ftp://evil.com/repo"))))
-  (testing "SECURITY: rejects gopher:// URLs"
-    (is (thrown-with-msg? Exception #"http or https"
-                          (cache/validate-repo-url! "gopher://evil.com/repo"))))
-  (testing "SECURITY: rejects file:// URLs in prod mode"
-    (with-redefs [config/is-test? false]
-      (is (thrown-with-msg? Exception #"http or https"
-                            (cache/validate-repo-url! "file:///etc/passwd"))))))
+(defn- make-tgz-bytes
+  ^bytes [entries]
+  (with-open [baos (ByteArrayOutputStream.)
+              gz   (GzipCompressorOutputStream. baos)
+              tar  (TarArchiveOutputStream. gz)]
+    (doseq [[name content] entries
+            :let [^bytes bs (if (bytes? content) content (.getBytes (str content) "UTF-8"))
+                  entry     (doto (TarArchiveEntry. ^String name)
+                              (.setSize (alength bs)))]]
+      (.putArchiveEntry tar entry)
+      (.write tar bs 0 (alength bs))
+      (.closeArchiveEntry tar))
+    (.finish tar)
+    (.toByteArray baos)))
+
+(defn- valid-bundle-bytes
+  [identifier & [{:keys [icon metabase-version]}]]
+  (let [manifest (cond-> {:name identifier}
+                   icon             (assoc :icon icon)
+                   metabase-version (assoc-in [:metabase :version] metabase-version))]
+    (make-tgz-bytes
+     [["metabase-plugin.json" (json/encode manifest)]
+      ["dist/index.js" "console.log('hi')"]])))
+
+;;; ------------------------------------------------ validate-bundle! ------------------------------------------------
+
+(deftest validate-bundle-happy-path-test
+  (testing "validate-bundle! returns parsed manifest and a stable sha256"
+    (let [bytes (valid-bundle-bytes "my-viz" {:icon "icon.svg"})
+          res   (cache/validate-bundle! bytes)]
+      (is (= "my-viz" (get-in res [:manifest :name])))
+      (is (= "icon.svg" (get-in res [:manifest :icon])))
+      (is (bytes? (:bytes res)))
+      (is (string? (:hash res)))
+      (is (= 64 (count (:hash res))) "sha256 hex is 64 chars")
+      (testing "hash is deterministic"
+        (is (= (:hash res) (:hash (cache/validate-bundle! bytes))))))))
+
+(deftest validate-bundle-captures-version-test
+  (testing "metabase.version from the manifest is echoed as :version-str"
+    (let [bytes (valid-bundle-bytes "ver-viz" {:metabase-version ">=1.60"})
+          res   (cache/validate-bundle! bytes)]
+      (is (= ">=1.60" (:version-str res))))))
+
+(deftest validate-bundle-rejects-empty-test
+  (testing "empty bytes"
+    (is (thrown-with-msg? Exception #"empty"
+                          (cache/validate-bundle! (byte-array 0))))))
+
+(deftest validate-bundle-rejects-non-archive-test
+  (testing "plain text is not a tar.gz archive"
+    (is (thrown-with-msg? Exception #"tar\.gz"
+                          (cache/validate-bundle! (.getBytes "not an archive" "UTF-8"))))))
+
+(deftest validate-bundle-requires-manifest-test
+  (testing "archive without metabase-plugin.json is rejected"
+    (let [bytes (make-tgz-bytes [["dist/index.js" "console.log('hi')"]])]
+      (is (thrown-with-msg? Exception #"metabase-plugin\.json"
+                            (cache/validate-bundle! bytes))))))
+
+(deftest validate-bundle-requires-index-js-test
+  (testing "archive without dist/index.js is rejected"
+    (let [bytes (make-tgz-bytes
+                 [["metabase-plugin.json" (json/encode {:name "no-bundle"})]])]
+      (is (thrown-with-msg? Exception #"index\.js"
+                            (cache/validate-bundle! bytes))))))
+
+(deftest validate-bundle-requires-manifest-name-test
+  (testing "manifest without :name is rejected"
+    (let [bytes (make-tgz-bytes
+                 [["metabase-plugin.json" (json/encode {:icon "icon.svg"})]
+                  ["dist/index.js" "console.log('hi')"]])]
+      (is (thrown-with-msg? Exception #"\"name\""
+                            (cache/validate-bundle! bytes))))))
+
+(deftest validate-bundle-rejects-invalid-json-manifest-test
+  (testing "non-JSON manifest is rejected"
+    (let [bytes (make-tgz-bytes
+                 [["metabase-plugin.json" "not json at all"]
+                  ["dist/index.js" "console.log('hi')"]])]
+      (is (thrown-with-msg? Exception #"not valid JSON"
+                            (cache/validate-bundle! bytes))))))
+
+(deftest validate-bundle-rejects-incompatible-version-test
+  (testing "plugin requiring incompatible Metabase version is rejected"
+    (with-redefs [config/mb-version-info {:tag "v1.60.0"}
+                  config/is-dev?         false]
+      (let [bytes (valid-bundle-bytes "bad-ver" {:metabase-version ">=1.99.0"})]
+        (is (thrown-with-msg? Exception #"version"
+                              (cache/validate-bundle! bytes)))))))
+
+;;; ------------------------------------------------ dev-base-url URL validation ------------------------------------------------
 
 (deftest dev-base-url-test
   (testing "accepts http URLs"
@@ -60,8 +138,7 @@
 
 (deftest set-or-clear-dev-bundle!-test
   (mt/with-premium-features #{:custom-viz}
-    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/viz"
-                                                    :identifier   "test-viz"
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "test-viz"
                                                     :display_name "test-viz"
                                                     :status       :active}]
       (testing "sets a valid http URL"
@@ -92,12 +169,11 @@
       (let [manifest {:name   "test-viz"
                       :icon   "icon.svg"
                       :assets ["icon.svg" "thumb.png"]}]
-        (mt/with-temp [:model/CustomVizPlugin plugin {:repo_url         "https://github.com/test/viz"
-                                                      :identifier       "test-viz"
-                                                      :display_name     "test-viz"
-                                                      :status           :active
-                                                      :resolved_commit  "abc123"
-                                                      :manifest         manifest}]
+        (mt/with-temp [:model/CustomVizPlugin plugin {:identifier   "test-viz"
+                                                      :display_name "test-viz"
+                                                      :status       :active
+                                                      :bundle_hash  "abc123"
+                                                      :manifest     manifest}]
           (testing "returns nil for assets not in manifest whitelist"
             (is (nil? (cache/resolve-asset plugin "not-listed.png"))))
           (testing "returns nil for path traversal attempts"
@@ -105,119 +181,57 @@
           (testing "returns nil for absolute path attempts"
             (is (nil? (cache/resolve-asset plugin "/etc/passwd")))))))))
 
-;;; ------------------------------------------------ fetch-and-save! state consistency ------------------------------------------------
+;;; ------------------------------------------------ insert-bundle!/save-bundle! state consistency ------------------------------------------------
 
-(deftest fetch-and-save!-success-test
-  (testing "successful fetch updates plugin to :active with manifest data"
-    (mt/with-premium-features #{:custom-viz}
-      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/fetch-ok"
-                                                      :identifier   "fetch-ok"
-                                                      :display_name "fetch-ok"
-                                                      :status       :error}]
-        (with-redefs [rs.git/git-source      (constantly nil)
-                      rs.git/snapshot-at-ref  (constantly {:version "abc123"})
-                      rs.git/file-size        (constantly 100)
-                      rs.git/read-file        (fn [_snapshot path]
-                                                (case path
-                                                  "dist/index.js"          "console.log('hi')"
-                                                  "metabase-plugin.json"   "{\"name\":\"My Viz\",\"icon\":\"icon.svg\"}"
-                                                  nil))]
-          (let [result (cache/fetch-and-save! {:id id :repo_url "https://github.com/test/fetch-ok"
-                                               :identifier "fetch-ok"})]
-            (is (= :active (:status result))
-                "plugin should be active after successful fetch")
-            (is (nil? (:error_message result))
-                "error_message should be cleared on success")
-            (is (= "abc123" (:resolved_commit result)))
-            (is (= "My Viz" (:display_name result))
-                "display_name should come from manifest")
-            (is (= "icon.svg" (:icon result))
-                "icon should come from manifest")))))))
-
-(deftest fetch-and-save!-insert-test
-  (testing "fetch-and-save! inserts a new row when no :id is provided"
+(deftest insert-bundle-test
+  (testing "insert-bundle! creates an :active row with derived fields from the manifest"
     (mt/with-premium-features #{:custom-viz}
       (mt/with-model-cleanup [:model/CustomVizPlugin]
-        (with-redefs [rs.git/git-source      (constantly nil)
-                      rs.git/snapshot-at-ref  (constantly {:version "abc123"})
-                      rs.git/file-size        (constantly 100)
-                      rs.git/read-file        (fn [_snapshot path]
-                                                (case path
-                                                  "dist/index.js"        "console.log('hi')"
-                                                  "metabase-plugin.json" "{\"name\":\"New Viz\"}"
-                                                  nil))]
-          (let [result (cache/fetch-and-save! {:repo_url   "https://github.com/test/insert-new"
-                                               :identifier "insert-new"})]
-            (is (some? (:id result)) "should return a row with an id")
-            (is (= :active (:status result)))
-            (is (= "New Viz" (:display_name result)))
-            (is (= "abc123" (:resolved_commit result)))))))))
+        (let [validated (cache/validate-bundle! (valid-bundle-bytes "new-viz" {:icon "icon.svg"}))
+              row       (cache/insert-bundle! "new-viz" validated)]
+          (is (some? (:id row)))
+          (is (= :active (:status row)))
+          (is (= "new-viz" (:identifier row)))
+          (is (= "new-viz" (:display_name row)))
+          (is (= "icon.svg" (:icon row)))
+          (is (= (:hash validated) (:bundle_hash row))
+              "bundle_hash matches the validated sha256"))))))
 
-(deftest fetch-and-save!-failure-throws-test
-  (testing "failed fetch throws — caller decides how to handle"
+(deftest save-bundle-test
+  (testing "save-bundle! replaces an existing row's derived fields"
     (mt/with-premium-features #{:custom-viz}
-      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/fetch-fail"
-                                                      :identifier   "fetch-fail"
-                                                      :display_name "fetch-fail"
-                                                      :status       :active}]
-        (with-redefs [rs.git/git-source     (fn [& _] (throw (ex-info "Connection refused" {})))]
-          (is (thrown-with-msg? Exception #"Connection refused"
-                                (cache/fetch-and-save! {:id id :repo_url "https://github.com/test/fetch-fail"
-                                                        :identifier "fetch-fail"}))))))))
-
-(deftest fetch-and-save!-missing-bundle-throws-test
-  (testing "missing index.js in repo throws"
-    (mt/with-premium-features #{:custom-viz}
-      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/no-bundle"
-                                                      :identifier   "no-bundle"
-                                                      :display_name "no-bundle"
-                                                      :status       :active}]
-        (with-redefs [rs.git/git-source      (constantly nil)
-                      rs.git/snapshot-at-ref  (constantly {:version "abc123"})
-                      rs.git/read-file        (constantly nil)]
-          (is (thrown-with-msg? Exception #"index\.js.*not found"
-                                (cache/fetch-and-save! {:id id :repo_url "https://github.com/test/no-bundle"
-                                                        :identifier "no-bundle"}))))))))
-
-(deftest fetch-and-save!-incompatible-version-throws-test
-  (testing "plugin requiring incompatible Metabase version throws"
-    (mt/with-premium-features #{:custom-viz}
-      (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/bad-ver"
-                                                      :identifier   "bad-ver"
-                                                      :display_name "bad-ver"
-                                                      :status       :active}]
-        (with-redefs [rs.git/git-source      (constantly nil)
-                      rs.git/snapshot-at-ref  (constantly {:version "abc123"})
-                      rs.git/file-size        (constantly 100)
-                      rs.git/read-file        (fn [_snapshot path]
-                                                (case path
-                                                  "dist/index.js"        "console.log('hi')"
-                                                  "metabase-plugin.json" (str "{\"name\":\"Bad Ver\","
-                                                                              "\"metabase\":{\"version\":\">=1.99.0\"}}")
-                                                  nil))
-                      config/mb-version-info {:tag "v1.60.0"}
-                      config/is-dev?         false]
-          (is (thrown-with-msg? Exception #"version"
-                                (cache/fetch-and-save! {:id id :repo_url "https://github.com/test/bad-ver"
-                                                        :identifier "bad-ver"}))))))))
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier    "save-viz"
+                                                      :display_name  "old"
+                                                      :status        :error
+                                                      :error_message "something"
+                                                      :bundle        (.getBytes "old" "UTF-8")
+                                                      :bundle_hash   "oldhash"}]
+        (let [validated (cache/validate-bundle! (valid-bundle-bytes "save-viz" {:icon "new.svg"}))
+              row       (cache/save-bundle! {:id id} validated)]
+          (is (= :active (:status row))
+              "plugin should be active after a successful save")
+          (is (nil? (:error_message row))
+              "error_message should be cleared")
+          (is (= "new.svg" (:icon row)))
+          (is (= (:hash validated) (:bundle_hash row)))
+          (is (not= "oldhash" (:bundle_hash row))))))))
 
 ;;; ------------------------------------------------ resolve-bundle precedence ------------------------------------------------
 
 (deftest resolve-bundle-dev-url-takes-precedence-test
-  (testing "resolve-bundle prefers dev URL over git when both are available"
+  (testing "resolve-bundle prefers dev URL over the uploaded bundle when both are present"
     (mt/with-premium-features #{:custom-viz}
       (with-redefs [custom-viz.settings/custom-viz-plugin-dev-mode-enabled (constantly true)]
-        (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url        "https://github.com/test/precedence"
-                                                        :identifier      "precedence"
-                                                        :display_name    "precedence"
-                                                        :status          :active
-                                                        :resolved_commit "abc123"
-                                                        :dev_bundle_url  "http://localhost:5174"}]
+        (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier     "precedence"
+                                                        :display_name   "precedence"
+                                                        :status         :active
+                                                        :bundle_hash    "abc123"
+                                                        :dev_bundle_url "http://localhost:5174"}]
           (let [dev-called? (atom false)
-                git-called? (atom false)]
+                fs-called?  (atom false)]
             (with-redefs [cache/fetch-dev-bundle (fn [_] (reset! dev-called? true) {:content "dev-js" :hash "d1"})
-                          cache/get-bundle      (fn [_] (reset! git-called? true) {:content "git-js" :hash "g1"})]
+                          cache/get-bundle      (fn [_] (reset! fs-called? true) {:content "fs-js" :hash "g1"})]
               (let [result (cache/resolve-bundle {:id id})]
                 (is (true? @dev-called?) "dev bundle fetch should be called")
-                (is (false? @git-called?) "git bundle should not be called when dev URL is set")
+                (is (false? @fs-called?) "filesystem bundle should not be called when dev URL is set")
                 (is (= "dev-js" (:content result)))))))))))

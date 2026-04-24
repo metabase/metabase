@@ -13,8 +13,7 @@
 
 (deftest timestamped-test
   (testing "CustomVizPlugin gets auto-populated timestamps"
-    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/ts-test"
-                                                    :identifier   "ts-test"
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "ts-test"
                                                     :display_name "ts-test"
                                                     :status       :active}]
       (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
@@ -33,8 +32,7 @@
         (binding [api/*current-user-id* nil]
           (is (false? (boolean (mi/can-read? plugin))))))))
   (testing "write requires superuser"
-    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/perm-test-2"
-                                                    :identifier   "perm-test-2"
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "perm-test-2"
                                                     :display_name "perm-test-2"
                                                     :status       :active}]
       (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
@@ -48,21 +46,20 @@
     (binding [api/*is-superuser?* false]
       (is (false? (mi/can-create? :model/CustomVizPlugin {}))))))
 
-(deftest to-json-strips-access-token-test
-  (testing "JSON serialization never includes access_token"
-    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/json-test"
-                                                    :identifier   "json-test"
+(deftest to-json-strips-bundle-test
+  (testing "JSON serialization never includes the raw bundle bytes"
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "json-test"
                                                     :display_name "json-test"
                                                     :status       :active
-                                                    :access_token "secret-token"}]
+                                                    :bundle       (.getBytes "pretend-zip-bytes" "UTF-8")
+                                                    :bundle_hash  "feedface"}]
       (let [plugin   (t2/select-one :model/CustomVizPlugin :id id)
             json-str (json/encode plugin)]
-        (is (not (re-find #"secret-token" json-str)))))))
+        (is (not (re-find #"pretend-zip-bytes" json-str)))))))
 
 (deftest status-keyword-transform-test
   (testing "status is stored as string and returned as keyword"
-    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/status-test"
-                                                    :identifier   "status-test"
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "status-test"
                                                     :display_name "status-test"
                                                     :status       :active}]
       (is (= :active (:status (t2/select-one :model/CustomVizPlugin :id id))))
@@ -95,8 +92,7 @@
 
 (deftest load-find-local-test
   (testing "load-find-local finds plugin by identifier"
-    (mt/with-temp [:model/CustomVizPlugin {id :id} {:repo_url     "https://github.com/test/find-local"
-                                                    :identifier   "find-local"
+    (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "find-local"
                                                     :display_name "find-local"
                                                     :status       :active}]
       (let [found (serdes/load-find-local [{:model "CustomVizPlugin" :id "find-local"}])]
@@ -104,20 +100,15 @@
         (is (= id (:id found)))))))
 
 (deftest make-spec-test
-  (testing "make-spec generates correct copy/skip/transform fields"
+  (testing "make-spec copies identity fields but skips the binary bundle and transient dev/error state"
     (let [spec (serdes/make-spec "CustomVizPlugin" {})]
       (is (contains? (set (:copy spec)) :identifier))
-      (is (contains? (set (:copy spec)) :repo_url))
+      (is (contains? (set (:copy spec)) :display_name))
+      (is (contains? (set (:copy spec)) :manifest))
+      (is (contains? (set (:skip spec)) :bundle))
+      (is (contains? (set (:skip spec)) :bundle_hash))
       (is (contains? (set (:skip spec)) :dev_bundle_url))
       (is (contains? (set (:skip spec)) :error_message))))
-  (testing "access_token is skipped by default"
-    (let [spec   (serdes/make-spec "CustomVizPlugin" {})
-          export (get-in spec [:transform :access_token :export])]
-      (is (= ::serdes/skip (export "my-secret-token")))))
-  (testing "access_token is included when include-custom-viz-token is true"
-    (let [spec   (serdes/make-spec "CustomVizPlugin" {:include-custom-viz-token true})
-          export (get-in spec [:transform :access_token :export])]
-      (is (= "my-secret-token" (export "my-secret-token")))))
   (testing "status is always exported as skip and imported as pending"
     (let [spec          (serdes/make-spec "CustomVizPlugin" {})
           status-export (get-in spec [:transform :status :export])

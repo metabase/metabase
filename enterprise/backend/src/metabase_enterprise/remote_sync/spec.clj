@@ -1138,7 +1138,6 @@
                         root-targets
                         {:include-field-values false
                          :include-database-secrets false
-                         :include-custom-viz-token false
                          :continue-on-error false
                          :skip-archived true})]
       (eduction (map (fn [[model ids]]

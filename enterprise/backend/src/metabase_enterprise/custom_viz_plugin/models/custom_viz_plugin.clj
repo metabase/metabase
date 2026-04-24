@@ -9,9 +9,8 @@
 (methodical/defmethod t2/table-name :model/CustomVizPlugin [_model] :custom_viz_plugin)
 
 (t2/deftransforms :model/CustomVizPlugin
-  {:access_token mi/transform-encrypted-json
-   :status       mi/transform-keyword
-   :manifest     mi/transform-json})
+  {:status   mi/transform-keyword
+   :manifest mi/transform-json})
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
@@ -30,26 +29,24 @@
   api/*is-superuser?*)
 
 (methodical/defmethod mi/to-json :model/CustomVizPlugin
-  "Never include the access token in JSON."
+  "Never include the raw bundle bytes in JSON."
   [plugin json-generator]
-  (next-method (dissoc plugin :access_token) json-generator))
+  (next-method (dissoc plugin :bundle) json-generator))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/make-spec "CustomVizPlugin"
-  [_model-name {:keys [include-custom-viz-token]}]
-  {:copy      [:repo_url :display_name :identifier
-               :pinned_version :resolved_commit :enabled :icon
-               :manifest :metabase_version]
-   :skip      [:dev_bundle_url :error_message]
+  [_model-name _opts]
+  ;; The uploaded zip bundle and its hash are intentionally skipped: they're
+  ;; binary, multi-MB blobs and YAML serdes is the wrong transport for them.
+  ;; Callers that need to ship a plugin between instances should re-upload the
+  ;; zip via the API on the destination side.
+  {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version]
+   :skip      [:bundle :bundle_hash :dev_bundle_url :error_message]
    :defaults  {:enabled true}
-   :transform {:created_at   (serdes/date)
-               :status       {:export (constantly ::serdes/skip)
-                              :import (constantly "pending")}
-               :access_token {:export (if include-custom-viz-token
-                                        identity
-                                        (constantly ::serdes/skip))
-                              :import identity}}})
+   :transform {:created_at (serdes/date)
+               :status     {:export (constantly ::serdes/skip)
+                            :import (constantly "pending")}}})
 
 (defmethod serdes/entity-id "CustomVizPlugin" [_ {:keys [identifier]}]
   identifier)

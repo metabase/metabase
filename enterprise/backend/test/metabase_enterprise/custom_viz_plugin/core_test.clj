@@ -40,7 +40,7 @@
 (deftest ee-resolve-bundle-delegates-test
   (testing "EE resolve-bundle delegates to cache/resolve-bundle"
     (mt/with-premium-features #{:custom-viz}
-      (let [plugin {:id 42 :repo_url "https://github.com/test/viz"}]
+      (let [plugin {:id 42 :identifier "viz"}]
         (with-redefs [cache/resolve-bundle (fn [p] (when (= p plugin) {:content "js-code" :hash "abc"}))]
           (is (= {:content "js-code" :hash "abc"}
                  (custom-viz-plugin/resolve-bundle plugin))))))))

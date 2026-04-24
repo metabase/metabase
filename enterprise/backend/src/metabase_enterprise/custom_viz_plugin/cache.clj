@@ -1,37 +1,288 @@
 (ns metabase-enterprise.custom-viz-plugin.cache
-  "Cache layer for custom visualization plugin bundles and static assets.
-   Fetches and reads files from git repos via remote-sync's git infrastructure.
-   GitSnapshots are cached per-plugin and only re-fetched when the resolved commit changes."
+  "Storage layer for custom visualization plugin bundles.
+
+   Plugins are uploaded as tar+gzip archives. The raw archive bytes (and their
+   SHA-256 hash) are stored in `custom_viz_plugin.bundle` / `bundle_hash`. On the
+   first read of a bundle file or static asset, the archive is lazily extracted to
+   a per-instance scratch directory under the OS temp dir and files are then
+   served straight from the local filesystem. When a plugin's bundle is replaced
+   or the plugin is deleted, the on-disk directory is evicted.
+
+   Dev-only plugins (no uploaded bundle) live entirely off `dev_bundle_url` and
+   bypass this storage; only the dev http fetch helpers below are used for them."
   (:require
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clj-http.client :as http]
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
-   [metabase-enterprise.remote-sync.source.git :as rs.git]
    [metabase.config.core :as config]
    [metabase.util :as u]
+   [metabase.util.compress :as u.compress]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.nio.file Files Path)))
 
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------ Hash ------------------------------------------------
 
-(defn- content-hash [^String content]
-  (-> content .getBytes buddy-hash/sha256 codecs/bytes->hex))
+(defn- bytes-hash [^bytes b]
+  (-> b buddy-hash/sha256 codecs/bytes->hex))
 
-;;; ------------------------------------------------ Git Helpers ------------------------------------------------
+(defn- string-hash [^String s]
+  (bytes-hash (.getBytes s "UTF-8")))
 
-;; Per-plugin snapshot cache. Only fetches from remote on first access or when resolved_commit changes.
-;; {plugin-id -> GitSnapshot}
-(defonce ^:private local-snapshots (atom {}))
+;;; ------------------------------------------------ Layout ------------------------------------------------
 
-;;; ------------------------------------------------ URL Validation ------------------------------------------------
+;; The uploaded archive has the same layout as the previous git-sourced plugins:
+;;   metabase-plugin.json  (manifest, at the archive root)
+;;   dist/index.js         (the JS bundle)
+;;   dist/assets/*         (static assets)
+
+(def ^:private ^:const bundle-rel-path "index.js")
+
+(defn- asset-rel-path ^String [^String asset-name] (str "assets/" asset-name))
+
+(defn- dist-path
+  "Prefix a relative path with `dist/` to match the bundle layout."
+  ^String [^String rel-path]
+  (str "dist/" rel-path))
+
+;;; ------------------------------------------------ Size Limits ------------------------------------------------
+
+(def ^:const max-bundle-mib
+  "Maximum size of an uploaded plugin bundle, in MiB. The API layer enforces
+   this on the archive bytes up front using the multipart `:size` hint; every
+   other size (per-entry, total uncompressed) is bounded by it transitively."
+  5)
+
+(def ^:const max-bundle-bytes
+  "Maximum size of an uploaded plugin bundle, in bytes. See [[max-bundle-mib]]."
+  (* max-bundle-mib 1024 1024))
+
+;;; ------------------------------------------------ Validate Bundle ------------------------------------------------
+
+(defn- delete-recursive! [^Path path]
+  (when (Files/exists path (into-array java.nio.file.LinkOption []))
+    (with-open [stream (Files/walk path (into-array java.nio.file.FileVisitOption []))]
+      (doseq [^Path p (reverse (vec (.iterator stream)))]
+        (try (Files/delete p)
+             (catch Exception e
+               (log/warnf "Failed to delete %s: %s" p (ex-message e))))))))
+
+(defn- regular-file? [^Path path]
+  (Files/isRegularFile path (into-array java.nio.file.LinkOption [])))
+
+(defn validate-bundle!
+  "Extract an uploaded tar+gzip `bundle-bytes` into a scratch directory and
+   validate its contents against the expected layout. Returns
+   `{:bytes bundle-bytes :hash sha :manifest m :version-str v}` on success.
+   Throws ex-info with `:status-code 400` for any user-facing failure.
+
+   The caller is responsible for enforcing the upload size cap — by the time we
+   get here the bytes are known to be under [[max-bundle-bytes]]."
+  [^bytes bundle-bytes]
+  (when (or (nil? bundle-bytes) (zero? (alength bundle-bytes)))
+    (throw (ex-info "Bundle is empty" {:status-code 400})))
+  (let [scratch (Files/createTempDirectory "custom-viz-validate-"
+                                           (into-array java.nio.file.attribute.FileAttribute []))]
+    (try
+      (try
+        (u.compress/untgz bundle-bytes (.toFile scratch))
+        (catch Exception e
+          (throw (ex-info (str "Bundle is not a valid tar.gz archive: " (ex-message e))
+                          {:status-code 400}
+                          e))))
+      (let [manifest-file (.resolve scratch (manifest/manifest-path))
+            bundle-file   (.resolve scratch (dist-path bundle-rel-path))
+            _             (when-not (regular-file? manifest-file)
+                            (throw (ex-info (str (manifest/manifest-path) " not found in bundle")
+                                            {:status-code 400})))
+            parsed        (or (manifest/parse-manifest (String. (Files/readAllBytes manifest-file) "UTF-8"))
+                              (throw (ex-info (str (manifest/manifest-path) " is not valid JSON")
+                                              {:status-code 400})))
+            _             (when-not (regular-file? bundle-file)
+                            (throw (ex-info (str (dist-path bundle-rel-path) " not found in bundle")
+                                            {:status-code 400})))
+            version-str   (get-in parsed [:metabase :version])]
+        (when (str/blank? (:name parsed))
+          (throw (ex-info (str (manifest/manifest-path) " is missing a \"name\" field")
+                          {:status-code 400})))
+        (when (and version-str
+                   (not (manifest/compatible? {:metabase_version version-str})))
+          (throw (ex-info
+                  (format "Plugin requires Metabase version %s but current version is %s"
+                          version-str (:tag config/mb-version-info))
+                  {:status-code 400 :metabase_version version-str})))
+        {:bytes       bundle-bytes
+         :hash        (bytes-hash bundle-bytes)
+         :manifest    parsed
+         :version-str version-str})
+      (finally
+        (delete-recursive! scratch)))))
+
+;;; ------------------------------------------------ FS Cache ------------------------------------------------
+
+(defn- custom-viz-cache-root
+  "The on-disk cache root for extracted plugin bundles. Placed under the OS
+   temp dir so it's per-instance and naturally reclaimed when the host is
+   rebooted; [[ensure-unpacked!]] will lazily re-extract from the DB on the
+   next serve after a wipe."
+  ^Path []
+  (let [root (.resolve (.toPath (io/file (System/getProperty "java.io.tmpdir"))) "metabase-custom-viz")]
+    (Files/createDirectories root (into-array java.nio.file.attribute.FileAttribute []))
+    root))
+
+(defn- plugin-cache-dir ^Path [id ^String bundle-hash]
+  (.resolve (custom-viz-cache-root) (str id "-" bundle-hash)))
+
+(defn- safe-resolve
+  "Resolve `rel-path` under `base`, refusing to escape it. Used on the serve
+   side to guard against caller-supplied asset paths that attempt traversal —
+   the archive extraction itself is already zip-slip-safe via
+   [[u.compress/untgz]]."
+  ^Path [^Path base ^String rel-path]
+  (let [resolved (.normalize (.resolve base rel-path))]
+    (when (.startsWith resolved base)
+      resolved)))
+
+(defn- evict-other-cache-dirs!
+  "Delete cache dirs for `id` that don't match `keep-hash`."
+  [id ^String keep-hash]
+  (let [root  (custom-viz-cache-root)
+        keep  (str id "-" keep-hash)
+        prefix (str id "-")]
+    (with-open [stream (Files/list root)]
+      (doseq [^Path child (vec (.iterator stream))]
+        (let [name (str (.getFileName child))]
+          (when (and (str/starts-with? name prefix)
+                     (not= name keep))
+            (delete-recursive! child)))))))
+
+(defn- unpack-bundle!
+  "Extract `bundle-bytes` into `dir`, creating it. Atomic-ish: unpacks into a
+   sibling temp directory and renames into place so other threads never observe
+   a half-written cache dir. Zip-slip is handled by `u.compress/untgz`, which
+   resolves each entry under the temp dir via `TarArchiveEntry.resolveIn`."
+  [^Path dir ^bytes bundle-bytes]
+  (let [parent (.getParent dir)
+        _      (Files/createDirectories parent (into-array java.nio.file.attribute.FileAttribute []))
+        tmp    (Files/createTempDirectory parent (str (.getFileName dir) ".tmp.")
+                                          (into-array java.nio.file.attribute.FileAttribute []))]
+    (try
+      (u.compress/untgz bundle-bytes (.toFile tmp))
+      (try
+        (Files/move tmp dir
+                    (into-array java.nio.file.CopyOption
+                                [java.nio.file.StandardCopyOption/ATOMIC_MOVE]))
+        (catch java.nio.file.AtomicMoveNotSupportedException _
+          (Files/move tmp dir (into-array java.nio.file.CopyOption []))))
+      (catch java.nio.file.FileAlreadyExistsException _
+        ;; Another thread won the race; keep their copy and discard ours.
+        (delete-recursive! tmp))
+      (catch Throwable t
+        (delete-recursive! tmp)
+        (throw t)))))
+
+(defn- ensure-unpacked!
+  "Guarantee that the cache dir for `plugin` is on disk. If `bundle` is null in the
+   row (dev-only plugin) this returns nil. Returns the directory `Path` on success."
+  ^Path [{:keys [id bundle_hash]}]
+  (when bundle_hash
+    (let [dir (plugin-cache-dir id bundle_hash)]
+      (when-not (Files/isDirectory dir (into-array java.nio.file.LinkOption []))
+        (let [bundle-bytes (t2/select-one-fn :bundle :model/CustomVizPlugin :id id)]
+          (when (and bundle-bytes (not (Files/isDirectory dir (into-array java.nio.file.LinkOption []))))
+            (unpack-bundle! dir bundle-bytes)
+            (evict-other-cache-dirs! id bundle_hash))))
+      dir)))
+
+(defn purge-plugin-cache!
+  "Remove on-disk cache dirs for `plugin` (typically because it's being deleted or
+   updated). Safe to call even if no dir exists."
+  [{:keys [id]}]
+  (let [root   (custom-viz-cache-root)
+        prefix (str id "-")]
+    (with-open [stream (Files/list root)]
+      (doseq [^Path child (vec (.iterator stream))]
+        (when (str/starts-with? (str (.getFileName child)) prefix)
+          (delete-recursive! child))))))
+
+;;; ------------------------------------------------ Save Bundle ------------------------------------------------
+
+(defn- derived-columns
+  "DB columns derived from a validated bundle."
+  [{:keys [bytes hash manifest version-str]}]
+  {:status           :active
+   :error_message    nil
+   :bundle           bytes
+   :bundle_hash      hash
+   :manifest         manifest
+   :display_name     (or (:name manifest) (:identifier manifest))
+   :icon             (:icon manifest)
+   :metabase_version version-str})
+
+(defn save-bundle!
+  "Persist a validated bundle for an existing plugin row, evict stale on-disk
+   caches, and return the refreshed row."
+  [{:keys [id]} validated]
+  (t2/update! :model/CustomVizPlugin id (derived-columns validated))
+  (purge-plugin-cache! {:id id})
+  (t2/select-one :model/CustomVizPlugin :id id))
+
+(defn insert-bundle!
+  "Insert a new plugin row from a validated bundle and an `:identifier`. Returns
+   the inserted row."
+  [identifier validated]
+  (t2/insert-returning-instance!
+   :model/CustomVizPlugin
+   (merge {:identifier identifier
+           :enabled    true}
+          (derived-columns validated))))
+
+;;; ------------------------------------------------ Read From Cache ------------------------------------------------
+
+(defn- read-cached-bytes
+  "Read the bytes of `dist-rel-path` from the on-disk cache for `plugin`. Returns
+   nil if the plugin has no bundle or the file is missing."
+  ^bytes [plugin ^String dist-rel-path]
+  (when-let [dir (try (ensure-unpacked! plugin)
+                      (catch Exception e
+                        (log/warnf "Failed to unpack plugin %d bundle: %s"
+                                   (:id plugin) (ex-message e))
+                        nil))]
+    (when-let [^Path file (safe-resolve dir dist-rel-path)]
+      (when (Files/isRegularFile file (into-array java.nio.file.LinkOption []))
+        (Files/readAllBytes file)))))
+
+(defn get-bundle
+  "Get the JS bundle for an upload-backed plugin. Returns
+   `{:content str :hash str}` or nil."
+  [plugin]
+  (when-let [bytes (read-cached-bytes plugin (dist-path bundle-rel-path))]
+    {:content (String. bytes "UTF-8")
+     :hash    (or (:bundle_hash plugin) (bytes-hash bytes))}))
+
+(defn- asset-whitelisted?
+  "Check whether an asset path is explicitly listed in the plugin's manifest."
+  [{:keys [manifest]} ^String asset-path]
+  (when manifest
+    (let [allowed (set (manifest/asset-paths manifest))]
+      (contains? allowed asset-path))))
+
+(defn get-asset
+  "Get a static asset for an upload-backed plugin. Returns a byte array or nil."
+  ^bytes [plugin ^String asset-name]
+  (read-cached-bytes plugin (dist-path (asset-rel-path asset-name))))
+
+;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
 (defn- allowed-schemes
-  "Set of URL schemes allowed for repo and dev bundle URLs.
+  "Set of URL schemes allowed for dev bundle URLs.
    In dev/test/e2e mode, `file://` and `git://` are also permitted."
   []
   (cond-> #{"http" "https"}
@@ -44,191 +295,6 @@
     (when-not (contains? (allowed-schemes) scheme)
       (throw (ex-info (str label " must use http or https, got: " scheme)
                       {:status-code 400 :url url})))))
-
-(defn validate-repo-url!
-  "Validate that a repo URL uses an allowed scheme (http/https, plus file:// in dev/test/e2e).
-   Throws on invalid input."
-  [^String url]
-  (validate-url! url "Repo URL"))
-
-(defn- plugin-snapshot
-  "Return a GitSnapshot for a plugin at its resolved commit.
-   Caches the snapshot per plugin; only fetches from remote on first access
-   or when the resolved commit has changed.
-   Always fetches at the exact `resolved_commit` SHA so that multi-server
-   deployments serve the same bundle regardless of what HEAD points to."
-  [{:keys [id repo_url pinned_version access_token resolved_commit]}]
-  (validate-repo-url! repo_url)
-  (let [cached (get @local-snapshots id)]
-    (if (and cached (= (:version cached) resolved_commit))
-      cached
-      (let [source   (rs.git/git-source repo_url pinned_version access_token nil)
-            snapshot (rs.git/snapshot-at-ref source resolved_commit)]
-        (swap! local-snapshots assoc id snapshot)
-        snapshot))))
-
-(defn purge-plugin-cache!
-  "Evict all cached state for a deleted plugin: the in-memory snapshot and the
-   on-disk bare git repository (which may contain auth credentials in its config)."
-  [{:keys [id repo_url access_token]}]
-  (swap! local-snapshots dissoc id)
-  (when-not (str/starts-with? (str repo_url) "dev://")
-    (rs.git/purge-cached-repo! repo_url access_token)))
-
-;;; ------------------------------------------------ Paths ------------------------------------------------
-
-(def ^:private ^:const bundle-rel-path "index.js")
-
-(defn- asset-rel-path ^String [^String asset-name] (str "assets/" asset-name))
-
-(defn- git-path
-  "Prefix a relative path with dist/ for git repo layout."
-  ^String [^String rel-path]
-  (str "dist/" rel-path))
-
-;;; ------------------------------------------------ Git Reads ------------------------------------------------
-
-(defn- read-from-git
-  "Read a file from the plugin's git snapshot. Obtains the snapshot internally.
-   Returns the raw result of `read-fn` (string or byte array) or nil on error."
-  [plugin ^String rel-path read-fn]
-  (try
-    (let [snapshot (plugin-snapshot plugin)]
-      (read-fn snapshot (git-path rel-path)))
-    (catch Exception e
-      (log/warnf "Failed to read %s from git at %s: %s" rel-path (:resolved_commit plugin) (ex-message e))
-      nil)))
-
-;;; ------------------------------------------------ Size Limits ------------------------------------------------
-
-(def ^:private ^:const max-file-bytes
-  "Maximum size in bytes for any single bundled file (bundle or asset)."
-  (* 2 1024 1024))
-
-(def ^:private ^:const max-plugin-bytes
-  "Maximum combined size in bytes of all files served for a single plugin."
-  (* 8 1024 1024))
-
-(defn- validate-size!
-  "Ensure no file in `git-paths` exceeds `max-file-bytes` and their combined
-   size stays below `max-plugin-bytes`."
-  [snapshot commit-sha git-paths]
-  (reduce
-   (fn [total path]
-     (if-let [size (rs.git/file-size snapshot path)]
-       (do
-         (when (> size max-file-bytes)
-           (throw (ex-info (format "%s is %d bytes, exceeds the %d byte per-file limit"
-                                   path size max-file-bytes)
-                           {:status-code 400 :commit commit-sha})))
-         (let [total' (+ total size)]
-           (when (> total' max-plugin-bytes)
-             (throw (ex-info (format "Plugin exceeds the %d byte total size limit"
-                                     max-plugin-bytes)
-                             {:status-code 400 :commit commit-sha})))
-           total'))
-       total))
-   0
-   git-paths))
-
-;;; ------------------------------------------------ Fetch & Update ------------------------------------------------
-
-(defn- fetch-plugin-data!
-  "Fetch and validate index.js and manifest from a plugin's git repo.
-   Returns `{:commit-sha :parsed :version-str :snapshot}` on success.
-   Throws ex-info with `:status-code 400` on any failure."
-  [{:keys [repo_url access_token pinned_version]}]
-  (validate-repo-url! repo_url)
-  (try
-    (let [branch      (or pinned_version "HEAD")
-          source      (rs.git/git-source repo_url branch access_token nil)
-          snapshot    (rs.git/snapshot-at-ref source branch)
-          commit-sha  (:version snapshot)
-          _content    (or (rs.git/read-file snapshot (git-path bundle-rel-path))
-                          (throw (ex-info (str (git-path bundle-rel-path) " not found in repository")
-                                          {:status-code 400 :commit commit-sha})))
-          parsed      (or (some-> (rs.git/read-file snapshot (manifest/manifest-path))
-                                  manifest/parse-manifest)
-                          (throw (ex-info (str (manifest/manifest-path) " not found or invalid in repository")
-                                          {:status-code 400 :commit commit-sha})))
-          version-str (get-in parsed [:metabase :version])
-          asset-paths (map #(git-path (asset-rel-path %)) (manifest/asset-paths parsed))]
-      (validate-size! snapshot commit-sha (cons (git-path bundle-rel-path) asset-paths))
-      (when (and version-str
-                 (not (manifest/compatible? {:metabase_version version-str})))
-        (throw (ex-info
-                (format "Plugin requires Metabase version %s but current version is %s"
-                        version-str (:tag config/mb-version-info))
-                {:status-code 400 :metabase_version version-str})))
-      {:commit-sha  commit-sha
-       :parsed      parsed
-       :version-str version-str
-       :snapshot    snapshot})
-    (catch Exception e
-      (if (:status-code (ex-data e))
-        (throw e)
-        (throw (ex-info (str "Failed to fetch plugin from repository: " (ex-message e))
-                        {:status-code 400}
-                        e))))))
-
-(defn fetch-and-save!
-  "Fetch plugin data from git, validate, and save to DB.
-   For new plugins (no `:id` in the plugin map), inserts a new row using fields
-   from the plugin map plus the derived manifest fields.
-   For existing plugins, updates the existing row.
-   `extra-columns` are merged into the DB write (e.g. `:enabled` changes from a
-   PUT that coincide with a pinned_version change).
-   Seeds the snapshot cache so the first bundle serve avoids a redundant git fetch.
-   Returns the saved plugin row.
-   Throws on fetch/validation failure."
-  ([plugin]
-   (fetch-and-save! plugin nil))
-  ([{:keys [id identifier] :as plugin} extra-columns]
-   (let [{:keys [commit-sha parsed version-str snapshot]} (fetch-plugin-data! plugin)
-         derived {:status           :active
-                  :error_message    nil
-                  :resolved_commit  commit-sha
-                  :manifest         parsed
-                  :display_name     (or (:name parsed) identifier)
-                  :icon             (:icon parsed)
-                  :metabase_version version-str}
-         columns (merge derived extra-columns)]
-     (if id
-       (do (t2/update! :model/CustomVizPlugin id columns)
-           (swap! local-snapshots assoc id snapshot)
-           (t2/select-one :model/CustomVizPlugin :id id))
-       (let [row (t2/insert-returning-instance!
-                  :model/CustomVizPlugin
-                  (merge (select-keys plugin [:repo_url :access_token :identifier :pinned_version])
-                         columns))]
-         (swap! local-snapshots assoc (:id row) snapshot)
-         row)))))
-
-;;; ------------------------------------------------ Get ------------------------------------------------
-
-(defn get-bundle
-  "Get the JS bundle for a plugin. Reads from the local bare git repo at the resolved commit.
-   Returns {:content str :hash str} or nil."
-  [{:keys [resolved_commit] :as plugin}]
-  (when resolved_commit
-    (when-let [content (read-from-git plugin bundle-rel-path rs.git/read-file)]
-      {:content content :hash (content-hash content)})))
-
-(defn- asset-whitelisted?
-  "Check whether an asset path is explicitly listed in the plugin's manifest."
-  [{:keys [manifest]} ^String asset-path]
-  (when manifest
-    (let [allowed (set (manifest/asset-paths manifest))]
-      (contains? allowed asset-path))))
-
-(defn get-asset
-  "Get a static asset for a plugin. Reads from the local bare git repo at the resolved commit.
-   Returns a byte array or nil."
-  ^bytes [{:keys [resolved_commit] :as plugin} ^String asset-name]
-  (when resolved_commit
-    (read-from-git plugin (asset-rel-path asset-name) rs.git/read-file-bytes)))
-
-;;; ------------------------------------------------ Dev Bundle ------------------------------------------------
 
 (defn dev-base-url
   "Validate and normalize the dev base URL. Ensures http/https scheme and trailing slash."
@@ -251,7 +317,7 @@
   (let [content (:body (http/get (dev-url base-url bundle-rel-path)
                                  (assoc http-opts :as :string)))]
     {:content content
-     :hash    (content-hash content)}))
+     :hash    (string-hash content)}))
 
 (defn fetch-dev-manifest
   "Fetch and parse the manifest from a dev base URL.

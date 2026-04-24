@@ -16,6 +16,15 @@
    (when-let [entry (.getNextEntry tar)]
      (cons entry (entries tar)))))
 
+(defn tar-input-stream
+  "Open a `TarArchiveInputStream` over a tar+gzip `source`. `source` can be
+  anything `io/input-stream` coerces — a `File`, a byte array, a raw
+  `InputStream`. The caller is responsible for closing the returned stream."
+  ^TarArchiveInputStream [source]
+  (-> (io/input-stream source)
+      (GzipCompressorInputStream.)
+      (TarArchiveInputStream.)))
+
 (defn tgz
   "Compress directory `src` to a tar+gzip file `dst`."
   [^File src ^File dst]
@@ -41,16 +50,16 @@
     dst))
 
 (defn untgz
-  "Uncompress tar+gzip file `archive` to a directory `dst`.
-  Skips hidden entries, returns number of unpacked entries (files + dirs)."
-  [^File archive ^File dst]
-  (with-open [tar (-> (io/input-stream archive)
-                      (GzipCompressorInputStream.)
-                      (TarArchiveInputStream.))]
-    (let [tar-entries (entries tar)
-          dst-path    (.toPath dst)]
+  "Uncompress tar+gzip `archive` into directory `dst`.
+
+  `archive` can be anything `io/input-stream` coerces — a `File`, a byte array,
+  or a raw `InputStream`. Skips hidden entries. Returns the number of unpacked
+  entries (files + dirs)."
+  [archive ^File dst]
+  (with-open [tar (tar-input-stream archive)]
+    (let [dst-path (.toPath dst)]
       (count
-       (for [^TarArchiveEntry e tar-entries
+       (for [^TarArchiveEntry e (entries tar)
              :let [actual-name (last (.split (.getName e) "/"))]
              ;; skip hidden files
              :when (not (str/starts-with? actual-name "."))]

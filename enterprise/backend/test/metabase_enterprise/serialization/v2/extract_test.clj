@@ -2635,8 +2635,7 @@
 (deftest custom-viz-plugin-test
   (mt/with-empty-h2-app-db!
     (t2/delete! :model/CustomVizPlugin)
-    (ts/with-temp-dpc [:model/CustomVizPlugin {plugin-id :id} {:repo_url     "https://github.com/example/test-viz-plugin"
-                                                               :display_name "Test Plugin"
+    (ts/with-temp-dpc [:model/CustomVizPlugin {plugin-id :id} {:display_name "Test Plugin"
                                                                :identifier   "test-plugin"
                                                                :status       :active
                                                                :manifest     "{}"}]
@@ -2646,7 +2645,6 @@
         (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
           (is (=? {:serdes/meta [{:model "CustomVizPlugin"
                                   :id    "test-plugin"}]
-                   :repo_url     "https://github.com/example/test-viz-plugin"
                    :display_name "Test Plugin"
                    :identifier   "test-plugin"
                    :manifest     {}
@@ -2654,7 +2652,8 @@
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :status)))
-          (is (not (contains? ser :access_token)))
+          (is (not (contains? ser :bundle)))
+          (is (not (contains? ser :bundle_hash)))
 
           (testing "has no dependencies"
             (is (empty? (serdes/dependencies ser)))))))))

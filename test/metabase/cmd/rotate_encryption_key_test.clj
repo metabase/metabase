@@ -51,9 +51,7 @@
           user-id            (atom nil)
           secret-val         "surprise!"
           secret-id-enc      (atom nil)
-          secret-id-unenc    (atom nil)
-          plugin-token       {:token "secret-token"}
-          plugin-id          (atom nil)]
+          secret-id-unenc    (atom nil)]
       (mt/test-drivers #{:postgres :h2 :mysql}
         (let [data-source (dump-to-h2-test/persistent-data-source driver/*driver* db-name)]
           ;; `database.details` use mi/transform-encrypted-json as transformation
@@ -105,15 +103,7 @@
                                                                                    :kind       "password"
                                                                                    :value      (.getBytes secret-val StandardCharsets/UTF_8)
                                                                                    :creator_id @user-id}))]
-                  (reset! secret-id-enc (u/the-id secret)))
-                (when config/ee-available?
-                  (let [plugin (first (t2/insert-returning-instances! :model/CustomVizPlugin
-                                                                      {:repo_url     "https://github.com/test/rotate"
-                                                                       :identifier   "rotate-test"
-                                                                       :display_name "rotate-test"
-                                                                       :status       :active
-                                                                       :access_token plugin-token}))]
-                    (reset! plugin-id (u/the-id plugin)))))
+                  (reset! secret-id-enc (u/the-id secret))))
 
               (testing "rotating with the same key is a noop"
                 (encryption-test/with-secret-key k1
@@ -139,21 +129,13 @@
                   (encryption-test/with-secret-key k2
                     (is (= "unencrypted value" (t2/select-one-fn :value :model/Setting :key "nocrypt")))
                     (is (= {:db "/tmp/test.db"} (t2/select-one-fn :details :model/Database :id 1)))
-                    (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))
-                    (when config/ee-available?
-                      (is (= plugin-token
-                             (t2/select-one-fn :access_token :model/CustomVizPlugin :id @plugin-id))
-                          "CustomVizPlugin.access_token should round-trip under the new key"))))
+                    (is (mt/secret-value-equals? secret-val (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))
                 (testing "but not with old key"
                   (encryption-test/with-secret-key k1
                     (is (not= "unencrypted value" (t2/select-one-fn :value :model/Setting :key "nocrypt")))
                     (is (not= "{\"db\":\"/tmp/test.db\"}" (t2/select-one-fn :details :model/Database :id 1)))
                     (is (not (mt/secret-value-equals? secret-val
-                                                      (t2/select-one-fn :value :model/Secret :id @secret-id-unenc))))
-                    (when config/ee-available?
-                      (is (not= plugin-token
-                                (t2/select-one-fn :access_token :model/CustomVizPlugin :id @plugin-id))
-                          "CustomVizPlugin.access_token should NOT round-trip under the old key")))))
+                                                      (t2/select-one-fn :value :model/Secret :id @secret-id-unenc)))))))
 
               (testing "full rollback when a database details looks encrypted with a different key than the current one"
                 (encryption-test/with-secret-key k3
