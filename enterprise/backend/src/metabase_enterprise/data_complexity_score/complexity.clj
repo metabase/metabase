@@ -7,7 +7,6 @@
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.audit-app.core :as audit]
@@ -19,8 +18,11 @@
 (set! *warn-on-reflection* true)
 
 (def formula-version
-  "Bump when the scoring formula changes in a way that would break historical comparisons."
-  1)
+  "Bump when the scoring formula changes in a way that would break historical comparisons.
+   v2 switched the synonym axis to MiniLM-L6-v2 (STS, 0.80) on names-split text, replacing the
+   Arctic-L search-index vectors at 0.90. The model is fixed via `embedders/default-synonym-model`
+   rather than reused from the semantic-search index — precision cutoff vs. retrieval recall."
+  2)
 
 (def weights
   "Per-axis weights applied to raw measurements. Public because they're part of the scoring
@@ -43,11 +45,12 @@
    :repeated-measures :ambiguity})
 
 (def synonym-similarity-threshold
-  "Cosine-similarity cutoff for flagging two names as synonyms.
-  Higher than semantic-search's retrieval cutoff (0.30) because scoring needs precision, not recall.
-  See https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb for how this
-  value was chosen."
-  0.90)
+  "Cosine-similarity cutoff for flagging two names as synonyms, paired with the fixed
+  MiniLM-L6-v2 STS model in `complexity-embedders/default-synonym-model`. Higher than
+  semantic-search's retrieval cutoff (0.30) because scoring needs precision, not recall.
+  See https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb for how
+  this value was chosen."
+  0.80)
 
 ;;; ----------------------------------- enumeration -----------------------------------
 ;;;
@@ -420,14 +423,14 @@
      {:library  {:total n :components {...}}
       :universe {:total n :components {...}}
       :metabot  {:total n :components {...}}
-      :meta     {:formula-version 1
-                 :synonym-threshold 0.90
+      :meta     {:formula-version 2
+                 :synonym-threshold 0.80
                  :embedding-model {...}}}
 
    Options:
      `:embedder` — overrides the synonym-axis embedder (defaults to
-        [[metabase-enterprise.semantic-search.core/search-index-embedder]]); pass `nil` to disable
-        synonym scoring.
+        [[metabase-enterprise.data-complexity-score.complexity-embedders/default-synonym-embedder]],
+        a MiniLM-L6-v2 embedder called through ollama); pass `nil` to disable synonym scoring.
      `:metabot-scope` — a `{:verified-only? <bool> :collection-id <nil|Long>}` map describing how
         the internal Metabot filters Cards. `:metabot` is always scored separately from `:universe`
         because Metabot/search table visibility (hidden tables, routed databases) already diverges
@@ -445,9 +448,9 @@
     (try
       (let [embedder       (if (contains? opts :embedder)
                              embedder
-                             semantic-search/search-index-embedder)
-            model-meta     (when (= embedder semantic-search/search-index-embedder)
-                             (semantic-search/active-embedding-model))
+                             embedders/default-synonym-embedder)
+            model-meta     (when (= embedder embedders/default-synonym-embedder)
+                             (select-keys embedders/default-synonym-model [:provider :model-name]))
             {:keys [library universe metabot]}
             ;; Single enumerate phase — see [[enumerate-catalogs]]. Library ⊆ universe and
             ;; metabot ⊆ universe, so fetching each catalog separately duplicated DB work; the

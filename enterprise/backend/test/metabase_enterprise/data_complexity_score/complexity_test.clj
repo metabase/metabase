@@ -336,6 +336,10 @@
     ;; fetch-batch). Uses `:mock-indexed` so the *embedding model* is a lookup-table — but
     ;; the resulting vectors are real rows in the index table that search-index-embedder
     ;; queries via SQL.
+    ;;
+    ;; :meta.embedding-model is intentionally *not* asserted: the search-index embedder is no
+    ;; longer the default, and only the default path advertises a model descriptor. Passing it
+    ;; explicitly (as this test does) means the caller owns the model narrative, not us.
     (when semantic.db.datasource/db-url
       (let [captured (atom nil)]
         (mt/with-premium-features #{:semantic-search}
@@ -343,8 +347,7 @@
             (semantic.tu/with-test-db! {:mode :mock-indexed}
               (reset! captured (complexity/complexity-scores
                                 :embedder semantic-search/search-index-embedder)))))
-        (is (=? {:meta     {:embedding-model {:provider "mock" :model-name "model"}}
-                 :universe {:components {:synonym-pairs {:measurement number?
+        (is (=? {:universe {:components {:synonym-pairs {:measurement number?
                                                          :score       nat-int?}}}}
                 @captured)
             "embedder returned vectors from pgvector and the synonym axis produced a real measurement")))))
@@ -525,25 +528,66 @@
       true?  {:mid nil :model_id "abc" :model "card"}  {:mid nil :model_id "xyz" :model "card"}
       false? {:mid nil :model_id "xyz" :model "card"}  {:mid nil :model_id "abc" :model "card"})))
 
-(deftest ^:sequential meta-embedding-model-absent-when-unavailable-test
+(deftest ^:sequential meta-embedding-model-advertises-default-synonym-model-test
   (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
                               (constantly {:library [] :universe [] :metabot []})]
-    (testing ":embedding-model key is absent from :meta when the search index is unreachable"
-      (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state (constantly nil)]
-        ;; Pass the real search-index-embedder so the identity check in complexity-scores succeeds,
-        ;; but the embedder returns {} because try-active-index-state is nil.
-        (let [{:keys [meta]} (complexity/complexity-scores :embedder semantic-search/search-index-embedder)]
-          (is (not (contains? meta :embedding-model))))))
-    (testing ":embedding-model key is present in :meta when the active model is non-nil"
-      (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
-                                  (constantly {:pgvector   :mock
-                                               :table-name "mock_table"
-                                               :model      {:provider   "openai"
-                                                            :model-name "text-embedding-3-small"}})
-                                  ss.embedders/fetch-batch (constantly [])]
-        (let [{:keys [meta]} (complexity/complexity-scores :embedder semantic-search/search-index-embedder)]
-          (is (= {:provider "openai" :model-name "text-embedding-3-small"}
-                 (:embedding-model meta))))))))
+    (testing ":embedding-model is the fixed MiniLM descriptor when the default embedder is in use"
+      ;; default-synonym-embedder would try to reach ollama; stub get-embeddings-batch so the
+      ;; test doesn't care whether ollama is running. We assert on :meta, not on scoring output.
+      (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch (fn [_ _] [])]
+        (let [{:keys [meta]} (complexity/complexity-scores)]
+          (is (= {:provider "ollama" :model-name "all-minilm:l6-v2"}
+                 (:embedding-model meta))))))
+    (testing ":embedding-model is omitted when the caller passes an explicit embedder — we don't
+              know what model produced those vectors, so we don't claim one"
+      (let [{:keys [meta]} (complexity/complexity-scores :embedder (embedders/fn-embedder
+                                                                    (fn [_] [])))]
+        (is (not (contains? meta :embedding-model)))))
+    (testing ":embedding-model is omitted when synonym scoring is disabled (embedder is nil)"
+      (let [{:keys [meta]} (complexity/complexity-scores :embedder nil)]
+        (is (not (contains? meta :embedding-model)))))))
+
+(deftest ^:parallel default-synonym-embedder-is-minilm-backed-test
+  (testing "the default embedder names MiniLM-L6-v2 on ollama — breaks on accidental rename/swap"
+    (is (= {:provider "ollama" :model-name "all-minilm:l6-v2" :model-dimensions 384}
+           embedders/default-synonym-model))))
+
+(deftest ^:sequential default-synonym-embedder-splits-names-before-calling-provider-test
+  (testing "names are split on _/-/./camelCase before being sent to get-embeddings-batch —
+            verified at the edge of the module, not by reading the source"
+    (let [captured (atom nil)]
+      (with-redefs [semantic-search/get-embeddings-batch
+                    (fn [_model texts] (reset! captured (vec texts)) (repeat (count texts) [1.0]))]
+        (embedders/default-synonym-embedder
+         [{:id 1 :name "monthly_active_users" :kind :table}
+          {:id 2 :name "dim-date"             :kind :table}
+          {:id 3 :name "pageViews"            :kind :card}
+          {:id 4 :name "metabase.v2_foo"      :kind :table}])
+        (is (= ["monthly active users"
+                "dim date"
+                "page views"
+                "metabase v2 foo"]
+               @captured))))))
+
+(deftest ^:sequential default-synonym-embedder-degrades-gracefully-test
+  (testing "returns {} when the provider throws (ollama unreachable, model not pulled)"
+    (with-redefs [semantic-search/get-embeddings-batch
+                  (fn [_ _] (throw (ex-info "ollama down" {})))]
+      (is (= {}
+             (embedders/default-synonym-embedder
+              [{:id 1 :name "orders" :kind :table}]))))))
+
+(deftest ^:sequential default-synonym-embedder-zips-by-position-test
+  (testing "vectors come back keyed by the normalized name; nil slots are dropped"
+    (with-redefs [semantic-search/get-embeddings-batch
+                  (fn [_ texts]
+                    (for [t texts] (when-not (= t "drop me") [1.0 0.0])))]
+      (let [result (embedders/default-synonym-embedder
+                    [{:id 1 :name "keep me"  :kind :table}
+                     {:id 2 :name "drop_me"  :kind :table}
+                     {:id 3 :name "another"  :kind :card}])]
+        (is (= #{"keep me" "another"} (set (keys result))))
+        (is (every? #(instance? (Class/forName "[F") %) (vals result)))))))
 
 (deftest ^:sequential active-embedding-model-reads-from-active-index-test
   (testing "active-embedding-model returns the model from the active index, not the configured setting"
@@ -702,24 +746,19 @@
                 "error is clipped to the schema's maxLength of 1024")))))))
 
 (deftest ^:sequential emit-snowplow-includes-embedding-model-meta-test
-  (testing "every event's parameters carry embedding_model_provider/name when the search-index embedder is active"
+  (testing "every event's parameters carry the fixed MiniLM embedding_model_provider/name when using the default embedder"
     (snowplow-test/with-fake-snowplow-collector
-      (mt/with-dynamic-fn-redefs [ss.embedders/try-active-index-state
-                                  (constantly {:pgvector   :mock
-                                               :table-name "mock_table"
-                                               :model      {:provider   "openai"
-                                                            :model-name "text-embedding-3-small"}})
-                                  ss.embedders/fetch-batch (constantly [])
+      (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch (fn [_ _] [])
                                   complexity/enumerate-catalogs
                                   (constantly {:library  [(entity :name "orders")]
                                                :universe [(entity :name "orders")]
                                                :metabot  []})]
         (snowplow-test/pop-event-data-and-user-id!)
-        (complexity/complexity-scores :embedder semantic-search/search-index-embedder)
+        (complexity/complexity-scores)
         (let [events (complexity-events!)]
           (is (seq events) "sanity: events were emitted")
-          (is (every? #(= "openai" (get-in % ["parameters" "embedding_model_provider"])) events))
-          (is (every? #(= "text-embedding-3-small" (get-in % ["parameters" "embedding_model_name"])) events)))))))
+          (is (every? #(= "ollama"           (get-in % ["parameters" "embedding_model_provider"])) events))
+          (is (every? #(= "all-minilm:l6-v2" (get-in % ["parameters" "embedding_model_name"])) events)))))))
 
 (deftest ^:sequential emit-snowplow-failure-is-swallowed-test
   (testing "emission failure is caught; complexity-scores still returns the score and logs a warning"
