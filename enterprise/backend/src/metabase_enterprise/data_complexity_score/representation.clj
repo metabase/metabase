@@ -6,10 +6,10 @@
   empty.
 
   The loader is the offline counterpart of the app-db enumeration in
-  [[metabase-enterprise.data-complexity-score.complexity]]: it produces library + universe entity vectors
-  matching the same `{:id :name :kind :field-count :measure-names}` shape, plus a file-backed
-  embedder. Given identical content, scoring via this loader returns the same result as scoring
-  against a live instance."
+  [[metabase-enterprise.data-complexity-score.complexity]]: it produces library + universe catalog maps
+  (each `{:entities [...] :collection-count N}`) matching the same shape `score-from-entities`
+  expects, plus a file-backed embedder. Given identical content, scoring via this loader returns
+  the same result as scoring against a live instance."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -48,24 +48,37 @@
             collections))
     #{}))
 
-(defn- ->table-entity [fields-by-table measures-by-table {:keys [id name] :as _table}]
-  {:id            id
-   :name          name
-   :kind          :table
-   :field-count   (count (filter :active (fields-by-table id)))
-   :measure-names (mapv :name (remove :archived (measures-by-table id)))})
+(defn- ->field [{:keys [name semantic_type description]}]
+  {:name          name
+   :semantic-type semantic_type
+   :description   description})
 
-(defn- ->card-entity [{:keys [id name type] :as _card}]
+(defn- ->table-entity
+  [fields-by-table measures-by-table {:keys [id name description]}]
+  (let [active-fields (->> (fields-by-table id)
+                           (filter :active)
+                           (mapv ->field))]
+    {:id            id
+     :name          name
+     :kind          :table
+     :description   description
+     :field-count   (count active-fields)
+     :fields        active-fields
+     :measure-names (mapv :name (remove :archived (measures-by-table id)))}))
+
+(defn- ->card-entity [{:keys [id name type description]}]
   {:id            id
    :name          name
    :kind          (keyword type)
+   :description   description
    :field-count   0
+   :fields        []
    :measure-names []})
 
 (defn- resolve-embeddings-file
-  "Resolve an explicit `:embeddings-path` override against `dir` when it is relative, and return the
-  `File`. Throws when the file doesn't exist — silently falling back to `{}` would mask a typo and
-  produce a misleadingly low complexity score."
+  "Resolve an explicit `:embeddings-path` override against `dir` when it is relative, and return
+  the `File`. Throws when the file doesn't exist — silently falling back to `{}` would mask a
+  typo and produce a misleadingly low complexity score."
   ^java.io.File [dir embeddings-path]
   (let [given (io/file embeddings-path)
         f     (if (.isAbsolute given) given (io/file dir embeddings-path))]
@@ -76,53 +89,61 @@
                        :dir             (str dir)})))
     f))
 
+(defn- universe-collection-count
+  "Non-archived, non-personal collections in the representation. Mirrors the live
+  `universe-collection-count` rule — audit filtering happens on the entity side, not collections."
+  [collections]
+  (->> collections
+       (remove :archived)
+       (remove :personal_owner_id)
+       count))
+
 (defn load-dir
   "Load representation files from `dir` and derive everything the complexity scorer needs.
 
-  Returns `{:library [...entities] :universe [...entities] :embedder fn}` where the entities are
-  shaped for [[metabase-enterprise.data-complexity-score.complexity/score-from-entities]].
+  Returns `{:library <catalog> :universe <catalog> :embedder fn}` where each catalog is
+  `{:entities [...] :collection-count N}` — shaped for
+  [[metabase-enterprise.data-complexity-score.complexity/score-from-entities]].
 
   Options:
     `:embeddings-path` — explicit path to a JSON embeddings file. When provided, overrides the
-      default `embeddings.json` in `dir`. Relative paths are resolved against `dir` (so a value
-      like `embeddings/names_arctic-l_1024d.json` points inside the representation directory, not
-      the process working directory). Throws if the resolved file is missing — the caller asked
-      for a specific embeddings source, so silently scoring with no embeddings would be wrong."
+      default `embeddings.json` in `dir`. Relative paths are resolved against `dir`. Throws if
+      the resolved file is missing — asking for a specific embeddings source and silently
+      scoring with none would be wrong."
   [dir & {:keys [embeddings-path]}]
-  (let [kw                {:keywordize? true  :default []}
-        str-keyed         {:keywordize? false :default {}}
-        collections       (read-section dir "collections" kw)
-        tables            (read-section dir "tables"      kw)
-        fields            (read-section dir "fields"      kw)
-        cards             (read-section dir "cards"       kw)
-        measures          (read-section dir "measures"    kw)
-        embeddings        (if embeddings-path
-                            (json/decode (slurp (resolve-embeddings-file dir embeddings-path)) false)
-                            (read-section dir "embeddings" str-keyed))
-        fields-by-table   (group-by :table_id fields)
-        meas-by-table     (group-by :table_id measures)
-        lib-coll-ids      (library-collection-ids collections)
-        ;; Mirror the live `enumerate-catalogs`: `:universe` excludes audit content, and `:library`
-        ;; is derived *from* that audit-filtered universe, so it excludes audit content too. The
-        ;; `some?` guard matches SQL `<>`'s three-valued logic — a row with `NULL` `db_id` would
-        ;; have been dropped by `:not= audit/audit-db-id` in Toucan, but `(not= nil id)` is `true`.
-        non-audit-db?     (fn [id] (and (some? id) (not= id audit/audit-db-id)))
-        universe-table?   (fn [t] (and (:active t)
-                                       (non-audit-db? (:db_id t))))
-        library-table?    (fn [t] (and (universe-table? t)
-                                       (:is_published t)
-                                       (contains? lib-coll-ids (:collection_id t))))
-        model-or-metric?  (fn [c] (and (not (:archived c))
-                                       (contains? #{"model" "metric"} (:type c))))
-        universe-card?    (fn [c] (and (model-or-metric? c)
-                                       (non-audit-db? (:database_id c))))
-        library-card?     (fn [c] (and (universe-card? c)
-                                       (contains? lib-coll-ids (:collection_id c))))
-        ->table           #(->table-entity fields-by-table meas-by-table %)
-        library           (concat (mapv ->card-entity (filter library-card?   cards))
-                                  (mapv ->table       (filter library-table?  tables)))
-        universe          (concat (mapv ->card-entity (filter universe-card?  cards))
-                                  (mapv ->table       (filter universe-table? tables)))]
-    {:library  (vec library)
-     :universe (vec universe)
+  (let [kw               {:keywordize? true  :default []}
+        str-keyed        {:keywordize? false :default {}}
+        collections      (read-section dir "collections" kw)
+        tables           (read-section dir "tables"      kw)
+        fields           (read-section dir "fields"      kw)
+        cards            (read-section dir "cards"       kw)
+        measures         (read-section dir "measures"    kw)
+        embeddings       (if embeddings-path
+                           (json/decode (slurp (resolve-embeddings-file dir embeddings-path)) false)
+                           (read-section dir "embeddings" str-keyed))
+        fields-by-table  (group-by :table_id fields)
+        meas-by-table    (group-by :table_id measures)
+        lib-coll-ids     (library-collection-ids collections)
+        ;; Audit-db filtering only mirrors the live `:universe` path. The live library-entities
+        ;; doesn't exclude audit content, so neither do we — Library scope is collection-driven.
+        universe-table?  (fn [t] (and (:active t)
+                                      (not= (:db_id t) audit/audit-db-id)))
+        library-table?   (fn [t] (and (:active t)
+                                      (:is_published t)
+                                      (contains? lib-coll-ids (:collection_id t))))
+        model-or-metric? (fn [c] (and (not (:archived c))
+                                      (contains? #{"model" "metric"} (:type c))))
+        universe-card?   (fn [c] (and (model-or-metric? c)
+                                      (not= (:database_id c) audit/audit-db-id)))
+        library-card?    (fn [c] (and (model-or-metric? c)
+                                      (contains? lib-coll-ids (:collection_id c))))
+        ->table          #(->table-entity fields-by-table meas-by-table %)
+        library-ents     (concat (mapv ->card-entity (filter library-card?   cards))
+                                 (mapv ->table       (filter library-table?  tables)))
+        universe-ents    (concat (mapv ->card-entity (filter universe-card?  cards))
+                                 (mapv ->table       (filter universe-table? tables)))]
+    {:library  {:entities         (vec library-ents)
+                :collection-count (count lib-coll-ids)}
+     :universe {:entities         (vec universe-ents)
+                :collection-count (universe-collection-count collections)}
      :embedder (embedders/file-embedder embeddings)}))

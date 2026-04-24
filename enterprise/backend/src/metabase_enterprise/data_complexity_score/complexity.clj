@@ -1,535 +1,421 @@
 (ns metabase-enterprise.data-complexity-score.complexity
-  "Computes the Data Complexity Score for the semantic layer across three catalogs:
+  "Computes a multi-dimensional complexity score for the semantic layer of this Metabase instance.
+
+  Three catalogs are scored:
+
     :library  — the curated subset (Cards of type :model and :metric)
     :universe — everything (library entities + all active physical tables)
-    :metabot  — what the internal Metabot can surface, narrowed by a caller-supplied scope."
+    :metabot  — what the internal Metabot can actually surface. Identical to :universe unless the
+                caller passes `:metabot-scope {:verified-only? <bool> :collection-id <nil|Long>}`
+                describing how the internal Metabot filters retrieval. The caller owns the
+                decision — this namespace does not read settings, premium-feature gates, or
+                Metabot rows directly.
+
+  Five dimensions are reported:
+
+    :scale       size of the catalog (neutral polarity — bigger ≠ worse, but still drives choice-
+                 space difficulty)
+    :nominal     string-level naming disorder (collisions + density + concentration)
+    :semantic    embedding-level disambiguation (graph analytics over a 0.80-similarity graph,
+                 MiniLM-L6-v2 STS vectors on names-split text)
+    :structural  (not yet implemented — deferred to tier 3)
+    :metadata    positive-polarity coverage of descriptions / semantic_types / measures — NOT
+                 summed into the aggregate total; reported alongside as a `:coverage` ratio
+
+  Cost is controlled by a tier level (see `settings/semantic-complexity-level`): level 1 is cheap
+  DB-only; level 2 adds the semantic graph (embeds names via ollama/MiniLM on every run — the
+  search index's Arctic vectors are no longer reused); level ≥ 3 will add structural once
+  implemented.
+
+  Per-dimension math lives in `metrics/*` namespaces. This file owns enumeration, scope resolution,
+  Snowplow emission, and the top-level coordination between dimensions."
   (:require
    [clojure.pprint :as pprint]
-   [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
+   [metabase-enterprise.data-complexity-score.metrics.metadata :as metrics.metadata]
+   [metabase-enterprise.data-complexity-score.metrics.nominal :as metrics.nominal]
+   [metabase-enterprise.data-complexity-score.metrics.scale :as metrics.scale]
+   [metabase-enterprise.data-complexity-score.metrics.semantic :as metrics.semantic]
+   [metabase-enterprise.data-complexity-score.settings :as settings]
    [metabase.analytics.core :as analytics]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
-   [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
 (def formula-version
-  "Bump when the scoring formula changes in a way that would break historical comparisons.
-
-  Swaps of `embedding-model`, `synonym-threshold`, or `text-variant` don't need a bump.
-  Those values ride in the fingerprint + `:meta` + Snowplow parameters, so downstream readers
-  can diff on them directly."
+  "Bump when the scoring formula changes in a way that breaks historical comparisons.
+  Swaps of `embedding-model`, `synonym-threshold`, or `text-variant` don't need a bump — they
+  already ride in the fingerprint + `:meta` + Snowplow parameters, so downstream readers can
+  diff on those fields directly."
   1)
 
-(def weights
-  "Per-axis weights applied to raw measurements. Public because they're part of the scoring
-  fingerprint — a tuning change must force a re-score and be visible to Snowplow consumers
-  without bumping `formula-version`."
-  {:entity           10
-   :name-collision   100
-   :synonym-pair     50
-   :field            1
-   :repeated-measure 2})
-
-(def ^:private component->group
-  "Thematic parent per sub-component — drives the `<group>.total` + `<group>.<component>` rollup in
-  emitted keys so operators can tell `size` from `ambiguity` without SQL.
-  Must cover every key produced by [[score-catalog]] or the missing ones emit as `nil.<component>`."
-  {:entity-count      :size
-   :field-count       :size
-   :name-collisions   :ambiguity
-   :synonym-pairs     :ambiguity
-   :repeated-measures :ambiguity})
-
-(def synonym-similarity-threshold
-  "Cosine-similarity cutoff for flagging two names as synonyms.
-
-  Paired with the fixed MiniLM-L6-v2 STS model in
-  `complexity-embedders/default-synonym-model`.
-  Higher than semantic-search's retrieval cutoff (0.30) because scoring needs precision, not
-  recall.
-
-  See https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb for how
-  this value was chosen."
-  0.80)
-
 ;;; ----------------------------------- enumeration -----------------------------------
-;;;
-(defn- table-field-counts
-  "Return `{table-id field-count}` for active fields on the given `table-ids`. Single group-by query."
+
+(defn- table-fields
+  "`{table-id [{:name :semantic-type :description} ...]}` for active fields on the given
+   `table-ids`. One query, no chatter."
   [table-ids]
   (if (empty? table-ids)
     {}
-    (into {}
-          (map (juxt :table_id :field_count))
-          (t2/query {:select   [:table_id [:%count.* :field_count]]
-                     :from     [:metabase_field]
-                     :where    [:and
-                                [:= :active true]
-                                [:in :table_id table-ids]]
-                     :group-by [:table_id]}))))
+    (->> (t2/query {:select [:table_id :name :semantic_type :description]
+                    :from   [:metabase_field]
+                    :where  [:and
+                             [:= :active true]
+                             [:in :table_id table-ids]]})
+         (reduce (fn [acc {:keys [table_id name semantic_type description]}]
+                   (update acc table_id (fnil conj [])
+                           {:name name :semantic-type semantic_type :description description}))
+                 {}))))
 
 (defn- table-measure-names
-  "Return `{table-id [measure-name ...]}` for non-archived Measures on the given `table-ids`. A
-   measure is a named MBQL aggregation attached to a Table — see [[metabase.measures.models.measure]]."
+  "`{table-id [measure-name ...]}` for non-archived Measures on `table-ids`."
   [table-ids]
   (if (empty? table-ids)
     {}
-    (u/group-by :table_id :name
-                (t2/select [:model/Measure :table_id :name]
-                           :archived false
-                           :table_id [:in table-ids]))))
+    (->> (t2/select [:model/Measure :table_id :name]
+                    :archived false
+                    :table_id [:in table-ids])
+         (reduce (fn [acc {:keys [table_id name]}]
+                   (update acc table_id (fnil conj []) name))
+                 {}))))
 
 (defn- ->card-entity
-  "Shape a Card row into an entity map for scoring. Cards don't contribute to `:field-count` in
-   v1 — the proposal's +1-per-field rule is about physical Table fields, not Card result columns —
-   so we can skip the fat `result_metadata` column entirely. Measures are a separate first-class
-   model tied to Tables, not Cards, so Cards also don't contribute to `:measure-names`."
-  [{:keys [id name type]}]
+  "Cards contribute 0 to `:field-count` / `:fields` and have no attached Measures — fields live on
+   Tables, and the Measure model is Table-keyed. We keep the result-metadata column out of the
+   reducible-select query so Card-heavy instances don't balloon per-row footprint."
+  [{:keys [id name type description]}]
   {:id            id
    :name          name
    :kind          (keyword type)
+   :description   description
    :field-count   0
+   :fields        []
    :measure-names []})
 
-(defn- ->table-entity [field-counts measure-names {:keys [id name]}]
-  {:id            id
-   :name          name
-   :kind          :table
-   :field-count   (get field-counts id 0)
-   :measure-names (get measure-names id [])})
+(defn- ->table-entity [fields-by-table measure-names {:keys [id name description]}]
+  (let [fields (get fields-by-table id [])]
+    {:id            id
+     :name          name
+     :kind          :table
+     :description   description
+     :field-count   (count fields)
+     :fields        fields
+     :measure-names (get measure-names id [])}))
 
 (defn- library-collection-ids
-  "Set of collection IDs that make up the Library (root + descendants). Empty when the instance has no Library yet."
+  "Set of collection IDs that make up the Library (root + descendants). Empty set when the
+   instance has no Library yet."
   []
   (into #{}
         (when-let [root (collections/library-collection)]
-          ;; This is cheaper and less brittle than referencing the collection type constants for every entity type.
           (cons (:id root) (collections/descendant-ids root)))))
 
+(defn- collect-card-entities
+  [filter-kvs]
+  (into []
+        (map ->card-entity)
+        (apply t2/reducible-select
+               [:model/Card :id :name :type :description :card_schema]
+               filter-kvs)))
+
+(defn- assemble-table-entities [tables]
+  (let [table-ids     (mapv :id tables)
+        fields-by-tbl (table-fields table-ids)
+        measure-names (table-measure-names table-ids)]
+    (mapv #(->table-entity fields-by-tbl measure-names %) tables)))
+
+(defn- universe-collection-count
+  "Non-archived, non-personal collections. Personal collections are per-user and excluded from
+   the shared catalog view; archived collections aren't navigable. Audit-DB filtering happens on
+   the entity side (by `database_id`), not here — collections don't have a `database_id` column."
+  []
+  (or (t2/count :model/Collection :archived false :personal_owner_id nil) 0))
+
+(defn library-catalog
+  "Library catalog enumeration — non-archived metric/model Cards and published Tables inside the
+   Library collection tree, plus the count of collections in that tree."
+  []
+  (let [coll-ids (library-collection-ids)]
+    (if (empty? coll-ids)
+      {:entities [] :collection-count 0}
+      (let [cards  (collect-card-entities [:type          [:in ["metric" "model"]]
+                                           :archived      false
+                                           :collection_id [:in coll-ids]])
+            tables (t2/select [:model/Table :id :name :description]
+                              :active        true
+                              :is_published  true
+                              :collection_id [:in coll-ids])]
+        {:entities         (into cards (assemble-table-entities tables))
+         :collection-count (count coll-ids)}))))
+
+(defn universe-catalog
+  "Universe catalog enumeration — every non-archived metric/model Card and every active physical
+   Table on this instance (excluding audit content), plus the catalog-wide collection count."
+  []
+  (let [cards  (collect-card-entities [:type        [:in ["metric" "model"]]
+                                       :archived    false
+                                       :database_id [:not= audit/audit-db-id]])
+        tables (t2/select [:model/Table :id :name :description]
+                          :active true
+                          :db_id  [:not= audit/audit-db-id])]
+    {:entities         (into cards (assemble-table-entities tables))
+     :collection-count (universe-collection-count)}))
+
 (defn- metabot-collection-scope-ids
-  "Set of collection IDs the internal Metabot can see — its `collection_id` plus descendants.
-   nil when no collection scope is configured (Metabot retrieves from everywhere). If the
-   collection row can't be loaded (stale/invalid id) we still return a singleton set with the
-   raw id so the catalog matches `metabot-metrics-and-models-query`, which filters on the raw
-   `collection_id` and returns an empty result rather than dropping the filter."
+  "Collection IDs the internal Metabot can see — its `collection_id` plus descendants. nil when
+   no collection scope is configured. Even if the collection row can't be loaded (stale id), we
+   still return a singleton set with the raw id so the catalog matches
+   `metabot-metrics-and-models-query`, which filters on the raw `collection_id` and returns an
+   empty result rather than dropping the filter."
   [collection-id]
   (when collection-id
     (into #{collection-id}
           (when-let [root (t2/select-one :model/Collection :id collection-id)]
             (collections/descendant-ids root)))))
 
-(defn- verified-card-id-set
-  "Set of Card ids whose most-recent moderation review is `verified`. Called only when
-   `metabot-scope` requests verified-only filtering — avoids a `moderation_review` join on the
-   universe Card select by pushing the check into a small auxiliary lookup."
-  []
-  (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                    :moderated_item_type "card"
-                    :most_recent         true
-                    :status              "verified"))
-
-(defn- routed-child-database-id-set
-  "Set of database ids whose `router_database_id` is non-nil — the routed child databases whose
-   tables Metabot/search hide. Tables with `:db_id` in this set are excluded from the `:metabot`
-   catalog, mirroring the table-visibility rule in `metabase.warehouse-schema.models.table`."
-  []
-  (t2/select-fn-set :id :model/Database :router_database_id [:not= nil]))
-
-(defn- pick-by-row
-  "Filter `entities` by `row-pred` applied to the correspondingly-indexed `rows`. Preserves
-   reference identity on the kept entity maps so library/metabot vectors share map instances
-   with the universe vector rather than allocating fresh ones.
-   A nil `row-pred` short-circuits to `[]` — callers whose filter is statically empty (e.g. no
-   Library collections on this instance) pass nil to skip enumeration entirely."
-  [row-pred rows entities]
-  (if row-pred
-    (into []
-          (keep-indexed (fn [i row] (when (row-pred row) (nth entities i))))
-          rows)
-    []))
-
-(defn- enumerate-catalogs
-  "One-pass enumeration of all three scoring catalogs. Returns
-   `{:library [...] :universe [...] :metabot [...]}` where entity maps are shared *by reference*
-   across catalogs — a Card or Table that appears in more than one catalog is one map in memory,
-   not three.
-
-   An earlier revision fetched the three catalogs separately, which duplicated DB work up to 3×
-   per scoring run — most expensively on [[table-field-counts]] and [[table-measure-names]],
-   each a `GROUP BY` scan over `metabase_field` / `measure`. We now fetch the universe superset
-   once and derive the `:library` and `:metabot` subsets by in-memory filter, which collapses 6
-   DB round-trips + 2 auxiliaries into 4 + up-to-2 and lets the aggregates run once each.
-
-   `metabot-scope` is `{:verified-only? <bool> :collection-id <nil|Long>}` describing how the
-   internal Metabot narrows its Cards further — it only adds filters, never widens. The caller
-   owns the scope decision (premium-feature gate + Metabot row lookup); this namespace does not
-   read settings, premium-feature gates, or Metabot rows directly."
+(defn- metabot-card-entities
+  "Cards the internal Metabot would actually surface, optionally restricted to a collection
+   subtree and/or to verified-moderation Cards. Mirrors the filters in
+   `metabase.metabot.tools.util/metabot-metrics-and-models-query`."
   [{:keys [verified-only? collection-id]}]
-  (let [library-cids      (library-collection-ids)
-        metabot-cids      (metabot-collection-scope-ids collection-id)
-        verified-ids      (when verified-only? (verified-card-id-set))
-        routed-db-ids     (routed-child-database-id-set)
-        ;; Extra columns (`:collection_id`, `:is_published`, `:visibility_type`, `:db_id`) are
-        ;; selected purely to drive the in-memory library/metabot derivations below — they're
-        ;; ignored by `->card-entity` / `->table-entity`. `:card_schema` is required by
-        ;; `:model/Card`'s post-select hooks even when we don't otherwise use it.
-        universe-cards    (t2/select [:model/Card :id :name :type :collection_id :card_schema]
-                                     :type        [:in ["metric" "model"]]
-                                     :archived    false
-                                     :database_id [:not= audit/audit-db-id])
-        universe-tables   (t2/select [:model/Table :id :name :collection_id :is_published
-                                      :visibility_type :db_id]
-                                     :active true
-                                     :db_id  [:not= audit/audit-db-id])
-        field-counts      (table-field-counts  (mapv :id universe-tables))
-        measure-names     (table-measure-names (mapv :id universe-tables))
-        card-entities     (mapv ->card-entity universe-cards)
-        table-entities    (mapv #(->table-entity field-counts measure-names %) universe-tables)
-        in-library-card?  (when (seq library-cids)
-                            (fn [{:keys [collection_id]}]
-                              (contains? library-cids collection_id)))
-        in-library-table? (when (seq library-cids)
-                            (fn [{:keys [collection_id is_published]}]
-                              (and is_published
-                                   (contains? library-cids collection_id))))
-        in-metabot-card?  (when (and (or (nil? metabot-cids) (seq metabot-cids))
-                                     (or (not verified-only?) (seq verified-ids)))
-                            (fn [{:keys [collection_id id]}]
-                              (and (or (nil? metabot-cids)
-                                       (contains? metabot-cids collection_id))
-                                   (or (not verified-only?)
-                                       (contains? verified-ids id)))))
-        in-metabot-table? (fn [{:keys [visibility_type db_id]}]
-                            (and (nil? visibility_type)
-                                 (not (contains? routed-db-ids db_id))))]
-    {:universe (into card-entities table-entities)
-     :library  (into (pick-by-row in-library-card?  universe-cards  card-entities)
-                     (pick-by-row in-library-table? universe-tables table-entities))
-     :metabot  (into (pick-by-row in-metabot-card?  universe-cards  card-entities)
-                     (pick-by-row in-metabot-table? universe-tables table-entities))}))
+  (let [coll-ids (metabot-collection-scope-ids collection-id)
+        where    (cond-> [:and
+                          [:in :report_card.type [:inline ["metric" "model"]]]
+                          [:= :report_card.archived false]
+                          [:not= :report_card.database_id audit/audit-db-id]]
+                   coll-ids       (conj [:in :report_card.collection_id coll-ids])
+                   verified-only? (conj [:= :mr.status [:inline "verified"]]))
+        query    (cond-> {:select [:report_card.id :report_card.name :report_card.type
+                                   :report_card.description :report_card.card_schema]
+                          :from   [[:report_card]]
+                          :where  where}
+                   verified-only? (assoc :left-join
+                                         [[:moderation_review :mr]
+                                          [:and
+                                           [:= :mr.moderated_item_id :report_card.id]
+                                           [:= :mr.moderated_item_type [:inline "card"]]
+                                           [:= :mr.most_recent true]]]))]
+    (into []
+          (map ->card-entity)
+          (t2/reducible-select :model/Card query))))
+
+(defn metabot-catalog
+  "Metabot catalog when any Metabot retrieval scope is in effect (verified-only, a collection
+   subtree, or both). Cards are filtered to match Metabot retrieval; Tables pass through
+   unfiltered because Metabot doesn't scope Tables by `collection_id` and there's no table-level
+   verification concept. Collection count is the Metabot scope subtree when present, otherwise
+   the full universe count."
+  [scope]
+  (let [card-entities (metabot-card-entities scope)
+        tables        (t2/select [:model/Table :id :name :description]
+                                 :active true
+                                 :db_id  [:not= audit/audit-db-id])
+        coll-ids      (metabot-collection-scope-ids (:collection-id scope))]
+    {:entities         (into card-entities (assemble-table-entities tables))
+     :collection-count (or (some-> coll-ids count) (universe-collection-count))}))
 
 ;;; ------------------------------------- scoring -------------------------------------
 
-(defn- component-score
-  "Sub-score map: raw `:measurement` (double — future-proofs non-integer axes like density) and
-  weighted `:score` using the weight at `weight-key`."
-  [weight-key n]
-  {:measurement (double n)
-   :score       (* n (get weights weight-key))})
-
-(defn- repeated-names
-  "Count of name occurrences past the first (normalized for comparison). Single pass, no
-   intermediate frequency map. `raw-names` may contain nils — they're skipped."
-  [raw-names]
-  (second
-   (reduce (fn [[seen repeats] raw-name]
-             (if-let [n-name (embedders/normalize-name raw-name)]
-               (if (contains? seen n-name)
-                 [seen (inc repeats)]
-                 [(conj seen n-name) repeats])
-               [seen repeats]))
-           [#{} 0]
-           raw-names)))
-
-(defn- score-entity-count [entities]
-  (component-score :entity (count entities)))
-
-(defn- score-name-collisions [entities]
-  (component-score :name-collision (repeated-names (map :name entities))))
-
-(defn- score-field-count [entities]
-  (component-score :field (reduce + (keep :field-count entities))))
-
-(defn- score-repeated-measures [entities]
-  (component-score :repeated-measure (repeated-names (mapcat :measure-names entities))))
-
-(defn- dot ^double [^floats a ^floats b]
-  (let [len (alength a)]
-    (loop [i 0 acc 0.0]
-      (if (< i len)
-        (recur (inc i) (+ acc (* (aget a i) (aget b i))))
-        acc))))
-
-(defn- synonym-pair?
-  "True when two vectors' cosine similarity is ≥ sqrt(`threshold-sq`).
-   Uses the squared form of the inequality — `(a·b)² ≥ t² · ‖a‖² · ‖b‖²` when `a·b ≥ 0`, avoiding
-   two `Math/sqrt` calls a direct cosine-similarity computation would need.
-   The non-negative guard keeps it sound (squaring a negative `a·b` would flip the inequality).
-
-   `norms-product` is `‖a‖² · ‖b‖²` precomputed by the caller; folding it into one arg keeps us
-   within Clojure's 4-argument cap for primitive-typed `defn`s."
-  [^floats a ^floats b ^double norms-product ^double threshold-sq]
-  (and (pos? norms-product)
-       (let [dot-ab (dot a b)]
-         (and (>= dot-ab 0.0)
-              (>= (* dot-ab dot-ab) (* threshold-sq norms-product))))))
-
-(defn- synonym-pair-count
-  "Count of vector pairs whose cosine similarity is ≥ `threshold`. Walks the upper triangle of the
-   N×N pair matrix; each vector's `‖v‖²` is precomputed once and reused across every comparison it
-   participates in.
-
-   TODO: this is O(N²) in the distinct-name count. Fine while the signal source is the shared
-   search-index (bounded by what the indexer has seen), but once we introduce a dedicated name-only
-   embedder this should revisit — either as a chunked `M·Mᵀ` via Neanderthal/dtype-next or as a
-   dedicated pgvector name-index doing the join in SQL."
-  [embeddings threshold]
-  (let [n                 (count embeddings)
-        threshold-sq      (* threshold threshold)
-        ^doubles norms-sq (double-array n)]
-    (dotimes [i n]
-      (let [v ^floats (embeddings i)]
-        (aset norms-sq ^long i (dot v v))))
-    (count
-     (for [i (range n)
-           j (range (inc ^long i) n)
-           :when (synonym-pair? (embeddings i) (embeddings j)
-                                (* (aget norms-sq i) (aget norms-sq j))
-                                threshold-sq)]
-       :value-doesnt-matter))))
-
-(defn- score-synonym-pairs
-  "Compute the synonym sub-score for `entities` using `embedder`. On embedder failure, returns nil
-   `:score`/`:measurement` plus an `:error` string so the failure cascades through aggregates
-   instead of being mistaken for a real zero. A nil `embedder` produces an empty lookup and scores
-   a real zero."
-  [entities embedder]
-  (try
-    (let [name->vec     (or (and embedder (embedder entities)) {})
-          ;; We need to materialize all these vectors in a clojure vec for efficient pairwise similarity checks.
-          known-vectors (into []
-                              (comp (keep (comp embedders/normalize-name :name))
-                                    (distinct)
-                                    (keep name->vec))
-                              entities)
-          pairs         (synonym-pair-count known-vectors synonym-similarity-threshold)]
-      (component-score :synonym-pair pairs))
-    (catch Throwable t
-      (log/warn t "Complexity score: synonym detection failed; cascading nil through aggregates")
-      (let [msg (some-> (.getMessage t) str/trim)
-            err (if (str/blank? msg)
-                  (or (some-> (class t) .getName) "synonym detection failed")
-                  msg)]
-        {:measurement nil :score nil :error err}))))
-
-(defn- nil-safe-sum
-  "Sum `xs` (numbers and/or nils). Returns nil if any element is nil — used to cascade an
-   uncomputed sub-score through aggregates instead of silently low-biasing the total with zeros."
-  [xs]
-  (when (every? some? xs)
-    (reduce + xs)))
+(defn- catalog-total
+  "Sum sub-totals across additive dimensions (everything except `:metadata`)."
+  [dimensions]
+  (reduce + 0 (keep :sub-total (vals (dissoc dimensions :metadata)))))
 
 (defn score-catalog
-  "Pure: compute the score breakdown for a catalog given its `entities` and an optional `embedder`."
-  [entities embedder]
-  (let [components {:entity-count      (score-entity-count entities)
-                    :name-collisions   (score-name-collisions entities)
-                    :synonym-pairs     (score-synonym-pairs entities embedder)
-                    :field-count       (score-field-count entities)
-                    :repeated-measures (score-repeated-measures entities)}]
-    {:total      (nil-safe-sum (map (comp :score val) components))
-     :components components}))
+  "Pure: compute the dimension breakdown for a catalog given its `entities`, a context map
+  `{:collection-count <long>}`, an optional `embedder`, and an integer `level` (1 or 2 within
+  this build). Returns `{:dimensions {...} :total <long>}`."
+  [entities {:keys [collection-count]} embedder level]
+  (let [scale-b      (when (>= ^long level 1)
+                       (metrics.scale/score entities {:collection-count collection-count}))
+        nominal-b    (when (>= ^long level 1)
+                       (metrics.nominal/score entities))
+        embedder-out (when (>= ^long level 2)
+                       (metrics.semantic/embedder-result entities embedder))
+        emb-cov      (when embedder-out
+                       (metrics.semantic/embedding-coverage entities embedder-out))
+        semantic-b   (when (>= ^long level 2)
+                       (metrics.semantic/score entities embedder-out))
+        metadata-b   (when (>= ^long level 1)
+                       (metrics.metadata/score entities {:embedding-coverage emb-cov}))
+        dimensions   (cond-> {}
+                       scale-b    (assoc :scale scale-b)
+                       nominal-b  (assoc :nominal nominal-b)
+                       semantic-b (assoc :semantic semantic-b)
+                       metadata-b (assoc :metadata metadata-b))]
+    {:dimensions dimensions
+     :total      (catalog-total dimensions)}))
 
 ;;; ----------------------------------- public API ------------------------------------
 
 (defn- log-scores!
-  "Log the result at :info so operators see the score in app logs even when Snowplow is off."
+  "Write the computed result to application logs. Operators get this even when Snowplow isn't
+   reachable, since scoring only runs at startup and on the superuser recompute endpoint."
   [result]
   (log/info (str "Semantic complexity score:\n"
-                 ;; `pprint` goes through `with-out-str`, not `*out*`, so the "use metabase.util.log" lint is n/a.
                  #_{:clj-kondo/ignore [:discouraged-var]}
                  (with-out-str (pprint/pprint result)))))
 
 (defn- snake ^String [x]
-  (str/replace (name x) "-" "_"))
+  (-> x name (.replace "-" "_")))
 
 (defn- dotted-key
-  "Join `parts` with `.` after snake-casing each. `(dotted-key :size :entity-count)` → `\"size.entity_count\"`."
-  [& parts]
-  (str/join "." (map snake parts)))
+  "Identifier for a slice in the `data_complexity` schema's `:key` field — `\"total\"` at the
+  catalog level, `\"<dimension>.<variable>\"` per leaf. Free-form string per the schema, so new
+  variables can be added without a schema bump."
+  ([] "total")
+  ([dim var] (str (snake dim) "." (snake var))))
 
-(defn- snake-keys
-  "Recursively snake-case all keyword keys/values to strings for stable round-trip through
-  Snowplow's JSON serialization. Keyword values in leaf positions are stringified too."
-  [x]
-  (cond
-    (map? x)     (into (sorted-map) (map (fn [[k v]] [(snake k) (snake-keys v)])) x)
-    (keyword? x) (snake x)
-    :else        x))
-
-(defn- parameters-map
-  "Sorted-map of scoring inputs likely to evolve, published as a JSON object on each event.
-
-  String keys (top-level and nested) so they round-trip unchanged through Snowplow's payload
-  serialization.
-  `formula_version` stays top-level as the primary cross-version filter."
-  [{:keys [synonym-threshold embedding-model text-variant weights]}]
-  (cond-> (sorted-map "synonym_threshold" synonym-threshold
-                      "weights"           (snake-keys weights))
-    embedding-model (assoc "embedding_model" (snake-keys embedding-model))
-    text-variant    (assoc "text_variant"    (snake text-variant))))
+(defn- measurement-of
+  "Publish the raw pre-score measurement alongside each variable event so downstream can track
+   count/pairs without inverting the weight map."
+  [var-map]
+  (when-let [v (:value var-map)]
+    (when (number? v) v)))
 
 (def ^:private max-error-length
-  "Matches the Snowplow schema's `error` maxLength — a pathological exception message
-  must not fail validation and drop the whole event."
+  "Matches the `data_complexity` Snowplow schema's `error` maxLength — a pathological exception
+  message must not fail validation and drop the whole event."
   1024)
 
 (defn- truncate-error [s]
   (cond-> s (< max-error-length (count s)) (subs 0 max-error-length)))
 
-(defn- emit-snowplow!
-  "Submits Snowplow events for every score, every group aggregation, and the grand total.
-  Returns true when they are all successfully delivered.
-  Returns false when tracking is disabled or any emission failed."
-  [{:keys [library universe metabot meta]}]
-  (let [base   {:event           :data_complexity_scoring
-                :formula_version (:formula-version meta)
-                :parameters      (parameters-map meta)}
-        events (for [[catalog result] [[:library library] [:universe universe] [:metabot metabot]]
-                     event (concat (for [[component sub] (:components result)]
-                                     ;; leaf component
-                                     (cond-> (assoc base
-                                                    :catalog     catalog
-                                                    :key         (dotted-key (component->group component) component)
-                                                    :score       (:score sub)
-                                                    :measurement (:measurement sub))
-                                       (:error sub) (assoc :error (truncate-error (:error sub)))))
-                                   (for [[group entries] (group-by #(component->group (key %)) (:components result))]
-                                     ;; group total
-                                     (assoc base
-                                            :catalog catalog
-                                            :key     (dotted-key group :total)
-                                            :score   (nil-safe-sum (map (comp :score val) entries))))
-                                   ;; grand total
-                                   [(assoc base
-                                           :catalog catalog
-                                           :key     (dotted-key :total)
-                                           :score   (:total result))])]
-                 event)]
-    ;; No short-circuiting - even if they are failures, attempt the rest.
-    (reduce (fn [all-ok? event]
-              (and (analytics/track-event! :snowplow/data_complexity event) all-ok?))
-            ;; Since events cannot be empty, we don't need to worry about returning a vacuous true.
-            true
-            events)))
+(defn- parameters-map
+  "Sorted-map of scoring inputs likely to evolve, published as a JSON object on each event.
+  String keys (top-level and nested) so they round-trip unchanged — Snowplow's `payload` only
+  snake-cases top-level keys, and Cheshire would serialize nested keyword keys with their leading
+  colon. `formula_version` stays top-level as the primary cross-version filter."
+  [{:keys [level synonym-threshold embedding-model text-variant]}]
+  (cond-> (sorted-map "level" level)
+    synonym-threshold (assoc "synonym_threshold" synonym-threshold)
+    embedding-model   (assoc "embedding_model_provider" (:provider embedding-model)
+                             "embedding_model_name"     (:model-name embedding-model))
+    text-variant      (assoc "text_variant" (snake text-variant))))
+
+(defn- emit-catalog-snowplow!
+  "Emit Snowplow events for one catalog. One `key=\"total\"` event for the catalog total, then one
+  per `(dimension, variable)` leaf. Events conform to `data_complexity` schema 1-0-0."
+  [catalog {:keys [dimensions total]} base]
+  (analytics/track-event!
+   :snowplow/data_complexity
+   (assoc base :catalog catalog :key (dotted-key) :score total))
+  (doseq [[dim {:keys [variables]}] dimensions
+          [var-k var-map]           variables
+          :let [payload (cond-> (assoc base
+                                       :catalog catalog
+                                       :key     (dotted-key dim var-k)
+                                       :score   (:score var-map))
+                          (measurement-of var-map) (assoc :measurement (measurement-of var-map))
+                          (:error var-map)         (assoc :error (truncate-error (:error var-map))))]]
+    (analytics/track-event! :snowplow/data_complexity payload)))
+
+(defn- emit-snowplow! [{:keys [library universe metabot meta]}]
+  (let [base {:event           :data_complexity_scoring
+              :formula_version (:formula-version meta)
+              :parameters      (parameters-map meta)}]
+    (doseq [[catalog result] [[:library library] [:universe universe] [:metabot metabot]]]
+      (emit-catalog-snowplow! catalog result base))))
+
+(defn- empty-score [] {:dimensions {} :total 0})
 
 (defn score-from-entities
-  "Pure: compute the full complexity score from pre-built entity vectors and an embedder. No DB
-   access, no Snowplow emission — suitable for callers that have already loaded their entities
-   from another source (e.g., a representation file).
-
-   Options:
-     `:embedding-model-meta` — `{:provider ... :model-name ...}` map embedded into the response's
-        `:meta`, or nil to omit the key. Callers that know what embedding model they used should
-        pass it so benchmark consumers can pin to it.
-     `:metabot-entities` — when non-nil, scored separately as the `:metabot` catalog. When nil
-        (default), we assume this means that metabot has no additional filtering configured, and
-        reuse the `:universe` score. In the fallback case the response `:meta` includes
-        `:metabot-source :universe-fallback` so benchmark consumers recognise this scenario."
-  [library-entities universe-entities embedder {:keys [embedding-model-meta metabot-entities]}]
-  (let [universe-score     (score-catalog universe-entities embedder)
-        metabot-fallback?  (nil? metabot-entities)]
-    {:library  (score-catalog library-entities embedder)
-     :universe universe-score
-     :metabot  (if metabot-fallback?
-                 universe-score
-                 (score-catalog metabot-entities embedder))
-     :meta     (cond-> {:formula-version   formula-version
-                        :synonym-threshold synonym-similarity-threshold
-                        :weights           weights}
-                 embedding-model-meta (assoc :embedding-model embedding-model-meta)
-                 metabot-fallback?    (assoc :metabot-source :universe-fallback))}))
-
-(defn- time-phase!
-  "Run `f`, record duration on the per-phase histogram labelled by `stage` and `catalog`, return its value."
-  [stage catalog f]
-  (let [timer (u/start-timer)]
-    (try
-      (f)
-      (finally
-        (prometheus/observe! :metabase-data-complexity/phase-duration-ms
-                             {:stage stage :catalog catalog}
-                             (u/since-ms timer))))))
-
-(defn complexity-scores
-  "Compute the complexity score for the `:library`, `:universe`, and `:metabot` catalogs of this
-  Metabase instance.
-
-  Returns a map of the shape:
-
-      {:library  {:total n :components {...}}
-       :universe {:total n :components {...}}
-       :metabot  {:total n :components {...}}
-       :meta     {:formula-version 1
-                  :synonym-threshold 0.80
-                  :embedding-model {:provider ... :model-name ... :model-dimensions ...}
-                  :text-variant :names-split}}
-
-  `:embedding-model` and `:text-variant` are present only when the default synonym embedder is
-  in use.
-  An explicit `:embedder` means the caller owns the model + preprocessing narrative.
+  "Pure: compute the full complexity score from pre-built entity vectors and an embedder.
+  No DB access, no Snowplow emission.
 
   Options:
-    `:embedder` — overrides the synonym-axis embedder (defaults to the MiniLM-L6-v2 embedder
-        in [[complexity-embedders/default-synonym-embedder]]); pass `nil` to disable synonym
-        scoring.
-    `:metabot-scope` — `{:verified-only? <bool> :collection-id <nil|Long>}` describing how the
-        internal Metabot filters Cards.
-        `:metabot` is always scored separately from `:universe` because Metabot/search table
-        visibility (hidden tables, routed databases) already diverges from the raw `:universe`
-        set; the scope only narrows Cards further.
-        The caller owns the scope decision — this namespace does not read settings, feature
-        gates, or Metabot rows directly."
-  [& {:keys [embedder metabot-scope] :as opts}]
-  ;;; NOTE: we fully materialize a vector off all entities, along with one of those in the library, rather than
-  ;;; returning reducibles. For very large instances that holds a non-trivial slim-entity list in memory
-  ;;; (name, kind, field-count, measure-names — no fat columns like `result_metadata`),
-  ;;; but each catalog is consumed by FIVE sub-score functions that each walk the collection, so making this
-  ;;; reducible would re-query the app-db five times per scoring call — a worse tradeoff than the bounded memory
-  ;;; we currently will currently consume (provided we have that memory).
-  (let [total-timer (u/start-timer)]
-    (try
-      (let [embedder       (if (contains? opts :embedder)
-                             embedder
-                             embedders/default-synonym-embedder)
-            default?       (= embedder embedders/default-synonym-embedder)
-            model-meta     (when default? embedders/default-synonym-model)
-            text-variant   (when default? embedders/default-text-variant)
-            {:keys [library universe metabot]}
-            ;; Single enumerate phase — see [[enumerate-catalogs]]. Library ⊆ universe and
-            ;; metabot ⊆ universe, so fetching each catalog separately duplicated DB work; the
-            ;; catalog label `"all"` on the enumerate stage reflects that one pass covers all
-            ;; three. Per-catalog timing only applies to the pure scoring step.
-            (time-phase! "enumerate" "all" #(enumerate-catalogs metabot-scope))
-            universe-score (time-phase! "score" "universe" #(score-catalog universe embedder))
-            library-score  (time-phase! "score" "library"  #(score-catalog library  embedder))
-            metabot-score  (time-phase! "score" "metabot"  #(score-catalog metabot  embedder))
-            result         {:library  library-score
-                            :universe universe-score
-                            :metabot  metabot-score
-                            :meta     (cond-> {:formula-version   formula-version
-                                               :synonym-threshold synonym-similarity-threshold}
-                                        model-meta   (assoc :embedding-model model-meta)
-                                        text-variant (assoc :text-variant    text-variant))}]
-        (log-scores! result)
-        (let [published? (try
-                           (emit-snowplow! result)
-                           (catch Throwable t
-                             (log/warn t "Failed to publish complexity score to Snowplow")
-                             false))]
-          ;; `emit-snowplow!` returns true only when every event reached the tracker (false when
-          ;; Snowplow is disabled or any emission failed) — scheduler/boot callers gate
-          ;; `data-complexity-scoring-last-fingerprint` on this so a disabled collector or any
-          ;; partial failure doesn't silently mark the fingerprint as published.
-          (with-meta result {::snowplow-published? published?})))
-      (finally
-        (prometheus/observe! :metabase-data-complexity/scoring-duration-ms
-                             (u/since-ms total-timer))))))
+    `:level`                ceiling on which dimensions to compute; defaults to the setting
+                            (`settings/effective-level`). Level 0 short-circuits — empty blocks
+                            for every catalog and no embedder call.
+    `:embedding-model-meta` optional `{:provider ... :model-name ...}` stashed into `:meta`.
+    `:text-variant`         optional preprocessing variant (e.g. `:names-split`) stashed into
+                            `:meta`. Together with `:embedding-model-meta`, pins how the
+                            synonym-axis vectors were produced.
+    `:metabot-catalog`      optional `{:entities [...] :collection-count N}` for the `:metabot`
+                            catalog. When absent (default), `:metabot` reuses the universe score."
+  [{lib-entities :entities lib-coll :collection-count :as _library-catalog}
+   {uni-entities :entities uni-coll :collection-count :as _universe-catalog}
+   embedder
+   {:keys [level embedding-model-meta text-variant metabot-catalog]}]
+  (let [level        (settings/clamp-level (or level (settings/semantic-complexity-level)))
+        empty-result {:library  (empty-score)
+                      :universe (empty-score)
+                      :metabot  (empty-score)
+                      :meta     (cond-> {:formula-version formula-version :level 0}
+                                  embedding-model-meta (assoc :embedding-model embedding-model-meta)
+                                  text-variant         (assoc :text-variant    text-variant))}]
+    (if (zero? ^long level)
+      empty-result
+      (let [universe-score (score-catalog uni-entities {:collection-count uni-coll} embedder level)]
+        {:library  (score-catalog lib-entities {:collection-count lib-coll} embedder level)
+         :universe universe-score
+         :metabot  (if metabot-catalog
+                     (score-catalog (:entities metabot-catalog)
+                                    {:collection-count (:collection-count metabot-catalog)}
+                                    embedder
+                                    level)
+                     universe-score)
+         :meta     (cond-> {:formula-version formula-version :level level}
+                     (>= ^long level 2)   (assoc :synonym-threshold
+                                                 metrics.semantic/synonym-similarity-threshold)
+                     embedding-model-meta (assoc :embedding-model embedding-model-meta)
+                     text-variant         (assoc :text-variant    text-variant))}))))
+
+(defn- metabot-scope-applies? [{:keys [verified-only? collection-id]}]
+  (or (boolean verified-only?) (some? collection-id)))
+
+(defn complexity-scores
+  "Compute the complexity score for the `:library`, `:universe`, and `:metabot` catalogs.
+
+  Returns
+
+    {:library {:dimensions {:scale {...} :nominal {...} :semantic {...} :metadata {...}}
+               :total <long>}
+     :universe {…}
+     :metabot  {…}
+     :meta     {:formula-version 1
+                :level <int>
+                :synonym-threshold <float>
+                :embedding-model {:provider ... :model-name ...}
+                :text-variant :names-split}}
+
+  `:embedding-model` and `:text-variant` are present only when the default synonym embedder is
+  in use — an explicit `:embedder` means the caller owns the model + preprocessing narrative.
+
+  Options:
+    `:embedder`      overrides the synonym-axis embedder; pass `nil` to disable synonym scoring.
+    `:metabot-scope` `{:verified-only? <bool> :collection-id <nil|Long>}` — see ns docstring.
+    `:level`         override the level setting for this call (rare; mainly for tests)."
+  [& {:keys [embedder metabot-scope level] :as opts}]
+  (let [level        (settings/clamp-level (or level (settings/semantic-complexity-level)))
+        embedder     (if (contains? opts :embedder) embedder embedders/default-synonym-embedder)
+        default?     (and (pos? ^long level)
+                          (>= ^long level 2)
+                          (= embedder embedders/default-synonym-embedder))
+        model-meta   (when default?
+                       (select-keys embedders/default-synonym-model [:provider :model-name]))
+        text-variant (when default? embedders/default-text-variant)
+        [library universe metabot]
+        (if (zero? ^long level)
+          [{:entities [] :collection-count 0}
+           {:entities [] :collection-count 0}
+           nil]
+          [(library-catalog)
+           (universe-catalog)
+           (when (metabot-scope-applies? metabot-scope) (metabot-catalog metabot-scope))])
+        result (score-from-entities library universe embedder
+                                    {:level                level
+                                     :embedding-model-meta model-meta
+                                     :text-variant         text-variant
+                                     :metabot-catalog      metabot})]
+    (log-scores! result)
+    (try (emit-snowplow! result)
+         (catch Throwable t
+           (log/warn t "Failed to publish complexity score to Snowplow")))
+    result))
 
 (comment
   (complexity-scores))

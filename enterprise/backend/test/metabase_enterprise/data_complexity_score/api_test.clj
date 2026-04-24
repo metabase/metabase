@@ -2,19 +2,22 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-complexity-score.api :as api]
-   [metabase-enterprise.data-complexity-score.complexity :as complexity]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase.metabot.config :as metabot.config]
    [metabase.test :as mt]
-   [toucan2.core :as t2])
-  (:import
-   (java.util.concurrent CountDownLatch TimeUnit)))
-
-(set! *warn-on-reflection* true)
+   [toucan2.core :as t2]))
 
 (comment api/keep-me)
 
 (def ^:private endpoint "ee/data-complexity-score/complexity")
+
+(def ^:private additive-dims [:scale :nominal :semantic])
+
+(defn- var-value [resp catalog dim k]
+  (get-in resp [catalog :dimensions dim :variables k :value]))
+
+(defn- entity-count [resp catalog]
+  (var-value resp catalog :scale :entity-count))
 
 (defn- internal-metabot-id
   "Primary key of the internal Metabot row — used by the tests that temporarily tweak its
@@ -35,47 +38,55 @@
 (deftest complexity-endpoint-superuser-gets-consistent-totals-test
   (testing "check invariants not covered by schema"
     (let [resp (mt/user-http-request :crowberto :get 200 endpoint)
-          measurement      (fn [cat k] (get-in resp [cat :components k :measurement]))
-          component-score  (fn [cat k] (get-in resp [cat :components k :score]))
+          ;; Scored variables on the additive dimensions. Metadata variables are descriptive
+          ;; coverage ratios and excluded — they can legitimately drop as a catalog widens (e.g.
+          ;; universe pulls in uncurated tables), breaking the monotonicity invariant.
+          ;;
           ;; NOTE: `:synonym-pairs` is intentionally included here even though it's *theoretically*
-          ;; non-monotonic — `score-synonym-pairs` dedupes by normalized name and keeps whichever
+          ;; non-monotonic — the synonym-pair scorer dedupes by normalized name and keeps whichever
           ;; embedding the provider returns for that name, so adding universe-only entities that
           ;; collide on normalized name with a library entity could in principle flip which vector
-          ;; wins and drop the pair count below library's. Reviewers (human or AI) sometimes want
-          ;; to carve it out on that basis — don't. In every realistic configuration (prod, dev,
-          ;; the fixture that backs this endpoint's hermetic path in complexity_test.clj) the
-          ;; invariant holds, and asserting it keeps us honest about regressions in the common
-          ;; case. If the edge case ever actually trips this, *that* is the surprising thing we
-          ;; want to see and we'll deal with it then.
-          ;;
-          ;; When ai-service isn't reachable, the default synonym embedder throws and
-          ;; `score-synonym-pairs` returns nil measurements + an :error field. The invariant
-          ;; assertions below guard on `some?` so those nil rows are skipped rather than NPEing.
-          component-keys   [:entity-count :name-collisions :synonym-pairs
-                            :field-count :repeated-measures]]
-      (testing ":total equals the sum of its component :score values (skipped on nil-score cascade)"
+          ;; wins and drop the pair count below library's. Reviewers
+          ;; (human or AI) sometimes want to carve it out on that basis — don't. In every realistic
+          ;; configuration (prod, dev, the fixture that backs this endpoint's hermetic path in
+          ;; complexity_test.clj) the invariant holds, and asserting it keeps us honest about
+          ;; regressions in the common case.
+          scored-vars [[:scale    :entity-count]
+                       [:scale    :field-count]
+                       [:scale    :collection-tree-size]
+                       [:nominal  :name-collisions]
+                       [:nominal  :repeated-measures]
+                       [:nominal  :field-level-collisions]
+                       [:semantic :synonym-pairs]]]
+      (testing ":total equals the sum of additive-dimension :sub-total values (metadata excluded)"
         (doseq [catalog [:library :universe :metabot]
-                :let [{:keys [total components]} (get resp catalog)
-                      scores (map :score (vals components))]
-                :when (every? some? (cons total scores))]
-          (is (= total (reduce + scores))
-              (format "%s :total should equal sum of component :score values" catalog))))
-      (testing "universe is a superset of library: every measurement and score ≥ library's"
-        (doseq [k      component-keys
-                getter [measurement component-score]
-                :let   [lib (getter :library k)
-                        uni (getter :universe k)]
-                :when  (and (some? lib) (some? uni))]
-          (is (>= uni lib)
-              (format "universe %s (%s) should be ≥ library's (%s)" k uni lib))))
+                :let [{:keys [total dimensions]} (get resp catalog)
+                      add-totals (map (comp :sub-total dimensions) additive-dims)]]
+          (is (= total (reduce + 0 (remove nil? add-totals)))
+              (format "%s :total should equal sum of additive dimension :sub-total values" catalog))))
+      (testing "universe is a superset of library on every scored variable"
+        (doseq [[dim k] scored-vars
+                metric  [:value :score]]
+          (let [lib (get-in resp [:library  :dimensions dim :variables k metric])
+                uni (get-in resp [:universe :dimensions dim :variables k metric])]
+            (when (and (number? lib) (number? uni))
+              (is (>= uni lib)
+                  (format "universe %s %s %s (%s) should be ≥ library's (%s)"
+                          dim k metric uni lib))))))
       (testing ":synonym-pairs can't exceed the number of distinct-name pairs possible"
         (doseq [catalog [:library :universe :metabot]
-                :let [n-entities (measurement catalog :entity-count)
-                      syn-pairs  (measurement catalog :synonym-pairs)
-                      max-pairs  (/ (* n-entities (dec n-entities)) 2)]
-                :when (some? syn-pairs)]
+                :let [n         (entity-count resp catalog)
+                      syn-pairs (var-value resp catalog :semantic :synonym-pairs)
+                      max-pairs (/ (* n (dec n)) 2)]]
           (is (<= syn-pairs max-pairs)
-              (format "%s :synonym-pairs (%s) can't exceed n*(n-1)/2 for n=%s" catalog syn-pairs n-entities)))))))
+              (format "%s :synonym-pairs (%d) can't exceed n*(n-1)/2 for n=%d" catalog syn-pairs n))))
+      (testing "every catalog carries all four dimensions at the default level (2)"
+        (doseq [catalog [:library :universe :metabot]]
+          (is (= #{:scale :nominal :semantic :metadata}
+                 (set (keys (get-in resp [catalog :dimensions])))))))
+      (testing ":meta reports the current formula-version + level"
+        (is (= 1 (get-in resp [:meta :formula-version])))
+        (is (number? (get-in resp [:meta :level])))))))
 
 (deftest complexity-endpoint-metabot-catalog-test
   (testing ":metabot mirrors :universe when neither content-verification nor use_verified_content is active"
@@ -100,8 +111,8 @@
         (mt/with-temp-vals-in-db :model/Metabot (internal-metabot-id)
                                  {:use_verified_content true :collection_id nil}
           (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
-            (is (< (get-in resp [:metabot  :components :entity-count :measurement])
-                   (get-in resp [:universe :components :entity-count :measurement]))
+            (is (< (entity-count resp :metabot)
+                   (entity-count resp :universe))
                 ":metabot entity-count must be strictly < :universe when verified-only filters out the injected Card")))))))
 
 (deftest complexity-endpoint-metabot-collection-scope-test
@@ -146,8 +157,8 @@
                                                            {:use_verified_content false
                                                             :collection_id cid}
                                     (let [resp (mt/user-http-request :crowberto :get 200 endpoint)]
-                                      {:metabot  (get-in resp [:metabot  :components :entity-count :measurement])
-                                       :universe (get-in resp [:universe :components :entity-count :measurement])})))
+                                      {:metabot  (entity-count resp :metabot)
+                                       :universe (entity-count resp :universe)})))
               empty-counts   (counts-with-scope empty-id)
               parent-counts  (counts-with-scope parent-id)
               sibling-counts (counts-with-scope sibling-id)
@@ -174,49 +185,6 @@
                    (:universe parent-counts)
                    (:universe sibling-counts))
                 ":universe must be unscoped regardless of Metabot.collection_id")))))))
-
-(def ^:private empty-catalog
-  {:total 0 :components {:entity-count      {:measurement 0.0 :score 0}
-                         :name-collisions   {:measurement 0.0 :score 0}
-                         :synonym-pairs     {:measurement 0.0 :score 0}
-                         :field-count       {:measurement 0.0 :score 0}
-                         :repeated-measures {:measurement 0.0 :score 0}}})
-
-(def ^:private stub-scores
-  {:library empty-catalog :universe empty-catalog :metabot empty-catalog
-   :meta {:formula-version 1 :synonym-threshold 0.0}})
-
-(deftest ^:sequential complexity-endpoint-rejects-concurrent-requests-test
-  (testing "a second concurrent request fast-fails with 409 instead of running a duplicate scoring pass"
-    ;; Block the stubbed scoring call on a latch so the second request is guaranteed to land
-    ;; while the guard is held. Plain `with-redefs` (not `with-dynamic-fn-redefs`) because
-    ;; the dynamic variant binds thread-locally and the futures we spawn here wouldn't see it.
-    (let [release-scoring (CountDownLatch. 1)
-          scoring-started (CountDownLatch. 1)
-          call-count      (atom 0)]
-      (with-redefs [complexity/complexity-scores
-                    (fn [& _]
-                      (swap! call-count inc)
-                      (.countDown scoring-started)
-                      (.await release-scoring 10 TimeUnit/SECONDS)
-                      stub-scores)]
-        (let [first-request (future (mt/user-http-request :crowberto :get 200 endpoint))]
-          (try
-            (is (.await scoring-started 10 TimeUnit/SECONDS)
-                "first request must reach the guarded section before we fire the second")
-            (testing "concurrent superuser request is rejected with 409"
-              (is (= "Data Complexity Score calculation already in progress"
-                     (mt/user-http-request :crowberto :get 409 endpoint))))
-            (finally
-              (.countDown release-scoring)
-              ;; Drain the in-flight request so the guard is released before the next test
-              ;; (failed assertions above shouldn't leak a stuck scoring call into other tests).
-              (deref first-request 10000 ::timeout))))
-        (testing "only the first request actually ran scoring; the second short-circuited"
-          (is (= 1 @call-count)))
-        (testing "guard is released after the in-flight request finishes — a follow-up request succeeds"
-          (mt/user-http-request :crowberto :get 200 endpoint)
-          (is (= 2 @call-count)))))))
 
 (deftest internal-metabot-scope-test
   (testing ":verified-only? is true only when the premium feature + use_verified_content both apply"

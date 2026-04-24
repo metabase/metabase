@@ -1,12 +1,12 @@
 (ns metabase-enterprise.data-complexity-score.complexity-embedders
   "Pluggable embedding sources for the complexity score's synonym axis.
-
-  An embedder takes entities `{:id :name :kind}` and returns
-  `{normalized-name -> ^floats vector}`, omitting entities without a known vector."
+  An embedder takes entities `{:id :name :kind}` and returns `{normalized-name -> ^floats vector}`,
+  omitting entities without a known vector."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.semantic-search.core :as semantic-search]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -16,17 +16,12 @@
   (some-> s str/trim u/lower-case-en))
 
 (defn split-for-embedding
-  "Rewrite a raw name into space-separated natural-language tokens before embedding.
-
-  `_`, `-`, `.`, and camelCase boundaries become spaces; adjacent whitespace is collapsed and
-  the result is lowercased.
-  Splitting happens *before* lowercasing so the camelCase boundary stays visible.
-
-  Embedding models are trained on English: `\"monthly_active_users\"` is an out-of-distribution
-  token while `\"monthly active users\"` hits three well-understood ones.
-
-  See https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb for
-  calibration data."
+  "Rewrite a normalized name into space-separated natural-language tokens before embedding.
+  `_`, `-`, `.`, and camelCase boundaries become spaces; adjacent whitespace is collapsed.
+  Embedding models are trained on English, and `\"monthly_active_users\"` is an out-of-distribution
+  token while `\"monthly active users\"` hits three well-understood ones — this preprocessing
+  improves discrimination at every threshold. See the 2026-04-21 analysis summary under
+  `enterprise/backend/test_resources/semantic_layer/analysis/` for the empirical effect."
   [^String s]
   (when s
     (-> s
@@ -37,9 +32,8 @@
         u/lower-case-en)))
 
 (defn fn-embedder
-  "Build an embedder that delegates to `(name-embed-fn names) -> [vectors]`.
-
-  Distinct normalized names are passed in; returned vectors are zipped back by position.
+  "Build an embedder that delegates to a plain `(name-embed-fn names) -> [vectors]` function.
+  Distinct normalized names are passed in; the returned vectors are zipped back by position.
   Names whose `name-embed-fn` returns nil are omitted from the result map."
   [name-embed-fn]
   (fn embed [entities]
@@ -61,48 +55,36 @@
     (fn embed [_entities] normalized)))
 
 (def default-synonym-model
-  "Fixed model descriptor for the complexity score's synonym axis.
-
-  all-MiniLM-L6-v2 is a Sentence-Transformers model trained on Semantic Textual Similarity.
-  STS precision beats retrieval recall for the \"are these two names confusingly similar\"
-  question this axis asks.
-  Arctic-L at 0.90 was the pragmatic fallback when only a retrieval model was available.
-
-  Served through ai-service.
-  When the model isn't deployed there yet, calls throw and the synonym axis reports nil
-  measurements + an error — by design, so broken runs are visible rather than masquerading
-  as zero.
-
-  See https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb."
-  {:provider         "ai-service"
-   :model-name       "sentence-transformers/all-MiniLM-L6-v2"
+  "Fixed model descriptor for the complexity score's synonym axis: all-MiniLM-L6-v2, a
+  Sentence-Transformers model trained on Semantic Textual Similarity (STS). 384-dim, served via
+  ollama. STS precision beats retrieval recall for the \"are these two names confusingly similar\"
+  question this axis asks — Arctic-L at 0.90 was the pragmatic fallback when only a retrieval
+  model was available. See the 2026-04-21 analysis summary."
+  {:provider         "ollama"
+   :model-name       "all-minilm:l6-v2"
    :model-dimensions 384})
 
 (def default-text-variant
-  "Which text form of each entity name gets embedded by the default synonym embedder.
-
-  `:names-split` rewrites snake/kebab/dotted/camelCase names into space-separated English
-  tokens before sending them to the provider — see [[split-for-embedding]].
-
-  Alternatives worth considering (not implemented): `:names` (raw lowercased name),
-  `:search-text` (type + name + description + schema, as the semantic-search indexer does),
-  or `:typed-split` ([source|value] prefix + split name).
-  The 2026-04-21 analysis shows names-split as the best default for both Arctic and MiniLM.
-
-  The value rides the fingerprint so a future swap to another variant forces a re-score
-  without a `formula-version` bump."
+  "Which text form of each entity name gets embedded by the default synonym embedder. `:names-split`
+  rewrites snake/kebab/dotted/camelCase names into space-separated English tokens before sending
+  them to the provider — see [[split-for-embedding]]. Alternatives worth considering (not
+  implemented) include `:names` (raw lowercased name), `:search-text` (type + name + description +
+  schema, as the semantic-search indexer does), or `:typed-split` ([source|value] prefix + split
+  name). The calibration data in the 2026-04-21 analysis summary shows names-split as the best
+  default for both Arctic and MiniLM; the value rides the fingerprint so a future change to a
+  different variant is visible without bumping `formula-version`."
   :names-split)
 
 (defn provider-embedder
   "Build an embedder that embeds names via `semantic-search/get-embeddings-batch` using
-  `model-descriptor` (`{:provider :model-name :model-dimensions}`).
+  `model-descriptor` (`{:provider :model-name :model-dimensions}`). For each distinct normalized
+  name we send its raw form through [[split-for-embedding]] — splitting *before* lowercasing
+  preserves the camelCase boundary information (`\"pageViews\"` → `\"page views\"`) that the
+  embedding model cares about, while the normalized key is what scoring looks up.
 
-  For each distinct normalized name the raw form is sent through [[split-for-embedding]].
-  Splitting *before* lowercasing preserves the camelCase boundary (`\"pageViews\"` →
-  `\"page views\"`); the normalized key is what scoring looks up.
-
-  Errors from the provider bubble up — `score-synonym-pairs` converts them into `nil`
-  measurements + an `:error` field so a broken run is visible downstream."
+  Degrades quietly to `{}` on any failure (ollama unreachable, model not pulled, network error):
+  the synonym axis scores 0 for that run, matching the existing search-index-embedder contract.
+  A warning is logged so operators can distinguish silent zero from real zero."
   [model-descriptor]
   (fn embed [entities]
     (let [name->raw (reduce (fn [acc {nm :name}]
@@ -112,16 +94,20 @@
                             (array-map)
                             entities)
           names     (vec (keys name->raw))]
-      (when (seq names)
-        (let [texts   (mapv #(split-for-embedding (get name->raw %)) names)
-              vectors (vec (semantic-search/get-embeddings-batch model-descriptor texts))]
-          (into {}
-                (keep (fn [[n v]] (when v [n (float-array v)])))
-                (map vector names vectors)))))))
+      (if (empty? names)
+        {}
+        (try
+          (let [texts   (mapv #(split-for-embedding (get name->raw %)) names)
+                vectors (vec (semantic-search/get-embeddings-batch model-descriptor texts))]
+            (into {}
+                  (keep (fn [[n v]] (when v [n (float-array v)])))
+                  (map vector names vectors)))
+          (catch Throwable t
+            (log/warn t "Complexity score: provider embedder failed; falling back to 0")
+            {}))))))
 
 (def default-synonym-embedder
-  "Default embedder for the complexity score's synonym axis.
-
-  Held as a value (not a `defn`) so callers can identify the default path by identity — see
+  "Default embedder for the complexity score's synonym axis. Held as a top-level value (not a
+  `defn`) so callers can identify the default path by identity comparison — see
   `metabase-enterprise.data-complexity-score.complexity/complexity-scores`."
   (provider-embedder default-synonym-model))
