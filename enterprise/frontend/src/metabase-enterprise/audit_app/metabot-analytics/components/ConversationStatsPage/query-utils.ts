@@ -5,13 +5,27 @@ import { t } from "ttag";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import { color } from "metabase/ui/colors/palette";
-import type { CardMetadata, ColumnMetadata, Query, TableMetadata } from "metabase-lib";
+import type {
+  CardMetadata,
+  ColumnMetadata,
+  Query,
+  TableMetadata,
+} from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { VisualizationSettings } from "metabase-types/api";
 
 import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
 
 export type UsageStatsMetric = "conversations" | "messages" | "tokens";
+
+// the user-set inputs that drive every chart on the stats page — three
+// filters (date / user / group) plus the metric the tabs select
+export type StatsFilters = {
+  dateFilter: DateFilterValue;
+  userId?: number;
+  groupId?: number;
+  metric: UsageStatsMetric;
+};
 
 // The Tokens tab reads from v_ai_usage_log (per-LLM-call ledger) for complete
 // token accounting across all call sites. The Conversations and Messages tabs
@@ -217,24 +231,6 @@ export function excludeAllUsersGroup(query: Query): Query {
   );
 }
 
-// group_name exists on both the source view and v_group_members after the
-// join, so findColumn by name alone is ambiguous
-export function findJoinedGroupMembersColumn(
-  query: Query,
-  columnName: string,
-  columnsFn: (q: Query, stageIndex: number) => ColumnMetadata[],
-): ColumnMetadata | undefined {
-  const nameLower = columnName.toLowerCase();
-  return columnsFn(query, 0).find((col) => {
-    const info = Lib.displayInfo(query, 0, col);
-    if (info.name?.toLowerCase() !== nameLower) {
-      return false;
-    }
-    const longName = info.longDisplayName?.toLowerCase() ?? "";
-    return longName.includes("group_members") || longName.includes("group members");
-  });
-}
-
 /**
  * Add a sum aggregation for the given column name.
  */
@@ -265,24 +261,40 @@ export function addSumAggregation(query: Query, columnName: string): Query {
 export function applyUsageStatsAggregation(
   query: Query,
   metric: UsageStatsMetric,
-): { query: Query; orderColumnName: string | null } {
-  switch (metric) {
-    case "conversations":
-      return {
-        query: Lib.aggregateByCount(query, 0),
-        orderColumnName: "count",
-      };
-    case "messages":
-      return {
-        query: addSumAggregation(query, "message_count"),
-        orderColumnName: "sum",
-      };
-    case "tokens": {
-      const withInput = addSumAggregation(query, "prompt_tokens");
-      const withBoth = addSumAggregation(withInput, "completion_tokens");
-      return { query: withBoth, orderColumnName: null };
-    }
+): Query {
+  return match(metric)
+    .with("conversations", () => Lib.aggregateByCount(query, 0))
+    .with("messages", () => addSumAggregation(query, "message_count"))
+    .with("tokens", () =>
+      addSumAggregation(
+        addSumAggregation(query, "prompt_tokens"),
+        "completion_tokens",
+      ),
+    )
+    .exhaustive();
+}
+
+function getOrderColumnName(metric: UsageStatsMetric): string | null {
+  return match(metric)
+    .with("conversations", () => "count")
+    .with("messages", () => "sum")
+    .with("tokens", () => null)
+    .exhaustive();
+}
+
+export function applyMetricOrderBy(
+  query: Query,
+  metric: UsageStatsMetric,
+): Query {
+  const orderColumnName = getOrderColumnName(metric);
+  if (!orderColumnName) {
+    return query;
   }
+  const orderCol = findColumn(query, orderColumnName, Lib.orderableColumns);
+  if (!orderCol) {
+    return query;
+  }
+  return Lib.orderBy(query, 0, orderCol, "desc");
 }
 
 /**

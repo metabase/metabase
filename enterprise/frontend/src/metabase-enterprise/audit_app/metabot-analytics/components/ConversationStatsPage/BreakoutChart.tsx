@@ -1,49 +1,36 @@
-import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { useGetAdhocQueryQuery } from "metabase/api";
-import type { DateFilterValue } from "metabase/querying/common/types";
-import { Card, Skeleton, Text } from "metabase/ui";
-import Visualization from "metabase/visualizations/components/Visualization";
-import type { ClickActionsMode } from "metabase/visualizations/types";
-import type { CardMetadata, TableMetadata } from "metabase-lib";
+import type {
+  CardMetadata,
+  MetadataProvider,
+  TableMetadata,
+} from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { VisualizationDisplay } from "metabase-types/api";
-import { createMockCard } from "metabase-types/api/mocks";
 
-import { VIEW_CONVERSATIONS } from "../../constants";
-import { useAuditTable } from "../../hooks/useAuditTable";
+import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
-import S from "./ChartCard.module.css";
+import { BreakoutChartCard } from "./BreakoutChartCard";
+import { toBreakoutRawSeries } from "./breakout-raw-series";
 import {
-  type UsageStatsMetric,
+  type StatsFilters,
   applyDateFilter,
   applyGroupIdFilter,
+  applyMetricOrderBy,
   applyUsageStatsAggregation,
   applyUserFilter,
-  excludeAllUsersGroup,
   findColumn,
-  findJoinedGroupMembersColumn,
-  getMetricSeriesSettings,
   joinGroupMembers,
 } from "./query-utils";
 
-type Props = {
-  dateFilter: DateFilterValue;
-  userId?: number;
-  groupId?: number;
-  groupMembersTable?: TableMetadata | CardMetadata | null;
+type Props = StatsFilters & {
+  provider: MetadataProvider;
+  table: TableMetadata | CardMetadata;
+  groupMembersTable: TableMetadata | CardMetadata;
   breakoutColumn: string;
-  // resolve breakoutColumn from the joined v_group_members table instead of
-  // the source view — needed so users in multiple groups contribute to every
-  // group's bar, not just their alphabetically-first
-  breakoutOnJoinedGroupMembers?: boolean;
   title: string;
   display?: VisualizationDisplay;
-  metric: UsageStatsMetric;
-  viewName?: string;
   onDimensionClick?: (value: unknown) => void;
   h?: number;
   nullLabel?: string;
@@ -51,24 +38,17 @@ type Props = {
   transformDimension?: (value: string) => string;
 };
 
-// When a custom click handler is provided, we need visualizationIsClickable
-// to return true. This mode satisfies that check; the action is never executed
-// because handleVisualizationClick short-circuits first.
-const CLICKABLE_MODE: ClickActionsMode = {
-  actionsForClick: () => [{ name: "custom-click" } as any],
-};
-
 export function BreakoutChart({
+  provider,
+  table,
+  groupMembersTable,
   dateFilter,
   userId,
   groupId,
-  groupMembersTable,
   breakoutColumn,
-  breakoutOnJoinedGroupMembers = false,
   title,
   display = "row",
   metric,
-  viewName = VIEW_CONVERSATIONS,
   onDimensionClick,
   h = 350,
   nullLabel,
@@ -76,188 +56,71 @@ export function BreakoutChart({
   transformDimension,
 }: Props) {
   const otherLabel = t`Other`;
-  const { provider, table } = useAuditTable(viewName);
 
   const query = useMemo(() => {
-    if (!provider || !table) {
-      return null;
-    }
-    // wait for the joined-table metadata — otherwise findColumn falls back to
-    // the source view's group_name and the chart renders wrong silently
-    if (breakoutOnJoinedGroupMembers && !groupMembersTable) {
-      return null;
-    }
-
     let q = Lib.queryFromTableOrCardMetadata(provider, table);
 
     q = applyDateFilter(q, dateFilter);
     q = applyUserFilter(q, userId);
-
-    if (breakoutOnJoinedGroupMembers) {
-      q = joinGroupMembers(q, groupMembersTable);
-      q = excludeAllUsersGroup(q);
-      q = applyGroupIdFilter(q, groupId);
-    } else if (groupId != null && groupMembersTable) {
+    if (groupId != null) {
       q = joinGroupMembers(q, groupMembersTable);
       q = applyGroupIdFilter(q, groupId);
     }
 
-    const { query: aggregated, orderColumnName } = applyUsageStatsAggregation(
-      q,
-      metric,
-    );
-    q = aggregated;
+    q = applyUsageStatsAggregation(q, metric);
 
-    const col = breakoutOnJoinedGroupMembers
-      ? findJoinedGroupMembersColumn(q, breakoutColumn, Lib.breakoutableColumns)
-      : findColumn(q, breakoutColumn, Lib.breakoutableColumns);
+    const col = findColumn(q, breakoutColumn, Lib.breakoutableColumns);
     if (col) {
       q = Lib.breakout(q, 0, col);
     }
 
-    if (orderColumnName) {
-      const orderCol = findColumn(q, orderColumnName, Lib.orderableColumns);
-      if (orderCol) {
-        q = Lib.orderBy(q, 0, orderCol, "desc");
-      }
-    }
+    q = applyMetricOrderBy(q, metric);
 
     return q;
   }, [
     provider,
     table,
+    groupMembersTable,
     dateFilter,
     userId,
     groupId,
-    groupMembersTable,
     breakoutColumn,
-    breakoutOnJoinedGroupMembers,
     metric,
   ]);
 
-  const jsQuery = useMemo(() => (query ? Lib.toJsQuery(query) : null), [query]);
+  const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
 
-  const { data, isFetching } = useGetAdhocQueryQuery(jsQuery ?? ({} as any), {
-    skip: !jsQuery,
-  });
-
-  const rawSeries = useMemo(() => {
-    if (!data?.data || !jsQuery) {
-      return null;
-    }
-    const cols = data.data.cols as Array<{ source?: string; name?: string }>;
-    const dimensionIndex = cols.findIndex((c) => c.source === "breakout");
-    const metricIndices = cols
-      .map((c, i) => (c.source === "aggregation" ? i : -1))
-      .filter((i) => i >= 0);
-    const aggregationColumnNames = metricIndices.map((i) => cols[i].name ?? "");
-
-    const rowMetricTotal = (row: (typeof data.data.rows)[number]) =>
-      metricIndices.reduce((s, i) => s + (Number(row[i]) || 0), 0);
-
-    let rows = data.data.rows;
-
-    if (metricIndices.length > 1) {
-      rows = _.sortBy(rows, (row) => -rowMetricTotal(row));
-    }
-
-    if (
-      (nullLabel != null || transformDimension != null) &&
-      dimensionIndex >= 0
-    ) {
-      rows = rows.map((row) => {
-        const value = row[dimensionIndex];
-        if (value == null && nullLabel != null) {
-          const copy = [...row];
-          copy[dimensionIndex] = nullLabel;
-          return copy;
-        }
-        if (typeof value === "string" && transformDimension != null) {
-          const copy = [...row];
-          copy[dimensionIndex] = transformDimension(value);
-          return copy;
-        }
-        return row;
-      });
-    }
-
-    if (
-      maxCategories != null &&
-      dimensionIndex >= 0 &&
-      metricIndices.length > 0 &&
-      rows.length > maxCategories
-    ) {
-      const keep = rows.slice(0, maxCategories - 1);
-      const overflow = rows.slice(maxCategories - 1);
-      const otherRow: unknown[] = new Array(cols.length).fill(null);
-      otherRow[dimensionIndex] = otherLabel;
-      for (const i of metricIndices) {
-        otherRow[i] = overflow.reduce(
-          (sum, row) => sum + (Number(row[i]) || 0),
-          0,
-        );
-      }
-      rows = [...keep, otherRow as (typeof rows)[number]];
-    }
-
-    return [
-      {
-        card: createMockCard({
-          dataset_query: jsQuery as any,
-          display,
-          visualization_settings: {
-            "graph.x_axis.title_text": "",
-            "graph.y_axis.title_text": "",
-            ...(display === "bar" && {
-              "graph.x_axis.axis_enabled": "compact",
-            }),
-            ...getMetricSeriesSettings(metric, aggregationColumnNames),
-          },
-        }),
-        data: { ...data.data, rows },
-      },
-    ];
-  }, [
-    data,
-    jsQuery,
-    display,
-    metric,
-    nullLabel,
-    maxCategories,
-    otherLabel,
-    transformDimension,
-  ]);
-
-  if (isFetching || !rawSeries) {
-    return <Skeleton h={h} />;
-  }
+  const rawSeries = useMemo(
+    () =>
+      toBreakoutRawSeries(data, jsQuery, {
+        metric,
+        display,
+        nullLabel,
+        transformDimension,
+        maxCategories,
+        otherLabel,
+      }),
+    [
+      data,
+      jsQuery,
+      metric,
+      display,
+      nullLabel,
+      transformDimension,
+      maxCategories,
+      otherLabel,
+    ],
+  );
 
   return (
-    <Card
-      className={cx(S.visualization, {
-        [S.nonClickable]: !onDimensionClick,
-      })}
-      withBorder
-      shadow="none"
-      px="lg"
-      pt="md"
-      pb={display === "row" ? "md" : "0"}
+    <BreakoutChartCard
+      title={title}
+      rawSeries={rawSeries}
+      isFetching={isFetching}
+      display={display}
       h={h}
-    >
-      <Text fw="bold" mb="md">
-        {title}
-      </Text>
-      <Visualization
-        rawSeries={rawSeries}
-        isDashboard
-        mode={onDimensionClick ? CLICKABLE_MODE : undefined}
-        handleVisualizationClick={(clicked: any) => {
-          const value = clicked?.dimensions?.[0]?.value;
-          if (value != null && value !== otherLabel && onDimensionClick) {
-            onDimensionClick(value);
-          }
-        }}
-      />
-    </Card>
+      otherLabel={otherLabel}
+      onDimensionClick={onDimensionClick}
+    />
   );
 }

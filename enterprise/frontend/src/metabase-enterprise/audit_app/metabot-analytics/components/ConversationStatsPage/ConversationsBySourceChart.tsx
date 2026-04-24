@@ -1,39 +1,41 @@
-import type { DateFilterValue } from "metabase/querying/common/types";
-import type { CardMetadata, TableMetadata } from "metabase-lib";
+import type {
+  CardMetadata,
+  MetadataProvider,
+  TableMetadata,
+} from "metabase-lib";
 
 import { BreakoutChart } from "./BreakoutChart";
-import { type UsageStatsMetric, getChartTitle } from "./query-utils";
+import { type StatsFilters, getChartTitle } from "./query-utils";
 
-type Props = {
-  dateFilter: DateFilterValue;
-  userId?: number;
-  groupId?: number;
-  groupMembersTable?: TableMetadata | CardMetadata | null;
-  metric: UsageStatsMetric;
-  viewName?: string;
+type Props = StatsFilters & {
+  provider: MetadataProvider;
+  table: TableMetadata | CardMetadata;
+  groupMembersTable: TableMetadata | CardMetadata;
   onDimensionClick?: (value: unknown) => void;
 };
 
 export function ConversationsBySourceChart({
+  provider,
+  table,
+  groupMembersTable,
   dateFilter,
   userId,
   groupId,
-  groupMembersTable,
   metric,
-  viewName,
   onDimensionClick,
 }: Props) {
   return (
     <BreakoutChart
+      provider={provider}
+      table={table}
+      groupMembersTable={groupMembersTable}
       dateFilter={dateFilter}
       userId={userId}
       groupId={groupId}
-      groupMembersTable={groupMembersTable}
       breakoutColumn="source"
       title={getChartTitle(metric, "source")}
       display="bar"
       metric={metric}
-      viewName={viewName}
       onDimensionClick={onDimensionClick}
     />
   );
