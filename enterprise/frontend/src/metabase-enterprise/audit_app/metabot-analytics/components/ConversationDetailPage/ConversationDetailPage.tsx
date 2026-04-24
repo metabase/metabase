@@ -218,7 +218,7 @@ export function ConversationDetailPage({ params }: WithRouterProps) {
             <Stack gap="sm">
               {feedback.map((item) => (
                 <FeedbackCard
-                  key={item.message_id}
+                  key={item.id}
                   feedback={item}
                   chatMessages={conversation.chat_messages ?? []}
                 />
@@ -283,6 +283,10 @@ function FeedbackCard({
     [feedback.external_id, chatMessages],
   );
 
+  const submitterName = feedback.user
+    ? getUserName(feedback.user) || feedback.user.email || null
+    : null;
+
   return (
     <Card withBorder shadow="none" p="md">
       <Stack gap="sm">
@@ -299,6 +303,11 @@ function FeedbackCard({
             </Badge>
           )}
         </Flex>
+        {submitterName && (
+          <Text size="sm" c="text-secondary">
+            {t`Submitted by ${submitterName}`}
+          </Text>
+        )}
         {agentResponse && (
           <AgentMessage
             message={agentResponse}

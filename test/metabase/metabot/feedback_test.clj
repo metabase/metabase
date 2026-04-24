@@ -20,15 +20,18 @@
    :freeform_feedback freeform})
 
 (defn- insert-message!
-  [conversation-id external-id]
-  (first (t2/insert-returning-pks!
-          :model/MetabotMessage
-          {:conversation_id conversation-id
-           :role            "assistant"
-           :profile_id      "gpt-x"
-           :external_id     external-id
-           :total_tokens    5
-           :data            [{:type "text" :text "hi"}]})))
+  ([conversation-id external-id]
+   (insert-message! conversation-id external-id "assistant" nil))
+  ([conversation-id external-id role user-id]
+   (first (t2/insert-returning-pks!
+           :model/MetabotMessage
+           (cond-> {:conversation_id conversation-id
+                    :role            role
+                    :profile_id      "gpt-x"
+                    :external_id     external-id
+                    :total_tokens    5
+                    :data            [{:type "text" :text "hi"}]}
+             user-id (assoc :user_id user-id))))))
 
 (deftest persist-feedback-resolves-by-external-id-test
   (testing "persist-feedback! looks up the rated message by metabot_message.external_id"
@@ -48,6 +51,7 @@
                 (is (= msg-id (:id returned)))
                 (is (= conversation-id (:conversation_id returned)))
                 (is (= msg-id (:message_id row)))
+                (is (= user-id (:user_id row)))
                 (is (false? (:positive row)))
                 (is (= "not-factual" (:issue_type row)))
                 (is (= "bad answer" (:freeform_feedback row))))))
@@ -120,8 +124,8 @@
                               (metabot.feedback/persist-feedback!
                                (payload {:message-id (str (random-uuid))}))))))))
 
-(deftest persist-feedback-rejects-non-owner-test
-  (testing "persist-feedback! throws 404 and writes nothing when the current user doesn't own the conversation"
+(deftest persist-feedback-rejects-lurker-test
+  (testing "persist-feedback! throws 404 and writes nothing when the current user is neither the originator nor a participant"
     (mt/with-temp [:model/User {owner-id     :id} {}
                    :model/User {stranger-id  :id} {}]
       (let [conversation-id (str (random-uuid))
@@ -134,7 +138,59 @@
                                     (metabot.feedback/persist-feedback!
                                      (payload {:message-id external-id :positive true}))))
               (is (nil? (t2/select-one :model/MetabotFeedback :message_id msg-id))
-                  "no row written for a non-owner submission")))
+                  "no row written for a lurker submission")))
+          (finally
+            (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
+            (t2/delete! :model/MetabotConversation :id conversation-id)))))))
+
+(deftest persist-feedback-allows-participant-non-originator-test
+  (testing "persist-feedback! succeeds for a participant who is not the conversation originator, and the row carries the submitter's user_id"
+    (mt/with-temp [:model/User {owner-id       :id} {}
+                   :model/User {participant-id :id} {}]
+      (let [conversation-id (str (random-uuid))
+            external-id     (str (random-uuid))]
+        (try
+          (t2/insert! :model/MetabotConversation {:id conversation-id :user_id owner-id})
+          (insert-message! conversation-id (str (random-uuid)) "user" participant-id)
+          (let [assistant-msg-id (insert-message! conversation-id external-id)]
+            (mt/with-current-user participant-id
+              (metabot.feedback/persist-feedback!
+               (payload {:message-id external-id :positive true :freeform "helpful"}))
+              (let [row (t2/select-one :model/MetabotFeedback
+                                       :message_id assistant-msg-id
+                                       :user_id    participant-id)]
+                (is (some? row) "row is written under the participant's user_id")
+                (is (true? (:positive row)))
+                (is (= "helpful" (:freeform_feedback row))))))
+          (finally
+            (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
+            (t2/delete! :model/MetabotConversation :id conversation-id)))))))
+
+(deftest persist-feedback-two-users-one-message-test
+  (testing "two users in the same conversation can each submit feedback on the same assistant message, producing two rows with distinct user_ids"
+    (mt/with-temp [:model/User {owner-id       :id} {}
+                   :model/User {participant-id :id} {}]
+      (let [conversation-id (str (random-uuid))
+            external-id     (str (random-uuid))]
+        (try
+          (t2/insert! :model/MetabotConversation {:id conversation-id :user_id owner-id})
+          (insert-message! conversation-id (str (random-uuid)) "user" participant-id)
+          (let [assistant-msg-id (insert-message! conversation-id external-id)]
+            (mt/with-current-user owner-id
+              (metabot.feedback/persist-feedback!
+               (payload {:message-id external-id :positive true :freeform "great"})))
+            (mt/with-current-user participant-id
+              (metabot.feedback/persist-feedback!
+               (payload {:message-id external-id :positive false :issue-type "ui-bug" :freeform "not for me"})))
+            (let [rows (t2/select :model/MetabotFeedback :message_id assistant-msg-id
+                                  {:order-by [[:user_id :asc]]})
+                  by-user (into {} (map (juxt :user_id identity)) rows)]
+              (is (= 2 (count rows)) "both submissions are persisted as distinct rows")
+              (is (true?  (:positive (get by-user owner-id))))
+              (is (= "great" (:freeform_feedback (get by-user owner-id))))
+              (is (false? (:positive (get by-user participant-id))))
+              (is (= "ui-bug" (:issue_type (get by-user participant-id))))
+              (is (= "not for me" (:freeform_feedback (get by-user participant-id))))))
           (finally
             (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
             (t2/delete! :model/MetabotConversation :id conversation-id)))))))

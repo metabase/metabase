@@ -73,11 +73,15 @@
    [:tables      [:sequential :string]]])
 
 (def ^:private ConversationFeedback
-  "Schema for one user-submitted feedback row attached to a conversation. Keyed by `message_id`
-   (the metabot_message PK) since `metabot_feedback` is a 1:1 extension of `metabot_message`.
-   The submitter is the conversation owner (enforced at write), so no per-row user is returned."
+  "Schema for one user-submitted feedback row attached to a conversation. Rows
+   are keyed per-`(message_id, user_id)` — a shared Slack thread can yield
+   multiple submissions on the same assistant message — so `:user_id` is
+   carried explicitly and `:user` is hydrated for display."
   [:map
+   [:id                ms/PositiveInt]
    [:message_id        ms/PositiveInt]
+   [:user_id           ms/PositiveInt]
+   [:user              {:optional true} [:maybe UserInfo]]
    [:external_id       [:maybe :string]]
    [:positive          :boolean]
    [:issue_type        [:maybe :string]]

@@ -193,6 +193,28 @@
           (finally
             (cleanup! conv-id)))))))
 
+(deftest metabot-stats-falls-back-to-conversation-user-for-legacy-rows-test
+  (let [clock      (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
+        yesterday  (t/offset-date-time 2026 3 31 10 0 0 0 (t/zone-offset "+00"))
+        rasta-id   (mt/user->id :rasta)
+        lucky-id   (mt/user->id :lucky)
+        ;; `:user_id` on the messages is intentionally omitted — this is the legacy
+        ;; scenario from before messages stamped their author.
+        legacy-msg #(hash-map :conversation_id % :created_at yesterday :role "user"
+                              :profile_id "legacy" :total_tokens 100 :ai_proxied true)
+        usage-log  (fn [conv-id user-id]
+                     {:conversation_id conv-id :user_id user-id :created_at yesterday
+                      :source "legacy-test" :total_tokens 100 :prompt_tokens 100
+                      :ai_proxied true})]
+    (t/with-clock clock
+      (mt/with-temp [:model/MetabotConversation {conv-1 :id} {:user_id rasta-id}
+                     :model/MetabotConversation {conv-2 :id} {:user_id lucky-id}
+                     :model/MetabotMessage _ (legacy-msg conv-1)
+                     :model/MetabotMessage _ (legacy-msg conv-2)
+                     :model/AiUsageLog _ (usage-log conv-1 rasta-id)
+                     :model/AiUsageLog _ (usage-log conv-2 lucky-id)]
+        (is (= 2 (:metabot-users (sut/metabot-stats))))))))
+
 (deftest metabot-usage-anthropic-provider-test
   (search.tu/with-index-disabled
     (let [clock     (t/mock-clock (t/instant "2026-04-01T12:00:00Z") "UTC")
