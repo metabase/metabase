@@ -9,7 +9,6 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getTemplateTagFromTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import { getStructuredQuestionUrlWithParameters } from "metabase-lib/v1/urls";
 import type {
   Card,
   Dashboard,
@@ -19,6 +18,8 @@ import type {
   TemplateTag,
   VirtualCard,
 } from "metabase-types/api";
+
+import { getStructuredQuestionUrlWithParameters } from "../utils/question-url";
 
 /**
  * All navigation URLs from dashboards to cards (e.x. clicking a title, drill through)

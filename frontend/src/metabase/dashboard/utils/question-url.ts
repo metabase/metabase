@@ -1,10 +1,9 @@
 import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
-
-import type Question from "./Question";
 
 // Builds a URL to a structured (MBQL) question with dashboard parameters applied.
 // Callers must handle native queries themselves — their parameters map to template
