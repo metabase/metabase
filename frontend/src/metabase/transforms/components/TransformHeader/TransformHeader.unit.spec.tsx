@@ -1,7 +1,9 @@
 import { Route } from "react-router";
 
+import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupCollectionByIdEndpoint } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import {
   createMockCollection,
   createMockTransform,
@@ -74,6 +76,37 @@ describe("TransformHeader", () => {
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole("link", { name: "Target" }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("inspect tab upsell", () => {
+    it("should always render the Inspect tab", () => {
+      setup();
+
+      expect(screen.getByText("Inspect")).toBeInTheDocument();
+    });
+
+    it("should show upsell gem when transforms-python is not enabled", () => {
+      setup();
+
+      const inspectLink = screen.getByRole("link", { name: /Inspect/ });
+      expect(inspectLink).toBeInTheDocument();
+
+      expect(within(inspectLink).getByTestId("upsell-gem")).toBeInTheDocument();
+    });
+
+    it("should not show upsell gem when transforms-python is enabled", () => {
+      setupEnterprisePlugins();
+      PLUGIN_TRANSFORMS_PYTHON.isEnabled = true;
+
+      setup();
+
+      const inspectLink = screen.getByRole("link", { name: "Inspect" });
+      expect(inspectLink).toBeInTheDocument();
+
+      expect(
+        within(inspectLink).queryByTestId("upsell-gem"),
       ).not.toBeInTheDocument();
     });
   });
