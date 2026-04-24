@@ -209,26 +209,41 @@
                     "--name" session-name
                     "-P" prompt-file)
           ;; Not inside tmux — create a detached session and send the workmux
-          ;; command to its initial shell. This leaves an extra zsh window (0)
-          ;; alongside the bot window (1); the user switches to window 1 after
-          ;; attaching. We tried two alternatives, both of which failed:
-          ;;   1. `workmux add --session` — hangs when run from a non-interactive
-          ;;      subprocess because it tries to attach and has no tty.
+          ;; command to its initial shell. workmux then creates its own bot
+          ;; window alongside our bootstrap window (index 0, an empty zsh).
+          ;;
+          ;; We spawn a background cleanup loop that waits for workmux's window
+          ;; to appear (any window index != 0) and then kills window 0, so the
+          ;; user lands directly on the bot window when they attach.
+          ;;
+          ;; Why not simpler alternatives:
+          ;;   1. `workmux add --session` hangs when run from a non-interactive
+          ;;      subprocess (it tries to attach and has no tty).
           ;;   2. Appending `; exit` to the workmux-cmd so window 0 self-destructs
-          ;;      after workmux creates window 1 — racy: window 0 exits before
-          ;;      workmux has fully registered window 1, and tmux tears down the
-          ;;      whole session. Keep window 0 alive to avoid the race.
+          ;;      is racy: window 0 can exit before workmux has fully registered
+          ;;      its new window, and tmux tears down the whole session.
           (do
             (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
-            (shell/sh "nohup" "bash" "-c"
-                      (str "tmux new-session -d -s " session-name
-                           " && tmux send-keys -t " session-name
-                           " " (pr-str workmux-cmd) " Enter"))
+            (let [cleanup-cmd (str
+                               "for i in $(seq 1 60); do "
+                               "  if tmux list-windows -t " session-name
+                               "     -F '#{window_index}' 2>/dev/null "
+                               "     | grep -qv '^0$'; then "
+                               "    tmux kill-window -t " session-name ":0 2>/dev/null; "
+                               "    exit 0; "
+                               "  fi; "
+                               "  sleep 1; "
+                               "done")]
+              (shell/sh "nohup" "bash" "-c"
+                        (str "tmux new-session -d -s " session-name
+                             " && tmux send-keys -t " session-name
+                             " " (pr-str workmux-cmd) " Enter"
+                             " && (" cleanup-cmd ") </dev/null >/dev/null 2>&1 &")))
             (println)
             (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
             (println)
             (println "Attach to it with:")
-            (println (str "  tmux attach -t " session-name " (then switch to window 1 with Ctrl-b 1)")))))
+            (println (str "  tmux attach -t " session-name)))))
 
       (finally
         ;; When not in tmux, workmux add was launched async via send-keys;
@@ -280,12 +295,25 @@
       (do
         (println (c/yellow "Not inside tmux. Creating detached tmux session..."))
         (shell/sh* {:quiet? true} "tmux" "kill-session" "-t" session-name)
-        (shell/sh "nohup" "bash" "-c"
-                  (str "cd " wt-path
-                       " && tmux new-session -d -s " session-name
-                       " && tmux send-keys -t " session-name
-                       " 'workmux open " session-name " --run-hooks"
-                       " -P prompt.md' Enter"))
+        ;; See the launch path for why we need a background cleanup loop to
+        ;; kill the bootstrap window (index 0) once workmux's window appears.
+        (let [cleanup-cmd (str
+                           "for i in $(seq 1 60); do "
+                           "  if tmux list-windows -t " session-name
+                           "     -F '#{window_index}' 2>/dev/null "
+                           "     | grep -qv '^0$'; then "
+                           "    tmux kill-window -t " session-name ":0 2>/dev/null; "
+                           "    exit 0; "
+                           "  fi; "
+                           "  sleep 1; "
+                           "done")]
+          (shell/sh "nohup" "bash" "-c"
+                    (str "cd " wt-path
+                         " && tmux new-session -d -s " session-name
+                         " && tmux send-keys -t " session-name
+                         " 'workmux open " session-name " --run-hooks"
+                         " -P prompt.md' Enter"
+                         " && (" cleanup-cmd ") </dev/null >/dev/null 2>&1 &")))
         (println)
         (println (c/bold (c/green "Tmux session created: ") (c/cyan session-name)))
         (println)
