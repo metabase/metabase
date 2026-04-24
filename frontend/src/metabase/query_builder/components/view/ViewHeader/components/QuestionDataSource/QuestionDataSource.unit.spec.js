@@ -8,12 +8,11 @@ import {
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import { SAMPLE_METADATA } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import {
   createMockCard,
   createMockDatabase,
@@ -407,7 +406,7 @@ describe("QuestionDataSource", () => {
           expect(
             areQuestionUrlsEquivalent(
               node.closest("a").href,
-              ML_Urls.getUrl(table.newQuestion()),
+              Urls.question(table.newQuestion()),
             ),
           ).toBe(true);
         });
@@ -421,7 +420,7 @@ describe("QuestionDataSource", () => {
           expect(
             areQuestionUrlsEquivalent(
               node.closest("a").href,
-              ML_Urls.getUrl(table.newQuestion()),
+              Urls.question(table.newQuestion()),
             ),
           ).toBe(true);
         });
@@ -471,14 +470,14 @@ describe("QuestionDataSource", () => {
           expect(
             areQuestionUrlsEquivalent(
               orders.closest("a").href,
-              ML_Urls.getUrl(getAdHocOrdersQuestion()),
+              Urls.question(getAdHocOrdersQuestion()),
             ),
           ).toBe(true);
           expect(products).toBeInTheDocument();
           expect(
             areQuestionUrlsEquivalent(
               products.closest("a").href,
-              ML_Urls.getUrl(getAdHocProductsQuestion()),
+              Urls.question(getAdHocProductsQuestion()),
             ),
           ).toBe(true);
         });
@@ -503,21 +502,21 @@ describe("QuestionDataSource", () => {
           expect(
             areQuestionUrlsEquivalent(
               orders.closest("a").href,
-              ML_Urls.getUrl(getAdHocOrdersQuestion()),
+              Urls.question(getAdHocOrdersQuestion()),
             ),
           ).toBe(true);
           expect(products).toBeInTheDocument();
           expect(
             areQuestionUrlsEquivalent(
               products.closest("a").href,
-              ML_Urls.getUrl(getAdHocProductsQuestion()),
+              Urls.question(getAdHocProductsQuestion()),
             ),
           ).toBe(true);
           expect(people).toBeInTheDocument();
           expect(
             areQuestionUrlsEquivalent(
               people.closest("a").href,
-              ML_Urls.getUrl(getAdHocPeopleQuestion()),
+              Urls.question(getAdHocPeopleQuestion()),
             ),
           ).toBe(true);
         });

@@ -23,8 +23,8 @@ import type {
 } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
+import * as Urls from "metabase/urls";
 import { isNotNull } from "metabase/utils/types";
-import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

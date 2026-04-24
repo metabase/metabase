@@ -35,7 +35,7 @@ import {
   Stack,
   rem,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { trackMetadataChange } from "../../analytics";
 import {

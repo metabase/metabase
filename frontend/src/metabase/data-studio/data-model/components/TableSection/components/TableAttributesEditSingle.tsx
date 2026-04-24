@@ -11,7 +11,7 @@ import {
 } from "metabase/metadata/components";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Icon, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   Table,
   TableDataLayer,

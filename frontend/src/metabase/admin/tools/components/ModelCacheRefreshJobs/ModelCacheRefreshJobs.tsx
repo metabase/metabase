@@ -20,8 +20,8 @@ import CS from "metabase/css/core/index.css";
 import { PersistedModels } from "metabase/entities/persisted-models";
 import { connect } from "metabase/redux";
 import { Icon, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { capitalize } from "metabase/utils/formatting";
-import * as Urls from "metabase/utils/urls";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
 

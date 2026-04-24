@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useDispatch } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
 type DataStudioToolbarButtonProps = {

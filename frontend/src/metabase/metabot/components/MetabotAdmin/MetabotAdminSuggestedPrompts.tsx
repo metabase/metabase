@@ -25,7 +25,7 @@ import {
   Skeleton,
   Tooltip,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { MetabotInfo, SuggestedMetabotPrompt } from "metabase-types/api";
 
 export const PAGE_SIZE = 10;

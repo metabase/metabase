@@ -14,7 +14,7 @@ import {
 } from "metabase/transforms/constants";
 import { useTransformWithPolling } from "metabase/transforms/hooks/use-transform-with-polling";
 import { Center, Stack } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 type TransformInspectorUpsellPageProps = {
   params: { transformId: string };

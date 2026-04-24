@@ -21,7 +21,7 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Breadcrumbs, Card, Icon } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type { Card as CardApiType } from "metabase-types/api";
 

@@ -14,6 +14,7 @@ import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 import type {
   ActionParametersMapping,
   Card,
+  CardId,
   DashboardParameterMapping,
   DatasetQuery,
   LegacyDatasetQuery,
@@ -58,7 +59,8 @@ function getCleanCard(
   if (includeDatasetQuery) {
     keysToInclude.push("dataset_query");
   }
-  if (includeOriginalCardId) {
+  if (includeOriginalCardId && !isTransientCardId(value.original_card_id)) {
+    // transient card id's are never included
     keysToInclude.push("original_card_id");
   }
   if (includeDisplayIsLocked) {
@@ -248,4 +250,8 @@ export function applyParameters(
   }
 
   return datasetQuery;
+}
+
+export function isTransientCardId(id: CardId | string | null | undefined) {
+  return id != null && typeof id === "string" && isNaN(parseInt(id));
 }

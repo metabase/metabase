@@ -21,11 +21,11 @@ import {
 import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Icon, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
+import { modelToUrl } from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { getIcon } from "metabase/utils/icon";
 import { getName } from "metabase/utils/name";
-import * as Urls from "metabase/utils/urls";
-import { modelToUrl } from "metabase/utils/urls";
 import {
   type RecentItem,
   isRecentCollectionItem,

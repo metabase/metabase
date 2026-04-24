@@ -5,7 +5,7 @@ import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import { Button, Flex, Loader, Text } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 
 import { ClauseStep } from "../ClauseStep";

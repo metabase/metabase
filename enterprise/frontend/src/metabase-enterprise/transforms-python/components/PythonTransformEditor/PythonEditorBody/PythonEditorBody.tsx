@@ -8,7 +8,7 @@ import { clickableTokens } from "metabase/common/components/CodeMirror";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
 import { useDispatch } from "metabase/redux";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
 import { PythonEditor } from "../../PythonEditor";

@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import type { MoveDestination } from "metabase/collections/types";
 import { coerceCollectionId } from "metabase/collections/utils";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { Card, CollectionId, DashboardId } from "metabase-types/api";
 
 import { DestinationLink, StyledIcon, ToastRoot } from "./MoveCardToast.styled";

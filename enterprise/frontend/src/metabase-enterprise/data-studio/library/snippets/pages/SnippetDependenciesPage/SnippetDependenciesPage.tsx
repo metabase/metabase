@@ -5,7 +5,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
 import { Card, Center } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { SnippetHeader } from "../../components/SnippetHeader";
 

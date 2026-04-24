@@ -11,8 +11,8 @@ import { getEngineLogo } from "metabase/databases/utils/engine";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Flex, Group, Stack, Text, Title } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
-import { newDatabase } from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
+import { newDatabase } from "metabase/urls";
 
 import { BrowseCard } from "../components/BrowseCard";
 import S from "../components/BrowseContainer.module.css";

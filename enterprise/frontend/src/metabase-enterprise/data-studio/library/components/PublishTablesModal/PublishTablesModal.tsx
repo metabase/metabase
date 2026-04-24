@@ -23,7 +23,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { usePublishTablesMutation } from "metabase-enterprise/api";
 import type {
   BulkTableInfo,

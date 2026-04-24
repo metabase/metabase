@@ -1,7 +1,7 @@
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   Task,
   TaskRun,
@@ -50,7 +50,7 @@ export const getEntityUrl = (
 ): string =>
   match(entityType)
     .with("database", () => Urls.viewDatabase(entityId))
-    .with("card", () => Urls.question({ id: entityId, name: entityName }))
+    .with("card", () => Urls.card({ id: entityId, name: entityName }))
     .with("dashboard", () => Urls.dashboard({ id: entityId }))
     .exhaustive();
 

@@ -45,7 +45,7 @@ import {
   useTreeTableInstance,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { type NamedUser, getUserName } from "metabase/utils/user";
 
 import { CollectionRowMenu } from "./CollectionRowMenu";

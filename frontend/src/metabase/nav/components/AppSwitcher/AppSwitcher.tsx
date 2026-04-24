@@ -32,7 +32,7 @@ import {
   Text,
 } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { AboutModal } from "../AboutModal/AboutModal";
 

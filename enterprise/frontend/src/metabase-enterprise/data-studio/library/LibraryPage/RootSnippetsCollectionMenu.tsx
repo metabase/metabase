@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { ActionIcon, FixedSizeIcon, Menu, Tooltip } from "metabase/ui";
-import { dataStudioArchivedSnippets } from "metabase/utils/urls";
+import { dataStudioArchivedSnippets } from "metabase/urls";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { CollectionId } from "metabase-types/api";
 

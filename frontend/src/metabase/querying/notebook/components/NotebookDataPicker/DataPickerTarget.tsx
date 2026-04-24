@@ -6,7 +6,7 @@ import { isEmbedding } from "metabase/embedding/config";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import type { IconName } from "metabase/ui";
 import { Flex, Icon, UnstyledButton } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 
 import { NotebookCell } from "../NotebookCell";

@@ -24,7 +24,7 @@ import {
   TreeTableSkeleton,
   useTreeTableInstance,
 } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
 
 export const JobListPage = () => {

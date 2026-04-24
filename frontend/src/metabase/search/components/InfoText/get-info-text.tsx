@@ -9,7 +9,7 @@ import { Box, Icon } from "metabase/ui";
 import {
   collection as collectionUrl,
   dashboard as dashboardUrl,
-} from "metabase/utils/urls";
+} from "metabase/urls";
 import type { Collection } from "metabase-types/api";
 
 export type InfoTextData = {

@@ -2,7 +2,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Center } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { TransformHeader } from "../../components/TransformHeader";
 import { useTransformWithPolling } from "../../hooks/use-transform-with-polling";

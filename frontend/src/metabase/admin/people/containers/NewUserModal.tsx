@@ -5,9 +5,9 @@ import { useCreateUserMutation } from "metabase/api";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { generatePassword } from "metabase/utils/password";
 import MetabaseSettings from "metabase/utils/settings";
-import * as Urls from "metabase/utils/urls";
 import type { User as UserType } from "metabase-types/api";
 
 import { UserForm } from "../forms/UserForm";

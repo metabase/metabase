@@ -6,7 +6,7 @@ import { useToggle } from "metabase/common/hooks/use-toggle";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
 import { ActionIcon, Box, Flex, Icon } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   Collection,
   CollectionEssentials,

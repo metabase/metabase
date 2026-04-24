@@ -12,8 +12,8 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useTranslateContent } from "metabase/i18n/hooks";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { Ellipsified, type IconProps, Tooltip } from "metabase/ui";
+import { modelToUrl } from "metabase/urls";
 import { isTouchDevice } from "metabase/utils/browser";
-import { modelToUrl } from "metabase/utils/urls";
 import { getUserName } from "metabase/utils/user";
 import type {
   CollectionItem,

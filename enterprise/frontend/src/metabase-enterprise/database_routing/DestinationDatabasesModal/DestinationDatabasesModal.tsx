@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useDispatch } from "metabase/redux";
 import { Modal } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 

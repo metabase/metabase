@@ -17,9 +17,9 @@ import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box, Flex, Icon, type IconName } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
-import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { FieldList } from "../FieldList";
 import { NodeListTitleText } from "../NodeList";
@@ -95,7 +95,7 @@ export const QuestionPane = ({
         <Flex color="text-secondary" align="center" p="0.25rem 0.5rem" fw={700}>
           <a
             className={S.QuestionPaneDetailLink}
-            href={ML_Urls.getUrl(question)}
+            href={Urls.question(question)}
             target="_blank"
             rel="noreferrer"
           >

@@ -42,8 +42,8 @@ import { usePageTitle } from "metabase/hooks/use-page-title";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { Box } from "metabase/ui";
-import { extractEntityId } from "metabase/utils/urls";
-import * as Urls from "metabase/utils/urls";
+import { extractEntityId } from "metabase/urls";
+import * as Urls from "metabase/urls";
 import type {
   Card,
   CollectionId,

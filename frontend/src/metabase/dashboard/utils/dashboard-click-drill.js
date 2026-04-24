@@ -3,8 +3,8 @@ import querystring from "querystring";
 import { getIn } from "icepick";
 import _ from "underscore";
 
+import * as Urls from "metabase/urls";
 import { renderLinkURLForClick } from "metabase/utils/formatting/link";
-import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -13,7 +13,8 @@ import {
   getTargetForQueryParams,
 } from "metabase-lib/v1/parameters/utils/click-behavior";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
-import * as ML_Urls from "metabase-lib/v1/urls";
+
+import { getStructuredQuestionUrlWithParameters } from "./question-url";
 
 export function getDashboardDrillType(clicked) {
   const clickBehavior = getClickBehavior(clicked);
@@ -151,13 +152,13 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
   const originalQuestion = targetQuestion;
 
   return !isTargetQuestionNative
-    ? ML_Urls.getUrlWithParameters(
+    ? getStructuredQuestionUrlWithParameters(
         targetQuestion,
         originalQuestion,
         parameters,
         queryParams,
       )
-    : `${ML_Urls.getUrl(targetQuestion)}?${querystring.stringify(queryParams)}`;
+    : Urls.question(targetQuestion, { query: queryParams });
 }
 
 export function getClickBehavior(clicked) {

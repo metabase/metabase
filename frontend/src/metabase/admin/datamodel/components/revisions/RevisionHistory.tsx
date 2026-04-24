@@ -7,7 +7,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { Revision } from "metabase/querying/segments/components/revisions/Revision";
 import { assignUserColors } from "metabase/ui/colors/formatting-colors";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   Revision as RevisionType,
   Segment,

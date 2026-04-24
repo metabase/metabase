@@ -10,7 +10,7 @@ import {
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getParentPath } from "metabase/hoc/ModalRoute";
 import { useDispatch, useSelector } from "metabase/redux";
-import { parseIntParam } from "metabase/utils/urls";
+import { parseIntParam } from "metabase/urls";
 import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
 

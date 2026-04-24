@@ -10,7 +10,7 @@ import { useListSelect } from "metabase/common/hooks/use-list-select";
 import { Search } from "metabase/entities/search";
 import { useDispatch } from "metabase/redux";
 import { Flex, Modal } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import type { SortingOptions } from "metabase-types/api/sorting";
 

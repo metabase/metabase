@@ -1,6 +1,9 @@
+import type { Bookmark, CollectionId } from "metabase-types/api";
+
 import {
   bookmark,
   browseDatabase,
+  card,
   collection,
   dashboard,
   extractCollectionId,
@@ -10,70 +13,60 @@ import {
   model,
   modelDetail,
   modelEditor,
-  question,
-} from "metabase/utils/urls";
-import type { Bookmark, CollectionId } from "metabase-types/api";
+} from ".";
 
 describe("urls", () => {
   describe("question", () => {
     describe("with a query", () => {
       it("returns the correct url", () => {
-        expect(question({}, { query: { foo: "bar" } })).toEqual(
+        expect(card({}, { query: { foo: "bar" } })).toEqual(
           "/question?foo=bar",
         );
-        expect(question({}, { hash: "hash", query: { foo: "bar" } })).toEqual(
-          "/question?foo=bar#hash",
-        );
-        expect(question(null, { hash: "hash", query: { foo: "bar" } })).toEqual(
-          "/question?foo=bar#hash",
-        );
-        expect(question(null, { query: { foo: "bar" } })).toEqual(
+        expect(card(null, { query: { foo: "bar" } })).toEqual(
           "/question?foo=bar",
         );
-        expect(question(null, { query: { foo: "bar+bar" } })).toEqual(
+        expect(card(null, { query: { foo: "bar+bar" } })).toEqual(
           "/question?foo=bar%2Bbar",
         );
-        expect(question(null, { query: { foo: ["bar", "baz"] } })).toEqual(
+        expect(card(null, { query: { foo: ["bar", "baz"] } })).toEqual(
           "/question?foo=bar&foo=baz",
         );
-        expect(question(null, { query: { foo: ["bar", "baz+bay"] } })).toEqual(
+        expect(card(null, { query: { foo: ["bar", "baz+bay"] } })).toEqual(
           "/question?foo=bar&foo=baz%2Bbay",
         );
-        expect(question(null, { query: { foo: ["bar", "baz&bay"] } })).toEqual(
+        expect(card(null, { query: { foo: ["bar", "baz&bay"] } })).toEqual(
           "/question?foo=bar&foo=baz%26bay",
         );
       });
 
       it("includes undefined params", () => {
-        expect(question(null, { query: { foo: undefined } })).toEqual(
+        expect(card(null, { query: { foo: undefined } })).toEqual(
           "/question?foo=",
         );
-        expect(
-          question(null, { query: { foo: undefined, bar: "bar" } }),
-        ).toEqual("/question?foo=&bar=bar");
+        expect(card(null, { query: { foo: undefined, bar: "bar" } })).toEqual(
+          "/question?foo=&bar=bar",
+        );
       });
 
       it("includes null params", () => {
-        expect(question(null, { query: { foo: null } })).toEqual(
-          "/question?foo=",
+        expect(card(null, { query: { foo: null } })).toEqual("/question?foo=");
+        expect(card(null, { query: { foo: undefined, bar: "bar" } })).toEqual(
+          "/question?foo=&bar=bar",
         );
-        expect(
-          question(null, { query: { foo: undefined, bar: "bar" } }),
-        ).toEqual("/question?foo=&bar=bar");
       });
     });
 
     describe("question ids", () => {
       it("returns the correct url", () => {
-        expect(question(null)).toEqual("/question");
-        expect(question({ id: 1 })).toEqual("/question/1");
+        expect(card(null)).toEqual("/question");
+        expect(card({ id: 1 })).toEqual("/question/1");
 
         /**
          * If we're dealing with the question in a dashboard, we're reading the dashCard properties.
          * Make sure `card_id` gets assigned to the question url.
          */
 
-        expect(question({ id: 1, card_id: 42, name: "Foo" })).toEqual(
+        expect(card({ id: 1, card_id: 42, name: "Foo" })).toEqual(
           "/question/42-foo",
         );
 
@@ -83,12 +76,12 @@ describe("urls", () => {
          * * We still have to make sure links to questions in a dashboard render correctly.
          */
 
-        expect(question({ id: 1, card_id: 42 })).toEqual("/question/42");
+        expect(card({ id: 1, card_id: 42 })).toEqual("/question/42");
 
-        expect(question({ id: 1, card_id: 42, name: "ベーコン" })).toEqual(
+        expect(card({ id: 1, card_id: 42, name: "ベーコン" })).toEqual(
           "/question/42",
         );
-        expect(question({ id: 1, card_id: 42, name: "培根" })).toEqual(
+        expect(card({ id: 1, card_id: 42, name: "培根" })).toEqual(
           "/question/42",
         );
       });
@@ -96,26 +89,13 @@ describe("urls", () => {
 
     describe("with object ID", () => {
       it("should append object ID to path", () => {
-        const url = question({ id: 1 }, { objectId: 5 });
+        const url = card({ id: 1 }, { objectId: 5 });
         expect(url).toBe("/question/1/5");
       });
 
       it("should support query params", () => {
-        const url = question({ id: 1 }, { query: "?a=b", objectId: 5 });
+        const url = card({ id: 1 }, { query: "?a=b", objectId: 5 });
         expect(url).toBe("/question/1/5?a=b");
-      });
-
-      it("should support hash", () => {
-        const url = question({ id: 1 }, { hash: "abc", objectId: 5 });
-        expect(url).toBe("/question/1/5#abc");
-      });
-
-      it("should support both hash and query params", () => {
-        const url = question(
-          { id: 1, name: "foo" },
-          { hash: "abc", query: "a=b", objectId: 5 },
-        );
-        expect(url).toBe("/question/1-foo/5?a=b#abc");
       });
     });
   });
@@ -482,9 +462,7 @@ describe("urls", () => {
       });
 
       it(`should handle ${caseName} correctly for question URLs`, () => {
-        expect(question(entity)).toBe(
-          expectedUrl("/question/1", expectedString),
-        );
+        expect(card(entity)).toBe(expectedUrl("/question/1", expectedString));
       });
     });
   });

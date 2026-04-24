@@ -16,7 +16,7 @@ import {
   Title,
   Tooltip,
 } from "metabase/ui";
-import { getSubpathSafeUrl } from "metabase/utils/urls";
+import { getSubpathSafeUrl } from "metabase/urls";
 
 import IconCSV from "./illustrations/csv.svg?component";
 

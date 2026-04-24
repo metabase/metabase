@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 import { screen, within } from "__support__/ui";
 import { createMockModelResult } from "metabase/browse/models/test-utils";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import {
   createMockCard,
   createMockDashboard,

@@ -11,7 +11,7 @@ import { useMetadataToasts } from "metabase/metadata/hooks";
 import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Group } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type { Measure } from "metabase-types/api";
 

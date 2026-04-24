@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { serializeCardForUrl } from "metabase/common/utils/card";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase/redux/store";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Card, Field, Series } from "metabase-types/api";
@@ -68,7 +68,7 @@ export function getURLForCardState(
       options.objectId = objectId;
     }
   }
-  return Urls.question(card, options);
+  return Urls.card(card, options);
 }
 
 export const isNavigationAllowed = ({

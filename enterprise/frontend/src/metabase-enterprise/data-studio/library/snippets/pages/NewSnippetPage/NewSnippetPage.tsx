@@ -22,7 +22,7 @@ import {
 import { PLUGIN_REMOTE_SYNC, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Card, Flex, Stack } from "metabase/ui";
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import type {
   NativeQuerySnippet,
   RegularCollectionId,

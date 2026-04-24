@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import { t } from "ttag";
 
-import * as Urls from "metabase/utils/urls";
+import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 
@@ -86,7 +86,7 @@ function filterBySegmentId(query, segmentId) {
 }
 
 export const getQuestionUrl = (getQuestionArgs) =>
-  Urls.question(null, { hash: getQuestion(getQuestionArgs) });
+  Urls.card(null, { hash: getQuestion(getQuestionArgs) });
 
 // little utility function to determine if we 'has' things, useful
 // for handling entity empty states

@@ -4,11 +4,7 @@ import { useDatabaseQuery, useTableQuery } from "metabase/common/hooks";
 import { SearchResultLink } from "metabase/search/components/SearchResultLink";
 import type { WrappedResult } from "metabase/search/types";
 import { Box, Icon, Text } from "metabase/ui";
-import {
-  browseDatabase,
-  browseSchema,
-  tableRowsQuery,
-} from "metabase/utils/urls";
+import { browseDatabase, browseSchema, tableRowsQuery } from "metabase/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 
 import type { InfoTextData } from "./get-info-text";

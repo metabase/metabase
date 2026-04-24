@@ -8,13 +8,13 @@ import {
   SAMPLE_PROVIDER,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
-import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { AdHocQuestionLoaderView } from "./AdHocQuestionLoader";
 
-const getQuestionHash = (questionUrl: string) => {
-  const url = new URL(questionUrl, "http://example.com");
-  return url.hash;
+const getQuestionHash = (question: Question) => {
+  return Card.serializeCardForUrl(question.card(), {
+    includeDisplayIsLocked: true,
+  });
 };
 
 describe("AdHocQuestionLoader", () => {
@@ -31,11 +31,10 @@ describe("AdHocQuestionLoader", () => {
     const q = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
       Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     );
-    const questionHash = getQuestionHash(ML_Urls.getUrl(q));
 
     render(
       <AdHocQuestionLoaderView
-        questionHash={questionHash}
+        questionHash={getQuestionHash(q)}
         loadMetadataForCard={loadMetadataSpy}
       >
         {mockChild}
@@ -59,13 +58,13 @@ describe("AdHocQuestionLoader", () => {
     const q = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
       Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     );
-    const questionHash = getQuestionHash(ML_Urls.getUrl(q));
+    const questionHash = getQuestionHash(q);
 
     // Create a different valid question with a different limit
     const q2 = Question.create({ metadata: SAMPLE_METADATA })
       .setQuery(Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY))
       .updateSettings({ "table.pivot": true });
-    const newQuestionHash = getQuestionHash(ML_Urls.getUrl(q2));
+    const newQuestionHash = getQuestionHash(q2);
 
     const deserializeCardSpy = jest.spyOn(Card, "deserializeCardFromUrl");
 
@@ -104,7 +103,7 @@ describe("AdHocQuestionLoader", () => {
     const q = Question.create({ metadata: SAMPLE_METADATA }).setQuery(
       Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
     );
-    const questionHash = getQuestionHash(ML_Urls.getUrl(q));
+    const questionHash = getQuestionHash(q);
 
     // Make loadMetadataForCard hang so we can observe loading state
     let resolveLoad: () => void;

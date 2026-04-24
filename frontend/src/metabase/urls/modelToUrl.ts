@@ -8,6 +8,7 @@ import type {
 
 import { action } from "./actions";
 import { browseDatabase } from "./browse";
+import { card } from "./cards";
 import { collection } from "./collections";
 import { dashboard } from "./dashboards";
 import { dataStudioPublishedTableMeasure } from "./data-studio";
@@ -15,7 +16,7 @@ import { document } from "./documents";
 import { indexedEntity } from "./indexed-entities";
 import { metric } from "./metrics";
 import { model } from "./models";
-import { question, tableRowsQuery } from "./questions";
+import { tableRowsQuery } from "./questions";
 import { timeline } from "./timelines";
 import { transform } from "./transforms";
 
@@ -43,7 +44,7 @@ export function modelToUrl(item: UrlableModel): string {
 
   switch (item.model) {
     case "card":
-      return question({
+      return card({
         ...item,
         model: "card", // somehow typescript is not smart enough to infer this
       });

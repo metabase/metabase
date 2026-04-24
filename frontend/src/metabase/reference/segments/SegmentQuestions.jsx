@@ -13,8 +13,8 @@ import CS from "metabase/css/core/index.css";
 import { connect } from "metabase/redux";
 import * as metadataActions from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Urls from "metabase/urls";
 import { modelIconMap } from "metabase/utils/icon";
-import * as Urls from "metabase/utils/urls";
 import visualizations from "metabase/visualizations";
 
 import ReferenceHeader from "../components/ReferenceHeader";
@@ -73,7 +73,7 @@ const SegmentQuestionsInner = ({ style, table, segment, metadata }) => {
                         key={question.id()}
                         name={question.displayName()}
                         description={getDescription(question)}
-                        url={Urls.question(question.card())}
+                        url={Urls.card(question.card())}
                         icon={visualizations.get(question.display()).iconName}
                       />
                     ),

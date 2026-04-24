@@ -1,3 +1,11 @@
+import {
+  getDashboardDrillLinkUrl,
+  getDashboardDrillParameters,
+  getDashboardDrillQuestionUrl,
+  getDashboardDrillTab,
+  getDashboardDrillType,
+  getDashboardDrillUrl,
+} from "metabase/dashboard/utils/dashboard-click-drill";
 import { selectTab } from "metabase/redux/dashboard";
 import type { Dispatch } from "metabase/redux/store";
 import type {
@@ -7,14 +15,6 @@ import type {
   LegacyDrill,
 } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import {
-  getDashboardDrillLinkUrl,
-  getDashboardDrillParameters,
-  getDashboardDrillQuestionUrl,
-  getDashboardDrillTab,
-  getDashboardDrillType,
-  getDashboardDrillUrl,
-} from "metabase-lib/v1/queries/drills/dashboard-click-drill";
 import type { ParameterValueOrArray } from "metabase-types/api";
 
 type DashboardDrillType =
