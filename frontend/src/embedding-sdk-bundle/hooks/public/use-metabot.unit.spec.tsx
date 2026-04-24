@@ -15,25 +15,13 @@ import {
 import { useMetabot } from "./use-metabot";
 
 /**
- * This file covers hook wiring for non-passthrough behavior. The following
- * result properties are deliberately not tested here because they forward
- * directly to `useMetabotAgent` with no transformation:
- *   - retryMessage       → agent.retryMessage(messageId)
- *   - cancelRequest      → agent.cancelRequest
- *   - resetConversation  → agent.resetConversation
- *   - errorMessages      → agent.errorMessages
- *   - isProcessing       → agent.isDoingScience (renamed)
+ * Covers `useMetabot()` non-passthrough wiring: `CurrentChart`,
+ * `messages[n].Chart`, `submitMessage`, `messages` mapping. Chart mocks
+ * expose `data-testid` + `data-query`; real rendering lives in the
+ * StaticQuestion/InteractiveQuestion specs. `ComponentProvider` is stubbed —
+ * provider init is out of scope. Pure passthroughs (retry/cancel/reset/
+ * errorMessages/isProcessing) skipped.
  */
-// These tests verify `useMetabot().CurrentChart` wiring only: renders nothing
-// before `navigate_to`, StaticQuestion vs InteractiveQuestion based on
-// `drills`, and `query` forwarding. Mocks surface `data-testid` + `data-query`
-// so those assertions are direct. Real rendering of Static/Interactive
-// questions (base64 query decode, ad-hoc dataset execution, viz output) is
-// covered by StaticQuestion.unit.spec.tsx and InteractiveQuestion.unit.spec.tsx.
-// `use-metabot.tsx` wraps chart output in `ComponentProvider` so callers of
-// `useMetabot()` can render charts under a bare `MetabaseProvider`. These
-// specs verify chart-wiring only, not provider init (`useInitDataInternal`,
-// authConfig plumbing, etc.), so pass `ComponentProvider` through.
 jest.mock("embedding-sdk-bundle/components/public/ComponentProvider", () => ({
   ComponentProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
@@ -60,9 +48,7 @@ describe("useMetabot", () => {
     };
 
     it("renders nothing before navigate_to fires", () => {
-      setup({
-        ui: <TestCurrentChart />,
-      });
+      setup({ ui: <TestCurrentChart /> });
 
       expect(
         screen.queryByTestId("mock-static-question"),
@@ -70,9 +56,7 @@ describe("useMetabot", () => {
     });
 
     it("renders a chart after navigate_to fires", async () => {
-      const { store } = setup({
-        ui: <TestCurrentChart />,
-      });
+      const { store } = setup({ ui: <TestCurrentChart /> });
 
       expect(
         screen.queryByTestId("mock-static-question"),
@@ -86,23 +70,17 @@ describe("useMetabot", () => {
     });
 
     it("renders StaticQuestion when drills is absent", async () => {
-      const { store } = setup({
-        ui: <TestCurrentChart />,
-      });
+      const { store } = setup({ ui: <TestCurrentChart /> });
 
       act(() => {
         store.dispatch(metabotActions.setNavigateToPath("/question#base64"));
       });
 
-      expect(
-        await screen.findByTestId("mock-static-question"),
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId("mock-static-question")).toBeVisible();
     });
 
     it("renders InteractiveQuestion when drills is true", async () => {
-      const { store } = setup({
-        ui: <TestCurrentChart drills />,
-      });
+      const { store } = setup({ ui: <TestCurrentChart drills /> });
 
       act(() => {
         store.dispatch(metabotActions.setNavigateToPath("/question#base64"));
@@ -110,7 +88,7 @@ describe("useMetabot", () => {
 
       expect(
         await screen.findByTestId("mock-interactive-question"),
-      ).toBeInTheDocument();
+      ).toBeVisible();
     });
 
     it("keeps CurrentChart identity stable across unrelated parent re-renders", async () => {
@@ -162,9 +140,7 @@ describe("useMetabot", () => {
     });
 
     it("updates when a second navigate_to fires", async () => {
-      const { store } = setup({
-        ui: <TestCurrentChart />,
-      });
+      const { store } = setup({ ui: <TestCurrentChart /> });
 
       act(() => {
         store.dispatch(metabotActions.setNavigateToPath("/question#first"));
@@ -426,7 +402,7 @@ describe("useMetabot", () => {
   });
 
   describe("messages[n].Chart", () => {
-    const TestMessageComponent = ({ drills }: { drills?: true }) => {
+    const TestChart = ({ drills }: { drills?: true }) => {
       const { messages } = useMetabot();
       const chartMessage = messages.find((message) => message.type === "chart");
       if (!chartMessage) {
@@ -437,39 +413,37 @@ describe("useMetabot", () => {
     };
 
     it("renders StaticQuestion when drills is absent", async () => {
-      const { store } = setup({ ui: <TestMessageComponent /> });
+      const { store } = setup({ ui: <TestChart /> });
 
       act(() => {
         store.dispatch(
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "chart",
-            navigateTo: "/question#abc",
+            navigateTo: "/question#base64",
           } as any),
         );
       });
 
-      expect(
-        await screen.findByTestId("mock-static-question"),
-      ).toBeInTheDocument();
+      expect(await screen.findByTestId("mock-static-question")).toBeVisible();
     });
 
     it("renders InteractiveQuestion when drills is true", async () => {
-      const { store } = setup({ ui: <TestMessageComponent drills /> });
+      const { store } = setup({ ui: <TestChart drills /> });
 
       act(() => {
         store.dispatch(
           metabotActions.addAgentMessage({
             agentId: "omnibot",
             type: "chart",
-            navigateTo: "/question#abc",
+            navigateTo: "/question#base64",
           } as any),
         );
       });
 
       expect(
         await screen.findByTestId("mock-interactive-question"),
-      ).toBeInTheDocument();
+      ).toBeVisible();
     });
 
     it("Chart reference is stable after a second chart message arrives", async () => {

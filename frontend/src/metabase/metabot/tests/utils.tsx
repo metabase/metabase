@@ -14,6 +14,7 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
+import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import {
   type MockStreamedEndpointParams,
@@ -190,10 +191,9 @@ export function setup(
   );
   setupDatabaseListEndpoint([]);
 
-  // Reset and seed the Metabase provider props store so hooks that gate on
-  // `authConfig` + `reduxStore` (e.g. `useMetabot().CurrentChart`) resolve in
-  // this non-SDK test harness. Tests that specifically need a clean store
-  // should cleanup() in their own afterEach.
+  // useMetabot reads authConfig + reduxStore from the global
+  // MetabaseProviderPropsStore. Seed it here since this test setup
+  // renders MetabotProvider without a MetabaseProvider wrapper.
   ensureMetabaseProviderPropsStore().cleanup();
   const seededStore = ensureMetabaseProviderPropsStore();
   seededStore.initialize({
@@ -222,9 +222,8 @@ export function setup(
     },
   );
 
-  // Seed the redux store reference on the internal props so `useMetabot`'s
-  // `chartContext` memo resolves.
-  seededStore.updateInternalProps({ reduxStore: store as any });
+  // reduxStore only available post-render; inject it now.
+  seededStore.updateInternalProps({ reduxStore: store as unknown as SdkStore });
 
   return {
     rerender,
