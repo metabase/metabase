@@ -19,8 +19,8 @@ import {
   createMockState,
 } from "metabase/redux/store/mocks";
 import { checkNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import { TYPE } from "metabase-lib/v1/types/constants";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import type { Card, Collection, Database, Settings } from "metabase-types/api";
 import {
   createMockCardQueryMetadata,
@@ -209,7 +209,7 @@ describe("ModelUsageDetails", () => {
         for (const q of usedByQuestions) {
           const link = await screen.findByLabelText(q._card.name);
           expect(link).toBeInTheDocument();
-          expect(link).toHaveAttribute("href", ML_Urls.getQuestionUrl(q));
+          expect(link).toHaveAttribute("href", Urls.question(q));
         }
 
         expect(
@@ -235,7 +235,7 @@ describe("ModelUsageDetails", () => {
         for (const q of slicedQuestions) {
           const link = await screen.findByLabelText(q._card.name);
           expect(link).toBeInTheDocument();
-          expect(link).toHaveAttribute("href", ML_Urls.getQuestionUrl(q));
+          expect(link).toHaveAttribute("href", Urls.question(q));
         }
 
         // Expect sixth card to be hidden

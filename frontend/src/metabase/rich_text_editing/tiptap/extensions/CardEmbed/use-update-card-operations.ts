@@ -7,8 +7,8 @@ import type { UseCardDataResult } from "metabase/documents/hooks/use-card-data";
 import { useDraftCardOperations } from "metabase/documents/hooks/use-draft-card-operations";
 import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
+import * as Urls from "metabase/utils/urls";
 import Question from "metabase-lib/v1/Question";
-import { getQuestionUrl } from "metabase-lib/v1/urls";
 import type { Card, Document, VisualizationSettings } from "metabase-types/api";
 
 export const useUpdateCardOperations = ({
@@ -59,7 +59,7 @@ export const useUpdateCardOperations = ({
         // Remove the ID so getUrl creates an adhoc question URL instead of navigating to saved question
         const adhocCard = { ...nextCard, id: null };
         const question = new Question(adhocCard, metadata);
-        const url = getQuestionUrl(question);
+        const url = Urls.question(question);
         dispatch(navigateToCardFromDocument(url, document));
       } catch (error) {
         console.error("Failed to create question URL:", error);

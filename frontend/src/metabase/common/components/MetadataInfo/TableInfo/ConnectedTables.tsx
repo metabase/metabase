@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
+import * as Urls from "metabase/utils/urls";
 import type Table from "metabase-lib/v1/metadata/Table";
-import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { Container, Label, LabelContainer } from "../MetadataInfo.styled";
 
@@ -55,7 +55,7 @@ function ConnectedTableButton({
 
 function ConnectedTableLink({ table }: { table: Table }) {
   return (
-    <LabelLink to={ML_Urls.getQuestionUrl(table.newQuestion())}>
+    <LabelLink to={Urls.question(table.newQuestion())}>
       <InteractiveTableLabel table={table} />
     </LabelLink>
   );

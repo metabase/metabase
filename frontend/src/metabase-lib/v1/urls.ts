@@ -8,29 +8,6 @@ import type { ParameterId, ParameterValueOrArray } from "metabase-types/api";
 import type Question from "./Question";
 import type NativeQuery from "./queries/NativeQuery";
 
-type UrlBuilderOpts = {
-  originalQuestion?: Question;
-  query?: Record<string, any>;
-  creationType?: string;
-};
-
-export function getQuestionUrl(
-  question: Question,
-  { originalQuestion, query, creationType }: UrlBuilderOpts = {},
-) {
-  const isDirty =
-    originalQuestion != null && question.isDirtyComparedTo(originalQuestion);
-
-  return Urls.card(question.cardWithNormalizedQuery(), {
-    query,
-    creationType,
-    parameterValues: question._parameterValues,
-    includeDisplayIsLocked: true,
-    // dirty questions should always render as unsaved
-    forceUnsaved: isDirty,
-  });
-}
-
 export function getQuestionUrlWithParameters(
   question: Question,
   originalQuestion: Question,
@@ -42,14 +19,14 @@ export function getQuestionUrlWithParameters(
   { objectId }: { objectId?: string | number } = {},
 ): string {
   if (parameters.length === 0 && objectId == null) {
-    return getQuestionUrl(question);
+    return Urls.question(question);
   }
 
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
 
   if (isNative) {
     const query = question.legacyNativeQuery() as NativeQuery;
-    return getQuestionUrl(question, {
+    return Urls.question(question, {
       query: remapParameterValuesToTemplateTags(
         query.templateTags(),
         parameters,
@@ -71,12 +48,12 @@ export function getQuestionUrlWithParameters(
       .setParameterValues(parameterValues)
       ._convertParametersToMbql({ isComposed: needsComposing });
 
-    return getQuestionUrl(questionWithParameters, {
+    return Urls.question(questionWithParameters, {
       originalQuestion,
       query: objectId === undefined ? {} : { objectId },
     });
   }
 
   const query = getParameterValuesBySlug(parameters, parameterValues);
-  return getQuestionUrl(questionWithParameters.markDirty(), { query });
+  return Urls.question(questionWithParameters.markDirty(), { query });
 }

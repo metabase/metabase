@@ -1,7 +1,6 @@
 import MetabaseSettings from "metabase/utils/settings";
 import type { QuestionCreatorOpts } from "metabase-lib/v1/Question";
 import Question from "metabase-lib/v1/Question";
-import * as ML_Urls from "metabase-lib/v1/urls";
 import type {
   CardId,
   Card as SavedCard,
@@ -10,6 +9,29 @@ import type {
 import type { EntityToken } from "metabase-types/api/entity";
 
 import { card as urlForCard } from "./cards";
+
+type QuestionUrlBuilderOpts = {
+  originalQuestion?: Question;
+  query?: Record<string, any>;
+  creationType?: string;
+};
+
+export function question(
+  question: Question,
+  { originalQuestion, query, creationType }: QuestionUrlBuilderOpts = {},
+) {
+  const isDirty =
+    originalQuestion != null && question.isDirtyComparedTo(originalQuestion);
+
+  return urlForCard(question.cardWithNormalizedQuery(), {
+    query,
+    creationType,
+    parameterValues: question._parameterValues,
+    includeDisplayIsLocked: true,
+    // dirty questions should always render as unsaved
+    forceUnsaved: isDirty,
+  });
+}
 
 export function serializedQuestion(card: SavedCard | UnsavedCard, opts = {}) {
   return urlForCard(card, { ...opts, forceUnsaved: true });
@@ -31,12 +53,12 @@ export function newQuestion({
     return `/question/ask`;
   }
 
-  const question = Question.create(options);
-  const url = ML_Urls.getQuestionUrl(question, {
+  const q = Question.create(options);
+  const url = question(q, {
     creationType,
     query: objectId === undefined ? {} : { objectId },
   });
-  const type = question.type();
+  const type = q.type();
 
   if (mode) {
     const pathType = type === "metric" ? "question" : type;

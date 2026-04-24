@@ -1,13 +1,10 @@
 import { parse } from "url";
 
-import { assoc, dissoc } from "icepick";
-
 import { createMockMetadata } from "__support__/metadata";
 // eslint-disable-next-line no-restricted-imports
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import * as Lib from "metabase-lib";
 import {
-  ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
@@ -16,28 +13,13 @@ import {
 
 import Question from "./Question";
 import type { ParameterWithTarget } from "./parameters/types";
-import { getQuestionUrl, getQuestionUrlWithParameters } from "./urls";
+import { getQuestionUrlWithParameters } from "./urls";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
 });
 
 const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
-
-const orders_raw_card = {
-  id: 1,
-  name: "Raw orders data",
-  display: "table",
-  visualization_settings: {},
-  can_write: true,
-  dataset_query: {
-    type: "query",
-    database: SAMPLE_DB_ID,
-    query: {
-      "source-table": ORDERS_ID,
-    },
-  },
-};
 
 function parseUrl(url: string) {
   const parsed = parse(url, true);
@@ -47,34 +29,6 @@ function parseUrl(url: string) {
     pathname: parsed.pathname,
   };
 }
-
-describe("URLs", () => {
-  const adhocUrl =
-    "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJsaWIvdHlwZSI6Im1icWwvcXVlcnkiLCJzdGFnZXMiOlt7ImxpYi90eXBlIjoibWJxbC5zdGFnZS9tYnFsIiwic291cmNlLXRhYmxlIjoyfV19LCJkaXNwbGF5IjoidGFibGUiLCJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwicGFyYW1ldGVyVmFsdWVzIjp7fSwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319";
-
-  // Covered a lot in query_builder/actions.spec.js, just very basic cases here
-  // (currently getUrl has logic that is strongly tied to the logic query builder Redux actions)
-  describe("getQuestionUrl(originalQuestion?)", () => {
-    it("returns URL with ID for saved question", () => {
-      const question = new Question(assoc(orders_raw_card, "id", 1), metadata);
-      expect(getQuestionUrl(question)).toBe("/question/1-raw-orders-data");
-    });
-
-    it("returns a URL with hash for an unsaved question", () => {
-      const question = new Question(dissoc(orders_raw_card, "id"), metadata);
-      expect(getQuestionUrl(question)).toBe(adhocUrl);
-    });
-  });
-
-  it("should avoid generating URLs with transient IDs", () => {
-    const question = new Question(
-      { ...orders_raw_card, id: "foo", original_card_id: "bar" },
-      metadata,
-    );
-
-    expect(getQuestionUrl(question)).toBe(adhocUrl);
-  });
-});
 
 describe("getQuestionUrlWithParameters", () => {
   const parameters: ParameterWithTarget[] = [
