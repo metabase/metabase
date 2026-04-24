@@ -12,6 +12,7 @@ import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import {
   DEFAULT_SDK_AUTH_PROVIDER_CONFIG,
   mountSdk,
+  mountSdkContent,
   mountStaticQuestion,
 } from "e2e/support/helpers/embedding-sdk-component-testing";
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
@@ -249,17 +250,23 @@ describe("scenarios > embedding-sdk > static-question", () => {
       modal().findByRole("heading", { name: "New alert" }).should("be.visible");
     });
 
-    it("should hide the Alerts button on narrow viewports", () => {
-      cy.viewport(400, 800);
+    it("should hide the Alerts button when the question's container is narrow", () => {
+      cy.intercept("GET", "/api/card/*").as("getCard");
 
-      mountStaticQuestion({ withAlerts: true });
+      cy.get<number>("@questionId").then((questionId) => {
+        mountSdkContent(
+          <div style={{ width: 400 }}>
+            <StaticQuestion questionId={questionId} withAlerts />
+          </div>,
+        );
+      });
+
+      cy.wait("@getCard");
 
       getSdkRoot().button("Alerts").should("not.exist");
     });
 
-    it("should show the Alerts button on wide viewports", () => {
-      cy.viewport(1200, 800);
-
+    it("should show the Alerts button when the question's container is wide", () => {
       mountStaticQuestion({ withAlerts: true });
 
       getSdkRoot().button("Alerts").should("be.visible");
