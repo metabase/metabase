@@ -13,9 +13,21 @@ import { BreakoutChartCard } from "./BreakoutChartCard";
 import { toBreakoutRawSeries } from "./breakout-raw-series";
 import {
   type StatsFilters,
+  type UsageStatsMetric,
   buildSourceBreakoutQuery,
-  getChartTitle,
 } from "./query-utils";
+
+const TITLES: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`IP addresses with most conversations`;
+  },
+  get messages() {
+    return t`IP addresses with most messages`;
+  },
+  get tokens() {
+    return t`IP addresses with most tokens`;
+  },
+};
 
 type Props = StatsFilters & {
   provider: MetadataProvider;
@@ -67,7 +79,7 @@ export function ConversationsByIPAddressChart({
 
   return (
     <BreakoutChartCard
-      title={getChartTitle(metric, "ip_address")}
+      title={TITLES[metric]}
       rawSeries={rawSeries}
       isFetching={isFetching}
       display="row"

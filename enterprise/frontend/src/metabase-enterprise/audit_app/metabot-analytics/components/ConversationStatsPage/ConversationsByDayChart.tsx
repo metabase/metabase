@@ -15,10 +15,36 @@ import {
   type StatsFilters,
   type UsageStatsMetric,
   buildTimeseriesBreakoutQuery,
-  getChartTitle,
   getMetricSeriesSettings,
   isSingleDayFilter,
 } from "./query-utils";
+
+type BucketName = "day" | "hour";
+
+const TITLES: Record<BucketName, Record<UsageStatsMetric, string>> = {
+  day: {
+    get conversations() {
+      return t`Conversations by day`;
+    },
+    get messages() {
+      return t`Messages by day`;
+    },
+    get tokens() {
+      return t`Tokens by day`;
+    },
+  },
+  hour: {
+    get conversations() {
+      return t`Conversations by hour`;
+    },
+    get messages() {
+      return t`Messages by hour`;
+    },
+    get tokens() {
+      return t`Tokens by hour`;
+    },
+  },
+};
 
 type Props = StatsFilters & {
   provider: MetadataProvider;
@@ -37,7 +63,7 @@ export function ConversationsByDayChart({
   metric,
   onDimensionClick,
 }: Props) {
-  const bucketName = isSingleDayFilter(dateFilter) ? "hour" : "day";
+  const bucketName: BucketName = isSingleDayFilter(dateFilter) ? "hour" : "day";
 
   const query = useMemo(
     () =>
@@ -73,7 +99,7 @@ export function ConversationsByDayChart({
 
   return (
     <BreakoutChartCard
-      title={getChartTitle(metric, bucketName)}
+      title={TITLES[bucketName][metric]}
       rawSeries={rawSeries}
       isFetching={isFetching}
       display="area"
