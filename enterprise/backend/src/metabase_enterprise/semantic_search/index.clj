@@ -12,7 +12,7 @@
    [metabase-enterprise.semantic-search.embedding :as embedding]
    [metabase-enterprise.semantic-search.scoring :as scoring]
    [metabase-enterprise.semantic-search.settings :as semantic-settings]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.models.interface :as mi]
    [metabase.search.config :as search.config]
    [metabase.search.core :as search]
@@ -205,7 +205,7 @@
   [connectable table-name]
   (try
     (->> (index-size connectable table-name)
-         (analytics/set! :metabase-search/semantic-index-size))
+         (analytics/set-gauge! :metabase-search/semantic-index-size))
     (catch Exception e
       (log/warn e "Failed to set :metabase-search/semantic-index-size metric"))))
 

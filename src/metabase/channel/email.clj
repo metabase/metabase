@@ -3,7 +3,7 @@
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.channel.settings :as channel.settings]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]

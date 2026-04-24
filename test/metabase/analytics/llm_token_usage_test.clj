@@ -1,8 +1,8 @@
 (ns metabase.analytics.llm-token-usage-test
   (:require
    [clojure.test :refer :all]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.llm-token-usage :as llm-token-usage]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]))
 
@@ -81,9 +81,9 @@
 
 (defn- clear-llm-metrics! []
   ;; mt/with-prometheus-system! is slow, so prefer to clear metrics between test cases
-  (prometheus/clear! :metabase-metabot/llm-input-tokens)
-  (prometheus/clear! :metabase-metabot/llm-output-tokens)
-  (prometheus/clear! :metabase-metabot/llm-tokens-per-call))
+  (analytics/clear! :metabase-metabot/llm-input-tokens)
+  (analytics/clear! :metabase-metabot/llm-output-tokens)
+  (analytics/clear! :metabase-metabot/llm-tokens-per-call))
 
 (deftest track-prometheus!-test
   (mt/with-prometheus-system! [_ system]

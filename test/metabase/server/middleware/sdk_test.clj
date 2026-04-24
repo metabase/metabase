@@ -2,9 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.analytics.sdk :as sdk]
-   [metabase.config.core :as config]
    [metabase.request.current :as request.current]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -24,7 +24,7 @@
 (deftest bind-client-test
   (are [client]
        (let [request (mock-request {:client client})
-             handler (analytics/embedding-mw
+             handler (analytics.core/embedding-mw
                       (fn [_ respond _] (respond {:status 200 :body client})))
              response (handler request identity identity)]
          (is (= client
@@ -35,7 +35,7 @@
 (deftest bind-client-version-test
   (are [version]
        (let [request (mock-request {:version version})
-             handler (analytics/embedding-mw
+             handler (analytics.core/embedding-mw
                       (fn [_ respond _] (respond {:status 200 :body version})))
              response (handler request identity identity)]
          (is (= version
@@ -45,10 +45,11 @@
 
 (deftest embeding-mw-bumps-metrics-with-react-sdk-client-header
   (mt/with-prometheus-system! [_ system]
-    (let [request (mock-request {:client "embedding-sdk-react"})
-          good (analytics/embedding-mw (fn [_ respond _] (respond {:status 200})))
-          bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
-          exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
+    ;; X-Metabase-Client header == "embedding-sdk-react" => SDK context
+    (let [request (mock-request {:client @#'sdk/embedding-sdk-client})
+          good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
+          bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
+          exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
       (good request identity identity)
       (is (= 1.0 (mt/metric-value system :metabase-sdk/response {:status "200"})))
       (bad request identity identity)
@@ -61,10 +62,11 @@
 
 (deftest embeding-mw-bumps-metrics-with-iframe-client-header
   (mt/with-prometheus-system! [_ system]
-    (let [request (mock-request {:client "embedding-iframe"})
-          good (analytics/embedding-mw (fn [_ respond _] (respond {:status 200})))
-          bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
-          exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
+    ;; X-Metabase-Client header == "embedding-iframe" => iframe context
+    (let [request (mock-request {:client @#'sdk/embedding-iframe-client})
+          good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
+          bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
+          exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
       (good request identity identity)
       (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe/response {:status "200"})))
       (bad request identity identity)
@@ -78,9 +80,9 @@
 (deftest embedding-mw-bumps-metrics-with-iframe-full-app-client-header
   (mt/with-prometheus-system! [_ system]
     (let [request (mock-request {:client "embedding-iframe-full-app"})
-          good (analytics/embedding-mw (fn [_ respond _] (respond {:status 200})))
-          bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
-          exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
+          good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
+          bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
+          exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
       (good request identity identity)
       (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe-full-app/response {:status "200"})))
       (bad request identity identity)
@@ -94,9 +96,9 @@
 (deftest embedding-mw-bumps-metrics-with-iframe-static-client-header
   (mt/with-prometheus-system! [_ system]
     (let [request (mock-request {:client "embedding-iframe-static"})
-          good (analytics/embedding-mw (fn [_ respond _] (respond {:status 200})))
-          bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
-          exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
+          good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
+          bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
+          exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
       (good request identity identity)
       (is (= 1.0 (mt/metric-value system :metabase-embedding-iframe-static/response {:status "200"})))
       (bad request identity identity)
@@ -110,9 +112,9 @@
 (deftest embedding-mw-bumps-metrics-with-public-client-header
   (mt/with-prometheus-system! [_ system]
     (let [request (mock-request {:client "embedding-public"})
-          good (analytics/embedding-mw (fn [_ respond _] (respond {:status 200})))
-          bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
-          exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
+          good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
+          bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
+          exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
       (good request identity identity)
       (is (= 1.0 (mt/metric-value system :metabase-embedding-public/response {:status "200"})))
       (bad request identity identity)
@@ -126,9 +128,9 @@
 (deftest embedding-mw-bumps-metrics-with-simple-client-header
   (mt/with-prometheus-system! [_ system]
     (let [request (mock-request {:client "embedding-simple"})
-          good (analytics/embedding-mw (fn [_ respond _] (respond {:status 200})))
-          bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
-          exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
+          good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
+          bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
+          exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
       (good request identity identity)
       (is (= 1.0 (mt/metric-value system :metabase-embedding-simple/response {:status "200"})))
       (bad request identity identity)
@@ -144,9 +146,9 @@
     (with-redefs [analytics/inc! (fn [k _] (swap! prometheus-standin update k (fnil inc 0)))]
        ;; has X-Metabase-Client header, but it's not the SDK, so we don't track it
       (let [request (mock-request {:client "my-client"})
-            good (analytics/embedding-mw (fn [_ respond _] (respond {:status 200})))
-            bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
-            exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
+            good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
+            bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
         (good request identity identity)
         (is (= {} @prometheus-standin))
         (bad request identity identity)
@@ -158,9 +160,9 @@
   (let [prometheus-standin (atom {})]
     (with-redefs [analytics/inc! (fn [k _] (swap! prometheus-standin update k (fnil inc 0)))]
       (let [request (mock-request {}) ;; <= no X-Metabase-Client header => no SDK context
-            good (analytics/embedding-mw (fn [_ respond _] (respond {:status 200})))
-            bad (analytics/embedding-mw (fn [_ respond _] (respond {:status 400})))
-            exception (analytics/embedding-mw (fn [_ _respond raise] (raise {})))]
+            good (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 200})))
+            bad (analytics.core/embedding-mw (fn [_ respond _] (respond {:status 400})))
+            exception (analytics.core/embedding-mw (fn [_ _respond raise] (raise {})))]
         (good request identity identity)
         (is (= {} @prometheus-standin))
         (bad request identity identity)
@@ -217,14 +219,14 @@
 (defn- client-from-mw
   "Runs a request through embedding-mw and returns the *client* value bound inside the handler."
   [request]
-  (let [handler (analytics/embedding-mw
+  (let [handler (analytics.core/embedding-mw
                  (fn [_ respond _] (respond {:status 200 :body (sdk/get-client)})))]
     (:body (handler request identity identity))))
 
 (defn- route-from-mw
   "Runs a request through embedding-mw and returns the *route* value bound inside the handler."
   [request]
-  (let [handler (analytics/embedding-mw
+  (let [handler (analytics.core/embedding-mw
                  (fn [_ respond _] (respond {:status 200 :body (sdk/get-route)})))]
     (:body (handler request identity identity))))
 
@@ -282,26 +284,22 @@
       (is (= "embedding-sdk-react" (client-from-mw request))))))
 
 (deftest include-analytics-is-idempotent
-  (let [m        (atom {})
-        expected {:embedding_client      "client-C"
-                  :embedding_route       "public"
-                  :embedding_sdk_version "1.33.7"
-                  :auth_method           nil
-                  :metabase_version      (:tag config/mb-version-info)}]
-    (binding [sdk/*client* "client-C"
-              sdk/*route*  "public"
-              sdk/*version* "1.33.7"]
-      (is (= expected
-             (analytics/include-sdk-info @m)))
-      (swap! m analytics/include-sdk-info))
+  (let [m (atom {})]
+    (analytics.core/with-client! ["client-C"]
+      (analytics.core/with-version! ["1.33.7"]
+        (is (= {:embedding_client "client-C"
+                :embedding_version "1.33.7"}
+               (analytics.core/include-sdk-info @m)))
+        (swap! m analytics.core/include-sdk-info)))
     ;; unset the vars:
-    (binding [sdk/*client* nil
-              sdk/*route*  nil
-              sdk/*version* nil]
-      (is (= expected @m))
-      (testing "the values in m are used when the vars are not set"
-        (is (= expected
-               (analytics/include-sdk-info @m)))))))
+    (analytics.core/with-client! [nil]
+      (analytics.core/with-version! [nil]
+        (is (= {:embedding_client "client-C"
+                :embedding_version "1.33.7"} @m))
+        (testing "the values in m are used when the vars are not set"
+          (is (= {:embedding_client "client-C"
+                  :embedding_version "1.33.7"}
+                 (analytics.core/include-sdk-info @m))))))))
 
 (deftest include-sdk-info-pii-fields-test
   (let [request (-> (ring.mock/request :get "/api/public/card/1")

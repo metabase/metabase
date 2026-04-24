@@ -10,7 +10,7 @@
   and TODO: send it out in `summarize-execution`."
   (:require
    [clojure.string :as str]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.config.core :as config]
    [metabase.request.current :as request.current]
@@ -117,12 +117,12 @@
   "Tabulates the number of responses by status code made by clients of the SDK."
   [sdk-client {:keys [status]}]
   (case sdk-client
-    "embedding-sdk-react"       (prometheus/inc! :metabase-sdk/response {:status (str status)})
-    "embedding-iframe"          (prometheus/inc! :metabase-embedding-iframe/response {:status (str status)})
-    "embedding-iframe-full-app" (prometheus/inc! :metabase-embedding-iframe-full-app/response {:status (str status)})
-    "embedding-iframe-static"   (prometheus/inc! :metabase-embedding-iframe-static/response {:status (str status)})
-    "embedding-public"          (prometheus/inc! :metabase-embedding-public/response {:status (str status)})
-    "embedding-simple"          (prometheus/inc! :metabase-embedding-simple/response {:status (str status)})
+    "embedding-sdk-react"       (analytics/inc! :metabase-sdk/response {:status (str status)})
+    "embedding-iframe"          (analytics/inc! :metabase-embedding-iframe/response {:status (str status)})
+    "embedding-iframe-full-app" (analytics/inc! :metabase-embedding-iframe-full-app/response {:status (str status)})
+    "embedding-iframe-static"   (analytics/inc! :metabase-embedding-iframe-static/response {:status (str status)})
+    "embedding-public"          (analytics/inc! :metabase-embedding-public/response {:status (str status)})
+    "embedding-simple"          (analytics/inc! :metabase-embedding-simple/response {:status (str status)})
     (log/infof "Unknown client. client: %s" sdk-client)))
 
 (defn embedding-context?

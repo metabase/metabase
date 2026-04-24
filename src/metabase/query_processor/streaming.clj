@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [every? some mapv not-empty])
   (:require
    [clojure.string :as str]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.visualization-settings :as mb.viz]
@@ -258,7 +258,7 @@
              (assert (not (instance? ManyToManyChannel result)) "QP should not return a core.async channel.")
              (when (or (instance? Throwable result)
                        (= (:status result) :failed))
-               (prometheus/inc! :metabase-export/errors {:format (name export-format)})
+               (analytics/inc! :metabase-export/errors {:format (name export-format)})
                (streaming-response/write-error! os result export-format (status-code result))))))))))
 
 (defn transforming-query-response

@@ -3,7 +3,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql.helpers :as sql.helpers]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.search.appdb.specialization.api :as specialization]
@@ -328,7 +328,7 @@
                             (log/trace "indexed documents for " <>)
                             (when active-updated
                               (try
-                                (analytics/set! :metabase-search/appdb-index-size (t2/count (name active-updated)))
+                                (analytics/set-gauge! :metabase-search/appdb-index-size (t2/count (name active-updated)))
                                 (catch Exception e
                                   (log/warnf e "Unable to measure active search index size (%s)" active-updated))))))))]
     (if reindexing?
@@ -362,9 +362,9 @@
                   (into {}))
       (when (active-table)
         (try
-          (analytics/set! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
-                                                                                   :from   [(active-table)]
-                                                                                   :limit  1})))
+          (analytics/set-gauge! :metabase-search/appdb-index-size (:count (t2/query-one {:select [[:%count.* :count]]
+                                                                                         :from   [(active-table)]
+                                                                                         :limit  1})))
           (catch Exception e
             ;; No point tracking the size of the newer index table, since we won't have modified it.
             (when-not (table-not-found-exception? e)

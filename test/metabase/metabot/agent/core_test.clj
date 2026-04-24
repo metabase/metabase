@@ -1,7 +1,7 @@
 (ns metabase.metabot.agent.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -482,11 +482,11 @@
                                          {:profile-id "internal"})))))
 
     ;; clear! is much faster than a new mt/with-prometheus-system!
-      (prometheus/clear! :metabase-metabot/agent-requests)
-      (prometheus/clear! :metabase-metabot/agent-iterations)
-      (prometheus/clear! :metabase-metabot/agent-errors)
-      (prometheus/clear! :metabase-metabot/agent-duration-ms)
-      (prometheus/clear! :metabase-metabot/llm-requests)
+      (analytics/clear! :metabase-metabot/agent-requests)
+      (analytics/clear! :metabase-metabot/agent-iterations)
+      (analytics/clear! :metabase-metabot/agent-errors)
+      (analytics/clear! :metabase-metabot/agent-duration-ms)
+      (analytics/clear! :metabase-metabot/llm-requests)
 
       (testing "records agent-errors on failure"
         (with-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]

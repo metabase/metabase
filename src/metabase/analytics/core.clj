@@ -36,11 +36,7 @@
 
   known-labels
   initial-value
-  clear!
   connection-pool-info
-  inc!
-  observe!
-  set!
   setup!
   shutdown!]
 

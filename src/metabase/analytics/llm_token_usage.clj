@@ -1,7 +1,7 @@
 (ns metabase.analytics.llm-token-usage
   "LLM token usage tracking for Snowplow and Prometheus."
   (:require
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.analytics.util :as analytics.util]
    [metabase.util.malli :as mu]
@@ -60,9 +60,9 @@
   [{:keys [model-id tag prompt-tokens completion-tokens]}
    :- PrometheusArgs]
   (let [labels {:model model-id :source tag}]
-    (prometheus/inc! :metabase-metabot/llm-input-tokens labels prompt-tokens)
-    (prometheus/inc! :metabase-metabot/llm-output-tokens labels completion-tokens)
-    (prometheus/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt-tokens completion-tokens))))
+    (analytics/inc! :metabase-metabot/llm-input-tokens labels prompt-tokens)
+    (analytics/inc! :metabase-metabot/llm-output-tokens labels completion-tokens)
+    (analytics/observe! :metabase-metabot/llm-tokens-per-call labels (+ prompt-tokens completion-tokens))))
 
 (mu/defn track-token-usage!
   "Convenience wrapper that fires Snowplow and/or Prometheus token tracking.

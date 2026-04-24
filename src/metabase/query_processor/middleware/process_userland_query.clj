@@ -8,7 +8,8 @@
   (:refer-clojure :exclude [every? empty? get-in])
   (:require
    [java-time.api :as t]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.analytics.core :as analytics.core]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
@@ -60,7 +61,7 @@
         ;; does not convey dynamic var bindings to the background thread (to avoid holding DB connections).
         ;; `include-sdk-info` also runs in the `before-insert` hook as a safety net for any code path
         ;; that inserts QueryExecution directly (where dynamic vars would still be bound).
-        execution-info' (analytics/include-sdk-info execution-info)]
+        execution-info' (analytics.core/include-sdk-info execution-info)]
     (qp.util/with-execute-async
       ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
       ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
@@ -189,7 +190,7 @@
           rff   :- ::qp.schema/rff]
     ;; Update a gauge metric with the present number of queries in the WeakHashMap it maintains.
     ;; This has to live somewhere and while processing each query seems like a natural place.
-    (analytics/set! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
+    (analytics/set-gauge! :metabase.query-processor/computed-weak-map-queries (lib.computed/weak-map-population))
     (if-not (qp.util/userland-query? query)
       (qp query rff)
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
