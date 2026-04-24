@@ -47,7 +47,7 @@ export type MetabaseEmbeddingSdkBundleExports = PublicExports &
  * Internal glue between the bundle and the package. Not part of the public
  * consumer API. Field names here are implementation details and may change.
  */
-export type InternalBundleGlue = {
+type InternalBundleGlue = {
   _internal: {
     MetabotSubscriber: typeof MetabotSubscriber;
   };
