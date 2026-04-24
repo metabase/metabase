@@ -23,17 +23,17 @@
 
 (defn- make-tgz-bytes
   ^bytes [entries]
-  (with-open [baos (ByteArrayOutputStream.)
-              gz   (GzipCompressorOutputStream. baos)
-              tar  (TarArchiveOutputStream. gz)]
-    (doseq [[name content] entries
-            :let [^bytes bs (if (bytes? content) content (.getBytes (str content) "UTF-8"))
-                  entry     (doto (TarArchiveEntry. ^String name)
-                              (.setSize (alength bs)))]]
-      (.putArchiveEntry tar entry)
-      (.write tar bs 0 (alength bs))
-      (.closeArchiveEntry tar))
-    (.finish tar)
+  (let [baos (ByteArrayOutputStream.)]
+    (with-open [gz  (GzipCompressorOutputStream. baos)
+                tar (TarArchiveOutputStream. gz)]
+      (doseq [[name content] entries
+              :let [^bytes bs (if (bytes? content) content (.getBytes (str content) "UTF-8"))
+                    entry     (doto (TarArchiveEntry. ^String name)
+                                (.setSize (alength bs)))]]
+        (.putArchiveEntry tar entry)
+        (.write tar bs 0 (alength bs))
+        (.closeArchiveEntry tar))
+      (.finish tar))
     (.toByteArray baos)))
 
 (defn- valid-bundle-bytes
