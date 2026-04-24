@@ -75,7 +75,7 @@ export const SdkVisualizationWrapper = ({
   theme?: MetabaseTheme;
   initialStore?: State;
 }) => (
-  <Box fz="0.875rem">
+  <Box fz="0.875rem" className="mb-wrapper" data-mantine-color-scheme="light">
     <VisualizationWrapper initialStore={initialStore}>
       <SdkThemeProvider theme={theme}>{children}</SdkThemeProvider>
     </VisualizationWrapper>
@@ -116,8 +116,14 @@ export const SdkVisualizationStory = ({
   theme,
 }: IsomorphicVisualizationStoryProps & { theme?: MetabaseTheme }) => {
   return (
-    // @ts-expect-error story file
-    <Box w={1000} h={600} bg={theme?.colors?.background}>
+    <Box
+      w={1000}
+      h={600}
+      // @ts-expect-error story file
+      bg={theme?.colors?.background}
+      className="mb-wrapper"
+      data-mantine-color-scheme="light"
+    >
       <VisualizationWrapper>
         <SdkThemeProvider theme={theme}>
           <Visualization rawSeries={rawSeries} width={500} />

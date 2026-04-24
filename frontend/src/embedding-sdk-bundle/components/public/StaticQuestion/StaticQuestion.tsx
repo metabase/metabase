@@ -36,8 +36,8 @@ import type {
   SdkQuestionEntityInternalProps,
   SdkQuestionEntityPublicProps,
 } from "embedding-sdk-bundle/types/question";
+import { deserializeCardFromQuery } from "metabase/common/utils/card";
 import { Box, Group, Stack } from "metabase/ui";
-import { deserializeCardFromQuery } from "metabase/utils/card";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 import { EmbeddingSdkStaticMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkStaticMode";
 import type { ClickActionModeGetter } from "metabase/visualizations/types";

@@ -35,7 +35,7 @@ import type {
   SdkQuestionEntityInternalProps,
   SdkQuestionEntityPublicProps,
 } from "embedding-sdk-bundle/types/question";
-import { deserializeCardFromQuery } from "metabase/utils/card";
+import { deserializeCardFromQuery } from "metabase/common/utils/card";
 
 import { QuestionAlertsButton } from "../notifications/QuestionAlertsButton";
 
