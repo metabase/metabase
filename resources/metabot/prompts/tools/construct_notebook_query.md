@@ -1,7 +1,7 @@
 Use this tool to construct a notebook query. The query is written in the **MBQL 5 representations YAML format** — Metabase's portable, canonical serialization of a query. You write a YAML string describing the query shape; Metabase validates, repairs, and resolves it.
 
 Return a payload with:
-- `query`: a YAML string in representations format (see below). The YAML's top-level `database:` field identifies which application database the query targets — use the **exact name** as reported by `entity_details` / metadata tools (e.g. `Sample Database`, not `Sample`).
+- `query`: a YAML string in representations format (see below). The database that the query targets is inferred from the first stage's `source-table:` (or `source-card:`) — use the **exact database name** as reported by `entity_details` / metadata tools (it appears as the first element of every portable FK, e.g. `Sample Database`, not `Sample`).
 - `visualization`: optional `{"chart_type":"bar"}`.
 
 ## The query YAML
@@ -10,7 +10,6 @@ A minimal example — count of orders by month:
 
 ```yaml
 lib/type: mbql/query
-database: Sample
 stages:
   - lib/type: mbql.stage/mbql
     source-table: [Sample, PUBLIC, ORDERS]
@@ -23,7 +22,6 @@ stages:
 ### Top-level shape
 
 - `lib/type: mbql/query` — required marker.
-- `database: <name>` — the **exact** database name as reported by `entity_details` / metadata tools (e.g. `Sample Database`). This is the only signal Metabase uses to locate the application database — there is no separate `source_entity` parameter. If the name is wrong or ambiguous, the tool returns a clear error rather than guessing.
 - `stages: […]` — at least one stage. Multi-stage queries (post-aggregation filter/group-by/order-by) are supported — see the **Multi-stage queries** section below.
 
 ### Stage shape
@@ -127,7 +125,6 @@ Instead of `source-table:` you can use `source-card:` to query the result of an 
 
 ```yaml
 lib/type: mbql/query
-database: Sample
 stages:
   - lib/type: mbql.stage/mbql
     source-card: T4wA_GPFwGb6R4FxIDGTo   # portable_entity_id copied verbatim from entity_details
@@ -140,8 +137,31 @@ Further rules when a stage uses `source-card:`:
 
 - Reference columns produced by the card the same way you reference columns from a previous stage in a multi-stage query — `[field, {}, "<column-name>"]` with the column's **output name** (the string reported by the card's `fields` in `entity_details`) in the third slot, **not** a portable FK path.
 - A single stage has **either** `source-table:` **or** `source-card:`, never both.
-- The card must live in the same database as this query (same `database:` name at the top level). Cross-database queries are not supported.
+- The card must live in the same database as the other tables referenced by this query. Cross-database queries are not supported.
 - Prefer `source-card:` over re-writing the card's query inline: it keeps the query small, reuses the card's definition, and lets the user click through to the source question. Falling back to native SQL like `SELECT * FROM {{#<id>-<slug>}}` is **not** acceptable — always use `source-card:` when the user refers to an existing question or model.
+
+### Using a metric
+
+A **metric** is a pre-defined aggregation (e.g. "revenue", "active-users") attached to a specific base table. To use a metric in a query:
+
+1. Put the metric's **base table** in the stage's `source-table:`. Read it directly from the `base_table_fully_qualified_name` attribute on the `<metric>` tag (visible in both search results and `entity_details` responses) and combine it with `database_name` to form the portable FK `[<database_name>, <schema>, <table>]`. **Do not invent schema/table names** — never write `public`, `customers`, or any other generic placeholder; the base table is always explicit in the metric's XML attributes. If you cannot see `base_table_fully_qualified_name` on a metric, call `entity_details` on it before constructing the query.
+2. Reference the metric as an aggregation clause: `[metric, {}, "<portable_entity_id>"]`. The `portable_entity_id` is a 21-character opaque string reported by `entity_details` (or the `<metric>` search tag) — copy it verbatim.
+3. Add any filters / breakouts you need on the same stage, using field FKs on the metric's base table (same database + schema + table as in `source-table:`).
+
+```yaml
+lib/type: mbql/query
+stages:
+  - lib/type: mbql.stage/mbql
+    source-table: [Analytics, brex_enriched, fct_cards]     # the metric's base table
+    filters:
+      - ['!=', {}, [field, {}, [Analytics, brex_enriched, fct_cards, card_status]], "inactive"]
+    aggregation:
+      - [metric, {}, "aB3cD4eF5gH6iJ7kL8mN9"]               # metric's portable_entity_id
+```
+
+**Do not** try to reference a metric via `source-table: metabase://metric/<id>` or `source-card:` — metrics are aggregations, not sources. The `metabase://metric/<id>` URIs you see in prompts are for reading the metric's metadata via `read_resource`, not for embedding in queries.
+
+Similarly, the URI patterns `metabase://table/<id>`, `metabase://question/<id>`, `metabase://model/<id>` are **never** valid values for `source-table:` or `source-card:`. Always use portable FKs and portable entity ids from `entity_details`.
 
 ### Multi-stage queries
 
@@ -162,7 +182,6 @@ The column's name is whatever the previous stage's aggregation / breakout / fiel
 
 ```yaml
 lib/type: mbql/query
-database: Sample
 stages:
   - lib/type: mbql.stage/mbql
     source-table: [Sample, PUBLIC, ORDERS]
@@ -181,7 +200,6 @@ The stage-1 filter is a post-aggregation filter: the database groups orders by `
 
 ```yaml
 lib/type: mbql/query
-database: Sample
 stages:
   - lib/type: mbql.stage/mbql
     source-table: [Sample, PUBLIC, ORDERS]
@@ -212,7 +230,6 @@ For cross-table queries where the user wants columns from a specific related tab
 
 ```yaml
 lib/type: mbql/query
-database: Sample
 stages:
   - lib/type: mbql.stage/mbql
     source-table: [Sample, PUBLIC, ORDERS]
@@ -243,7 +260,6 @@ You can reference a field on another table **directly** — as long as there is 
 
 ```yaml
 lib/type: mbql/query
-database: Sample
 stages:
   - lib/type: mbql.stage/mbql
     source-table: [Sample, PUBLIC, ORDERS]
@@ -265,7 +281,13 @@ No explicit `joins:` entry needed. Internally, Metabase rewrites the breakout fi
 - If there is **no** FK path from source to target, you'll get a `:no-fk-path` error. In that case, switch to an explicit `joins:` entry or use a field on the source table instead.
 - Inside an explicit `joins:` block, field references continue to require `{join-alias: <alias>}`; the implicit-join pass does not rewrite those.
 
-**Tip:** Use the `entity_details` tool to discover FK columns. FK columns return a `fk_target_portable_fk` pointing to the target field — that tells you which column to use as the `source-field` when disambiguating.
+**Tip:** Use the `entity_details` tool or `read_resource metabase://table/<id>/fields` to discover FK columns. FK columns are marked in the returned XML with a `fk_target_fully_qualified_name="schema.table.field"` attribute, for example:
+
+```xml
+<field id="892" name="customer_id" type="string" fk_target_fully_qualified_name="customerio_data.customer.id"></field>
+```
+
+This tells you `customer_id` joins to `customerio_data.customer`. To reach a field on the related table (e.g. `email`), write `[field, {}, [<db>, customerio_data, customer, email]]` — **do not** guess that `email` is on the current table. If you need a column that doesn't exist on the current table, always look for an FK via `fk_target_fully_qualified_name` before writing the query.
 
 ### Expressions (custom columns)
 
@@ -275,7 +297,6 @@ The easiest form is a map keyed by the expression name:
 
 ```yaml
 lib/type: mbql/query
-database: Sample
 stages:
   - lib/type: mbql.stage/mbql
     source-table: [Sample, PUBLIC, ORDERS]
@@ -326,7 +347,6 @@ Both forms are rewritten to the same canonical MBQL 5 reference; the tool fills 
 
 ```yaml
 lib/type: mbql/query
-database: Sample
 stages:
   - lib/type: mbql.stage/mbql
     source-table: [Sample, PUBLIC, ORDERS]
@@ -347,7 +367,7 @@ stages:
 ## Rules and common mistakes
 
 - **Always include `{}` options in every clause**, even when empty. `[count]` is wrong — it must be `[count, {}]`.
-- **Use the exact database name** reported by `entity_details` (e.g. `Sample Database`, not `Sample`). The lookup is strict; a near-miss returns an `Unknown database: \`X\`` error rather than silently picking a database. Cross-database queries are not supported — every portable FK in the query (the first slot of `[<db>, <schema>, <table>]`) must use the same name as the top-level `database:` field.
+- **Use the exact database name** reported by `entity_details` (e.g. `Sample Database`, not `Sample`) as the first element of every portable FK. The database that the query targets is inferred from the first stage's `source-table[0]` (or `source-card:`); a near-miss returns an `Unknown database: \`X\`` error rather than silently picking one. Cross-database queries are not supported — every portable FK in the query must use the same database name.
 - **Use the portable FK form**, not numeric IDs. The `entity_details` and `field_stats` tools return both; the portable form is under `portable_id` / `portable_fk` in the result.
 - **Schemaless databases** (MongoDB, etc.) use `null` in the schema slot: `[Mongo, null, orders]`.
 - **JSON-unfolded fields** append extra path segments: `[DB, SCHEMA, TABLE, PARENT, CHILD]`.

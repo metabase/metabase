@@ -134,10 +134,16 @@
                ["limit"        {:optional true} [:maybe :int]]
                ["fields"       {:optional true} [:sequential [:ref ::clause]]]
                ["expressions"  {:optional true} [:sequential [:ref ::clause]]]]
+   ;; NOTE: `"database"` is marked optional here because the LLM-facing contract no longer
+   ;; requires the model to author it — the `construct_notebook_query` pipeline derives the
+   ;; database-id from the first stage's `source-table:` / `source-card:` and a repair pass
+   ;; stamps `"database"` in before this validation runs. The `representations` spec at
+   ;; `../representations/core-spec/v1/schemas/common/query.yaml` lists `database` as
+   ;; required; post-repair our internal form is spec-compliant.
    ::query    [:map
                {:closed false}
                ["lib/type" [:= "mbql/query"]]
-               ["database" :string]
+               ["database" {:optional true} :string]
                ["stages"   [:sequential {:min 1} [:ref ::stage]]]]})
 
 (def query-schema
