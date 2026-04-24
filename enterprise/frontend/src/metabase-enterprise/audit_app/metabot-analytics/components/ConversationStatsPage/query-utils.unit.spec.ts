@@ -4,13 +4,13 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
 import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
 
+import { isSingleDayFilter } from "./ConversationsByDayChart";
 import {
   applyGroupIdFilter,
   applyUserFilter,
   excludeAllUsersGroup,
   getMetricSeriesSettings,
   getViewForMetric,
-  isSingleDayFilter,
   joinGroupMembers,
 } from "./query-utils";
 

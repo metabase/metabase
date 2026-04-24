@@ -1,11 +1,15 @@
+import dayjs from "dayjs";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import type { DateFilterValue } from "metabase/querying/common/types";
 import type {
   CardMetadata,
   MetadataProvider,
+  Query,
   TableMetadata,
 } from "metabase-lib";
+import * as Lib from "metabase-lib";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
@@ -14,12 +18,32 @@ import { BreakoutChartCard } from "./BreakoutChartCard";
 import {
   type StatsFilters,
   type UsageStatsMetric,
-  buildTimeseriesBreakoutQuery,
+  applyDateFilter,
+  applyGroupIdFilter,
+  applyUsageStatsAggregation,
+  applyUserFilter,
+  findColumn,
   getMetricSeriesSettings,
-  isSingleDayFilter,
+  joinGroupMembers,
 } from "./query-utils";
 
 type BucketName = "day" | "hour";
+
+export function isSingleDayFilter(dateFilter: DateFilterValue): boolean {
+  if (dateFilter.type === "relative") {
+    return dateFilter.unit === "day" && Math.abs(dateFilter.value) <= 1;
+  }
+  if (dateFilter.type === "specific" && !dateFilter.hasTime) {
+    const { operator, values } = dateFilter;
+    if (operator === "=") {
+      return true;
+    }
+    if (operator === "between") {
+      return dayjs(values[0]).isSame(values[1], "day");
+    }
+  }
+  return false;
+}
 
 const TITLES: Record<BucketName, Record<UsageStatsMetric, string>> = {
   day: {
@@ -75,7 +99,6 @@ export function ConversationsByDayChart({
         userId,
         groupId,
         metric,
-        breakoutColumn: "created_at",
         bucketName,
       }),
     [
@@ -108,6 +131,48 @@ export function ConversationsByDayChart({
       onDimensionClick={onDimensionClick}
     />
   );
+}
+
+type BuildQueryOpts = StatsFilters & {
+  provider: MetadataProvider;
+  table: TableMetadata | CardMetadata;
+  groupMembersTable: TableMetadata | CardMetadata;
+  bucketName: BucketName;
+};
+
+function buildTimeseriesBreakoutQuery({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  userId,
+  groupId,
+  metric,
+  bucketName,
+}: BuildQueryOpts): Query {
+  let q = Lib.queryFromTableOrCardMetadata(provider, table);
+  q = applyDateFilter(q, dateFilter);
+  q = applyUserFilter(q, userId);
+  q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
+  q = groupId != null ? applyGroupIdFilter(q, groupId) : q;
+  q = applyUsageStatsAggregation(q, metric);
+  q = breakoutByCreatedAtBucket(q, bucketName);
+  return q;
+}
+
+function breakoutByCreatedAtBucket(
+  query: Query,
+  bucketName: BucketName,
+): Query {
+  const col = findColumn(query, "created_at", Lib.breakoutableColumns);
+  if (!col) {
+    return query;
+  }
+  const bucket = Lib.availableTemporalBuckets(query, 0, col).find((b) => {
+    return Lib.displayInfo(query, 0, b).shortName === bucketName;
+  });
+  const bucketed = bucket ? Lib.withTemporalBucket(col, bucket) : col;
+  return Lib.breakout(query, 0, bucketed);
 }
 
 function toTimeseriesRawSeries(
