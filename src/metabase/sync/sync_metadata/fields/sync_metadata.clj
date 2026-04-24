@@ -3,7 +3,6 @@
   the base type, database type, semantic type, and comment/remark (description) properties. This primarily affects
   Fields that were not newly created; newly created Fields are given appropriate metadata when first synced."
   (:require
-   [clojure.string :as str]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.crufty :as crufty]
    [metabase.sync.sync-metadata.fields.common :as common]
@@ -74,14 +73,12 @@
         new-base-type?
         (not= old-base-type new-base-type)
 
-        ;; only sync comment if old value was blank so we don't overwrite user-set values
         new-semantic-type?
         (and (nil? old-semantic-type)
              (not= old-semantic-type new-semantic-type))
 
         new-comment?
-        (and (str/blank? old-field-comment)
-             (not (str/blank? new-field-comment)))
+        (not= old-field-comment new-field-comment)
 
         new-database-position?
         (not= old-database-position new-database-position)
@@ -134,8 +131,10 @@
                       new-semantic-type)
            {:semantic_type new-semantic-type})
          (when new-comment?
-           (log/infof "Comment has been added for %s."
-                      (common/field-metadata-name-for-logging table metabase-field))
+           (log/infof "Comment of %s has changed from '%s' to '%s'."
+                      (common/field-metadata-name-for-logging table metabase-field)
+                      old-field-comment
+                      new-field-comment)
            {:description new-field-comment})
          (when new-database-position?
            (log/infof "Database position of %s has changed from '%s' to '%s'."

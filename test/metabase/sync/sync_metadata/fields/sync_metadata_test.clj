@@ -6,6 +6,7 @@
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [next.jdbc :as next.jdbc]
    [toucan2.core :as t2]))
 
@@ -250,6 +251,32 @@
               {:field_order :alphabetical}
               {:auto-cruft-columns ["updated_at"]}))))))
 
+(deftest field-comment-sync-test
+  (testing "description is updated when DB comment changes"
+    (is (= [["Field" 1 {:description "A different description."}]]
+           (updates-that-will-be-performed!
+            (merge default-metadata {:field-comment "A different description."})
+            (merge default-metadata {:field-comment "The original description."
+                                     :id            1})))))
+  (testing "description is set when DB comment is added to a field with no description"
+    (is (= [["Field" 1 {:description "New comment."}]]
+           (updates-that-will-be-performed!
+            (merge default-metadata {:field-comment "New comment."})
+            (merge default-metadata {:field-comment nil
+                                     :id            1})))))
+  (testing "description is cleared when DB comment is removed"
+    (is (= [["Field" 1 {:description nil}]]
+           (updates-that-will-be-performed!
+            (merge default-metadata {:field-comment nil})
+            (merge default-metadata {:field-comment "Old comment."
+                                     :id            1})))))
+  (testing "no update when DB comment hasn't changed"
+    (is (= []
+           (updates-that-will-be-performed!
+            (merge default-metadata {:field-comment "Same comment."})
+            (merge default-metadata {:field-comment "Same comment."
+                                     :id            1}))))))
+
 (deftest dont-overwrite-semantic-type-test
   (testing "We should not override non-nil `semantic_type`s"
     (is (= []
@@ -333,3 +360,40 @@
                 (is (not= (:fingerprint original-field) (:fingerprint new-field))))))
           (finally
             (t2/delete! :model/Database (mt/id))))))))
+
+(deftest user-set-description-protected-during-sync-test
+  (testing "When a user has explicitly set a field description, sync should not overwrite it"
+    (mt/with-temp-test-data [["table"
+                              [{:field-name "field"
+                                :base-type  :type/Text}]
+                              [["value"]]]]
+      (try
+        (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+        (let [field (t2/select-one :model/Field (mt/id :table :field))]
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2 (mt/db) {}
+           (fn [conn]
+             (next.jdbc/execute! conn ["COMMENT ON COLUMN \"TABLE\".\"FIELD\" IS 'Initial DB comment'"])))
+          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+
+          (testing "The description comes from the column comment"
+            (is (= "Initial DB comment" (:description (t2/select-one :model/Field (mt/id :table :field))))))
+
+          ;; Simulate user setting a description via the API
+          (schema.field-user-settings/upsert-user-settings field {:description "User-set description"})
+          (t2/update! :model/Field (:id field) {:description "User-set description"})
+
+          (testing "A user-set description overrides the column comment"
+            (is (= "User-set description" (:description (t2/select-one :model/Field (mt/id :table :field))))))
+
+          ;; Now change the DB comment and re-sync
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2 (mt/db) {}
+           (fn [conn]
+             (next.jdbc/execute! conn ["COMMENT ON COLUMN \"TABLE\".\"FIELD\" IS 'Changed DB comment'"])))
+          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+
+          (testing "The user-set description continues to override column comments when the column comments are updated"
+            (is (= "User-set description" (:description (t2/select-one :model/Field (mt/id :table :field)))))))
+        (finally
+          (t2/delete! :model/Database (mt/id)))))))
