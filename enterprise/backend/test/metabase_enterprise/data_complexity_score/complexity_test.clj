@@ -436,23 +436,27 @@
       true  {:mid nil :model_id "abc" :model "card"}  {:mid nil :model_id "xyz" :model "card"}
       false {:mid nil :model_id "xyz" :model "card"}  {:mid nil :model_id "abc" :model "card"})))
 
-(deftest ^:sequential meta-embedding-model-advertises-default-synonym-model-test
+(deftest ^:sequential meta-advertises-default-synonym-model-and-text-variant-test
   (with-redefs [complexity/library-catalog  (fn [] (catalog []))
                 complexity/universe-catalog (fn [] (catalog []))]
-    (testing ":embedding-model is the fixed MiniLM descriptor when the default embedder is in use"
+    (testing ":meta carries the fixed MiniLM descriptor + :names-split text-variant when using the default embedder"
       ;; default-synonym-embedder would try to reach ollama; stub get-embeddings-batch so the
       ;; test doesn't care whether ollama is running. We assert on :meta, not on scoring output.
       (with-redefs [semantic-search/get-embeddings-batch (fn [_ _] [])]
         (let [{:keys [meta]} (complexity/complexity-scores)]
           (is (= {:provider "ollama" :model-name "all-minilm:l6-v2"}
-                 (:embedding-model meta))))))
-    (testing ":embedding-model is omitted when the caller passes an explicit embedder — we don't
-              know what model produced those vectors, so we don't claim one"
+                 (:embedding-model meta)))
+          (is (= :names-split (:text-variant meta))))))
+    (testing ":embedding-model and :text-variant are omitted when the caller passes an explicit
+              embedder — we don't know what model or preprocessing produced those vectors, so we
+              don't claim either"
       (let [{:keys [meta]} (complexity/complexity-scores :embedder (mock-embedder {}))]
-        (is (not (contains? meta :embedding-model)))))
-    (testing ":embedding-model is omitted when synonym scoring is disabled (level < 2 or nil embedder)"
+        (is (not (contains? meta :embedding-model)))
+        (is (not (contains? meta :text-variant)))))
+    (testing ":embedding-model and :text-variant are omitted when synonym scoring is disabled (embedder is nil)"
       (let [{:keys [meta]} (complexity/complexity-scores :embedder nil)]
-        (is (not (contains? meta :embedding-model)))))))
+        (is (not (contains? meta :embedding-model)))
+        (is (not (contains? meta :text-variant)))))))
 
 (deftest ^:sequential active-embedding-model-reads-from-active-index-test
   (testing "active-embedding-model returns the model from the active index, not the configured setting"
@@ -666,8 +670,8 @@
             (is (integer? (get total "score")))
             (is (not (contains? total "measurement")))))))))
 
-(deftest ^:sequential emit-snowplow-includes-embedding-model-meta-test
-  (testing "every event carries the fixed MiniLM embedding_model_provider/name when using the default embedder"
+(deftest ^:sequential emit-snowplow-includes-embedding-model-and-text-variant-meta-test
+  (testing "every event carries the fixed MiniLM descriptor + text_variant when using the default embedder"
     (snowplow-test/with-fake-snowplow-collector
       (with-redefs [semantic-search/get-embeddings-batch (fn [_ _] [])]
         (mt/with-dynamic-fn-redefs [complexity/library-catalog  (fn [] (catalog [(entity :name "orders")]))
@@ -677,7 +681,8 @@
           (let [events (complexity-events!)]
             (is (seq events) "sanity: events were emitted")
             (is (every? #(= "ollama"           (get-in % ["parameters" "embedding_model_provider"])) events))
-            (is (every? #(= "all-minilm:l6-v2" (get-in % ["parameters" "embedding_model_name"])) events))))))))
+            (is (every? #(= "all-minilm:l6-v2" (get-in % ["parameters" "embedding_model_name"])) events))
+            (is (every? #(= "names_split"      (get-in % ["parameters" "text_variant"])) events))))))))
 
 (deftest ^:sequential emit-snowplow-failure-is-swallowed-test
   (testing "Snowplow emission failure is caught; complexity-scores still returns the score"

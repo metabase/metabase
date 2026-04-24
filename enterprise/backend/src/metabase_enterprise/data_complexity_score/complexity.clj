@@ -47,13 +47,10 @@
 
 (def formula-version
   "Bump when the scoring formula changes in a way that breaks historical comparisons.
-   v2 raised the synonym-similarity threshold from 0.30 to 0.90.
-   v3 reshaped the output into five dimensions and added density, concentration, graph-analytic,
-   field-level-collision, and metadata-coverage variables.
-   v4 switched the synonym axis to MiniLM-L6-v2 (STS, 0.80) on names-split text, replacing the
-   Arctic-L search-index vectors at 0.90. The model is fixed via `embedders/default-synonym-model`
-   rather than reused from the semantic-search index — precision cutoff vs. retrieval recall."
-  4)
+  Swaps of `embedding-model`, `synonym-threshold`, or `text-variant` don't need a bump — they
+  already ride in the fingerprint + `:meta` + Snowplow parameters, so downstream readers can
+  diff on those fields directly."
+  1)
 
 ;;; ----------------------------------- enumeration -----------------------------------
 
@@ -292,11 +289,12 @@
   String keys (top-level and nested) so they round-trip unchanged — Snowplow's `payload` only
   snake-cases top-level keys, and Cheshire would serialize nested keyword keys with their leading
   colon. `formula_version` stays top-level as the primary cross-version filter."
-  [{:keys [level synonym-threshold embedding-model]}]
+  [{:keys [level synonym-threshold embedding-model text-variant]}]
   (cond-> (sorted-map "level" level)
     synonym-threshold (assoc "synonym_threshold" synonym-threshold)
     embedding-model   (assoc "embedding_model_provider" (:provider embedding-model)
-                             "embedding_model_name"     (:model-name embedding-model))))
+                             "embedding_model_name"     (:model-name embedding-model))
+    text-variant      (assoc "text_variant" (snake text-variant))))
 
 (defn- emit-catalog-snowplow!
   "Emit Snowplow events for one catalog. One `key=\"total\"` event for the catalog total, then one
@@ -333,18 +331,22 @@
                             (`settings/effective-level`). Level 0 short-circuits — empty blocks
                             for every catalog and no embedder call.
     `:embedding-model-meta` optional `{:provider ... :model-name ...}` stashed into `:meta`.
+    `:text-variant`         optional preprocessing variant (e.g. `:names-split`) stashed into
+                            `:meta`. Together with `:embedding-model-meta`, pins how the
+                            synonym-axis vectors were produced.
     `:metabot-catalog`      optional `{:entities [...] :collection-count N}` for the `:metabot`
                             catalog. When absent (default), `:metabot` reuses the universe score."
   [{lib-entities :entities lib-coll :collection-count :as _library-catalog}
    {uni-entities :entities uni-coll :collection-count :as _universe-catalog}
    embedder
-   {:keys [level embedding-model-meta metabot-catalog]}]
+   {:keys [level embedding-model-meta text-variant metabot-catalog]}]
   (let [level        (settings/clamp-level (or level (settings/semantic-complexity-level)))
         empty-result {:library  (empty-score)
                       :universe (empty-score)
                       :metabot  (empty-score)
                       :meta     (cond-> {:formula-version formula-version :level 0}
-                                  embedding-model-meta (assoc :embedding-model embedding-model-meta))}]
+                                  embedding-model-meta (assoc :embedding-model embedding-model-meta)
+                                  text-variant         (assoc :text-variant    text-variant))}]
     (if (zero? ^long level)
       empty-result
       (let [universe-score (score-catalog uni-entities {:collection-count uni-coll} embedder level)]
@@ -359,7 +361,8 @@
          :meta     (cond-> {:formula-version formula-version :level level}
                      (>= ^long level 2)   (assoc :synonym-threshold
                                                  metrics.semantic/synonym-similarity-threshold)
-                     embedding-model-meta (assoc :embedding-model embedding-model-meta))}))))
+                     embedding-model-meta (assoc :embedding-model embedding-model-meta)
+                     text-variant         (assoc :text-variant    text-variant))}))))
 
 (defn- metabot-scope-applies? [{:keys [verified-only? collection-id]}]
   (or (boolean verified-only?) (some? collection-id)))
@@ -373,19 +376,28 @@
                :total <long>}
      :universe {…}
      :metabot  {…}
-     :meta     {:formula-version 3 :level <int> :synonym-threshold <float> :embedding-model {…}}}
+     :meta     {:formula-version 1
+                :level <int>
+                :synonym-threshold <float>
+                :embedding-model {:provider ... :model-name ...}
+                :text-variant :names-split}}
+
+  `:embedding-model` and `:text-variant` are present only when the default synonym embedder is
+  in use — an explicit `:embedder` means the caller owns the model + preprocessing narrative.
 
   Options:
     `:embedder`      overrides the synonym-axis embedder; pass `nil` to disable synonym scoring.
     `:metabot-scope` `{:verified-only? <bool> :collection-id <nil|Long>}` — see ns docstring.
     `:level`         override the level setting for this call (rare; mainly for tests)."
   [& {:keys [embedder metabot-scope level] :as opts}]
-  (let [level      (settings/clamp-level (or level (settings/semantic-complexity-level)))
-        embedder   (if (contains? opts :embedder) embedder embedders/default-synonym-embedder)
-        model-meta (when (and (pos? ^long level)
-                              (>= ^long level 2)
-                              (= embedder embedders/default-synonym-embedder))
-                     (select-keys embedders/default-synonym-model [:provider :model-name]))
+  (let [level        (settings/clamp-level (or level (settings/semantic-complexity-level)))
+        embedder     (if (contains? opts :embedder) embedder embedders/default-synonym-embedder)
+        default?     (and (pos? ^long level)
+                          (>= ^long level 2)
+                          (= embedder embedders/default-synonym-embedder))
+        model-meta   (when default?
+                       (select-keys embedders/default-synonym-model [:provider :model-name]))
+        text-variant (when default? embedders/default-text-variant)
         [library universe metabot]
         (if (zero? ^long level)
           [{:entities [] :collection-count 0}
@@ -397,6 +409,7 @@
         result (score-from-entities library universe embedder
                                     {:level                level
                                      :embedding-model-meta model-meta
+                                     :text-variant         text-variant
                                      :metabot-catalog      metabot})]
     (log-scores! result)
     (try (emit-snowplow! result)

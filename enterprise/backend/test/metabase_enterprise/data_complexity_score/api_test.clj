@@ -85,7 +85,7 @@
           (is (= #{:scale :nominal :semantic :metadata}
                  (set (keys (get-in resp [catalog :dimensions])))))))
       (testing ":meta reports the current formula-version + level"
-        (is (= 4 (get-in resp [:meta :formula-version])))
+        (is (= 1 (get-in resp [:meta :formula-version])))
         (is (number? (get-in resp [:meta :level])))))))
 
 (deftest complexity-endpoint-metabot-catalog-test
