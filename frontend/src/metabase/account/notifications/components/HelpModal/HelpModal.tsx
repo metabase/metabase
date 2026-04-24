@@ -4,10 +4,9 @@ import { Button } from "metabase/common/components/Button";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import { getApplicationName } from "metabase/selectors/whitelabel";
+import { Box, Stack } from "metabase/ui";
 import { useSelector } from "metabase/utils/redux";
 import Settings from "metabase/utils/settings";
-
-import { ModalMessage } from "./HelpModal.styled";
 
 type HelpModalProps = {
   onClose: (confirmed: boolean) => void;
@@ -29,13 +28,15 @@ function HelpModal({ onClose }: HelpModalProps): JSX.Element {
       }
       onClose={handleClose}
     >
-      <ModalMessage>
-        {t`It's possible you may also receive emails from ${applicationName} if you're a member of an email distribution list, like "team@mycompany.com" and that list is used as the recipient for an alert or dashboard subscription instead of your individual email.`}
-      </ModalMessage>
-      <ModalMessage>
-        <AdminMessage email={email} applicationName={applicationName} />
-        {t`Hopefully they'll be able to help you out!`}
-      </ModalMessage>
+      <Stack gap="md">
+        <Box>
+          {t`It's possible you may also receive emails from ${applicationName} if you're a member of an email distribution list, like "team@mycompany.com" and that list is used as the recipient for an alert or dashboard subscription instead of your individual email.`}
+        </Box>
+        <Box>
+          <AdminMessage email={email} applicationName={applicationName} />
+          {t`Hopefully they'll be able to help you out!`}
+        </Box>
+      </Stack>
     </ModalContent>
   );
 }
