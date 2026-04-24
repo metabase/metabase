@@ -610,6 +610,54 @@
                           ;; 1KB -> 5MB
                           :buckets [1000 5000 10000 50000 100000 500000 1000000 5000000]})
 
+   ;; messaging metrics
+   (prometheus/counter :metabase-mq/appdb-cleanup-deleted
+                       {:description "Messages/batches deleted by cleanup."
+                        :labels [:transport :channel]})
+   (prometheus/gauge :metabase-mq/appdb-queue-depth
+                     {:description "Batch count per queue by status."
+                      :labels [:channel :status]})
+   (prometheus/counter :metabase-mq/appdb-queue-poll-results
+                       {:description "Queue poll results by outcome."
+                        :labels [:result]})
+   (prometheus/gauge :metabase-mq/appdb-topic-subscriber-lag
+                     {:description "Undelivered messages between subscriber offset and latest."
+                      :labels [:channel]})
+   (prometheus/counter :metabase-mq/batch-stale-recoveries
+                       {:description "Batches recovered from stale processing state."
+                        :labels [:transport :channel]})
+   (prometheus/counter :metabase-mq/batches-handled
+                       {:description "Batches handled by status."
+                        :labels [:transport :channel :status]})
+   (prometheus/counter :metabase-mq/dedup-messages-dropped
+                       {:description "Messages dropped by dedup before publishing."
+                        :labels [:channel]})
+   (prometheus/histogram :metabase-mq/handle-duration-ms
+                         {:description "Duration in milliseconds to process a batch."
+                          :labels [:transport :channel]
+                          :buckets [1 5 10 50 100 500 1000 5000 10000 30000]})
+   (prometheus/counter :metabase-mq/messages-published
+                       {:description "Total messages published."
+                        :labels [:transport :channel]})
+   (prometheus/gauge :metabase-mq/publish-buffer-depth
+                     {:description "Messages sitting in the publish buffer awaiting flush."
+                      :labels [:channel]})
+   (prometheus/counter :metabase-mq/publish-buffer-flush-errors
+                       {:description "Publish buffer flush failures where messages were re-buffered for retry."
+                        :labels [:channel]})
+   (prometheus/counter :metabase-mq/queue-batch-permanent-failures
+                       {:description "Queue batches that exhausted retries."
+                        :labels [:channel]})
+   (prometheus/counter :metabase-mq/queue-batch-retries
+                       {:description "Queue batches retried after transient failure."
+                        :labels [:channel]})
+   (prometheus/counter :metabase-mq/messages-received
+                       {:description "Individual messages delivered to handlers."
+                        :labels [:transport :channel]})
+   (prometheus/counter :metabase-mq/topic-handler-errors
+                       {:description "Errors in topic subscriber handlers."
+                        :labels [:transport :channel]})
+
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures
                        {:description "Number of sync operation failures."

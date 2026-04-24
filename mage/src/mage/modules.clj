@@ -120,6 +120,7 @@
      login-history
      mcp
      metabot
+     mq
      notification
      oauth-server
      permissions

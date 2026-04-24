@@ -134,6 +134,95 @@
             (when-not (is-transaction-exception? e)
               (throw e))))))))
 
+(deftest after-commit-returns-false-outside-transaction-test
+  (testing "after-commit! returns false when not in a transaction"
+    (is (false? (mdb.connection/after-commit! (fn []))))))
+
+(deftest after-commit-returns-true-inside-transaction-test
+  (testing "after-commit! returns true when inside a transaction"
+    (t2/with-transaction []
+      (is (true? (mdb.connection/after-commit! (fn [])))))))
+
+(deftest after-commit-callbacks-execute-after-commit-test
+  (testing "Callbacks registered via after-commit! execute after successful commit"
+    (let [result (atom [])]
+      (t2/with-transaction []
+        (mdb.connection/after-commit! (fn [] (swap! result conj :callback-1)))
+        (mdb.connection/after-commit! (fn [] (swap! result conj :callback-2)))
+        (is (= [] @result) "Callbacks should not have executed yet"))
+      (is (= [:callback-1 :callback-2] @result) "Callbacks should execute after commit"))))
+
+(deftest after-commit-callbacks-not-executed-on-rollback-test
+  (testing "Callbacks are not executed when a transaction is rolled back"
+    (let [result (atom [])]
+      (try
+        (t2/with-transaction []
+          (mdb.connection/after-commit! (fn [] (swap! result conj :should-not-run)))
+          (throw (ex-info "force rollback" {})))
+        (catch Exception _))
+      (is (= [] @result) "Callbacks should not execute on rollback"))))
+
+(deftest after-commit-callback-registers-new-callback-test
+  (testing "A callback that registers another callback — both execute"
+    (let [result (atom [])]
+      (t2/with-transaction []
+        (mdb.connection/after-commit!
+         (fn []
+           (swap! result conj :first)
+           ;; Register a new callback from within a callback
+           (mdb.connection/after-commit! (fn [] (swap! result conj :second))))))
+      (is (= [:first :second] @result) "Both callbacks should execute")))
+
+  (testing "Deeply chained callbacks all execute"
+    (let [result (atom [])]
+      (t2/with-transaction []
+        (mdb.connection/after-commit!
+         (fn []
+           (swap! result conj :a)
+           (mdb.connection/after-commit!
+            (fn []
+              (swap! result conj :b)
+              (mdb.connection/after-commit!
+               (fn [] (swap! result conj :c))))))))
+      (is (= [:a :b :c] @result)))))
+
+(deftest nested-transactions-share-after-commit-and-state-test
+  (testing "Nested transactions share the same *after-commit* and *transaction-state*"
+    (let [result (atom [])]
+      (t2/with-transaction []
+        (mdb.connection/after-commit! (fn [] (swap! result conj :outer)))
+        (let [outer-state mdb.connection/*transaction-state*]
+          (t2/with-transaction []
+            (is (identical? outer-state mdb.connection/*transaction-state*)
+                "*transaction-state* should be the same atom in nested transactions")
+            (mdb.connection/after-commit! (fn [] (swap! result conj :inner)))))
+        (is (= [] @result) "Callbacks should not have executed yet"))
+      (is (= [:outer :inner] @result) "Both callbacks should execute after outermost commit"))))
+
+(deftest after-commit-discarded-on-nested-rollback-test
+  (testing "Callbacks registered in a nested transaction that rolls back are NOT executed"
+    (let [result (atom [])]
+      (t2/with-transaction []
+        (mdb.connection/after-commit! (fn [] (swap! result conj :outer)))
+        (try
+          (t2/with-transaction []
+            (mdb.connection/after-commit! (fn [] (swap! result conj :inner-should-not-run)))
+            (throw (Exception. "force savepoint rollback")))
+          (catch Exception _)))
+      (is (= [:outer] @result)
+          "Only the outer callback should run; the inner one from the rolled-back savepoint should be discarded")))
+
+  (testing "Transaction state from rolled-back nested transaction is also discarded"
+    (t2/with-transaction []
+      (swap! mdb.connection/*transaction-state* assoc :outer-key "outer-val")
+      (try
+        (t2/with-transaction []
+          (swap! mdb.connection/*transaction-state* assoc :inner-key "inner-val")
+          (throw (Exception. "force savepoint rollback")))
+        (catch Exception _))
+      (is (= {:outer-key "outer-val"} @mdb.connection/*transaction-state*)
+          "State from rolled-back nested transaction should be discarded"))))
+
 (deftest ^:parallel transaction-isolation-level-test
   (testing "We should always use READ_COMMITTED for the app DB (#44505)"
     (with-open [conn (.getConnection mdb.connection/*application-db*)]

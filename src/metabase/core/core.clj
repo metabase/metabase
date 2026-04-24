@@ -21,6 +21,7 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
    [metabase.logger.core :as logger]
+   [metabase.mq.core :as mq]
    [metabase.notification.core :as notification]
    [metabase.permissions.core :as perms]
    [metabase.plugins.core :as plugins]
@@ -105,6 +106,7 @@
   []
   (log/info "Metabase Shutting Down ...")
   (queue/stop-listeners!)
+  (mq/stop!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
   (tracing/shutdown!)

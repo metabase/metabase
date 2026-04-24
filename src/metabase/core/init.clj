@@ -43,6 +43,7 @@
    [metabase.metabot.init]
    [metabase.model-persistence.init]
    [metabase.models.init]
+   [metabase.mq.init]
    [metabase.notification.init]
    [metabase.oauth-server.init]
    [metabase.parameters.init]
