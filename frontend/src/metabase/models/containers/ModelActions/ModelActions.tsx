@@ -84,7 +84,7 @@ function ModelActions({
         loadMetadataForCard(card);
       }
     } else {
-      onChangeLocation(Urls.question(card));
+      onChangeLocation(Urls.card(card));
     }
   });
 

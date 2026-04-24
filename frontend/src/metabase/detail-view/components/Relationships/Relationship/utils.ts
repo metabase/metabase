@@ -85,5 +85,5 @@ export const getForeignKeyQuestionUrl = (query: Lib.Query): string => {
     dataset_query: Lib.toJsQuery(query),
   });
 
-  return Urls.question(question.card());
+  return Urls.card(question.card());
 };

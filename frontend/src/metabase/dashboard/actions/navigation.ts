@@ -20,7 +20,7 @@ export const editQuestion = createThunkAction(
       const dashboard = dashboardId != null ? dashboards[dashboardId] : null;
       const { isNative } = Lib.queryDisplayInfo(question.query());
       const finalMode = isNative ? "view" : mode;
-      const url = Urls.question(question.card(), { mode: finalMode });
+      const url = Urls.card(question.card(), { mode: finalMode });
 
       dispatch(openUrl(url));
       return { id: dashboardId, name: dashboard?.name, model: "dashboard" };

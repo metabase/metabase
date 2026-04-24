@@ -56,7 +56,7 @@ export const ModelNav = ({ rowName, table, ...props }: Props) => {
 
       {card && (
         <>
-          <Breadcrumb href={Urls.question(card)} icon="model">
+          <Breadcrumb href={Urls.card(card)} icon="model">
             {card.name}
           </Breadcrumb>
 

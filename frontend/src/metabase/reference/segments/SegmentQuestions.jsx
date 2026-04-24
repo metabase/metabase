@@ -73,7 +73,7 @@ const SegmentQuestionsInner = ({ style, table, segment, metadata }) => {
                         key={question.id()}
                         name={question.displayName()}
                         description={getDescription(question)}
-                        url={Urls.question(question.card())}
+                        url={Urls.card(question.card())}
                         icon={visualizations.get(question.display()).iconName}
                       />
                     ),

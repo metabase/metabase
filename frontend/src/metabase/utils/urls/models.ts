@@ -2,8 +2,7 @@ import slugg from "slugg";
 
 import type { Card } from "metabase-types/api";
 
-import type { QuestionUrlBuilderParams } from "./questions";
-import { question } from "./questions";
+import { type CardUrlBuilderParams, card as urlForCard } from "./cards";
 import { appendSlug } from "./utils";
 
 export type CardOrSearchResult = Partial<Card> & {
@@ -12,11 +11,8 @@ export type CardOrSearchResult = Partial<Card> & {
   name?: string;
 };
 
-export function model(
-  card: CardOrSearchResult,
-  opts?: QuestionUrlBuilderParams,
-) {
-  return question(card, opts);
+export function model(card: CardOrSearchResult, opts?: CardUrlBuilderParams) {
+  return urlForCard(card, opts);
 }
 
 export function modelDetail(card: CardOrSearchResult, tab = "") {

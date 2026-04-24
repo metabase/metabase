@@ -68,7 +68,7 @@ export function getURLForCardState(
       options.objectId = objectId;
     }
   }
-  return Urls.question(card, options);
+  return Urls.card(card, options);
 }
 
 export const isNavigationAllowed = ({

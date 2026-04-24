@@ -99,3 +99,20 @@ export function parseListParam<T>(
     return undefined;
   }
 }
+
+export function encodeIfNeeded<T extends object>(
+  value: T | string,
+  fn: (value: T) => string,
+) {
+  if (typeof value === "string") {
+    return value;
+  }
+  return fn(value);
+}
+
+export function prefixIfNeeded(value: string, prefix: string) {
+  if (value === "" || value.startsWith(prefix)) {
+    return value;
+  }
+  return `${prefix}${value}`;
+}

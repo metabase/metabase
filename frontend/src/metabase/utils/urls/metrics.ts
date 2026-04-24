@@ -6,8 +6,8 @@ import {
 } from "metabase/metrics-viewer/utils/url-serialization";
 import type { CardId, CollectionId } from "metabase-types/api";
 
+import { card as urlForCard } from "./cards";
 import type { CardOrSearchResult } from "./models";
-import { question } from "./questions";
 
 const METRICS_VIEWER_ROOT = "/explore";
 
@@ -100,9 +100,9 @@ export function metric(card: CardOrSearchResult): string {
   if (!isNaN(numericId)) {
     return metricAbout(numericId);
   }
-  return question(card);
+  return urlForCard(card);
 }
 
 export function metricQuestionUrl(card: CardOrSearchResult): string {
-  return question({ ...card, type: "metric" });
+  return urlForCard({ ...card, type: "metric" });
 }

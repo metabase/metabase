@@ -21,7 +21,7 @@ export function getQuestionUrl(
   const isDirty =
     originalQuestion != null && question.isDirtyComparedTo(originalQuestion);
 
-  return Urls.question(question.cardWithNormalizedQuery(), {
+  return Urls.card(question.cardWithNormalizedQuery(), {
     query,
     creationType,
     parameterValues: question._parameterValues,

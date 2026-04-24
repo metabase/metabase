@@ -54,7 +54,7 @@ export function ModelUsageDetails({ model }: ModelUsageDetailsProps) {
       {filtered.map((card) => {
         return (
           <Link
-            to={Urls.question(card)}
+            to={Urls.card(card)}
             aria-label={card.name}
             variant="brand"
             key={card.id}

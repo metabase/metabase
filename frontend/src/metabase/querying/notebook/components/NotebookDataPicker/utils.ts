@@ -31,7 +31,7 @@ export const getUrl = ({
       name: tableInfo.displayName,
     };
 
-    return isModel ? Urls.model(payload) : Urls.question(payload);
+    return isModel ? Urls.model(payload) : Urls.card(payload);
   } else {
     return Urls.tableRowsQuery(databaseId, tableId);
   }
