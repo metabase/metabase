@@ -64,6 +64,47 @@ jobs:
               }
             });
 
+  manage-milestones:
+    # Close the milestone we're about to ship and open the next one BEFORE building,
+    # so any PRs that merge while the build is in flight are tagged with the next
+    # milestone (not the one about to be released).
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        sparse-checkout: |
+          release
+          .github
+    - name: Prepare release scripts
+      uses: ./.github/actions/prepare-release-scripts
+    - name: Update milestones
+      uses: actions/github-script@v7
+      with:
+        script: | # js
+          const { closeMilestone, openNextMilestones, isPreReleaseVersion } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+          const version = '${{ inputs.version }}';
+
+          if (isPreReleaseVersion(version)) {
+            console.log("This is a prerelease version, skipping milestone management");
+            return;
+          }
+
+          await closeMilestone({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version,
+          }).catch(console.error);
+
+          await openNextMilestones({
+            github,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            version,
+          }).catch(console.error);
+
 
   check-version:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}

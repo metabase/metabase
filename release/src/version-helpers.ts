@@ -437,6 +437,43 @@ export const getNextPatchVersion = async ({
   return nextPatch;
 };
 
+export const findNextMinorVersion = (version: string) => {
+  if (!isValidVersionString(version)) {
+    throw new Error(`Invalid version string: ${version}`);
+  }
+
+  const [mainVersion, suffix] = version.split("-");
+
+  const [major, minor] = mainVersion
+    .replace(/(v1|v0)\./, "")
+    .split(".")
+    .map(Number);
+
+  const baseVersion = `v0.${major}.${(minor || 0) + 1}`;
+
+  return suffix ? `${baseVersion}-${suffix}` : baseVersion;
+};
+
+export const getNextMinorVersion = async ({
+  github,
+  owner,
+  repo,
+  majorVersion,
+}: GithubProps & { majorVersion: number }) => {
+  const lastRelease = await getLastReleaseTag({
+    github,
+    owner,
+    repo,
+    version: `v0.${majorVersion.toString()}.0`,
+    ignorePatches: true,
+    ignorePreReleases: true,
+  });
+
+  const nextMinor = findNextMinorVersion(lastRelease);
+
+  return nextMinor;
+};
+
 type SdkVersionInfo = {
   version: string;
   preReleaseLabel: string;
