@@ -7,10 +7,6 @@ import type {
   MetabaseTheme,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types";
-import type {
-  SdkIframeDashboardEmbedSettings,
-  SdkIframeQuestionEmbedSettings,
-} from "metabase/embedding/embedding-iframe-sdk-setup/types";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type {
   MetabaseEmbeddingSessionToken,
@@ -285,8 +281,8 @@ export type SdkIframeEmbedEventHandler = () => void;
 /** Keys that can be used to update the embed settings */
 export type SdkIframeEmbedSettingKey =
   | keyof SdkIframeEmbedBaseSettings
-  | keyof SdkIframeDashboardEmbedSettings
-  | keyof SdkIframeQuestionEmbedSettings
+  | keyof DashboardEmbedOptions
+  | keyof QuestionEmbedOptions
   | keyof ExplorationEmbedOptions
   | keyof BrowserEmbedOptions
   | keyof MetabotEmbedOptions;

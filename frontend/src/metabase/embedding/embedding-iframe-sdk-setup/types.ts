@@ -6,7 +6,7 @@ import type {
   QuestionEmbedOptions,
   SdkIframeEmbedAuthTypeSettings,
   SdkIframeEmbedBaseSettings,
-} from "metabase/embedding/embedding-iframe-sdk/types/embed";
+} from "metabase/embedding/iframe-sdk/types/embed";
 import type { BaseRecentItem } from "metabase-types/api";
 
 export type SdkIframeEmbedSetupExperience =

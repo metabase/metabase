@@ -1,11 +1,11 @@
 import _ from "underscore";
 
+import { getAuthSubTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-sub-type-for-settings";
+import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
 import type {
   SdkIframeEmbedSettingKey,
   SdkIframeEmbedSettings,
-} from "metabase/embedding/embedding-iframe-sdk/types/embed";
-import { getAuthSubTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-sub-type-for-settings";
-import { getAuthTypeForSettings } from "metabase/embedding/embedding-iframe-sdk-setup/utils/get-auth-type-for-settings";
+} from "metabase/embedding/iframe-sdk/types/embed";
 import { countEmbeddingParameterOptions } from "metabase/embedding/lib/count-embedding-parameter-options";
 import type { SdkIframeEmbedSetupModalInitialState } from "metabase/plugins";
 import type { EmbeddingParameters } from "metabase/public/lib/types";
@@ -46,7 +46,10 @@ const EMBED_SETTINGS_TO_TRACK: SdkIframeEmbedSettingKey[] = [
 /**
  * When comparing settings to defaults, we ignore these options as they are already tracked in another step.
  */
-const EMBED_SETTINGS_TO_IGNORE: SdkIframeEmbedSettingKey[] = [
+const EMBED_SETTINGS_TO_IGNORE: (
+  | SdkIframeEmbedSettingKey
+  | keyof SdkIframeEmbedSetupSettings
+)[] = [
   "componentName",
   "dashboardId",
   "questionId",

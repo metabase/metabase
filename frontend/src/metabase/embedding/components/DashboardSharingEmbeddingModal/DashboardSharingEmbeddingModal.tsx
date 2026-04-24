@@ -2,9 +2,10 @@ import {
   useUpdateDashboardEmbeddingParamsMutation,
   useUpdateDashboardEnableEmbeddingMutation,
 } from "metabase/api";
-import { getParameters } from "metabase/dashboard/selectors";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
+import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { EmbedModal } from "metabase/public/components/EmbedModal";
+import { getMetadata } from "metabase/selectors/metadata";
 import { useSelector } from "metabase/utils/redux";
 import type { Dashboard } from "metabase-types/api";
 
@@ -21,7 +22,13 @@ export const DashboardSharingEmbeddingModal = ({
   onBack,
   onClose,
 }: DashboardSharingEmbeddingModalProps) => {
-  const parameters = useSelector(getParameters);
+  const metadata = useSelector(getMetadata);
+  const parameters = getSavedDashboardUiParameters(
+    dashboard.dashcards,
+    dashboard.parameters,
+    dashboard.param_fields,
+    metadata,
+  );
 
   const [updateDashboardEmbeddingParams] =
     useUpdateDashboardEmbeddingParamsMutation();

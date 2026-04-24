@@ -1,20 +1,15 @@
 import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-bundle/errors";
 import * as MetabaseErrors from "embedding-sdk-bundle/errors";
-import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
+import { setupConfigWatcher } from "metabase/embedding/iframe-sdk/config-watcher";
+import {
+  DISABLE_UPDATE_FOR_KEYS,
+  EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME,
+} from "metabase/embedding/iframe-sdk/constants";
+import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/iframe-sdk/plugin";
 import type {
   EmbedAuthManager,
   EmbedAuthManagerContext,
-} from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
-import type { ComponentToAttributes } from "metabase/embedding/embedding-iframe-sdk/types/modular-embedding";
-import { decodeJwt } from "metabase/utils/jwt";
-
-import { debouncedReportAnalytics } from "./analytics";
-import {
-  ALLOWED_EMBED_SETTING_KEYS_MAP,
-  DISABLE_UPDATE_FOR_KEYS,
-  EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME,
-  METABASE_CONFIG_IS_PROXY_FIELD_NAME,
-} from "./constants";
+} from "metabase/embedding/iframe-sdk/types/auth-manager";
 import type {
   SdkIframeEmbedElementSettings,
   SdkIframeEmbedEvent,
@@ -22,7 +17,11 @@ import type {
   SdkIframeEmbedMessage,
   SdkIframeEmbedSettings,
   SdkIframeEmbedTagMessage,
-} from "./types/embed";
+} from "metabase/embedding/iframe-sdk/types/embed";
+import { decodeJwt } from "metabase/utils/jwt";
+
+import { debouncedReportAnalytics } from "./analytics";
+import type { ComponentToAttributes } from "./types/modular-embedding";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
 
 // Import EE Iframe Embedding script plugins
@@ -35,54 +34,6 @@ const _activeEmbeds: Set<MetabaseEmbedElement> = new Set();
 
 /** counter used as a parameter in the iframe src to force parallel loading */
 let _iframeCounter = 0;
-
-// Setup a proxy to watch for changes to window.metabaseConfig and update all
-// active embeds when the config changes. It also setups a setter for
-// window.metabaseConfig to re-create the proxy if the whole object is replaced,
-// for example if this script is loaded before the customer calls
-// `defineMetabaseConfig` in their code, which replaces the entire object.
-export const setupConfigWatcher = () => {
-  const createProxy = (target: Record<string, unknown>) =>
-    new Proxy(target, {
-      get(target, prop, receiver) {
-        // Needed for EmbedJS Wizard to call setupConfigWatcher on the Wizard reinitialization
-        if (prop === METABASE_CONFIG_IS_PROXY_FIELD_NAME) {
-          return true;
-        }
-
-        return Reflect.get(target, prop, receiver);
-      },
-      set(metabaseConfig, prop, newValue) {
-        metabaseConfig[prop as string] = newValue;
-        updateAllEmbeds({ [prop]: newValue });
-        return true;
-      },
-    });
-
-  let currentConfig = (window as any).metabaseConfig || {};
-  let proxyConfig: Record<string, unknown> = createProxy(currentConfig);
-
-  Object.defineProperty(window, "metabaseConfig", {
-    configurable: true,
-    enumerable: true,
-    get() {
-      return proxyConfig;
-    },
-    set(newVal: Record<string, unknown>) {
-      assertFieldCanBeUpdated(newVal);
-      assertValidMetabaseConfigField(newVal);
-
-      currentConfig = { ...currentConfig, ...newVal };
-      proxyConfig = createProxy(currentConfig);
-      updateAllEmbeds(currentConfig);
-    },
-  });
-
-  // Trigger initial update if there was existing config
-  if (Object.keys(currentConfig).length > 0) {
-    updateAllEmbeds(currentConfig);
-  }
-};
 
 export const updateAllEmbeds = (
   config: Partial<SdkIframeEmbedElementSettings>,
@@ -104,7 +55,7 @@ const unregisterEmbed = (embed: MetabaseEmbedElement) => {
 };
 
 if (typeof window !== "undefined") {
-  setupConfigWatcher();
+  setupConfigWatcher(updateAllEmbeds);
 }
 
 const raiseError = (message: string) => {
@@ -122,23 +73,6 @@ function assertFieldCanBeUpdated(
       currentConfig[field] !== newValues[field]
     ) {
       raiseError(`${field} cannot be updated after the embed is created`);
-    }
-  }
-}
-
-type AllowedMetabaseConfigKey =
-  (typeof ALLOWED_EMBED_SETTING_KEYS_MAP.base)[number];
-
-function assertValidMetabaseConfigField(
-  newValues: Partial<SdkIframeEmbedElementSettings>,
-) {
-  for (const field in newValues) {
-    if (
-      !ALLOWED_EMBED_SETTING_KEYS_MAP.base.includes(
-        field as AllowedMetabaseConfigKey,
-      )
-    ) {
-      raiseError(`${field} is not a valid configuration name`);
     }
   }
 }

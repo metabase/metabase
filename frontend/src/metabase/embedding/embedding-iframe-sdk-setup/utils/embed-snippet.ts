@@ -1,11 +1,11 @@
 import { match } from "ts-pattern";
 import _ from "underscore";
 
+import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
 import {
   ALLOWED_EMBED_SETTING_KEYS_MAP,
   ALLOWED_GUEST_EMBED_SETTING_KEYS_MAP,
-} from "metabase/embedding/embedding-iframe-sdk/constants";
-import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
+} from "metabase/embedding/iframe-sdk/constants";
 
 import type {
   SdkIframeEmbedSetupExperience,

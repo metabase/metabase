@@ -1,4 +1,4 @@
-import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
+import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/iframe-sdk/plugin";
 
 import { EmbedAuthManager } from "./auth-manager/AuthManager";
 
