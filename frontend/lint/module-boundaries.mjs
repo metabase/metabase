@@ -45,6 +45,7 @@ const elements = [
   createElement({ type: "shared", name: "common", enforceOutgoing: true }),
   createElement({ type: "shared", name: "querying" }),
   createElement({ type: "shared", name: "visualizations" }),
+  createElement({ type: "shared", name: "embedding" }),
   // feature
   createElement({ type: "feature", name: "dashboard" }),
   createElement({
@@ -62,6 +63,11 @@ const elements = [
     enforceOutgoing: true,
   }),
   // app
+  createElement({
+    type: "app",
+    name: "embedding-iframe-sdk",
+    enforceOutgoing: true,
+  }),
   ...[
     "frontend/src/metabase/app.js",
     "frontend/src/metabase/app-embed-sdk.tsx",
@@ -129,6 +135,17 @@ const rules = [
   {
     from: ["app/*"],
     allow: ["lib/*", "basic/*", "shared/*", "feature/*", "app/*"],
+  },
+  {
+    from: ["app/embedding-iframe-sdk"],
+    allow: [
+      "lib/*",
+      "basic/*",
+      "shared/*",
+      "feature/*",
+      "app/embedding-sdk-bundle",
+    ],
+    message: "Iframe SDK composes the bundle; don't reach into peer variants",
   },
 ];
 

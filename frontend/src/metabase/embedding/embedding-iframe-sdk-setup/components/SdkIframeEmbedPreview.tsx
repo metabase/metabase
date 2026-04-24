@@ -10,12 +10,12 @@ import { match } from "ts-pattern";
 
 import { applyThemePreset } from "embedding-sdk-shared/lib/apply-theme-preset";
 import { useSetting } from "metabase/common/hooks";
-import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/embedding-iframe-sdk/constants";
 // we import the equivalent of embed.js so that we don't add extra loading time
 // by appending the script
-import { setupConfigWatcher } from "metabase/embedding/embedding-iframe-sdk/embed";
-import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { buildEmbedAttributes } from "metabase/embedding/embedding-iframe-sdk-setup/utils/build-embed-attributes";
+import { setupConfigWatcher } from "metabase/embedding/iframe-sdk/config-watcher";
+import { METABASE_CONFIG_IS_PROXY_FIELD_NAME } from "metabase/embedding/iframe-sdk/constants";
+import type { SdkIframeEmbedBaseSettings } from "metabase/embedding/iframe-sdk/types/embed";
 import type { MetabaseTheme } from "metabase/embedding-sdk/theme";
 import { Card } from "metabase/ui";
 import { colors as defaultMetabaseColors } from "metabase/ui/colors";
@@ -54,7 +54,7 @@ const SdkIframeEmbedPreviewInner = () => {
       window.metabaseConfig = metabaseConfig;
 
       if (!window.metabaseConfig[METABASE_CONFIG_IS_PROXY_FIELD_NAME]) {
-        setupConfigWatcher();
+        setupConfigWatcher(() => {});
       }
     },
     [],

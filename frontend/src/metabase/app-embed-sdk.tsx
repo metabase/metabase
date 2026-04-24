@@ -25,7 +25,7 @@ import "sdk-iframe-embedding-ee-plugins";
 
 // Must be imported after the EE plugins are loaded
 // eslint-disable-next-line import/order
-import { SdkIframeEmbedRoute } from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute";
+import { SdkIframeEmbedRoute } from "metabase/embedding-iframe-sdk/components/SdkIframeEmbedRoute";
 
 function _init() {
   document.body.style.margin = "0";

@@ -314,7 +314,7 @@ export interface MetabaseMetabotAttributes {
 }
 
 /**
- * Used to enforce types in frontend/src/metabase/embedding/embedding-iframe-sdk/embed.ts
+ * Used to enforce types in frontend/src/metabase/embedding-iframe-sdk/embed.ts
  *
  * @internal
  */

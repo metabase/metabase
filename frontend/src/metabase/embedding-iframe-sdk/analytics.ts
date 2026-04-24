@@ -13,7 +13,7 @@ import type { MetabaseEmbedElement } from "./embed";
 
 const DEFAULT_VALUES: DefaultValues = {
   dashboard: {
-    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L188} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L188} */
     drills: true,
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/dashboard/SdkDashboard.tsx#L160} */
     withDownloads: false,
@@ -32,25 +32,25 @@ const DEFAULT_VALUES: DefaultValues = {
     enableEntityNavigation: false,
   },
   question: {
-    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L241} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L241} */
     drills: true,
     /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.tsx#L132} */
     withDownloads: false,
     /**
-     * @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L234}
-     * @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L255}
+     * @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L234}
+     * @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L255}
      */
     withTitle: true,
-    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
     isSaveEnabled: false,
     /** @see {@link https://github.com/metabase/metabase/blob/c1b57eeb3f6f99126cc52e3a960b98f5c8bbc109/frontend/src/embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion.tsx#L137} */
     withAlerts: false,
   },
   exploration: {
-    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L256} */
     isSaveEnabled: false,
     /**
-     * @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/metabase/embedding/embedding-iframe-sdk/types/embed.ts#L170-L171}
+     * @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/metabase/embedding/iframe-sdk/types/embed.ts#L170-L171}
      * Since this is optional, the default value is undefined.
      *
      * Unused, but documented for completeness.
@@ -58,9 +58,9 @@ const DEFAULT_VALUES: DefaultValues = {
     questionId: undefined, // used to derive exploration id_new/id_new_native
   },
   browser: {
-    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/MetabaseBrowser.tsx#L39} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding-iframe-sdk/components/MetabaseBrowser.tsx#L39} */
     readOnly: true,
-    /** @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/metabase/embedding/embedding-iframe-sdk/types/embed.ts#L166} */
+    /** @see {@link https://github.com/metabase/metabase/blob/c8b1767e66352738553211dea3d7b1addc81da27/frontend/src/metabase/embedding/iframe-sdk/types/embed.ts#L166} */
     enableEntityNavigation: false,
   },
   // NEW: EMB-1334 - new component
@@ -72,11 +72,11 @@ const DEFAULT_VALUES: DefaultValues = {
 
 const DEFAULT_GUEST_EMBED_VALUES: DefaultValues = merge(DEFAULT_VALUES, {
   dashboard: {
-    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L157} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L157} */
     drills: false,
   },
   question: {
-    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L212} */
+    /** @see {@link https://github.com/metabase/metabase/blob/9e62f8c2b7d3739670d9f4259e1d4e28f5b654cc/frontend/src/metabase/embedding-iframe-sdk/components/SdkIframeEmbedRoute.tsx#L212} */
     drills: false,
   },
 });

@@ -28,7 +28,7 @@ import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
-import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
+import { requestSessionTokenFromEmbedJs } from "metabase/embedding/iframe-sdk/utils";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,

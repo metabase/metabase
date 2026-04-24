@@ -1,5 +1,5 @@
 import type { MetabaseAuthMethod } from "embedding-sdk-bundle/types";
-import type { SdkIframeEmbedMessage } from "metabase/embedding/embedding-iframe-sdk/types/embed";
+import type { SdkIframeEmbedMessage } from "metabase/embedding/iframe-sdk/types/embed";
 import type { MetabaseFetchRequestTokenFn } from "metabase/embedding-sdk/types/refresh-token";
 
 export interface EmbedAuthManagerContext {
