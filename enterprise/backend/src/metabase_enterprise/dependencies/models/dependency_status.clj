@@ -74,7 +74,7 @@
                                                 [:= :dependency_status.entity_type (name entity-type)]]]
                 :where [:or
                         ;; No status row yet — needs initial processing.
-                        [:is :dependency_status.entity_id nil]
+                        [:= :dependency_status.entity_id nil]
                         [:and
                          ;; Needs processing: stale or version outdated
                          [:or
