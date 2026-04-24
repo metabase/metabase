@@ -8,8 +8,8 @@
   (:refer-clojure :exclude [every? empty? get-in])
   (:require
    [java-time.api :as t]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
-   [metabase.analytics.interface :as analytics]
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]

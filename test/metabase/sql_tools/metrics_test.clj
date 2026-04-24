@@ -1,7 +1,7 @@
 (ns metabase.sql-tools.metrics-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.prometheus-test :as prometheus-test]
    [metabase.sql-tools.metrics :as metrics]
    [metabase.test :as mt]))

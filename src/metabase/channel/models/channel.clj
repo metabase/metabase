@@ -1,8 +1,8 @@
 (ns ^{:added "0.51.0"} metabase.channel.models.channel
   (:require
    [malli.core :as mc]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
-   [metabase.analytics.interface :as analytics]
    [metabase.api.common :as api]
    [metabase.channel.template.handlebars :as handlebars]
    [metabase.models.interface :as mi]

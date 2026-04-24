@@ -5,7 +5,7 @@
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
    [metabase-enterprise.scim.settings :as scim.settings]
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]

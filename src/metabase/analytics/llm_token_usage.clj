@@ -1,7 +1,7 @@
 (ns metabase.analytics.llm-token-usage
   "LLM token usage tracking for Snowplow and Prometheus."
   (:require
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.analytics.util :as analytics.util]
    [metabase.util.malli :as mu]

@@ -3,8 +3,8 @@
   (:require
    [clojure.string :as str]
    [malli.core :as mc]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
-   [metabase.analytics.interface :as analytics]
    [metabase.api.macros :as api.macros]
    [metabase.channel.settings :as channel.settings]
    [metabase.config.core :as config]

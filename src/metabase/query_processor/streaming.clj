@@ -2,7 +2,7 @@
   (:refer-clojure :exclude [every? some mapv not-empty])
   (:require
    [clojure.string :as str]
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.visualization-settings :as mb.viz]

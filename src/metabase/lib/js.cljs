@@ -60,8 +60,8 @@
    [clojure.string :as str]
    [goog.object :as gobject]
    [medley.core :as m]
+   [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.impl]
-   [metabase.analytics.interface :as analytics.interface]
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -97,7 +97,7 @@
    [metabase.util.time :as u.time]))
 
 ;;; This ensures that all of metabase.lib.* is loaded, so all the `defmethod`s are properly registered.
-;;; metabase.analytics.impl registers the CLJS reporter for [[metabase.analytics.interface]].
+;;; metabase.analytics.impl registers the CLJS reporter for [[metabase.analytics-interface.core]].
 
 (comment lib.core/keep-me
          metabase.analytics.impl/keep-me)

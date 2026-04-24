@@ -13,7 +13,7 @@
   threshold. See :notification/file-too-large and :notification/truncated?."
   (:require
    [clojure.java.io :as io]
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.notification.settings :as notification.settings]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]

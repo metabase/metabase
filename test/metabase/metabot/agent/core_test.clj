@@ -1,7 +1,7 @@
 (ns metabase.metabot.agent.core-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]

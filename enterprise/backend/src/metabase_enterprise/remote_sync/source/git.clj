@@ -5,7 +5,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import

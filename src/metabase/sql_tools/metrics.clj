@@ -5,8 +5,8 @@
    sql-tools public API calls with counters and histograms, labeled by parser
    backend and operation name."
   (:require
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
-   [metabase.analytics.interface :as analytics]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)

@@ -1,6 +1,6 @@
 (ns metabase.frontend-errors.api
   (:require
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.request.core :as request]

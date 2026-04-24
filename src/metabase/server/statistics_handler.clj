@@ -3,7 +3,7 @@
 
   Integrates directly with our prometheus integration, so we don't need to translate from one to another."
   (:require
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.util :as u])
   (:import
    (jakarta.servlet AsyncListener AsyncEvent)

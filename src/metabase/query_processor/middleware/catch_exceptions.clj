@@ -3,7 +3,7 @@
   (:refer-clojure :exclude [some get-in])
   (:require
    [clojure.string :as str]
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.driver :as driver]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor.error-type :as qp.error-type]

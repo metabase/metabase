@@ -9,7 +9,7 @@
   then we can use the information on the tables to track information about the embedding client,
   and TODO: send it out in `summarize-execution`."
   (:require
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 

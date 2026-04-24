@@ -1,7 +1,7 @@
 (ns metabase.analytics.llm-token-usage-test
   (:require
    [clojure.test :refer :all]
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.llm-token-usage :as llm-token-usage]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]))

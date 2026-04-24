@@ -1,6 +1,6 @@
 (ns metabase.transforms.instrumentation
   (:require
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]

@@ -1,8 +1,8 @@
 (ns metabase.notification.send
   (:require
    [java-time.api :as t]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
-   [metabase.analytics.interface :as analytics]
    [metabase.channel.core :as channel]
    [metabase.config.core :as config]
    [metabase.notification.models :as models.notification]

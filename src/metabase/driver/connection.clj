@@ -9,7 +9,7 @@
 
    Primary API: [[effective-details]], [[with-write-connection]], [[default-details]]."
   (:require
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.driver.connection.workspaces :as driver.w]
    [metabase.driver.util :as driver.u]
    [metabase.premium-features.core :refer [defenterprise]]

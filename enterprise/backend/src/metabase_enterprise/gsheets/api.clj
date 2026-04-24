@@ -7,7 +7,7 @@
     :as gsheets.settings
     :refer [gsheets gsheets!]]
    [metabase-enterprise.harbormaster.client :as hm.client]
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]

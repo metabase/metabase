@@ -6,7 +6,7 @@
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :as str]
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.sql-parsing.common :as common]
    [metabase.util.files :as u.files]
    [metabase.util.log :as log]

@@ -4,7 +4,7 @@
    [clj-http.client :as http]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.config.core :as config]
    [metabase.embedding.util :as embed.util]
    [metabase.request.settings :as request.settings]

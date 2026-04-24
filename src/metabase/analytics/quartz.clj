@@ -2,7 +2,7 @@
   (:require
    [clojurewerkz.quartzite.matchers :as qm]
    [clojurewerkz.quartzite.scheduler :as qs]
-   [metabase.analytics.interface :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.task.core :as task]
    [metabase.util.log :as log])
   (:import

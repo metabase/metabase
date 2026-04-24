@@ -2,8 +2,8 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
-   [metabase.analytics.interface :as analytics]
    [metabase.analytics.sdk :as sdk]
    [metabase.test :as mt]
    [metabase.util :as u]

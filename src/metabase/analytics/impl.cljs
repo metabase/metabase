@@ -1,5 +1,5 @@
 (ns metabase.analytics.impl
-  "CLJS implementation of [[metabase.analytics.interface/Reporter]].
+  "CLJS implementation of [[metabase.analytics-interface.core/Reporter]].
   Batches events and POSTs them to the backend, which records them as Prometheus metrics.
 
   Under heavy load we prefer to drop the oldest buffered events rather than flood the backend
@@ -8,7 +8,7 @@
   along on the next flush as an [[dropped-metric]] :inc event so dashboards can tell 'quiet
   system' apart from 'we dropped half your events'."
   (:require
-   [metabase.analytics.interface :as analytics.interface]))
+   [metabase.analytics-interface.core :as analytics.interface]))
 
 (def ^:private flush-interval-ms 5000)
 

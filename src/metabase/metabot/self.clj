@@ -10,8 +10,8 @@
   TODO:
   - figure out what's lacking compared to ai-service"
   (:require
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
-   [metabase.analytics.interface :as analytics]
    [metabase.api.common :as api]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.self.claude :as claude]

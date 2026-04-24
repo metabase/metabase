@@ -1,4 +1,4 @@
-(ns metabase.analytics.interface
+(ns metabase.analytics-interface.core
   "Dependency-free analytics interface for use in CLJC code (including metabase.lib).
 
   Provides a thin reporting API that works in both CLJ and CLJS runtimes.
@@ -16,7 +16,7 @@
 
   ## Usage from library code
 
-      (require '[metabase.analytics.interface :as analytics])
+      (require '[metabase.analytics-interface.core :as analytics])
 
       (analytics/inc! :my-experiment/runs-total {:variant \"new\"})
       (analytics/observe! :my-experiment/overhead-ms {:variant \"new\"} 42)

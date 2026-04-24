@@ -1,8 +1,8 @@
 (ns metabase.analytics.impl
-  "CLJ implementation of [[metabase.analytics.interface/Reporter]].
+  "CLJ implementation of [[metabase.analytics-interface.core/Reporter]].
   Delegates to Prometheus."
   (:require
-   [metabase.analytics.interface :as analytics.interface]
+   [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.prometheus :as prometheus]))
 
 (analytics.interface/set-reporter!

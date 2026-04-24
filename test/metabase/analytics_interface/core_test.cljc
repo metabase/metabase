@@ -1,7 +1,7 @@
-(ns metabase.analytics.interface-test
+(ns metabase.analytics-interface.core-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase.analytics.interface :as analytics.interface]))
+   [metabase.analytics-interface.core :as analytics.interface]))
 
 (defn- make-test-reporter [calls]
   (reify analytics.interface/Reporter
