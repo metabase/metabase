@@ -1,7 +1,9 @@
 (ns metabase-enterprise.transforms-inspector.api
   (:require
    [metabase-enterprise.transforms-inspector.core :as inspector]
+   [metabase-enterprise.transforms-inspector.lens.core :as lens.core]
    [metabase-enterprise.transforms-inspector.schema :as inspector.schema]
+   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -12,10 +14,34 @@
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.core :as server]
+   [metabase.tracing.core :as tracing]
+   [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.core :as transforms.core]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
+
+(defn- known-lens-id?
+  "True if `lens-id` matches a registered lens type (including drill lenses)."
+  [lens-id]
+  (contains? (set (map name (lens.core/registered-lens-types true))) lens-id))
+
+(defn- lens-type-label
+  "Clamp `lens-id` (a user-controlled path param) to its registered form or
+   \"unknown\", bounding the cardinality of the `:lens-type` metric label."
+  [lens-id]
+  (if (known-lens-id? lens-id) lens-id "unknown"))
+
+(defn- lens-labels
+  "Return clamped `:lens-type` and `:complexity` metric labels for `lens-id`.
+   For unregistered lens-ids both fall back to \"unknown\"."
+  [lens-id]
+  (let [known? (known-lens-id? lens-id)]
+    {:lens-type  (if known? lens-id "unknown")
+     :complexity (if known?
+                   (-> (lens.core/lens-metadata (keyword lens-id) {}) :complexity :level name)
+                   "unknown")}))
 
 (api.macros/defendpoint :get "/:id/inspect"
   :- ::inspector.schema/discovery-response
@@ -23,8 +49,17 @@
    Returns structural metadata and available lens types."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (let [transform (api/read-check :model/Transform id)
-        result    (do (transforms.core/check-feature-enabled! transform)
-                      (inspector/discover-lenses transform))]
+        _         (transforms.core/check-feature-enabled! transform)
+        result    (tracing/with-span :transforms "transforms.inspector.discover"
+                    {:transform/id          id
+                     :transform/source-type (name (transforms-base.u/transform-source-type (:source transform)))}
+                    (try
+                      (let [r (inspector/discover-lenses transform)]
+                        (prometheus/inc! :metabase-transforms/inspector-discovery {:status "ok"})
+                        r)
+                      (catch Throwable t
+                        (prometheus/inc! :metabase-transforms/inspector-discovery {:status "error"})
+                        (throw t))))]
     (events/publish-event! :event/transform-inspect-discover
                            {:object  transform
                             :user-id api/*current-user-id*})
@@ -40,8 +75,20 @@
                             [:lens-id ms/NonBlankString]]
    params :- [:map-of :keyword :any]]
   (let [transform (api/read-check :model/Transform id)
-        result    (do (transforms.core/check-feature-enabled! transform)
-                      (inspector/get-lens transform lens-id params))]
+        _         (transforms.core/check-feature-enabled! transform)
+        result    (tracing/with-span :transforms "transforms.inspector.lens"
+                    {:transform/id          id
+                     :transform/source-type (name (transforms-base.u/transform-source-type (:source transform)))
+                     :inspector/lens-id     lens-id}
+                    (try
+                      (let [r (inspector/get-lens transform lens-id params)]
+                        (prometheus/inc! :metabase-transforms/inspector-lens
+                                         (assoc (lens-labels lens-id) :status "ok"))
+                        r)
+                      (catch Throwable t
+                        (prometheus/inc! :metabase-transforms/inspector-lens
+                                         (assoc (lens-labels lens-id) :status "error"))
+                        (throw t))))]
     (events/publish-event! :event/transform-inspect-lens
                            {:object  transform
                             :user-id api/*current-user-id*
@@ -70,13 +117,30 @@
                 :lens-id      lens-id
                 :lens-params  lens-params}]
       (qp.streaming/streaming-response [rff :api]
-        (qp/process-query
-         (-> query
-             (update-in [:middleware :js-int-to-string?] (fnil identity true))
-             (assoc :constraints (qp.constraints/default-query-constraints))
-             (update :info merge info)
-             qp/userland-query)
-         rff)))))
+        (let [timer (u/start-timer)]
+          (tracing/with-span :transforms "transforms.inspector.query"
+            {:transform/id      id
+             :inspector/lens-id lens-id}
+            (try
+              (let [result (qp/process-query
+                            (-> query
+                                (update-in [:middleware :js-int-to-string?] (fnil identity true))
+                                (assoc :constraints (qp.constraints/default-query-constraints))
+                                (update :info merge info)
+                                qp/userland-query)
+                            rff)
+                    ;; qp/process-query can signal failure by returning {:status :failed}
+                    ;; instead of throwing — see qp.streaming/-streaming-response.
+                    status (if (= :failed (:status result)) "error" "ok")]
+                (prometheus/observe! :metabase-transforms/inspector-query-duration-ms
+                                     {:lens-type (lens-type-label lens-id) :status status}
+                                     (u/since-ms timer))
+                result)
+              (catch Throwable t
+                (prometheus/observe! :metabase-transforms/inspector-query-duration-ms
+                                     {:lens-type (lens-type-label lens-id) :status "error"}
+                                     (u/since-ms timer))
+                (throw t)))))))))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/transforms` routes."
