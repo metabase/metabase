@@ -740,6 +740,20 @@
    :requires [[mage.bot.server-info :as server-info]]
    :task (task! (server-info/server-info! parsed))}
 
+  -bot-preflight
+  {:doc "Run prerequisite checks for a bot workflow"
+   :examples [["./bin/mage -bot-preflight --bot fixbot" "Run checks for fixbot (Linear required)"]
+              ["./bin/mage -bot-preflight --bot qabot" "Run checks for qabot (Linear optional)"]]
+   :options [[nil "--bot BOT" "Bot name (fixbot, qabot, uxbot, reprobot, cibot)"]]
+   :requires [[mage.bot.preflight :as preflight]]
+   :task (task! (preflight/preflight! parsed))}
+
+  -bot-write-sandbox-settings
+  {:doc "Write container-compatible .claude/settings.local.json for bot sandboxing"
+   :examples [["./bin/mage -bot-write-sandbox-settings" "Write sandbox settings"]]
+   :requires [[mage.bot.preflight :as preflight]]
+   :task (task! (preflight/write-sandbox-settings! parsed))}
+
   -bot-preflight-health
   {:doc "Wait for Metabase backend to become healthy (retries for up to 5 minutes)"
    :examples [["./bin/mage -bot-preflight-health" "Wait for backend health"]]

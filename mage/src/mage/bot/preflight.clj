@@ -154,3 +154,39 @@
   [_parsed]
   (let [port (or (bot-env/resolve-env "MB_JETTY_PORT") "3000")]
     (check-backend-health! port)))
+
+(defn preflight!
+  "Run all prerequisite checks for the given bot. Exits on failure.
+   --bot <name> controls bot-specific policy (currently: whether
+   LINEAR_API_KEY is required). Unknown or missing bot name treats
+   Linear as optional."
+  [parsed]
+  (let [bot         (:bot (:options parsed))
+        linear-mode (case bot
+                      ("fixbot" "reprobot") :required
+                      :optional)]
+    (check-mise!)
+    (check-workmux!)
+    (check-nrepl!)
+    (check-docker!)
+    (check-tmux-status!)
+    (check-linear-api-key! linear-mode)
+    (check-ee-token!)
+    (check-playwright!)
+    (check-node-modules!)
+    (println (c/green "All preflight checks passed."))))
+
+(defn write-sandbox-settings!
+  "Copy dev/bot/bot.settings.local.json into the current worktree's
+  .claude/settings.local.json — the sandboxed permission set used by
+  bot agents."
+  [_parsed]
+  (let [source (str u/project-root-directory "/dev/bot/bot.settings.local.json")
+        target ".claude/settings.local.json"]
+    (if (.exists (java.io.File. ^String source))
+      (do
+        (spit target (slurp source))
+        (println (c/green "Wrote ") target))
+      (do
+        (println (c/red "Source not found: ") source)
+        (u/exit 1)))))
