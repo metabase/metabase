@@ -1,21 +1,74 @@
 import type { DateFilterValue } from "metabase/querying/common/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
-import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
+import { VIEW_USAGE_LOG } from "../../constants";
 
 import {
+  addCountDistinctAggregation,
+  applyNotNullFilter,
+  applyUsageStatsAggregation,
   getMetricSeriesSettings,
   getViewForMetric,
   isSingleDayFilter,
 } from "./query-utils";
 
 describe("getViewForMetric", () => {
-  it("routes the tokens metric to v_ai_usage_log", () => {
+  it("routes all metrics to v_ai_usage_log", () => {
     expect(getViewForMetric("tokens")).toBe(VIEW_USAGE_LOG);
+    expect(getViewForMetric("conversations")).toBe(VIEW_USAGE_LOG);
+    expect(getViewForMetric("messages")).toBe(VIEW_USAGE_LOG);
+  });
+});
+
+describe("addCountDistinctAggregation", () => {
+  it("adds a distinct-count aggregation on the named column", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    const result = addCountDistinctAggregation(query, "USER_ID");
+
+    expect(Lib.aggregations(result, 0)).toHaveLength(1);
+    const [clause] = Lib.aggregations(result, 0);
+    const info = Lib.displayInfo(result, 0, clause);
+    expect(info.displayName?.toLowerCase()).toContain("distinct");
   });
 
-  it("routes conversations and messages to v_metabot_conversations", () => {
-    expect(getViewForMetric("conversations")).toBe(VIEW_CONVERSATIONS);
-    expect(getViewForMetric("messages")).toBe(VIEW_CONVERSATIONS);
+  it("returns the query unchanged when the column is not found", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    const result = addCountDistinctAggregation(query, "nonexistent_column");
+    expect(Lib.aggregations(result, 0)).toHaveLength(0);
+  });
+});
+
+describe("applyNotNullFilter", () => {
+  it("adds a not-null filter on the named column", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    const result = applyNotNullFilter(query, "USER_ID");
+    expect(Lib.filters(result, 0)).toHaveLength(1);
+  });
+
+  it("returns the query unchanged when the column is not found", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    const result = applyNotNullFilter(query, "nonexistent_column");
+    expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+});
+
+describe("applyUsageStatsAggregation", () => {
+  it("returns orderColumnName 'count' for the conversations and messages metrics", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    expect(
+      applyUsageStatsAggregation(query, "conversations").orderColumnName,
+    ).toBe("count");
+    expect(applyUsageStatsAggregation(query, "messages").orderColumnName).toBe(
+      "count",
+    );
+  });
+
+  it("returns orderColumnName null for the tokens metric (dual aggregation)", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    expect(
+      applyUsageStatsAggregation(query, "tokens").orderColumnName,
+    ).toBeNull();
   });
 });
 

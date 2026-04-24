@@ -9,16 +9,14 @@ import type { ColumnMetadata, Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
+import { VIEW_USAGE_LOG } from "../../constants";
 
 export type UsageStatsMetric = "conversations" | "messages" | "tokens";
 
-// The Tokens tab reads from v_ai_usage_log (per-LLM-call ledger) for complete
-// token accounting across all call sites. The Conversations and Messages tabs
-// stay on v_metabot_conversations because aggregate-by-count and sum(message_count)
-// would be semantically wrong over a per-LLM-call table.
-export function getViewForMetric(metric: UsageStatsMetric): string {
-  return metric === "tokens" ? VIEW_USAGE_LOG : VIEW_CONVERSATIONS;
+// All three tabs read from v_ai_usage_log. Messages = COUNT DISTINCT request_id
+// (one per run-agent-loop call), Conversations = COUNT DISTINCT conversation_id.
+export function getViewForMetric(_metric: UsageStatsMetric): string {
+  return VIEW_USAGE_LOG;
 }
 
 const METRIC_ACCENT: Record<UsageStatsMetric, string> = {
@@ -30,7 +28,7 @@ const METRIC_ACCENT: Record<UsageStatsMetric, string> = {
 const METRIC_COLUMN_NAME: Record<UsageStatsMetric, string> = {
   conversations: "count",
   tokens: "sum",
-  messages: "sum",
+  messages: "count",
 };
 
 export type TokenSeriesSettings = Pick<
@@ -107,19 +105,50 @@ export function applyDateFilter(
 }
 
 /**
+ * Apply a "column IS NOT NULL" filter.
+ */
+export function applyNotNullFilter(query: Query, columnName: string): Query {
+  const col = findColumn(query, columnName, Lib.filterableColumns);
+  if (!col) {
+    return query;
+  }
+  const clause = Lib.defaultFilterClause({ operator: "not-null", column: col });
+  return Lib.filter(query, 0, clause);
+}
+
+/**
  * Add a sum aggregation for the given column name.
  */
 export function addSumAggregation(query: Query, columnName: string): Query {
+  return addAggregationByShortName(query, columnName, "sum");
+}
+
+/**
+ * Add a count-distinct aggregation for the given column name. The result column
+ * is named "count" (see src/metabase/lib/aggregation.cljc — :distinct → "count").
+ */
+export function addCountDistinctAggregation(
+  query: Query,
+  columnName: string,
+): Query {
+  return addAggregationByShortName(query, columnName, "distinct");
+}
+
+function addAggregationByShortName(
+  query: Query,
+  columnName: string,
+  shortName: string,
+): Query {
   const operators = Lib.availableAggregationOperators(query, 0);
-  const sumOp = operators.find((op) => {
-    const info = Lib.displayInfo(query, 0, op);
-    return info.shortName === "sum";
+  const op = operators.find((o) => {
+    const info = Lib.displayInfo(query, 0, o);
+    return info.shortName === shortName;
   });
-  if (!sumOp) {
+  if (!op) {
     return query;
   }
 
-  const columns = Lib.aggregationOperatorColumns(sumOp);
+  const columns = Lib.aggregationOperatorColumns(op);
   const lowerName = columnName.toLowerCase();
   const col = columns.find((c) => {
     const info = Lib.displayInfo(query, 0, c);
@@ -129,7 +158,7 @@ export function addSumAggregation(query: Query, columnName: string): Query {
     return query;
   }
 
-  const clause = Lib.aggregationClause(sumOp, col);
+  const clause = Lib.aggregationClause(op, col);
   return Lib.aggregate(query, 0, clause);
 }
 
@@ -138,16 +167,20 @@ export function applyUsageStatsAggregation(
   metric: UsageStatsMetric,
 ): { query: Query; orderColumnName: string | null } {
   switch (metric) {
-    case "conversations":
+    case "conversations": {
+      const filtered = applyNotNullFilter(query, "conversation_id");
       return {
-        query: Lib.aggregateByCount(query, 0),
+        query: addCountDistinctAggregation(filtered, "conversation_id"),
         orderColumnName: "count",
       };
-    case "messages":
+    }
+    case "messages": {
+      const filtered = applyNotNullFilter(query, "conversation_id");
       return {
-        query: addSumAggregation(query, "message_count"),
-        orderColumnName: "sum",
+        query: addCountDistinctAggregation(filtered, "request_id"),
+        orderColumnName: "count",
       };
+    }
     case "tokens": {
       const withInput = addSumAggregation(query, "prompt_tokens");
       const withBoth = addSumAggregation(withInput, "completion_tokens");
