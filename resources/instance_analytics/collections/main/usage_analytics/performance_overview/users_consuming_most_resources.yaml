@@ -84,6 +84,103 @@ dataset_query:
     source-card: QOtZaiTLf2FDD4AT6Oinb
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: 'Started At: Week'
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, started_at]
+  - {temporal-unit: week}
+  id: [Internal Metabase Database, public, v_query_log, started_at]
+  inherited_temporal_unit: week
+  name: started_at
+  position: 1
+  semantic_type: type/CreationTimestamp
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_query_log]
+  unit: week
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 116
+  lib/deduplicated-name: started_at
+  lib/desired-column-alias: started_at
+  lib/from-model?: true
+  lib/original-display-name: Started At
+  lib/original-name: started_at
+  lib/source: source/previous-stage
+  lib/source-column-alias: started_at
+  lib/temporal-unit: week
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_query_log, user_id]
+  - null
+  fk_target_field_id: [Internal Metabase Database, public, v_users, user_id]
+  id: [Internal Metabase Database, public, v_query_log, user_id]
+  name: user_id
+  position: 7
+  semantic_type: type/FK
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_query_log]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 116
+  lib/deduplicated-name: user_id
+  lib/desired-column-alias: user_id
+  lib/external-remap: {field-id: 1645, id: 30, name: User ID, lib/type: metadata.column.remapping/external}
+  lib/from-model?: true
+  lib/original-display-name: User ID
+  lib/original-name: user_id
+  lib/source: source/previous-stage
+  lib/source-column-alias: user_id
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: People - User → Full Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_users, full_name]
+  - {join-alias: People - User}
+  id: [Internal Metabase Database, public, v_users, full_name]
+  name: full_name
+  position: 6
+  semantic_type: type/Name
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_users]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 121
+  lib/deduplicated-name: full_name
+  lib/desired-column-alias: People - User__full_name
+  lib/from-model?: true
+  lib/join-alias: People - User
+  lib/original-display-name: Full Name
+  lib/original-join-alias: People - User
+  lib/original-name: full_name
+  lib/source: source/joins
+  lib/source-column-alias: full_name
+  qp/implicit-field?: true
+- base_type: type/Float
+  display_name: Sum of Running Time Seconds
+  effective_type: type/Float
+  field_ref: [aggregation, 0]
+  name: sum
+  source: aggregation
+  lib/deduplicated-name: sum
+  lib/desired-column-alias: sum
+  lib/original-name: sum
+  lib/source: source/aggregations
+  lib/source-column-alias: sum
 visualization_settings:
   column_settings: null
   graph.dimensions: [started_at, full_name]
