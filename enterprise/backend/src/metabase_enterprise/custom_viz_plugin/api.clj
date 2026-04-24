@@ -33,10 +33,11 @@
 
 (defn- check-upload!
   "Validate an incoming multipart `file` part before we spend any IO reading it.
-   Rejects oversized uploads with 413 using the `:size` hint and rejects missing
-   files with 400. Returns the `java.io.File` tempfile."
+   Rejects oversized uploads with 413 using `:size` (populated by Ring from the
+   bytes it actually buffered, not a client header) and rejects missing files with
+   400. Returns the `java.io.File` tempfile."
   ^File [file]
-  (when (> (or (:size file) 0) cache/max-bundle-bytes)
+  (when (> (:size file) cache/max-bundle-bytes)
     (throw (ex-info (format "Bundle must be less than %dMB." cache/max-bundle-mib)
                     {:status-code 413})))
   (let [tempfile (:tempfile file)]
