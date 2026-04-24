@@ -126,3 +126,23 @@ export async function getVersionInfo({
 
   return newVersionJson;
 }
+
+// for promoting a released version to `latest` in version-info.json
+export async function updateVersionInfoLatest({
+  newVersion,
+  rollout = 100,
+}: {
+  newVersion: string;
+  rollout?: number;
+}) {
+  const url = getVersionInfoUrl(newVersion);
+  const existingFile = (await fetch(url).then(r =>
+    r.json(),
+  )) as VersionInfoFile;
+
+  return updateVersionInfoLatestJson({
+    newLatestVersion: newVersion,
+    existingVersionInfo: existingFile,
+    rollout,
+  });
+}
