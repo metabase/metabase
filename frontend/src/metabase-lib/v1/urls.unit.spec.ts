@@ -13,7 +13,7 @@ import {
 
 import Question from "./Question";
 import type { ParameterWithTarget } from "./parameters/types";
-import { getQuestionUrlWithParameters } from "./urls";
+import { getStructuredQuestionUrlWithParameters } from "./urls";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
@@ -30,7 +30,7 @@ function parseUrl(url: string) {
   };
 }
 
-describe("getQuestionUrlWithParameters", () => {
+describe("getStructuredQuestionUrlWithParameters", () => {
   const parameters: ParameterWithTarget[] = [
     {
       id: "1",
@@ -90,7 +90,7 @@ describe("getQuestionUrlWithParameters", () => {
       const parameters: ParameterWithTarget[] = [];
       const parameterValues = {};
 
-      const url = getQuestionUrlWithParameters(
+      const url = getStructuredQuestionUrlWithParameters(
         question,
         originalQuestion,
         parameters,
@@ -105,7 +105,7 @@ describe("getQuestionUrlWithParameters", () => {
     });
 
     it("should return question URL with string MBQL filter added", () => {
-      const url = getQuestionUrlWithParameters(
+      const url = getStructuredQuestionUrlWithParameters(
         question,
         originalQuestion,
         parameters,
@@ -122,7 +122,7 @@ describe("getQuestionUrlWithParameters", () => {
     });
 
     it("should return question URL with number MBQL filter added", () => {
-      const url = getQuestionUrlWithParameters(
+      const url = getStructuredQuestionUrlWithParameters(
         question,
         originalQuestion,
         parameters,
@@ -137,7 +137,7 @@ describe("getQuestionUrlWithParameters", () => {
     });
 
     it("should return question URL with date MBQL filter added", () => {
-      const url = getQuestionUrlWithParameters(
+      const url = getStructuredQuestionUrlWithParameters(
         question,
         originalQuestion,
         parameters,
@@ -153,7 +153,7 @@ describe("getQuestionUrlWithParameters", () => {
 
     it("should include objectId in a URL", () => {
       const OBJECT_ID = "5";
-      const url = getQuestionUrlWithParameters(
+      const url = getStructuredQuestionUrlWithParameters(
         question,
         originalQuestion,
         parameters,
@@ -174,7 +174,7 @@ describe("getQuestionUrlWithParameters", () => {
     const originalQuestion = question;
 
     it("should return a card with attached parameters and parameter values as query params", () => {
-      const url = getQuestionUrlWithParameters(
+      const url = getStructuredQuestionUrlWithParameters(
         question,
         originalQuestion,
         parameters,
@@ -207,7 +207,7 @@ describe("getQuestionUrlWithParameters", () => {
     });
 
     it("should not include objectId in a URL", () => {
-      const url = getQuestionUrlWithParameters(
+      const url = getStructuredQuestionUrlWithParameters(
         question,
         originalQuestion,
         parameters,
@@ -215,109 +215,6 @@ describe("getQuestionUrlWithParameters", () => {
         { objectId: 5 },
       );
 
-      expect(parseUrl(url).query.objectId).toBeUndefined();
-    });
-  });
-
-  describe("with a native question", () => {
-    const cardWithTextFilter = {
-      id: 1,
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "native",
-        native: {
-          "template-tags": {
-            baz: { name: "baz", type: "text", id: "foo" },
-          },
-        },
-      },
-    };
-
-    const parametersForNativeQ: ParameterWithTarget[] = [
-      {
-        ...parameters[0],
-        target: ["variable", ["template-tag", "baz"]],
-      },
-      {
-        ...parameters[4],
-        target: ["dimension", ["template-tag", "bar"]],
-      },
-    ];
-
-    const cardWithFieldFilter = {
-      id: 2,
-      dataset_query: {
-        database: SAMPLE_DB_ID,
-        type: "native",
-        native: {
-          "template-tags": {
-            bar: { name: "bar", type: "number/=", id: "abc" },
-          },
-        },
-      },
-    };
-
-    const question = new Question(cardWithTextFilter, metadata);
-    const originalQuestion = question;
-
-    it("should return question URL when there are no parameters", () => {
-      const url = getQuestionUrlWithParameters(
-        question,
-        originalQuestion,
-        [],
-        {},
-      );
-      expect(parseUrl(url)).toEqual({
-        pathname: "/question/1",
-        query: {},
-        card: null,
-      });
-    });
-
-    it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's variable", () => {
-      const url = getQuestionUrlWithParameters(
-        question,
-        originalQuestion,
-        parametersForNativeQ,
-        {
-          1: "bar",
-        },
-      );
-
-      expect(parseUrl(url)).toEqual({
-        pathname: "/question/1",
-        query: { baz: "bar" },
-        card: null,
-      });
-    });
-
-    it("should return question URL with query string parameter when there is a value for a parameter mapped to the question's field filter", () => {
-      const question = new Question(cardWithFieldFilter, metadata);
-      const url = getQuestionUrlWithParameters(
-        question,
-        originalQuestion,
-        parametersForNativeQ,
-        {
-          5: "111",
-        },
-      );
-
-      expect(parseUrl(url)).toEqual({
-        pathname: "/question/2",
-        query: { bar: "111" },
-        card: null,
-      });
-    });
-
-    it("should not include objectId in a URL", () => {
-      const url = getQuestionUrlWithParameters(
-        question,
-        originalQuestion,
-        parametersForNativeQ,
-        {
-          1: "bar",
-        },
-      );
       expect(parseUrl(url).query.objectId).toBeUndefined();
     });
   });
