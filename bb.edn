@@ -261,7 +261,7 @@
   {:doc "Generate XML configuration for Cursive's symbol resolution based on the current clj-kondo lint-as configuration."
    :examples [["./bin/mage generate-cursive-resolve-as" "Generate resolve-as XML configuration"]
               ["./bin/mage generate-cursive-resolve-as > /Users/bgrabow/Library/Application\\ Support/JetBrains/IntelliJIdea2025.3/options/ClojureResolveSettings.xml"
-              "Generate resolve-as XML configuration and install it in your global editor configuration"]]
+               "Generate resolve-as XML configuration and install it in your global editor configuration"]]
    :requires [[mage.cursive-resolve-as :as cursive-resolve-as]]
    :task (task! (cursive-resolve-as/do-it))}
 
@@ -683,6 +683,7 @@
              [nil "--command CMD" "Inner command to run (e.g., /qabot, '/fixbot MB-12345')"]
              [nil "--app-db DB" "App database" :default "postgres"]
              [nil "--base BASE" "Base branch/commit to branch from"]
+             [nil "--new" "Create the branch from --base if it does not already exist"]
              [nil "--pr-env-url URL" "PR preview environment URL (enables remote mode, no local dev-env)"]]
    :task (task! (autobot/go! parsed))}
 

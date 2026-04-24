@@ -6,7 +6,9 @@ The user provided: `$ARGUMENTS`
 
 ### 1. Parse arguments
 
-Parse as: `<branch-name-or-pr-env-url> [from <base-branch>] <inner-command> [inner-args...]`
+Parse as: `[new] <branch-name-or-pr-env-url> [from <base-branch>] <inner-command> [inner-args...]`
+
+If the first token is the literal word `new`, consume it and set `NEW=true`. The following token is then the branch name. In `new` mode, if the branch does not already exist locally or on origin, autobot will create it from the base branch (default `origin/master`, or whatever was passed via `from <base>`). Pass `--new` to `-autobot-go` in step 4.
 
 The first token can be either a branch name OR a PR preview environment URL:
 
@@ -28,7 +30,9 @@ Remaining words: arguments to pass to the inner command.
 
 Examples:
 - `/autobot master /qabot` → branch=master, base=origin/master, command="/qabot"
-- `/autobot new-branch from existing-branch /qabot` → branch=new-branch, base=existing-branch, command="/qabot"
+- `/autobot new nvoxland3 /qabot` → **new mode**: branch=nvoxland3 (created from origin/master if missing), command="/qabot"
+- `/autobot new my-feature from existing-branch /qabot` → **new mode**: branch=my-feature (created from existing-branch if missing), command="/qabot"
+- `/autobot new-branch from existing-branch /qabot` → branch=new-branch, base=existing-branch, command="/qabot" (branch must already exist — `new-branch` here is a literal branch name, not the `new` keyword)
 - `/autobot my-branch /fixbot MB-12345` → branch=my-branch, base=origin/master, command="/fixbot MB-12345"
 - `/autobot master /uxbot test the dashboard` → branch=master, base=origin/master, command="/uxbot test the dashboard"
 - `/autobot https://pr383713.coredev.metabase.com /qabot` → **PR-env mode**: PR=383713, branch=(resolved from PR), command="/qabot", pr-env-url=https://pr383713.coredev.metabase.com
@@ -61,9 +65,9 @@ After the discover skill completes, read `.bot/<bot-name>/discover/result.env` a
 
 ### 4. Launch the autobot session
 
-Run (append `--pr-env-url <URL>` if in PR-env mode):
+Run (append `--pr-env-url <URL>` if in PR-env mode, `--new` if in new mode):
 ```
-./bin/mage -autobot-go <BRANCH_NAME> --bot <BOT_NAME> --app-db <APP_DB> --base <BASE_BRANCH> --command "<INNER_COMMAND> <INNER_ARGS>" [--pr-env-url <PR_ENV_URL>]
+./bin/mage -autobot-go <BRANCH_NAME> --bot <BOT_NAME> --app-db <APP_DB> --base <BASE_BRANCH> --command "<INNER_COMMAND> <INNER_ARGS>" [--new] [--pr-env-url <PR_ENV_URL>]
 ```
 
 Pass the base branch (default `origin/master`, or whatever was parsed from `from <base>`).

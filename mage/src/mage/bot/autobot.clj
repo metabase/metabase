@@ -311,11 +311,24 @@
                                   (str "refs/remotes/origin/" branch-name))]
     (zero? exit)))
 
+(defn- create-branch!
+  "Create a new local branch <branch-name> pointing at <base-ref>. Exits on failure."
+  [branch-name base-ref]
+  (println (c/yellow "Creating new branch: ") (str branch-name " from " base-ref))
+  (let [{:keys [exit err]} (shell/sh* {:quiet? true} "git" "branch" branch-name base-ref)]
+    (when-not (zero? exit)
+      (println (c/red "Failed to create branch " branch-name " from " base-ref))
+      (doseq [line err] (println (c/red "  " line)))
+      (u/exit 1))
+    (println (c/green "  Created local branch: ") branch-name)
+    branch-name))
+
 (defn- resolve-branch-ref!
   "Fetch from origin and verify the branch exists locally or on origin.
    Returns the ref to pass to workmux add (the branch name if local, or origin/<branch> if remote only).
-   Exits with error if neither exists — never creates a new branch."
-  [branch-name]
+   When new? is true and the branch does not exist, creates it locally from base-branch.
+   Otherwise exits with error — never creates a new branch silently."
+  [branch-name {:keys [new? base-branch]}]
   (println (c/yellow "Checking that branch exists: ") branch-name)
   (shell/sh* {:quiet? true} "git" "fetch" "origin" branch-name)
   (cond
@@ -329,11 +342,15 @@
       (println (c/green "  Found remote branch: ") remote-ref)
       remote-ref)
 
+    new?
+    (create-branch! branch-name (or base-branch "origin/master"))
+
     :else
     (do
       (println (c/red "Branch not found: ") branch-name)
       (println (c/red "  No local branch and no origin/" branch-name " exists."))
-      (println (c/red "  autobot will NOT create new branches — create the branch first."))
+      (println (c/red "  autobot will NOT create new branches — create the branch first,"))
+      (println (c/red "  or pass --new to create it from --base (default origin/master)."))
       (u/exit 1))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -351,6 +368,7 @@
           command      (:command options)
           app-db       (or (:app-db options) "postgres")
           base-branch  (or (:base options) "origin/master")
+          new?         (boolean (:new options))
           pr-env-url   (:pr-env-url options)
           pr-num       (when pr-env-url
                          (second (re-find #"pr(\d+)" pr-env-url)))
@@ -400,7 +418,9 @@
             (do
               ;; Fresh launch: verify the branch exists somewhere before creating a worktree.
               ;; Returns the ref to pass to workmux (branch name if local, origin/<name> if remote-only).
-              (let [branch-ref (resolve-branch-ref! branch-name)
+              (let [branch-ref (resolve-branch-ref! branch-name
+                                                    {:new?        new?
+                                                     :base-branch base-branch})
                     info       (cond-> {"Bot" bot-name "Command" command}
                                  (not pr-env-url) (assoc "App DB" app-db)
                                  pr-env-url       (assoc "PR Env" pr-env-url

@@ -164,8 +164,6 @@
     (copy-files! main-path worktree-root)
     (copy-idea-files! main-path worktree-root)
     (update-workspace-paths! main-path worktree-root)
-    (println (c/cyan "Trusting mise config..."))
-    (shell/sh {:dir worktree-root} "mise" "trust")
     (create-postgres-db! worktree-root)
     (println)
     (println (c/green "Done."))

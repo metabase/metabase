@@ -1,9 +1,11 @@
 agent: claude
 
 post_create:
+  # Trust mise.toml early so pane shells don't prompt with "config not trusted"
+  - mise trust
   # Pull latest changes from origin so the worktree is up to date (only if branch tracks a remote)
   - bash -c 'git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1 && git pull --ff-only || echo "No upstream branch — skipping pull"'
-  # Set up worktree (symlinks, copied files, mise trust, postgres DB)
+  # Set up worktree (symlinks, copied files, postgres DB)
   - bash -c 'MAIN=$(git rev-parse --git-common-dir | sed "s|/\\.git$||"); "$MAIN/bin/mage" -bot-setup-worktree --worktree "$PWD"'
   # Dev environment (DB, mise.local.toml, bot dirs)
   - ./bin/mage -bot-dev-env --app-db {{APP_DB}} --bot {{BOT_NAME}}
