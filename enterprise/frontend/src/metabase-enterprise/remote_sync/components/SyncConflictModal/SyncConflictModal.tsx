@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { useGetSettingsQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useSelector } from "metabase/redux";
 import { Box, Button, Group, Icon, Modal } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import {
   useGetBranchesQuery,
   useUpdateRemoteSyncSettingsMutation,

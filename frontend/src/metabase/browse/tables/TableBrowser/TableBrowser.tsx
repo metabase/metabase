@@ -1,10 +1,10 @@
 import _ from "underscore";
 
 import { Tables } from "metabase/entities/tables";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
-import { connect } from "metabase/utils/redux";
 import { isSyncInProgress } from "metabase/utils/syncing";
 import * as Urls from "metabase/utils/urls";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

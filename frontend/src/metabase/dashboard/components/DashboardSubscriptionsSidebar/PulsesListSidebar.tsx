@@ -8,6 +8,7 @@ import { Subhead } from "metabase/common/components/type/Subhead";
 import CS from "metabase/css/core/index.css";
 import { formatDateValue } from "metabase/parameters/utils/date-formatting";
 import { getActivePulseParameters } from "metabase/pulse";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Button, Icon, Tooltip } from "metabase/ui";
 import {
@@ -15,7 +16,6 @@ import {
   formatDateTimeWithUnit,
   formatTimeWithUnit,
 } from "metabase/utils/formatting";
-import { connect } from "metabase/utils/redux";
 import { formatFrame } from "metabase/utils/time-dayjs";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {

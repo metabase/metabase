@@ -8,7 +8,7 @@ import {
   useUpdateSegmentMutation,
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/metadata/hooks";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/utils/urls";
 import { getSchemaName } from "metabase-lib/v1/metadata/utils/schema";
 

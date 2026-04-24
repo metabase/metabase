@@ -11,9 +11,9 @@ import {
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import { useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Transform, TransformTagId } from "metabase-types/api";
 

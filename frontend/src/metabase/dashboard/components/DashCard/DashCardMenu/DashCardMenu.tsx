@@ -13,8 +13,8 @@ import {
 } from "metabase/dashboard/context";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
+import { useStore } from "metabase/redux";
 import { ActionIcon, Icon, Menu, type MenuProps } from "metabase/ui";
-import { useStore } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type Question from "metabase-lib/v1/Question";

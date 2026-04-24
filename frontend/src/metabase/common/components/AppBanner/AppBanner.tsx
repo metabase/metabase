@@ -10,10 +10,10 @@ import { PaymentBanner } from "metabase/nav/components/PaymentBanner/PaymentBann
 import { ReadOnlyBanner } from "metabase/nav/components/ReadOnlyBanner";
 import { TrialBanner } from "metabase/nav/components/TrialBanner";
 import { PLUGIN_SECURITY_CENTER } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { getIsHosted } from "metabase/setup/selectors";
 import { isWithinIframe } from "metabase/utils/iframe";
-import { useSelector } from "metabase/utils/redux";
 
 import { getCurrentUTCTimestamp, shouldShowTrialBanner } from "./utils";
 

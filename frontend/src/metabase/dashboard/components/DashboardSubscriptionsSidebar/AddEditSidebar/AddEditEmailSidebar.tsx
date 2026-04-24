@@ -17,10 +17,10 @@ import { EmailAttachmentPicker } from "metabase/notifications/EmailAttachmentPic
 import { RecipientPicker } from "metabase/notifications/channels/RecipientPicker";
 import { PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE } from "metabase/plugins";
 import { dashboardPulseIsValid } from "metabase/pulse";
+import { useSelector } from "metabase/redux";
 import type { DraftDashboardSubscription } from "metabase/redux/store";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import { Icon, Title } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Channel,

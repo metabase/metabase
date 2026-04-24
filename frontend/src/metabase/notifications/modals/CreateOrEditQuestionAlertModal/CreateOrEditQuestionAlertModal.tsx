@@ -26,6 +26,7 @@ import {
   getQuestion,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
+import { useDispatch, useSelector } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { canAccessSettings, getUser } from "metabase/selectors/user";
 import {
@@ -40,7 +41,6 @@ import {
   rem,
 } from "metabase/ui";
 import { getResponseErrorMessage } from "metabase/utils/errors";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type Question from "metabase-lib/v1/Question";
 import type {
   CreateAlertNotificationRequest,

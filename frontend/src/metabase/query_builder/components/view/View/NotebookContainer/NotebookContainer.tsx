@@ -11,9 +11,9 @@ import {
   Notebook,
   type NotebookProps,
 } from "metabase/querying/notebook/components/Notebook";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Box, Flex, rem } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 
 import { canShowNativePreview } from "../../ViewHeader/utils";
 

@@ -9,8 +9,8 @@ import type {
   EmbeddingParametersValues,
   ServerCodeSampleConfig,
 } from "metabase/public/lib/types";
+import { useSelector } from "metabase/redux";
 import { getCanWhitelabel } from "metabase/selectors/whitelabel";
-import { useSelector } from "metabase/utils/redux";
 
 import { CodeSample } from "./CodeSample";
 import { getDefaultDisplayOptions } from "./config";

@@ -37,6 +37,7 @@ import registerDashboardVisualizations from "metabase/dashboard/visualizations/r
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
+import { MetabaseReduxProvider } from "metabase/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
@@ -44,7 +45,6 @@ import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheP
 import api from "metabase/utils/api";
 import { captureConsoleErrors } from "metabase/utils/errors";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
-import { MetabaseReduxProvider } from "metabase/utils/redux/custom-context";
 import MetabaseSettings from "metabase/utils/settings";
 import registerVisualizations from "metabase/visualizations/register";
 

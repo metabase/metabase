@@ -3,8 +3,8 @@ import { useEffect, useMemo } from "react";
 
 import { skipToken, useGetCardQuery } from "metabase/api";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import Question from "metabase-lib/v1/Question";
 import type { CardId } from "metabase-types/api";
 

@@ -10,7 +10,7 @@ import {
 
 const mockDispatch = jest.fn();
 
-jest.mock("metabase/utils/redux", () => ({
+jest.mock("metabase/redux", () => ({
   useDispatch: () => mockDispatch,
   useSelector: jest.fn(),
 }));
@@ -31,7 +31,7 @@ jest.mock("metabase/selectors/metadata", () => ({
   getMetadata: jest.fn(),
 }));
 
-const mockUseSelector = jest.requireMock("metabase/utils/redux").useSelector;
+const mockUseSelector = jest.requireMock("metabase/redux").useSelector;
 const mockGetSavedDashboardUiParameters = jest.requireMock(
   "metabase/parameters/utils/dashboards",
 ).getSavedDashboardUiParameters;

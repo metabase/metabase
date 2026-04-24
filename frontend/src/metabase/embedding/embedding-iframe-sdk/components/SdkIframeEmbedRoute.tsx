@@ -23,10 +23,10 @@ import { createSnowplowTracker } from "metabase/analytics";
 import { EmbeddingFooter } from "metabase/embedding/components/EmbeddingFooter/EmbeddingFooter";
 import { EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG } from "metabase/embedding-sdk/config";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserId } from "metabase/selectors/user";
 import { Stack } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { useParamRerenderKey } from "../hooks/use-param-rerender-key";
 import { useSdkIframeEmbedEventBus } from "../hooks/use-sdk-iframe-embed-event-bus";

@@ -5,9 +5,9 @@ import { DATA_STUDIO_UPGRADE_URL } from "metabase/common/components/upsells/cons
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { UpsellCardContent } from "metabase/data-studio/upsells/components/UpsellCardContent";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Stack } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { DottedBackground } from "../components/DottedBackground";
 import { LineDecorator } from "../components/LineDecorator";

@@ -43,11 +43,11 @@ import type {
 } from "metabase/data-grid/types";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { useTranslateContent } from "metabase/i18n/hooks";
+import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
 import { formatValue } from "metabase/utils/formatting";
-import { useDispatch } from "metabase/utils/redux";
 import {
   getTableCellClickedObject,
   getTableClickedObjectRowData,

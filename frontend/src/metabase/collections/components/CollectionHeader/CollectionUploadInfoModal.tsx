@@ -2,9 +2,9 @@ import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
 import { Link } from "metabase/common/components/Link";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Modal } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import {
   InfoModalBody,

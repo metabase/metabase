@@ -21,9 +21,9 @@ import { useDashboardUrlQuery } from "metabase/dashboard/hooks";
 import { ReturnToSetupGuideModal } from "metabase/embedding/embedding-hub/components/ReturnToSetupGuideModal";
 import { RETURN_TO_SETUP_GUIDE_PARAM } from "metabase/embedding/embedding-hub/constants";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import { Box, Flex, Group } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Dashboard as IDashboard } from "metabase-types/api";
 
