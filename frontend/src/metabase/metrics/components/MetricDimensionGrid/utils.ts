@@ -61,7 +61,8 @@ function pickAllOfType(
     .filter(
       (dimension) =>
         dimension.dimensionType === dimensionType &&
-        (!options?.requireListValues || dimension.canListValues),
+        (!options?.requireListValues || dimension.canListValues) &&
+        dimension.isPreferred !== false, // undefined is okay - means there is no preferred predicate
     )
     .sort((first, second) => {
       if (first.canListValues !== second.canListValues) {
