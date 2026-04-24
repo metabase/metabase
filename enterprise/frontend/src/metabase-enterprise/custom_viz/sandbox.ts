@@ -17,7 +17,20 @@ const FUNCTION_NAMES: WeakMap<object, string> = (() => {
     [Navigator.prototype, "Navigator"],
     [Screen.prototype, "Screen"],
     [CanvasRenderingContext2D.prototype, "CanvasRenderingContext2D"],
+    [HTMLCanvasElement.prototype, "HTMLCanvasElement"],
     [SVGElement.prototype, "SVGElement"],
+    [Event.prototype, "Event"],
+    [UIEvent.prototype, "UIEvent"],
+    [MouseEvent.prototype, "MouseEvent"],
+    [PointerEvent.prototype, "PointerEvent"],
+    [WheelEvent.prototype, "WheelEvent"],
+    [KeyboardEvent.prototype, "KeyboardEvent"],
+    [TouchEvent.prototype, "TouchEvent"],
+    [Touch.prototype, "Touch"],
+    [CSSStyleDeclaration.prototype, "CSSStyleDeclaration"],
+    [DOMRect.prototype, "DOMRect"],
+    [DOMRectReadOnly.prototype, "DOMRectReadOnly"],
+    [TextMetrics.prototype, "TextMetrics"],
   ];
   for (const [owner, prefix] of targets) {
     for (const key of Object.getOwnPropertyNames(owner)) {
@@ -59,6 +72,29 @@ function allMethodsOf(obj: object): object[] {
     const fn = Object.getOwnPropertyDescriptor(obj, key)?.value;
     return fn && typeof fn === "function" ? [fn] : [];
   });
+}
+
+// Returns all setter functions defined on a prototype object.
+function allSettersOf(proto: object): object[] {
+  return Object.getOwnPropertyNames(proto).flatMap(key => {
+    const set = Object.getOwnPropertyDescriptor(proto, key)?.set;
+    return set ? [set] : [];
+  });
+}
+
+// innerHTML/outerHTML setters run through DOMPurify before reaching the DOM.
+// Checked before ALLOWED_FUNCTIONS so the sanitized wrapper wins even though
+// allSettersOf(Element.prototype) includes the raw setter in the allowlist.
+const SANITIZED_SETTERS = new Map<object, (this: Element, value: string) => void>();
+for (const key of ["innerHTML", "outerHTML"] as const) {
+  const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, key);
+  if (descriptor?.set) {
+    const originalSet = descriptor.set;
+    SANITIZED_SETTERS.set(descriptor.set, function (this: Element, value: string) {
+      const purify = (window as unknown as { DOMPurify?: { sanitize: (v: string) => string } }).DOMPurify;
+      originalSet.call(this, purify ? purify.sanitize(value) : value);
+    });
+  }
 }
 
 // Functions plugin code is allowed to call directly from the host window.
@@ -127,20 +163,42 @@ const ALLOWED_FUNCTIONS = new Set<object>(
     ...allMethodsOf(Object.getPrototypeOf(Int8Array.prototype)), // %TypedArray%.prototype
     ...allMethodsOf(Math),
     ...allMethodsOf(JSON),
+    // TypedArray constructors — all pass [native code] check when accessed via window.
+    window.Int8Array, window.Uint8Array, window.Uint8ClampedArray,
+    window.Int16Array, window.Uint16Array,
+    window.Int32Array, window.Uint32Array,
+    window.Float32Array, window.Float64Array,
+    window.BigInt64Array, window.BigUint64Array,
     // CSS matrix / geometry constructors — needed by animation/transform libraries.
     window.DOMMatrix,
     window.DOMPoint,
     window.DOMRect,
     (window as unknown as Record<string, unknown>).WebKitCSSMatrix as object,
-    // DOM prototype methods and getters — manipulation and traversal APIs.
-    ...allGettersOf(Document.prototype),  ...allMethodsOf(Document.prototype),
-    ...allGettersOf(Node.prototype),      ...allMethodsOf(Node.prototype),
-    ...allGettersOf(Element.prototype),   ...allMethodsOf(Element.prototype),
-    ...allGettersOf(HTMLElement.prototype), ...allMethodsOf(HTMLElement.prototype),
+    // DOM prototype methods, getters, and setters — manipulation and traversal APIs.
+    ...allGettersOf(Document.prototype),    ...allMethodsOf(Document.prototype),    ...allSettersOf(Document.prototype),
+    ...allGettersOf(Node.prototype),        ...allMethodsOf(Node.prototype),         ...allSettersOf(Node.prototype),
+    ...allGettersOf(Element.prototype),     ...allMethodsOf(Element.prototype),      ...allSettersOf(Element.prototype),
+    ...allGettersOf(HTMLElement.prototype), ...allMethodsOf(HTMLElement.prototype),  ...allSettersOf(HTMLElement.prototype),
     ...allGettersOf(EventTarget.prototype), ...allMethodsOf(EventTarget.prototype),
     // Read-only browser info — getters only, no mutation.
     ...allGettersOf(Navigator.prototype),
     ...allGettersOf(Screen.prototype),
+    // Event hierarchy — plugin event handlers read type, target, clientX/Y, etc.
+    ...allGettersOf(Event.prototype),     ...allMethodsOf(Event.prototype),
+    ...allGettersOf(UIEvent.prototype),   ...allMethodsOf(UIEvent.prototype),
+    ...allGettersOf(MouseEvent.prototype), ...allMethodsOf(MouseEvent.prototype),
+    ...allGettersOf(PointerEvent.prototype), ...allMethodsOf(PointerEvent.prototype),
+    ...allGettersOf(WheelEvent.prototype), ...allMethodsOf(WheelEvent.prototype),
+    ...allGettersOf(KeyboardEvent.prototype), ...allMethodsOf(KeyboardEvent.prototype),
+    ...allGettersOf(TouchEvent.prototype), ...allMethodsOf(TouchEvent.prototype),
+    ...allGettersOf(Touch.prototype),
+    // Canvas APIs
+    ...allMethodsOf(HTMLCanvasElement.prototype), ...allGettersOf(HTMLCanvasElement.prototype), ...allSettersOf(HTMLCanvasElement.prototype),
+    ...allMethodsOf(CanvasRenderingContext2D.prototype), ...allGettersOf(CanvasRenderingContext2D.prototype), ...allSettersOf(CanvasRenderingContext2D.prototype),
+    ...allGettersOf(TextMetrics.prototype),
+    ...allGettersOf(DOMRect.prototype), ...allGettersOf(DOMRectReadOnly.prototype),
+    // CSSStyleDeclaration — style.cssText, style.setProperty, etc.
+    ...allGettersOf(CSSStyleDeclaration.prototype), ...allMethodsOf(CSSStyleDeclaration.prototype), ...allSettersOf(CSSStyleDeclaration.prototype),
   ].filter(Boolean) as object[],
 );
 
@@ -169,6 +227,9 @@ export function createPluginSandbox(pluginId: string) {
       const fname = (v as { name?: string }).name ?? "";
       if (fname.startsWith("[Symbol.") || fname.startsWith("bound ")) {
         return v;
+      }
+      if (SANITIZED_SETTERS.has(v)) {
+        return SANITIZED_SETTERS.get(v) as object;
       }
       if (ALLOWED_FUNCTIONS.has(v)) {
         return v;
