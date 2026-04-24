@@ -1,0 +1,142 @@
+name: Mirror Upstream PR
+run-name: Mirror upstream PR #${{ inputs.pr-id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr-id:
+        description: "PR number from metabase/metabase to mirror"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    env:
+      UPSTREAM: metabase/metabase
+      PR_ID: ${{ inputs.pr-id }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Validate input
+        run: |
+          if ! [[ "$PR_ID" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::pr-id must be a positive integer"
+            exit 1
+          fi
+
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: master
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch upstream master and PR head
+        run: |
+          git remote add upstream "https://github.com/${UPSTREAM}.git"
+          git fetch --no-tags upstream master \
+            "pull/${PR_ID}/head:refs/remotes/upstream/pr-${PR_ID}"
+
+      - name: Load PR metadata
+        id: meta
+        run: |
+          gh pr view "$PR_ID" --repo "$UPSTREAM" \
+            --json title,body,url,headRefOid,author > /tmp/pr.json
+
+          {
+            echo "title<<META_EOF"
+            jq -r '.title' /tmp/pr.json
+            echo "META_EOF"
+            echo "url=$(jq -r '.url' /tmp/pr.json)"
+            echo "head_sha=$(jq -r '.headRefOid' /tmp/pr.json)"
+            echo "author=$(jq -r '.author.login' /tmp/pr.json)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Rebuild mirror branch and cherry-pick PR commits
+        id: pick
+        run: |
+          BRANCH="upstream-pr-${PR_ID}"
+          SRC="refs/remotes/upstream/pr-${PR_ID}"
+
+          # Commits to replay: everything in the PR that isn't in upstream/master.
+          # Recomputing this range every run handles PR rebases and new commits
+          # uniformly — we always mirror exactly the current PR content.
+          BASE=$(git merge-base upstream/master "$SRC")
+          COUNT=$(git rev-list --count "${BASE}..${SRC}")
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::Upstream PR has no commits relative to upstream/master"
+            exit 1
+          fi
+          echo "Cherry-picking ${COUNT} commit(s) from ${BASE}..${SRC}"
+
+          # Idempotency: reset the mirror branch to fork master every run.
+          git checkout -B "$BRANCH" master
+
+          if ! git cherry-pick --keep-redundant-commits "${BASE}..${SRC}"; then
+            CONFLICTS=$(git diff --name-only --diff-filter=U || true)
+            git cherry-pick --abort || true
+            git checkout --detach master
+            git branch -D "$BRANCH" || true
+            {
+              echo "::error::Cherry-pick failed. Resolve conflicts manually and push to the mirror branch."
+              echo "::group::Conflicting files"
+              echo "$CONFLICTS"
+              echo "::endgroup::"
+            }
+            exit 1
+          fi
+
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Push mirror branch
+        env:
+          BRANCH: ${{ steps.pick.outputs.branch }}
+        run: |
+          # --force-with-lease so we don't clobber manual pushes to the mirror
+          # branch made between workflow runs.
+          git push --force-with-lease origin "$BRANCH"
+
+      - name: Create or update pull request
+        env:
+          PR_TITLE: ${{ steps.meta.outputs.title }}
+          PR_URL: ${{ steps.meta.outputs.url }}
+          HEAD_SHA: ${{ steps.meta.outputs.head_sha }}
+          AUTHOR: ${{ steps.meta.outputs.author }}
+          BRANCH: ${{ steps.pick.outputs.branch }}
+        run: |
+          TITLE="[upstream #${PR_ID}] ${PR_TITLE}"
+          BODY_FILE=$(mktemp)
+          {
+            echo "Mirrors upstream PR: ${PR_URL}"
+            echo "Original author: @${AUTHOR}"
+            echo "Upstream head at last mirror: \`${HEAD_SHA}\`"
+            echo
+            echo "---"
+            echo
+            jq -r '.body // ""' /tmp/pr.json
+          } > "$BODY_FILE"
+
+          FORK="${GITHUB_REPOSITORY}"
+          EXISTING=$(gh pr list --repo "$FORK" --head "$BRANCH" --base master \
+            --state open --json number --jq '.[0].number // empty')
+          if [ -n "$EXISTING" ]; then
+            echo "Updating existing PR #${EXISTING}"
+            gh pr edit "$EXISTING" --repo "$FORK" \
+              --title "$TITLE" --body-file "$BODY_FILE"
+          else
+            echo "Creating new PR against ${FORK}"
+            gh pr create \
+              --repo "$FORK" \
+              --base master \
+              --head "$BRANCH" \
+              --title "$TITLE" \
+              --body-file "$BODY_FILE"
+          fi
