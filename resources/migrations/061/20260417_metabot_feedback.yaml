@@ -73,6 +73,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
                   remarks: 'When the feedback was last updated'
+
+  - changeSet:
+      id: v61.2026-04-17T10:00:01
+      author: sloansparger
+      comment: Unique constraint on metabot_feedback (message_id, user_id)
+      changes:
         - addUniqueConstraint:
             tableName: metabot_feedback
             columnNames: message_id, user_id
