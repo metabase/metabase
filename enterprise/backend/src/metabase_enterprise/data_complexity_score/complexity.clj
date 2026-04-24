@@ -7,7 +7,6 @@
    [clojure.pprint :as pprint]
    [clojure.string :as str]
    [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase.analytics.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
    [metabase.audit-app.core :as audit]
@@ -19,7 +18,11 @@
 (set! *warn-on-reflection* true)
 
 (def formula-version
-  "Bump when the scoring formula changes in a way that would break historical comparisons."
+  "Bump when the scoring formula changes in a way that would break historical comparisons.
+
+  Swaps of `embedding-model`, `synonym-threshold`, or `text-variant` don't need a bump.
+  Those values ride in the fingerprint + `:meta` + Snowplow parameters, so downstream readers
+  can diff on them directly."
   1)
 
 (def weights
@@ -44,10 +47,15 @@
 
 (def synonym-similarity-threshold
   "Cosine-similarity cutoff for flagging two names as synonyms.
-  Higher than semantic-search's retrieval cutoff (0.30) because scoring needs precision, not recall.
-  See https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb for how this
-  value was chosen."
-  0.90)
+
+  Paired with the fixed MiniLM-L6-v2 STS model in
+  `complexity-embedders/default-synonym-model`.
+  Higher than semantic-search's retrieval cutoff (0.30) because scoring needs precision, not
+  recall.
+
+  See https://linear.app/metabase/document/synonym-analysis-21-april-2026-31c8ce76eddb for how
+  this value was chosen."
+  0.80)
 
 ;;; ----------------------------------- enumeration -----------------------------------
 ;;;
@@ -345,18 +353,26 @@
   [& parts]
   (str/join "." (map snake parts)))
 
+(defn- snake-keys
+  "Recursively snake-case all keyword keys/values to strings for stable round-trip through
+  Snowplow's JSON serialization. Keyword values in leaf positions are stringified too."
+  [x]
+  (cond
+    (map? x)     (into (sorted-map) (map (fn [[k v]] [(snake k) (snake-keys v)])) x)
+    (keyword? x) (snake x)
+    :else        x))
+
 (defn- parameters-map
   "Sorted-map of scoring inputs likely to evolve, published as a JSON object on each event.
-  String keys (top-level and nested) so they round-trip unchanged — Snowplow's `payload` only
-  snake-cases top-level keys, and Cheshire would serialize nested keyword keys with their leading
-  colon. Excludes `formula_version` — that stays top-level as the primary cross-version filter."
-  [{:keys [synonym-threshold embedding-model weights]}]
+
+  String keys (top-level and nested) so they round-trip unchanged through Snowplow's payload
+  serialization.
+  `formula_version` stays top-level as the primary cross-version filter."
+  [{:keys [synonym-threshold embedding-model text-variant weights]}]
   (cond-> (sorted-map "synonym_threshold" synonym-threshold
-                      "weights"           (into (sorted-map)
-                                                (map (fn [[k v]] [(snake k) v]))
-                                                weights))
-    embedding-model (assoc "embedding_model_provider" (:provider embedding-model)
-                           "embedding_model_name"     (:model-name embedding-model))))
+                      "weights"           (snake-keys weights))
+    embedding-model (assoc "embedding_model" (snake-keys embedding-model))
+    text-variant    (assoc "text_variant"    (snake text-variant))))
 
 (def ^:private max-error-length
   "Matches the Snowplow schema's `error` maxLength — a pathological exception message
@@ -415,25 +431,33 @@
 
 (defn complexity-scores
   "Compute the complexity score for the `:library`, `:universe`, and `:metabot` catalogs of this
-   Metabase instance. Returns a map of the shape:
+  Metabase instance.
 
-     {:library  {:total n :components {...}}
-      :universe {:total n :components {...}}
-      :metabot  {:total n :components {...}}
-      :meta     {:formula-version 1
-                 :synonym-threshold 0.90
-                 :embedding-model {...}}}
+  Returns a map of the shape:
 
-   Options:
-     `:embedder` — overrides the synonym-axis embedder (defaults to
-        [[metabase-enterprise.semantic-search.core/search-index-embedder]]); pass `nil` to disable
-        synonym scoring.
-     `:metabot-scope` — a `{:verified-only? <bool> :collection-id <nil|Long>}` map describing how
-        the internal Metabot filters Cards. `:metabot` is always scored separately from `:universe`
-        because Metabot/search table visibility (hidden tables, routed databases) already diverges
-        from the raw `:universe` set; the scope only narrows Cards further. The caller owns the
-        scope decision (premium-feature gate + Metabot row lookup) so this namespace stays free of
-        settings/feature/Metabot-row reads."
+      {:library  {:total n :components {...}}
+       :universe {:total n :components {...}}
+       :metabot  {:total n :components {...}}
+       :meta     {:formula-version 1
+                  :synonym-threshold 0.80
+                  :embedding-model {:provider ... :model-name ... :model-dimensions ...}
+                  :text-variant :names-split}}
+
+  `:embedding-model` and `:text-variant` are present only when the default synonym embedder is
+  in use.
+  An explicit `:embedder` means the caller owns the model + preprocessing narrative.
+
+  Options:
+    `:embedder` — overrides the synonym-axis embedder (defaults to the MiniLM-L6-v2 embedder
+        in [[complexity-embedders/default-synonym-embedder]]); pass `nil` to disable synonym
+        scoring.
+    `:metabot-scope` — `{:verified-only? <bool> :collection-id <nil|Long>}` describing how the
+        internal Metabot filters Cards.
+        `:metabot` is always scored separately from `:universe` because Metabot/search table
+        visibility (hidden tables, routed databases) already diverges from the raw `:universe`
+        set; the scope only narrows Cards further.
+        The caller owns the scope decision — this namespace does not read settings, feature
+        gates, or Metabot rows directly."
   [& {:keys [embedder metabot-scope] :as opts}]
   ;;; NOTE: we fully materialize a vector off all entities, along with one of those in the library, rather than
   ;;; returning reducibles. For very large instances that holds a non-trivial slim-entity list in memory
@@ -445,9 +469,10 @@
     (try
       (let [embedder       (if (contains? opts :embedder)
                              embedder
-                             semantic-search/search-index-embedder)
-            model-meta     (when (= embedder semantic-search/search-index-embedder)
-                             (semantic-search/active-embedding-model))
+                             embedders/default-synonym-embedder)
+            default?       (= embedder embedders/default-synonym-embedder)
+            model-meta     (when default? embedders/default-synonym-model)
+            text-variant   (when default? embedders/default-text-variant)
             {:keys [library universe metabot]}
             ;; Single enumerate phase — see [[enumerate-catalogs]]. Library ⊆ universe and
             ;; metabot ⊆ universe, so fetching each catalog separately duplicated DB work; the
@@ -462,7 +487,8 @@
                             :metabot  metabot-score
                             :meta     (cond-> {:formula-version   formula-version
                                                :synonym-threshold synonym-similarity-threshold}
-                                        model-meta (assoc :embedding-model model-meta))}]
+                                        model-meta   (assoc :embedding-model model-meta)
+                                        text-variant (assoc :text-variant    text-variant))}]
         (log-scores! result)
         (let [published? (try
                            (emit-snowplow! result)

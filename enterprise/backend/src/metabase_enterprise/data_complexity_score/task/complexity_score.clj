@@ -6,9 +6,9 @@
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase-enterprise.data-complexity-score.complexity :as complexity]
+   [metabase-enterprise.data-complexity-score.complexity-embedders :as embedders]
    [metabase-enterprise.data-complexity-score.metabot-scope :as metabot-scope]
    [metabase-enterprise.data-complexity-score.settings :as settings]
-   [metabase-enterprise.semantic-search.core :as semantic-search]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
@@ -22,16 +22,23 @@
 (def ^:private trigger-key (triggers/key "metabase.task.data-complexity-score.trigger"))
 
 (defn- current-fingerprint
-  "String capturing everything that changes the meaning of an emitted score — mirror of the Snowplow
-  `formula_version` + `parameters` fields. Includes `weights` so re-tuning forces a re-score
-  without bumping `formula-version`; only structural changes to the scoring algorithm need that."
+  "String capturing everything that changes the meaning of an emitted score.
+
+  Mirrors the Snowplow `formula_version` + `parameters` fields.
+  `weights` is included so re-tuning forces a re-score without a `formula-version` bump;
+  only structural scoring-algorithm changes need that.
+
+  `:embedding-model` and `:text-variant` are fixed synonym-axis descriptors — stable across
+  pgvector state changes, so the fingerprint doesn't drift when the search index is rebuilt
+  or unreachable, but a swap to a different model or preprocessing variant does force a
+  re-score."
   []
-  (let [embedding-model (semantic-search/active-embedding-model)]
-    (pr-str (into (sorted-map)
-                  (cond-> {:formula-version   complexity/formula-version
-                           :synonym-threshold complexity/synonym-similarity-threshold
-                           :weights           complexity/weights}
-                    embedding-model (assoc :embedding-model embedding-model))))))
+  (pr-str (into (sorted-map)
+                {:formula-version   complexity/formula-version
+                 :synonym-threshold complexity/synonym-similarity-threshold
+                 :weights           complexity/weights
+                 :embedding-model   embedders/default-synonym-model
+                 :text-variant      embedders/default-text-variant})))
 
 (defn- run-scoring!
   "One scoring pass. Gated by [[settings/data-complexity-scoring-enabled]] so admins can silence
