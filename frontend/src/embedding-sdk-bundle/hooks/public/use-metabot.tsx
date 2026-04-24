@@ -17,6 +17,11 @@ import type { MetabotChatMessage } from "metabase/metabot/state/types";
  *
  * Provides a stable, SDK-friendly API for sending messages, managing
  * conversation state, and reading Metabot responses.
+ *
+ * Note: all `useMetabot` instances in the same app share conversation state.
+ * Mounting the hook in two components reads the same Redux state.
+ * The backend exposes only a finite set of metabot agent types
+ * (e.g. `default`, `embedded`, `slackbot`).
  */
 export const useMetabot = (): UseMetabotResult => {
   const agent = useMetabotAgent();
@@ -51,6 +56,12 @@ export const useMetabot = (): UseMetabotResult => {
     [agentRetryMessage],
   );
 
+  const agentResetConversation = agent.resetConversation;
+  const resetConversation = useCallback(() => {
+    chartComponentsCache.current.clear();
+    agentResetConversation();
+  }, [agentResetConversation]);
+
   const messages = useMemo<MetabotMessage[]>(
     () =>
       agent.messages
@@ -63,7 +74,7 @@ export const useMetabot = (): UseMetabotResult => {
     submitMessage,
     retryMessage,
     cancelRequest: agent.cancelRequest,
-    resetConversation: agent.resetConversation,
+    resetConversation,
 
     messages,
     errorMessages: agent.errorMessages,

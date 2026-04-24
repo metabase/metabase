@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
@@ -13,6 +13,11 @@ export function MetabotChatHistory() {
   const { messages, errorMessages } = metabot;
   const { setNavigateToPath } = useMetabotReactions();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const visibleMessages = useMemo(
+    () => messages.filter((message) => message.type !== "chart"),
+    [messages],
+  );
 
   const hasMessages = messages.length > 0 || errorMessages.length > 0;
 
@@ -35,7 +40,7 @@ export function MetabotChatHistory() {
     >
       {hasMessages ? (
         <Messages
-          messages={messages.filter((message) => message.type !== "chart")}
+          messages={visibleMessages}
           errorMessages={errorMessages}
           onRetryMessage={metabot.retryMessage}
           isDoingScience={metabot.isDoingScience}
