@@ -1,4 +1,5 @@
 import type { DateFilterValue } from "metabase/querying/common/types";
+import type { CardMetadata, TableMetadata } from "metabase-lib";
 
 import { BreakoutChart } from "./BreakoutChart";
 import { type UsageStatsMetric, getChartTitle } from "./query-utils";
@@ -6,7 +7,8 @@ import { type UsageStatsMetric, getChartTitle } from "./query-utils";
 type Props = {
   dateFilter: DateFilterValue;
   userId?: number;
-  groupName?: string;
+  groupId?: number;
+  groupMembersTable?: TableMetadata | CardMetadata | null;
   metric: UsageStatsMetric;
   viewName?: string;
   onDimensionClick?: (value: unknown) => void;
@@ -15,7 +17,8 @@ type Props = {
 export function ConversationsBySourceChart({
   dateFilter,
   userId,
-  groupName,
+  groupId,
+  groupMembersTable,
   metric,
   viewName,
   onDimensionClick,
@@ -24,7 +27,8 @@ export function ConversationsBySourceChart({
     <BreakoutChart
       dateFilter={dateFilter}
       userId={userId}
-      groupName={groupName}
+      groupId={groupId}
+      groupMembersTable={groupMembersTable}
       breakoutColumn="source"
       title={getChartTitle(metric, "source")}
       display="bar"

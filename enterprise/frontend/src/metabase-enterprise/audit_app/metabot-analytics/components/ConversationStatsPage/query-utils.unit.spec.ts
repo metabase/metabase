@@ -1,12 +1,11 @@
 import type { DateFilterValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
-import { PRODUCTS_ID } from "metabase-types/api/mocks/presets";
 
 import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
 
 import {
-  applyGroupFilter,
+  applyGroupFilterByJoin,
   applyUserFilter,
   getMetricSeriesSettings,
   getViewForMetric,
@@ -202,33 +201,19 @@ describe("applyUserFilter", () => {
   });
 });
 
-describe("applyGroupFilter", () => {
-  // Query against PRODUCTS so we can target a real string column (CATEGORY).
-  const productsQuery = () =>
-    Lib.createTestQuery(SAMPLE_PROVIDER, {
-      stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
-    });
+describe("applyGroupFilterByJoin", () => {
+  const baseQuery = () =>
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 
-  it("is a no-op when groupName is undefined", () => {
-    const result = applyGroupFilter(productsQuery(), undefined, "category");
+  it("is a no-op when groupId is undefined", () => {
+    const result = applyGroupFilterByJoin(baseQuery(), undefined, null);
+    expect(Lib.joins(result, 0)).toHaveLength(0);
     expect(Lib.filters(result, 0)).toHaveLength(0);
   });
 
-  it("adds an equality filter on the named string column when present", () => {
-    const result = applyGroupFilter(productsQuery(), "Admins", "category");
-    const [clause, ...rest] = Lib.filters(result, 0);
-    expect(rest).toHaveLength(0);
-    const parts = Lib.stringFilterParts(result, 0, clause);
-    expect(parts?.operator).toBe("=");
-    expect(parts?.values).toEqual(["Admins"]);
-  });
-
-  it("is a no-op when the column cannot be found on the query", () => {
-    const result = applyGroupFilter(
-      productsQuery(),
-      "Admins",
-      "column_that_does_not_exist",
-    );
+  it("is a no-op when the groupMembersTable is null (still loading)", () => {
+    const result = applyGroupFilterByJoin(baseQuery(), 7, null);
+    expect(Lib.joins(result, 0)).toHaveLength(0);
     expect(Lib.filters(result, 0)).toHaveLength(0);
   });
 });
