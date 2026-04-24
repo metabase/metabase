@@ -25,11 +25,13 @@ import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/
 import { useDashboardLoadHandlers } from "embedding-sdk-bundle/hooks/private/use-dashboard-load-handlers";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useSdkBreadcrumbs } from "embedding-sdk-bundle/hooks/private/use-sdk-breadcrumb";
+import { useSdkControlledParameters } from "embedding-sdk-bundle/hooks/private/use-sdk-controlled-parameters";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
 } from "embedding-sdk-bundle/hooks/private/use-sdk-dashboard-params";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
+import { mapExplicitNullToEmpty } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -39,6 +41,7 @@ import {
 import type { MetabaseQuestion } from "embedding-sdk-bundle/types";
 import type {
   DashboardEventHandlersProps,
+  DashboardParameterChangePayload,
   SdkDashboardId,
 } from "embedding-sdk-bundle/types/dashboard";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -136,6 +139,20 @@ export type SdkDashboardProps = PropsWithChildren<
      * - Combining {@link SdkDashboardProps.initialParameters | initialParameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
      */
     initialParameters?: ParameterValues;
+
+    /**
+     * Controlled parameter values, slug-keyed. Explicit `null` as a parameter value strictly clears its value (ignores `parameter.default`); missing slugs fall back to `parameter.default ?? null`. Pair with {@link SdkDashboardProps.onParametersChange | onParametersChange} to stay in sync with manual edits.
+     * <br/>
+     * - Combining {@link SdkDashboardProps.parameters | parameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to filter data on the frontend is a [security risk](https://www.metabase.com/docs/latest/embedding/sdk/authentication.html#security-warning-each-end-user-must-have-their-own-metabase-account).
+     * <br/>
+     * - Combining {@link SdkDashboardProps.parameters | parameters} and {@link SdkDashboardDisplayProps.hiddenParameters | hiddenParameters} to declutter the user interface is fine.
+     */
+    parameters?: ParameterValues;
+
+    /**
+     * Fires on every applied parameter change — user edits, pushes via {@link SdkDashboardProps.parameters | parameters}, or default resolution on load.
+     */
+    onParametersChange?: (payload: DashboardParameterChangePayload) => void;
   } & SdkDashboardDisplayProps &
     DashboardEventHandlersProps &
     EditableDashboardOwnProps
@@ -170,7 +187,9 @@ const SdkDashboardInner = ({
   dashboardId: rawDashboardId,
   token: rawToken,
   autoRefreshInterval,
-  initialParameters = {},
+  initialParameters,
+  parameters,
+  onParametersChange,
   withTitle = true,
   withCardTitle = true,
   withDownloads = false,
@@ -200,6 +219,27 @@ const SdkDashboardInner = ({
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
   const dispatch = useSdkDispatch();
   const [isFirstRender, setIsFirstRender] = useState(true);
+
+  const hasConflictingParameterProps =
+    initialParameters !== undefined && parameters !== undefined;
+  useEffect(() => {
+    if (hasConflictingParameterProps) {
+      console.warn(
+        "`initialParameters` is ignored when `parameters` is set. Pass only one.",
+      );
+    }
+  }, [hasConflictingParameterProps]);
+
+  const effectiveInitialParameters =
+    parameters !== undefined
+      ? mapExplicitNullToEmpty(parameters)
+      : (initialParameters ?? {});
+
+  useSdkControlledParameters({
+    parameters,
+    onParametersChange,
+  });
+
   const { rawToken: tokenFromStore, error: tokenFetchError } =
     useSdkSelector(getSessionTokenState);
 
@@ -418,7 +458,7 @@ const SdkDashboardInner = ({
         ref={dashboardContextProviderRef}
         dashboardId={dashboardId}
         isGuestEmbed={isGuestEmbed}
-        parameterQueryParams={initialParameters}
+        parameterQueryParams={effectiveInitialParameters}
         navigateToNewCardFromDashboard={
           navigateToNewCardFromDashboard !== undefined
             ? navigateToNewCardFromDashboard

@@ -14,7 +14,9 @@ import { SdkQuestionAlertListModal } from "embedding-sdk-bundle/components/priva
 import { QuestionAlertModalProvider } from "embedding-sdk-bundle/components/private/notifications/context/QuestionAlertModalProvider";
 import { useExtractResourceIdFromJwtToken } from "embedding-sdk-bundle/hooks/private/use-extract-resource-id-from-jwt-token";
 import { useLoadQuestion } from "embedding-sdk-bundle/hooks/private/use-load-question";
+import { useSdkControlledSqlParameters } from "embedding-sdk-bundle/hooks/private/use-sdk-controlled-sql-parameters";
 import { useSetupContentTranslations } from "embedding-sdk-bundle/hooks/private/use-setup-content-translations";
+import { mapExplicitNullToEmpty } from "embedding-sdk-bundle/lib/controlled-parameters";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk-bundle/store";
 import { setInitialGuestToken } from "embedding-sdk-bundle/store/guest-embed";
 import {
@@ -71,6 +73,8 @@ export const SdkQuestionProvider = ({
   dataPicker,
   targetCollection,
   initialSqlParameters,
+  sqlParameters,
+  onSqlParametersChange,
   hiddenParameters,
   withDownloads,
   withAlerts,
@@ -177,8 +181,29 @@ export const SdkQuestionProvider = ({
     token,
     options,
     deserializedCard,
-    initialSqlParameters,
+    initialSqlParameters:
+      sqlParameters !== undefined
+        ? mapExplicitNullToEmpty(sqlParameters)
+        : initialSqlParameters,
     targetDashboardId,
+  });
+
+  const hasConflictingSqlParameterProps =
+    initialSqlParameters !== undefined && sqlParameters !== undefined;
+  useEffect(() => {
+    if (hasConflictingSqlParameterProps) {
+      console.warn(
+        "`initialSqlParameters` is ignored when `sqlParameters` is set. Pass only one.",
+      );
+    }
+  }, [hasConflictingSqlParameterProps]);
+
+  useSdkControlledSqlParameters({
+    sqlParameters,
+    onSqlParametersChange,
+    question,
+    parameterValues: parameterValues ?? {},
+    updateParameterValues,
   });
 
   const globalPlugins = useSdkSelector(getPlugins);

@@ -3,6 +3,7 @@ import type {
   SdkCollectionId,
 } from "embedding-sdk-bundle/types/collection";
 import type { CreateDashboardProperties } from "metabase/common/CreateDashboard/CreateDashboardForm";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { CardDisplayType } from "metabase-types/api";
 
 import type { SdkEntityId, SdkEntityToken } from "./entity";
@@ -86,4 +87,33 @@ export type CreateDashboardValues = Omit<
    * Collection in which to create a new dashboard. You can use predefined system values like `root` or `personal`.
    */
   collectionId: SdkCollectionId;
+};
+
+/**
+ * Source of a parameter-change emission. `initial-state` fires exactly
+ * once per dashboard load — after the backend response has
+ * resolved applied parameter values from defaults, last-used, and the
+ * host-provided `parameters` prop. All subsequent emissions (user
+ * widget edits, programmatic pushes via the controlled prop, default
+ * resolution on reload) are tagged `manual-change`
+ *
+ * @category Dashboard
+ */
+export type DashboardParameterChangeSource = "initial-state" | "manual-change";
+
+/**
+ * Payload delivered to dashboard-side `onParametersChange` callbacks and
+ * Embed.js `parameters-change` `event.detail`
+ *
+ * @category Dashboard
+ */
+export type DashboardParameterChangePayload = {
+  /** Post-load `'initial-state'` snapshot (fired once) or subsequent `'manual-change'` (user edit / programmatic push). */
+  source: DashboardParameterChangeSource;
+  /** Currently applied values, slug-keyed. */
+  parameters: ParameterValues;
+  /** BE-provided defaults, slug-keyed. */
+  defaultParameters: ParameterValues;
+  /** BE-provided last-used values for this user on this dashboard, slug-keyed. Empty when the user has not applied any parameters yet. */
+  lastUsedParameters: ParameterValues;
 };

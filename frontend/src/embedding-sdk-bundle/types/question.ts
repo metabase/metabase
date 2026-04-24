@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { Deferred } from "metabase/utils/promise";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
@@ -142,3 +143,30 @@ export type SqlParameterValues = Record<
   | null
   | undefined
 >;
+
+/**
+ * Source of a parameter-change emission. `initial-state` fires exactly
+ * once per question load — after the backend response has
+ * resolved applied parameter values from defaults, last-used, and the
+ * host-provided `parameters` prop. All subsequent emissions (user
+ * widget edits, programmatic pushes via the controlled prop, default
+ * resolution on reload) are tagged `manual-change`
+ *
+ * @category InteractiveQuestion
+ */
+export type SqlParameterChangeSource = "initial-state" | "manual-change";
+
+/**
+ * Payload delivered to question-side `onSqlParametersChange` callbacks
+ * and Embed.js `sql-parameters-change` `event.detail`
+ *
+ * @category InteractiveQuestion
+ */
+export type SqlParameterChangePayload = {
+  /** Post-load `'initial-state'` snapshot (fired once) or subsequent `'manual-change'` (user edit / programmatic push). */
+  source: SqlParameterChangeSource;
+  /** Currently applied values, slug-keyed. */
+  parameters: ParameterValues;
+  /** BE-provided defaults, slug-keyed. */
+  defaultParameters: ParameterValues;
+};

@@ -1,11 +1,13 @@
 import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-bundle/errors";
 import * as MetabaseErrors from "embedding-sdk-bundle/errors";
+import type { SqlParameterValues } from "embedding-sdk-bundle/types";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
   EmbedAuthManager,
   EmbedAuthManagerContext,
 } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
 import type { ComponentToAttributes } from "metabase/embedding/embedding-iframe-sdk/types/modular-embedding";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { decodeJwt } from "metabase/utils/jwt";
 
 import { debouncedReportAnalytics } from "./analytics";
@@ -159,6 +161,16 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     Set<SdkIframeEmbedEventHandler>
   > = new Map();
   private _authManager: EmbedAuthManager | null = null;
+
+  /**
+   * Names of attributes currently being written by a property setter (e.g.
+   * `parameters`), so `attributeChangedCallback` can skip the follow-up
+   * `_updateSettings` call — the setter already dispatched it. A `Set`
+   * lets multiple JSON-typed properties reflect concurrently without
+   * stomping on each other.
+   */
+  private _reflectingAttributes: Set<string> = new Set();
+
   ["custom-context"]: unknown;
 
   constructor() {
@@ -278,6 +290,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     window.removeEventListener("message", this._handleMessage);
     this._isEmbedReady = false;
     this._eventHandlers.clear();
+    this._reflectingAttributes.clear();
     this._authManager = null;
 
     if (this._iframe) {
@@ -321,6 +334,13 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       return;
     }
 
+    // Skip when the change came from a property setter that already
+    // dispatched `_updateSettings` directly — re-dispatching here would
+    // double the post.
+    if (this._reflectingAttributes.has(attrName)) {
+      return;
+    }
+
     const key = attributeToSettingKey(
       attrName,
     ) as keyof SdkIframeEmbedElementSettings;
@@ -334,6 +354,29 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     this._updateSettings({
       [key]: parseAttributeValue(newVal),
     } as Partial<SdkIframeEmbedElementSettings>);
+  }
+
+  /**
+   * Apply a typed value coming from a property setter: dispatch
+   * `_updateSettings` unconditionally (even when the underlying attribute
+   * string would be unchanged after a manual UI edit), and mirror the
+   * value to the attribute for HTML-side observability.
+   */
+  protected _applyJsonProperty(
+    settingKey: string,
+    attrName: string,
+    value: unknown,
+  ) {
+    this._updateSettings({
+      [settingKey]: value,
+    } as Partial<SdkIframeEmbedElementSettings>);
+
+    this._reflectingAttributes.add(attrName);
+    try {
+      writeJsonAttribute(this, attrName, value);
+    } finally {
+      this._reflectingAttributes.delete(attrName);
+    }
   }
 
   private _emitEvent(event: SdkIframeEmbedEvent) {
@@ -479,6 +522,18 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
           data: { requestId, handled },
         },
         "*",
+      );
+    }
+
+    if (event.data.type === "metabase.embed.parametersChange") {
+      this.dispatchEvent(
+        new CustomEvent("parameters-change", { detail: event.data.data }),
+      );
+    }
+
+    if (event.data.type === "metabase.embed.sqlParametersChange") {
+      this.dispatchEvent(
+        new CustomEvent("sql-parameters-change", { detail: event.data.data }),
       );
     }
   };
@@ -647,18 +702,68 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 }
 
+type ConcreteEmbedElementCtor<U extends string[]> = new (
+  ...args: any[]
+) => MetabaseEmbedElement<U> & {
+  _componentName: string;
+  _attributeNames: U;
+};
+
+/**
+ * Backing reader for component subclass JSON-typed attributes (e.g.
+ * `parameters`, `sql-parameters`). Returns `undefined` when the attribute
+ * is absent or fails to parse — the underlying `parseAttributeValue`
+ * already logs JSON errors.
+ */
+function readJsonAttribute<T>(
+  el: HTMLElement,
+  attrName: string,
+): T | undefined {
+  const raw = el.getAttribute(attrName);
+  if (raw === null) {
+    return undefined;
+  }
+  const parsed = parseAttributeValue(raw);
+  return parsed as T | undefined;
+}
+
+/**
+ * Backing writer for JSON-typed attributes. Reflects the typed JS
+ * property to the HTML attribute by JSON-serializing; `undefined` clears
+ * the attribute. Browser-level string equality on `setAttribute` short-
+ * circuits no-op writes, so we don't need an explicit deep-equal guard.
+ */
+function writeJsonAttribute(
+  el: HTMLElement,
+  attrName: string,
+  value: unknown,
+): void {
+  if (value === undefined) {
+    el.removeAttribute(attrName);
+    return;
+  }
+  el.setAttribute(attrName, JSON.stringify(value));
+}
+
 function createCustomElement<
   T extends keyof ComponentToAttributes,
   U extends (keyof ComponentToAttributes[T] & string)[],
->(componentName: T, attributeNames: U) {
-  const CustomEmbedElement = class extends MetabaseEmbedElement<U> {
+  C extends ConcreteEmbedElementCtor<U> = ConcreteEmbedElementCtor<U>,
+>(
+  componentName: T,
+  attributeNames: U,
+  decorate?: (Base: ConcreteEmbedElementCtor<U>) => C,
+): C {
+  const Base = class extends MetabaseEmbedElement<U> {
     protected _componentName: string = componentName;
     protected _attributeNames: U = attributeNames;
 
     static get observedAttributes() {
       return attributeNames;
     }
-  };
+  } as unknown as ConcreteEmbedElementCtor<U>;
+
+  const CustomEmbedElement = (decorate ? decorate(Base) : Base) as C;
 
   if (typeof window !== "undefined" && !customElements.get(componentName)) {
     customElements.define(componentName, CustomEmbedElement);
@@ -667,32 +772,64 @@ function createCustomElement<
   return CustomEmbedElement;
 }
 
-const MetabaseDashboardElement = createCustomElement("metabase-dashboard", [
-  "dashboard-id",
-  "token",
-  "auto-refresh-interval",
-  "with-title",
-  "with-downloads",
-  "with-subscriptions",
-  "drills",
-  "initial-parameters",
-  "hidden-parameters",
-  "enable-entity-navigation",
-]);
+export const MetabaseDashboardElement = createCustomElement(
+  "metabase-dashboard",
+  [
+    "dashboard-id",
+    "token",
+    "auto-refresh-interval",
+    "with-title",
+    "with-downloads",
+    "with-subscriptions",
+    "drills",
+    "initial-parameters",
+    "parameters",
+    "hidden-parameters",
+    "enable-entity-navigation",
+  ],
+  (Base) =>
+    class extends Base {
+      get parameters(): ParameterValues | undefined {
+        return readJsonAttribute<ParameterValues>(this, "parameters");
+      }
+      set parameters(values: ParameterValues | undefined) {
+        this._applyJsonProperty("parameters", "parameters", values);
+      }
+    },
+);
+export type MetabaseDashboardElement = InstanceType<
+  typeof MetabaseDashboardElement
+>;
 
-const MetabaseQuestionElement = createCustomElement("metabase-question", [
-  "question-id",
-  "token",
-  "with-title",
-  "with-downloads",
-  "with-alerts",
-  "drills",
-  "initial-sql-parameters",
-  "hidden-parameters",
-  "is-save-enabled",
-  "target-collection",
-  "entity-types",
-]);
+export const MetabaseQuestionElement = createCustomElement(
+  "metabase-question",
+  [
+    "question-id",
+    "token",
+    "with-title",
+    "with-downloads",
+    "with-alerts",
+    "drills",
+    "initial-sql-parameters",
+    "sql-parameters",
+    "hidden-parameters",
+    "is-save-enabled",
+    "target-collection",
+    "entity-types",
+  ],
+  (Base) =>
+    class extends Base {
+      get sqlParameters(): SqlParameterValues | undefined {
+        return readJsonAttribute<SqlParameterValues>(this, "sql-parameters");
+      }
+      set sqlParameters(values: SqlParameterValues | undefined) {
+        this._applyJsonProperty("sqlParameters", "sql-parameters", values);
+      }
+    },
+);
+export type MetabaseQuestionElement = InstanceType<
+  typeof MetabaseQuestionElement
+>;
 
 const MetabaseManageContentElement = createCustomElement("metabase-browser", [
   "initial-collection",
@@ -719,9 +856,4 @@ if (typeof window !== "undefined") {
   };
 }
 
-export {
-  MetabaseDashboardElement,
-  MetabaseQuestionElement,
-  MetabaseManageContentElement,
-  MetabaseMetabotElement,
-};
+export { MetabaseManageContentElement, MetabaseMetabotElement };

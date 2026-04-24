@@ -8,6 +8,7 @@ import type {
   LoadSdkQuestionParams,
   MetabaseQuestion,
   SdkQuestionId,
+  SqlParameterChangePayload,
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
 import type {
@@ -43,6 +44,16 @@ type SdkQuestionConfig = {
    * Initial values for the SQL parameters.
    **/
   initialSqlParameters?: SqlParameterValues;
+
+  /**
+   * Controlled SQL parameter values, slug-keyed. Explicit `null` as a parameter value strictly clears its value (ignores `parameter.default`); missing slugs fall back to `parameter.default ?? null`. Pair with `onSqlParametersChange` to stay in sync with manual edits.
+   **/
+  sqlParameters?: SqlParameterValues;
+
+  /**
+   * Fires on every applied SQL parameter change. The payload's `source` distinguishes the initial post-load resolution (`'initial-state'`, fired once) from subsequent user/programmatic edits (`'manual-change'`).
+   **/
+  onSqlParametersChange?: (payload: SqlParameterChangePayload) => void;
 
   /**
    * A list of parameters to hide.
