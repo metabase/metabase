@@ -20,7 +20,7 @@
 (def formula-version
   "Bump when the scoring formula changes in a way that would break historical comparisons.
 
-  Swaps of `embedding-model` or `synonym-threshold` don't need a bump.
+  Swaps of `embedding-model`, `synonym-threshold`, or `text-variant` don't need a bump.
   Those values ride in the fingerprint + `:meta` + Snowplow parameters, so downstream readers
   can diff on them directly."
   1)
@@ -368,10 +368,11 @@
   String keys (top-level and nested) so they round-trip unchanged through Snowplow's payload
   serialization.
   `formula_version` stays top-level as the primary cross-version filter."
-  [{:keys [synonym-threshold embedding-model weights]}]
+  [{:keys [synonym-threshold embedding-model text-variant weights]}]
   (cond-> (sorted-map "synonym_threshold" synonym-threshold
                       "weights"           (snake-keys weights))
-    embedding-model (assoc "embedding_model" (snake-keys embedding-model))))
+    embedding-model (assoc "embedding_model" (snake-keys embedding-model))
+    text-variant    (assoc "text_variant"    (snake text-variant))))
 
 (def ^:private max-error-length
   "Matches the Snowplow schema's `error` maxLength — a pathological exception message
@@ -439,10 +440,12 @@
        :metabot  {:total n :components {...}}
        :meta     {:formula-version 1
                   :synonym-threshold 0.80
-                  :embedding-model {:provider ... :model-name ... :model-dimensions ...}}}
+                  :embedding-model {:provider ... :model-name ... :model-dimensions ...}
+                  :text-variant :names-split}}
 
-  `:embedding-model` is present only when the default synonym embedder is in use.
-  An explicit `:embedder` means the caller owns the model narrative.
+  `:embedding-model` and `:text-variant` are present only when the default synonym embedder is
+  in use.
+  An explicit `:embedder` means the caller owns the model + preprocessing narrative.
 
   Options:
     `:embedder` — overrides the synonym-axis embedder (defaults to the MiniLM-L6-v2 embedder
@@ -467,8 +470,9 @@
       (let [embedder       (if (contains? opts :embedder)
                              embedder
                              embedders/default-synonym-embedder)
-            model-meta     (when (= embedder embedders/default-synonym-embedder)
-                             embedders/default-synonym-model)
+            default?       (= embedder embedders/default-synonym-embedder)
+            model-meta     (when default? embedders/default-synonym-model)
+            text-variant   (when default? embedders/default-text-variant)
             {:keys [library universe metabot]}
             ;; Single enumerate phase — see [[enumerate-catalogs]]. Library ⊆ universe and
             ;; metabot ⊆ universe, so fetching each catalog separately duplicated DB work; the
@@ -483,7 +487,8 @@
                             :metabot  metabot-score
                             :meta     (cond-> {:formula-version   formula-version
                                                :synonym-threshold synonym-similarity-threshold}
-                                        model-meta (assoc :embedding-model model-meta))}]
+                                        model-meta   (assoc :embedding-model model-meta)
+                                        text-variant (assoc :text-variant    text-variant))}]
         (log-scores! result)
         (let [published? (try
                            (emit-snowplow! result)

@@ -528,22 +528,23 @@
       true?  {:mid nil :model_id "abc" :model "card"}  {:mid nil :model_id "xyz" :model "card"}
       false? {:mid nil :model_id "xyz" :model "card"}  {:mid nil :model_id "abc" :model "card"})))
 
-(deftest ^:sequential meta-advertises-default-synonym-model-test
+(deftest ^:sequential meta-advertises-default-synonym-model-and-text-variant-test
   (mt/with-dynamic-fn-redefs [complexity/enumerate-catalogs
                               (constantly {:library [] :universe [] :metabot []})]
-    (testing ":meta carries the full MiniLM descriptor when using the default embedder"
-      ;; default-synonym-embedder calls ai-service; stub get-embeddings-batch so the test
-      ;; doesn't depend on ai-service availability. We assert on :meta, not on scoring output.
+    (testing ":meta carries the full MiniLM descriptor + :names-split when using the default embedder"
       (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch (fn [_ _] [])]
         (let [{:keys [meta]} (complexity/complexity-scores)]
-          (is (= embedders/default-synonym-model (:embedding-model meta))))))
-    (testing ":embedding-model is omitted when the caller passes an explicit embedder"
+          (is (= embedders/default-synonym-model (:embedding-model meta)))
+          (is (= :names-split (:text-variant meta))))))
+    (testing ":embedding-model and :text-variant are omitted when the caller passes an explicit embedder"
       (let [{:keys [meta]} (complexity/complexity-scores :embedder (embedders/fn-embedder
                                                                     (fn [_] [])))]
-        (is (not (contains? meta :embedding-model)))))
-    (testing ":embedding-model is omitted when synonym scoring is disabled (embedder is nil)"
+        (is (not (contains? meta :embedding-model)))
+        (is (not (contains? meta :text-variant)))))
+    (testing ":embedding-model and :text-variant are omitted when synonym scoring is disabled (embedder is nil)"
       (let [{:keys [meta]} (complexity/complexity-scores :embedder nil)]
-        (is (not (contains? meta :embedding-model)))))))
+        (is (not (contains? meta :embedding-model)))
+        (is (not (contains? meta :text-variant)))))))
 
 (deftest ^:parallel default-synonym-model-pins-minilm-via-ai-service-test
   (testing "descriptor is the fixed MiniLM-L6-v2 via ai-service — breaks on accidental rename/swap"
@@ -744,8 +745,8 @@
             (is (= 1024 (count err))
                 "error is clipped to the schema's maxLength of 1024")))))))
 
-(deftest ^:sequential emit-snowplow-includes-embedding-model-meta-test
-  (testing "every event's parameters carry the nested embedding_model when using the default embedder"
+(deftest ^:sequential emit-snowplow-includes-embedding-model-and-text-variant-meta-test
+  (testing "every event's parameters carry the nested embedding_model + text_variant when using the default embedder"
     (snowplow-test/with-fake-snowplow-collector
       (mt/with-dynamic-fn-redefs [semantic-search/get-embeddings-batch (fn [_ _] [])
                                   complexity/enumerate-catalogs
@@ -754,12 +755,13 @@
                                                :metabot  []})]
         (snowplow-test/pop-event-data-and-user-id!)
         (complexity/complexity-scores)
-        (let [events (complexity-events!)
-              expected {"provider"         "ai-service"
-                        "model_name"       "sentence-transformers/all-MiniLM-L6-v2"
-                        "model_dimensions" 384}]
+        (let [events         (complexity-events!)
+              expected-model {"provider"         "ai-service"
+                              "model_name"       "sentence-transformers/all-MiniLM-L6-v2"
+                              "model_dimensions" 384}]
           (is (seq events) "sanity: events were emitted")
-          (is (every? #(= expected (get-in % ["parameters" "embedding_model"])) events)))))))
+          (is (every? #(= expected-model (get-in % ["parameters" "embedding_model"])) events))
+          (is (every? #(= "names_split"  (get-in % ["parameters" "text_variant"])) events)))))))
 
 (deftest ^:sequential emit-snowplow-failure-is-swallowed-test
   (testing "emission failure is caught; complexity-scores still returns the score and logs a warning"
