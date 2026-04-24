@@ -8,6 +8,7 @@ import { color } from "metabase/ui/colors/palette";
 import type {
   CardMetadata,
   ColumnMetadata,
+  MetadataProvider,
   Query,
   TableMetadata,
 } from "metabase-lib";
@@ -295,6 +296,39 @@ export function applyMetricOrderBy(
     return query;
   }
   return Lib.orderBy(query, 0, orderCol, "desc");
+}
+
+export type SourceBreakoutQueryOpts = StatsFilters & {
+  provider: MetadataProvider;
+  table: TableMetadata | CardMetadata;
+  groupMembersTable: TableMetadata | CardMetadata;
+  breakoutColumn: string;
+};
+
+export function buildSourceBreakoutQuery({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  userId,
+  groupId,
+  metric,
+  breakoutColumn,
+}: SourceBreakoutQueryOpts): Query {
+  let q = Lib.queryFromTableOrCardMetadata(provider, table);
+  q = applyDateFilter(q, dateFilter);
+  q = applyUserFilter(q, userId);
+  q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
+  q = groupId != null ? applyGroupIdFilter(q, groupId) : q;
+  q = applyUsageStatsAggregation(q, metric);
+  q = breakoutByColumn(q, breakoutColumn);
+  q = applyMetricOrderBy(q, metric);
+  return q;
+}
+
+export function breakoutByColumn(query: Query, columnName: string): Query {
+  const col = findColumn(query, columnName, Lib.breakoutableColumns);
+  return col ? Lib.breakout(query, 0, col) : query;
 }
 
 /**
