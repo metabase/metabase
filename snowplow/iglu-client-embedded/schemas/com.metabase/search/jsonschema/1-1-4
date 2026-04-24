@@ -93,6 +93,7 @@
         "enum": [
           "dashboard",
           "card",
+          "dataset",
           "segment",
           "measure",
           "metric",
