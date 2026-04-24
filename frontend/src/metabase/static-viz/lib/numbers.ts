@@ -1,13 +1,13 @@
 import type { CurrencyStyle } from "metabase/utils/formatting";
 import { formatNumber as appFormatNumber } from "metabase/utils/formatting/numbers";
 
-export type NumberStyle = "currency" | "decimal" | "scientific" | "percentage";
+export type NumberStyle = "currency" | "decimal" | "scientific" | "percent";
 
 export type NumberFormatOptions = {
   number_style?: NumberStyle;
   currency?: string;
   currency_style?: CurrencyStyle;
-  number_separators?: ".,";
+  number_separators?: string;
   decimals?: number;
   scale?: number;
   prefix?: string;
