@@ -8,6 +8,7 @@ import { useMetabotAgent } from "metabase/metabot/hooks";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import * as domModule from "metabase/utils/dom";
+import { createMockUser } from "metabase-types/api/mocks";
 
 import { Metabot } from "../components/Metabot";
 
@@ -37,6 +38,31 @@ describe("metabot > ui", () => {
     setup();
     expect(
       await screen.findByText("Metabot isn't perfect. Double-check results."),
+    ).toBeInTheDocument();
+  });
+
+  it("should show a setup prompt and disable chat input when metabot is not configured", async () => {
+    setup({
+      currentUser: createMockUser({ is_superuser: true }),
+      isConfigured: false,
+    });
+
+    expect(
+      await screen.findByText("To use Metabot, please", { exact: false }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "connect to a model" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  it("should ask non-admins to contact an admin when metabot is not configured", async () => {
+    setup({ isConfigured: false });
+
+    expect(
+      await screen.findByText(
+        "Ask your admin to connect to a model to use Metabot.",
+      ),
     ).toBeInTheDocument();
   });
 

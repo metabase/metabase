@@ -11,6 +11,7 @@ import { useSetting } from "metabase/common/hooks";
 import { useMetabotSetupContext } from "metabase/metabot/components/MetabotAdmin/MetabotSetup";
 import { MetabotManagedProviderLimitActions } from "metabase/metabot/components/MetabotManagedProviderLimit";
 import { useSelector } from "metabase/redux";
+import type { MetabaseAIProviderSetupProps } from "metabase/plugins";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import {
   Anchor,
@@ -51,7 +52,9 @@ import { usePurchaseMetabaseManagedAi } from "../../usePurchaseMetabaseManagedAi
 
 import { MetabotSettingUpModal } from "./MetabotSettingUpModal";
 
-export function MetabaseAIProviderSetup() {
+export function MetabaseAIProviderSetup({
+  onClose,
+}: MetabaseAIProviderSetupProps) {
   const offerMetabaseManagedAi = !!hasPremiumFeature(
     OFFER_METABASE_MANAGED_AI_FEATURE,
   );
@@ -69,7 +72,8 @@ export function MetabaseAIProviderSetup() {
 
   const handleConnect = useCallback(async () => {
     await updateMetabotSettings({ provider: "metabase", model: "" }).unwrap();
-  }, [updateMetabotSettings]);
+    onClose?.();
+  }, [onClose, updateMetabotSettings]);
 
   const {
     pricing: metabaseManagedAiPricing,

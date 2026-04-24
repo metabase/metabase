@@ -72,9 +72,10 @@ export const CodeMirrorEditor = forwardRef<
   ref,
 ) {
   const editorRef = useRef<CodeMirrorRef>(null);
-  const { canUseSqlGeneration: isEnabled } = useUserMetabotPermissions();
+  const { hasSqlGenerationAccess } = useUserMetabotPermissions();
   const placeholder =
-    placeholderProp ?? getPlaceholderText(Lib.engine(query), isEnabled);
+    placeholderProp ??
+    getPlaceholderText(Lib.engine(query), hasSqlGenerationAccess);
   const baseExtensions = useExtensions({
     query,
     diff: !!proposedQuery,

@@ -130,6 +130,7 @@ type SetupOptions = {
   responses?: Partial<Record<MetabotProvider, MetabotSettingsApiResponse>>;
   updateResponse?: MetabotSettingsResponse;
   renderAsModal?: boolean;
+  onClose?: jest.Mock;
 };
 
 async function setup({
@@ -161,6 +162,7 @@ async function setup({
     models: DEFAULT_RESPONSES.anthropic.models,
   },
   renderAsModal = false,
+  onClose = jest.fn(),
 }: SetupOptions = {}) {
   fetchMock.removeRoutes();
   fetchMock.clearHistory();
@@ -375,7 +377,7 @@ async function setup({
 
   const storeInitialState = { settings };
   const view = renderAsModal
-    ? renderWithProviders(<MetabotSetupInner isModal onClose={jest.fn()} />, {
+    ? renderWithProviders(<MetabotSetupInner isModal onClose={onClose} />, {
         storeInitialState,
       })
     : renderWithProviders(
@@ -397,6 +399,7 @@ async function setup({
 
   return {
     ...view,
+    onClose,
     resolvePurchaseCloudAddOnResponse: () =>
       purchaseCloudAddOnDeferred.resolve(),
     resolveMetabotSettingsUpdateResponse: () =>
@@ -780,6 +783,41 @@ describe("MetabotSetup", () => {
     );
   });
 
+  it("calls onClose after directly connecting to the Metabase provider in modal mode", async () => {
+    const onClose = jest.fn();
+
+    await setup({
+      isHosted: true,
+      savedProviderValue: null,
+      isConfigured: false,
+      isStoreUser: false,
+      tokenStatusFeatures: ["metabase-ai-managed"],
+      updateResponse: {
+        value: "metabase/anthropic/claude-sonnet-4-6",
+        models: DEFAULT_RESPONSES.metabase.models,
+      },
+      renderAsModal: true,
+      onClose,
+    });
+
+    await selectProvider("Metabase");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Connect" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory
+          .calls("path:/api/metabot/settings")
+          .some(
+            (call) =>
+              call.request?.method === "PUT" || call.options?.method === "PUT",
+          ),
+      ).toBe(true);
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it("waits for the purchase and settings save before showing Metabase AI as ready", async () => {
     let resolvePurchaseCloudAddOnResponse = () => {};
     let resolveMetabotSettingsUpdateResponse = () => {};
@@ -961,6 +999,77 @@ describe("MetabotSetup", () => {
       resolveMetabotSettingsUpdateResponse();
       jest.useRealTimers();
     }
+  });
+
+  it("calls onClose after purchasing the Metabase add-on and connecting in modal mode", async () => {
+    const onClose = jest.fn();
+    const {
+      resolvePurchaseCloudAddOnResponse,
+      resolveMetabotSettingsUpdateResponse,
+    } = await setup({
+      isHosted: true,
+      savedProviderValue: "metabase/anthropic/claude-sonnet-4-6",
+      isConfigured: false,
+      isStoreUser: true,
+      tokenStatusFeatures: [],
+      refreshedTokenStatusFeatures: ["metabase-ai-managed"],
+      deferPurchaseCloudAddOnResponse: true,
+      deferMetabotSettingsUpdateResponse: true,
+      updateResponse: {
+        value: "metabase/anthropic/claude-sonnet-4-6",
+        models: DEFAULT_RESPONSES.metabase.models,
+      },
+      renderAsModal: true,
+      onClose,
+    });
+
+    await selectProvider("Metabase");
+
+    await userEvent.click(
+      await screen.findByRole("checkbox", {
+        name: /I agree with the Metabase AI Service/i,
+      }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Connect" }),
+    );
+
+    expect(onClose).not.toHaveBeenCalled();
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory.called(
+          "path:/api/ee/cloud-add-ons/metabase-ai-managed",
+        ),
+      ).toBe(true);
+    });
+
+    await act(async () => {
+      resolvePurchaseCloudAddOnResponse();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(
+        fetchMock.callHistory
+          .calls("path:/api/metabot/settings")
+          .some(
+            (call) =>
+              call.request?.method === "PUT" || call.options?.method === "PUT",
+          ),
+      ).toBe(true);
+    });
+
+    expect(onClose).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveMetabotSettingsUpdateResponse();
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("shows live pricing for the Metabase provider", async () => {

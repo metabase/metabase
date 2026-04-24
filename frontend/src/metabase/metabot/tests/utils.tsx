@@ -154,10 +154,11 @@ export function setup(
     isHosted?: boolean;
     storeInitialState?: RenderWithProvidersOptions["storeInitialState"];
     customReducers?: RenderWithProvidersOptions["customReducers"];
+    isConfigured?: boolean;
   } | void,
 ) {
   const settings = mockSettings({
-    "llm-metabot-configured?": true,
+    "llm-metabot-configured?": options?.isConfigured ?? true,
     "is-hosted?": options?.isHosted ?? false,
   });
 

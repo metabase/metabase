@@ -73,7 +73,10 @@ export {
   type PublishTablesModalProps,
   type UnpublishTablesModalProps,
 } from "./oss/library";
-export { PLUGIN_METABOT } from "./oss/metabot";
+export {
+  PLUGIN_METABOT,
+  type MetabaseAIProviderSetupProps,
+} from "./oss/metabot";
 export { PLUGIN_MODEL_PERSISTENCE } from "./oss/model-persistence";
 export {
   PLUGIN_MODERATION,
