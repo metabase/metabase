@@ -105,6 +105,82 @@
     (is (= ["count" {}] (repair/repair trivial-mp ["count" nil])))))
 
 ;;; ============================================================
+;;; Pass 1.7 \u2014 unwrap nested `[field ... [field ... FK]]` clauses
+;;;
+;;; LLMs sometimes write a field clause *wrapping another field clause*, e.g.
+;;;
+;;;   ["field" {"temporal-unit" "month"} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+;;;
+;;; thinking of it as "apply granularity to this field". The intent is always a single
+;;; `field` clause with the merged options (outer wins on conflicts). We collapse such
+;;; nests into one clause so downstream FK resolution sees a flat
+;;; `["field" {<merged opts>} [<FK>]]`.
+;;; ============================================================
+
+(deftest unwrap-nested-field-test
+  (testing "outer field wrapping an inner field with an FK is collapsed"
+    (let [input  ["field" {"temporal-unit" "month"}
+                  ["field" {} ["Sample" "PUBLIC" "ACCOUNTS" "CANCELED_AT"]]]
+          output (repair/repair trivial-mp input)]
+      (is (= ["field" {"temporal-unit" "month"}
+              ["Sample" "PUBLIC" "ACCOUNTS" "CANCELED_AT"]]
+             output))))
+  (testing "outer options win on conflict (outer temporal-unit overrides inner)"
+    (let [input  ["field" {"temporal-unit" "month"}
+                  ["field" {"temporal-unit" "day"} ["Sample" "PUBLIC" "T" "COL"]]]
+          output (repair/repair trivial-mp input)]
+      (is (= ["field" {"temporal-unit" "month"} ["Sample" "PUBLIC" "T" "COL"]]
+             output))))
+  (testing "inner-only options are preserved when outer doesn't set them"
+    (let [input  ["field" {"temporal-unit" "month"}
+                  ["field" {"source-field" ["Sample" "PUBLIC" "T" "FK"]}
+                   ["Sample" "PUBLIC" "T" "COL"]]]
+          output (repair/repair trivial-mp input)]
+      (is (= ["field" {"temporal-unit" "month"
+                       "source-field" ["Sample" "PUBLIC" "T" "FK"]}
+              ["Sample" "PUBLIC" "T" "COL"]]
+             output))))
+  (testing "outer empty opts + nested field: outer gets inner's opts"
+    (let [input  ["field" {}
+                  ["field" {"temporal-unit" "day"} ["Sample" "PUBLIC" "T" "COL"]]]
+          output (repair/repair trivial-mp input)]
+      (is (= ["field" {"temporal-unit" "day"} ["Sample" "PUBLIC" "T" "COL"]]
+             output))))
+  (testing "nested inside a larger clause (e.g. breakout of a stage) is collapsed"
+    (let [input  ["and" {}
+                  ["=" {}
+                   ["field" {"temporal-unit" "month"}
+                    ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+                   "Bikes"]]
+          output (repair/repair trivial-mp input)]
+      (is (= ["and" {}
+              ["=" {}
+               ["field" {"temporal-unit" "month"} ["Sample" "PUBLIC" "T" "COL"]]
+               "Bikes"]]
+             output))))
+  (testing "triple-nested field collapses to one"
+    (let [input  ["field" {"temporal-unit" "month"}
+                  ["field" {}
+                   ["field" {"source-field" ["Sample" "PUBLIC" "T" "FK"]}
+                    ["Sample" "PUBLIC" "T" "COL"]]]]
+          output (repair/repair trivial-mp input)]
+      (is (= ["field" {"temporal-unit" "month"
+                       "source-field" ["Sample" "PUBLIC" "T" "FK"]}
+              ["Sample" "PUBLIC" "T" "COL"]]
+             output))))
+  (testing "non-nested `field` clauses are left alone"
+    (let [input  ["field" {"temporal-unit" "month"} ["Sample" "PUBLIC" "T" "COL"]]]
+      (is (= input (repair/repair trivial-mp input)))))
+  (testing "cross-stage string-column field inside outer field is preserved"
+    ;; [field {temporal-unit ...} [field {} "some-col-name"]] is the same bug pattern but
+    ;; with a cross-stage (string) target. Still unwrap.
+    (let [input  ["field" {"temporal-unit" "month"}
+                  ["field" {} "MY_COLUMN"]]
+          output (repair/repair trivial-mp input)]
+      (is (= ["field" {"temporal-unit" "month"} "MY_COLUMN"]
+             output)))))
+
+;;; ============================================================
 ;;; Pass 2 \u2014 fill in missing `lib/type`
 ;;; ============================================================
 

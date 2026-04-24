@@ -119,6 +119,54 @@
    form))
 
 ;;; ============================================================
+;;; Pass 1.7 -- unwrap nested `[field opts [field inner-opts target]]` clauses.
+;;;
+;;; LLMs occasionally write a `field` clause that wraps another `field` clause, e.g.
+;;;
+;;;   ["field" {"temporal-unit" "month"} ["field" {} ["Sample" "PUBLIC" "T" "COL"]]]
+;;;
+;;; reasoning as "apply granularity to this field." The intended MBQL is a single
+;;; `field` clause with the options merged -- outer options win on key conflicts (because
+;;; the outer layer is what the LLM thought it was *adding*). We collapse nests of any
+;;; depth into one flat `["field" <merged-opts> <target>]`.
+;;;
+;;; A `field` clause is recognised by head `"field"` at position 0, a map at position 1,
+;;; and a third slot at position 2 that is either an FK path (vector of strings/nil) or a
+;;; column-name string (cross-stage ref). When the third slot is itself a `field` clause,
+;;; we collapse.
+;;; ============================================================
+
+(defn- field-clause-shape?
+  "True if `v` looks like a `field` clause: `[\"field\" <opts-map> <target>]`."
+  [v]
+  (and (vector? v)
+       (= 3 (count v))
+       (= "field" (nth v 0))
+       (map? (nth v 1))))
+
+(defn- collapse-nested-field
+  "If `node` is a `field` clause whose target slot is itself a `field` clause, collapse
+  them into one clause with merged options (outer options win), recursively. Returns the
+  collapsed clause (or the original `node` if no collapse applies)."
+  [node]
+  (loop [outer-opts (nth node 1)
+         inner      (nth node 2)]
+    (if (field-clause-shape? inner)
+      (recur (merge (nth inner 1) outer-opts)
+             (nth inner 2))
+      ["field" outer-opts inner])))
+
+(defn- unwrap-nested-field-clauses*
+  [form]
+  (walk/postwalk
+   (fn [node]
+     (if (and (field-clause-shape? node)
+              (field-clause-shape? (nth node 2)))
+       (collapse-nested-field node)
+       node))
+   form))
+
+;;; ============================================================
 ;;; Pass 1.5 -- normalize `expressions:` shape (map -> sequential; stamp `lib/expression-name`)
 ;;;
 ;;; MBQL 5 requires `:expressions` to be a `[:sequential ...]` where each entry is an
@@ -870,6 +918,7 @@
   [parsed]
   (-> parsed
       ensure-clause-options*
+      unwrap-nested-field-clauses*
       normalize-expressions-shape*
       ensure-lib-types*))
 
