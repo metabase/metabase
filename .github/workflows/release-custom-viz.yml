@@ -27,6 +27,7 @@ jobs:
       version: ${{ steps.resolve.outputs.version }}
       npm_tag: ${{ steps.resolve.outputs.npm_tag }}
       git_tag: ${{ steps.resolve.outputs.git_tag }}
+      stable_tag: ${{ steps.resolve.outputs.stable_tag }}
     steps:
       - name: Check out the code
         uses: actions/checkout@v4
@@ -35,6 +36,8 @@ jobs:
 
       - name: Resolve release from package.json
         id: resolve
+        env:
+          BRANCH: ${{ inputs.branch }}
         run: ./bin/custom-viz/resolve-release.sh | tee -a "$GITHUB_OUTPUT"
 
       - name: Append release plan to workflow summary
@@ -43,6 +46,7 @@ jobs:
           VERSION: ${{ steps.resolve.outputs.version }}
           NPM_TAG: ${{ steps.resolve.outputs.npm_tag }}
           GIT_TAG: ${{ steps.resolve.outputs.git_tag }}
+          STABLE_TAG: ${{ steps.resolve.outputs.stable_tag }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
           {
@@ -52,6 +56,9 @@ jobs:
             echo "- **Version**: \`$VERSION\`"
             echo "- **npm tag**: \`$NPM_TAG\`"
             echo "- **git tag**: \`$GIT_TAG\`"
+            if [ -n "$STABLE_TAG" ]; then
+              echo "- **moving stable tag**: \`$STABLE_TAG\`"
+            fi
             echo "- **Dry run**: \`$DRY_RUN\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -169,21 +176,44 @@ jobs:
         if: ${{ inputs.dry_run }}
         run: echo "dry_run=true → skipped 'git push origin ${{ needs.determine-release.outputs.git_tag }}'"
 
+      # Moving `custom-viz-<NN>-stable` tag only exists on stable release-branch
+      # publishes (empty on master and on release-branch betas).
+      - name: Move stable git tag
+        if: ${{ !inputs.dry_run && needs.determine-release.outputs.stable_tag != '' }}
+        env:
+          STABLE_TAG: ${{ needs.determine-release.outputs.stable_tag }}
+          VERSION: ${{ needs.determine-release.outputs.version }}
+        run: |
+          git tag -a -f "$STABLE_TAG" -m "@metabase/custom-viz $VERSION (stable)"
+          git push origin -f "$STABLE_TAG"
+
+      - name: Dry run — skipping stable tag move
+        if: ${{ inputs.dry_run && needs.determine-release.outputs.stable_tag != '' }}
+        run: echo "dry_run=true → skipped 'git push -f origin ${{ needs.determine-release.outputs.stable_tag }}'"
+
+      # `latest` is never promoted automatically. Once a release-x.NN.x branch
+      # becomes gold, run manually from a workstation with publish rights:
+      #   npm dist-tag add @metabase/custom-viz@<version> latest
+
       - name: Workflow summary
         env:
           VERSION: ${{ needs.determine-release.outputs.version }}
           NPM_TAG: ${{ needs.determine-release.outputs.npm_tag }}
           GIT_TAG: ${{ needs.determine-release.outputs.git_tag }}
+          STABLE_TAG: ${{ needs.determine-release.outputs.stable_tag }}
           BRANCH: ${{ inputs.branch }}
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
-          tee -a "$GITHUB_STEP_SUMMARY" << EOF
-          ## Released @metabase/custom-viz
-
-          - **Version**: \`$VERSION\`
-          - **npm tag**: \`$NPM_TAG\`
-          - **git tag**: \`$GIT_TAG\`
-          - **Branch**: \`$BRANCH\`
-          - **Dry run**: \`$DRY_RUN\`
-          - **Triggered by**: @${{ github.event.sender.login }}
-          EOF
+          {
+            echo "## Released @metabase/custom-viz"
+            echo ""
+            echo "- **Version**: \`$VERSION\`"
+            echo "- **npm tag**: \`$NPM_TAG\`"
+            echo "- **git tag**: \`$GIT_TAG\`"
+            if [ -n "$STABLE_TAG" ]; then
+              echo "- **moving stable tag**: \`$STABLE_TAG\`"
+            fi
+            echo "- **Branch**: \`$BRANCH\`"
+            echo "- **Dry run**: \`$DRY_RUN\`"
+            echo "- **Triggered by**: @${{ github.event.sender.login }}"
+          } >> "$GITHUB_STEP_SUMMARY"
