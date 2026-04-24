@@ -73,6 +73,214 @@ dataset_query:
     source-card: 5ojUtU9iE-DCggHdFPIll
     lib/type: mbql.stage/mbql
   lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/DateTimeWithLocalTZ
+  database_type: timestamptz
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_subscriptions, created_at]
+  - null
+  id: [Internal Metabase Database, public, v_subscriptions, created_at]
+  name: created_at
+  position: 2
+  semantic_type: type/CreationTimestamp
+  source: fields
+  table_id: [Internal Metabase Database, public, v_subscriptions]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 162
+  lib/deduplicated-name: created_at
+  lib/desired-column-alias: created_at
+  lib/from-model?: true
+  lib/original-display-name: Created At
+  lib/original-name: created_at
+  lib/source: source/previous-stage
+  lib/source-column-alias: created_at
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Schedule Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_subscriptions, schedule_type]
+  - null
+  id: [Internal Metabase Database, public, v_subscriptions, schedule_type]
+  name: schedule_type
+  position: 7
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_subscriptions]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 162
+  lib/deduplicated-name: schedule_type
+  lib/desired-column-alias: schedule_type
+  lib/from-model?: true
+  lib/original-display-name: Schedule Type
+  lib/original-name: schedule_type
+  lib/source: source/previous-stage
+  lib/source-column-alias: schedule_type
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Schedule Day
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_subscriptions, schedule_day]
+  - null
+  id: [Internal Metabase Database, public, v_subscriptions, schedule_day]
+  name: schedule_day
+  position: 8
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_subscriptions]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 162
+  lib/deduplicated-name: schedule_day
+  lib/desired-column-alias: schedule_day
+  lib/from-model?: true
+  lib/original-display-name: Schedule Day
+  lib/original-name: schedule_day
+  lib/source: source/previous-stage
+  lib/source-column-alias: schedule_day
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Schedule Hour
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_subscriptions, schedule_hour]
+  - null
+  id: [Internal Metabase Database, public, v_subscriptions, schedule_hour]
+  name: schedule_hour
+  position: 9
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_subscriptions]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 162
+  lib/deduplicated-name: schedule_hour
+  lib/desired-column-alias: schedule_hour
+  lib/from-model?: true
+  lib/original-display-name: Schedule Hour
+  lib/original-name: schedule_hour
+  lib/source: source/previous-stage
+  lib/source-column-alias: schedule_hour
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Recipient Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_subscriptions, recipient_type]
+  - null
+  id: [Internal Metabase Database, public, v_subscriptions, recipient_type]
+  name: recipient_type
+  position: 10
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_subscriptions]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 162
+  lib/deduplicated-name: recipient_type
+  lib/desired-column-alias: recipient_type
+  lib/from-model?: true
+  lib/original-display-name: Recipient Type
+  lib/original-name: recipient_type
+  lib/source: source/previous-stage
+  lib/source-column-alias: recipient_type
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Recipients
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_subscriptions, recipients]
+  - null
+  id: [Internal Metabase Database, public, v_subscriptions, recipients]
+  name: recipients
+  position: 11
+  semantic_type: type/Category
+  source: fields
+  table_id: [Internal Metabase Database, public, v_subscriptions]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 162
+  lib/deduplicated-name: recipients
+  lib/desired-column-alias: recipients
+  lib/from-model?: true
+  lib/original-display-name: Recipients
+  lib/original-name: recipients
+  lib/source: source/previous-stage
+  lib/source-column-alias: recipients
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Recipient External
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_subscriptions, recipient_external]
+  - null
+  id: [Internal Metabase Database, public, v_subscriptions, recipient_external]
+  name: recipient_external
+  position: 12
+  source: fields
+  table_id: [Internal Metabase Database, public, v_subscriptions]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 162
+  lib/deduplicated-name: recipient_external
+  lib/desired-column-alias: recipient_external
+  lib/from-model?: true
+  lib/original-display-name: Recipient External
+  lib/original-name: recipient_external
+  lib/source: source/previous-stage
+  lib/source-column-alias: recipient_external
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Text
+  database_type: text
+  display_name: Parameters
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_subscriptions, parameters]
+  - null
+  id: [Internal Metabase Database, public, v_subscriptions, parameters]
+  name: parameters
+  position: 13
+  semantic_type: type/SerializedJSON
+  source: fields
+  table_id: [Internal Metabase Database, public, v_subscriptions]
+  visibility_type: normal
+  lib/breakout?: false
+  lib/card-id: 162
+  lib/deduplicated-name: parameters
+  lib/desired-column-alias: parameters
+  lib/from-model?: true
+  lib/original-display-name: Parameters
+  lib/original-name: parameters
+  lib/source: source/previous-stage
+  lib/source-column-alias: parameters
+  qp/implicit-field?: true
 visualization_settings:
   column_settings:
     ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'
