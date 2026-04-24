@@ -92,6 +92,34 @@
                (mt/user-http-request :crowberto :post 200 refresh-endpoint)))
         (is (= ["api-test-fp" sample-score] @persisted?))))))
 
+(deftest ^:sequential complexity-refresh-endpoint-advances-last-fingerprint-on-snowplow-publish-test
+  (testing "refresh mirrors the scheduled path's fingerprint gate — advance only when Snowplow accepted the event"
+    (mt/with-temporary-setting-values [data-complexity-scoring-last-fingerprint "stale"]
+      (with-redefs [metabot-scope/internal-metabot-scope      (constantly {})
+                    task.complexity-score/current-fingerprint (constantly "refresh-fp")
+                    data-complexity-score/record-score!       (fn [& _] nil)
+                    complexity/complexity-scores
+                    (fn [& _]
+                      (with-meta sample-score
+                                 {::complexity/snowplow-published? true}))]
+        (mt/user-http-request :crowberto :post 200 refresh-endpoint)
+        (is (= "refresh-fp" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
+            "successful Snowplow publish must advance the last-fingerprint so the next boot doesn't redundantly re-score")))))
+
+(deftest ^:sequential complexity-refresh-endpoint-keeps-fingerprint-stale-when-snowplow-publish-fails-test
+  (testing "refresh leaves the fingerprint stale when Snowplow didn't accept the event, so the next scheduled run retries"
+    (mt/with-temporary-setting-values [data-complexity-scoring-last-fingerprint "stale"]
+      (with-redefs [metabot-scope/internal-metabot-scope      (constantly {})
+                    task.complexity-score/current-fingerprint (constantly "refresh-fp")
+                    data-complexity-score/record-score!       (fn [& _] nil)
+                    complexity/complexity-scores
+                    (fn [& _]
+                      (with-meta sample-score
+                                 {::complexity/snowplow-published? false}))]
+        (mt/user-http-request :crowberto :post 200 refresh-endpoint)
+        (is (= "stale" (data-complexity-score.settings/data-complexity-scoring-last-fingerprint))
+            "failed publish must preserve the stale fingerprint — same semantics as the scheduled path")))))
+
 (deftest complexity-refresh-endpoint-runs-when-scheduled-scoring-disabled-test
   (testing "manual refresh does not reuse the scheduled scorer's enabled gate"
     (mt/with-temporary-setting-values [data-complexity-scoring-enabled false]
