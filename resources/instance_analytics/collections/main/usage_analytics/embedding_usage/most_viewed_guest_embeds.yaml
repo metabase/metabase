@@ -1,0 +1,315 @@
+name: Most viewed guest embeds
+entity_id: gXGBEZMERaEfyEDnU3f_t
+created_at: '2026-04-21T09:26:37.712634Z'
+creator_id: internal@metabase.com
+display: table
+collection_id: vG58R8k-QddHWA7_47umn
+query_type: query
+database_id: Internal Metabase Database
+table_id: [Internal Metabase Database, public, v_view_log]
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  stages:
+  - aggregation:
+    - - count
+      - {lib/uuid: 3c080d03-8995-4ddb-a659-af1c17fa3340}
+    breakout:
+    - - field
+      - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
+      - [Internal Metabase Database, public, v_content, name]
+    - - field
+      - {base-type: type/Integer, effective-type: type/Integer, join-alias: Content - Entity Qualified}
+      - [Internal Metabase Database, public, v_content, entity_id]
+    - - expression
+      - {base-type: type/Text, effective-type: type/Text}
+      - entity_type_path
+    - - field
+      - {base-type: type/Text, effective-type: type/Text}
+      - [Internal Metabase Database, public, v_view_log, embedding_client]
+    - - field
+      - {base-type: type/Boolean, effective-type: type/Boolean, join-alias: Content - Entity Qualified}
+      - [Internal Metabase Database, public, v_content, is_embedding_enabled]
+    expressions:
+    - - not-null
+      - {effective-type: type/Boolean, lib/expression-name: is_embed}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text, lib/uuid: d3904e09-4275-4f2a-8465-dbc753f00204}
+        - embedding_client
+    - - not
+      - {lib/expression-name: is_top_level}
+      - - and
+        - {}
+        - - =
+          - {}
+          - - field
+            - {base-type: type/Text, effective-type: type/Text}
+            - [Internal Metabase Database, public, v_view_log, entity_type]
+          - card
+        - - not-null
+          - {}
+          - - field
+            - {base-type: type/Text, effective-type: type/Text}
+            - [Internal Metabase Database, public, v_view_log, context]
+        - - =
+          - {}
+          - - field
+            - {base-type: type/Text, effective-type: type/Text}
+            - [Internal Metabase Database, public, v_view_log, context]
+          - dashboard
+    - - replace
+      - {lib/expression-name: entity_type_path}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text}
+        - [Internal Metabase Database, public, v_view_log, entity_type]
+      - card
+      - question
+    filters:
+    - - =
+      - {}
+      - - expression
+        - {effective-type: type/Boolean}
+        - is_embed
+      - true
+    - - =
+      - {}
+      - - expression
+        - {base-type: type/Boolean, effective-type: type/Boolean}
+        - is_top_level
+      - true
+    - - =
+      - {}
+      - - field
+        - {base-type: type/Text, effective-type: type/Text}
+        - [Internal Metabase Database, public, v_view_log, auth_method]
+      - guest
+    - - time-interval
+      - {include-current: true}
+      - - field
+        - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, lib/uuid: fd21df12-fa3c-4ce0-acf8-04c791a69eae}
+        - timestamp
+      - -30
+      - day
+    - - time-interval
+      - {include-current: true}
+      - - field
+        - {base-type: type/DateTimeWithLocalTZ, effective-type: type/DateTimeWithLocalTZ, inherited-temporal-unit: default, lib/uuid: f7050f99-76df-4704-9a8b-6d0e20272cfe}
+        - timestamp
+      - -30
+      - day
+    joins:
+    - alias: Content - Entity Qualified
+      conditions:
+      - - =
+        - {}
+        - - field
+          - {base-type: type/Text, effective-type: type/Text}
+          - [Internal Metabase Database, public, v_view_log, entity_qualified_id]
+        - - field
+          - {base-type: type/Text, effective-type: type/Text, join-alias: Content - Entity Qualified}
+          - [Internal Metabase Database, public, v_content, entity_qualified_id]
+      stages:
+      - {source-card: AxSackBiyXVRUzM_TyyQY, lib/type: mbql.stage/mbql}
+      strategy: left-join
+      lib/options: {lib/uuid: ba4a2279-3d95-4388-8b34-e3a2f4100fc5}
+      lib/type: mbql/join
+    order-by:
+    - - desc
+      - {}
+      - - aggregation
+        - {base-type: type/BigInteger, effective-type: type/BigInteger, lib/source-name: count}
+        - 3c080d03-8995-4ddb-a659-af1c17fa3340
+    source-card: P6Ityjj7igswKh4NgZZjz
+    lib/type: mbql.stage/mbql
+  lib/type: mbql/query
+result_metadata:
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Content - Entity Qualified → Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, name]
+  - {join-alias: Content - Entity Qualified}
+  id: [Internal Metabase Database, public, v_content, name]
+  name: name
+  position: 6
+  semantic_type: type/Name
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 1018
+  lib/deduplicated-name: name
+  lib/desired-column-alias: Content - Entity Qualified__name
+  lib/from-model?: true
+  lib/join-alias: Content - Entity Qualified
+  lib/original-display-name: Name
+  lib/original-join-alias: Content - Entity Qualified
+  lib/original-name: name
+  lib/source: source/joins
+  lib/source-column-alias: name
+  qp/implicit-field?: true
+- active: true
+  base_type: type/Integer
+  database_type: int4
+  display_name: Content - Entity Qualified → Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, entity_id]
+  - {join-alias: Content - Entity Qualified}
+  id: [Internal Metabase Database, public, v_content, entity_id]
+  name: entity_id
+  position: 0
+  semantic_type: type/PK
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 1018
+  lib/deduplicated-name: entity_id
+  lib/desired-column-alias: Content - Entity Qualified__entity_id
+  lib/from-model?: true
+  lib/join-alias: Content - Entity Qualified
+  lib/original-display-name: Entity ID
+  lib/original-join-alias: Content - Entity Qualified
+  lib/original-name: entity_id
+  lib/source: source/joins
+  lib/source-column-alias: entity_id
+  qp/implicit-field?: true
+- base_type: type/Text
+  display_name: entity_type_path
+  effective_type: type/Text
+  field_ref: [expression, entity_type_path]
+  name: entity_type_path
+  source: breakout
+  lib/breakout?: true
+  lib/deduplicated-name: entity_type_path
+  lib/desired-column-alias: entity_type_path
+  lib/expression-name: entity_type_path
+  lib/original-name: entity_type_path
+  lib/source: source/expressions
+  lib/source-column-alias: entity_type_path
+- active: true
+  base_type: type/Text
+  database_type: varchar
+  display_name: Embedding Client
+  effective_type: type/Text
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_view_log, embedding_client]
+  - null
+  id: [Internal Metabase Database, public, v_view_log, embedding_client]
+  name: embedding_client
+  position: 6
+  semantic_type: type/Category
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_view_log]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 1020
+  lib/deduplicated-name: embedding_client
+  lib/desired-column-alias: embedding_client
+  lib/from-model?: true
+  lib/internal-remap:
+    human-readable-values: [Modular embedding SDK, Modular embedding SDK (Preview), Modular embedding, Modular embedding (Preview), Public sharing, Static embedding, Static embedding (Preview), Full app embedding, Full app embedding (Preview)]
+    id: 291
+    name: Embedding Client
+    values: [embedding-sdk-react, embedding-sdk-react-preview, embedding-simple, embedding-simple-preview, embedding-public, embedding-iframe-static, embedding-iframe-static-preview, embedding-iframe-full-app, embedding-iframe-full-app-preview]
+    lib/type: metadata.column.remapping/internal
+  lib/original-display-name: Embedding Client
+  lib/original-name: embedding_client
+  lib/source: source/previous-stage
+  lib/source-column-alias: embedding_client
+- active: true
+  base_type: type/Boolean
+  database_type: bool
+  display_name: Content - Entity Qualified → Is Embedding Enabled
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - [Internal Metabase Database, public, v_content, is_embedding_enabled]
+  - {join-alias: Content - Entity Qualified}
+  id: [Internal Metabase Database, public, v_content, is_embedding_enabled]
+  name: is_embedding_enabled
+  position: 10
+  semantic_type: type/Category
+  source: breakout
+  table_id: [Internal Metabase Database, public, v_content]
+  visibility_type: normal
+  lib/breakout?: true
+  lib/card-id: 1018
+  lib/deduplicated-name: is_embedding_enabled
+  lib/desired-column-alias: Content - Entity Qualified__is_embedding_enabled
+  lib/from-model?: true
+  lib/join-alias: Content - Entity Qualified
+  lib/original-display-name: Is Embedding Enabled
+  lib/original-join-alias: Content - Entity Qualified
+  lib/original-name: is_embedding_enabled
+  lib/source: source/joins
+  lib/source-column-alias: is_embedding_enabled
+  qp/implicit-field?: true
+- base_type: type/Integer
+  display_name: Count
+  effective_type: type/Integer
+  field_ref: [aggregation, 0]
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+  lib/deduplicated-name: count
+  lib/desired-column-alias: count
+  lib/original-name: count
+  lib/source: source/aggregations
+  lib/source-column-alias: count
+visualization_settings:
+  column_settings:
+    '["name","count"]': {column_title: Views, show_mini_bar: true}
+    '["name","entity_id"]': {column_title: Entity ID}
+    '["name","is_embedding_enabled"]': {column_title: Published}
+    '["name","name"]': {column_title: Content, link_text: '', link_url: '/{{entity_type_path}}/{{entity_id}}', view_as: link}
+  table.cell_column: count
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_content, name]
+    - {base-type: type/Text, join-alias: Content - Entity Qualified}
+    name: name
+  - enabled: false
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_content, entity_id]
+    - {base-type: type/Integer, join-alias: Content - Entity Qualified}
+    name: entity_id
+  - enabled: false
+    fieldRef:
+    - expression
+    - entity_type_path
+    - {base-type: type/Text}
+    name: entity_type_path
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_view_log, embedding_client]
+    - {base-type: type/Text}
+    name: embedding_client
+  - enabled: true
+    fieldRef:
+    - field
+    - [Internal Metabase Database, public, v_content, is_embedding_enabled]
+    - {base-type: type/Boolean, join-alias: Content - Entity Qualified}
+    name: is_embedding_enabled
+  - enabled: true
+    fieldRef: [aggregation, 0]
+    name: count
+  table.pivot: false
+  table.pivot_column: entity_type_path
+card_schema: 23
+serdes/meta:
+- {id: gXGBEZMERaEfyEDnU3f_t, label: most_viewed_guest_embeds, model: Card}
+dashboard_id: 2NWw98hfm_kimGA4xuyMW
+source_card_id: P6Ityjj7igswKh4NgZZjz
+type: question
