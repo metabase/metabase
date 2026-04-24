@@ -9,6 +9,7 @@ import { DependencyGraphPage } from "./pages/DependencyGraphPage";
 import {
   getDataStudioDependencyDiagnosticsRoutes,
   getDataStudioDependencyRoutes,
+  getDataStudioSchemaViewerRoutes,
 } from "./routes";
 
 /**
@@ -21,6 +22,8 @@ export function initializePlugin() {
       getDataStudioDependencyRoutes;
     PLUGIN_DEPENDENCIES.getDataStudioDependencyDiagnosticsRoutes =
       getDataStudioDependencyDiagnosticsRoutes;
+    PLUGIN_DEPENDENCIES.getDataStudioSchemaViewerRoutes =
+      getDataStudioSchemaViewerRoutes;
     PLUGIN_DEPENDENCIES.DependencyGraphPage = DependencyGraphPage;
     PLUGIN_DEPENDENCIES.CheckDependenciesForm = CheckDependenciesForm;
     PLUGIN_DEPENDENCIES.CheckDependenciesModal = CheckDependenciesModal;

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { EntityCreationInfo } from "metabase/common/components/EntityCreationInfo";
@@ -6,7 +7,11 @@ import CS from "metabase/css/core/index.css";
 import { Box, FixedSizeIcon, Group, Stack, Text, Title } from "metabase/ui";
 import { getUserName } from "metabase/utils/user";
 import * as Lib from "metabase-lib";
-import type { DependencyEntry, DependencyNode } from "metabase-types/api";
+import type {
+  DependencyEntry,
+  DependencyNode,
+  Field,
+} from "metabase-types/api";
 
 import {
   canNodeHaveOwner,
@@ -29,16 +34,26 @@ import { getNodeTableInfo } from "./utils";
 type PanelBodyProps = {
   node: DependencyNode;
   getGraphUrl: (entry: DependencyEntry) => string;
+  /**
+   * Optional hook to render extra content next to a field in the Fields
+   * section. Used by the SchemaViewer to append a clickable FK target
+   * (e.g. the related table's name) beside foreign-key fields.
+   */
+  renderFieldExtras?: (field: Field) => ReactNode;
 };
 
-export function PanelBody({ node, getGraphUrl }: PanelBodyProps) {
+export function PanelBody({
+  node,
+  getGraphUrl,
+  renderFieldExtras,
+}: PanelBodyProps) {
   return (
     <Stack className={S.body} p="lg" gap="lg">
       <DescriptionSection node={node} />
       <OwnerSection node={node} />
       <CreatorAndLastEditorSection node={node} />
       <TableSection node={node} getGraphUrl={getGraphUrl} />
-      <FieldsSection node={node} />
+      <FieldsSection node={node} renderFieldExtras={renderFieldExtras} />
     </Stack>
   );
 }
@@ -134,7 +149,11 @@ function TableSection({ node, getGraphUrl }: TableSectionProps) {
   );
 }
 
-function FieldsSection({ node }: SectionProps) {
+type FieldsSectionProps = SectionProps & {
+  renderFieldExtras?: (field: Field) => ReactNode;
+};
+
+function FieldsSection({ node, renderFieldExtras }: FieldsSectionProps) {
   const fields = getNodeFields(node);
   if (fields == null) {
     return null;
@@ -148,6 +167,7 @@ function FieldsSection({ node }: SectionProps) {
       {fields.map((field, fieldIndex) => {
         const fieldTypeInfo = Lib.legacyColumnTypeInfo(field);
         const fieldIcon = getColumnIcon(fieldTypeInfo);
+        const extras = renderFieldExtras?.(field);
 
         return (
           <Group
@@ -157,7 +177,12 @@ function FieldsSection({ node }: SectionProps) {
             wrap="nowrap"
           >
             <FixedSizeIcon name={fieldIcon} c="text-secondary" />
-            {field.display_name}
+            <Box flex="0 1 auto">{field.display_name}</Box>
+            {extras != null && (
+              <Box flex="1 1 auto" miw={0}>
+                {extras}
+              </Box>
+            )}
           </Group>
         );
       })}

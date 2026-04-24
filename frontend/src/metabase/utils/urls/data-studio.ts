@@ -274,6 +274,24 @@ export function dataStudioMetricHistory(cardId: CardId) {
   return `${dataStudioMetric(cardId)}/history`;
 }
 
+export function dataStudioErdBase() {
+  return `${ROOT_URL}/schema-viewer`;
+}
+
+export function dataStudioErdDatabase(databaseId: DatabaseId) {
+  return `${ROOT_URL}/schema-viewer?database-id=${databaseId}`;
+}
+
+export function dataStudioErdSchema(
+  databaseId: DatabaseId,
+  schema: SchemaName,
+) {
+  const params = new URLSearchParams();
+  params.set("database-id", String(databaseId));
+  params.set("schema", schema);
+  return `${ROOT_URL}/schema-viewer?${params.toString()}`;
+}
+
 export function dataStudioGlossary() {
   return `${dataStudio()}/glossary`;
 }
