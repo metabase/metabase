@@ -102,13 +102,12 @@
         (is (= id (:id found)))))))
 
 (deftest make-spec-test
-  (testing "make-spec copies identity fields but skips the binary bundle and transient dev/error state"
+  (testing "make-spec copies identity fields and bundle_hash, skips dev/error state"
     (let [spec (serdes/make-spec "CustomVizPlugin" {})]
       (is (contains? (set (:copy spec)) :identifier))
       (is (contains? (set (:copy spec)) :display_name))
       (is (contains? (set (:copy spec)) :manifest))
-      (is (contains? (set (:skip spec)) :bundle))
-      (is (contains? (set (:skip spec)) :bundle_hash))
+      (is (contains? (set (:copy spec)) :bundle_hash))
       (is (contains? (set (:skip spec)) :dev_bundle_url))
       (is (contains? (set (:skip spec)) :error_message))))
   (testing "status is always exported as skip and imported as pending"
@@ -117,3 +116,21 @@
           status-import (get-in spec [:transform :status :import])]
       (is (= ::serdes/skip (status-export :active)))
       (is (= "pending" (status-import nil))))))
+
+(deftest bundle-b64-round-trip-test
+  (testing "bundle bytes base64-encode on export and decode back to bytes on import"
+    (let [spec   (serdes/make-spec "CustomVizPlugin" {})
+          export (get-in spec [:transform :bundle :export])
+          import (get-in spec [:transform :bundle :import])
+          bytes  (.getBytes "pretend tgz bytes" "UTF-8")
+          out    (export bytes)]
+      (is (string? out))
+      (is (not= (String. bytes "UTF-8") out)
+          "exported value should be b64-encoded, not the raw string")
+      (is (= (seq bytes) (seq (import out))))))
+  (testing "nil bundle round-trips as nil"
+    (let [spec   (serdes/make-spec "CustomVizPlugin" {})
+          export (get-in spec [:transform :bundle :export])
+          import (get-in spec [:transform :bundle :import])]
+      (is (nil? (export nil)))
+      (is (nil? (import nil))))))

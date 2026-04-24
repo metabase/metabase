@@ -2638,7 +2638,9 @@
     (ts/with-temp-dpc [:model/CustomVizPlugin {plugin-id :id} {:display_name "Test Plugin"
                                                                :identifier   "test-plugin"
                                                                :status       :active
-                                                               :manifest     "{}"}]
+                                                               :manifest     "{}"
+                                                               :bundle       (.getBytes "pretend tgz bytes" "UTF-8")
+                                                               :bundle_hash  "deadbeef"}]
       ;; Uncomment to regenerate baseline:
       ;; (round-trip-test/add-to-baseline!)
       (testing "custom viz plugin extraction"
@@ -2648,12 +2650,12 @@
                    :display_name "Test Plugin"
                    :identifier   "test-plugin"
                    :manifest     {}
+                   :bundle_hash  "deadbeef"
+                   :bundle       string?
                    :created_at   string?}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :status)))
-          (is (not (contains? ser :bundle)))
-          (is (not (contains? ser :bundle_hash)))
 
           (testing "has no dependencies"
             (is (empty? (serdes/dependencies ser)))))))))

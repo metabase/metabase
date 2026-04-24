@@ -1,10 +1,13 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
+   [buddy.core.codecs :as codecs]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/CustomVizPlugin [_model] :custom_viz_plugin)
 
@@ -35,18 +38,22 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
+(defn- bundle->b64 ^String [^bytes b]
+  (some-> b codecs/bytes->b64-str))
+
+(defn- b64->bundle ^bytes [^String s]
+  (some-> s codecs/b64->bytes))
+
 (defmethod serdes/make-spec "CustomVizPlugin"
   [_model-name _opts]
-  ;; The uploaded zip bundle and its hash are intentionally skipped: they're
-  ;; binary, multi-MB blobs and YAML serdes is the wrong transport for them.
-  ;; Callers that need to ship a plugin between instances should re-upload the
-  ;; zip via the API on the destination side.
-  {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version]
-   :skip      [:bundle :bundle_hash :dev_bundle_url :error_message]
+  {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
+   :skip      [:dev_bundle_url :error_message]
    :defaults  {:enabled true}
    :transform {:created_at (serdes/date)
                :status     {:export (constantly ::serdes/skip)
-                            :import (constantly "pending")}}})
+                            :import (constantly "pending")}
+               :bundle     {:export bundle->b64
+                            :import b64->bundle}}})
 
 (defmethod serdes/entity-id "CustomVizPlugin" [_ {:keys [identifier]}]
   identifier)

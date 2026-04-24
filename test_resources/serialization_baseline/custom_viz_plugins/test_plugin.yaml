@@ -1,4 +1,5 @@
-repo_url: https://github.com/example/test-viz-plugin
+bundle: null
+bundle_hash: null
 display_name: Test Plugin
 identifier: test-plugin
 manifest: {}
