@@ -1228,28 +1228,28 @@
         (testing "password takes precedence if use-password is true"
           (when (and password use-password)
             (is (= :password (first result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "password comes last if use-password is false or nil"
           (when (and password (not use-password))
             (is (= :password (last result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "path is preferred if options is local"
           (when (and (= "local" options) private-key-value private-key-path)
             (is (= :private-key-path (m/find-first #{:private-key-path :private-key-value} result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "value is preferred if options is nil or uploaded"
           (when (and (not= "local" options) private-key-value private-key-path)
             (is (= :private-key-value (m/find-first #{:private-key-path :private-key-value} result))
-                [idxs result])))
+                (str [idxs result]))))
 
         (testing "ID is checked last if path or value exists"
           (when (or (and private-key-value private-key-id)
                     (and private-key-path private-key-id))
             (is (= :private-key-id (m/find-first #{:private-key-path :private-key-value :private-key-id} (reverse result)))
-                [idxs result])))))))
+                (str [idxs result]))))))))
 
 (deftest have-select-privelege?-timeout-test
   (mt/test-driver :snowflake

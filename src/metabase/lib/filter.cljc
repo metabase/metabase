@@ -1,5 +1,5 @@
 (ns metabase.lib.filter
-  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty case every? some mapv empty? not-empty
+  (:refer-clojure :exclude [filter and or not = < <= > >= not-empty every? some mapv empty? not-empty
                             #?(:clj doseq) #?(:clj for)])
   (:require
    [clojure.string :as str]

@@ -1,8 +1,6 @@
 (ns metabase.request.session
   (:require
-   [metabase.api.common
-    :as api
-    :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
+   [metabase.api.common :refer [*current-user* *current-user-id* *current-user-permissions-set* *is-group-manager?* *is-superuser?* *is-data-analyst?*]]
    [metabase.permissions.core :as perms]
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
@@ -77,7 +75,7 @@
   [thunk]
   (do-with-current-user
    (merge
-    (with-current-user-fetch-user-for-id api/*current-user-id*)
+    (with-current-user-fetch-user-for-id *current-user-id*)
     {:is-superuser? true
      :permissions-set #{"/"}
      :user-locale i18n/*user-locale*})

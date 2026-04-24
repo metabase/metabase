@@ -244,7 +244,7 @@
                                    (get props "dataSourceName"))]
         (is (some? db-nm))
         ;; ensure that, for any sql-jdbc driver anyway, we found *some* DB name to use in this String
-        (is (not= db-nm "null"))))))
+        (is (not= "null" db-nm))))))
 
 (deftest ^:parallel same-connection-details-result-in-equal-specs-test
   (testing "Two JDBC specs created with the same details must be considered equal for the connection pool cache to work correctly"
@@ -308,7 +308,7 @@
               (testing "hash value calculated correctly for new pooled conn"
                 (is (some? pool-spec-1))
                 (is (integer? db-hash-1))
-                (is (not= db-hash-1 0)))
+                (is (not= 0 db-hash-1)))
               (testing "changing DB details results in hash value changing and connection being invalidated"
                 (let [db-perturbed (perturb-db-details db)]
                   (testing "The calculated hash should be different"
@@ -335,7 +335,7 @@
                     (is (some? pool-spec-2))
                     (is (= 1 @hash-change-called-times) "One hash change should have been logged")
                     (is (integer? db-hash-2))
-                    (is (not= db-hash-2 0))
+                    (is (not= 0 db-hash-2))
                     (is (not= db-hash-1 db-hash-2)))))))
           (finally
             ;; restore the original test DB details, no matter what just happened
