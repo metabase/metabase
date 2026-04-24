@@ -172,20 +172,22 @@
   "List all registered custom visualization plugins."
   []
   (api/check-superuser)
-  (map plugin->response (t2/select :model/CustomVizPlugin {:order-by [[:display_name :asc]]})))
+  (mapv (comp plugin->response api/read-check) (t2/select :model/CustomVizPlugin {:order-by [[:display_name :asc]]})))
 
 (api.macros/defendpoint :get "/list" :- [:sequential CustomVizPluginRuntimeResponse]
   "List active and enabled custom visualization plugins. Available to any authenticated user.
    Plugins with incompatible Metabase version requirements are excluded.
    Dev-only plugins are excluded when dev mode is disabled."
   []
+  (api/check api/*current-user-id* [401 "Unauthenticated"])
   (let [dev-mode? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
-        plugins   (t2/select [:model/CustomVizPlugin
-                              :id :identifier :display_name :icon :resolved_commit
-                              :manifest :metabase_version :dev_bundle_url :repo_url]
-                             :status :active
-                             :enabled true
-                             {:order-by [[:display_name :asc]]})]
+        plugins   (mapv api/read-check
+                        (t2/select [:model/CustomVizPlugin
+                                    :id :identifier :display_name :icon :resolved_commit
+                                    :manifest :metabase_version :dev_bundle_url :repo_url]
+                                   :status :active
+                                   :enabled true
+                                   {:order-by [[:display_name :asc]]}))]
     (->> plugins
          (filter manifest/compatible?)
          (remove #(and (not dev-mode?) (dev-only-plugin? %)))
@@ -195,7 +197,7 @@
   "Remove a custom visualization plugin and evict its cached bundle."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))]
+  (let [plugin (api/write-check (t2/select-one :model/CustomVizPlugin :id id))]
     (t2/delete! :model/CustomVizPlugin :id id)
     (cache/purge-plugin-cache! plugin)
     (events/publish-event! :event/custom-viz-plugin-delete {:object  plugin
@@ -211,7 +213,7 @@
             [:access_token   {:optional true} [:maybe :string]]
             [:pinned_version {:optional true} [:maybe :string]]]]
   (api/check-superuser)
-  (let [existing        (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+  (let [existing        (api/read-check (t2/select-one :model/CustomVizPlugin :id id))
         updates         (select-keys body [:enabled :access_token :pinned_version])
         pinned-changed? (and (contains? updates :pinned_version)
                              (not= (:pinned_version updates) (:pinned_version existing)))
@@ -236,7 +238,7 @@
    respond
    raise]
   (try
-    (let [plugin  (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+    (let [plugin  (api/read-check (t2/select-one :model/CustomVizPlugin :id id))
           dev-url (cache/resolve-dev-bundle id)
           entry   (cache/resolve-bundle plugin)]
       (if entry
@@ -245,7 +247,7 @@
                                     "X-Content-Type-Options"       "nosniff"
                                     "Cross-Origin-Resource-Policy" "same-origin"
                                     "Referrer-Policy"              "no-referrer"
-                                    "ETag"                       (:hash entry)}
+                                    "ETag"                         (:hash entry)}
                              dev-url       (assoc "Cache-Control" "no-store")
                              (not dev-url) (assoc "Cache-Control" "public, max-age=31536000, immutable"))
                   :body    (:content entry)})
@@ -268,7 +270,7 @@
    respond
    raise]
   (try
-    (let [plugin       (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+    (let [plugin       (api/read-check (t2/select-one :model/CustomVizPlugin :id id))
           content-type (or (manifest/asset-content-type path)
                            (throw (ex-info "Unsupported asset type" {:status-code 404})))
           dev?         (cache/resolve-dev-bundle id)
@@ -298,7 +300,7 @@
    {:keys [dev_bundle_url]} :- [:map [:dev_bundle_url [:maybe :string]]]]
   (api/check-superuser)
   (check-dev-mode-enabled!)
-  (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))
+  (api/read-check (t2/select-one :model/CustomVizPlugin :id id))
   (cache/set-or-clear-dev-bundle! id dev_bundle_url)
   {:dev_bundle_url (cache/resolve-dev-bundle id)})
 
@@ -340,7 +342,7 @@
    For dev-only plugins, re-fetches the manifest from the dev server instead."
   [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [plugin (api/check-404 (t2/select-one :model/CustomVizPlugin :id id))]
+  (let [plugin (api/write-check (t2/select-one :model/CustomVizPlugin :id id))]
     (if (dev-only-plugin? plugin)
       ;; dev-only: re-fetch manifest from dev server
       (let [dev-url  (or (cache/resolve-dev-bundle id)

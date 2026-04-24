@@ -18,8 +18,8 @@
   (derive :hook/timestamped?))
 
 (defmethod mi/can-read? :model/CustomVizPlugin
-  ([_instance]   api/*is-superuser?*)
-  ([_model _pk]  api/*is-superuser?*))
+  ([_instance]   true)
+  ([_model _pk]  true))
 
 (defmethod mi/can-write? :model/CustomVizPlugin
   ([_instance]   api/*is-superuser?*)
