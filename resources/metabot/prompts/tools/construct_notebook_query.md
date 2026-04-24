@@ -115,25 +115,33 @@ fields:
 
 ### Querying a saved question or model
 
-Instead of `source-table:` you can use `source-card:` to query the result of an existing saved question or model. The value is the card's **portable entity id** — a short opaque string reported by `entity_details` under `portable_entity_id` (do **not** use the numeric id).
+Instead of `source-table:` you can use `source-card:` to query the result of an existing saved question or model. The value is the card's **portable entity id** — a short opaque 21-character string reported by `entity_details` under `portable_entity_id` (do **not** use the numeric id, the name, or `card__<id>`).
+
+**Mandatory workflow — never skip:**
+
+1. **First call `entity_details`** with `entity-type: question` or `entity-type: model` and the card's numeric id. This is non-negotiable: do it even when you already know the card's numeric id from a previous tool call.
+2. Copy the `portable_entity_id` value **verbatim** from the response into `source-card:`. It is a random-looking 21-character string — treat it as opaque.
+3. Also read the card's `fields` list in the same response and use the exact `name` values when referencing its columns in this query.
+
+**Never guess, construct, or abbreviate an entity_id.** If you write an id that `entity_details` did not give you, the tool will reject the query with `:unknown-card`. There is no pattern or convention you can derive it from — only `entity_details` knows it.
 
 ```yaml
 lib/type: mbql/query
 database: Sample
 stages:
   - lib/type: mbql.stage/mbql
-    source-card: T4wA_GPFwGb6R4FxIDGTo   # entity_id of a saved question / model
+    source-card: T4wA_GPFwGb6R4FxIDGTo   # portable_entity_id copied verbatim from entity_details
     filters:
       - ['>', {}, [field, {}, total], 100]   # reference card columns by their output name
     limit: 50
 ```
 
-When a stage uses `source-card:`:
+Further rules when a stage uses `source-card:`:
 
 - Reference columns produced by the card the same way you reference columns from a previous stage in a multi-stage query — `[field, {}, "<column-name>"]` with the column's **output name** (the string reported by the card's `fields` in `entity_details`) in the third slot, **not** a portable FK path.
-- Use `entity_details` (entity-type `question` or `model`) to discover a card's columns and pick the correct name.
 - A single stage has **either** `source-table:` **or** `source-card:`, never both.
 - The card must live in the same database as this query (same `database:` name at the top level). Cross-database queries are not supported.
+- Prefer `source-card:` over re-writing the card's query inline: it keeps the query small, reuses the card's definition, and lets the user click through to the source question. Falling back to native SQL like `SELECT * FROM {{#<id>-<slug>}}` is **not** acceptable — always use `source-card:` when the user refers to an existing question or model.
 
 ### Multi-stage queries
 
@@ -345,6 +353,7 @@ stages:
 - **JSON-unfolded fields** append extra path segments: `[DB, SCHEMA, TABLE, PARENT, CHILD]`.
 - **Clause heads are lowercase strings** with hyphens (not underscores): `count`, `sum`, `count-where`, `time-interval`.
 - **The query must be a YAML string**, not a parsed JSON object. Write it literally as shown.
+- **Never invent a `source-card:` entity id.** It must be a 21-character string copied verbatim from an `entity_details` call on the same card — no abbreviations, no patterns, no numeric ids, no `card__<id>`. See "Querying a saved question or model" above.
 
 ## Phase 1 scope — what's not yet supported
 
