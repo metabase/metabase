@@ -9,17 +9,16 @@ summary: "Use the Git-Based File Editing Workflow — a bundle of agent skills w
 
 Metabase content like questions and dashboards can be serialized as YAML files. You can edit those YAML files directly, but you can also just throw an agent at them.
 
-Paired with some skills we've developed, you can ask your agent to build new questions and dashboards as YAML files, then import that new content into your Metabase. This file-based development flow opens up a whole new way to work with your Metbase.
+Paired with some skills we've developed, you can ask your agent to build new questions and dashboards as YAML files, then import that new content into your Metabase. This file-based development flow opens up a whole new way to work with your Metabase.
 
 ## The file-based toolkit
 
-To develop your Metase content on your local file-system, we've put together a  set of tools, including a set of agent skills.
+To develop your Metabase content on your local filesystem, we've put together a set of tools, including a set of agent skills.
 
 - [**Metabase Representation Format**](https://github.com/metabase/representations): the YAML schema and spec for every Metabase entity (questions, dashboards, collections, transforms, and so on).
 - **[Metabase Database Metadata Format](https://github.com/metabase/database-metadata)**: diff-friendly representations of synced databases, their tables, and their fields, as a tree of YAML files.
 - **Export and Import** CLI and API endpoints to manage serialized content (if you're not using Remote Sync).
 - [**Remote Sync**](../installation-and-operation/remote-sync.md) (Optional): you can push content from a Read-write Metabase into a git repo, and pull it into a Read-only Metabase in production.
-
 
 ## Initial setup
 
@@ -115,11 +114,11 @@ In your development Metabase, configure [Remote Sync in Read-write mode](../inst
 
 ### 2. Create a branch from the Metabase UI
 
-In your development Metabase, click the branch dropdown at the top and [create a new branch](../installation-and-operation/remote-sync.md#creating-a-branch) for your work, like `feature/support-dashboard`.
+In your development Metabase, click the **branch dropdown** at the top and [create a new branch](../installation-and-operation/remote-sync.md#creating-a-branch) for your work, like `feature/support-dashboard`.
 
 ### 3. Push existing content to seed the repo
 
-Click the up arrow (push) icon to [commit and push](../installation-and-operation/remote-sync.md#committing-and-pushing-your-changes) your existing synced collections to the branch.
+Click the up arrow (**push**) icon to [commit and push](../installation-and-operation/remote-sync.md#committing-and-pushing-your-changes) your existing synced collections to the branch.
 
 ### 4. Clone the repo locally and check out the branch
 
@@ -149,9 +148,9 @@ git push origin feature/support-dashboard
 
 Open a pull request so your team can review the YAML diff.
 
-### 8. Pull the branch into your dev Metabase
+### 8. Pull the branch into your development Metabase
 
-Click the pull (down arrow) icon in your development Metabase to load the agent's changes. Verify the dashboard renders correctly and the questions return expected results.
+Click the **pull** (down arrow) icon in your development Metabase to load the agent's changes. Verify the dashboard renders correctly and the questions return expected results.
 
 ### 9. Merge the PR so production auto-syncs
 
@@ -179,7 +178,7 @@ curl \
 tar -xzf metabase_data.tgz
 ```
 
-Set `data_model=false` to keep the export small. The agent should get its metadata from the `metabase-database-metadata` skill instead. For more on export options, see [Serialization](../installation-and-operation/serialization.md)
+Set `data_model=false` to keep the export small. The agent should get its metadata from the `metabase-database-metadata` skill instead. For more on export options, see [Serialization](../installation-and-operation/serialization.md).
 
 Commit the extracted YAML so you have a baseline to revert to if the agent goes off the rails.
 
@@ -201,7 +200,7 @@ git push origin feature/support-dashboard
 
 Open a pull request so your team can review the YAML diff. Reviewing analytics content as text before it touches any Metabase is the whole point of the file-based workflow.
 
-### 6. Import the YAML into your dev Metabase
+### 6. Import the YAML into your development Metabase
 
 Re-bundle the YAML and import it:
 
@@ -230,7 +229,7 @@ If you're using Remote Sync, don't try to fix things by re-pushing from Metabase
 
 ## Validating YAML files
 
-Run both checks locally before pushing. The same checks belong in CI see [CI scaffolding](#ci-scaffolding) below.
+Run both checks locally before pushing. The same checks belong in CI — see [CI example](#ci-example) below.
 
 ### Schema check
 
@@ -254,7 +253,7 @@ What it validates beyond schema:
 - MBQL query compilation: `source-table`, field references, joins, segments, measures, expressions.
 - Native-query references: tables, columns, and snippets named in SQL.
 
-If you've installed the `metabase-semantic-checker` skill, just ask the agent to run the semantic checker, the skill should pick the right image, pass the right flags, and summarize the findings.
+If you've installed the `metabase-semantic-checker` skill, just ask the agent to run the semantic checker; the skill picks the right image, passes the right flags, and summarizes the findings.
 
 You can manually run the semantic checker via Docker like so:
 
@@ -292,17 +291,17 @@ jobs:
   schema-check:
     runs-on: ubuntu-latest
     steps:
-- uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-- uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-- name: Validate representation YAML files
+      - name: Validate representation YAML files
         run: npx --yes @metabase/representations validate-schema
 ```
 
-For the semantic check, add a second workflow that fetches `.metabase/metadata.json` from your Metabase and then runs the Docker command above against the checkout. If you run the semantic check in more than one workflow (for example, a semantic check and per-PR preview environments), you should probably factor the database metadata fetch to run and cache once a data so you don't hit the API on every push.
+For the semantic check, add a second workflow that fetches `.metabase/metadata.json` from your Metabase and then runs the Docker command above against the checkout. If you run the semantic check in more than one workflow (for example, a semantic check and per-PR preview environments), you should probably factor the database metadata fetch to run and cache once a day so you don't hit the API on every push.
 
 ## Deleting content
 
