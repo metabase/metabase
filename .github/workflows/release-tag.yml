@@ -291,8 +291,8 @@ jobs:
         git tag -f ${{ inputs.tag_name }} ${{ needs.check-version.outputs.oss }}
         git push origin tag -f ${{ inputs.tag_name }}
 
-  update-version-info:
-    if: ${{ !inputs.dot-x-tag }}
+  update-version-info-latest:
+    if: ${{ inputs.tag_name == 'latest' }} # only update version-info.json for the 'latest' tag
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: check-version
     timeout-minutes: 5
@@ -315,11 +315,9 @@ jobs:
           .github
     - name: Prepare release scripts
       uses: ./.github/actions/prepare-release-scripts
-    - name: Generate new version info
+    - name: Update latest in version-info.json
       uses: actions/github-script@v7
-      id: new_version_info
       with:
-        result-encoding: string
         script: | # js
           const { updateVersionInfoLatest } = require('${{ github.workspace }}/release/dist/index.cjs');
           const fs = require('fs');
