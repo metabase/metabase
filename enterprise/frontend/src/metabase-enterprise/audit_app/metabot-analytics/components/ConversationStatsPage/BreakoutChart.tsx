@@ -8,6 +8,7 @@ import type { DateFilterValue } from "metabase/querying/common/types";
 import { Card, Skeleton, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { ClickActionsMode } from "metabase/visualizations/types";
+import type { CardMetadata, TableMetadata } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { VisualizationDisplay } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -19,7 +20,7 @@ import S from "./ChartCard.module.css";
 import {
   type UsageStatsMetric,
   applyDateFilter,
-  applyGroupFilter,
+  applyGroupFilterByJoin,
   applyUsageStatsAggregation,
   applyUserFilter,
   findColumn,
@@ -29,7 +30,8 @@ import {
 type Props = {
   dateFilter: DateFilterValue;
   userId?: number;
-  groupName?: string;
+  groupId?: number;
+  groupMembersTable?: TableMetadata | CardMetadata | null;
   breakoutColumn: string;
   title: string;
   display?: VisualizationDisplay;
@@ -52,7 +54,8 @@ const CLICKABLE_MODE: ClickActionsMode = {
 export function BreakoutChart({
   dateFilter,
   userId,
-  groupName,
+  groupId,
+  groupMembersTable,
   breakoutColumn,
   title,
   display = "row",
@@ -75,7 +78,7 @@ export function BreakoutChart({
 
     q = applyDateFilter(q, dateFilter);
     q = applyUserFilter(q, userId);
-    q = applyGroupFilter(q, groupName);
+    q = applyGroupFilterByJoin(q, groupId, groupMembersTable);
     const { query: aggregated, orderColumnName } = applyUsageStatsAggregation(
       q,
       metric,
@@ -95,7 +98,16 @@ export function BreakoutChart({
     }
 
     return q;
-  }, [provider, table, dateFilter, userId, groupName, breakoutColumn, metric]);
+  }, [
+    provider,
+    table,
+    dateFilter,
+    userId,
+    groupId,
+    groupMembersTable,
+    breakoutColumn,
+    metric,
+  ]);
 
   const jsQuery = useMemo(() => (query ? Lib.toJsQuery(query) : null), [query]);
 

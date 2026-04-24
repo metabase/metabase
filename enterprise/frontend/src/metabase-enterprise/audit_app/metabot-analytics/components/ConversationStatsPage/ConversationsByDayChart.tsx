@@ -6,6 +6,7 @@ import type { DateFilterValue } from "metabase/querying/common/types";
 import { Card, Skeleton, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { ClickActionsMode } from "metabase/visualizations/types";
+import type { CardMetadata, TableMetadata } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import { createMockCard } from "metabase-types/api/mocks";
 
@@ -16,7 +17,7 @@ import S from "./ChartCard.module.css";
 import {
   type UsageStatsMetric,
   applyDateFilter,
-  applyGroupFilter,
+  applyGroupFilterByJoin,
   applyUsageStatsAggregation,
   applyUserFilter,
   findColumn,
@@ -28,7 +29,8 @@ import {
 type Props = {
   dateFilter: DateFilterValue;
   userId?: number;
-  groupName?: string;
+  groupId?: number;
+  groupMembersTable?: TableMetadata | CardMetadata | null;
   metric: UsageStatsMetric;
   viewName?: string;
   onDimensionClick?: (value: unknown) => void;
@@ -41,7 +43,8 @@ const CLICKABLE_MODE: ClickActionsMode = {
 export function ConversationsByDayChart({
   dateFilter,
   userId,
-  groupName,
+  groupId,
+  groupMembersTable,
   metric,
   viewName = VIEW_CONVERSATIONS,
   onDimensionClick,
@@ -58,7 +61,7 @@ export function ConversationsByDayChart({
 
     q = applyDateFilter(q, dateFilter);
     q = applyUserFilter(q, userId);
-    q = applyGroupFilter(q, groupName);
+    q = applyGroupFilterByJoin(q, groupId, groupMembersTable);
     const { query: aggregated } = applyUsageStatsAggregation(q, metric);
     q = aggregated;
 
@@ -76,7 +79,16 @@ export function ConversationsByDayChart({
     }
 
     return q;
-  }, [provider, table, dateFilter, userId, groupName, metric, bucketName]);
+  }, [
+    provider,
+    table,
+    dateFilter,
+    userId,
+    groupId,
+    groupMembersTable,
+    metric,
+    bucketName,
+  ]);
 
   const jsQuery = useMemo(() => (query ? Lib.toJsQuery(query) : null), [query]);
 

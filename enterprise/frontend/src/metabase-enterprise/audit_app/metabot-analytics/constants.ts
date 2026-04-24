@@ -6,3 +6,4 @@ export const VIEW_CONVERSATIONS = "v_metabot_conversations";
 export const VIEW_MESSAGES = "v_metabot_messages";
 export const VIEW_USAGE = "v_metabot_usage";
 export const VIEW_USAGE_LOG = "v_ai_usage_log";
+export const VIEW_GROUP_MEMBERS = "v_group_members";

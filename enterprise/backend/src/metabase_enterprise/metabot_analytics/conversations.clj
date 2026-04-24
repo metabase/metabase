@@ -25,10 +25,8 @@
 (def ^:private all-users-group-id 1)
 
 (defn- date-string->constraints
-  "Parse a serialized date-param string (e.g. `past30days`, `2026-04-01~2026-04-15`)
-   into a pair of half-open HoneySQL predicates on `col`. Throws 400 on a
-   malformed string. Returns `nil` when no bound is produced
-   (e.g. some `exclude-*` shapes yield neither start nor end)."
+  "Parse a serialized date-param string into half-open HoneySQL predicates on `col`.
+   Throws 400 on a malformed string. Returns nil when no bound is produced."
   [col date-string]
   (let [{:keys [start end]}
         (try

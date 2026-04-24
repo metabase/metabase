@@ -5,7 +5,7 @@ import { t } from "ttag";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import { color } from "metabase/ui/colors/palette";
-import type { ColumnMetadata, Query } from "metabase-lib";
+import type { CardMetadata, ColumnMetadata, Query, TableMetadata } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { VisualizationSettings } from "metabase-types/api";
 
@@ -125,26 +125,78 @@ export function applyUserFilter(
   );
 }
 
-export function applyGroupFilter(
+function findJoinableColumn(
+  columns: ColumnMetadata[],
   query: Query,
-  groupName: string | undefined,
-  columnName = "group_name",
+  name: string,
+): ColumnMetadata | undefined {
+  const lower = name.toLowerCase();
+  return columns.find((col) => {
+    const info = Lib.displayInfo(query, 0, col);
+    return info.name?.toLowerCase() === lower;
+  });
+}
+
+// Join to v_group_members and filter the joined group_id. Equality on the
+// view's own group_name column is lossy — it only exposes each user's
+// alphabetically-first non-All-Users group, so users in multiple groups get
+// silently missed.
+export function applyGroupFilterByJoin(
+  query: Query,
+  groupId: number | undefined,
+  groupMembersTable: TableMetadata | CardMetadata | null | undefined,
+  sourceUserIdColumn = "user_id",
 ): Query {
-  if (!groupName) {
+  if (groupId == null || !groupMembersTable) {
     return query;
   }
-  const col = findColumn(query, columnName, Lib.filterableColumns);
-  if (!col) {
-    return query;
-  }
-  return Lib.filter(
+
+  const lhsColumns = Lib.joinConditionLHSColumns(
     query,
     0,
-    Lib.stringFilterClause({
+    groupMembersTable,
+    undefined,
+    undefined,
+  );
+  const rhsColumns = Lib.joinConditionRHSColumns(
+    query,
+    0,
+    groupMembersTable,
+    undefined,
+    undefined,
+  );
+  const lhsUserId = findJoinableColumn(lhsColumns, query, sourceUserIdColumn);
+  const rhsUserId = findJoinableColumn(rhsColumns, query, "user_id");
+  if (!lhsUserId || !rhsUserId) {
+    return query;
+  }
+
+  const innerJoin = Lib.availableJoinStrategies(query, 0).find((strategy) => {
+    const info = Lib.displayInfo(query, 0, strategy);
+    return info.shortName === "inner-join";
+  });
+  if (!innerJoin) {
+    return query;
+  }
+
+  const condition = Lib.joinConditionClause("=", lhsUserId, rhsUserId);
+  const joined = Lib.join(
+    query,
+    0,
+    Lib.joinClause(groupMembersTable, [condition], innerJoin),
+  );
+
+  const groupIdCol = findColumn(joined, "group_id", Lib.filterableColumns);
+  if (!groupIdCol) {
+    return joined;
+  }
+  return Lib.filter(
+    joined,
+    0,
+    Lib.numberFilterClause({
       operator: "=",
-      column: col,
-      values: [groupName],
-      options: {},
+      column: groupIdCol,
+      values: [groupId],
     }),
   );
 }
