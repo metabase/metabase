@@ -5,6 +5,12 @@ import type { State } from "metabase/redux/store";
 import type { IconName } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { GroupId } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionValue,
+} from "metabase-types/api/permissions";
+
+export { DataPermission, DataPermissionValue };
 
 export type GroupRouteParams = {
   groupId?: number;
@@ -65,16 +71,6 @@ export type EntityId = DatabaseEntityId &
 
 export type EntityWithGroupId = EntityId & { groupId: number };
 
-export enum DataPermission {
-  VIEW_DATA = "view-data",
-  CREATE_QUERIES = "create-queries",
-  DOWNLOAD = "download",
-  DATA_MODEL = "data-model",
-  DETAILS = "details",
-  TRANSFORMS = "transforms",
-  COLLECTIONS = "collections",
-}
-
 export enum DataPermissionType {
   ACCESS = "access",
   NATIVE = "native",
@@ -83,30 +79,6 @@ export enum DataPermissionType {
   DATA_MODEL = "data-model",
   TRANSFORMS = "transforms",
   COLLECTIONS = "collections",
-}
-
-export enum DataPermissionValue {
-  BLOCKED = "blocked",
-  CONTROLLED = "controlled",
-  IMPERSONATED = "impersonated",
-  LEGACY_NO_SELF_SERVICE = "legacy-no-self-service",
-  NO = "no",
-  QUERY_BUILDER = "query-builder",
-  QUERY_BUILDER_AND_NATIVE = "query-builder-and-native",
-  SANDBOXED = "sandboxed",
-  UNRESTRICTED = "unrestricted",
-  // download specific values
-  NONE = "none",
-  LIMITED = "limited",
-  FULL = "full",
-  // details specific values
-  YES = "yes",
-  // data model specific values
-  ALL = "all",
-  //collections
-  WRITE = "write",
-  READ = "read",
-  //NONE = "none", //shared with download above
 }
 
 export type DatabasePermissionsDiff = {

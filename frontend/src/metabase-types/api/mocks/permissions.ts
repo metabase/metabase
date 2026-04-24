@@ -1,13 +1,11 @@
 import {
   DataPermission,
   DataPermissionValue,
-} from "metabase/admin/permissions/types";
-import type {
-  Database,
-  Group,
-  GroupsPermissions,
-  Impersonation,
-  PermissionsGraph,
+  type Database,
+  type Group,
+  type GroupsPermissions,
+  type Impersonation,
+  type PermissionsGraph,
 } from "metabase-types/api";
 
 export const createMockPermissionsGraph = ({

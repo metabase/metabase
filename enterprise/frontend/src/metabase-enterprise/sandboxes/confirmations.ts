@@ -1,10 +1,8 @@
 import { t } from "ttag";
 
-import {
-  DataPermissionValue,
-  type EntityId,
-} from "metabase/admin/permissions/types";
+import type { EntityId } from "metabase/admin/permissions/types";
 import { hasPermissionValueInGraph } from "metabase/admin/permissions/utils/graph";
+import { DataPermissionValue } from "metabase-types/api";
 import type { GroupsPermissions } from "metabase-types/api/permissions";
 
 export function getSandboxedTableWarningModal(

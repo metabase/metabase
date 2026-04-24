@@ -1,7 +1,6 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
@@ -19,6 +18,7 @@ import {
   PLUGIN_REDUCERS,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
+import { DataPermissionValue } from "metabase-types/api";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
 import {
