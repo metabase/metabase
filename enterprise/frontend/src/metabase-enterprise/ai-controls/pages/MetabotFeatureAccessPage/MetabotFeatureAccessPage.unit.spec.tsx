@@ -55,13 +55,15 @@ function setup({
   permissions = createDefaultPermissions(),
   groups = defaultGroups,
   useTenants = false,
+  advanced = false,
 }: {
   permissions?: MetabotGroupPermission[];
   groups?: typeof defaultGroups;
   useTenants?: boolean;
+  advanced?: boolean;
 } = {}) {
   setupGroupsEndpoint(groups);
-  setupMetabotGroupPermissionsEndpoint(permissions);
+  setupMetabotGroupPermissionsEndpoint(permissions, advanced);
   setupUpdateMetabotGroupPermissionsEndpoint();
 
   renderWithProviders(<MetabotFeatureAccessPage />, {
@@ -77,24 +79,41 @@ function getPermissionRow(groupName: string) {
   });
 }
 
-const dataAnalystsGroup = createMockGroup({
-  id: 4,
-  name: "Data Analysts",
-  member_count: 2,
-  magic_group_type: "data-analyst",
-});
-
 describe("MetabotFeatureAccessPage", () => {
+  const originalGetBoundingClientRect =
+    HTMLElement.prototype.getBoundingClientRect;
+
+  beforeAll(() => {
+    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
+    HTMLElement.prototype.getBoundingClientRect = jest
+      .fn()
+      .mockReturnValue({ height: 400, width: 800, top: 0, left: 0 });
+  });
+
+  afterAll(() => {
+    HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+  });
+
   it("renders groups with their permission states", async () => {
-    setup();
+    setup({ advanced: true });
 
     expect(
       await screen.findByTestId("ai-feature-access-table"),
     ).toBeInTheDocument();
 
     expect(screen.getByText("Administrators")).toBeInTheDocument();
-    expect(screen.getByText("All Users")).toBeInTheDocument();
+    expect(screen.queryByText("All Users")).not.toBeInTheDocument();
     expect(screen.getByText("Marketing")).toBeInTheDocument();
+  });
+
+  it("hides non-admin/non-all-users groups in simple mode", async () => {
+    setup();
+
+    await screen.findByTestId("ai-feature-access-table");
+
+    expect(screen.getByText("Administrators")).toBeInTheDocument();
+    expect(screen.getByText("All Users")).toBeInTheDocument();
+    expect(screen.queryByText("Marketing")).not.toBeInTheDocument();
   });
 
   it("renders column headers for each AI tool", async () => {
@@ -147,8 +166,8 @@ describe("MetabotFeatureAccessPage", () => {
     expect(chatCheckbox).toBeChecked();
   });
 
-  it("disables sub-permission checkboxes when metabot is off for a group", async () => {
-    setup();
+  it("leaves sub-permission checkboxes enabled when metabot is off for a group", async () => {
+    setup({ advanced: true });
     await screen.findByTestId("ai-feature-access-table");
 
     const marketingRow = getPermissionRow("Marketing");
@@ -157,12 +176,13 @@ describe("MetabotFeatureAccessPage", () => {
 
     const checkboxes = within(marketingRow).getAllByRole("checkbox");
     checkboxes.forEach((checkbox) => {
-      expect(checkbox).toBeDisabled();
+      expect(checkbox).toBeEnabled();
+      expect(checkbox).not.toBeChecked();
     });
   });
 
-  it("enables sub-permission checkboxes after toggling metabot on", async () => {
-    setup();
+  it("checks every sub-permission when toggling metabot on for a group", async () => {
+    setup({ advanced: true });
     await screen.findByTestId("ai-feature-access-table");
 
     const marketingRow = getPermissionRow("Marketing");
@@ -174,10 +194,11 @@ describe("MetabotFeatureAccessPage", () => {
     const checkboxes = within(marketingRow).getAllByRole("checkbox");
     checkboxes.forEach((checkbox) => {
       expect(checkbox).toBeEnabled();
+      expect(checkbox).toBeChecked();
     });
   });
 
-  it("unchecks and disables sub-permissions when toggling metabot off", async () => {
+  it("unchecks every sub-permission when toggling metabot off for a group", async () => {
     setup();
     await screen.findByTestId("ai-feature-access-table");
 
@@ -194,7 +215,128 @@ describe("MetabotFeatureAccessPage", () => {
     expect(metabotSwitch).not.toBeChecked();
     const checkboxes = within(allUsersRow).getAllByRole("checkbox");
     checkboxes.forEach((checkbox) => {
-      expect(checkbox).toBeDisabled();
+      expect(checkbox).toBeEnabled();
+      expect(checkbox).not.toBeChecked();
+    });
+  });
+
+  it("auto-enables metabot when a tool is checked while metabot is off", async () => {
+    setup({ advanced: true });
+    await screen.findByTestId("ai-feature-access-table");
+
+    const marketingRow = getPermissionRow("Marketing");
+    const metabotSwitch = within(marketingRow).getByRole("switch");
+    expect(metabotSwitch).not.toBeChecked();
+
+    const chatCheckbox = within(marketingRow).getByRole("checkbox", {
+      name: /Chat and NLQ/,
+    });
+    await userEvent.click(chatCheckbox);
+
+    expect(metabotSwitch).toBeChecked();
+    expect(chatCheckbox).toBeChecked();
+    // Other tools should remain unchecked — only the clicked one and metabot flip on
+    expect(
+      within(marketingRow).getByRole("checkbox", { name: /SQL generation/ }),
+    ).not.toBeChecked();
+    expect(
+      within(marketingRow).getByRole("checkbox", { name: /Other tools/ }),
+    ).not.toBeChecked();
+  });
+
+  it("auto-disables metabot when the last enabled tool is unchecked", async () => {
+    const onlyChatEnabled = [
+      ...createMockMetabotGroupPermissions(adminGroup.id),
+      ...createMockMetabotGroupPermissions(allUsersGroup.id, {
+        [AIToolKey.SQLGeneration]: "no",
+        [AIToolKey.OtherTools]: "no",
+      }),
+      ...createMockMetabotGroupPermissions(marketingGroup.id, {
+        [AIToolKey.Metabot]: "no",
+        [AIToolKey.ChatAndNLQ]: "no",
+        [AIToolKey.SQLGeneration]: "no",
+        [AIToolKey.OtherTools]: "no",
+      }),
+    ];
+    setup({ permissions: onlyChatEnabled });
+    await screen.findByTestId("ai-feature-access-table");
+
+    const allUsersRow = getPermissionRow("All Users");
+    const metabotSwitch = within(allUsersRow).getByRole("switch");
+    await waitFor(() => expect(metabotSwitch).toBeChecked());
+
+    const chatCheckbox = within(allUsersRow).getByRole("checkbox", {
+      name: /Chat and NLQ/,
+    });
+    await waitFor(() => expect(chatCheckbox).toBeChecked());
+
+    await userEvent.click(chatCheckbox);
+
+    expect(chatCheckbox).not.toBeChecked();
+    expect(metabotSwitch).not.toBeChecked();
+  });
+
+  it("does not affect other groups when one group's permissions change", async () => {
+    const engineeringGroup = createMockGroup({
+      id: 4,
+      name: "Engineering",
+      member_count: 4,
+      magic_group_type: null,
+    });
+    const permissions = [
+      ...createMockMetabotGroupPermissions(adminGroup.id),
+      ...createMockMetabotGroupPermissions(allUsersGroup.id),
+      ...createMockMetabotGroupPermissions(marketingGroup.id, {
+        [AIToolKey.Metabot]: "no",
+        [AIToolKey.ChatAndNLQ]: "no",
+        [AIToolKey.SQLGeneration]: "no",
+        [AIToolKey.OtherTools]: "no",
+      }),
+      ...createMockMetabotGroupPermissions(engineeringGroup.id),
+    ];
+    setup({
+      advanced: true,
+      groups: [...defaultGroups, engineeringGroup],
+      permissions,
+    });
+    await screen.findByTestId("ai-feature-access-table");
+
+    const engineeringRow = getPermissionRow("Engineering");
+    const engineeringSwitch = within(engineeringRow).getByRole("switch");
+    const engineeringCheckboxes =
+      within(engineeringRow).getAllByRole("checkbox");
+
+    // Wait for the fully-enabled engineering row to settle
+    await waitFor(() => expect(engineeringSwitch).toBeChecked());
+    engineeringCheckboxes.forEach((checkbox) => {
+      expect(checkbox).toBeChecked();
+    });
+
+    // Auto-enable on a tool in Marketing — would have flipped engineering's metabot
+    // in the previous (buggy) implementation that didn't filter by group_id
+    const marketingRow = getPermissionRow("Marketing");
+    await userEvent.click(
+      within(marketingRow).getByRole("checkbox", { name: /Chat and NLQ/ }),
+    );
+
+    // Sanity: the change landed on Marketing
+    expect(within(marketingRow).getByRole("switch")).toBeChecked();
+
+    // Engineering must remain fully enabled — no cross-group leak
+    expect(engineeringSwitch).toBeChecked();
+    engineeringCheckboxes.forEach((checkbox) => {
+      expect(checkbox).toBeChecked();
+    });
+
+    // And the inverse leak: unchecking Marketing's last enabled tool would
+    // previously disable Engineering's metabot via the shared cascade path
+    await userEvent.click(
+      within(marketingRow).getByRole("checkbox", { name: /Chat and NLQ/ }),
+    );
+    expect(within(marketingRow).getByRole("switch")).not.toBeChecked();
+    expect(engineeringSwitch).toBeChecked();
+    engineeringCheckboxes.forEach((checkbox) => {
+      expect(checkbox).toBeChecked();
     });
   });
 
@@ -214,149 +356,33 @@ describe("MetabotFeatureAccessPage", () => {
     expect(screen.getByText("Tenant groups")).toBeInTheDocument();
   });
 
-  describe("'All Users' group override warning icons", () => {
-    // defaultPermissions: All Users group has everything enabled; Data Analysts has everything disabled
-    const defaultPermissions = [
-      ...createMockMetabotGroupPermissions(adminGroup.id),
-      ...createMockMetabotGroupPermissions(allUsersGroup.id),
-      ...createMockMetabotGroupPermissions(dataAnalystsGroup.id, {
-        [AIToolKey.Metabot]: "no",
-        [AIToolKey.ChatAndNLQ]: "no",
-        [AIToolKey.SQLGeneration]: "no",
-        [AIToolKey.OtherTools]: "no",
+  it("renders the group name next to its AI features switch in the first cell", async () => {
+    setup();
+    await screen.findByTestId("ai-feature-access-table");
+
+    const adminRow = getPermissionRow("Administrators");
+    const gridcell = within(adminRow).getAllByRole("gridcell")[0];
+    expect(within(gridcell).getByRole("switch")).toBeInTheDocument();
+    expect(within(gridcell).getByText("Administrators")).toBeInTheDocument();
+  });
+
+  it("shows the 'Switch to group-level permissions' button in simple mode", async () => {
+    setup();
+    await screen.findByTestId("ai-feature-access-table");
+
+    expect(
+      screen.getByRole("button", { name: "Switch to group-level permissions" }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides the 'Switch to group-level permissions' button in advanced mode", async () => {
+    setup({ advanced: true });
+    await screen.findByTestId("ai-feature-access-table");
+
+    expect(
+      screen.queryByRole("button", {
+        name: "Switch to group-level permissions",
       }),
-    ];
-
-    it("shows info icons on a group's row when 'All Users' has higher access", async () => {
-      setup({
-        groups: [adminGroup, allUsersGroup, dataAnalystsGroup],
-        permissions: defaultPermissions,
-      });
-
-      await screen.findByTestId("ai-feature-access-table");
-
-      const dataAnalystsRow = getPermissionRow("Data Analysts");
-
-      // Wait for permissions to propagate
-      await waitFor(() => {
-        const infoIcons = within(dataAnalystsRow).getAllByRole("img", {
-          name: "Group limit warning",
-        });
-        // One icon per tool column (AI features switch + 3 checkboxes)
-        expect(infoIcons).toHaveLength(4);
-      });
-    });
-
-    it("shows info icon only for tools where 'All Users' has higher access", async () => {
-      const permissions = [
-        ...createMockMetabotGroupPermissions(adminGroup.id),
-        ...createMockMetabotGroupPermissions(allUsersGroup.id, {
-          [AIToolKey.SQLGeneration]: "no",
-        }),
-        ...createMockMetabotGroupPermissions(dataAnalystsGroup.id, {
-          [AIToolKey.ChatAndNLQ]: "no",
-          [AIToolKey.SQLGeneration]: "no",
-          [AIToolKey.OtherTools]: "no",
-        }),
-      ];
-
-      setup({
-        groups: [adminGroup, allUsersGroup, dataAnalystsGroup],
-        permissions,
-      });
-
-      await screen.findByTestId("ai-feature-access-table");
-
-      const dataAnalystsRow = getPermissionRow("Data Analysts");
-
-      await waitFor(() => {
-        // Only ChatAndNLQ and OtherTools are overridden — SQLGeneration is "no" for both
-        const infoIcons = within(dataAnalystsRow).getAllByRole("img", {
-          name: "Group limit warning",
-        });
-        expect(infoIcons).toHaveLength(2);
-      });
-    });
-
-    it("does not show info icons on the 'All Users' row itself", async () => {
-      setup();
-      await screen.findByTestId("ai-feature-access-table");
-
-      const allUsersRow = getPermissionRow("All Users");
-
-      await waitFor(() => {
-        expect(within(allUsersRow).getByRole("switch")).toBeInTheDocument();
-      });
-
-      expect(
-        within(allUsersRow).queryByRole("img", { name: "Group limit warning" }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("does not show info icons when 'All Users' has equal or lower access", async () => {
-      // All Users has SQL generation disabled; Data Analysts also has it disabled — no override
-      const permissions = [
-        ...createMockMetabotGroupPermissions(adminGroup.id),
-        ...createMockMetabotGroupPermissions(allUsersGroup.id, {
-          [AIToolKey.SQLGeneration]: "no",
-        }),
-        ...createMockMetabotGroupPermissions(dataAnalystsGroup.id, {
-          [AIToolKey.SQLGeneration]: "no",
-        }),
-      ];
-
-      setup({
-        groups: [adminGroup, allUsersGroup, dataAnalystsGroup],
-        permissions,
-      });
-
-      await screen.findByTestId("ai-feature-access-table");
-
-      const dataAnalystsRow = getPermissionRow("Data Analysts");
-
-      await waitFor(() => {
-        expect(within(dataAnalystsRow).getByRole("switch")).toBeInTheDocument();
-      });
-
-      expect(
-        within(dataAnalystsRow).queryByRole("img", {
-          name: "Group limit warning",
-        }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("does not show info icons when 'All Users' AI features switch is off, even if sub-tools are on", async () => {
-      const permissions = [
-        ...createMockMetabotGroupPermissions(adminGroup.id),
-        ...createMockMetabotGroupPermissions(allUsersGroup.id, {
-          [AIToolKey.Metabot]: "no",
-          // ChatAndNLQ, SQLGeneration, OtherTools remain "yes" in state
-        }),
-        ...createMockMetabotGroupPermissions(dataAnalystsGroup.id, {
-          [AIToolKey.ChatAndNLQ]: "no",
-          [AIToolKey.SQLGeneration]: "no",
-          [AIToolKey.OtherTools]: "no",
-        }),
-      ];
-
-      setup({
-        groups: [adminGroup, allUsersGroup, dataAnalystsGroup],
-        permissions,
-      });
-
-      await screen.findByTestId("ai-feature-access-table");
-
-      const dataAnalystsRow = getPermissionRow("Data Analysts");
-
-      await waitFor(() => {
-        expect(within(dataAnalystsRow).getByRole("switch")).toBeInTheDocument();
-      });
-
-      expect(
-        within(dataAnalystsRow).queryByRole("img", {
-          name: "Group limit warning",
-        }),
-      ).not.toBeInTheDocument();
-    });
+    ).not.toBeInTheDocument();
   });
 });

@@ -238,16 +238,12 @@ const METABOT_GROUP_PERMISSIONS_ROUTE_NAME = "metabot-group-permissions";
 
 export function setupMetabotGroupPermissionsEndpoint(
   permissions: MetabotGroupPermission[] = [],
+  advanced = false,
 ) {
   fetchMock.removeRoute(METABOT_GROUP_PERMISSIONS_ROUTE_NAME);
   fetchMock.get(
     "path:/api/ee/ai-controls/permissions",
-    {
-      permissions,
-      limit: 50,
-      offset: 0,
-      total: permissions.length,
-    },
+    { permissions, advanced },
     { name: METABOT_GROUP_PERMISSIONS_ROUTE_NAME },
   );
 }

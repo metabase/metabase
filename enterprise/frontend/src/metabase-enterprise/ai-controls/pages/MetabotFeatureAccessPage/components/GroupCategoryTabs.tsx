@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { Button, Group } from "metabase/ui";
 
-import type { GroupTab } from "./utils";
+import type { GroupTab } from "../utils";
 
 type TabOption = {
   tab: GroupTab;
@@ -22,7 +22,7 @@ export const GroupCategoryTabs = (props: GroupCategoryTabsProps) => {
   ];
 
   return (
-    <Group gap="sm" mb="md">
+    <Group gap="sm">
       {tabItems.map((tabItem) => (
         <Button
           bd="none"

@@ -1,0 +1,30 @@
+.card {
+  overflow: hidden;
+
+  .row {
+    cursor: default;
+
+    &:hover,
+    &:focus,
+    &.rowActive,
+    &.rowActive:hover {
+      /* No row selected effect */
+      background-color: transparent;
+    }
+  }
+}
+
+.headerCell:not(:first-child) {
+  justify-content: center;
+}
+
+.cell {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.buttonRow {
+  border-top: 1px solid var(--mb-color-border);
+  padding: 1rem 1rem 1rem 1.5rem;
+}
