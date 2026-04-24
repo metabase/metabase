@@ -1,6 +1,6 @@
 (ns metabase.query-processor.streaming.ods
   "OpenDocument Spreadsheet (ODS) query results export."
-  (:refer-clojure :exclude [mapv some])
+  (:refer-clojure :exclude [mapv])
   (:require
    [java-time.api :as t]
    [medley.core :as m]
@@ -15,7 +15,7 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.performance :refer [mapv some]])
+   [metabase.util.performance :refer [mapv]])
   (:import
    (java.io OutputStream)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -28,20 +28,20 @@
 
 ;; ODS reuses pivot parsing, POI style workbook generation, and per-column value parsing from
 ;; `metabase.query-processor.streaming.xlsx` without duplicating a large code path. Those
-;; fns are still `defn-` in `xlsx` — we resolve them with a var deref. If the coupling
-;; becomes painful, extract shared helpers into `streaming.common` or relax visibility in
-;; `xlsx.clj` instead of `var` indirection.
+;; fns are still `defn-` in `xlsx` — we resolve them with [[requiring-resolve]] + deref. If
+;; the coupling becomes painful, extract shared helpers into `streaming.common` or relax
+;; visibility in `xlsx.clj` instead.
 (def ^:private maybe-parse-temporal
-  @#'metabase.query-processor.streaming.xlsx/maybe-parse-temporal-value)
+  @(requiring-resolve 'metabase.query-processor.streaming.xlsx/maybe-parse-temporal-value))
 
 (def ^:private maybe-parse-coordinate
-  @#'metabase.query-processor.streaming.xlsx/maybe-parse-coordinate-value)
+  @(requiring-resolve 'metabase.query-processor.streaming.xlsx/maybe-parse-coordinate-value))
 
 (def ^:private xlsx-generate-styles
-  @#'metabase.query-processor.streaming.xlsx/generate-styles)
+  @(requiring-resolve 'metabase.query-processor.streaming.xlsx/generate-styles))
 
 (def ^:private xlsx-make-formatters
-  @#'metabase.query-processor.streaming.xlsx/make-formatters)
+  @(requiring-resolve 'metabase.query-processor.streaming.xlsx/make-formatters))
 
 (defmethod qp.si/stream-options :ods
   ([_]
@@ -128,7 +128,7 @@
     table))
 
 (defn- add-ods-data-row!
-  [^OdfTable table values cols viz-settings cell-styles typed-cell-styles]
+  [^OdfTable table values cols viz-settings cell-styles _typed-cell-styles]
   (let [^OdfTableRow row (.appendRow table)
         val-it (.iterator ^Iterable values)
         col-it (.iterator ^Iterable cols)
@@ -204,7 +204,7 @@
               (vreset! ods-table table)
               (vreset! styles (xlsx-generate-styles workbook viz-settings non-pivot-cols format-rows?))))))
 
-      (write-row! [_ row row-num ordered-cols {:keys [output-order] :as viz-settings}]
+      (write-row! [_ row _row-num ordered-cols {:keys [output-order] :as viz-settings}]
         (let [ordered-row  (vec (if output-order
                                   (let [row-v (into [] row)]
                                     (for [i output-order] (row-v i)))
@@ -220,7 +220,7 @@
               (let [{:keys [cell-styles typed-cell-styles]} @styles]
                 (add-ods-data-row! @ods-table row' ordered-cols' viz-settings cell-styles typed-cell-styles))))))
 
-      (finish! [_ {:keys [row_count]}]
+      (finish! [_ _]
         (try
           (when @pivot-data
             (let [{:keys [settings non-pivot-cols pivot-export-options timezone format-rows?]} @pivot-data

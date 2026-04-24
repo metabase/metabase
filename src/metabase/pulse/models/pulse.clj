@@ -202,7 +202,7 @@
    [:map
     [:include_csv                        ms/BooleanValue]
     [:include_xls                        ms/BooleanValue]
-    [:include_ods                        ms/BooleanValue]
+    [:include_ods                        {:default false} ms/BooleanValue]
     [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
     [:pivot_results     {:optional true} [:maybe ms/BooleanValue]]
     [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]

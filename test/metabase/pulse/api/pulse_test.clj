@@ -39,7 +39,7 @@
       (update :collection_id boolean)
       ;; why? these fields in this last assoc are from the PulseCard model and this function takes the Card model
       ;; because PulseCard is somewhat hidden behind the scenes
-      (assoc :include_csv false :include_xls false :dashboard_card_id nil :dashboard_id nil
+      (assoc :include_csv false :include_ods false :include_xls false :dashboard_card_id nil :dashboard_id nil
              :format_rows true :pivot_results false
              :parameter_mappings nil)))
 
@@ -105,9 +105,9 @@
 (def ^:private default-post-card-ref-validation-error
   {:errors
    {:cards (str "one or more value must be a map with the following keys "
-                "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
-                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., "
-                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
+                "`(collection_id, description, display, id, include_csv, include_xls, include_ods, name, dashboard_id, parameter_mappings)`, "
+                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, `include_ods`, and `dashboard_card_id`., "
+                "or value must be a map with the keys `include_csv`, `include_xls`, `include_ods`, and `dashboard_card_id`.")}})
 
 (deftest create-pulse-validation-test
   (doseq [[input expected-error]
@@ -124,7 +124,7 @@
 
            {:name  "abc"
             :cards ["abc"]}
-           {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.",
+           {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, `include_ods`, and `dashboard_card_id`.",
                      :channels "one or more map"}}
 
            {:name  "abc"
@@ -446,9 +446,9 @@
 (def ^:private default-put-card-ref-validation-error
   {:errors
    {:cards (str "nullable one or more value must be a map with the following keys "
-                "`(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, "
-                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., "
-                "or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.")}})
+                "`(collection_id, description, display, id, include_csv, include_xls, include_ods, name, dashboard_id, parameter_mappings)`, "
+                "or value must be a map with the keys `id`, `include_csv`, `include_xls`, `include_ods`, and `dashboard_card_id`., "
+                "or value must be a map with the keys `include_csv`, `include_xls`, `include_ods`, and `dashboard_card_id`.")}})
 
 (deftest update-pulse-validation-test
   (testing "PUT /api/pulse/:id"
@@ -464,7 +464,7 @@
              default-put-card-ref-validation-error
 
              {:cards ["abc"]}
-             {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`."}}
+             {:errors {:cards "value must be a map with the keys `include_csv`, `include_xls`, `include_ods`, and `dashboard_card_id`."}}
 
              {:channels 123}
              {:errors {:channels "nullable one or more map"}}

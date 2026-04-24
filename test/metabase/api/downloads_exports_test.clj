@@ -26,6 +26,7 @@
    [metabase.query-processor.settings :as qp.settings]
    [metabase.query-processor.streaming.interface :as qp.si]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
    (java.io InputStream)
@@ -64,7 +65,7 @@
         (not (str/blank? s)) s
         (str/blank? vt) ""
         :else
-        (let [vt' (str/lower-case vt)]
+        (let [vt' (u/lower-case-en vt)]
           (cond
             (= "boolean" vt') (str (boolean (.getBooleanValue cell)))
             (contains? #{"float" "percentage" "currency"} vt') (str (or (.getDoubleValue cell) 0.0))

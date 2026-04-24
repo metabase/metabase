@@ -7,7 +7,8 @@
    ;; defmethods for :ods
    [metabase.query-processor.streaming.ods]
    [metabase.query-processor.test :as qp]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util :as u])
   (:import
    (java.io ByteArrayInputStream ByteArrayOutputStream InputStream)
    (org.odftoolkit.odfdom.doc OdfSpreadsheetDocument)
@@ -27,7 +28,7 @@
         (not (str/blank? s)) s
         (str/blank? vt) ""
         :else
-        (let [vt' (str/lower-case vt)]
+        (let [vt' (u/lower-case-en vt)]
           (cond
             (= "boolean" vt') (str (boolean (.getBooleanValue cell)))
             (contains? #{"float" "percentage" "currency"} vt') (str (or (.getDoubleValue cell) 0.0))
