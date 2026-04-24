@@ -208,12 +208,9 @@
    Dev-only plugins are excluded when dev mode is disabled."
   []
   (let [dev-mode? (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
-        plugins   (t2/select [:model/CustomVizPlugin
-                              :id :identifier :display_name :icon :bundle_hash
-                              :manifest :metabase_version :dev_bundle_url]
-                             :status :active
-                             :enabled true
-                             {:order-by [[:display_name :asc]]})]
+        plugins   (select-plugins :status :active
+                                  :enabled true
+                                  {:order-by [[:display_name :asc]]})]
     (->> plugins
          (filter manifest/compatible?)
          (remove #(and (not dev-mode?) (dev-only-plugin? %)))

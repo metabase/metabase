@@ -5,15 +5,29 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Blob)))
 
 (set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/CustomVizPlugin [_model] :custom_viz_plugin)
 
+(defn- blob->bytes ^bytes [v]
+  (cond
+    (nil? v)           nil
+    (instance? Blob v) (let [^Blob b v] (.getBytes b 1 (int (.length b))))
+    :else              v))
+
+(def ^:private transform-bundle
+  "Coerce JDBC `Blob` values into plain byte arrays on read."
+  {:in  identity
+   :out blob->bytes})
+
 (t2/deftransforms :model/CustomVizPlugin
   {:status   mi/transform-keyword
-   :manifest mi/transform-json})
+   :manifest mi/transform-json
+   :bundle   transform-bundle})
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)

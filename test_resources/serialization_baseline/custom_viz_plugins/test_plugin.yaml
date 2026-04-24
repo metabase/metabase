@@ -1,5 +1,3 @@
-bundle: null
-bundle_hash: null
 display_name: Test Plugin
 identifier: test-plugin
 manifest: {}
