@@ -31,7 +31,6 @@ export type MetabotAgentChartMessage = {
   Chart: React.ComponentType<MetabotChartProps>;
 };
 
-
 // Internal variants intentionally omitted. `use-metabot.tsx` filters these out before mapping:
 // - `tool_call`: debug-only, gated on metabot's `debugMode`.
 // - `edit_suggestion`: targets the in-app Transform editor, which the SDK does not render.
