@@ -20,8 +20,8 @@ title: Driver interface changelog
   - `wrap-value-literals-in-mbql` - Helper to dispatch to `driver-api/wrap-value-literals-in-mbql` or `driver-api/wrap-value-literals-in-mbql5`.
   - `date-string->filter` - Helper to dispatch to `params.dates/date-string->filter` or `qp.params.dates/date-string->filter`.
   These methods have implementations for the `:sql` and `:sql-mbql5` drivers. Concrete drivers should not need to
-  implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent.
-  See the `:h2` driver for an example. These methods will eventually be deprecated in favour of the `:sql-mbql5`
+  implement these methods. Drivers can opt-in to MBQL5 compilation by adding the `:sql-mbql5` driver as a parent, and updating the `sql.qp/->honeysql` methods to handle the clause options argument as the second parameter.
+  See the `:h2` driver in https://github.com/metabase/metabase/pull/71439 for an example. These methods will eventually be deprecated in favour of the `:sql-mbql5`
   implementations once all drivers have been migrated.
 
 - Added a `driver` parameter to `sql.qp/maybe-cast-uuid-for-text-compare`. Any drivers that call this function should
