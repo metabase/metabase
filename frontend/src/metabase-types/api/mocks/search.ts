@@ -23,6 +23,7 @@ export const createMockSearchResult = (
     can_write: true,
     table_id: 1,
     table_name: null,
+    table_display_name: null,
     bookmark: null,
     database_id: 1,
     database_name: "test-data",

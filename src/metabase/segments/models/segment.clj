@@ -249,5 +249,6 @@
    :render-terms {:table-id :table_id
                   :table_description :table.description
                   :table_name :table.name
+                  :table_display_name :table.display_name
                   :table_schema :table.schema}
    :joins {:table [:model/Table [:= :table.id :this.table_id]]}})

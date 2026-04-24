@@ -1,8 +1,9 @@
 import { type Ref, useCallback, useEffect, useMemo } from "react";
 
 import { PLUGIN_LIBRARY } from "metabase/plugins";
-import type { MenuDropdownProps } from "metabase/ui";
+import type { MenuDropdownProps, MenuProps } from "metabase/ui";
 import { Box, Menu } from "metabase/ui";
+import type { SearchRequest } from "metabase-types/api";
 
 import type { DataPickerValue } from "../../../DataPicker";
 import { useLogRecentItem } from "../../../EntityPicker/hooks/use-log-recent-item";
@@ -27,7 +28,11 @@ export type MiniPickerProps = {
   onBrowseAll?: () => void;
   shouldHide?: (item: MiniPickerItem | unknown) => boolean;
   shouldShowLibrary?: boolean;
+  forceSearch?: boolean;
+  searchParams?: Partial<SearchRequest>;
+  onSearchResults?: (results: MiniPickerPickableItem[]) => void;
   children?: React.ReactNode;
+  menuProps?: MenuProps;
   menuDropdownProps?: MenuDropdownProps;
   closeOnClickOutside?: boolean;
   menuDropdownRef?: Ref<HTMLDivElement>;
@@ -45,7 +50,11 @@ export function MiniPicker({
   trapFocus = false,
   shouldHide,
   shouldShowLibrary = true,
+  forceSearch = false,
+  searchParams,
+  onSearchResults,
   children = <Box />,
+  menuProps,
   menuDropdownProps,
   closeOnClickOutside = true,
   menuDropdownRef,
@@ -94,6 +103,9 @@ export function MiniPicker({
         canBrowse: !!onBrowseAll,
         libraryCollection,
         shouldShowLibrary,
+        forceSearch,
+        searchParams,
+        onSearchResults,
       }}
     >
       <Menu
@@ -105,6 +117,7 @@ export function MiniPicker({
         position="bottom-start"
         // menuItemTabIndex={-1}
         trapFocus={false}
+        {...menuProps}
       >
         <Menu.Target>{children}</Menu.Target>
 

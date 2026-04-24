@@ -65,6 +65,7 @@
    :last_edited_at             false
    :pk_ref                     nil
    :table_description          nil
+   :table_display_name         nil
    :table_id                   false
    :table_name                 nil
    :table_schema               nil
@@ -76,7 +77,8 @@
   []
   (merge
    {:table_id true, :database_id true}
-   (t2/select-one [:model/Table [:name :table_name] [:schema :table_schema] [:description :table_description]]
+   (t2/select-one [:model/Table [:name :table_name] [:schema :table_schema]
+                   [:display_name :table_display_name] [:description :table_description]]
                   :id (mt/id :checkins))))
 
 (defn- clean-result [result]

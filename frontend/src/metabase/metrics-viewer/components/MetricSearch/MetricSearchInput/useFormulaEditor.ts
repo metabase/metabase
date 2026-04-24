@@ -16,6 +16,7 @@ import {
   createMeasureSourceId,
   createMetricSourceId,
 } from "../../../utils/source-ids";
+import type { MetricSearchDropdownRef } from "../MetricSearchDropdown";
 import {
   ENTITY_SEPARATOR,
   type MetricNameMap,
@@ -52,6 +53,7 @@ type UseFormulaEditorParams = {
   ) => void;
   editorRef: React.RefObject<ReactCodeMirrorRef | null>;
   containerRef: React.RefObject<HTMLDivElement | null>;
+  dropdownRef: React.RefObject<MetricSearchDropdownRef | null>;
 };
 
 export type UseFormulaEditorResult = {
@@ -65,7 +67,7 @@ export type UseFormulaEditorResult = {
   isExpressionDirty: boolean;
   pendingFocusRef: MutableRefObject<boolean>;
   handleInputFocus: () => void;
-  handleInputBlur: () => void;
+  handleInputBlur: (event: React.FocusEvent) => void;
   handleEditExpression: (entityIndex: number) => void;
   handleChange: (newText: string) => void;
   handleSelect: (metric: SelectedMetric) => void;
@@ -73,12 +75,9 @@ export type UseFormulaEditorResult = {
   handleContainerClick: (e: React.MouseEvent) => void;
   handleEditorClick: () => void;
   handleEditorKeyDown: (e: React.KeyboardEvent) => void;
-  handleDropdownHasSelectionChange: (hasSelection: boolean) => void;
   handleRun: () => void;
   // Refs needed by editorExtensions builder
   handleRunRef: MutableRefObject<() => void>;
-  isOpenRef: MutableRefObject<boolean>;
-  dropdownHasSelectionRef: MutableRefObject<boolean>;
 };
 
 export function useFormulaEditor({
@@ -91,14 +90,13 @@ export function useFormulaEditor({
   handleRemoveMetric,
   editorRef,
   containerRef,
+  dropdownRef,
 }: UseFormulaEditorParams): UseFormulaEditorResult {
   // editText is the full expression as plain text — only meaningful while focused
   const [editText, setEditText] = useState("");
   // currentWord is the word under the cursor, used as the dropdown search query
   const [currentWord, setCurrentWord] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const isOpenRef = useRef(isOpen);
-  isOpenRef.current = isOpen;
   const [isFocused, setIsFocused] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   // Pixel position (viewport-relative) of the current word's left edge and
@@ -124,9 +122,6 @@ export function useFormulaEditor({
   // handleInputFocus initializes the session; set back to false in commitAndCollapse.
   // Used to prevent autoFocus / view.focus() re-entrancy from reinitializing text.
   const isEditingSessionActiveRef = useRef(false);
-  // Tracks whether the dropdown has a keyboard-highlighted item.
-  // When true, Enter should select from the dropdown, not run the expression.
-  const dropdownHasSelectionRef = useRef(false);
 
   const handleRunRef = useRef<() => void>(() => {});
   // Text captured at focus time — used to detect whether the user actually
@@ -300,37 +295,42 @@ export function useFormulaEditor({
     selectedMetrics,
   ]);
 
-  const handleInputBlur = useCallback(() => {
-    // If the text hasn't changed since focus, collapse back to pills view
-    // without requiring the user to click "Run".
-    if (
-      editTextRef.current === textAtFocusRef.current &&
-      !dropdownHasSelectionRef.current
-    ) {
-      isEditingSessionActiveRef.current = false;
-      setIsFocused(false);
-      setIsOpen(false);
-      setCurrentWord("");
-      setEditText("");
+  const handleInputBlur = useCallback(
+    (event: React.FocusEvent) => {
+      // If the text hasn't changed since focus, collapse back to pills view
+      // without requiring the user to click "Run".
+      if (
+        editTextRef.current === textAtFocusRef.current &&
+        !dropdownRef.current?.containerRef.current?.contains(
+          event.relatedTarget,
+        )
+      ) {
+        isEditingSessionActiveRef.current = false;
+        setIsFocused(false);
+        setIsOpen(false);
+        setCurrentWord("");
+        setEditText("");
+        setValidationError(null);
+        setIsExpressionDirty(false);
+        return;
+      }
+
+      const view = editorRef.current?.view;
+      const identities = view ? readMetricIdentities(view) : [];
+      const invalidRanges = findInvalidRanges(
+        editTextRef.current,
+        metricNamesRef.current,
+        identities,
+      );
+      if (invalidRanges.length > 0) {
+        setValidationError(invalidRanges[0].message);
+        return;
+      }
+
       setValidationError(null);
-      setIsExpressionDirty(false);
-      return;
-    }
-
-    const view = editorRef.current?.view;
-    const identities = view ? readMetricIdentities(view) : [];
-    const invalidRanges = findInvalidRanges(
-      editTextRef.current,
-      metricNamesRef.current,
-      identities,
-    );
-    if (invalidRanges.length > 0) {
-      setValidationError(invalidRanges[0].message);
-      return;
-    }
-
-    setValidationError(null);
-  }, [editorRef, metricNamesRef]);
+    },
+    [editorRef, metricNamesRef, dropdownRef],
+  );
 
   const handleChange = useCallback(
     (newText: string) => {
@@ -434,7 +434,6 @@ export function useFormulaEditor({
 
       setCurrentWord("");
       setIsOpen(false);
-      dropdownHasSelectionRef.current = false;
 
       // Return focus to the editor after dropdown closes
       setTimeout(() => {
@@ -570,13 +569,6 @@ export function useFormulaEditor({
     }
   }, []);
 
-  const handleDropdownHasSelectionChange = useCallback(
-    (hasSelection: boolean) => {
-      dropdownHasSelectionRef.current = hasSelection;
-    },
-    [],
-  );
-
   /** Validate the expression and either show an error or commit + run the query. */
   const handleRun = useCallback(() => {
     const view = editorRef.current?.view;
@@ -633,10 +625,7 @@ export function useFormulaEditor({
     handleContainerClick,
     handleEditorClick,
     handleEditorKeyDown,
-    handleDropdownHasSelectionChange,
     handleRun,
     handleRunRef,
-    isOpenRef,
-    dropdownHasSelectionRef,
   };
 }

@@ -9,6 +9,8 @@ import {
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type { StructuredQuestionDetails } from "e2e/support/helpers";
+import { createLibraryWithTable } from "e2e/support/test-library-data";
+
 const { ORDERS_ID, ORDERS, PRODUCTS_ID, PRODUCTS, ACCOUNTS_ID, FEEDBACK_ID } =
   SAMPLE_DATABASE;
 
@@ -403,8 +405,51 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("{end}, xyznonexistent");
       H.MetricsViewer.searchResults().should(
         "contain.text",
-        "No results found",
+        "No search results",
       );
+    });
+
+    it("should add metrics and measures from the entity picker", () => {
+      H.activateToken("pro-self-hosted");
+      createLibraryWithTable();
+      H.MetricsViewer.goToViewer();
+
+      cy.log("Add a metric from the entity picker");
+      H.MetricsViewer.searchInput().click();
+      H.MetricsViewer.searchResults().findByText("Browse all").click();
+      H.pickEntity({ path: ["Our analytics", "Count of orders"] });
+
+      cy.log("Add a measure from the entity picker");
+      H.MetricsViewer.searchInput().click();
+      H.MetricsViewer.searchResults().findByText("Browse all").click();
+      H.pickEntity({ path: ["Library", "Data", "Orders", "Test Measure"] });
+
+      H.MetricsViewer.runButton().click();
+
+      verifyMetricCount(2);
+
+      H.MetricsViewer.searchInput().click();
+      H.MetricsViewer.searchResults().findByText("Browse all").click();
+      H.pickEntity({ path: ["Databases", "Sample Database"] });
+
+      cy.log("People is disabled because it doesn't have measures");
+      H.entityPickerModalItem(2, "People").should(
+        "have.attr",
+        "data-disabled",
+        "true",
+      );
+
+      cy.log("Orders is not disabled because it has measures");
+      H.entityPickerModalItem(2, "Orders").should(
+        "not.have.attr",
+        "data-disabled",
+      );
+
+      cy.log("Can search for measures");
+      H.entityPickerModal().within(() => {
+        cy.findByPlaceholderText("Search…").type("Test");
+        H.entityPickerModalItem(1, "Test Measure").should("be.visible");
+      });
     });
 
     it("should not show me metrics that live in collections I do not have permissions to see", () => {
@@ -413,7 +458,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("Count of");
       H.MetricsViewer.searchResults().should(
         "contain.text",
-        "No results found",
+        "No search results",
       );
 
       H.MetricsViewer.searchInput().clear().type("Test Measure");
@@ -426,7 +471,7 @@ describe("scenarios > metrics > explorer", () => {
       H.MetricsViewer.searchInput().type("Test Measure");
       H.MetricsViewer.searchResults().should(
         "contain.text",
-        "No results found",
+        "No search results",
       );
 
       H.MetricsViewer.searchInput().clear();
