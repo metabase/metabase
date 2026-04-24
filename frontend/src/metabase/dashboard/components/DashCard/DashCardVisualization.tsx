@@ -348,7 +348,7 @@ export function DashCardVisualization({
         visualization_settings: settings,
       } as Card,
       _.omit(dashcard.visualization_settings, "visualization"),
-    ) as Card;
+    );
 
     if (!didEveryDatasetLoad) {
       return [{ card }] as RawSeries;
