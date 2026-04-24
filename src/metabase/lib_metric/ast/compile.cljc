@@ -21,9 +21,10 @@
 
 (defn- column-node->field-ref
   "Convert column node to MBQL field reference."
-  [{:keys [id source-field]} options]
+  [{:keys [id source-field base-type]} options]
   [:field (cond-> (merge {:lib/uuid (random-uuid-str)} options)
-            source-field (assoc :source-field source-field))
+            source-field (assoc :source-field source-field)
+            base-type    (assoc :base-type base-type))
    id])
 
 (defn- resolve-dimension-ref
@@ -167,6 +168,24 @@
   [source]
   (seq (:joins source)))
 
+(defn- source-card?
+  "Check if source originates from a source-card (model or saved question)."
+  [source]
+  (some? (:source-card-id source)))
+
+(defn- needs-two-stage?
+  "Source-card metrics and metrics with joins both compile to two-stage queries."
+  [source]
+  (or (has-joins? source) (source-card? source)))
+
+(defn- stage-0-source
+  "Return the [key value] pair for stage-0's source — :source-card if the metric
+   wraps a card, otherwise :source-table from the base table."
+  [source]
+  (if-let [card-id (:source-card-id source)]
+    [:source-card card-id]
+    [:source-table (perf/get-in source [:base-table :id])]))
+
 (defn- compile-join-nodes
   "Compile AST join nodes to pMBQL join clauses.
    Forces `:fields :all` so that all joined columns are visible in stage 1 of
@@ -212,15 +231,18 @@
      :stages   [stage]}))
 
 (defn- compile-two-stage-query
-  "Compile AST to two-stage MBQL query when joins are present.
+  "Compile AST to two-stage MBQL query when joins are present or the metric is
+   based on a source-card (model / saved question).
 
-   Stage 0: Data model - base table, joins, source filters
+   Stage 0: Data model - base table or source card, joins, source filters
    Stage 1: Analysis - user filters, breakouts, aggregation"
   [{:keys [source mappings filter group-by]} {:keys [limit]}]
-  (let [;; Stage 0: Data model
-        stage-0 (cond-> {:lib/type     :mbql.stage/mbql
-                         :source-table (perf/get-in source [:base-table :id])
-                         :joins        (compile-join-nodes (:joins source))}
+  (let [[source-key source-val] (stage-0-source source)
+        ;; Stage 0: Data model
+        stage-0 (cond-> {:lib/type  :mbql.stage/mbql
+                         source-key source-val}
+                  (seq (:joins source))
+                  (assoc :joins (compile-join-nodes (:joins source)))
                   (:filters source)
                   (assoc :filters [(compile-filter-node (:filters source) mappings)]))
 
@@ -242,15 +264,16 @@
 (mu/defn compile-to-mbql
   "Compile AST to MBQL query.
 
-   Generates a two-stage query when the source has joins:
-   - Stage 0: Data model (base table + joins + source filters)
+   Generates a two-stage query when the source has joins or is based on a
+   source-card (model / saved question):
+   - Stage 0: Data model (base table or source card + joins + source filters)
    - Stage 1: Analysis (user filters + breakouts + aggregation)
 
    Options:
    - :limit - add limit to query"
   [{:keys [source] :as ast} :- ::ast.schema/ast
    & {:as opts}]
-  (if (has-joins? source)
+  (if (needs-two-stage? source)
     (compile-two-stage-query ast opts)
     (compile-single-stage-query ast opts)))
 
@@ -282,12 +305,14 @@
 (defn- compile-two-stage-values-query
   "Compile AST to two-stage MBQL query for distinct values (no aggregation).
 
-   Stage 0: Data model - base table, joins, source filters
+   Stage 0: Data model - base table or source card, joins, source filters
    Stage 1: User filters, breakouts (no aggregation)"
   [{:keys [source mappings filter group-by]} {:keys [limit]}]
-  (let [stage-0 (cond-> {:lib/type     :mbql.stage/mbql
-                         :source-table (perf/get-in source [:base-table :id])
-                         :joins        (compile-join-nodes (:joins source))}
+  (let [[source-key source-val] (stage-0-source source)
+        stage-0 (cond-> {:lib/type  :mbql.stage/mbql
+                         source-key source-val}
+                  (seq (:joins source))
+                  (assoc :joins (compile-join-nodes (:joins source)))
                   (:filters source)
                   (assoc :filters [(compile-filter-node (:filters source) mappings)]))
         user-filters (when filter [(compile-filter-node filter mappings)])
@@ -312,6 +337,6 @@
    - :limit - add limit to query"
   [{:keys [source] :as ast} :- ::ast.schema/ast
    & {:as opts}]
-  (if (has-joins? source)
+  (if (needs-two-stage? source)
     (compile-two-stage-values-query ast opts)
     (compile-single-stage-values-query ast opts)))

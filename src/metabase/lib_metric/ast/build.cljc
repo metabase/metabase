@@ -52,12 +52,14 @@
   "Create a dimension mapping node from a persisted mapping."
   [{:keys [dimension-id table-id target]}]
   (let [[_field opts field-id] target
-        source-field (:source-field opts)]
+        source-field (:source-field opts)
+        base-type    (:base-type opts)]
     {:node/type    :ast/dimension-mapping
      :dimension-id dimension-id
      :table-id     table-id
      :column       (cond-> (column-node field-id nil table-id)
-                     source-field (assoc :source-field source-field))}))
+                     source-field (assoc :source-field source-field)
+                     base-type    (assoc :base-type base-type))}))
 
 ;;; -------------------- Dimension Reference Construction --------------------
 
@@ -312,11 +314,12 @@
    For source-card queries (metrics based on models or saved questions),
    falls back to the table-id from the entity metadata."
   [source-type id metadata pmbql-query]
-  (let [table-id      (or (lib.util/source-table-id pmbql-query)
-                          (:table-id metadata))
-        aggregation   (first (lib/aggregations pmbql-query 0))
-        source-filter (extract-source-filters pmbql-query)
-        source-joins  (extract-source-joins pmbql-query)]
+  (let [source-card-id (lib.util/source-card-id pmbql-query)
+        table-id       (or (lib.util/source-table-id pmbql-query)
+                           (:table-id metadata))
+        aggregation    (first (lib/aggregations pmbql-query 0))
+        source-filter  (extract-source-filters pmbql-query)
+        source-joins   (extract-source-joins pmbql-query)]
     (cond-> {:node/type   source-type
              :id          id
              :name        (:name metadata)
@@ -324,8 +327,9 @@
                               {:node/type :aggregation/count})
              :base-table  (table-node table-id)
              :metadata    metadata}
-      source-joins  (assoc :joins source-joins)
-      source-filter (assoc :filters source-filter))))
+      source-card-id (assoc :source-card-id source-card-id)
+      source-joins   (assoc :joins source-joins)
+      source-filter  (assoc :filters source-filter))))
 
 ;;; -------------------- Main Construction --------------------
 
