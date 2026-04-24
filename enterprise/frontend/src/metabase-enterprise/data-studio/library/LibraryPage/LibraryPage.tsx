@@ -1,7 +1,7 @@
 import type { ExpandedState } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
-// import _ from "underscore";
+import _ from "underscore";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { isLibraryCollection } from "metabase/collections/utils";
@@ -21,10 +21,9 @@ import {
   isCollection,
   isEmptyStateData,
 } from "metabase/data-studio/common/utils";
-// import type { ExpandedState } from "metabase/data-studio/data-model/components/TablePicker/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-// import { useRouter } from "metabase/router";
+import { useRouter } from "metabase/router";
 import {
   Anchor,
   Card,
@@ -106,7 +105,7 @@ export function LibraryPage() {
 }
 
 function LibraryPageContent() {
-  // const { location } = useRouter();
+  const { location } = useRouter();
   const [editingCollection, setEditingCollection] = useState<Collection | null>(
     null,
   );
@@ -116,17 +115,17 @@ function LibraryPageContent() {
   const [isPublishTableModalOpen, setIsPublishTableModalOpen] = useState(false);
   const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
 
-  // const expandedIdsFromUrl = useMemo(() => {
-  //   const rawIds = location.query?.expandedId;
-  //   if (!rawIds) {
-  //     return null;
-  //   }
+  const expandedIdsFromUrl = useMemo(() => {
+    const rawIds = location.query?.expandedId;
+    if (!rawIds) {
+      return null;
+    }
 
-  //   const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
-  //   return _.object(
-  //     ids.map((id) => [`collection:${id}`, true]),
-  //   ) as ExpandedState;
-  // }, [location.query?.expandedId]);
+    const ids = Array.isArray(rawIds) ? rawIds : [rawIds];
+    return _.object(
+      ids.map((id) => [`collection:${id}`, true]),
+    ) as ExpandedState;
+  }, [location.query?.expandedId]);
 
   const { data: collections = [], isLoading: isLoadingCollections } =
     useListCollectionsTreeQuery({
@@ -219,34 +218,6 @@ function LibraryPageContent() {
   const isLoading =
     loadingTables || loadingMetrics || loadingSnippets || isSearchLoading;
   useErrorHandling(tablesError || metricsError || snippetsError);
-
-  // Collections with only empty-state children should always be expanded
-  // (even when navigating back via breadcrumbs which may collapse other sections)
-  // const alwaysExpandedIds = useMemo(() => {
-  //   const ids: Record<string, boolean> = {};
-  //   combinedTree.forEach((node) => {
-  //     if (node.model === "collection" && node.children) {
-  //       const hasOnlyEmptyState = node.children.every(
-  //         (child) => child.model === "empty-state",
-  //       );
-  //       if (hasOnlyEmptyState) {
-  //         ids[node.id] = true;
-  //       }
-  //     }
-  //   });
-  //   return ids;
-  // }, [combinedTree]);
-
-  // Merge URL-based expansion with always-expanded empty sections
-  // const effectiveExpandedState = useMemo(() => {
-  //   if (!expandedIdsFromUrl) {
-  //     return true; // Expand all by default
-  //   }
-  //   return {
-  //     ...expandedIdsFromUrl,
-  //     ...alwaysExpandedIds,
-  //   };
-  // }, [expandedIdsFromUrl, alwaysExpandedIds]);
 
   const libraryHasContent = useMemo(
     () =>
@@ -368,8 +339,11 @@ function LibraryPageContent() {
   );
 
   // Controlled expansion: expand all during search, preserve user state when browsing.
-  // Default to Data and Metrics expanded on initial load.
+  // Default any IDs from the URL. If none are provided, default to Data and Metrics expanded
   const defaultExpanded = useMemo<ExpandedState>(() => {
+    if (expandedIdsFromUrl) {
+      return expandedIdsFromUrl;
+    }
     const ids: ExpandedState = {};
     if (tableCollection) {
       ids[`collection:${tableCollection.id}`] = true;
@@ -378,13 +352,21 @@ function LibraryPageContent() {
       ids[`collection:${metricCollection.id}`] = true;
     }
     return ids;
-  }, [tableCollection, metricCollection]);
+  }, [tableCollection, metricCollection, expandedIdsFromUrl]);
 
   const [browseExpanded, setBrowseExpanded] = useState<ExpandedState | null>(
     null,
   );
 
-  const expanded = isSearchActive ? true : (browseExpanded ?? defaultExpanded);
+  // Initialize browseExpanded from defaultExpanded once collections are loaded,
+  // so we stop falling through to a recalculated defaultExpanded on every render.
+  useEffect(() => {
+    if (browseExpanded === null && Object.keys(defaultExpanded).length > 0) {
+      setBrowseExpanded(defaultExpanded);
+    }
+  }, [browseExpanded, defaultExpanded]);
+
+  const expanded = isSearchActive ? true : (browseExpanded ?? {});
   const onExpandedChange = useCallback(
     (updater: ExpandedState | ((old: ExpandedState) => ExpandedState)) => {
       if (!isSearchActive) {
