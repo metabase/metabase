@@ -14,8 +14,6 @@ import type {
 import * as Lib from "metabase-lib";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
-
 export type UsageStatsMetric = "conversations" | "messages" | "tokens";
 
 // the user-set inputs that drive every chart on the stats page — three
@@ -26,14 +24,6 @@ export type StatsFilters = {
   groupId?: number;
   metric: UsageStatsMetric;
 };
-
-// The Tokens tab reads from v_ai_usage_log (per-LLM-call ledger) for complete
-// token accounting across all call sites. The Conversations and Messages tabs
-// stay on v_metabot_conversations because aggregate-by-count and sum(message_count)
-// would be semantically wrong over a per-LLM-call table.
-export function getViewForMetric(metric: UsageStatsMetric): string {
-  return metric === "tokens" ? VIEW_USAGE_LOG : VIEW_CONVERSATIONS;
-}
 
 const METRIC_ACCENT: Record<UsageStatsMetric, string> = {
   conversations: "accent0",
@@ -47,7 +37,7 @@ const METRIC_COLUMN_NAME: Record<UsageStatsMetric, string> = {
   messages: "sum",
 };
 
-export type TokenSeriesSettings = Pick<
+type TokenSeriesSettings = Pick<
   VisualizationSettings,
   "series_settings" | "graph.metrics"
 >;
@@ -217,20 +207,6 @@ export function applyGroupIdFilter(
   );
 }
 
-// matches the view's own group_name subquery (WHERE pg.id != 1) so a
-// by-group breakout isn't dominated by an All Users bar
-export function excludeAllUsersGroup(query: Query): Query {
-  const col = findColumn(query, "group_id", Lib.filterableColumns);
-  if (!col) {
-    return query;
-  }
-  return Lib.filter(
-    query,
-    0,
-    Lib.numberFilterClause({ operator: "!=", column: col, values: [1] }),
-  );
-}
-
 /**
  * Add a sum aggregation for the given column name.
  */
@@ -297,7 +273,7 @@ export function applyMetricOrderBy(
   return Lib.orderBy(query, 0, orderCol, "desc");
 }
 
-export type SourceBreakoutQueryOpts = StatsFilters & {
+type SourceBreakoutQueryOpts = StatsFilters & {
   provider: MetadataProvider;
   table: TableMetadata | CardMetadata;
   groupMembersTable: TableMetadata | CardMetadata;

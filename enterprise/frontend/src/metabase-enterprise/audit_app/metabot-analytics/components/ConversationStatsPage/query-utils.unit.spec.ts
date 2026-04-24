@@ -2,28 +2,14 @@ import type { DateFilterValue } from "metabase/querying/common/types";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
-import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
-
 import { isSingleDayFilter } from "./ConversationsByDayChart";
+import { excludeAllUsersGroup } from "./ConversationsByGroupChart";
 import {
   applyGroupIdFilter,
   applyUserFilter,
-  excludeAllUsersGroup,
   getMetricSeriesSettings,
-  getViewForMetric,
   joinGroupMembers,
 } from "./query-utils";
-
-describe("getViewForMetric", () => {
-  it("routes the tokens metric to v_ai_usage_log", () => {
-    expect(getViewForMetric("tokens")).toBe(VIEW_USAGE_LOG);
-  });
-
-  it("routes conversations and messages to v_metabot_conversations", () => {
-    expect(getViewForMetric("conversations")).toBe(VIEW_CONVERSATIONS);
-    expect(getViewForMetric("messages")).toBe(VIEW_CONVERSATIONS);
-  });
-});
 
 describe("getMetricSeriesSettings", () => {
   it("returns two-series config for tokens with both aggregation columns, no stacking, dual axis on opt-in", () => {
