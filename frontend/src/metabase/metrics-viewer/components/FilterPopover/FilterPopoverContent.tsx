@@ -113,7 +113,7 @@ export function FilterPopoverContent({
       return null;
     }
     return (
-      <Box w={FILTER_WIDTH}>
+      <Box miw={FILTER_WIDTH}>
         <FilterPickerBody
           definition={selected.definition}
           dimension={navState.dimension}
