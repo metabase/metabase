@@ -114,7 +114,7 @@ export const useCommonDashboardParams = ({
             model: "dashboard",
           },
         });
-        setAdhocQuestionUrl(Urls.question(question.card()));
+        setAdhocQuestionUrl(Urls.card(question.card()));
       }
     },
     [dashboardId, dispatch, store],

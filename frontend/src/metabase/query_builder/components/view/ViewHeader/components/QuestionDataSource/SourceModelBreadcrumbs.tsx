@@ -54,7 +54,7 @@ export function SourceModelBreadcrumbs({
               <HeadBreadcrumbs.Badge
                 inactiveColor="text-tertiary"
                 icon={{ name: "warning", c: "danger" }}
-                to={Urls.question(question.card())}
+                to={Urls.card(question.card())}
               >
                 {question.displayName()}
               </HeadBreadcrumbs.Badge>
@@ -63,7 +63,7 @@ export function SourceModelBreadcrumbs({
         ) : (
           <HeadBreadcrumbs.Badge
             key="name"
-            to={Urls.question(question.card())}
+            to={Urls.card(question.card())}
             inactiveColor="text-tertiary"
           >
             {question.displayName()}

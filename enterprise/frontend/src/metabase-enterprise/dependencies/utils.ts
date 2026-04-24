@@ -133,7 +133,7 @@ export function getNodeLink(node: DependencyNode): NodeLink | null {
     case "card":
       return {
         label: getCardLinkLabel(node.data.type),
-        url: Urls.question({
+        url: Urls.card({
           id: node.id,
           name: node.data.name,
           type: node.data.type,

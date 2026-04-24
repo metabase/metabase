@@ -42,7 +42,7 @@ export const QuestionEmbeddedResources = () => {
       <SettingHeader id="embedded-questions" title={t`Embedded questions`} />
       <PublicLinksListing<GetEmbeddableCard>
         data-testid="-embedded-questions-setting"
-        getUrl={(question) => Urls.question(question)}
+        getUrl={(question) => Urls.card(question)}
         noLinksMessage={t`No questions have been embedded yet.`}
         {...query}
       />

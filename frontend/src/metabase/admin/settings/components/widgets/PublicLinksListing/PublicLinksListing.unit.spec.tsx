@@ -17,7 +17,7 @@ const setup = async (props: {
       <PublicLinksListing<GetPublicCard>
         data={props.publicCardData}
         noLinksMessage={`No questions have been publicly shared yet.`}
-        getUrl={(question) => Urls.question(question)}
+        getUrl={(question) => Urls.card(question)}
         getPublicUrl={({ name }) => {
           return `test-public-url-${name}`;
         }}

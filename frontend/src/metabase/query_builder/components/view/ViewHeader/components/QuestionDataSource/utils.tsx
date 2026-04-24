@@ -188,7 +188,7 @@ function getTableURL(table: Table) {
   if (isVirtualCardId(table.id)) {
     const cardId = getQuestionIdFromVirtualTableId(table.id);
     if (cardId != null) {
-      return Urls.question({ id: cardId, name: table.displayName() });
+      return Urls.card({ id: cardId, name: table.displayName() });
     }
   }
   return ML_Urls.getQuestionUrl(table.newQuestion());

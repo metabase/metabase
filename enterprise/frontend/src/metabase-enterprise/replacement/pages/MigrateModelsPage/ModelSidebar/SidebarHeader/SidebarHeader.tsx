@@ -15,7 +15,7 @@ type SidebarHeaderProps = {
 };
 
 export function SidebarHeader({ card, onClose }: SidebarHeaderProps) {
-  const link = Urls.question({ id: card.id, name: card.name });
+  const link = Urls.card({ id: card.id, name: card.name });
 
   return (
     <Group

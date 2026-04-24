@@ -155,7 +155,7 @@ function getItemName(item: DependencyItem) {
 function getItemLink(item: DependencyItem) {
   switch (item.type) {
     case "card":
-      return Urls.question(item.card);
+      return Urls.card(item.card);
     default:
       return Urls.transform(item.transform.id);
   }

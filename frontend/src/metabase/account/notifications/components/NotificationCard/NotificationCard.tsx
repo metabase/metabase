@@ -39,7 +39,7 @@ export const NotificationCard = ({
   const { item } = listItem;
   const hasArchive = canArchive(listItem.item, user);
 
-  const entityLink = Urls.question({
+  const entityLink = Urls.card({
     id: item.payload.card_id,
     card_id: item.payload.card_id,
   });

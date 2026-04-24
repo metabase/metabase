@@ -86,7 +86,7 @@ function filterBySegmentId(query, segmentId) {
 }
 
 export const getQuestionUrl = (getQuestionArgs) =>
-  Urls.question(null, { hash: getQuestion(getQuestionArgs) });
+  Urls.card(null, { hash: getQuestion(getQuestionArgs) });
 
 // little utility function to determine if we 'has' things, useful
 // for handling entity empty states

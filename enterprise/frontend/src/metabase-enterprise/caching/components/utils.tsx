@@ -27,5 +27,5 @@ export const getItemUrl = (
 ) =>
   match(model)
     .with("dashboard", () => Urls.dashboard(item))
-    .with("question", () => Urls.question(item))
+    .with("question", () => Urls.card(item))
     .otherwise(() => null);
