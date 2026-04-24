@@ -2,6 +2,7 @@ const { H } = cy;
 
 import { useMetabot } from "@metabase/embedding-sdk-react";
 
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { getSdkRoot } from "e2e/support/helpers/e2e-embedding-sdk-helpers";
 import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-testing";
@@ -13,7 +14,7 @@ const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const buildAdHocPath = (query: Record<string, unknown>) =>
   `/question#${btoa(
     JSON.stringify({
-      dataset_query: { database: 1, type: "query", query },
+      dataset_query: { database: SAMPLE_DB_ID, type: "query", query },
       display: "table",
       displayIsLocked: true,
       visualization_settings: {},
@@ -38,35 +39,40 @@ const buildNavigateToResponse = (path: string) =>
   `0:"Here is the [question link](${path})"
 2:{"type":"navigate_to","version":1,"value":"${path}"}`;
 
-const MetabotConsumer = () => {
+type MetabotConsumerProps = {
+  prompts: string[];
+};
+
+const MetabotConsumer = ({ prompts }: MetabotConsumerProps) => {
   const metabot = useMetabot();
 
   if (!metabot) {
-    return <div data-testid="metabot-loading">loading</div>;
+    return null;
   }
 
   return (
-    <div data-testid="metabot-consumer">
-      <button
-        data-testid="metabot-send"
-        type="button"
-        onClick={() => {
-          void metabot.submitMessage("Show me orders");
-        }}
-      >
-        Send
-      </button>
-
-      <ul data-testid="metabot-messages">
-        {metabot.messages.map((message) => (
-          <li key={message.id} data-testid={`metabot-message-${message.role}`}>
-            {message.type === "text" ? message.message : "chart"}
-          </li>
+    <div>
+      <div style={{ display: "flex", gap: 4, padding: 8 }}>
+        {prompts.map((prompt) => (
+          <button
+            key={prompt}
+            type="button"
+            onClick={() => {
+              void metabot.submitMessage(prompt);
+            }}
+            // I don't like ugly buttons
+            style={{
+              padding: "2px 8px",
+              fontSize: 12,
+              border: "1px solid #ccc",
+              borderRadius: 3,
+              background: "#f5f5f5",
+              cursor: "pointer",
+            }}
+          >
+            {prompt}
+          </button>
         ))}
-      </ul>
-
-      <div data-testid="metabot-current-chart-kind">
-        {metabot.CurrentChart ? "function" : "null"}
       </div>
 
       {metabot.CurrentChart && (
@@ -87,75 +93,65 @@ describe("scenarios > embedding-sdk > use-metabot hook", () => {
     mockAuthProviderAndJwtSignIn();
   });
 
-  it("exposes Metabot under a bare MetabaseProvider and renders CurrentChart after navigate_to", () => {
+  it("exposes Metabot and renders CurrentChart after navigate_to", () => {
     H.mockMetabotResponse({
       statusCode: 200,
       body: buildNavigateToResponse(adHocQuestionPathOrders),
     });
 
-    mountSdkContent(<MetabotConsumer />);
+    mountSdkContent(<MetabotConsumer prompts={["Show me orders"]} />);
 
     getSdkRoot().within(() => {
-      cy.findByTestId("metabot-consumer").should("exist");
-      cy.findByTestId("metabot-current-chart-kind").should("have.text", "null");
-      cy.findByTestId("metabot-send").click();
+      cy.findByTestId("metabot-current-chart").should("not.exist");
+      cy.button("Show me orders").click();
     });
 
     cy.wait("@metabotAgent", { timeout: 20_000 });
 
     getSdkRoot().within(() => {
-      cy.findAllByTestId("metabot-message-agent").should(
-        "have.length.at.least",
-        1,
-      );
-      cy.findByTestId("metabot-current-chart-kind").should(
-        "have.text",
-        "function",
-      );
       cy.findByTestId("metabot-current-chart").should("exist");
-      cy.findByTestId("visualization-root").should("exist");
+      cy.findByTestId("visualization-root")
+        .should("contain", "Product ID")
+        .and("contain", "1")
+        .and("contain", "Max of Quantity")
+        .and("contain", "30");
     });
   });
 
   it("swaps CurrentChart when a second navigate_to reaction arrives with a new path", () => {
-    let callCount = 0;
     cy.intercept("POST", "/api/metabot/agent-streaming", (request) => {
-      callCount += 1;
-      const body =
-        callCount === 1
-          ? buildNavigateToResponse(adHocQuestionPathOrders)
-          : buildNavigateToResponse(adHocQuestionPathProducts);
+      const path =
+        request.body.message === "Show me products"
+          ? adHocQuestionPathProducts
+          : adHocQuestionPathOrders;
       request.reply({
         statusCode: 200,
-        body,
+        body: buildNavigateToResponse(path),
         headers: { "content-type": "text/event-stream; charset=utf-8" },
       });
     }).as("metabotAgent");
 
-    mountSdkContent(<MetabotConsumer />);
+    mountSdkContent(
+      <MetabotConsumer prompts={["Show me orders", "Show me products"]} />,
+    );
 
     getSdkRoot().within(() => {
-      cy.findByTestId("metabot-send").click();
+      cy.button("Show me orders").click();
+      cy.wait("@metabotAgent", { timeout: 20_000 });
+      cy.findByTestId("visualization-root")
+        .should("contain", "Product ID")
+        .and("contain", "1")
+        .and("contain", "Max of Quantity")
+        .and("contain", "30");
+
+      cy.button("Show me products").click();
+      cy.wait("@metabotAgent", { timeout: 20_000 });
+
+      cy.findByTestId("visualization-root")
+        .should("contain", "Category")
+        .and("contain", "Doohickey")
+        .and("contain", "Count")
+        .and("contain", "42");
     });
-    cy.wait("@metabotAgent", { timeout: 20_000 });
-
-    getSdkRoot()
-      .findByTestId("visualization-root")
-      .should("exist")
-      .invoke("text")
-      .then((firstChartText) => {
-        getSdkRoot().within(() => {
-          cy.findByTestId("metabot-send").click();
-        });
-        cy.wait("@metabotAgent", { timeout: 20_000 });
-
-        getSdkRoot()
-          .findByTestId("visualization-root")
-          .should("exist")
-          .invoke("text")
-          .should((secondChartText) => {
-            expect(secondChartText).to.not.equal(firstChartText);
-          });
-      });
   });
 });
