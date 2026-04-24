@@ -219,7 +219,7 @@
    Matches Python Model.get_llm_representation exactly.
    Note: Python uses <metabase-model> tag but closes with </model>."
   [{:keys [id name description verified fields database_id database_engine
-           related_tables measures segments]}]
+           related_tables measures segments portable_entity_id]}]
   (let [fqn (model-fully-qualified-name id name)]
     (render-llm-template
      :model
@@ -230,6 +230,7 @@
       :model_database_engine    (database-engine-or-unknown database_engine)
       :model_fqn                fqn
       :model_description        description
+      :model_portable_entity_id portable_entity_id
       :model_fields_xml         (when (seq fields)
                                   (str/join "\n" (map field->xml fields)))
       :model_related_tables_xml (when (seq related_tables)
@@ -316,7 +317,7 @@
 
 (defn question->xml
   "Format question for LLM consumption."
-  [{:keys [id name description verified collection visualization display fields]}]
+  [{:keys [id name description verified collection visualization display fields portable_entity_id]}]
   (render-llm-template
    :question
    {:question_id (str id)
@@ -324,6 +325,7 @@
     :question_name name
     :question_description description
     :question_display_type (some-> display clojure.core/name)
+    :question_portable_entity_id portable_entity_id
     :question_collection_xml (when collection (collection->xml collection))
     :question_visualization_xml (when visualization (visualization->xml visualization))
     :question_fields_xml (when (seq fields)
@@ -452,9 +454,11 @@
 (defn search-result->xml
   "Format a single search result as XML element.
    Includes database_id, database_engine, and fully_qualified_name for table/model results
-   to match Python AI Service search output."
+   to match Python AI Service search output. For saved-question and model results also
+   includes `portable_entity_id` so the LLM can paste it verbatim into `source-card:`
+   without an extra `entity_details` call."
   [{:keys [id type name description verified collection
-           database_id database_engine database_schema]}]
+           database_id database_engine database_schema portable_entity_id]}]
   (let [fqn (cond
               (#{"table" :table} type)
               (when name (fully-qualified-name database_schema name))
@@ -479,7 +483,8 @@
       :search_collection_name (:name collection)
       :search_database_id (when database_id (str database_id))
       :search_database_engine engine
-      :search_fqn fqn})))
+      :search_fqn fqn
+      :search_portable_entity_id portable_entity_id})))
 
 (defn search-results->xml
   "Format search results as XML wrapped in search-results element."

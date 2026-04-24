@@ -83,6 +83,25 @@
     (cond->> results
       (seq engines) (mapv (fn [r] (m/assoc-some r :database_engine (get engines (:database_id r))))))))
 
+(defn- enrich-with-portable-entity-ids
+  "Attach `:portable_entity_id` (the card's `entity_id` NanoID) to saved-question and model
+  search results so the LLM can use it verbatim as `source-card:` without a follow-up
+  `entity_details` / `read_resource` round-trip. Metrics aren't included here because
+  `source-card:` doesn't accept metric ids."
+  [results]
+  (let [card-ids (->> results
+                      (filter #(#{"question" "model"} (:type %)))
+                      (keep :id)
+                      distinct)
+        id->eid  (when (seq card-ids)
+                   (t2/select-pk->fn :entity_id :model/Card :id [:in card-ids]))]
+    (cond->> results
+      (seq id->eid) (mapv (fn [r]
+                            (if-let [eid (and (#{"question" "model"} (:type r))
+                                              (get id->eid (:id r)))]
+                              (assoc r :portable_entity_id eid)
+                              r))))))
+
 (defn- remove-unreadable-transforms
   "Remove transforms from search results that the user cannot read.
   This filters out transforms where the user doesn't have access to the source tables/database."
@@ -238,6 +257,7 @@
          (map postprocess-search-result)
          enrich-with-collection-descriptions
          enrich-with-database-engines
+         enrich-with-portable-entity-ids
          remove-unreadable-transforms)))
 
 (defn- format-search-output
