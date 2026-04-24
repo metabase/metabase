@@ -4,8 +4,6 @@
    [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]))
 
-(set! *warn-on-reflection* true)
-
 (defrecord MockSourceSnapshot [files]
   source.p/SourceSnapshot
   (list-files [_]
@@ -13,9 +11,6 @@
 
   (read-file [_ path]
     (get files path))
-
-  (read-file-bytes [_ path]
-    (some-> (get files path) (.getBytes "UTF-8")))
 
   (write-files! [_ _message new-files]
     (into {} (map (juxt :path :content) new-files))
@@ -106,8 +101,6 @@
                         [])
                       (read-file [_ _path]
                         nil)
-                      (read-file-bytes [_ _path]
-                        nil)
                       (write-files! [_ _message files]
                         (reset! written-files files)
                         nil)
@@ -131,8 +124,6 @@
                         [])
                       (read-file [_ _path]
                         nil)
-                      (read-file-bytes [_ _path]
-                        nil)
                       (write-files! [_ _message files]
                         (reset! written-files files)
                         nil)
@@ -155,8 +146,6 @@
                           (list-files [_]
                             [])
                           (read-file [_this _path]
-                            nil)
-                          (read-file-bytes [_this _path]
                             nil)
                           (write-files! [_this _message _files]
                             nil)

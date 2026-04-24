@@ -14,7 +14,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: custom_viz_plugin
-            remarks: Stores registered custom visualization plugin repositories
+            remarks: Stores registered custom visualization plugins uploaded as zip bundles
             columns:
               - column:
                   name: id
@@ -24,31 +24,18 @@ databaseChangeLog:
                     primaryKey: true
                     nullable: false
               - column:
-                  name: repo_url
-                  type: varchar(512)
-                  remarks: Git repository URL
+                  name: identifier
+                  type: varchar(254)
+                  remarks: Unique identifier used as visualization display type. Comes from the manifest "name" field.
                   constraints:
-                    unique: true
                     nullable: false
-              - column:
-                  name: access_token
-                  type: ${text.type}
-                  remarks: Encrypted access token for private repositories
-                  constraints:
-                    nullable: true
+                    unique: true
               - column:
                   name: display_name
                   type: varchar(254)
                   remarks: Human-readable name from the plugin manifest
                   constraints:
                     nullable: false
-              - column:
-                  name: identifier
-                  type: varchar(254)
-                  remarks: Unique identifier used as visualization display type
-                  constraints:
-                    nullable: false
-                    unique: true
               - column:
                   name: status
                   type: varchar(32)
@@ -62,15 +49,15 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
-                  name: pinned_version
-                  type: varchar(254)
-                  remarks: Git ref (branch, tag, or commit SHA) to pin the plugin to
+                  name: bundle
+                  type: ${blob.type}
+                  remarks: Raw bytes of the uploaded zip bundle. Null for dev-only plugins served from a dev server.
                   constraints:
                     nullable: true
               - column:
-                  name: resolved_commit
+                  name: bundle_hash
                   type: varchar(64)
-                  remarks: Resolved commit SHA of the currently cached version
+                  remarks: SHA-256 hex of the uploaded bundle, used as the on-disk cache key and HTTP ETag. Null for dev-only plugins.
                   constraints:
                     nullable: true
               - column:
@@ -101,7 +88,7 @@ databaseChangeLog:
               - column:
                   name: manifest
                   type: ${text.type}
-                  remarks: JSON manifest from metabase-plugin.json in the plugin repository
+                  remarks: JSON manifest from metabase-plugin.json in the uploaded bundle
               - column:
                   name: metabase_version
                   type: varchar(254)
@@ -110,3 +97,21 @@ databaseChangeLog:
                   name: dev_bundle_url
                   type: varchar(1024)
                   remarks: Dev server URL for hot-reload development (e.g. http://localhost:5174)
+  - changeSet:
+      id: v61.2026-04-24T10:00:01
+      author: bronsa
+      comment: Use longblob for custom_viz_plugin.bundle on MySQL/MariaDB so it can hold multi-MB zip uploads
+      changes:
+        - modifyDataType:
+            tableName: custom_viz_plugin
+            columnName: bundle
+            newDataType: longblob
+      rollback:
+        - modifyDataType:
+            tableName: custom_viz_plugin
+            columnName: bundle
+            newDataType: ${blob.type}
+      preConditions:
+        - onFail: MARK_RAN
+        - dbms:
+            type: mysql,mariadb

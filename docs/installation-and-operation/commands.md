@@ -61,7 +61,6 @@ Options:
 - `-D, --no-data-model` - Do not export any data model entities; useful for subsequent exports.
 - `-f, --include-field-values` - Include field values along with field metadata.
 - `-s, --include-database-secrets` - Include database connection details (in plain text; use caution).
-- `--include-custom-viz-token` - Include custom visualization plugin access tokens (in plain text; use caution).
 - `-e, --continue-on-error` - Do not break execution on errors.
 - `--full-stacktrace` - Output full stacktraces on errors.
 
@@ -119,4 +118,3 @@ Open an SQL shell for the Metabase H2 DB:
 ```sh
 java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db
 ```
-

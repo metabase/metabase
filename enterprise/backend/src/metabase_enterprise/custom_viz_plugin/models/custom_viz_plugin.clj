@@ -1,17 +1,33 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
+   [buddy.core.codecs :as codecs]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Blob)))
+
+(set! *warn-on-reflection* true)
 
 (methodical/defmethod t2/table-name :model/CustomVizPlugin [_model] :custom_viz_plugin)
 
+(defn- blob->bytes ^bytes [v]
+  (cond
+    (nil? v)           nil
+    (instance? Blob v) (let [^Blob b v] (.getBytes b 1 (int (.length b))))
+    :else              v))
+
+(def ^:private transform-bundle
+  "Coerce JDBC `Blob` values into plain byte arrays on read."
+  {:in  identity
+   :out blob->bytes})
+
 (t2/deftransforms :model/CustomVizPlugin
-  {:access_token mi/transform-encrypted-json
-   :status       mi/transform-keyword
-   :manifest     mi/transform-json})
+  {:status   mi/transform-keyword
+   :manifest mi/transform-json
+   :bundle   transform-bundle})
 
 (doto :model/CustomVizPlugin
   (derive :metabase/model)
@@ -30,26 +46,28 @@
   api/*is-superuser?*)
 
 (methodical/defmethod mi/to-json :model/CustomVizPlugin
-  "Never include the access token in JSON."
+  "Never include the raw bundle bytes in JSON."
   [plugin json-generator]
-  (next-method (dissoc plugin :access_token) json-generator))
+  (next-method (dissoc plugin :bundle) json-generator))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
+(defn- bundle->b64 ^String [^bytes b]
+  (some-> b codecs/bytes->b64-str))
+
+(defn- b64->bundle ^bytes [^String s]
+  (some-> s codecs/b64->bytes))
+
 (defmethod serdes/make-spec "CustomVizPlugin"
-  [_model-name {:keys [include-custom-viz-token]}]
-  {:copy      [:repo_url :display_name :identifier
-               :pinned_version :resolved_commit :enabled :icon
-               :manifest :metabase_version]
+  [_model-name _opts]
+  {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
    :skip      [:dev_bundle_url :error_message]
    :defaults  {:enabled true}
-   :transform {:created_at   (serdes/date)
-               :status       {:export (constantly ::serdes/skip)
-                              :import (constantly "pending")}
-               :access_token {:export (if include-custom-viz-token
-                                        identity
-                                        (constantly ::serdes/skip))
-                              :import identity}}})
+   :transform {:created_at (serdes/date)
+               :status     {:export (constantly ::serdes/skip)
+                            :import (constantly "pending")}
+               :bundle     {:export bundle->b64
+                            :import b64->bundle}}})
 
 (defmethod serdes/entity-id "CustomVizPlugin" [_ {:keys [identifier]}]
   identifier)

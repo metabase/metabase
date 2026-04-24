@@ -165,7 +165,6 @@
                            :settings        (not (:no-settings opts))
                            :field_values    (:include-field-values opts)
                            :secrets         (:include-database-secrets opts)
-                           :custom_viz_token (:include-custom-viz-token opts)
                            :success         (boolean success)
                            :error_message   error-message}))
 
@@ -188,7 +187,6 @@
    {:keys                     [collection dirname]
     include-field-values?     :field_values
     include-database-secrets? :database_secrets
-    include-custom-viz-token? :custom_viz_token
     all-collections?          :all_collections
     data-model?               :data_model
     settings?                 :settings
@@ -213,7 +211,6 @@
        [:data_model        {:default true}  (mu/with ms/BooleanValue {:description "Serialize Metabase data model"})]
        [:field_values      {:default false} (mu/with ms/BooleanValue {:description "Serialize cached field values"})]
        [:database_secrets  {:default false} (mu/with ms/BooleanValue {:description "Serialize details how to connect to each db"})]
-       [:custom_viz_token  {:default false} (mu/with ms/BooleanValue {:description "Serialize custom viz plugin access tokens"})]
        [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
        [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]]]
   (api/check-superuser)
@@ -225,7 +222,6 @@
                             :no-settings              (not settings?)
                             :include-field-values     include-field-values?
                             :include-database-secrets include-database-secrets?
-                            :include-custom-viz-token include-custom-viz-token?
                             :continue-on-error        continue-on-error?
                             :full-stacktrace          full-stacktrace?}
         export-dirname (or dirname
