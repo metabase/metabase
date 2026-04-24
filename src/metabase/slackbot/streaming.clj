@@ -237,7 +237,8 @@
                    :state         {}
                    :profile-id    :slackbot
                    :context       context
-                   :tracking-opts {:source "slackbot"}}))
+                   :tracking-opts {:source     "slackbot"
+                                   :session-id conversation-id}}))
       (finally
         ;; Persist whatever parts we collected, even if the pipeline threw.
         ;; Stores raw native parts (not the lossy AI-SDK-message round-trip) so
