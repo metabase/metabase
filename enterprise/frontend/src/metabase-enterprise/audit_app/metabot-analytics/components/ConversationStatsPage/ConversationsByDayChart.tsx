@@ -17,13 +17,14 @@ import S from "./ChartCard.module.css";
 import {
   type UsageStatsMetric,
   applyDateFilter,
-  applyGroupFilterByJoin,
+  applyGroupIdFilter,
   applyUsageStatsAggregation,
   applyUserFilter,
   findColumn,
   getChartTitle,
   getMetricSeriesSettings,
   isSingleDayFilter,
+  joinGroupMembers,
 } from "./query-utils";
 
 type Props = {
@@ -61,7 +62,10 @@ export function ConversationsByDayChart({
 
     q = applyDateFilter(q, dateFilter);
     q = applyUserFilter(q, userId);
-    q = applyGroupFilterByJoin(q, groupId, groupMembersTable);
+    if (groupId != null && groupMembersTable) {
+      q = joinGroupMembers(q, groupMembersTable);
+      q = applyGroupIdFilter(q, groupId);
+    }
     const { query: aggregated } = applyUsageStatsAggregation(q, metric);
     q = aggregated;
 

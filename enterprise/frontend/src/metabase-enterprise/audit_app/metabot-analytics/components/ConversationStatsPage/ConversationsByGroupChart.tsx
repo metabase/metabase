@@ -32,6 +32,7 @@ export function ConversationsByGroupChart({
       groupId={groupId}
       groupMembersTable={groupMembersTable}
       breakoutColumn="group_name"
+      breakoutOnJoinedGroupMembers
       title={getChartTitle(metric, "group")}
       metric={metric}
       viewName={viewName}

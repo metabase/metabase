@@ -5,11 +5,13 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
 
 import {
-  applyGroupFilterByJoin,
+  applyGroupIdFilter,
   applyUserFilter,
+  excludeAllUsersGroup,
   getMetricSeriesSettings,
   getViewForMetric,
   isSingleDayFilter,
+  joinGroupMembers,
 } from "./query-utils";
 
 describe("getViewForMetric", () => {
@@ -201,19 +203,37 @@ describe("applyUserFilter", () => {
   });
 });
 
-describe("applyGroupFilterByJoin", () => {
+describe("joinGroupMembers", () => {
+  const baseQuery = () =>
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+
+  it("is a no-op when the groupMembersTable is null (still loading)", () => {
+    const result = joinGroupMembers(baseQuery(), null);
+    expect(Lib.joins(result, 0)).toHaveLength(0);
+  });
+});
+
+describe("applyGroupIdFilter", () => {
   const baseQuery = () =>
     Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
 
   it("is a no-op when groupId is undefined", () => {
-    const result = applyGroupFilterByJoin(baseQuery(), undefined, null);
-    expect(Lib.joins(result, 0)).toHaveLength(0);
+    const result = applyGroupIdFilter(baseQuery(), undefined);
     expect(Lib.filters(result, 0)).toHaveLength(0);
   });
 
-  it("is a no-op when the groupMembersTable is null (still loading)", () => {
-    const result = applyGroupFilterByJoin(baseQuery(), 7, null);
-    expect(Lib.joins(result, 0)).toHaveLength(0);
+  it("is a no-op when the group_id column isn't on the query (no join yet)", () => {
+    const result = applyGroupIdFilter(baseQuery(), 7);
+    expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+});
+
+describe("excludeAllUsersGroup", () => {
+  const baseQuery = () =>
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+
+  it("is a no-op when the group_id column isn't on the query (no join yet)", () => {
+    const result = excludeAllUsersGroup(baseQuery());
     expect(Lib.filters(result, 0)).toHaveLength(0);
   });
 });
