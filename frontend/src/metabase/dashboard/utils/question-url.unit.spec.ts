@@ -1,9 +1,10 @@
 import { parse } from "url";
 
 import { createMockMetadata } from "__support__/metadata";
-// eslint-disable-next-line no-restricted-imports
 import { deserializeCardFromUrl } from "metabase/common/utils/card";
 import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
 import {
   PRODUCTS,
   PRODUCTS_ID,
@@ -11,9 +12,7 @@ import {
   createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
-import Question from "./Question";
-import type { ParameterWithTarget } from "./parameters/types";
-import { getStructuredQuestionUrlWithParameters } from "./urls";
+import { getStructuredQuestionUrlWithParameters } from "./question-url";
 
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],

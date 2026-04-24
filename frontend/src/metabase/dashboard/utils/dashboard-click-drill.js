@@ -13,7 +13,8 @@ import {
   getTargetForQueryParams,
 } from "metabase-lib/v1/parameters/utils/click-behavior";
 import { isDate } from "metabase-lib/v1/types/utils/isa";
-import * as ML_Urls from "metabase-lib/v1/urls";
+
+import { getStructuredQuestionUrlWithParameters } from "./question-url";
 
 export function getDashboardDrillType(clicked) {
   const clickBehavior = getClickBehavior(clicked);
@@ -151,7 +152,7 @@ export function getDashboardDrillQuestionUrl(question, clicked) {
   const originalQuestion = targetQuestion;
 
   return !isTargetQuestionNative
-    ? ML_Urls.getStructuredQuestionUrlWithParameters(
+    ? getStructuredQuestionUrlWithParameters(
         targetQuestion,
         originalQuestion,
         parameters,
