@@ -10,7 +10,7 @@ type Props = {
   store: SdkStore;
 };
 
-const Inner = () => {
+const MetabotStatePublisher = () => {
   const metabot = useMetabot();
   useEffect(() => {
     publishMetabotState(metabot);
@@ -22,7 +22,7 @@ const Inner = () => {
 export const MetabotSubscriber = ({ store }: Props) => (
   <MetabaseReduxProvider store={store}>
     <METABOT_SDK_EE_PLUGIN.MetabotProvider>
-      <Inner />
+      <MetabotStatePublisher />
     </METABOT_SDK_EE_PLUGIN.MetabotProvider>
   </MetabaseReduxProvider>
 );
