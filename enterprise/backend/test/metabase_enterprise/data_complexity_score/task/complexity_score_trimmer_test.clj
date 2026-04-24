@@ -13,16 +13,13 @@
 
 (def ^:private fingerprint-prefix "complexity-score-trimmer-test/")
 
-(defn- cleanup-test-rows!
-  []
-  (t2/delete! :model/DataComplexityScore
-              {:where [:like :fingerprint (str fingerprint-prefix "%")]}))
-
 (defn- cleanup-tables
   [f]
-  (cleanup-test-rows!)
+  (t2/delete! :model/DataComplexityScore
+              {:where [:like :fingerprint (str fingerprint-prefix "%")]})
   (f)
-  (cleanup-test-rows!))
+  (t2/delete! :model/DataComplexityScore
+              {:where [:like :fingerprint (str fingerprint-prefix "%")]}))
 
 (use-fixtures :each cleanup-tables)
 
