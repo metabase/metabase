@@ -107,32 +107,78 @@
             (recur))))
       (transforms.job-run/add-run-activity! run-id))))
 
+(defn- submit-transform!
+  [^java.util.concurrent.ExecutorService executor
+   ^java.util.concurrent.BlockingQueue completions
+   run-id run-method user-id transform]
+  ;; `bound-fn` propagates the coordinator thread's dynamic bindings (*current-user-id*, QP
+  ;; bindings, etc.) to the worker thread.
+  (let [task (bound-fn []
+               (let [result (try
+                              (run-transform! run-id run-method user-id transform)
+                              {::status :succeeded}
+                              (catch Throwable t
+                                {::status :failed
+                                 ::message (or (ex-message t) (str t))}))]
+                 (.put completions (assoc result ::transform transform))))]
+    (.submit executor ^Runnable task)))
+
 (defn run-transforms!
   "Run a series of transforms and their dependencies.
+
+  Transforms are dispatched concurrently up to `transform-run-job-concurrency`, respecting the DAG:
+  a transform is only started once all of its dependencies have succeeded. If a dependency
+  failed, dependents are recorded as failures (transitively) without being executed.
 
   Updates the transform-job-run specified by run-id after every completion.
   Returns a map with :status and a collection of :failures if failed."
   [run-id transform-ids-to-run {:keys [run-method start-promise user-id]}]
   (let [{plan :order deps :deps} (get-plan transform-ids-to-run)
-        successful (volatile! #{})
-        failures (volatile! [])]
+        n           (max 1 (transforms.settings/transform-run-job-concurrency))
+        succeeded   (volatile! #{})
+        failed      (volatile! #{})
+        in-flight   (volatile! #{})
+        failures    (volatile! [])
+        completions (java.util.concurrent.LinkedBlockingQueue.)
+        executor    (java.util.concurrent.Executors/newFixedThreadPool n)
+        record-dep-failure!
+        (fn [t]
+          (vswap! failed conj (:id t))
+          (vswap! failures conj {::transform t
+                                 ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")}))
+        ;; Walk plan in topological order: skip dep-failed, dispatch ready ones that fit. Because
+        ;; deps appear before dependents, a cascade of dep-failures propagates in a single pass.
+        dispatch!
+        (fn []
+          (doseq [t     plan
+                  :let  [id (:id t), dep-ids (get deps id)]
+                  :when (not (or (@succeeded id) (@failed id) (@in-flight id)))]
+            (cond
+              (some @failed dep-ids)
+              (record-dep-failure! t)
+
+              (and (every? @succeeded dep-ids)
+                   (< (count @in-flight) n))
+              (do (vswap! in-flight conj id)
+                  (submit-transform! executor completions run-id run-method user-id t)))))]
     (when start-promise
       (deliver start-promise :started))
-
-    (doseq [transform plan]
-      (if (every? @successful (get deps (:id transform)))
-        (try
-          (run-transform! run-id run-method user-id transform)
-          (vswap! successful conj (:id transform))
-          (catch Exception e
-            (vswap! failures conj {::transform transform
-                                   ::message (.getMessage e)})))
-        (vswap! failures conj {::transform transform
-                               ::message (i18n/trs "Failed to run because one or more of the transforms it depends on failed.")})))
-
+    (try
+      (dispatch!)
+      (while (seq @in-flight)
+        (let [{::keys [transform status message]} (.take completions)
+              id (:id transform)]
+          (vswap! in-flight disj id)
+          (case status
+            :succeeded (vswap! succeeded conj id)
+            :failed    (do (vswap! failed conj id)
+                           (vswap! failures conj {::transform transform
+                                                  ::message message})))
+          (dispatch!)))
+      (finally
+        (.shutdown executor)))
     (if (seq @failures)
-      {::status :failed
-       ::failures @failures}
+      {::status :failed ::failures @failures}
       {::status :succeeded})))
 
 (defn- job-transform-ids [job-id]
