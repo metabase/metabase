@@ -5,9 +5,9 @@ import { useSetting } from "metabase/common/hooks";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Center, Text } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 
 import { EnableTransformsCard } from "./EnableTransformsCard";
 

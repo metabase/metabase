@@ -3,9 +3,9 @@ import { t } from "ttag";
 
 import { trackTabDuplicated } from "metabase/dashboard/analytics";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { useDispatch } from "metabase/redux";
 import type { SelectedTabId } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { useDispatch } from "metabase/utils/redux";
 
 let tabDeletionId = 1;
 

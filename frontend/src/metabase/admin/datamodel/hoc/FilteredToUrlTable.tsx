@@ -7,10 +7,10 @@ import { t } from "ttag";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import CS from "metabase/css/core/index.css";
 import { Tables } from "metabase/entities/tables";
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
+import { DatabaseSchemaAndTableDataSelector } from "metabase/querying/common/components/DataSelector";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { Icon } from "metabase/ui";
-import { connect } from "metabase/utils/redux";
 import type { ConcreteTableId, Segment, Table } from "metabase-types/api";
 
 type LocationWithQuery = Location<{

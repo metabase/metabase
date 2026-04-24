@@ -12,12 +12,12 @@ import { setupWebhookChannelsEndpoint } from "__support__/server-mocks/channel";
 import { setupListNotificationEndpoints } from "__support__/server-mocks/notification";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import { useSelector } from "metabase/redux";
 import type { DashboardState } from "metabase/redux/store/dashboard";
 import {
   createMockDashboardState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import { useSelector } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import type { Card, Dashboard, Notification, User } from "metabase-types/api";

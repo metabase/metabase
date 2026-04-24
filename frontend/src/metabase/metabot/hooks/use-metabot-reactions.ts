@@ -4,7 +4,7 @@ import {
   getNavigateToPath,
   setNavigateToPath as setNavigateToPathAction,
 } from "metabase/metabot/state";
-import { useDispatch, useSelector } from "metabase/utils/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 
 export const useMetabotReactions = () => {
   const dispatch = useDispatch();

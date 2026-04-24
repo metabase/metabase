@@ -1,8 +1,8 @@
 import { forwardRef, useCallback, useMemo, useState } from "react";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Center } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings";
 import { ErrorView } from "metabase/visualizations/components/Visualization/ErrorView";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";

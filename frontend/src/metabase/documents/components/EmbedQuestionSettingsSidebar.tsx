@@ -2,6 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   ActionIcon,
   Box,
@@ -13,7 +14,6 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { QuestionChartSettings } from "metabase/visualizations/components/ChartSettings";
 import type {
   CardDisplayType,

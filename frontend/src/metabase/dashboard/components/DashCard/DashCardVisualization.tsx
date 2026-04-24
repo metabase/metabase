@@ -19,6 +19,7 @@ import {
 import { getVirtualCardType } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
@@ -37,7 +38,6 @@ import {
 import { isVirtualDashCard } from "metabase/utils/dashboard";
 import { duration } from "metabase/utils/formatting";
 import { measureTextWidth } from "metabase/utils/measure-text";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { getVisualizationRaw, isCartesianChart } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import type { LoadingViewProps } from "metabase/visualizations/components/Visualization/LoadingView/LoadingView";

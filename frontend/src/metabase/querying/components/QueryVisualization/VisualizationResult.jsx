@@ -15,7 +15,7 @@ import {
   getIsShowingRawTable,
   getUiControls,
 } from "metabase/query_builder/selectors";
-import { useSelector } from "metabase/utils/redux";
+import { useSelector } from "metabase/redux";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import { datasetContainsNoResults } from "metabase-lib/v1/queries/utils/dataset";

@@ -10,11 +10,11 @@ import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { TextArea } from "metabase/common/components/TextArea";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
 import { Actions } from "metabase/entities/actions/actions";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Switch, Tooltip } from "metabase/ui";
-import { connect } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type {
   ActionFormSettings,

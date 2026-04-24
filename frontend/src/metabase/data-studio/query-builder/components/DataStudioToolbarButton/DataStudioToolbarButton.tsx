@@ -2,8 +2,8 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { useDispatch } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 

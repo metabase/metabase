@@ -8,11 +8,11 @@ import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
 import { DottedBackground } from "metabase/data-studio/upsells/components/DottedBackground";
 import { LineDecorator } from "metabase/data-studio/upsells/components/LineDecorator";
 import { useMetadataToasts } from "metabase/metadata/hooks/useMetadataToasts";
+import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { EnableTransformsCard } from "metabase/transforms/pages/EnableTransformsPage/EnableTransformsCard";
 import { Button, Center, Flex, Text, Title } from "metabase/ui";
 import { reload } from "metabase/utils/dom";
-import { useSelector } from "metabase/utils/redux";
 import { usePurchaseCloudAddOnMutation } from "metabase-enterprise/api/cloud-add-ons";
 
 import { TransformsSettingUpModal } from "../../components/TransformsSettingUpModal";

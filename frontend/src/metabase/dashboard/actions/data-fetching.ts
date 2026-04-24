@@ -5,6 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { automagicDashboardsApi, dashboardApi } from "metabase/api";
+import { applyParameters } from "metabase/common/utils/card";
 import { showAutoApplyFiltersToast } from "metabase/dashboard/actions/parameters";
 import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
 import {
@@ -23,9 +24,11 @@ import {
   getAllDashboardCards,
   getCurrentTabDashboardCards,
 } from "metabase/dashboard/utils";
+import { entityCompatibleQuery } from "metabase/entities";
 import { getSavedDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { addFields } from "metabase/redux/metadata";
 import type { Dispatch, GetState } from "metabase/redux/store";
+import { createAsyncThunk, createThunkAction } from "metabase/redux/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
   AutoApi,
@@ -41,16 +44,13 @@ import {
   isQuestionDashCard,
   isVirtualDashCard,
 } from "metabase/utils/dashboard";
-import { entityCompatibleQuery } from "metabase/utils/entities";
 import type { Deferred } from "metabase/utils/promise";
 import { defer } from "metabase/utils/promise";
-import { createAsyncThunk, createThunkAction } from "metabase/utils/redux";
 import { uuid } from "metabase/utils/uuid";
 import { isVisualizerDashboardCard } from "metabase/visualizer/utils";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
-import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   CardId,
@@ -320,18 +320,7 @@ export const fetchCardDataAction = createAsyncThunk<
       cancelled: deferred.promise,
     };
 
-    // make the actual request
-    if (datasetQuery.type === "endpoint") {
-      result = await fetchDataOrError(
-        MetabaseApi.datasetEndpoint(
-          {
-            endpoint: datasetQuery.endpoint,
-            parameters: datasetQuery.parameters,
-          },
-          queryOptions,
-        ),
-      );
-    } else if (dashboardType === "public") {
+    if (dashboardType === "public") {
       result = (await fetchDataOrError(
         maybeUsePivotEndpoint(
           PublicApi.dashboardCardQuery,

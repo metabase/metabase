@@ -2,8 +2,8 @@ import _ from "underscore";
 
 import { Collections, ROOT_COLLECTION } from "metabase/entities/collections";
 import { TimelineEvents } from "metabase/entities/timeline-events";
+import { connect } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { connect } from "metabase/utils/redux";
 import type { TimelineEvent } from "metabase-types/api";
 
 import TimelinePanel from "../../components/TimelinePanel";

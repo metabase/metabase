@@ -3,8 +3,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { EditableText } from "metabase/common/components/EditableText";
+import { useDispatch, useSelector } from "metabase/redux";
 import { ActionIcon, Button, Flex, Icon, Tooltip } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import { useVisualizerHistory } from "metabase/visualizer/hooks/use-visualizer-history";
 import {
   getCurrentVisualizerState,

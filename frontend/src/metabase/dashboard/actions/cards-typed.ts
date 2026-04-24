@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { Questions } from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { createThunkAction } from "metabase/redux";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
 import {
@@ -15,7 +16,6 @@ import {
   GRID_WIDTH,
   getPositionForNewDashCard,
 } from "metabase/utils/dashboard_grid";
-import { createThunkAction } from "metabase/utils/redux";
 import { checkNotNull } from "metabase/utils/types";
 import { getDefaultSize } from "metabase/visualizations";
 import {

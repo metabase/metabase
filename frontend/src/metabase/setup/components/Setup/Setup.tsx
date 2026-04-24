@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useUpdate } from "react-use";
 
-import { useSelector } from "metabase/utils/redux";
+import { useSelector } from "metabase/redux";
 
 import { trackStepSeen } from "../../analytics";
 import { getIsLocaleLoaded, getStep, getSteps } from "../../selectors";

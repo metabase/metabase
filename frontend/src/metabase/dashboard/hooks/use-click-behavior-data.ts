@@ -13,9 +13,9 @@ import {
 } from "metabase/dashboard/selectors";
 import { Dashboards } from "metabase/entities/dashboards";
 import { Questions } from "metabase/entities/questions";
+import { useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import { getUserAttributes } from "metabase/selectors/user";
-import { useStore } from "metabase/utils/redux";
 import type { ClickObject } from "metabase/visualizations/types";
 import Question from "metabase-lib/v1/Question";
 import type {
