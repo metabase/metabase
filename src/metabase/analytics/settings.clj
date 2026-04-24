@@ -32,7 +32,7 @@
   :doc        false)
 
 (defsetting anon-tracking-enabled
-  (deferred-tru "Enable the collection of anonymous usage data in order to help us improve.")
+  (deferred-tru "Enable the collection of anonymous usage data in order to help Metabase improve..")
   :type       :boolean
   :default    true
   :visibility :public
@@ -107,7 +107,7 @@
   :setter     #'-non-table-chart-generated!)
 
 (defsetting analytics-pii-retention-enabled
-  (deferred-tru (str "Enable logging of path, user agent, and IP address of who views your "
+  (deferred-tru (str "Enable logging of embed path, query parameters, user agent, and IP address of who views your "
                      "internal data and embeds. This information will be shown in your usage analytics."))
   :type       :boolean
   :default    false
