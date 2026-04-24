@@ -59,7 +59,7 @@ The user is NOT a developer — do not ask them for implementation help, code su
 **CRITICAL: Execute all phases (1 through 4) in a single turn without stopping.** Do not end your turn after self-review — immediately continue to Phase 4 (browser verification and user testing instructions). Only stop and wait for user input after presenting the "READY FOR TESTING" banner in Phase 4.
 
 #### Phase 1: Understand
-1. Read the Linear Context above carefully — it contains the full issue details (title, description, comments). Do NOT re-fetch the issue with `-fixbot-fetch-issue` — it's already provided.
+1. Read the Linear Context above carefully — it contains the full issue details (title, description, comments). Do NOT re-fetch the issue with `-bot-fetch-issue` — it's already provided.
 2. Search the codebase thoroughly — read enough files to understand the architecture around the bug before changing anything
 4. Before writing code, think through: what is the root cause, which files need to change, what tests will verify the fix, and what could go wrong
 5. If the issue involves UI behavior, use the Playwright MCP tools (`mcp__playwright__browser_navigate`, `browser_snapshot`, etc.) to reproduce it in the browser once the backend is ready — seeing what the user sees often reveals more than reading code alone

@@ -608,23 +608,4 @@
    :task (task!
           (let [wj (first (:arguments parsed))
                 [workflow job] (when wj (clojure.string/split wj (re-pattern "/") 2))]
-            (ci-test-repl/ci-test-repl {:workflow workflow :job job :dry-run? (:dry-run (:options parsed))})))}
-
-  -fixbot-preflight
-  {:doc "Check prerequisites for the fixbot workflow"
-   :examples [["./bin/mage -fixbot-preflight" "Run all preflight checks"]]
-   :requires [[mage.bot.fixbot-preflight :as preflight]]
-   :task (task! (preflight/preflight!))}
-
-  -fixbot-fetch-issue
-  {:doc "Fetch a Linear issue by identifier"
-   :examples [["./bin/mage -fixbot-fetch-issue MB-12345" "Fetch and display issue"]]
-   :requires [[mage.bot.linear :as linear]]
-   :arg-schema [:tuple [:string {:name "issue-id"}]]
-   :task (task! (linear/print-issue! parsed))}
-
-  -fixbot-write-sandbox-settings
-  {:doc "Write container-compatible settings.local.json for sandbox"
-   :examples [["./bin/mage -fixbot-write-sandbox-settings" "Write sandbox settings"]]
-   :requires [[mage.bot.fixbot-preflight :as fixbot]]
-   :task (task! (fixbot/write-sandbox-settings! parsed))}}}
+            (ci-test-repl/ci-test-repl {:workflow workflow :job job :dry-run? (:dry-run (:options parsed))})))}}}

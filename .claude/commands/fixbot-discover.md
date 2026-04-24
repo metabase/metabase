@@ -14,7 +14,7 @@ This can be one of three formats:
 **If the input is a GitHub issue number or URL:**
 1. Fetch the GitHub issue with `./bin/mage -bot-git-readonly gh issue view <NUMBER> --repo metabase/metabase --json body,comments,title`
 2. Search the issue body and comments for a Linear issue link (pattern: `https://linear.app/metabase/issue/[A-Z]+-[0-9]+`). Extract the Linear issue ID from the URL.
-3. If no Linear link is found, search Linear directly: run `./bin/mage -fixbot-fetch-issue` with a search term derived from the GitHub issue title. If that doesn't find a match, tell the user you couldn't find a corresponding Linear issue and stop.
+3. If no Linear link is found, search Linear directly: run `./bin/mage -bot-fetch-issue` with a search term derived from the GitHub issue title. If that doesn't find a match, tell the user you couldn't find a corresponding Linear issue and stop.
 
 **Validation:** Confirm the issue ID looks like `[A-Z]+-[0-9]+`. If not, tell the user the expected format and stop.
 
@@ -22,7 +22,7 @@ This can be one of three formats:
 
 Run:
 ```
-./bin/mage -fixbot-fetch-issue <ISSUE_ID>
+./bin/mage -bot-fetch-issue <ISSUE_ID>
 ```
 Read the output to extract issue details and branch name.
 
