@@ -95,7 +95,7 @@ To create a transform:
 
    If you're writing a SQL transform, variables _must_ be wrapped in optional blocks (`[[ ]]`), or given a default value. See [variables in SQL transforms](query-transforms.md#variables-in-sql-transforms) for more details.
 
-   If you have the Metabot AI add-on, you can [use Metabot](#use-metabot-to-generate-code-for-transforms) to generate code for your transform.
+   If [Metabot is enabled](../../ai/settings.md#enable-ai-features), you can [use Metabot](#use-metabot-to-generate-code-for-transforms) to generate code for your transform.
 
 6. Click **Save** in the top right corner and fill out the transform information:
 
@@ -111,7 +111,7 @@ To create a transform:
 
 ## Use Metabot to generate code for transforms
 
-> Code generation for transforms requires the **Metabot AI** and **Transforms** add-ons.
+> Code generation for transforms requires [Metabot to be enabled](../../ai/settings.md#enable-ai-features) and the **Transforms** add-on.
 
 You can ask Metabot to generate a new SQL or Python-based transform, or edit an existing transform.
 
