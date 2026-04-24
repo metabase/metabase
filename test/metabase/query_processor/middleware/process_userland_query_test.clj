@@ -84,26 +84,26 @@
                :cached                 nil}
               (process-userland-query query))
           "Result should have query execution info")
-      (is (=? {:hash            (codecs/bytes->hex (qp.util/query-hash query))
-               :database_id     (mt/id)
-               :result_rows     0
-               :started_at      #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-               :executor_id     nil
-               :json_query      (dissoc (mt/userland-query query) :info)
-               :native          false
-               :pulse_id        nil
-               :card_id         nil
-               :action_id       nil
+      (is (=? {:hash         (codecs/bytes->hex (qp.util/query-hash query))
+               :database_id  (mt/id)
+               :result_rows  0
+               :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
+               :executor_id  nil
+               :json_query   (dissoc (mt/userland-query query) :info)
+               :native       false
+               :pulse_id     nil
+               :card_id      nil
+               :action_id    nil
                :is_sandboxed    false
                :is_impersonated false
                :is_db_routed    false
                :parameters      nil
                :context         nil
-               :running_time    true
-               :cache_hit       false
-               :cache_hash      nil ;; this is filled only for eligible queries
-               :dashboard_id    nil
-               :parameterized   false}
+               :running_time true
+               :cache_hit    false
+               :cache_hash   nil ;; this is filled only for eligible queries
+               :dashboard_id nil
+               :parameterized false}
               (qe))
           "QueryExecution should be saved"))))
 

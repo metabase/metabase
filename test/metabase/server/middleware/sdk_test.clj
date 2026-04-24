@@ -172,11 +172,11 @@
   (testing "extracts hostname from various URL formats"
     (are [url expected]
          (= expected (sdk/extract-hostname url))
-      "https://app.example.com"          "app.example.com"
-      "https://app.example.com:8443"     "app.example.com"
-      "https://app.example.com/path?q=1" "app.example.com"
-      "http://localhost:3000"            "localhost"
-      "http://192.168.1.1:8080"          "192.168.1.1"))
+      "https://app.example.com"             "app.example.com"
+      "https://app.example.com:8443"        "app.example.com"
+      "https://app.example.com/path?q=1"    "app.example.com"
+      "http://localhost:3000"               "localhost"
+      "http://192.168.1.1:8080"            "192.168.1.1"))
   (testing "returns nil for nil, blank, or unparseable input"
     (are [url]
          (nil? (sdk/extract-hostname url))
@@ -188,10 +188,10 @@
   (testing "extracts path, stripping query params and fragment"
     (are [url expected]
          (= expected (sdk/extract-path url))
-      "https://example.com/dashboard/1"        "/dashboard/1"
-      "https://example.com/dash/1?foo=bar"     "/dash/1"
-      "https://example.com/dash/1#section"     "/dash/1"
-      "https://example.com/dash/1?a=b#section" "/dash/1"))
+      "https://example.com/dashboard/1"          "/dashboard/1"
+      "https://example.com/dash/1?foo=bar"       "/dash/1"
+      "https://example.com/dash/1#section"        "/dash/1"
+      "https://example.com/dash/1?a=b#section"   "/dash/1"))
   (testing "returns nil for nil, blank, or root-only URLs"
     (are [url]
          (nil? (sdk/extract-path url))
