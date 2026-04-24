@@ -31,12 +31,14 @@ import { syncHistoryWithStore } from "react-router-redux";
 
 import { initializePlugins } from "ee-plugins";
 import { AppThemeProvider } from "metabase/AppThemeProvider";
+import { createSnowplowTracker } from "metabase/analytics";
 import { ModifiedBackend } from "metabase/common/components/dnd/ModifiedBackend";
 import registerDashboardVisualizations from "metabase/dashboard/visualizations/register";
 import { initializeInteractiveEmbedding } from "metabase/embedding/interactive-embedding";
 import { MetabotProvider } from "metabase/metabot/context";
 import { PLUGIN_APP_INIT_FUNCTIONS } from "metabase/plugins";
 import { refreshSiteSettings } from "metabase/redux/settings";
+import { getUserId } from "metabase/selectors/user";
 import { GlobalStyles } from "metabase/styled-components/containers/GlobalStyles";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import api from "metabase/utils/api";
@@ -46,7 +48,6 @@ import { MetabaseReduxProvider } from "metabase/utils/redux/custom-context";
 import MetabaseSettings from "metabase/utils/settings";
 import registerVisualizations from "metabase/visualizations/register";
 
-import { createTracker } from "./analytics";
 import { HistoryProvider } from "./history";
 import { RouterProvider } from "./router";
 import { getStore } from "./store";
@@ -68,7 +69,7 @@ function _init(reducers, getRoutes, callback) {
   const routes = getRoutes(store);
   const syncedHistory = syncHistoryWithStore(browserHistory, store);
 
-  createTracker(store);
+  createSnowplowTracker(() => getUserId(store.getState()));
 
   // Initialize distributed tracing if enabled via MB_TRACING_ENABLED.
   // Uses bootstrap data so it's available before the first API call.
