@@ -9,8 +9,8 @@ type MetabotStateChannel = {
 
 // Collision note: like METABASE_EMBEDDING_SDK_BUNDLE, this global is
 // single-version-per-page. Loading two SDK bundles on the same page
-// clobbers the channel. Not a supported scenario.
-const CHANNEL_KEY = "__MB_METABOT_STATE__";
+// clobbers the state. Not a supported scenario.
+const METABOT_STATE_KEY = "METABASE_EMBEDDING_SDK_METABOT_STATE";
 
 const EMPTY_CHANNEL: MetabotStateChannel = {
   value: null,
@@ -22,10 +22,10 @@ function getChannel(): MetabotStateChannel {
   if (!windowObject) {
     return EMPTY_CHANNEL;
   }
-  if (!windowObject[CHANNEL_KEY]) {
-    windowObject[CHANNEL_KEY] = { value: null, listeners: new Set() };
+  if (!windowObject[METABOT_STATE_KEY]) {
+    windowObject[METABOT_STATE_KEY] = { value: null, listeners: new Set() };
   }
-  return windowObject[CHANNEL_KEY];
+  return windowObject[METABOT_STATE_KEY];
 }
 
 export function publishMetabotState(value: UseMetabotResult | null): void {
