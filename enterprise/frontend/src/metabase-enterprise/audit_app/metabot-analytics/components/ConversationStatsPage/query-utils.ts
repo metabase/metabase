@@ -1,25 +1,29 @@
-import dayjs from "dayjs";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import { color } from "metabase/ui/colors/palette";
-import type { ColumnMetadata, Query } from "metabase-lib";
+import type {
+  CardMetadata,
+  ColumnMetadata,
+  MetadataProvider,
+  Query,
+  TableMetadata,
+} from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
-
 export type UsageStatsMetric = "conversations" | "messages" | "tokens";
 
-// The Tokens tab reads from v_ai_usage_log (per-LLM-call ledger) for complete
-// token accounting across all call sites. The Conversations and Messages tabs
-// stay on v_metabot_conversations because aggregate-by-count and sum(message_count)
-// would be semantically wrong over a per-LLM-call table.
-export function getViewForMetric(metric: UsageStatsMetric): string {
-  return metric === "tokens" ? VIEW_USAGE_LOG : VIEW_CONVERSATIONS;
-}
+// the user-set inputs that drive every chart on the stats page — three
+// filters (date / user / group) plus the metric the tabs select
+export type StatsFilters = {
+  dateFilter: DateFilterValue;
+  userId?: number;
+  groupId?: number;
+  metric: UsageStatsMetric;
+};
 
 const METRIC_ACCENT: Record<UsageStatsMetric, string> = {
   conversations: "accent0",
@@ -33,7 +37,7 @@ const METRIC_COLUMN_NAME: Record<UsageStatsMetric, string> = {
   messages: "sum",
 };
 
-export type TokenSeriesSettings = Pick<
+type TokenSeriesSettings = Pick<
   VisualizationSettings,
   "series_settings" | "graph.metrics"
 >;
@@ -106,6 +110,103 @@ export function applyDateFilter(
   return Lib.filter(query, 0, clause);
 }
 
+export function applyUserFilter(
+  query: Query,
+  userId: number | undefined,
+  columnName = "user_id",
+): Query {
+  if (userId == null) {
+    return query;
+  }
+  const col = findColumn(query, columnName, Lib.filterableColumns);
+  if (!col) {
+    return query;
+  }
+  return Lib.filter(
+    query,
+    0,
+    Lib.numberFilterClause({ operator: "=", column: col, values: [userId] }),
+  );
+}
+
+function findJoinableColumn(
+  columns: ColumnMetadata[],
+  query: Query,
+  name: string,
+): ColumnMetadata | undefined {
+  const lower = name.toLowerCase();
+  return columns.find((col) => {
+    const info = Lib.displayInfo(query, 0, col);
+    return info.name?.toLowerCase() === lower;
+  });
+}
+
+// the source view's group_name is lossy (alphabetically-first non-All-Users
+// group only), so callers needing "all groups a user belongs to" join here
+export function joinGroupMembers(
+  query: Query,
+  groupMembersTable: TableMetadata | CardMetadata | null | undefined,
+  sourceUserIdColumn = "user_id",
+): Query {
+  if (!groupMembersTable) {
+    return query;
+  }
+
+  const lhsColumns = Lib.joinConditionLHSColumns(
+    query,
+    0,
+    groupMembersTable,
+    undefined,
+    undefined,
+  );
+  const rhsColumns = Lib.joinConditionRHSColumns(
+    query,
+    0,
+    groupMembersTable,
+    undefined,
+    undefined,
+  );
+  const lhsUserId = findJoinableColumn(lhsColumns, query, sourceUserIdColumn);
+  const rhsUserId = findJoinableColumn(rhsColumns, query, "user_id");
+  if (!lhsUserId || !rhsUserId) {
+    return query;
+  }
+
+  const innerJoin = Lib.availableJoinStrategies(query, 0).find((strategy) => {
+    const info = Lib.displayInfo(query, 0, strategy);
+    return info.shortName === "inner-join";
+  });
+  if (!innerJoin) {
+    return query;
+  }
+
+  const condition = Lib.joinConditionClause("=", lhsUserId, rhsUserId);
+  return Lib.join(
+    query,
+    0,
+    Lib.joinClause(groupMembersTable, [condition], innerJoin),
+  );
+}
+
+// no-op pre-join: group_id only exists on v_group_members
+export function applyGroupIdFilter(
+  query: Query,
+  groupId: number | undefined,
+): Query {
+  if (groupId == null) {
+    return query;
+  }
+  const col = findColumn(query, "group_id", Lib.filterableColumns);
+  if (!col) {
+    return query;
+  }
+  return Lib.filter(
+    query,
+    0,
+    Lib.numberFilterClause({ operator: "=", column: col, values: [groupId] }),
+  );
+}
+
 /**
  * Add a sum aggregation for the given column name.
  */
@@ -136,99 +237,71 @@ export function addSumAggregation(query: Query, columnName: string): Query {
 export function applyUsageStatsAggregation(
   query: Query,
   metric: UsageStatsMetric,
-): { query: Query; orderColumnName: string | null } {
-  switch (metric) {
-    case "conversations":
-      return {
-        query: Lib.aggregateByCount(query, 0),
-        orderColumnName: "count",
-      };
-    case "messages":
-      return {
-        query: addSumAggregation(query, "message_count"),
-        orderColumnName: "sum",
-      };
-    case "tokens": {
-      const withInput = addSumAggregation(query, "prompt_tokens");
-      const withBoth = addSumAggregation(withInput, "completion_tokens");
-      return { query: withBoth, orderColumnName: null };
-    }
-  }
+): Query {
+  return match(metric)
+    .with("conversations", () => Lib.aggregateByCount(query, 0))
+    .with("messages", () => addSumAggregation(query, "message_count"))
+    .with("tokens", () =>
+      addSumAggregation(
+        addSumAggregation(query, "prompt_tokens"),
+        "completion_tokens",
+      ),
+    )
+    .exhaustive();
 }
 
-/**
- * Get the chart title for a given metric and dimension.
- * Uses explicit strings for ttag i18n extraction.
- */
-export function getChartTitle(
+function getOrderColumnName(metric: UsageStatsMetric): string | null {
+  return match(metric)
+    .with("conversations", () => "count")
+    .with("messages", () => "sum")
+    .with("tokens", () => null)
+    .exhaustive();
+}
+
+export function applyMetricOrderBy(
+  query: Query,
   metric: UsageStatsMetric,
-  dimension:
-    | "day"
-    | "hour"
-    | "user"
-    | "group"
-    | "profile"
-    | "source"
-    | "ip_address",
-): string {
-  const titles = {
-    conversations: {
-      day: t`Conversations by day`,
-      hour: t`Conversations by hour`,
-      user: t`Users with most conversations`,
-      group: t`Groups with most conversations`,
-      profile: t`Conversations by profile`,
-      source: t`Conversations by source`,
-      ip_address: t`IP addresses with most conversations`,
-    },
-    messages: {
-      day: t`Messages by day`,
-      hour: t`Messages by hour`,
-      user: t`Users with most messages`,
-      group: t`Groups with most messages`,
-      profile: t`Messages by profile`,
-      source: t`Messages by source`,
-      ip_address: t`IP addresses with most messages`,
-    },
-    tokens: {
-      day: t`Tokens by day`,
-      hour: t`Tokens by hour`,
-      user: t`Users with most tokens`,
-      group: t`Groups with most tokens`,
-      profile: t`Tokens by profile`,
-      source: t`Tokens by source`,
-      ip_address: t`IP addresses with most tokens`,
-    },
-  };
-  return titles[metric][dimension];
+): Query {
+  const orderColumnName = getOrderColumnName(metric);
+  if (!orderColumnName) {
+    return query;
+  }
+  const orderCol = findColumn(query, orderColumnName, Lib.orderableColumns);
+  if (!orderCol) {
+    return query;
+  }
+  return Lib.orderBy(query, 0, orderCol, "desc");
 }
 
-export function isSingleDayFilter(dateFilter: DateFilterValue): boolean {
-  if (dateFilter.type === "relative") {
-    return dateFilter.unit === "day" && Math.abs(dateFilter.value) <= 1;
-  }
-  if (dateFilter.type === "specific" && !dateFilter.hasTime) {
-    const { operator, values } = dateFilter;
-    if (operator === "=") {
-      return true;
-    }
-    if (operator === "between") {
-      return dayjs(values[0]).isSame(values[1], "day");
-    }
-  }
-  return false;
+type SourceBreakoutQueryOpts = StatsFilters & {
+  provider: MetadataProvider;
+  table: TableMetadata | CardMetadata;
+  groupMembersTable: TableMetadata | CardMetadata;
+  breakoutColumn: string;
+};
+
+export function buildSourceBreakoutQuery({
+  provider,
+  table,
+  groupMembersTable,
+  dateFilter,
+  userId,
+  groupId,
+  metric,
+  breakoutColumn,
+}: SourceBreakoutQueryOpts): Query {
+  let q = Lib.queryFromTableOrCardMetadata(provider, table);
+  q = applyDateFilter(q, dateFilter);
+  q = applyUserFilter(q, userId);
+  q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
+  q = groupId != null ? applyGroupIdFilter(q, groupId) : q;
+  q = applyUsageStatsAggregation(q, metric);
+  q = breakoutByColumn(q, breakoutColumn);
+  q = applyMetricOrderBy(q, metric);
+  return q;
 }
 
-/**
- * Get the section heading label for a given metric.
- */
-export function getMetricLabel(metric: UsageStatsMetric): string {
-  switch (metric) {
-    case "conversations":
-      return t`Conversations`;
-    case "messages":
-      return t`Messages`;
-    case "tokens":
-      return t`Tokens`;
-  }
+export function breakoutByColumn(query: Query, columnName: string): Query {
+  const col = findColumn(query, columnName, Lib.breakoutableColumns);
+  return col ? Lib.breakout(query, 0, col) : query;
 }

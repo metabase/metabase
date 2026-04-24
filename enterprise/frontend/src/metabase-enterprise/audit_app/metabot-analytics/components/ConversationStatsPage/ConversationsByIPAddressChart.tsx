@@ -1,35 +1,91 @@
+import { useMemo } from "react";
 import { t } from "ttag";
 
-import type { DateFilterValue } from "metabase/querying/common/types";
+import type {
+  CardMetadata,
+  MetadataProvider,
+  TableMetadata,
+} from "metabase-lib";
 
-import { BreakoutChart } from "./BreakoutChart";
-import { type UsageStatsMetric, getChartTitle } from "./query-utils";
+import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
 
-type Props = {
-  dateFilter: DateFilterValue;
-  metric: UsageStatsMetric;
-  viewName?: string;
+import { BreakoutChartCard } from "./BreakoutChartCard";
+import { toBreakoutRawSeries } from "./breakout-raw-series";
+import {
+  type StatsFilters,
+  type UsageStatsMetric,
+  buildSourceBreakoutQuery,
+} from "./query-utils";
+
+const TITLES: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`IP addresses with most conversations`;
+  },
+  get messages() {
+    return t`IP addresses with most messages`;
+  },
+  get tokens() {
+    return t`IP addresses with most tokens`;
+  },
+};
+
+type Props = StatsFilters & {
+  provider: MetadataProvider;
+  table: TableMetadata | CardMetadata;
+  groupMembersTable: TableMetadata | CardMetadata;
   onDimensionClick?: (value: unknown) => void;
   h?: number;
 };
 
 export function ConversationsByIPAddressChart({
+  provider,
+  table,
+  groupMembersTable,
   dateFilter,
+  userId,
+  groupId,
   metric,
-  viewName,
   onDimensionClick,
-  h,
+  h = 350,
 }: Props) {
+  const query = useMemo(
+    () =>
+      buildSourceBreakoutQuery({
+        provider,
+        table,
+        groupMembersTable,
+        dateFilter,
+        userId,
+        groupId,
+        metric,
+        breakoutColumn: "ip_address",
+      }),
+    [provider, table, groupMembersTable, dateFilter, userId, groupId, metric],
+  );
+
+  const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
+
+  const rawSeries = useMemo(
+    () =>
+      toBreakoutRawSeries(data, jsQuery, {
+        metric,
+        display: "row",
+        maxCategories: 8,
+        otherLabel: t`Other`,
+        nullLabel: t`Unknown`,
+      }),
+    [data, jsQuery, metric],
+  );
+
   return (
-    <BreakoutChart
-      dateFilter={dateFilter}
-      breakoutColumn="ip_address"
-      title={getChartTitle(metric, "ip_address")}
-      metric={metric}
-      viewName={viewName}
-      onDimensionClick={onDimensionClick}
+    <BreakoutChartCard
+      title={TITLES[metric]}
+      rawSeries={rawSeries}
+      isFetching={isFetching}
+      display="row"
       h={h}
-      nullLabel={t`Unknown`}
+      otherLabel={t`Other`}
+      onDimensionClick={onDimensionClick}
     />
   );
 }

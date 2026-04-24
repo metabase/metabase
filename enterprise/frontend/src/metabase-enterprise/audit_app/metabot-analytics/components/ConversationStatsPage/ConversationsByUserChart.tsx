@@ -1,32 +1,90 @@
-import type { DateFilterValue } from "metabase/querying/common/types";
+import { useMemo } from "react";
+import { t } from "ttag";
 
-import { BreakoutChart } from "./BreakoutChart";
-import { type UsageStatsMetric, getChartTitle } from "./query-utils";
+import type {
+  CardMetadata,
+  MetadataProvider,
+  TableMetadata,
+} from "metabase-lib";
 
-type Props = {
-  dateFilter: DateFilterValue;
-  metric: UsageStatsMetric;
-  viewName?: string;
+import { useAdhocBreakoutQuery } from "../../hooks/useAdhocBreakoutQuery";
+
+import { BreakoutChartCard } from "./BreakoutChartCard";
+import { toBreakoutRawSeries } from "./breakout-raw-series";
+import {
+  type StatsFilters,
+  type UsageStatsMetric,
+  buildSourceBreakoutQuery,
+} from "./query-utils";
+
+const TITLES: Record<UsageStatsMetric, string> = {
+  get conversations() {
+    return t`Users with most conversations`;
+  },
+  get messages() {
+    return t`Users with most messages`;
+  },
+  get tokens() {
+    return t`Users with most tokens`;
+  },
+};
+
+type Props = StatsFilters & {
+  provider: MetadataProvider;
+  table: TableMetadata | CardMetadata;
+  groupMembersTable: TableMetadata | CardMetadata;
   onDimensionClick?: (value: unknown) => void;
   h?: number;
 };
 
 export function ConversationsByUserChart({
+  provider,
+  table,
+  groupMembersTable,
   dateFilter,
+  userId,
+  groupId,
   metric,
-  viewName,
   onDimensionClick,
-  h,
+  h = 350,
 }: Props) {
+  const query = useMemo(
+    () =>
+      buildSourceBreakoutQuery({
+        provider,
+        table,
+        groupMembersTable,
+        dateFilter,
+        userId,
+        groupId,
+        metric,
+        breakoutColumn: "user_display_name",
+      }),
+    [provider, table, groupMembersTable, dateFilter, userId, groupId, metric],
+  );
+
+  const { data, jsQuery, isFetching } = useAdhocBreakoutQuery(query);
+
+  const rawSeries = useMemo(
+    () =>
+      toBreakoutRawSeries(data, jsQuery, {
+        metric,
+        display: "row",
+        maxCategories: 8,
+        otherLabel: t`Other`,
+      }),
+    [data, jsQuery, metric],
+  );
+
   return (
-    <BreakoutChart
-      dateFilter={dateFilter}
-      breakoutColumn="user_display_name"
-      title={getChartTitle(metric, "user")}
-      metric={metric}
-      viewName={viewName}
-      onDimensionClick={onDimensionClick}
+    <BreakoutChartCard
+      title={TITLES[metric]}
+      rawSeries={rawSeries}
+      isFetching={isFetching}
+      display="row"
       h={h}
+      otherLabel={t`Other`}
+      onDimensionClick={onDimensionClick}
     />
   );
 }

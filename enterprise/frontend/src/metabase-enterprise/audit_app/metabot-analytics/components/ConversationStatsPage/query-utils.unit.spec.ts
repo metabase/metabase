@@ -1,23 +1,15 @@
 import type { DateFilterValue } from "metabase/querying/common/types";
+import * as Lib from "metabase-lib";
+import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 
-import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
-
+import { isSingleDayFilter } from "./ConversationsByDayChart";
+import { excludeAllUsersGroup } from "./ConversationsByGroupChart";
 import {
+  applyGroupIdFilter,
+  applyUserFilter,
   getMetricSeriesSettings,
-  getViewForMetric,
-  isSingleDayFilter,
+  joinGroupMembers,
 } from "./query-utils";
-
-describe("getViewForMetric", () => {
-  it("routes the tokens metric to v_ai_usage_log", () => {
-    expect(getViewForMetric("tokens")).toBe(VIEW_USAGE_LOG);
-  });
-
-  it("routes conversations and messages to v_metabot_conversations", () => {
-    expect(getViewForMetric("conversations")).toBe(VIEW_CONVERSATIONS);
-    expect(getViewForMetric("messages")).toBe(VIEW_CONVERSATIONS);
-  });
-});
 
 describe("getMetricSeriesSettings", () => {
   it("returns two-series config for tokens with both aggregation columns, no stacking, dual axis on opt-in", () => {
@@ -167,5 +159,67 @@ describe("isSingleDayFilter", () => {
       values: [1],
     };
     expect(isSingleDayFilter(value)).toBe(false);
+  });
+});
+
+describe("applyUserFilter", () => {
+  const baseQuery = () =>
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+
+  it("is a no-op when userId is undefined", () => {
+    const q = baseQuery();
+    const result = applyUserFilter(q, undefined, "user_id");
+    expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+
+  it("adds an equality filter on the named column when present (Orders.USER_ID matches case-insensitively)", () => {
+    const q = baseQuery();
+    const result = applyUserFilter(q, 42, "user_id");
+    const [clause, ...rest] = Lib.filters(result, 0);
+    expect(rest).toHaveLength(0);
+    const parts = Lib.numberFilterParts(result, 0, clause);
+    expect(parts?.operator).toBe("=");
+    expect(parts?.values).toEqual([42]);
+  });
+
+  it("is a no-op when the column cannot be found on the query", () => {
+    const q = baseQuery();
+    const result = applyUserFilter(q, 42, "column_that_does_not_exist");
+    expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+});
+
+describe("joinGroupMembers", () => {
+  const baseQuery = () =>
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+
+  it("is a no-op when the groupMembersTable is null (still loading)", () => {
+    const result = joinGroupMembers(baseQuery(), null);
+    expect(Lib.joins(result, 0)).toHaveLength(0);
+  });
+});
+
+describe("applyGroupIdFilter", () => {
+  const baseQuery = () =>
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+
+  it("is a no-op when groupId is undefined", () => {
+    const result = applyGroupIdFilter(baseQuery(), undefined);
+    expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+
+  it("is a no-op when the group_id column isn't on the query (no join yet)", () => {
+    const result = applyGroupIdFilter(baseQuery(), 7);
+    expect(Lib.filters(result, 0)).toHaveLength(0);
+  });
+});
+
+describe("excludeAllUsersGroup", () => {
+  const baseQuery = () =>
+    Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+
+  it("is a no-op when the group_id column isn't on the query (no join yet)", () => {
+    const result = excludeAllUsersGroup(baseQuery());
+    expect(Lib.filters(result, 0)).toHaveLength(0);
   });
 });
