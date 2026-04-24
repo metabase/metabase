@@ -4,6 +4,12 @@ import type { ConcreteTableId } from "metabase-types/api";
 
 interface SchemaViewerContextValue {
   visibleTableIds: Set<ConcreteTableId>;
+  /**
+   * IDs of tables whose fetch was triggered by an FK-field expansion and has
+   * not yet resolved. Field rows use this to show a loader in place of the
+   * database type while the new table is being loaded.
+   */
+  expandingTableIds: Set<ConcreteTableId>;
   onExpandToTable: (
     tableId: ConcreteTableId,
     /**
@@ -19,6 +25,7 @@ interface SchemaViewerContextValue {
 
 export const SchemaViewerContext = createContext<SchemaViewerContextValue>({
   visibleTableIds: new Set(),
+  expandingTableIds: new Set(),
   onExpandToTable: () => {},
   selectedNodeId: null,
   onSelectNode: () => {},

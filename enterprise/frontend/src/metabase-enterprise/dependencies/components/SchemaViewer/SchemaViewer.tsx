@@ -581,6 +581,13 @@ export function SchemaViewer({
     [nodes],
   );
 
+  // Target table IDs whose FK-expansion fetch is still in flight. Field rows
+  // use this to swap the database-type text for a loader until the new table
+  // arrives in the graph (or the fetch errors out / the context changes).
+  const [expandingTableIds, setExpandingTableIds] = useState<
+    Set<ConcreteTableId>
+  >(() => new Set());
+
   // Handler for expanding to a related table via FK click
   const handleExpandToTable = useCallback(
     (
@@ -597,6 +604,11 @@ export function SchemaViewer({
         });
         setSavedPrefs({
           table_ids: newTableIds,
+        });
+        setExpandingTableIds((prev) => {
+          const next = new Set(prev);
+          next.add(tableId);
+          return next;
         });
         // Stash the candidate edge IDs so the next graph-sync run can find
         // the FK edge that triggered this expansion and auto-select it.
@@ -621,6 +633,7 @@ export function SchemaViewer({
       prevContextForClearRef.current = currentContextKey;
       setNodes([]);
       setEdges([]);
+      setExpandingTableIds((prev) => (prev.size === 0 ? prev : new Set()));
     }
   }, [currentContextKey, setNodes, setEdges]);
 
@@ -699,11 +712,18 @@ export function SchemaViewer({
   const schemaViewerContextValue = useMemo(
     () => ({
       visibleTableIds,
+      expandingTableIds,
       onExpandToTable: handleExpandToTable,
       selectedNodeId,
       onSelectNode: handleSelectNode,
     }),
-    [visibleTableIds, handleExpandToTable, selectedNodeId, handleSelectNode],
+    [
+      visibleTableIds,
+      expandingTableIds,
+      handleExpandToTable,
+      selectedNodeId,
+      handleSelectNode,
+    ],
   );
 
   // Drop a stale selection when the selected node disappears from the graph
@@ -768,6 +788,7 @@ export function SchemaViewer({
     if (!hasEntry || error != null || isExplicitlyEmpty) {
       setNodes([]);
       setEdges([]);
+      setExpandingTableIds((prev) => (prev.size === 0 ? prev : new Set()));
       return;
     }
     if (isFetching || graph == null) {
@@ -808,6 +829,28 @@ export function SchemaViewer({
 
     const nextNodes = merged ?? graph.nodes;
     setNodes(nextNodes);
+
+    // Clear any expand-in-flight markers for tables that just arrived in the
+    // new graph (or that are no longer in the selection). FK field loaders
+    // disappear automatically once their target table is visible.
+    setExpandingTableIds((prev) => {
+      if (prev.size === 0) {
+        return prev;
+      }
+      const visibleIds = new Set(
+        nextNodes.map((n) => n.data.table_id as ConcreteTableId),
+      );
+      let changed = false;
+      const next = new Set<ConcreteTableId>();
+      for (const id of prev) {
+        if (visibleIds.has(id)) {
+          changed = true;
+        } else {
+          next.add(id);
+        }
+      }
+      return changed ? next : prev;
+    });
 
     // If this was an incremental add (there was a current canvas and some of
     // it carried over), queue up a fitView on the newly-added tables so the

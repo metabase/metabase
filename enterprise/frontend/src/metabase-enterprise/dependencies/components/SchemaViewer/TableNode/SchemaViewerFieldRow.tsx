@@ -1,7 +1,7 @@
 import { Handle, Position, useReactFlow } from "@xyflow/react";
 import cx from "classnames";
 
-import { Box, FixedSizeIcon, Group, type IconName } from "metabase/ui";
+import { Box, FixedSizeIcon, Group, type IconName, Loader } from "metabase/ui";
 import type { ConcreteTableId, ErdField } from "metabase-types/api";
 
 import { useSchemaViewerContext } from "../SchemaViewerContext";
@@ -49,7 +49,8 @@ export function SchemaViewerFieldRow({
   isSelectedInEdge,
   hasSelfRefTarget,
 }: SchemaViewerFieldRowProps) {
-  const { visibleTableIds, onExpandToTable } = useSchemaViewerContext();
+  const { visibleTableIds, expandingTableIds, onExpandToTable } =
+    useSchemaViewerContext();
   const zoomToNodes = useZoomToNodes();
   const { setEdges } = useReactFlow<
     SchemaViewerFlowNode,
@@ -78,6 +79,12 @@ export function SchemaViewerFieldRow({
     isFK &&
     field.fk_target_table_id != null &&
     visibleTableIds.has(field.fk_target_table_id as ConcreteTableId);
+
+  // True while an FK-click fetch is in flight for this field's target table.
+  const isExpanding =
+    isFK &&
+    field.fk_target_table_id != null &&
+    expandingTableIds.has(field.fk_target_table_id as ConcreteTableId);
 
   const handleClick = (event: React.MouseEvent) => {
     // Keep the click from bubbling up to the node, otherwise React Flow
@@ -162,10 +169,14 @@ export function SchemaViewerFieldRow({
       >
         {field.name}
       </Box>
-      <Box fz="sm" c="text-secondary" style={{ flexShrink: 0 }}>
-        {field.database_type.toLowerCase()}
-      </Box>
-      {canExpand && <Box className={S.expandIndicator} />}
+      {isExpanding ? (
+        <Loader size="xs" />
+      ) : (
+        <Box fz="sm" c="text-secondary" style={{ flexShrink: 0 }}>
+          {field.database_type.toLowerCase()}
+        </Box>
+      )}
+      {canExpand && !isExpanding && <Box className={S.expandIndicator} />}
       {/* These handles are invisible in our design, but they're required for proper edge drawing */}
       {isFK && isConnected && (
         <Handle
