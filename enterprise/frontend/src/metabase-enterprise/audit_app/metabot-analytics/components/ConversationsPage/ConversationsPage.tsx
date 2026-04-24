@@ -16,7 +16,7 @@ import { PAGE_SIZE, urlStateConfig } from "./utils";
 
 export function ConversationsPage({ location }: WithRouterProps) {
   const [
-    { page, sort_column, sort_direction, date, user, group, profile },
+    { page, sort_column, sort_direction, date, user, group },
     { patchUrlState },
   ] = useUrlState(location, urlStateConfig);
 
@@ -44,15 +44,6 @@ export function ConversationsPage({ location }: WithRouterProps) {
   );
   const total = conversationsData?.total ?? 0;
 
-  const profileOptions = useMemo(() => {
-    const profiles = new Set(
-      conversations.map((c) => c.model).filter(Boolean) as string[],
-    );
-    return Array.from(profiles)
-      .sort()
-      .map((p) => ({ value: p, label: p }));
-  }, [conversations]);
-
   return (
     <MetabotAdminLayout fullWidth>
       <SettingsPageWrapper mt="sm">
@@ -68,11 +59,8 @@ export function ConversationsPage({ location }: WithRouterProps) {
             onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
             group={group}
             onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-            profile={profile}
-            onProfileChange={(val) => patchUrlState({ profile: val, page: 0 })}
             userOptions={userOptions}
             groupOptions={groupOptions}
-            profileOptions={profileOptions}
           />
         </Flex>
 

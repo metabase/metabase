@@ -1,0 +1,31 @@
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  - changeSet:
+      id: v61.2026-04-21T10:00:00
+      author: sloansparger
+      comment: Add nullable external_id column to metabot_message
+      changes:
+        - addColumn:
+            tableName: metabot_message
+            columns:
+              - column:
+                  name: external_id
+                  type: varchar(36)
+                  remarks: Stable id shared with clients and used to resolve feedback submissions
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-04-21T10:00:01
+      author: sloansparger
+      comment: Unique constraint on metabot_message.external_id for feedback lookup
+      changes:
+        - addUniqueConstraint:
+            tableName: metabot_message
+            columnNames: external_id
+            constraintName: uq_metabot_message_external_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: metabot_message
+            constraintName: uq_metabot_message_external_id

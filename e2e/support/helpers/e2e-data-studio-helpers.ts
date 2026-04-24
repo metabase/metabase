@@ -24,26 +24,8 @@ export const DataStudio = {
     list: () => cy.findByTestId("transforms-list"),
     saveChangesButton: () => DataStudio.Transforms.queryEditor().button("Save"),
     editTransform: () => cy.findByRole("button", { name: "Edit" }),
-    editDefinitionButton: () =>
-      cy.get(
-        '[data-testid="edit-definition-button"], [data-testid="transform-edit-menu-button"]',
-      ),
-    getEditDefinitionLink: () => {
-      // When workspaces are available, "Edit definition" is inside the "Edit" menu
-      // When workspaces are not available, "Edit definition" is a direct link
-      return DataStudio.Transforms.editDefinitionButton()
-        .first()
-        .then(($el) => {
-          if ($el.attr("data-testid") === "edit-definition-button") {
-            return cy.wrap($el);
-          } else {
-            cy.wrap($el).click();
-            return popover().findByRole("menuitem", {
-              name: /Edit definition/,
-            });
-          }
-        });
-    },
+    editDefinitionButton: () => cy.findByTestId("edit-definition-button"),
+    getEditDefinitionLink: () => DataStudio.Transforms.editDefinitionButton(),
     clickEditDefinition: () => {
       DataStudio.Transforms.getEditDefinitionLink().click();
     },

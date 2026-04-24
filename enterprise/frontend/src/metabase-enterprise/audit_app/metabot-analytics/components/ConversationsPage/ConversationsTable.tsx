@@ -7,6 +7,7 @@ import { SortableColumnHeader } from "metabase/common/components/ItemsTable/Base
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import AdminS from "metabase/css/admin.module.css";
 import CS from "metabase/css/core/index.css";
+import { renderMetabotProfileLabel } from "metabase/metabot/constants";
 import { Badge, Box, Ellipsified, Flex } from "metabase/ui";
 import { useDispatch } from "metabase/utils/redux";
 import { getUserName } from "metabase/utils/user";
@@ -100,9 +101,9 @@ export function ConversationsTable({
               >
                 <td>{convo.user ? getUserName(convo.user) : t`Unknown`}</td>
                 <td>
-                  {convo.model && (
+                  {convo.profile_id && (
                     <Badge size="sm" variant="light">
-                      {convo.model}
+                      {renderMetabotProfileLabel(convo.profile_id)}
                     </Badge>
                   )}
                 </td>

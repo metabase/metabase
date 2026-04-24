@@ -67,3 +67,24 @@ databaseChangeLog:
             relativeToChangelogFile: true
       rollback:
         - sql: DROP VIEW IF EXISTS v_metabot_usage
+
+  - changeSet:
+      id: v61.2026-04-01T10:00:03
+      author: tyler
+      runOnChange: true
+      comment: Create v_ai_usage_log view for AI analytics
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/ai_usage_log/v1/postgres-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/ai_usage_log/v1/mysql-ai_usage_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/ai_usage_log/v1/h2-ai_usage_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql: DROP VIEW IF EXISTS v_ai_usage_log

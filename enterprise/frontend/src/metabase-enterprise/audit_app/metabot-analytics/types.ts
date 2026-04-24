@@ -1,11 +1,13 @@
+import type { MetabotProfileId } from "metabase/metabot/constants";
 import type { MetabotChatMessage } from "metabase/metabot/state";
-import type { DatasetQuery } from "metabase-types/api";
+import type { DatasetQuery, MetabotFeedback } from "metabase-types/api";
 
 export type MetabotUserInfo = {
   id: number;
   email?: string;
   first_name?: string | null;
   last_name?: string | null;
+  tenant_id: number | null;
 };
 
 export type ConversationSummary = {
@@ -18,7 +20,7 @@ export type ConversationSummary = {
   assistant_message_count: number;
   total_tokens: number;
   last_message_at: string | null;
-  model: string | null;
+  profile_id: MetabotProfileId | null;
   search_count: number;
   query_count: number;
   ip_address: string | null;
@@ -57,6 +59,10 @@ export type GeneratedQuery = {
   tables: string[];
 };
 
+export type ConversationFeedback = MetabotFeedback & {
+  external_id: string | null;
+};
+
 export type ConversationDetail = {
   conversation_id: string;
   created_at: string;
@@ -64,11 +70,12 @@ export type ConversationDetail = {
   user: MetabotUserInfo | null;
   message_count: number;
   total_tokens: number;
-  model: string | null;
+  profile_id: MetabotProfileId | null;
   slack_permalink: string | null;
   chat_messages: MetabotChatMessage[];
   queries: GeneratedQuery[];
   search_count: number;
   query_count: number;
   ip_address: string | null;
+  feedback: ConversationFeedback[];
 };

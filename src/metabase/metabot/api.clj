@@ -4,7 +4,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.analytics.prometheus :as prometheus]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -22,6 +21,7 @@
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.feedback :as metabot.feedback]
+   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.provider-util :as provider-util]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.self :as metabot.self]
@@ -35,7 +35,6 @@
    [metabase.settings.core :as setting]
    [metabase.slackbot.api]
    [metabase.util :as u]
-   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -78,6 +77,7 @@
                  :usage           (:usage finish)
                  :role            (:role (first messages))
                  :profile_id      profile-id
+                 :external_id     (str (random-uuid))
                  :total_tokens    (->> (vals (:usage finish))
                                        ;; NOTE: this filter is supporting backward-compatible usage format, can be
                                        ;; removed when ai-service does not give us `completionTokens` in `usage`
@@ -85,93 +85,6 @@
                                        (map #(+ (:prompt %) (:completion %)))
                                        (apply +))
                  :ai_proxied      (boolean ai-proxy?)})))
-
-(defn- extract-usage
-  "Extract usage from parts, taking the last `:usage` per model.
-
-  The agent loop emits cumulative usage — each `:usage` part subsumes all prior
-  usage for that model — so we simply take the last one per model rather than
-  summing. Returns a map keyed by model name:
-  {\"model-name\" {:prompt X :completion Y}}"
-  [parts]
-  (transduce
-   (filter #(= :usage (:type %)))
-   (completing
-    (fn [acc {:keys [usage model]}]
-      (let [model (or model "unknown")]
-        (assoc acc model {:prompt     (:promptTokens usage 0)
-                          :completion (:completionTokens usage 0)}))))
-   {}
-   parts))
-
-(def ^:private persisted-structured-output-keys
-  "Subset of `:structured-output` that must survive persistence so
-  `metabase-enterprise.metabot-analytics.queries` can surface generated
-  queries on the admin detail page."
-  [:query-id :query-content :query :database])
-
-(defn- trim-structured-output [structured]
-  (when (map? structured)
-    (not-empty (select-keys structured persisted-structured-output-keys))))
-
-(defn- strip-tool-output-bloat
-  "For :tool-output parts, keep `:output` and a trimmed `:structured-output` in
-  the result map. Both LLM adapters only read `(get-in part [:result :output])`
-  when replaying history, so `:output` is all they need. The analytics extractor,
-  however, reads a small subset of `:structured-output` off persisted messages
-  (see `persisted-structured-output-keys`), so we keep those four keys and drop
-  everything else (`:resources`, `:data-parts`, `:reactions`, …) — that's where
-  the bulk of the bloat lives."
-  [{:keys [type] :as part}]
-  (if (= :tool-output type)
-    (update part :result
-            (fn [r]
-              (cond-> (select-keys r [:output])
-                (trim-structured-output (:structured-output r))
-                (assoc :structured-output (trim-structured-output (:structured-output r)))
-                (trim-structured-output (:structured_output r))
-                (assoc :structured_output (trim-structured-output (:structured_output r))))))
-    part))
-
-(defn- store-native-parts!
-  "Store assistant response parts directly to the database.
-
-  Takes AI SDK parts (after aisdk-xf combining) and stores them in the native format,
-  avoiding the intermediate 'aisdk messages' format.
-
-  Parts format: [{:type :text :text \"...\"} {:type :tool-input ...} ...]"
-  [conversation-id profile-id ip-address embed-url parts]
-  (let [state-part (u/seek #(and (= :data (:type %))
-                                 (= "state" (:data-type %)))
-                           parts)
-        usage      (extract-usage parts)
-        ai-proxy?  (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
-        ;; Filter out :start, :usage, :finish, :data - these are metadata, not message content
-        ;; :data is like `:navigate_to`
-        content    (->> parts
-                        (remove #(#{:start :usage :finish :data} (:type %)))
-                        (mapv strip-tool-output-bloat))]
-    (prometheus/observe! :metabase-metabot/message-persist-bytes
-                         {:profile-id (or profile-id "unknown")}
-                         (u/string-byte-count (json/encode content)))
-    (t2/with-transaction [_conn]
-      (when state-part
-        (app-db/update-or-insert! :model/MetabotConversation {:id conversation-id}
-                                  (fn [existing]
-                                    (cond-> {:user_id api/*current-user-id*
-                                             :state   (:data state-part)}
-                                      (nil? (:ip_address existing)) (assoc :ip_address ip-address)
-                                      (nil? (:embed_url existing))  (assoc :embed_url embed-url)))))
-      (t2/insert! :model/MetabotMessage
-                  {:conversation_id conversation-id
-                   :data            content
-                   :usage           usage
-                   :role            :assistant
-                   :profile_id      profile-id
-                   :total_tokens    (->> (vals usage)
-                                         (map #(+ (:prompt %) (:completion %)))
-                                         (reduce + 0))
-                   :ai_proxied      (boolean ai-proxy?)}))))
 
 (defn- streaming-writer-rf
   "Creates a reducing function that writes AI SDK lines to an OutputStream.
@@ -194,22 +107,6 @@
          (catch org.eclipse.jetty.io.EofException _
            (reduced acc)))))))
 
-(defn- combine-text-parts-xf []
-  (fn [rf]
-    (let [pending (volatile! nil)]
-      (fn
-        ([] (rf))
-        ([result]
-         (let [p @pending]
-           (rf (if p (rf result p) result))))
-        ([result part]
-         (let [prev @pending]
-           (if (and prev (= :text (:type prev) (:type part)))
-             (do (vswap! pending update :text str (:text part))
-                 result)
-             (do (vreset! pending part)
-                 (if prev (rf result prev) result)))))))))
-
 (defn- native-agent-streaming-request
   "Handle streaming request using native Clojure agent.
 
@@ -224,13 +121,14 @@
   part at the end of the stream with full LLM request/response data per iteration."
   [{:keys [metabot-id profile-id message context history conversation-id state debug? ip-address embed-url]}]
   (let [enriched-context (metabot.context/create-context context)
-        messages         (concat history [message])]
+        messages         (concat history [message])
+        external-id      (str (random-uuid))]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom (atom [])
-            ;; Compose: collect parts AND convert to lines for streaming.
             ;; In dev mode, emit usage parts in the SSE stream for debugging/benchmarking.
             xf         (comp (u/tee-xf parts-atom)
-                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?}))]
+                             (self.core/aisdk-line-xf {:emit-usage? config/is-dev?
+                                                       :external-id external-id}))]
         (try
           (transduce xf
                      (streaming-writer-rf os canceled-chan)
@@ -245,8 +143,17 @@
           (catch org.eclipse.jetty.io.EofException _
             (log/debug "Client disconnected during native agent streaming"))
           (finally
-            (store-native-parts! conversation-id profile-id ip-address embed-url
-                                 (into [] (combine-text-parts-xf) @parts-atom))))))))
+            (try
+              (metabot.persistence/store-native-parts!
+               conversation-id profile-id
+               (into [] (metabot.persistence/combine-text-parts-xf) @parts-atom)
+               :ip-address  ip-address
+               :embed-url   embed-url
+               :external-id external-id)
+              (catch Exception e
+                (log/error e "Failed to persist native agent parts"
+                           {:conversation-id conversation-id
+                            :external-id     external-id})))))))))
 
 (defn streaming-request
   "Handles an incoming request, making all required tool invocation, LLM call loops, etc."
@@ -326,18 +233,24 @@
 ;;
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/feedback"
-  "Proxy Metabot feedback to Harbormaster, adding the premium embedding token."
+  "Persist Metabot feedback locally and proxy it to Harbormaster."
   [_route-params
    _query-params
-   feedback :- :map]
+   body :- [:map
+            [:metabot_id        ms/PositiveInt]
+            [:message_id        ms/NonBlankString]
+            [:positive          :boolean]
+            [:issue_type        {:optional true} [:maybe :string]]
+            [:freeform_feedback {:optional true} [:maybe :string]]]]
   (metabot.config/check-metabot-enabled!)
-  (try
-    (api/check-400 (metabot.feedback/submit-to-harbormaster! feedback)
-                   "Cannot submit feedback. The license token and/or Store API URL are missing!")
-    api/generic-204-no-content
-    (catch Exception e
-      (log/error e "Failed to submit feedback to Harbormaster")
-      (throw e))))
+  (let [message (metabot.feedback/persist-feedback! body)]
+    (try
+      (api/check-400 (metabot.feedback/submit-to-harbormaster!
+                      (metabot.feedback/harbormaster-payload body message))
+                     "Cannot submit feedback. The license token and/or Store API URL are missing!")
+      (catch Exception e
+        (log/error "Failed to submit feedback to Harbormaster: " (ex-message e)))))
+  api/generic-204-no-content)
 
 (def ^:private metabot-provider-schema
   (into [:enum] metabot.settings/supported-metabot-providers))

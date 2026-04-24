@@ -174,7 +174,7 @@
                @posted-message))))))
 
 (deftest slackbot-streaming-sets-ai-proxied-on-messages-test
-  (testing "store-message! receives ai-proxy? = true for metabase/ prefixed provider"
+  (testing "user + assistant persists receive ai-proxy? = true for metabase/ prefixed provider"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event
             store-opts (atom [])]
@@ -187,6 +187,10 @@
                             metabot.persistence/store-message!
                             (fn [_conv-id _profile-id _messages & {:as opts}]
                               (swap! store-opts conj opts)
+                              nil)
+                            metabot.persistence/store-native-parts!
+                            (fn [_conv-id _profile-id _parts & {:as opts}]
+                              (swap! store-opts conj opts)
                               nil)]
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event-body)
@@ -194,7 +198,7 @@
                 (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
                          :done?      true?
                          :timeout-ms 5000})))
-            (testing "user + assistant store-message! calls both received ai-proxy? = true"
+            (testing "user (store-message!) + assistant (store-native-parts!) both received ai-proxy? = true"
               (is (=? [{:ai-proxy? true}
                        {:ai-proxy? true}]
                       @store-opts)))))))))
@@ -223,7 +227,7 @@
                   (is (some? (:slack-msg-id opts))))))))))))
 
 (deftest slackbot-streaming-sets-ai-proxied-false-for-byok-test
-  (testing "store-message! receives ai-proxy? = false for direct BYOK provider"
+  (testing "user + assistant persists receive ai-proxy? = false for direct BYOK provider"
     (tu/with-slackbot-setup
       (let [event-body tu/base-dm-event
             store-opts (atom [])]
@@ -234,6 +238,10 @@
               (with-redefs [metabot.persistence/store-message!
                             (fn [_conv-id _profile-id _messages & {:as opts}]
                               (swap! store-opts conj opts)
+                              nil)
+                            metabot.persistence/store-native-parts!
+                            (fn [_conv-id _profile-id _parts & {:as opts}]
+                              (swap! store-opts conj opts)
                               nil)]
                 (mt/client :post 200 "metabot/slack/events"
                            (tu/slack-request-options event-body)
@@ -241,7 +249,7 @@
                 (u/poll {:thunk      #(>= (count @stop-stream-calls) 1)
                          :done?      true?
                          :timeout-ms 5000})))
-            (testing "user + assistant store-message! calls both received ai-proxy? = false"
+            (testing "user (store-message!) + assistant (store-native-parts!) both received ai-proxy? = false"
               (is (=? [{:ai-proxy? false}
                        {:ai-proxy? false}]
                       @store-opts)))))))))

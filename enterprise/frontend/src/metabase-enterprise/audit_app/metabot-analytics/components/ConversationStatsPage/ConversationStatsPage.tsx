@@ -24,7 +24,7 @@ import { ConversationsByIPAddressChart } from "./ConversationsByIPAddressChart";
 import { ConversationsByProfileBarChart } from "./ConversationsByProfileBarChart";
 import { ConversationsBySourceChart } from "./ConversationsBySourceChart";
 import { ConversationsByUserChart } from "./ConversationsByUserChart";
-import type { UsageStatsMetric } from "./query-utils";
+import { type UsageStatsMetric, getViewForMetric } from "./query-utils";
 import { statsUrlStateConfig } from "./utils";
 
 const DEFAULT_DATE_FILTER: DateFilterValue = {
@@ -54,6 +54,8 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
 
   const { userOptions, groupOptions } = useFilterOptions();
 
+  const viewName = getViewForMetric(metric);
+
   const navigateToConversations = useCallback(
     (filterOverrides: Partial<ConversationsUrlState>) => {
       dispatch(
@@ -66,7 +68,6 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
             date,
             user,
             group,
-            profile: null,
             ...filterOverrides,
           }),
         }),
@@ -144,25 +145,42 @@ export function ConversationStatsPage({ location }: WithRouterProps) {
         <ConversationsByDayChart
           dateFilter={dateFilter}
           metric={metric}
+          viewName={viewName}
           onDimensionClick={handleDayClick}
         />
+
         <SimpleGrid cols={2} spacing="lg">
-          <ConversationsBySourceChart dateFilter={dateFilter} metric={metric} />
+          <ConversationsBySourceChart
+            dateFilter={dateFilter}
+            metric={metric}
+            viewName={viewName}
+          />
           <ConversationsByProfileBarChart
             dateFilter={dateFilter}
             metric={metric}
+            viewName={viewName}
           />
         </SimpleGrid>
+
         <SimpleGrid cols={3} spacing="lg">
-          <ConversationsByGroupChart dateFilter={dateFilter} metric={metric} />
+          <ConversationsByGroupChart
+            dateFilter={dateFilter}
+            metric={metric}
+            viewName={viewName}
+            h={500}
+          />
           <ConversationsByUserChart
             dateFilter={dateFilter}
             metric={metric}
+            viewName={viewName}
             onDimensionClick={handleUserClick}
+            h={500}
           />
           <ConversationsByIPAddressChart
             dateFilter={dateFilter}
             metric={metric}
+            viewName={viewName}
+            h={500}
           />
         </SimpleGrid>
       </SettingsPageWrapper>

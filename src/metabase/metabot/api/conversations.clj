@@ -92,17 +92,8 @@
 
   Accessible to the user who created the conversation or to any superuser."
   [{:keys [id]} :- ConversationIdParams]
-  (let [conversation (api/read-check :model/MetabotConversation id)
-        messages     (t2/select :model/MetabotMessage
-                                {:where    [:and
-                                            [:= :conversation_id id]
-                                            [:= :deleted_at nil]]
-                                 :order-by [[:created_at :asc]]})]
-    {:conversation_id (:id conversation)
-     :created_at      (:created_at conversation)
-     :summary         (:summary conversation)
-     :user_id         (:user_id conversation)
-     :chat_messages   (metabot.persistence/messages->chat-messages messages)}))
+  (api/read-check :model/MetabotConversation id)
+  (metabot.persistence/conversation-detail id))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/metabot/conversations` routes."

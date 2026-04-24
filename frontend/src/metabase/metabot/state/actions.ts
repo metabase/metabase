@@ -13,7 +13,6 @@ import { PLUGIN_AUDIT } from "metabase/plugins";
 import { setIsNativeEditorOpen } from "metabase/query_builder/actions";
 import type { Dispatch, State } from "metabase/redux/store";
 import { addUndo } from "metabase/redux/undo";
-import { getIsWorkspace } from "metabase/selectors/routing";
 import { getSetting } from "metabase/selectors/settings";
 import { getUser } from "metabase/selectors/user";
 import { createAsyncThunk } from "metabase/utils/redux";
@@ -25,7 +24,7 @@ import type {
   MetabotTransformInfo,
 } from "metabase-types/api";
 
-import { METABOT_ERR_MSG } from "../constants";
+import { METABOT_ERR_MSG, type MetabotProfileId } from "../constants";
 
 import { metabot } from "./reducer";
 import {
@@ -40,9 +39,8 @@ import {
   getUserPromptForMessageId,
 } from "./selectors";
 import type {
-  MetabotAgentEditSuggestionChatMessage,
+  MetabotAgentDataPartMessage,
   MetabotAgentId,
-  MetabotAgentTodoListChatMessage,
   MetabotErrorMessage,
   MetabotUserChatMessage,
   SlashCommand,
@@ -57,6 +55,7 @@ export const {
   addUserMessage,
   setIsProcessing,
   setNavigateToPath,
+  setPendingMessageExternalId,
   setProfileOverride,
   toolCallStart,
   toolCallEnd,
@@ -155,7 +154,13 @@ export const executeSlashCommand = createAsyncThunk<
     match(command)
       .with({ cmd: "profile" }, ({ args }) => {
         if (args.length <= 1) {
-          dispatch(setProfileOverride({ agentId, profile: args[0] }));
+          // cast allows custom overrides for development purposes; the backend validates
+          dispatch(
+            setProfileOverride({
+              agentId,
+              profile: args[0] as MetabotProfileId | undefined,
+            }),
+          );
         } else {
           dispatch(addUndo({ message: "/profile <name>" }));
         }
@@ -221,7 +226,7 @@ export const submitInput = createAsyncThunk<
     context: MetabotChatContext;
     agentId: MetabotAgentId;
     metabot_id?: string;
-    profile?: string;
+    profile?: MetabotProfileId;
   }
 >(
   "metabase/metabot/submitInput",
@@ -360,7 +365,6 @@ export const sendAgentRequest = createAsyncThunk<
     payload,
     { dispatch, getState, signal, rejectWithValue, fulfillWithValue },
   ) => {
-    const isWorkspace = getIsWorkspace(getState());
     const { agentId, ...request } = payload;
 
     try {
@@ -378,19 +382,15 @@ export const sendAgentRequest = createAsyncThunk<
         },
         {
           onDataPart: function handleDataPart(part) {
+            const pushDataPart = (
+              message: Omit<MetabotAgentDataPartMessage, "id" | "role">,
+            ) => dispatch(addAgentMessage({ ...message, agentId }));
+
             match(part)
               // only update the convo state if the request is successful
               .with({ type: "state" }, (part) => (state = part.value))
               .with({ type: "todo_list" }, (part) => {
-                const message: Omit<
-                  MetabotAgentTodoListChatMessage,
-                  "id" | "role"
-                > = {
-                  type: "todo_list",
-                  payload: part.value,
-                };
-
-                dispatch(addAgentMessage({ ...message, agentId }));
+                pushDataPart({ type: "data_part", part });
               })
               .with({ type: "code_edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.value, active: true }));
@@ -398,42 +398,52 @@ export const sendAgentRequest = createAsyncThunk<
                 if (part.value.buffer_id === "qb") {
                   dispatch(setIsNativeEditorOpen(true));
                 }
+                pushDataPart({ type: "data_part", part });
               })
               .with({ type: "navigate_to" }, (part) => {
                 dispatch(setNavigateToPath(part.value));
 
-                if (!isEmbeddingSdk() && !isWorkspace) {
+                if (!isEmbeddingSdk()) {
                   dispatch(push(part.value) as UnknownAction);
                 }
+                pushDataPart({ type: "data_part", part });
               })
-              .with({ type: "transform_suggestion" }, ({ value }) => {
+              .with({ type: "transform_suggestion" }, (part) => {
+                const suggestionId = nanoid();
                 const suggestedTransform = {
-                  ...value,
-                  id: value.id || undefined,
+                  ...part.value,
+                  id: part.value.id || undefined,
                   active: true,
-                  suggestionId: nanoid(),
+                  suggestionId,
                 };
                 dispatch(addSuggestedTransform(suggestedTransform));
 
-                const transform = request.context.user_is_viewing
+                const editorTransform = request.context.user_is_viewing
                   .filter(
                     (t): t is MetabotTransformInfo => t.type === "transform",
                   )
                   .find((t) => t.id === suggestedTransform.id);
-                const message: Omit<
-                  MetabotAgentEditSuggestionChatMessage,
-                  "id" | "role"
-                > = {
-                  type: "edit_suggestion",
-                  model: "transform",
-                  payload: {
-                    editorTransform: transform,
-                    suggestedTransform,
-                  },
-                };
-                dispatch(addAgentMessage({ ...message, agentId }));
+                pushDataPart({
+                  type: "data_part",
+                  part,
+                  metadata: { editorTransform, suggestionId },
+                });
+              })
+              .with({ type: "adhoc_viz" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
+              .with({ type: "static_viz" }, (part) => {
+                pushDataPart({ type: "data_part", part });
               })
               .exhaustive();
+          },
+          onStartMessagePart: function handleStartMessagePart(part) {
+            dispatch(
+              setPendingMessageExternalId({
+                agentId,
+                externalId: part.messageId,
+              }),
+            );
           },
           onTextPart: function handleTextPart(part) {
             dispatch(addAgentTextDelta({ agentId, text: String(part) }));

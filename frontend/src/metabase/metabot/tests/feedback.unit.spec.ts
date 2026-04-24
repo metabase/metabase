@@ -84,6 +84,13 @@ describe("metabot > feedback", () => {
     await submitFeedback(modal);
 
     expect(feedbackEndpoint.calls()).toHaveLength(1);
+    const body = await feedbackEndpoint.calls()[0].request?.json();
+    expect(body).toEqual({
+      metabot_id: expect.any(Number),
+      message_id: "msg_test_favorite",
+      positive: false,
+      freeform_feedback: "",
+    });
 
     expect(await thumbsUp(lastMessage)).toBeDisabled();
     expect(await thumbsDown(lastMessage)).toBeDisabled();
@@ -126,5 +133,28 @@ describe("metabot > feedback", () => {
     await submitFeedback(modal);
 
     expect(feedbackEndpoint.calls()).toHaveLength(1);
+  });
+
+  it("should submit positive feedback", async () => {
+    setup({ isHosted: true });
+    const feedbackEndpoint = mockFeedbackEndpoint();
+    mockAgentEndpoint({ textChunks: whoIsYourFavoriteResponse });
+
+    await enterChatMessage("Who is your favorite?");
+    const lastMessage = (await lastChatMessage())!;
+
+    await userEvent.click(await thumbsUp(lastMessage));
+    const modal = await feedbackModal();
+    await submitFeedback(modal);
+
+    expect(feedbackEndpoint.calls()).toHaveLength(1);
+    const body = await feedbackEndpoint.calls()[0].request?.json();
+    expect(body).toEqual({
+      metabot_id: expect.any(Number),
+      message_id: "msg_test_favorite",
+      positive: true,
+      freeform_feedback: "",
+    });
+    expect(body).not.toHaveProperty("issue_type");
   });
 });

@@ -11,10 +11,8 @@
    [metabase.metabot.core :as metabot]
    [metabase.metabot.envelope :as metabot.envelope]
    [metabase.metabot.persistence :as metabot.persistence]
-   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.usage :as metabot.usage]
-   [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
    [metabase.slackbot.channel :as slackbot.channel]
    [metabase.slackbot.client :as slackbot.client]
@@ -232,18 +230,19 @@
                    :tracking-opts {:source "slackbot"}}))
       (finally
         ;; Persist whatever parts we collected, even if the pipeline threw.
+        ;; Stores raw native parts (not the lossy AI-SDK-message round-trip) so
+        ;; tool-output :structured-output survives for analytics extraction.
         (let [parts @parts-atom]
           (when (seq parts)
-            (let [lines (into [] (self.core/aisdk-line-xf) parts)
-                  pk    (metabot.persistence/store-message!
-                         conversation-id "slackbot"
-                         (metabot.u/aisdk->messages :assistant lines)
-                         :channel-id      channel-id
-                         :slack-team-id   team-id
-                         :slack-thread-ts thread-ts
-                         :slack-msg-id    (when get-res-slack-msg-id (get-res-slack-msg-id))
-                         :user-id         api/*current-user-id*
-                         :ai-proxy?       ai-proxy?)]
+            (let [pk (metabot.persistence/store-native-parts!
+                      conversation-id "slackbot"
+                      (into [] (metabot.persistence/combine-text-parts-xf) parts)
+                      :channel-id      channel-id
+                      :slack-team-id   team-id
+                      :slack-thread-ts thread-ts
+                      :slack-msg-id    (when get-res-slack-msg-id (get-res-slack-msg-id))
+                      :user-id         api/*current-user-id*
+                      :ai-proxy?       ai-proxy?)]
               (when stored-msg-id
                 (reset! stored-msg-id pk)))))))))
 

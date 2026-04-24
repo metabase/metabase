@@ -1,6 +1,46 @@
 import type { DateFilterValue } from "metabase/querying/common/types";
 
-import { isSingleDayFilter } from "./query-utils";
+import { VIEW_CONVERSATIONS, VIEW_USAGE_LOG } from "../../constants";
+
+import {
+  getMetricSeriesSettings,
+  getViewForMetric,
+  isSingleDayFilter,
+} from "./query-utils";
+
+describe("getViewForMetric", () => {
+  it("routes the tokens metric to v_ai_usage_log", () => {
+    expect(getViewForMetric("tokens")).toBe(VIEW_USAGE_LOG);
+  });
+
+  it("routes conversations and messages to v_metabot_conversations", () => {
+    expect(getViewForMetric("conversations")).toBe(VIEW_CONVERSATIONS);
+    expect(getViewForMetric("messages")).toBe(VIEW_CONVERSATIONS);
+  });
+});
+
+describe("getMetricSeriesSettings", () => {
+  it("returns two-series config for tokens with both aggregation columns, no stacking, dual axis on opt-in", () => {
+    const grouped = getMetricSeriesSettings("tokens", ["sum", "sum_2"]);
+    expect(grouped["graph.metrics"]).toEqual(["sum", "sum_2"]);
+    expect(grouped.series_settings?.sum?.title).toMatch(/input/i);
+    expect(grouped.series_settings?.sum_2?.title).toMatch(/output/i);
+    expect(grouped.series_settings?.sum?.axis).toBeUndefined();
+    expect(grouped.series_settings?.sum_2?.axis).toBeUndefined();
+
+    const dual = getMetricSeriesSettings("tokens", ["sum", "sum_2"], {
+      dualAxis: true,
+    });
+    expect(dual.series_settings?.sum?.axis).toBe("left");
+    expect(dual.series_settings?.sum_2?.axis).toBe("right");
+  });
+
+  it("falls back to single-series settings otherwise", () => {
+    const settings = getMetricSeriesSettings("conversations");
+    expect(settings["graph.metrics"]).toBeUndefined();
+    expect(settings.series_settings).toHaveProperty("count");
+  });
+});
 
 describe("isSingleDayFilter", () => {
   const DAY = new Date(2026, 3, 17);

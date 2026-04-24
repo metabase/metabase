@@ -22,20 +22,32 @@
 
 (defn- insert-message!
   [{:keys [conversation-id created-at role profile-id total-tokens data deleted-at]}]
-  (t2/insert! :model/MetabotMessage
-              (cond-> {:conversation_id conversation-id
-                       :role            role
-                       :profile_id      profile-id
-                       :total_tokens    total-tokens
-                       :data            data}
-                created-at (assoc :created_at created-at)
-                deleted-at (assoc :deleted_at deleted-at))))
+  (first (t2/insert-returning-pks!
+          :model/MetabotMessage
+          (cond-> {:conversation_id conversation-id
+                   :role            role
+                   :profile_id      profile-id
+                   :total_tokens    total-tokens
+                   :data            data
+                   :external_id     (str (random-uuid))}
+            created-at (assoc :created_at created-at)
+            deleted-at (assoc :deleted_at deleted-at)))))
 
 (defn- delete-conversations!
   [conversation-ids]
   (let [conversation-ids (vec conversation-ids)]
     (t2/delete! :model/MetabotMessage {:where [:in :conversation_id conversation-ids]})
     (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]})))
+
+(defn- insert-feedback!
+  [{:keys [message-id positive issue-type freeform created-at updated-at]}]
+  (t2/insert! :model/MetabotFeedback
+              (cond-> {:message_id        message-id
+                       :positive          positive
+                       :issue_type        issue-type
+                       :freeform_feedback freeform}
+                created-at (assoc :created_at created-at)
+                updated-at (assoc :updated_at updated-at))))
 
 (defn- offset-date-time
   [s]
@@ -83,7 +95,7 @@
           (insert-message! {:conversation-id convo-1
                             :created-at      jan-3
                             :role            "assistant"
-                            :profile-id      "gpt-4.1-mini"
+                            :profile-id      "nlq"
                             :total-tokens    7
                             :data            [{:role "assistant" :content "hi"}]})
           (insert-message! {:conversation-id convo-2
@@ -95,13 +107,13 @@
           (insert-message! {:conversation-id convo-2
                             :created-at      jan-5
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    11
                             :data            [{:role "assistant" :content "answer"}]})
           (insert-message! {:conversation-id convo-2
                             :created-at      jan-5
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    13
                             :data            [{:role "assistant" :content "follow-up"}]})
           (insert-message! {:conversation-id convo-3
@@ -137,7 +149,7 @@
         (is (= 50 (:limit response)))
         (is (= 0 (:offset response)))
         (is (= [convo-3 convo-2 convo-1] conversation-ids))
-        (is (nil? (:model convo-3-response)))
+        (is (nil? (:profile_id convo-3-response)))
         (is (= 0 (:message_count convo-3-response)))
         (is (= 0 (:assistant_message_count convo-3-response)))
         (is (= 0 (:total_tokens convo-3-response)))
@@ -147,22 +159,23 @@
                 :user_message_count      1
                 :assistant_message_count 1
                 :total_tokens            10
-                :model                   "gpt-4.1-mini"
+                :profile_id              "nlq"
                 :user                    {:id         test-user-id
                                           :email      "metabot-analytics-list-test@metabase.com"
                                           :first_name "Metabot"
-                                          :last_name  "Analytics"}}
+                                          :last_name  "Analytics"
+                                          :tenant_id  nil}}
                (select-keys convo-1-response [:conversation_id :summary :message_count
                                               :user_message_count :assistant_message_count :total_tokens
-                                              :model :user])))
+                                              :profile_id :user])))
         (is (= {:conversation_id         convo-2
                 :message_count           3
                 :user_message_count      1
                 :assistant_message_count 2
                 :total_tokens            26
-                :model                   "gpt-5"}
+                :profile_id              "internal"}
                (select-keys convo-2-response [:conversation_id :message_count :user_message_count
-                                              :assistant_message_count :total_tokens :model])))))))
+                                              :assistant_message_count :total_tokens :profile_id])))))))
 
 (deftest list-conversations-pagination-test
   (with-list-conversations-fixture!
@@ -208,13 +221,13 @@
           (insert-message! {:conversation-id conversation-id
                             :created-at      jan-1
                             :role            "user"
-                            :profile-id      "ignored-user-model"
+                            :profile-id      "ignored-user-profile"
                             :total-tokens    4
                             :data            [{:role "user" :content "hello"}]})
           (insert-message! {:conversation-id conversation-id
                             :created-at      jan-2
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    8
                             :data            [{:type "text" :text "hi there"}]})
 
@@ -225,12 +238,17 @@
             (is (= {:id         user-id
                     :email      "crowberto@metabase.com"
                     :first_name "Crowberto"
-                    :last_name  "Corv"}
+                    :last_name  "Corv"
+                    :tenant_id  nil}
                    (:user response)))
             (is (nil? (:slack_permalink response)))
-            (is (= "gpt-5" (:model response))
-                "model comes from the first assistant message's profile_id, ignoring user-message placeholders")
-            (is (= 2 (count (:chat_messages response)))))
+            (is (= "internal" (:profile_id response))
+                "profile_id comes from the first assistant message, ignoring user-message placeholders")
+            (is (= 2 (count (:chat_messages response))))
+            (is (= [] (:feedback response)))
+            (let [{:keys [role type externalId]} (last (:chat_messages response))]
+              (is (= ["agent" "text"] [role type]))
+              (is (string? externalId))))
           (finally
             (delete-conversations! [conversation-id])))))))
 
@@ -259,7 +277,7 @@
           (insert-message! {:conversation-id conversation-id
                             :created-at      jan-2
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    20
                             :data            [{:type "text" :text "Sure, here it is."}
                                               {:type     "tool-input"
@@ -279,7 +297,7 @@
           (insert-message! {:conversation-id conversation-id
                             :created-at      jan-3
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    10
                             :data            [{:type     "tool-input"
                                                :id       "call-failed"
@@ -346,21 +364,21 @@
           (insert-message! {:conversation-id convo-none
                             :created-at      jan-1
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    5
                             :data            [{:type "text" :text "no tools here"}]})
           ;; convo-two: one search in msg 1, one search in msg 2 (plus an unrelated tool).
           (insert-message! {:conversation-id convo-two
                             :created-at      jan-2
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    10
                             :data            [(search-input-block "call-a")
                                               (search-output-block "call-a")]})
           (insert-message! {:conversation-id convo-two
                             :created-at      jan-2
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    10
                             :data            [{:type "tool-input" :id "call-x" :function "analyze_chart" :arguments {}}
                                               (search-input-block "call-b")
@@ -369,7 +387,7 @@
           (insert-message! {:conversation-id convo-errored
                             :created-at      jan-3
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    4
                             :data            [(search-input-block "call-err")
                                               {:type "tool-output" :id "call-err" :error "boom"}]})
@@ -443,7 +461,7 @@
           (insert-message! {:conversation-id convo-none
                             :created-at      mar-1
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    5
                             :data            [(search-input-block "call-s")
                                               (search-output-block "call-s")]})
@@ -452,14 +470,14 @@
           (insert-message! {:conversation-id convo-mixed
                             :created-at      mar-2
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    10
                             :data            [(query-tool-input-block "call-a" "create_sql_query")
                                               (query-tool-output-block "call-a")]})
           (insert-message! {:conversation-id convo-mixed
                             :created-at      mar-2
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    10
                             :data            [(query-tool-input-block "call-b" "edit_sql_query")
                                               (query-tool-output-block "call-b")
@@ -469,7 +487,7 @@
           (insert-message! {:conversation-id convo-edits
                             :created-at      mar-3
                             :role            "assistant"
-                            :profile-id      "gpt-5"
+                            :profile-id      "internal"
                             :total-tokens    4
                             :data            [(query-tool-input-block "call-e" "edit_sql_query")
                                               (query-tool-output-block "call-e")
@@ -558,6 +576,58 @@
                   :convo-null   convo-null})
           (finally
             (delete-conversations! [convo-web convo-slack convo-null])))))))
+
+(deftest ^:parallel get-conversation-detail-requires-superuser-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations/:id requires superuser"
+      (is (= "You don't have permissions to do that."
+             (mt/user-http-request :rasta :get 403
+                                   (format "ee/metabot-analytics/conversations/%s"
+                                           (str (random-uuid)))))))))
+
+(deftest ^:parallel get-conversation-detail-404-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations/:id 404s for unknown conversations"
+      (mt/user-http-request :crowberto :get 404
+                            (format "ee/metabot-analytics/conversations/%s"
+                                    (str (random-uuid)))))))
+
+(deftest get-conversation-detail-feedback-test
+  (mt/with-premium-features #{:audit-app}
+    (testing "GET /api/ee/metabot-analytics/conversations/:id surfaces user-submitted feedback on the :feedback key, ordered by submission time"
+      (let [conversation-id (str (random-uuid))
+            user-id         (mt/user->id :crowberto)
+            jan-1           (offset-date-time "2026-04-01T00:00:00Z")
+            jan-2           (offset-date-time "2026-04-02T00:00:00Z")
+            jan-3           (offset-date-time "2026-04-03T00:00:00Z")]
+        (try
+          (insert-conversation! {:conversation-id conversation-id
+                                 :user-id         user-id
+                                 :created-at      jan-1
+                                 :summary         "feedback conversation"})
+          (let [msg-1 (insert-message! {:conversation-id conversation-id :created-at jan-2
+                                        :role "assistant" :profile-id "gpt-5" :total-tokens 5
+                                        :data [{:type "text" :text "first answer"}]})
+                msg-2 (insert-message! {:conversation-id conversation-id :created-at jan-3
+                                        :role "assistant" :profile-id "gpt-5" :total-tokens 7
+                                        :data [{:type "text" :text "second answer"}]})]
+            (run! insert-feedback!
+                  [{:message-id msg-1 :positive true  :freeform "great" :created-at jan-2}
+                   {:message-id msg-2 :positive false :issue-type "not-factual"
+                    :freeform "wrong" :created-at jan-3}])
+            (let [feedback (:feedback (mt/user-http-request :crowberto :get 200
+                                                            (format "ee/metabot-analytics/conversations/%s"
+                                                                    conversation-id)))]
+              (is (= 2 (count feedback)))
+              (is (= [true false] (map :positive feedback)))
+              (is (= [msg-1 msg-2] (map :message_id feedback)))
+              (is (= "not-factual" (:issue_type (second feedback))))
+              (is (every? (comp string? :external_id) feedback)
+                  "each feedback row carries the parent metabot_message.external_id so the admin UI can link to it")
+              (is (every? #(not (contains? % :user)) feedback)
+                  "feedback rows do not hydrate a per-row user — the submitter is always the conversation owner")))
+          (finally
+            (delete-conversations! [conversation-id])))))))
 
 (deftest ip-address-test
   (with-ip-address-fixture!

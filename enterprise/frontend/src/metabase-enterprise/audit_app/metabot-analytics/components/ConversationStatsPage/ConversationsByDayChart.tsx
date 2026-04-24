@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useMemo } from "react";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
@@ -11,6 +12,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { VIEW_CONVERSATIONS } from "../../constants";
 import { useAuditTable } from "../../hooks/useAuditTable";
 
+import S from "./ChartCard.module.css";
 import {
   type UsageStatsMetric,
   applyDateFilter,
@@ -24,6 +26,7 @@ import {
 type Props = {
   dateFilter: DateFilterValue;
   metric: UsageStatsMetric;
+  viewName?: string;
   onDimensionClick?: (value: unknown) => void;
 };
 
@@ -34,9 +37,10 @@ const CLICKABLE_MODE: ClickActionsMode = {
 export function ConversationsByDayChart({
   dateFilter,
   metric,
+  viewName = VIEW_CONVERSATIONS,
   onDimensionClick,
 }: Props) {
-  const { provider, table } = useAuditTable(VIEW_CONVERSATIONS);
+  const { provider, table } = useAuditTable(viewName);
 
   const bucketName = isSingleDayFilter(dateFilter) ? "hour" : "day";
 
@@ -76,17 +80,26 @@ export function ConversationsByDayChart({
     if (!data?.data || !jsQuery) {
       return null;
     }
+    const cols = data.data.cols as Array<{ source?: string; name?: string }>;
+    const aggregationColumnNames = cols
+      .filter((c) => c.source === "aggregation")
+      .map((c) => c.name ?? "");
+    const isMultiSeriesTokens =
+      metric === "tokens" && aggregationColumnNames.length === 2;
     return [
       {
         card: createMockCard({
           dataset_query: jsQuery as any,
-          display: "area",
+          display: isMultiSeriesTokens ? "line" : "area",
           visualization_settings: {
             "graph.x_axis.scale": "timeseries",
             "graph.x_axis.title_text": "",
             "graph.y_axis.title_text": "",
             "line.interpolate": "cardinal",
-            ...getMetricSeriesSettings(metric),
+            "line.marker_enabled": false,
+            ...getMetricSeriesSettings(metric, aggregationColumnNames, {
+              dualAxis: true,
+            }),
           },
         }),
         data: data.data,
@@ -99,8 +112,18 @@ export function ConversationsByDayChart({
   }
 
   return (
-    <Card withBorder shadow="none" p="md" h={350}>
-      <Text fw="bold" mb="sm">
+    <Card
+      className={cx(S.visualization, {
+        [S.nonClickable]: !onDimensionClick,
+      })}
+      withBorder
+      shadow="none"
+      px="lg"
+      pt="md"
+      pb="0"
+      h={350}
+    >
+      <Text fw="bold" mb="md">
         {getChartTitle(metric, bucketName)}
       </Text>
       <Visualization

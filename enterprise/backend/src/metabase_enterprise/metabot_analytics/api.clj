@@ -17,6 +17,15 @@
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
+(def ^:private UserInfo
+  "Trimmed user shape surfaced on analytics responses — no PII beyond what the
+   admin UI already renders."
+  [:map
+   [:id         ms/PositiveInt]
+   [:email      :string]
+   [:first_name [:maybe :string]]
+   [:last_name  [:maybe :string]]])
+
 (def ^:private ConversationSummary
   "Schema for a conversation summary in list responses."
   [:map
@@ -28,11 +37,11 @@
    [:assistant_message_count ms/IntGreaterThanOrEqualToZero]
    [:total_tokens            ms/IntGreaterThanOrEqualToZero]
    [:last_message_at         [:maybe ms/TemporalInstant]]
-   [:model                   [:maybe :string]]
+   [:profile_id              [:maybe :string]]
    [:search_count            ms/IntGreaterThanOrEqualToZero]
    [:query_count             ms/IntGreaterThanOrEqualToZero]
    [:ip_address              [:maybe :string]]
-   [:user                    [:maybe :map]]])
+   [:user                    [:maybe UserInfo]]])
 
 (def ^:private SortColumn
   "Allow-list of columns the list endpoint can sort by."
@@ -63,22 +72,36 @@
    [:database_id [:maybe ms/PositiveInt]]
    [:tables      [:sequential :string]]])
 
+(def ^:private ConversationFeedback
+  "Schema for one user-submitted feedback row attached to a conversation. Keyed by `message_id`
+   (the metabot_message PK) since `metabot_feedback` is a 1:1 extension of `metabot_message`.
+   The submitter is the conversation owner (enforced at write), so no per-row user is returned."
+  [:map
+   [:message_id        ms/PositiveInt]
+   [:external_id       [:maybe :string]]
+   [:positive          :boolean]
+   [:issue_type        [:maybe :string]]
+   [:freeform_feedback [:maybe :string]]
+   [:created_at        ms/TemporalInstant]
+   [:updated_at        ms/TemporalInstant]])
+
 (def ^:private ConversationDetail
   "Schema for full conversation detail response."
   [:map
    [:conversation_id ms/UUIDString]
    [:created_at      ms/TemporalInstant]
    [:summary         [:maybe :string]]
-   [:user            [:maybe :map]]
+   [:user            [:maybe UserInfo]]
    [:message_count   ms/IntGreaterThanOrEqualToZero]
    [:total_tokens    ms/IntGreaterThanOrEqualToZero]
-   [:model           [:maybe :string]]
+   [:profile_id      [:maybe :string]]
    [:slack_permalink [:maybe :string]]
    [:chat_messages   [:sequential :map]]
    [:queries         [:sequential GeneratedQuery]]
    [:search_count    ms/IntGreaterThanOrEqualToZero]
    [:query_count     ms/IntGreaterThanOrEqualToZero]
-   [:ip_address      [:maybe :string]]])
+   [:ip_address      [:maybe :string]]
+   [:feedback        [:sequential ConversationFeedback]]])
 
 (def ^:private ListConversationsResponse
   "Response schema for `GET /conversations`."
