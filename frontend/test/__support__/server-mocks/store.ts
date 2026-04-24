@@ -1,7 +1,10 @@
 import fetchMock from "fetch-mock";
 import { match } from "ts-pattern";
 
-import { createMockCloudAddOns } from "metabase-types/api/mocks/add-ons";
+import {
+  createMockCloudAddOns,
+  mockAdvancedTransformsAddOn,
+} from "metabase-types/api/mocks/add-ons";
 import type { AddOnProductType } from "metabase-types/api/store";
 
 export function setupBillingEndpoints({
@@ -9,18 +12,12 @@ export function setupBillingEndpoints({
   hasBasicTransformsAddOn = true,
   hasAdvancedTransformsAddOn = true,
   skipCloudAddOns = false,
-  transformsBasicPrice = 100,
-  transformsAdvancedPrice = 250,
-  trialDays,
   previousAddOns = [],
 }: {
   billingPeriodMonths?: number;
   hasBasicTransformsAddOn?: boolean;
   hasAdvancedTransformsAddOn?: boolean;
   skipCloudAddOns?: boolean;
-  transformsBasicPrice?: number;
-  transformsAdvancedPrice?: number;
-  trialDays?: number;
   previousAddOns?: Array<{
     product_type: AddOnProductType;
     self_service: boolean;
@@ -38,7 +35,7 @@ export function setupBillingEndpoints({
             self_service: true,
             deployment: "hosting",
             billing_period_months: billingPeriodMonths,
-            default_base_fee: transformsBasicPrice,
+            default_base_fee: 0,
             default_included_units: 0,
             default_prepaid_units: 1,
             default_price_per_unit: 0.01,
@@ -55,24 +52,8 @@ export function setupBillingEndpoints({
     ...(hasAdvancedTransformsAddOn
       ? [
           {
-            id: 2,
-            name: "Transforms (advanced)",
-            short_name: "Transforms + Python",
-            description: null,
-            active: true,
-            self_service: true,
-            deployment: "cloud",
+            ...mockAdvancedTransformsAddOn,
             billing_period_months: billingPeriodMonths,
-            default_base_fee: transformsAdvancedPrice,
-            default_included_units: 0,
-            default_prepaid_units: 0,
-            default_price_per_unit: 0,
-            default_total_units: 0,
-            is_metered: false,
-            product_type: "transforms-advanced",
-            token_features: [],
-            trial_days: trialDays,
-            product_tiers: [],
           },
         ]
       : []),

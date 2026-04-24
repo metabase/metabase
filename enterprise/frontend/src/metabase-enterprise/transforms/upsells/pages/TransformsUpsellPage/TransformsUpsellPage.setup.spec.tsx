@@ -11,33 +11,22 @@ import {
   createMockSettingsState,
   createMockState,
 } from "metabase/redux/store/mocks";
-import {
-  createMockSettings,
-  createMockTokenFeatures,
-  createMockUser,
-} from "metabase-types/api/mocks";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
 
 import { TransformsUpsellPage } from "./TransformsUpsellPage";
 
 type SetupOpts = {
-  hasBasicTransforms?: boolean;
   hadTransforms?: boolean;
   isHosted: boolean;
   isStoreUser: boolean;
   isOnTrial?: boolean;
-  trialDays?: number;
 };
-
-export const transformsBasicPrice = 100;
-export const transformsAdvancedPrice = 250;
 
 export const setup = ({
   isHosted,
   isStoreUser,
-  hasBasicTransforms,
   hadTransforms = false,
   isOnTrial = false,
-  trialDays,
 }: SetupOpts) => {
   const currentUser = createMockUser({ is_superuser: isStoreUser });
   const settings = createMockSettings({
@@ -48,9 +37,6 @@ export const setup = ({
       "store-users": isStoreUser ? [{ email: currentUser.email }] : [],
       trial: isOnTrial,
     },
-    "token-features": createMockTokenFeatures({
-      "transforms-basic": !!hasBasicTransforms,
-    }),
   });
   const state = createMockState({
     settings: createMockSettingsState(settings),
@@ -58,9 +44,6 @@ export const setup = ({
   });
   setupBillingEndpoints({
     hasBasicTransformsAddOn: true,
-    transformsAdvancedPrice,
-    transformsBasicPrice,
-    trialDays,
     previousAddOns: hadTransforms
       ? [{ product_type: "transforms-basic-metered", self_service: true }]
       : [],
