@@ -21,8 +21,8 @@ import {
 } from "metabase/query_builder/actions";
 import { SIDEBAR_SIZES } from "metabase/query_builder/constants";
 import { MetricEditor } from "metabase/querying/metrics/components/MetricEditor";
+import { connect } from "metabase/redux";
 import { Flex } from "metabase/ui";
-import { connect } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 
 import { DatasetEditor } from "../../../DatasetEditor";

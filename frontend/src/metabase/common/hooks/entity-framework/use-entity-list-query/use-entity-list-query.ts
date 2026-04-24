@@ -1,8 +1,8 @@
 import type { Action } from "@reduxjs/toolkit";
 import { useDeepCompareEffect, usePrevious } from "react-use";
 
+import { useDispatch, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 
 export interface EntityFetchOptions {
   reload?: boolean;

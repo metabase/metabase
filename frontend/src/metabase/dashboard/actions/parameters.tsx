@@ -20,13 +20,13 @@ import {
   setParameterName as setParamName,
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
+import { createAction, createThunkAction } from "metabase/redux";
 import { selectTab, setParameterValues } from "metabase/redux/dashboard";
 import type { Dispatch, GetState } from "metabase/redux/store";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Text } from "metabase/ui";
 import { isQuestionDashCard } from "metabase/utils/dashboard";
-import { createAction, createThunkAction } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 
 import { tableApi } from "metabase/api";
-import { useDispatch, useSelector } from "metabase/utils/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { Table } from "metabase-types/api";
 
 const selectTableQueryMetadata =

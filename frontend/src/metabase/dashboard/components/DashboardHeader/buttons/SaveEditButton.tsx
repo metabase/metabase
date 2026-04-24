@@ -6,9 +6,9 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { getMissingRequiredParameters } from "metabase/dashboard/selectors";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { useDispatch, useSelector } from "metabase/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { Tooltip } from "metabase/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
 export const SaveEditButton = () => {

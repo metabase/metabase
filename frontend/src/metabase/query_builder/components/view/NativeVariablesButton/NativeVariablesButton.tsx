@@ -2,8 +2,8 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import { toggleTemplateTagsEditor } from "metabase/query_builder/actions";
+import { useDispatch } from "metabase/redux";
 import { Box, Icon, Tooltip } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 
 import NativeVariablesButtonS from "./NativeVariablesButton.module.css";
 

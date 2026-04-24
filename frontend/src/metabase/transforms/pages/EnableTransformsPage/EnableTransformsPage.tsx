@@ -5,6 +5,7 @@ import { getPlan } from "metabase/common/utils/plan";
 import { DataStudioBreadcrumbs } from "metabase/data-studio/common/components/DataStudioBreadcrumbs";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { PaneHeader } from "metabase/data-studio/common/components/PaneHeader";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
@@ -19,7 +20,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
+
 export const EnableTransformsPage = () => {
   const isAdmin = useSelector(getUserIsAdmin);
   const plan = useSelector((state) =>

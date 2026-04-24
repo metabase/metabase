@@ -9,7 +9,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import { useCollectionQuery } from "metabase/common/hooks";
 import { Collections } from "metabase/entities/collections";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import * as Urls from "metabase/utils/urls";
 import type { Collection, CollectionId } from "metabase-types/api";
 

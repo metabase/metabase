@@ -12,9 +12,9 @@ import {
   getSegmentQuery,
   getSegmentQueryDefinition,
 } from "metabase/querying/segments/utils";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Alert } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { DatasetQuery, Segment, TableId } from "metabase-types/api";

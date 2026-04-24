@@ -11,6 +11,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { t } from "ttag";
 
 import type { MetabotPromptInputRef } from "metabase/metabot";
+import { useSelector } from "metabase/redux";
 import {
   MetabotMentionExtension,
   MetabotMentionPluginKey,
@@ -21,7 +22,6 @@ import type { SuggestionModel } from "metabase/rich_text_editing/tiptap/extensio
 import { createBareSuggestionRenderer } from "metabase/rich_text_editing/tiptap/extensions/suggestionRenderer";
 import { getSetting } from "metabase/selectors/settings";
 import { getCspNonce } from "metabase/utils/csp";
-import { useSelector } from "metabase/utils/redux";
 import type { DatabaseId } from "metabase-types/api";
 
 import S from "./MetabotPromptInput.module.css";
