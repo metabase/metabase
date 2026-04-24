@@ -88,7 +88,7 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
   }
 
   const MetabotSubscriber =
-    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?._internal?.MetabotSubscriber;
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.MetabotSubscriber;
 
   return (
     <>

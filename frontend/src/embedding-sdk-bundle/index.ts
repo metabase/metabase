@@ -74,9 +74,7 @@ const sdkBundleExports: MetabaseEmbeddingSdkBundleExports = {
   useInitData,
   useLogVersionInfo,
   validateFunctionSchema,
-  _internal: {
-    MetabotSubscriber,
-  },
+  MetabotSubscriber,
 };
 
 // Define a global export METABASE_EMBEDDING_SDK_BUNDLE for SDK package

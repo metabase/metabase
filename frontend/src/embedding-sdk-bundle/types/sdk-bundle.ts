@@ -41,19 +41,9 @@ export type MetabaseEmbeddingSdkBundleExports = PublicExports &
   ReduxStoreSelectorsExports &
   InternalHooksExports &
   SchemaValidationUtils &
-  InternalBundleGlue;
+  InternalComponentExports;
 
-/**
- * Internal glue between the bundle and the package. Not part of the public
- * consumer API. Field names here are implementation details and may change.
- */
-type InternalBundleGlue = {
-  _internal: {
-    MetabotSubscriber: typeof MetabotSubscriber;
-  };
-};
-
-export type PublicExports = {
+type PublicExports = {
   CollectionBrowser: InternalComponent<typeof CollectionBrowser>;
   CreateDashboardModal: InternalComponent<typeof CreateDashboardModal>;
   CreateQuestion: InternalComponent<typeof CreateQuestion>;
@@ -67,30 +57,34 @@ export type PublicExports = {
   StaticQuestion: InternalComponent<typeof StaticQuestion>;
 };
 
-export type ReduxStoreExports = {
+type ReduxStoreExports = {
   getSdkStore: ReduxStoreFactory;
 };
 
-export type ReduxStoreUtilityFunctionExports = {
+type ReduxStoreUtilityFunctionExports = {
   createDashboard: ReduxStoreUtilityFunction<
     (params: CreateDashboardValues) => Promise<MetabaseDashboard>
   >;
 };
 
-export type ReduxStoreSelectorsExports = {
+type ReduxStoreSelectorsExports = {
   getApplicationName: ReduxStoreSelector<string>;
   getAvailableFonts: ReduxStoreSelector<string[]>;
   getLoginStatus: ReduxStoreSelector<LoginStatus>;
   getUser: ReduxStoreSelector<User | null>;
 };
 
-export type InternalHooksExports = {
+type InternalHooksExports = {
   useInitData: InternalHook;
   useLogVersionInfo: InternalHook;
 };
 
-export type SchemaValidationUtils = {
+type SchemaValidationUtils = {
   validateFunctionSchema: (
     schema: any,
   ) => FunctionSchemaValidationResult<unknown[], unknown>;
+};
+
+type InternalComponentExports = {
+  MetabotSubscriber: typeof MetabotSubscriber;
 };
