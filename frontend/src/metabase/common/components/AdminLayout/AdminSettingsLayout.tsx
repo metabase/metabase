@@ -14,14 +14,19 @@ export const AdminSettingsLayout = ({
   children,
   fullWidth = false,
   maw = "50rem",
+  shouldScrollToTopOnPathChange,
 }: {
   sidebar?: React.ReactNode;
   children?: React.ReactNode;
   fullWidth?: boolean;
   maw?: string;
+  shouldScrollToTopOnPathChange?: (
+    previousPathname: string | undefined,
+    nextPathname: string | undefined,
+  ) => boolean;
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
-  useScrollToTop(contentRef);
+  useScrollToTop(contentRef, shouldScrollToTopOnPathChange);
 
   return (
     <Box className={S.Wrapper}>
@@ -48,10 +53,29 @@ export const AdminSettingsLayout = ({
   );
 };
 
-const useScrollToTop = (contentRef: React.RefObject<HTMLDivElement | null>) => {
+const useScrollToTop = (
+  contentRef: React.RefObject<HTMLDivElement | null>,
+  shouldScrollToTopOnPathChange: (
+    previousPathname: string | undefined,
+    nextPathname: string | undefined,
+  ) => boolean = () => true,
+) => {
   const { location } = useRouter();
+  const previousPathnameRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    contentRef.current?.scrollTo(0, 0);
-  }, [location?.pathname, contentRef]);
+    const previousPathname = previousPathnameRef.current;
+    const nextPathname = location?.pathname;
+    const hasPathChanged = previousPathname !== nextPathname;
+
+    if (
+      previousPathname === undefined ||
+      (hasPathChanged &&
+        shouldScrollToTopOnPathChange(previousPathname, nextPathname))
+    ) {
+      contentRef.current?.scrollTo(0, 0);
+    }
+
+    previousPathnameRef.current = nextPathname;
+  }, [location?.pathname, contentRef, shouldScrollToTopOnPathChange]);
 };

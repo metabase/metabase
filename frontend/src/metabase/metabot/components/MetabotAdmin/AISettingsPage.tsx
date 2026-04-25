@@ -32,7 +32,6 @@ const METABOT_SECTION_ID = "metabot";
 const MCP_SECTION_ID = "mcp";
 const AGENT_API_SECTION_ID = "agent-api";
 const AI_FEATURES_ENABLED_SECTION_ID = "ai-features-enabled";
-
 const DEFAULT_METABOT_PATH = `/admin/metabot/${FIXED_METABOT_IDS.DEFAULT}`;
 const EMBEDDED_METABOT_PATH = `/admin/metabot/${FIXED_METABOT_IDS.EMBEDDED}`;
 
@@ -263,8 +262,5 @@ function getSelectedMetabotTab(
 }
 
 function getMetabotTabPath(tab: MetabotTabValue) {
-  const pathname =
-    tab === "embedded" ? EMBEDDED_METABOT_PATH : DEFAULT_METABOT_PATH;
-
-  return `${pathname}#${METABOT_SECTION_ID}`;
+  return tab === "embedded" ? EMBEDDED_METABOT_PATH : DEFAULT_METABOT_PATH;
 }
