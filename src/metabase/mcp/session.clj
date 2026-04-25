@@ -75,6 +75,14 @@
 
 ;;; -------------------------------------------------- Lifecycle --------------------------------------------------
 
+(declare delete-session-handles!)
+
+(def ^:dynamic *current-session-id*
+  "The MCP session ID for the current request. Bound by the tools/call handler so that
+   tool response-fns can look up session-scoped state (e.g. query handles) without the
+   session ID needing to flow through every layer of the call stack."
+  nil)
+
 (defn create!
   "Create a new MCP session. Returns a UUID string.
    No database row is written — the session is just an opaque correlator until
@@ -127,36 +135,76 @@
     (or (nil? owner) (= owner user-id))))
 
 (defn delete!
-  "Delete the `core_session` backing this MCP session, if one was ever created.
-   Scoped to `user-id` so that one user cannot delete another user's session."
+  "Delete the `core_session` backing this MCP session (if one was ever created)
+   and all associated query handles. Scoped to `user-id` so that one user cannot
+   delete another user's session."
   [session-id user-id]
   (let [key-hashed (session/hash-session-key (derive-embedding-session-key session-id))]
     (t2/query {:delete-from :core_session
                :where       [:and
                              [:= :key_hashed key-hashed]
-                             [:= :user_id user-id]]})))
+                             [:= :user_id user-id]]})
+    (delete-session-handles! session-id)))
 
-;;; -------------------------------------------- Pending Card Store -----------------------------------------------
-;; Prototype: in-memory store for drill-through cards, keyed by user-id.
-;; The frontend stores a base64-encoded query here before calling app.sendMessage,
-;; so the render_drill_through tool can retrieve it without the LLM needing to
-;; carry the base64 payload in the conversation context.
-;; Last write wins per user — acceptable for prototype purposes.
+;;; -------------------------------------------- Query Handle Store -----------------------------------------------
+;; DB-backed store for base64-encoded query payloads, keyed by an opaque handle ID.
+;; Replaces the in-memory atom that broke under load-balanced (multi-pod) deployments.
+;;
+;; Two ID schemes share the mcp_ui_query_handle table:
+;;   - Random UUID  — used by construct_query. Returned to the LLM as a short
+;;     capability token; the LLM passes it to visualize_query / execute_query.
+;;     Safe across concurrent tabs because UUID is unguessable by other sessions.
+;;   - "drill:{session_id}" — used by drill-through. Deterministic per session so
+;;     render_drill_through can look it up with no ID travelling through LLM context.
+;;     Upserted (last write wins) so a second drill in the same session overwrites
+;;     the first — correct behaviour since only one drill can be pending at a time.
 
-(defonce ^:private pending-card-store
-  (atom {}))
+(defn store-query-handle!
+  "Insert a base64-encoded query into mcp_ui_query_handle and return the new handle id
+   (a random UUID). Used by construct_query."
+  [session-id encoded-query]
+  (let [id (str (UUID/randomUUID))]
+    (t2/query {:insert-into :mcp_ui_query_handle
+               :values      [{:id            id
+                              :session_id    session-id
+                              :encoded_query encoded-query
+                              :created_at    :%now}]})
+    id))
 
-(defn store-pending-card!
-  "Store a base64-encoded query as the pending drill-through card for `user-id`."
-  [user-id encoded-query]
-  (swap! pending-card-store assoc user-id encoded-query))
+(defn- drill-handle-id [session-id] (str "drill:" session-id))
 
-(defn consume-pending-card!
-  "Retrieve and remove the pending drill-through card for `user-id`.
-   Returns nil if no pending card exists."
-  [user-id]
-  (let [result (volatile! nil)]
-    (swap! pending-card-store (fn [store]
-                                (vreset! result (get store user-id))
-                                (dissoc store user-id)))
-    @result))
+(defn store-drill-handle!
+  "Upsert the drill-through query payload for `session-id`. Last write wins."
+  [session-id encoded-query]
+  (let [id (drill-handle-id session-id)]
+    (t2/query {:insert-into :mcp_ui_query_handle
+               :values      [{:id            id
+                              :session_id    session-id
+                              :encoded_query encoded-query
+                              :created_at    :%now}]
+               :on-conflict [:id]
+               :do-update-set [:encoded_query :created_at]})))
+
+(defn consume-drill-handle!
+  "Retrieve and delete the drill-through query payload for `session-id`.
+   Returns nil if no pending drill exists."
+  [session-id]
+  (let [id  (drill-handle-id session-id)
+        row (t2/select-one :mcp_ui_query_handle :id id)]
+    (when row
+      (t2/delete! :mcp_ui_query_handle :id id)
+      (:encoded_query row))))
+
+(defn resolve-query-handle
+  "Return the encoded query for `handle-id`, or nil if not found.
+   Used by visualize_query and execute_query to resolve construct_query handles."
+  [handle-id]
+  (:encoded_query (t2/select-one :mcp_ui_query_handle :id handle-id)))
+
+(defn delete-session-handles!
+  "Delete all query handles belonging to `session-id`. Called on session teardown."
+  [session-id]
+  (t2/delete! :mcp_ui_query_handle :session_id session-id)
+  ;; Drill handles use "drill:{session_id}" as their id rather than session_id as a
+  ;; column value, so we also delete them by their computed id.
+  (t2/delete! :mcp_ui_query_handle :id (drill-handle-id session-id)))
