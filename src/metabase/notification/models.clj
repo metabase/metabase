@@ -134,10 +134,17 @@
 (t2/define-before-update :model/Notification
   [instance]
   (validate-notification instance)
-  (when-let [unallowed-key (some #{:payload_type :payload_id :creator_id} (keys (t2/changes instance)))]
-    (throw (ex-info (format "Update %s is not allowed." (name unallowed-key))
-                    {:status-code 400
-                     :changes     (t2/changes instance)})))
+  (let [changes (t2/changes instance)]
+    (when-let [unallowed-key (some #{:payload_type :payload_id} (keys changes))]
+      (throw (ex-info (format "Update %s is not allowed." (name unallowed-key))
+                      {:status-code 400
+                       :changes     changes})))
+    (when (and (contains? changes :creator_id)
+               (mi/current-user-id)
+               (not (mi/superuser?)))
+      (throw (ex-info "Update creator_id is not allowed."
+                      {:status-code 400
+                       :changes     changes}))))
   (when (contains? (t2/changes instance) :active)
     (let [subscriptions (t2/select :model/NotificationSubscription
                                    :notification_id (:id instance)
@@ -480,17 +487,21 @@
                (perms/current-user-has-application-permissions? :subscription)))))
 
 (defmethod mi/can-update? :model/Notification
-  [instance _changes]
-  (or
-   (mi/superuser?)
-   (and
-    (current-user-is-creator? instance)
-    ;; if advanced-permissions is enabled, we require users to have subscription permissions
-    ;; and is the owner of the notification and can read the payload
-    (or
-     (not (premium-features/has-feature? :advanced-permissions))
-     (perms/current-user-has-application-permissions? :subscription))
-    (current-user-can-read-payload? instance))))
+  [instance changes]
+  (and
+   (or (not (contains? changes :creator_id))
+       (= (:creator_id changes) (:creator_id instance))
+       (mi/superuser?))
+   (or
+    (mi/superuser?)
+    (and
+     (current-user-is-creator? instance)
+     ;; if advanced-permissions is enabled, we require users to have subscription permissions
+     ;; and is the owner of the notification and can read the payload
+     (or
+      (not (premium-features/has-feature? :advanced-permissions))
+      (perms/current-user-has-application-permissions? :subscription))
+     (current-user-can-read-payload? instance)))))
 
 ;; ------------------------------------------------------------------------------------------------;;
 ;;                                         Public APIs                                             ;;

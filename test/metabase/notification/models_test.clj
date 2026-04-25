@@ -61,14 +61,13 @@
            #"Update payload_id is not allowed."
            (t2/update! :model/Notification noti-id {:payload_id 1338})))))
 
-  (testing "can't change creator id"
+  (testing "can change creator id (used by the admin bulk change-owner endpoint)"
     (mt/with-temp [:model/Notification {noti-id :id} {:payload_type :notification/card
                                                       :payload_id   1337
                                                       :creator_id   (mt/user->id :crowberto)}]
-      (is (thrown-with-msg?
-           java.lang.Exception
-           #"Update creator_id is not allowed."
-           (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :rasta)}))))))
+      (t2/update! :model/Notification noti-id {:creator_id (mt/user->id :rasta)})
+      (is (= (mt/user->id :rasta)
+             (t2/select-one-fn :creator_id :model/Notification noti-id))))))
 
 (deftest delete-notification-clean-up-payload-test
   (testing "cleanup :model/NotificationCard on delete"

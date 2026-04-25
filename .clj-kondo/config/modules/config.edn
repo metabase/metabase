@@ -3049,6 +3049,19 @@
                     :model/PermissionsGroupMembership
                     :model/Transform}}
 
+  enterprise/notification-admin
+  {:team "Gadget"
+   :api  #{metabase-enterprise.notification-admin.api}
+   :uses #{api
+           app-db
+           models
+           notification
+           request
+           util}
+   :model-imports #{:model/Notification
+                    :model/NotificationHandler
+                    :model/NotificationRecipient}}
+
   enterprise/permission-debug
   {:team "UX West"
    :api  #{metabase-enterprise.permission-debug.api}

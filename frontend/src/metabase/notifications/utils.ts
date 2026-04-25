@@ -376,14 +376,18 @@ export const formatNotificationCheckSchedule = (
     case "hourly":
       return t`Check hourly`;
     case "daily": {
-      if (schedule_hour != null) {
+      if (typeof schedule_hour === "number" && Number.isFinite(schedule_hour)) {
         const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
         return t`Check daily at ${ampm}`;
       }
       break;
     }
     case "weekly": {
-      if (schedule_hour != null && schedule_day != null) {
+      if (
+        typeof schedule_hour === "number" &&
+        Number.isFinite(schedule_hour) &&
+        schedule_day != null
+      ) {
         const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
         const day = formatDateTimeWithUnit(
           schedule_day,
@@ -395,7 +399,11 @@ export const formatNotificationCheckSchedule = (
       break;
     }
     case "monthly": {
-      if (schedule_hour != null && schedule_frame != null) {
+      if (
+        typeof schedule_hour === "number" &&
+        Number.isFinite(schedule_hour) &&
+        schedule_frame != null
+      ) {
         const ampm = formatTimeWithUnit(schedule_hour, "hour-of-day", options);
         const day = schedule_day
           ? formatDateTimeWithUnit(schedule_day, "day-of-week", options)
