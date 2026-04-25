@@ -1,7 +1,7 @@
 {
   "base": {
     "name": "emb-1586-prototype-interactivity-improvements-for-mcp-apps",
-    "hash": "afcc8644d3920efc4584d4220614964500dfff89"
+    "hash": "fbc941a8eb8d7454c0c18207ccb07dc570f8c8d2"
   },
   "upstream": {
     "branch": "emb-1623-store-query-payload-in-sessions-instead-of-in-memory-atoms"
