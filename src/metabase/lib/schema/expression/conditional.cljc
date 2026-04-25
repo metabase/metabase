@@ -84,7 +84,7 @@
                                      [:pred-expr-pairs
                                       [:sequential {:min 1}
                                        [:tuple
-                                        {:error/message "Valid [pred expr] pair"}
+                                        {:error/message "Invalid [pred expr] pair"}
                                         #_pred [:ref ::expression/boolean]
                                         #_expr [:ref ::expression/expression]]]]
                                      [:default [:? [:schema [:ref ::expression/expression]]]])])
