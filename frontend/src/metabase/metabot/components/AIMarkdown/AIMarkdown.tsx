@@ -1,7 +1,7 @@
 // TODO: consolidate this component w/ AIAnalysisContent
 
 import cx from "classnames";
-import { memo, useMemo } from "react";
+import { type ComponentPropsWithoutRef, memo, useMemo } from "react";
 
 import {
   Markdown,
@@ -15,6 +15,7 @@ import { MarkdownSmartLink } from "./components/MarkdownSmartLink";
 
 type AIMarkdownProps = MarkdownProps & {
   onInternalLinkClick?: (link: string) => void;
+  singleNewlinesAreParagraphs?: boolean;
 };
 
 const splitMessageLinesAsParagraphs = (message: string) =>
@@ -60,18 +61,34 @@ const getComponents = ({
       </a>
     );
   },
+  table: ({ children, ...props }: ComponentPropsWithoutRef<"table">) => (
+    <div className={S.tableWrapper}>
+      <div className={S.tableContainer}>
+        <table {...props}>{children}</table>
+      </div>
+    </div>
+  ),
 });
 
 export const AIMarkdown = memo(
-  ({ className, onInternalLinkClick, children, ...props }: AIMarkdownProps) => {
+  ({
+    className,
+    onInternalLinkClick,
+    children,
+    singleNewlinesAreParagraphs = false,
+    ...props
+  }: AIMarkdownProps) => {
     const components = useMemo(
       () => getComponents({ onInternalLinkClick }),
       [onInternalLinkClick],
     );
 
     const normalizedChildren = useMemo(
-      () => splitMessageLinesAsParagraphs(children),
-      [children],
+      () =>
+        singleNewlinesAreParagraphs
+          ? splitMessageLinesAsParagraphs(children)
+          : children,
+      [children, singleNewlinesAreParagraphs],
     );
 
     return (

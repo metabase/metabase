@@ -7,6 +7,7 @@ import { BRANCH_KEY, REMOTE_SYNC_KEY, TYPE_KEY } from "../constants";
 export interface GitSyncVisibleState {
   isVisible: boolean;
   currentBranch: string | null | undefined;
+  isBranchSetByEnv: boolean;
 }
 
 /**
@@ -16,7 +17,8 @@ export interface GitSyncVisibleState {
 export const useGitSyncVisible = (): GitSyncVisibleState => {
   const isAdmin = useSelector(getUserIsAdmin);
   const { value: isRemoteSyncEnabled } = useAdminSetting(REMOTE_SYNC_KEY);
-  const { value: currentBranch } = useAdminSetting(BRANCH_KEY);
+  const { value: currentBranch, settingDetails: branchDetails } =
+    useAdminSetting(BRANCH_KEY);
   const { value: syncType } = useAdminSetting(TYPE_KEY);
 
   const isVisible = !!(
@@ -26,5 +28,9 @@ export const useGitSyncVisible = (): GitSyncVisibleState => {
     syncType === "read-write"
   );
 
-  return { isVisible, currentBranch };
+  return {
+    isVisible,
+    currentBranch,
+    isBranchSetByEnv: !!branchDetails?.is_env_setting,
+  };
 };

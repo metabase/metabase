@@ -109,7 +109,7 @@
   "Check to make sure we're not trying to change the abstractness of an already registered driver"
   [driver new-abstract?]
   (when (registered? driver)
-    (let [old-abstract? (boolean (abstract? driver))
+    (let [old-abstract? (abstract? driver)
           new-abstract? (boolean new-abstract?)]
       (when (not= old-abstract? new-abstract?)
         (throw (Exception. (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."

@@ -628,7 +628,7 @@
                   (is (= "Organic"
                          people-source)))
                 (testing "state != OR"
-                  (is (not= people-state "OR")))))
+                  (is (not= "OR" people-state)))))
             (testing "Should contain row with 'Emilie Goyette'"
               (is (some (fn [[_orders-id _orders-created-at _people-state people-name _people-source :as _row]]
                           (= people-name "Emilie Goyette"))
