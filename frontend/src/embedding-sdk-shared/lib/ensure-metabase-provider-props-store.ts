@@ -30,7 +30,6 @@ export type MetabaseProviderPropsStoreInternalProps = {
 export type MetabaseProviderPropsStore = {
   getState(): MetabaseProviderPropsStoreState;
   subscribe(listener: () => void): () => void;
-  initialize(initialProps: MetabaseProviderPropsStoreExternalProps): void;
   updateInternalProps(
     internalProps: Partial<MetabaseProviderPropsStoreInternalProps>,
   ): void;
@@ -76,15 +75,6 @@ export function ensureMetabaseProviderPropsStore(): MetabaseProviderPropsStore {
       listeners.add(listener);
 
       return () => listeners.delete(listener);
-    },
-    initialize(initialProps) {
-      state = {
-        ...state,
-        props: {
-          ...getDefaultProps(),
-          ...initialProps,
-        },
-      } as MetabaseProviderPropsStoreState;
     },
     updateInternalProps(internalProps) {
       state = {

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 
 import { act, screen, waitFor } from "__support__/ui";
+import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { metabotActions } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
 import {
@@ -41,6 +42,17 @@ jest.mock("embedding-sdk-bundle/components/public/InteractiveQuestion", () => {
 });
 
 describe("useMetabot", () => {
+  beforeEach(() => {
+    ensureMetabaseProviderPropsStore().cleanup();
+    const seededStore = ensureMetabaseProviderPropsStore();
+    seededStore.setProps({
+      authConfig: {
+        metabaseInstanceUrl: "http://localhost:3000",
+        jwtProviderUri: "http://localhost:3000/sso",
+      },
+    });
+  });
+
   describe("CurrentChart", () => {
     const TestCurrentChart = ({ drills }: { drills?: true }) => {
       const { CurrentChart } = useMetabot();

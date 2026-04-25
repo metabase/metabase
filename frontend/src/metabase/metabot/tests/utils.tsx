@@ -14,8 +14,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import type { SdkStore } from "embedding-sdk-bundle/store/types";
-import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import {
   type MockStreamedEndpointParams,
   createMockReadableStream,
@@ -191,18 +189,6 @@ export function setup(
   );
   setupDatabaseListEndpoint([]);
 
-  // useMetabot reads authConfig + reduxStore from the global
-  // MetabaseProviderPropsStore. Seed it here since this test setup
-  // renders MetabotProvider without a MetabaseProvider wrapper.
-  ensureMetabaseProviderPropsStore().cleanup();
-  const seededStore = ensureMetabaseProviderPropsStore();
-  seededStore.initialize({
-    authConfig: {
-      metabaseInstanceUrl: "http://localhost:3000",
-      jwtProviderUri: "http://localhost:3000/sso",
-    },
-  });
-
   const { store, rerender } = renderWithProviders(
     <MetabotProvider>{ui}</MetabotProvider>,
     {
@@ -221,9 +207,6 @@ export function setup(
       },
     },
   );
-
-  // reduxStore only available post-render; inject it now.
-  seededStore.updateInternalProps({ reduxStore: store as unknown as SdkStore });
 
   return {
     rerender,
