@@ -1,0 +1,49 @@
+## Create mcp_ui_query_handle table.
+## Stores base64-encoded query payloads for MCP UI sessions, replacing the
+## in-memory atom that broke under load-balanced deployments.
+## Two ID schemes coexist in this table:
+##   - Random UUID: used by construct_query; the UUID is returned to the LLM
+##     as a capability token (not guessable by other sessions).
+##   - "drill:{session_id}": used by drill-through; deterministic per session,
+##     never surfaced to the LLM.
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v61.2026-04-24T00:00:00
+      author: phoomparin
+      comment: Create mcp_ui_query_handle table for db-backed query payload storage
+      changes:
+        - createTable:
+            tableName: mcp_ui_query_handle
+            columns:
+              - column:
+                  name: id
+                  type: varchar(255)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: session_id
+                  type: varchar(255)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: encoded_query
+                  type: ${text.type}
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: ${timestamp_type}
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: mcp_ui_query_handle
+            indexName: idx_mcp_ui_query_handle_session_id
+            columns:
+              - column:
+                  name: session_id
+      rollback:
+        - dropTable:
+            tableName: mcp_ui_query_handle
