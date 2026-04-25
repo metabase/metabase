@@ -394,6 +394,19 @@
          (sync/update-field-values-for-table! table))))
     {:status :success}))
 
+(api.macros/defendpoint :post "/:id/refingerprint"
+  :- [:map {:closed true}
+      [:status [:= :success]]]
+  "Manually trigger an update of the fingerprints for the Fields belonging to this Table."
+  [{:keys [id]} :- [:map
+                    [:id ms/PositiveInt]]]
+  (let [table (api/write-check (t2/select-one :model/Table :id id))]
+    (request/as-admin
+      (quick-task/submit-task!
+       (fn []
+         (sync/refingerprint-table! table))))
+    {:status :success}))
+
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

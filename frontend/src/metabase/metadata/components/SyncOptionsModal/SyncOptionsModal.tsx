@@ -4,6 +4,7 @@ import { Modal, Stack, Text, rem } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 
 import { DiscardTableFieldValuesButton } from "../DiscardTableFieldValuesButton";
+import { RefingerprintTableButton } from "../RefingerprintTableButton";
 import { RescanTableFieldsButton } from "../RescanTableFieldsButton";
 import { SyncTableSchemaButton } from "../SyncTableSchemaButton";
 
@@ -51,6 +52,8 @@ export const SyncOptionsModal = ({
           </Stack>
 
           <RescanTableFieldsButton tableId={tableId} />
+
+          <RefingerprintTableButton tableId={tableId} />
 
           <DiscardTableFieldValuesButton tableId={tableId} />
         </Stack>
