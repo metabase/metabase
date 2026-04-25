@@ -557,6 +557,7 @@ describe("scenarios > visualizations > line chart", () => {
           cy.findAllByTestId("drag-handle").first().as("dragElement");
           H.moveDnDKitElementByAlias("@dragElement", {
             vertical: 50,
+            useMouseEvents: true,
           });
         });
 
@@ -739,90 +740,107 @@ describe("scenarios > visualizations > line chart", () => {
     });
   });
 
-  it("should split series into panels and render each series in its own panel", () => {
-    H.visitQuestionAdhoc({
-      dataset_query: {
-        type: "query",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            ["sum", ["field", ORDERS.TOTAL, null]],
-            ["avg", ["field", ORDERS.QUANTITY, null]],
-          ],
-          breakout: [
-            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ],
+  describe("with tracking", () => {
+    beforeEach(() => {
+      cy.signInAsAdmin();
+      H.resetSnowplow();
+      H.enableTracking();
+    });
+
+    afterEach(() => {
+      H.expectNoBadSnowplowEvents();
+    });
+
+    it("should split series into panels and render each series in its own panel", () => {
+      H.visitQuestionAdhoc({
+        dataset_query: {
+          type: "query",
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["sum", ["field", ORDERS.TOTAL, null]],
+              ["avg", ["field", ORDERS.QUANTITY, null]],
+            ],
+            breakout: [
+              ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          database: SAMPLE_DB_ID,
         },
-        database: SAMPLE_DB_ID,
-      },
-      display: "line",
-    });
-
-    cy.findAllByTestId("legend-item").should("have.length", 2);
-
-    H.openVizSettingsSidebar();
-    H.leftSidebar().within(() => {
-      cy.findByText("Display").click();
-      cy.findByText("Stack series").click();
-    });
-
-    H.echartsContainer().within(() => {
-      cy.findByText("60,000").should("be.visible");
-      cy.findByText("8").should("be.visible");
-    });
-
-    H.splitPanelAxisLines().should("have.length", 2);
-
-    H.cartesianChartCircleWithColor("#88BF4D");
-    H.cartesianChartCircleWithColor("#A989C5");
-
-    // Change series color while split panels are active
-    H.leftSidebar().findByText("Data").click();
-    H.openSeriesSettings("Sum of Total");
-
-    H.popover().within(() => {
-      cy.findByTestId("color-selector-button").button().click();
-    });
-
-    H.popover()
-      .should("have.length", 2)
-      .last()
-      .within(() => {
-        cy.findByLabelText("#EF8C8C").realClick();
+        display: "line",
       });
 
-    H.popover().within(() => {
-      cy.icon("bar").click();
+      cy.findAllByTestId("legend-item").should("have.length", 2);
+
+      H.openVizSettingsSidebar();
+      H.leftSidebar().within(() => {
+        cy.findByText("Display").click();
+        cy.findByText("Stack series").click();
+      });
+
+      H.expectUnstructuredSnowplowEvent({
+        event: "stack_series_enabled",
+        triggered_from: "viz_settings",
+      });
+
+      H.echartsContainer().within(() => {
+        cy.findByText("60,000").should("be.visible");
+        cy.findByText("8").should("be.visible");
+      });
+
+      H.splitPanelAxisLines().should("have.length", 2);
+
+      H.cartesianChartCircleWithColor("#88BF4D");
+      H.cartesianChartCircleWithColor("#A989C5");
+
+      // Change series color while split panels are active
+      H.leftSidebar().findByText("Data").click();
+      H.openSeriesSettings("Sum of Total");
+
+      H.popover().within(() => {
+        cy.findByTestId("color-selector-button").button().click();
+      });
+
+      H.popover()
+        .should("have.length", 2)
+        .last()
+        .within(() => {
+          cy.findByLabelText("#EF8C8C").realClick();
+        });
+
+      H.popover().within(() => {
+        cy.icon("bar").click();
+      });
+
+      H.popover().within(() => {
+        cy.findByText("Formatting").click();
+        cy.findByPlaceholderText("$").type("$").blur();
+      });
+
+      H.leftSidebar().within(() => {
+        cy.button("Done").click();
+      });
+
+      H.echartsContainer().findByText("$60,000").should("be.visible");
+
+      // Tooltip
+      H.cartesianChartCircle().first().trigger("mousemove");
+      H.assertEChartsTooltip({
+        rows: [
+          { name: "Sum of Total", value: "$52.76" },
+          { name: "Average of Quantity", value: "2" },
+        ],
+        blurAfter: true,
+      });
+
+      // Brush
+      cy.findByTestId("query-visualization-root")
+        .trigger("mousedown", 180, 200)
+        .trigger("mousemove", 180, 200)
+        .trigger("mouseup", 400, 200);
+
+      H.chartPathWithFillColor("#EF8C8C").should("be.visible");
+      H.cartesianChartCircleWithColor("#A989C5");
     });
-
-    H.popover().within(() => {
-      cy.findByText("Formatting").click();
-      cy.findByPlaceholderText("$").type("$").blur();
-    });
-
-    H.leftSidebar().within(() => {
-      cy.button("Done").click();
-    });
-
-    H.echartsContainer().findByText("$60,000").should("be.visible");
-
-    // Tooltip
-    H.cartesianChartCircle().first().trigger("mousemove");
-    H.assertEChartsTooltip({
-      rows: [
-        { name: "Sum of Total", value: "$52.76" },
-        { name: "Average of Quantity", value: "2" },
-      ],
-      blurAfter: true,
-    });
-
-    // Brush
-    cy.findByTestId("query-visualization-root")
-      .trigger("mousedown", 180, 200)
-      .trigger("mousemove", 180, 200)
-      .trigger("mouseup", 400, 200);
-
-    H.chartPathWithFillColor("#EF8C8C").should("be.visible");
-    H.cartesianChartCircleWithColor("#A989C5");
   });
 });

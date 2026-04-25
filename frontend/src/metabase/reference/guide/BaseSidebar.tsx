@@ -6,6 +6,7 @@ import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
 import S from "metabase/common/components/Sidebar.module.css";
 import { SidebarItem } from "metabase/common/components/SidebarItem";
 import CS from "metabase/css/core/index.css";
+import { modelIconMap } from "metabase/utils/icon";
 
 const BaseSidebar = () => (
   <div className={S.sidebar}>
@@ -21,7 +22,7 @@ const BaseSidebar = () => (
       <SidebarItem
         key="/reference/segments"
         href="/reference/segments"
-        icon="segment"
+        icon={modelIconMap.segment}
         name={t`Segments`}
       />
       <SidebarItem

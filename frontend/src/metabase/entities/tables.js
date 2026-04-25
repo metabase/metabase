@@ -19,19 +19,12 @@ import { Fields } from "metabase/entities/fields";
 import { Questions } from "metabase/entities/questions";
 import { Segments } from "metabase/entities/segments";
 import {
-  createEntity,
-  entityCompatibleQuery,
-  notify,
-} from "metabase/lib/entities";
-import {
   compose,
   createThunkAction,
   useDispatch,
   useSelector,
   withAction,
-  withCachedDataAndRequestState,
-  withNormalize,
-} from "metabase/lib/redux";
+} from "metabase/redux";
 import { TableSchema } from "metabase/schema";
 import {
   getMetadata,
@@ -44,6 +37,14 @@ import {
   getCollectionVirtualSchemaName,
   getQuestionVirtualTableId,
 } from "metabase-lib/v1/metadata/utils/saved-questions";
+
+import {
+  createEntity,
+  entityCompatibleQuery,
+  notify,
+  withCachedDataAndRequestState,
+  withNormalize,
+} from "./utils";
 
 // OBJECT ACTIONS
 export const TABLES_BULK_UPDATE = "metabase/entities/TABLES_BULK_UPDATE";
@@ -63,7 +64,7 @@ export const Tables = createEntity({
   path: "/api/table",
   schema: TableSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: (fetchType) => {
       if (fetchType === "fetchMetadata") {
         return {
@@ -88,7 +89,7 @@ export const Tables = createEntity({
       };
     },
     useListQuery,
-  },
+  }),
 
   api: {
     list: async ({ dbId, schemaName, ...params } = {}, dispatch) => {

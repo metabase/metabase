@@ -19,7 +19,7 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import CS from "metabase/css/core/index.css";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import type { IconName } from "metabase/ui";
 import {

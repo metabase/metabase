@@ -1,11 +1,13 @@
 import type { LocationDescriptorObject } from "history";
 import { replace } from "react-router-redux";
 
+import {
+  cardIsEquivalent,
+  deserializeCard,
+  parseHash,
+} from "metabase/common/utils/card";
 import { Questions } from "metabase/entities/questions";
 import { Snippets } from "metabase/entities/snippets";
-import { deserializeCard, parseHash } from "metabase/lib/card";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import {
   getIsEditingInDashboard,
   getNotebookNativePreviewSidebarWidth,
@@ -14,22 +16,23 @@ import { loadMetadataForCard } from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import { addFields } from "metabase/redux/metadata";
 import { INITIALIZE_QB, resetQB } from "metabase/redux/query-builder";
+import type {
+  Dispatch,
+  GetState,
+  QueryBuilderUIControls,
+} from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
 import { canUserCreateQueries, getUser } from "metabase/selectors/user";
+import { isNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { updateCardTemplateTagNames } from "metabase-lib/v1/queries/NativeQuery";
-import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import type { Card, SegmentId } from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 import { isSavedCard } from "metabase-types/guards";
-import type {
-  Dispatch,
-  GetState,
-  QueryBuilderUIControls,
-} from "metabase-types/store";
 
 import { getQueryBuilderModeFromLocation } from "../../typed-utils";
 import { cancelQuery, runQuestionQuery } from "../querying";

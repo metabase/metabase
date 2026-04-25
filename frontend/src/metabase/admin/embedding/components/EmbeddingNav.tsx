@@ -6,7 +6,7 @@ import {
   AdminNavWrapper,
 } from "metabase/admin/components/AdminNav";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import { Divider, Flex, Stack } from "metabase/ui";
 

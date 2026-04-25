@@ -5,8 +5,8 @@ import { t } from "ttag";
 import EmptyDashboardBot from "assets/img/dashboard-empty.svg?component";
 import { useGetSuggestedMetabotPromptsQuery } from "metabase/api";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
 import { MetabotResetLongChatButton } from "metabase/metabot/components/MetabotChat/MetabotResetLongChatButton";
+import { useSelector } from "metabase/redux";
 import { getIsHosted } from "metabase/setup/selectors";
 import {
   ActionIcon,

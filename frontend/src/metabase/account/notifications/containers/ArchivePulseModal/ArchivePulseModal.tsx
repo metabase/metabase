@@ -6,7 +6,7 @@ import {
   useUpdateSubscriptionMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 
 import { ArchiveNotificationModal } from "../../components/ArchiveModal";

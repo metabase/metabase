@@ -5,9 +5,9 @@ import { useGetMetricQuery } from "metabase/api/metric";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/redux";
 import { Center } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 import { MetricDimensionGrid } from "../../components/MetricDimensionGrid";
 import { MetricPageShell } from "../../components/MetricPageShell";

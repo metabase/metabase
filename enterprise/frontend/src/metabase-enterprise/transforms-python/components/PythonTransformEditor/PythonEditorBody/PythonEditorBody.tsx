@@ -5,10 +5,10 @@ import { useWindowSize } from "react-use";
 import { t } from "ttag";
 
 import { clickableTokens } from "metabase/common/components/CodeMirror";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { RunButtonWithTooltip } from "metabase/querying/components/QueryVisualization/RunButtonWithTooltip";
+import { useDispatch } from "metabase/redux";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 import { SHARED_LIB_IMPORT_PATH } from "../../../constants";
 import { PythonEditor } from "../../PythonEditor";
@@ -178,7 +178,6 @@ function useInitialEditorHeight(
   }
 
   if (!showResizeHandle) {
-    // No preview panel (e.g. workspace) – height is not used; container uses 100%
     return availableHeight;
   }
 

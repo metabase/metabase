@@ -9,12 +9,12 @@ import {
   useUpdateTransformMutation,
 } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { isResourceNotFoundError } from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { useMetadataToasts } from "metabase/metadata/hooks";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { Anchor, Box, Card, Divider, Group, Stack } from "metabase/ui";
+import { isResourceNotFoundError } from "metabase/utils/errors";
+import * as Urls from "metabase/utils/urls";
 import type { Transform, TransformTagId } from "metabase-types/api";
 
 import {

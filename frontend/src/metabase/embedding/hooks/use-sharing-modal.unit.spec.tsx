@@ -13,7 +13,7 @@ import { useSharingModal } from "./use-sharing-modal";
 const mockDispatch = jest.fn();
 const mockOpenEmbedJsWizard = jest.fn();
 
-jest.mock("metabase/lib/redux", () => ({
+jest.mock("metabase/redux", () => ({
   useDispatch: () => mockDispatch,
 }));
 

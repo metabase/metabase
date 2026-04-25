@@ -4,8 +4,8 @@ import {
 } from "metabase/api";
 import { getParameters } from "metabase/dashboard/selectors";
 import { STATIC_LEGACY_EMBEDDING_TYPE } from "metabase/embedding/constants";
-import { useSelector } from "metabase/lib/redux";
 import { EmbedModal } from "metabase/public/components/EmbedModal";
+import { useSelector } from "metabase/redux";
 import type { Dashboard } from "metabase-types/api";
 
 export type DashboardSharingEmbeddingModalProps = {

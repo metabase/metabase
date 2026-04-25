@@ -116,8 +116,8 @@ export function BucketPickerPopover({
         </Button>
       </Popover.Target>
       <Popover.Dropdown
-        // Prevent touch events from bubbling to the parent dropdown,
-        // which causes it to scroll/select items on mobile (metabase#EMB-1471)
+        // Prevent scroll from leaking to the parent on touch devices
+        style={{ overscrollBehavior: "contain", touchAction: "pan-y" }}
         onTouchStart={(e: TouchEvent) => e.stopPropagation()}
         onTouchMove={(e: TouchEvent) => e.stopPropagation()}
       >

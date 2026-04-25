@@ -1,12 +1,9 @@
 import { t } from "ttag";
 
 import { timelineEventApi, useGetTimelineEventQuery } from "metabase/api";
-import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/lib/entities";
 import { TimelineEventSchema } from "metabase/schema";
+
+import { createEntity, entityCompatibleQuery, undo } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -17,11 +14,11 @@ export const TimelineEvents = createEntity({
   path: "/api/timeline-event",
   schema: TimelineEventSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
-  },
+  }),
 
   api: {
     list: () => {

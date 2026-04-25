@@ -5,7 +5,7 @@ import { navigateToCardFromDocument } from "metabase/documents/actions";
 import { updateVizSettings } from "metabase/documents/documents.slice";
 import type { UseCardDataResult } from "metabase/documents/hooks/use-card-data";
 import { useDraftCardOperations } from "metabase/documents/hooks/use-draft-card-operations";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import { getUrl } from "metabase-lib/v1/urls";

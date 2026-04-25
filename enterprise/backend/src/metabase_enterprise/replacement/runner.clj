@@ -1,6 +1,7 @@
 (ns metabase-enterprise.replacement.runner
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase-enterprise.replacement.field-refs :as replacement.field-refs]
    [metabase-enterprise.replacement.protocols :as replacement.protocols]
    [metabase-enterprise.replacement.source-swap :as replacement.source-swap]
@@ -10,8 +11,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.source-swap.util :as source-swap.util]
    [metabase.transforms.core :as transforms]
+   [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -165,6 +169,26 @@
      (run-swap* {:all-transitive-dependents all-transitive}
                 old-source new-source progress))))
 
+(def ^:private metadata-override-keys
+  "Field columns that correspond to user-editable model metadata overrides.
+   These are in snake_case matching both result_metadata storage and Field columns."
+  [:description :display_name :semantic_type :fk_target_field_id :settings :visibility_type])
+
+(defn- copy-model-metadata-overrides!
+  "Copy user-edited metadata from a model's result_metadata onto the Fields of the
+   output table. Writes to both Field and FieldUserSettings so overrides survive sync."
+  [card-id table-id]
+  (let [card            (t2/select-one :model/Card :id card-id)
+        result-metadata (:result_metadata card)
+        fields          (t2/select :model/Field :table_id table-id :active true)
+        field-by-name   (m/index-by :name fields)]
+    (doseq [col-meta result-metadata
+            :let [field     (field-by-name (source-swap.util/column-match-key col-meta))
+                  overrides (u/select-keys-when col-meta :non-nil metadata-override-keys)]
+            :when (and field (seq overrides))]
+      (t2/update! :model/Field (:id field) overrides)
+      (field-user-settings/upsert-user-settings field overrides))))
+
 (defn run-swap-model-with-transform!
   "Execute a transform, find the output table, then swap all dependents of the card
    to point at the new table. Finally un-persist and convert the card to a saved question.
@@ -181,10 +205,11 @@
      (transforms/execute! transform (cond-> {:run-method :manual}
                                       user-id (assoc :user-id user-id)))
 
-     ;; phase 2: find the output table and swap sources
+     ;; phase 2: find the output table, copy metadata overrides, and swap sources
      (let [table (or (transforms/output-table transform)
                      (throw (ex-info "Output table not found after transform execution"
                                      {:transform-id (:id transform)})))]
+       (copy-model-metadata-overrides! card-id (:id table))
        (run-swap-source! [:card card-id] [:table (:id table)] progress))
 
      ;; phase 3: unpersist the model if it was persisted

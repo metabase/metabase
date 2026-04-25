@@ -1,6 +1,6 @@
 import getInitialCollectionId from "metabase/entities/collections/getInitialCollectionId";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import type { CollectionId } from "metabase-types/api";
 
 export const useOSSGetDefaultCollectionId = (

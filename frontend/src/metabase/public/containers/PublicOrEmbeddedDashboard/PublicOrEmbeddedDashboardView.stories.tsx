@@ -11,12 +11,17 @@ import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { Api } from "metabase/api";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import {
   MockDashboardContext,
   type MockDashboardContextProps,
 } from "metabase/public/containers/PublicOrEmbeddedDashboard/mock-context";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { Box, Card, Popover, Text, Tooltip } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
@@ -38,11 +43,6 @@ import {
   createMockDatasetData,
   createMockParameter,
 } from "metabase-types/api/mocks";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 

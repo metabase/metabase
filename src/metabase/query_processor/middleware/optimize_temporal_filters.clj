@@ -44,7 +44,7 @@
   "Can `temporal-value` clause can be optimized?"
   [temporal-value]
   (lib.util.match/match-lite temporal-value
-    [:relative-datetime _opts (_n :guard #{0 :current})]
+    [:relative-datetime _opts #{0 :current}]
     true
 
     [(_tag :guard #{:absolute-datetime :relative-datetime}) _opts _n _unit]
@@ -57,10 +57,10 @@
   the filter clause they're in?"
   [field temporal-value]
   (lib.util.match/match-lite temporal-value
-    [:relative-datetime _opts (_n :guard #{0 :current})]
+    [:relative-datetime _opts #{0 :current}]
     true
 
-    [(_tag :guard #{:absolute-datetime :relative-datetime}) _opts _n _unit]
+    [#{:absolute-datetime :relative-datetime} _opts _n _unit]
     (let [field-unit (or (lib/raw-temporal-bucket field) :default)
           value-unit (or (lib/raw-temporal-bucket &match) :default)]
       (cond
@@ -115,7 +115,8 @@
      _opts
      [(_offset :guard #{:+ :-})
       _plus_minus_opts
-      (field :guard (and (vector? field) (#{:field :expression} (first field)) (optimizable-expr? field)))
+      (:and [#{:field :expression} & _]
+            (field :guard optimizable-expr?))
       [:interval _interval_opts _n _unit]]
      (temporal-value-1 :guard optimizable-temporal-value?)
      (temporal-value-2 :guard optimizable-temporal-value?)]
@@ -124,7 +125,8 @@
 
     [:between
      _opts
-     (field :guard (and (vector? field) (#{:field :expression} (first field)) (optimizable-expr? field)))
+     (:and [#{:field :expression} & _]
+           (field :guard optimizable-expr?))
      (temporal-value-1 :guard optimizable-temporal-value?)
      (temporal-value-2 :guard optimizable-temporal-value?)]
     (and (field-and-temporal-value-have-compatible-units? field temporal-value-1)

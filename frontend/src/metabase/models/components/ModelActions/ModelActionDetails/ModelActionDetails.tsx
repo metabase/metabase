@@ -7,9 +7,10 @@ import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { Actions } from "metabase/entities/actions";
 import { Databases } from "metabase/entities/databases";
-import { connect } from "metabase/lib/redux";
-import { parseTimestamp } from "metabase/lib/time-dayjs";
-import * as Urls from "metabase/lib/urls";
+import { connect } from "metabase/redux";
+import type { Dispatch, State } from "metabase/redux/store";
+import { parseTimestamp } from "metabase/utils/time-dayjs";
+import * as Urls from "metabase/utils/urls";
 import type Question from "metabase-lib/v1/Question";
 import {
   canArchiveAction,
@@ -18,7 +19,6 @@ import {
 } from "metabase-lib/v1/actions/utils";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Card, WritebackAction } from "metabase-types/api";
-import type { Dispatch, State } from "metabase-types/store";
 
 import {
   EmptyStateActionContainer,

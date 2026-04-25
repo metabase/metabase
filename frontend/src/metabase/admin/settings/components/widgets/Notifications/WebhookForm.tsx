@@ -13,8 +13,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { getResponseErrorMessage } from "metabase/lib/errors";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import {
   Alert,
@@ -28,6 +27,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { getResponseErrorMessage } from "metabase/utils/errors";
 import {
   type NotificationAuthMethods,
   type NotificationAuthType,

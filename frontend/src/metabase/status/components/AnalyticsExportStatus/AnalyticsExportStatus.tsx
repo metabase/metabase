@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   clearExport,
   getAnalyticsExport,

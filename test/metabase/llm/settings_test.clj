@@ -10,9 +10,10 @@
 
 (deftest llm-anthropic-api-key-setter-test
   (testing "accepts valid sk-ant- key and trims whitespace"
-    (mt/discard-setting-changes [llm-anthropic-api-key]
-      (llm.settings/llm-anthropic-api-key! "  sk-ant-abc123  ")
-      (is (= "sk-ant-abc123" (llm.settings/llm-anthropic-api-key)))))
+    (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
+      (mt/discard-setting-changes [llm-anthropic-api-key]
+        (llm.settings/llm-anthropic-api-key! "  sk-ant-abc123  ")
+        (is (= "sk-ant-abc123" (llm.settings/llm-anthropic-api-key))))))
 
   (testing "rejects keys without sk-ant- prefix"
     (is (thrown-with-msg?
@@ -21,21 +22,72 @@
          (llm.settings/llm-anthropic-api-key! "invalid-key"))))
 
   (testing "empty/nil clears the setting"
-    (mt/discard-setting-changes [llm-anthropic-api-key]
-      (llm.settings/llm-anthropic-api-key! "sk-ant-abc123")
-      (llm.settings/llm-anthropic-api-key! "")
-      (is (nil? (llm.settings/llm-anthropic-api-key))))))
+    (mt/with-temp-env-var-value! [mb-llm-anthropic-api-key nil]
+      (mt/discard-setting-changes [llm-anthropic-api-key]
+        (llm.settings/llm-anthropic-api-key! "sk-ant-abc123")
+        (llm.settings/llm-anthropic-api-key! "")
+        (is (nil? (llm.settings/llm-anthropic-api-key)))))))
 
 ;;; ------------------------------------------- llm-anthropic-api-key-configured? Tests -------------------------------------------
 
 (deftest llm-anthropic-api-key-configured?-test
   (testing "returns false when no API key is set"
-    (mt/with-temporary-setting-values [llm-anthropic-api-key nil]
+    (with-redefs [llm.settings/llm-anthropic-api-key (constantly nil)]
       (is (false? (llm.settings/llm-anthropic-api-key-configured?)))))
 
   (testing "returns true when API key is set"
     (mt/with-temporary-setting-values [llm-anthropic-api-key "sk-ant-test"]
       (is (true? (llm.settings/llm-anthropic-api-key-configured?))))))
+
+;;; ------------------------------------------- llm-proxy-base-url Feature Guard Tests -------------------------------------------
+
+(deftest llm-proxy-base-url-feature-guard-test
+  (testing "can be set and read when :metabase-ai-managed feature is enabled"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (mt/with-temporary-setting-values [llm-proxy-base-url "https://proxy.example"]
+        (is (= "https://proxy.example" (llm.settings/llm-proxy-base-url)))
+        (testing "returns default (nil) when :metabase-ai-managed feature is not enabled, even if a value is set"
+          (mt/with-premium-features #{}
+            (is (nil? (llm.settings/llm-proxy-base-url))))))))
+
+  (testing "can be set and read when :metabot-v3 feature is enabled"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [llm-proxy-base-url "https://proxy.example"]
+        (is (= "https://proxy.example" (llm.settings/llm-proxy-base-url)))
+        (testing "returns default (nil) when neither managed-ai feature is enabled, even if a value is set"
+          (mt/with-premium-features #{}
+            (is (nil? (llm.settings/llm-proxy-base-url))))))))
+
+  (testing "cannot be set when neither managed-ai feature is enabled"
+    (mt/with-premium-features #{}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting llm-proxy-base-url is not enabled"
+           (llm.settings/llm-proxy-base-url! "https://proxy.example"))))))
+
+(deftest ai-service-base-url-feature-guard-test
+  (testing "can be set and read when :metabase-ai-managed feature is enabled"
+    (mt/with-premium-features #{:metabase-ai-managed}
+      (mt/with-temporary-setting-values [ai-service-base-url "https://ai-service.example"]
+        (is (= "https://ai-service.example" (llm.settings/ai-service-base-url)))
+        (testing "returns default (nil) when :metabase-ai-managed feature is not enabled, even if a value is set"
+          (mt/with-premium-features #{}
+            (is (nil? (llm.settings/ai-service-base-url))))))))
+
+  (testing "can be set and read when :metabot-v3 feature is enabled"
+    (mt/with-premium-features #{:metabot-v3}
+      (mt/with-temporary-setting-values [ai-service-base-url "https://ai-service.example"]
+        (is (= "https://ai-service.example" (llm.settings/ai-service-base-url)))
+        (testing "returns default (nil) when neither managed-ai feature is enabled, even if a value is set"
+          (mt/with-premium-features #{}
+            (is (nil? (llm.settings/ai-service-base-url))))))))
+
+  (testing "cannot be set when neither managed-ai feature is enabled"
+    (mt/with-premium-features #{}
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Setting ai-service-base-url is not enabled"
+           (llm.settings/ai-service-base-url! "https://ai-service.example"))))))
 
 ;;; ------------------------------------------- Settings Defaults Tests -------------------------------------------
 

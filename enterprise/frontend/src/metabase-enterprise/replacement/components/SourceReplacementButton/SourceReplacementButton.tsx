@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { useSelector } from "metabase/lib/redux";
 import type { SourceReplacementButtonProps } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { useListSourceReplacementRunsQuery } from "metabase-enterprise/api";
 

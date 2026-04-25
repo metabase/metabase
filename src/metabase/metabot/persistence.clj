@@ -8,7 +8,7 @@
 
 (defn store-message!
   "Persist messages to MetabotConversation and MetabotMessage tables."
-  [conversation-id profile-id messages & {:keys [slack-msg-id channel-id user-id]}]
+  [conversation-id profile-id messages & {:keys [slack-msg-id channel-id user-id ai-proxy?]}]
   (let [finish   (let [m (u/last messages)]
                    (when (= (:_type m) :FINISH_MESSAGE)
                      m))
@@ -32,7 +32,8 @@
                                                             ;; removed when ai-service does not give us `completionTokens` in `usage`
                                                             (filter map?)
                                                             (map #(+ (:prompt %) (:completion %)))
-                                                            (apply +))}
+                                                            (apply +))
+                                      :ai_proxied (boolean ai-proxy?)}
                                channel-id   (assoc :channel_id channel-id)
                                slack-msg-id (assoc :slack_msg_id slack-msg-id)
                                user-id      (assoc :user_id user-id)))))

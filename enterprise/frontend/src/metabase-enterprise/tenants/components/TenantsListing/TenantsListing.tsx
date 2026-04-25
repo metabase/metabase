@@ -11,7 +11,7 @@ import { AdminContentTable } from "metabase/common/components/AdminContentTable"
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import {
   Box,
   Button,

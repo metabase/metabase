@@ -526,7 +526,7 @@
   "For tenant root collections, localize the name to the user's locale.
 
   OSS version: returns collections unchanged."
-  metabase-enterprise.tenants.model
+  metabase-enterprise.tenants.models
   [collections]
   collections)
 
@@ -2104,8 +2104,7 @@
                                               (serdes/fk :model/Collection)
                                               {:export location-path->parent-id
                                                :import parent-id->location-path}))
-               :personal_owner_id (serdes/fk :model/User)
-               :workspace_id      (serdes/fk :model/Workspace)}
+               :personal_owner_id (serdes/fk :model/User)}
    :defaults {:archived         false
               :is_sample        false
               :is_remote_synced false}})

@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { capitalize } from "metabase/lib/formatting/strings";
-import { useSelector } from "metabase/lib/redux";
-import { has24HourModeSetting } from "metabase/lib/time-dayjs";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Group, SegmentedControl, Tooltip } from "metabase/ui";
+import { capitalize } from "metabase/utils/formatting/strings";
+import { has24HourModeSetting } from "metabase/utils/time-dayjs";
 import type {
   ScheduleDayType,
   ScheduleFrameType,

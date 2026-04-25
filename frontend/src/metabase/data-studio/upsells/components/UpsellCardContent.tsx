@@ -8,7 +8,7 @@ import {
   trackUpsellClicked,
   trackUpsellViewed,
 } from "metabase/common/components/upsells/components/analytics";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import {

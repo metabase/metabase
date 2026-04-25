@@ -2,9 +2,9 @@ import { type WithRouterProps, withRouter } from "react-router";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/redux";
 import { Flex, Icon, Tabs, Title, Tooltip } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 import {
   SettingsPageWrapper,

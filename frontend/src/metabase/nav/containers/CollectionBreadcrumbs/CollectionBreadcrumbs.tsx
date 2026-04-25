@@ -1,8 +1,8 @@
 import { useLocation } from "react-use";
 
 import { useGetCollectionQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { getQuestion } from "metabase/query_builder/selectors";
+import { useSelector } from "metabase/redux";
 import { getCollectionId } from "metabase/selectors/app";
 import type { CollectionId } from "metabase-types/api";
 

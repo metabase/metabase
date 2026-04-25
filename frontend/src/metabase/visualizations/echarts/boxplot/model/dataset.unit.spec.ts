@@ -1,5 +1,5 @@
 import { createMockSeriesModel } from "__support__/echarts";
-import { checkNumber } from "metabase/lib/types";
+import { checkNumber } from "metabase/utils/types";
 import {
   INDEX_KEY,
   X_AXIS_DATA_KEY,

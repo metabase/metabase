@@ -2,7 +2,7 @@ import type { Editor } from "@tiptap/react";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   ActionIcon,
   Box,

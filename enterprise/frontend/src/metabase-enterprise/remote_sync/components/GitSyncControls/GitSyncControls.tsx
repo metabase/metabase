@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Button, Combobox, Icon, Loader, Text, useCombobox } from "metabase/ui";
 import {
   useGetHasRemoteChangesQuery,

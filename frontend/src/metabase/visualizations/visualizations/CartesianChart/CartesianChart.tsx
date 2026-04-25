@@ -10,7 +10,7 @@ import {
 import React from "react";
 import { useSet } from "react-use";
 
-import { isWebkit } from "metabase/lib/browser";
+import { isWebkit } from "metabase/utils/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";

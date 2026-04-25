@@ -5,6 +5,7 @@
    [metabase-enterprise.dependencies.analysis :as deps.analysis]
    [metabase-enterprise.dependencies.findings :as deps.findings]
    [metabase-enterprise.dependencies.models.analysis-finding :as models.analysis-finding]
+   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -128,6 +129,13 @@
                     :analyzed_entity_type :card
                     :analyzed_entity_id [:in card-ids]))
 
+(defn- finding-stale?
+  "Returns the stale value for a specific entity's analysis finding, or nil if no finding exists."
+  [entity-type entity-id]
+  (t2/select-one-fn :stale :model/AnalysisFinding
+                    :analyzed_entity_type entity-type
+                    :analyzed_entity_id entity-id))
+
 (deftest ^:sequential analyze-batch-picks-up-missing-analyses-test
   (testing "analyze-batch! picks up entities with no pre-existing AnalysisFinding"
     (backfill-all-entity-analyses!)
@@ -197,3 +205,75 @@
                 (is (= {grandparent-id false, parent-id true, child-id true}
                        (stale-map [grandparent-id parent-id child-id]))
                     "grandparent should NOT be stale, parent and child should be stale (transitive)")))))))))
+
+(deftest ^:sequential wave-propagation-via-entity-check-test
+  (testing "analyze-and-propagate! marks immediate dependents stale, and the job loop drains them in waves"
+    (backfill-all-entity-analyses!)
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))]
+      (mt/with-premium-features #{:dependencies}
+        (lib-be/with-metadata-provider-cache
+          (mt/with-model-cleanup [:model/AnalysisFinding]
+            (mt/with-temp [:model/Card {gp-id :id :as gp-card} {:dataset_query (lib/query mp products)}
+                           :model/Card {p-id :id :as p-card} {:dataset_query (lib/query mp (lib.metadata/card mp gp-id))}
+                           :model/Card {c-id :id :as c-card} {:dataset_query (lib/query mp (lib.metadata/card mp p-id))}
+                           :model/Dependency _ {:from_entity_type :card :from_entity_id p-id
+                                                :to_entity_type :card :to_entity_id gp-id}
+                           :model/Dependency _ {:from_entity_type :card :from_entity_id c-id
+                                                :to_entity_type :card :to_entity_id p-id}]
+              ;; Analyze all three so they have findings
+              (run! deps.findings/upsert-analysis! [gp-card p-card c-card])
+              (is (= {gp-id false, p-id false, c-id false}
+                     (stale-map [gp-id p-id c-id]))
+                  "all should start as not stale")
+              ;; Mark only the immediate dependents of grandparent (just parent, not child)
+              (deps.findings/mark-immediate-dependents-stale! :card gp-id)
+              (is (= {gp-id false, p-id true, c-id false}
+                     (stale-map [gp-id p-id c-id]))
+                  "only parent should be stale (immediate), child should NOT be stale yet")
+              ;; Run the entity-check job loop — it should analyze parent, which marks child stale,
+              ;; then analyze child in the next wave
+              (#'task.entity-check/check-entities!)
+              (is (= {gp-id false, p-id false, c-id false}
+                     (stale-map [gp-id p-id c-id]))
+                  "after check-entities!, all should be re-analyzed (not stale) — wave propagation worked"))))))))
+
+(deftest ^:sequential wave-propagation-through-non-analyzable-entity-test
+  (testing "Wave propagation skips non-analyzable intermediaries (e.g., tables) and reaches cards beyond them"
+    (backfill-all-entity-analyses!)
+    (let [mp (mt/metadata-provider)
+          products (lib.metadata/table mp (mt/id :products))
+          products-id (mt/id :products)]
+      (mt/with-premium-features #{:dependencies}
+        (lib-be/with-metadata-provider-cache
+          (mt/with-model-cleanup [:model/AnalysisFinding]
+            ;; Chain: transform → (depends on) table ← (depends on) card
+            ;; Table is not analyzable, but card should still be reached by the wave
+            (mt/with-temp [:model/Transform {transform-id :id :as transform}
+                           {:source {:type :query :query (lib/query mp products)}
+                            :name "test_wave_transform"
+                            :target {:schema "public" :name "wave_test_table" :type :table}}
+                           :model/Card {card-id :id :as card}
+                           {:dataset_query (lib/query mp products)}
+                           ;; table depends on transform (downstream of transform)
+                           :model/Dependency _ {:from_entity_type :table :from_entity_id products-id
+                                                :to_entity_type :transform :to_entity_id transform-id}
+                           ;; card depends on the same table
+                           :model/Dependency _ {:from_entity_type :card :from_entity_id card-id
+                                                :to_entity_type :table :to_entity_id products-id}]
+              ;; Analyze the transform and card (tables aren't analyzable)
+              (deps.findings/upsert-analysis! transform)
+              (deps.findings/upsert-analysis! card)
+              (is (false? (finding-stale? :card card-id))
+                  "card should start as not stale")
+              ;; Mark only immediate dependents of transform stale
+              ;; The immediate dependent is the table, which is NOT analyzable
+              ;; The card is two hops away: transform → table → card
+              (deps.findings/mark-immediate-dependents-stale! :transform transform-id)
+              ;; The look-through should have reached the card through the non-analyzable table
+              (is (true? (finding-stale? :card card-id))
+                  "card should be stale — look-through reached it via non-analyzable table")
+              ;; Run entity-check to drain stale entities
+              (#'task.entity-check/check-entities!)
+              (is (false? (finding-stale? :card card-id))
+                  "card should be re-analyzed after entity-check"))))))))

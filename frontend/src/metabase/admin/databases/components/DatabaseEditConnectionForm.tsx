@@ -15,14 +15,14 @@ import type {
   DatabaseFormConfig,
   FormLocation,
 } from "metabase/databases/types";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
+import type { Dispatch } from "metabase/redux/store";
 import { Text } from "metabase/ui";
 import type {
   DatabaseData,
   DatabaseEditErrorType,
   DatabaseId,
 } from "metabase-types/api";
-import type { Dispatch } from "metabase-types/store";
 
 import { saveDatabase } from "../database";
 import { isDbModifiable } from "../utils";

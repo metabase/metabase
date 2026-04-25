@@ -8,11 +8,10 @@ import { useAsync, useMount } from "react-use";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
-import { initializeIframeResizer } from "metabase/lib/dom";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
 import { PublicDocumentProvider } from "metabase/public/contexts/PublicDocumentContext";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import { CardEmbed } from "metabase/rich_text_editing/tiptap/extensions/CardEmbed/CardEmbedNode";
 import { CustomStarterKit } from "metabase/rich_text_editing/tiptap/extensions/CustomStarterKit/CustomStarterKit";
@@ -25,6 +24,7 @@ import { DROP_ZONE_COLOR } from "metabase/rich_text_editing/tiptap/extensions/sh
 import { getSetting } from "metabase/selectors/settings";
 import { PublicApi } from "metabase/services";
 import { Box } from "metabase/ui";
+import { initializeIframeResizer } from "metabase/utils/dom";
 import type { Document } from "metabase-types/api";
 
 import S from "./PublicDocument.module.css";

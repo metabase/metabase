@@ -8,21 +8,21 @@ import { useSearchListQuery } from "metabase/common/hooks";
 import { useListKeyboardNavigation } from "metabase/common/hooks/use-list-keyboard-navigation";
 import { Search } from "metabase/entities/search";
 import {
-  DEFAULT_SEARCH_LIMIT,
-  SEARCH_DEBOUNCE_DURATION,
-} from "metabase/lib/constants";
-import { useDispatch } from "metabase/lib/redux";
-import { modelToUrl } from "metabase/lib/urls";
-import {
   EmptyStateContainer,
   ResultsContainer,
   ResultsFooter,
   SearchResultsList,
 } from "metabase/nav/components/search/SearchResults/SearchResults.styled";
+import { useDispatch } from "metabase/redux";
 import { SearchResult } from "metabase/search/components/SearchResult/SearchResult";
 import { SearchContextTypes } from "metabase/search/constants";
 import type { SearchFilters } from "metabase/search/types";
 import { Loader } from "metabase/ui";
+import {
+  DEFAULT_SEARCH_LIMIT,
+  SEARCH_DEBOUNCE_DURATION,
+} from "metabase/utils/constants";
+import { modelToUrl } from "metabase/utils/urls";
 import type {
   CollectionItem,
   SearchModel,

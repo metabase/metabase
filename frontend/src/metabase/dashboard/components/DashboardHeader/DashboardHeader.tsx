@@ -16,8 +16,8 @@ import {
   getIsEditing,
 } from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { fetchPulseFormInput } from "metabase/notifications/pulse/actions";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Flex, Loader } from "metabase/ui";

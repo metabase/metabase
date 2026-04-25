@@ -1,8 +1,8 @@
 import { push } from "react-router-redux";
 
 import { getDashboard } from "metabase/dashboard/selectors";
-import { createThunkAction } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { createThunkAction } from "metabase/redux";
+import * as Urls from "metabase/utils/urls";
 import type { Dashboard } from "metabase-types/api";
 
 const ADD_DASHBOARD_QUESTION = "metabase/dashboard/ADD_DASHBOARD_QUESTION";

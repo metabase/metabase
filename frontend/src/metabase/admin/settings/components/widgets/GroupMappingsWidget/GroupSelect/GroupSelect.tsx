@@ -5,15 +5,15 @@ import { GroupSummary } from "metabase/admin/people/components/GroupSummary";
 import type { GroupIds, UserGroupType } from "metabase/admin/types";
 import { Select } from "metabase/common/components/Select";
 import CS from "metabase/css/core/index.css";
+import { Box, Icon, Popover } from "metabase/ui";
+import { color } from "metabase/ui/colors";
 import {
   canEditMembership,
   getGroupNameLocalized,
   isAdminGroup,
   isDefaultGroup,
-} from "metabase/lib/groups";
-import { isNotNull } from "metabase/lib/types";
-import { Box, Icon, Popover } from "metabase/ui";
-import { color } from "metabase/ui/colors";
+} from "metabase/utils/groups";
+import { isNotNull } from "metabase/utils/types";
 import type { GroupInfo } from "metabase-types/api";
 
 function getGroupColor(group: Pick<GroupInfo, "magic_group_type">) {

@@ -1,4 +1,4 @@
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { Box, Button, Icon, Tooltip } from "metabase/ui";
 import {
   type ClickAction,

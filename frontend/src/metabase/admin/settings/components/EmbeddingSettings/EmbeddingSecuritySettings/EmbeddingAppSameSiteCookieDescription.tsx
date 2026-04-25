@@ -3,11 +3,10 @@ import { jt, t } from "ttag";
 import { Alert } from "metabase/common/components/Alert";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/common/hooks";
-import { isSameOrigin } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
-import { isEmpty } from "metabase/lib/utils";
+import { useSelector } from "metabase/redux";
 import { getDocsUrl } from "metabase/selectors/settings";
 import { Box, Center, Stack, Text } from "metabase/ui";
+import { isSameOrigin } from "metabase/utils/dom";
 
 import S from "./EmbeddingAppSameSiteCookieDescription.module.css";
 
@@ -63,7 +62,7 @@ function authorizedOriginsContainsNonInstanceDomain(
   // metabase#43523
   return false;
 
-  if (isEmpty(authorizedOriginsString)) {
+  if (!authorizedOriginsString || authorizedOriginsString.trim() === "") {
     return false;
   }
 

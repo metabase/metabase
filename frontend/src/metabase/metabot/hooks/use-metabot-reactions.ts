@@ -1,10 +1,10 @@
 import { useCallback } from "react";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   getNavigateToPath,
   setNavigateToPath as setNavigateToPathAction,
 } from "metabase/metabot/state";
+import { useDispatch, useSelector } from "metabase/redux";
 
 export const useMetabotReactions = () => {
   const dispatch = useDispatch();

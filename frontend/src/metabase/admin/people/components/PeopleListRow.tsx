@@ -4,10 +4,8 @@ import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { UserAvatar } from "metabase/common/components/UserAvatar";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
-import { getFullName } from "metabase/lib/user";
 import { PLUGIN_ADMIN_USER_MENU_ITEMS, PLUGIN_TENANTS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import {
   Box,
@@ -18,6 +16,8 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
+import { getFullName } from "metabase/utils/user";
 import type {
   GroupId,
   GroupInfo,

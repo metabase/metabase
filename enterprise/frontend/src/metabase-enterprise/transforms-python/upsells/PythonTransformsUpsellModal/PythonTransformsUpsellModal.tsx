@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { trackUpsellViewed } from "metabase/common/components/upsells/components/analytics";
 import { useStoreUrl } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getStoreUsers } from "metabase/selectors/store-users";
 import { getIsHosted } from "metabase/setup/selectors";
 import {

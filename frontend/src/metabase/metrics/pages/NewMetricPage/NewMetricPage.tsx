@@ -15,13 +15,13 @@ import {
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
 import { getResultMetadata } from "metabase/data-studio/common/utils";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { MetricQueryEditor } from "metabase/metrics/components/MetricQueryEditor";
 import { NAME_MAX_LENGTH } from "metabase/metrics/constants";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Breadcrumbs, Card, Icon } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type { Card as CardApiType } from "metabase-types/api";
 

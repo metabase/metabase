@@ -1,4 +1,4 @@
-export type { DeepPartial } from "metabase/lib/types";
+export type { DeepPartial } from "metabase/utils/types";
 
 // https://www.raygesualdo.com/posts/flattening-object-keys-with-typescript-types/
 export type FlattenObjectKeys<

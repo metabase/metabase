@@ -25,13 +25,13 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EntityItem } from "metabase/common/components/EntityItem";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { bookmarks as BookmarkEntity } from "metabase/entities";
-import { connect, useDispatch } from "metabase/lib/redux";
-import { entityForObject } from "metabase/lib/schema";
-import * as Urls from "metabase/lib/urls";
+import { entityForObject } from "metabase/entities/utils";
+import { connect, useDispatch } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import { getSetting } from "metabase/selectors/settings";
+import * as Urls from "metabase/utils/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import S from "./ActionMenu.module.css";
 

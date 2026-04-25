@@ -1,9 +1,9 @@
 import { skipToken, useGetUserQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
-import { getRelativeTime } from "metabase/lib/time-dayjs";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import { FixedSizeIcon, Flex, Icon, Text as UIText } from "metabase/ui";
 import { alpha } from "metabase/ui/colors";
+import { getRelativeTime } from "metabase/utils/time-dayjs";
 import {
   getIconForReview,
   getLatestModerationReview,

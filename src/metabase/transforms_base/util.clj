@@ -6,7 +6,9 @@
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
+   [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -109,6 +111,16 @@
     [:transforms/table]))
 
 ;;; ------------------------------------------------- Table Names -------------------------------------------------
+
+(defn- resolve-nil-schema
+  "When a table has nil schema, check if the physical table exists under the driver's
+   default schema. If so, return that schema. Otherwise return nil.
+   This handles the case where transforms create tables without explicit schema
+   but the driver needs a schema to find the table during sync."
+  [driver database table]
+  (when-let [default-schema (try (sql.normalize/default-schema driver) (catch Exception _ nil))]
+    (when (driver/table-exists? driver database {:schema default-schema :name (:name table)})
+      default-schema)))
 
 (defn qualified-table-name
   "Return the name of the target table of a transform as a possibly qualified symbol."
@@ -357,8 +369,17 @@
    (when-let [table (or (target-table (:id database) target)
                         (when create?
                           (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
-     (sync/sync-table! table)
-     table)))
+     ;; If the table has nil schema, check if the physical table actually lives under
+     ;; the driver's default schema. If so, fix the Table record before syncing.
+     (let [table (if (nil? (:schema table))
+                   (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
+                     (do (t2/update! :model/Table (:id table) {:schema actual-schema})
+                         (-> (t2/select-one :model/Table (:id table))
+                             (t2/hydrate :db)))
+                     table)
+                   table)]
+       (sync/sync-table! table)
+       table))))
 
 (defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
@@ -703,18 +724,11 @@
   (when-let [table-name (:name table)]
     (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
 
-(defn db-routing-enabled?
-  "Returns whether or not the given database is either a router or destination database"
-  [db-or-id]
-  (or (t2/exists? :model/DatabaseRouter :database_id (u/the-id db-or-id))
-      (some->> (:router-database-id db-or-id)
-               (t2/exists? :model/DatabaseRouter :database_id))))
-
 (defn throw-if-db-routing-enabled!
   "Throws if the database has routing enabled. Call before any driver operations to get a
    clear error message rather than a confusing driver-level failure."
   [transform database]
-  (when (db-routing-enabled? database)
+  (when (database-routing/db-routing-enabled? database)
     (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
                               (:name transform)
                               (:name database))

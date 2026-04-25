@@ -1,5 +1,5 @@
-import { updateMetadata } from "metabase/lib/redux/metadata";
 import { PLUGIN_API } from "metabase/plugins";
+import { updateMetadata } from "metabase/redux/metadata";
 import { QueryMetadataSchema, QuestionSchema } from "metabase/schema";
 import type {
   Card,

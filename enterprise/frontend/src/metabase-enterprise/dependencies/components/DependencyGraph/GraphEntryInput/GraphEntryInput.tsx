@@ -3,7 +3,7 @@ import { useState } from "react";
 import { push } from "react-router-redux";
 
 import { trackDependencyEntitySelected } from "metabase/data-studio/analytics";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { Card } from "metabase/ui";
 import type {
   DependencyEntry,

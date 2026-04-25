@@ -5,8 +5,7 @@ import { useAsync } from "react-use";
 import { jt, t } from "ttag";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { useDispatch } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
+import { useDispatch } from "metabase/redux";
 import { MetabaseApi } from "metabase/services";
 import {
   Alert,
@@ -21,6 +20,7 @@ import {
   Text,
   UnstyledButton,
 } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import type { Database, DatabaseUsageInfo } from "metabase-types/api";
 
 import ContentRemovalConfirmation from "../ContentRemovalConfirmation";

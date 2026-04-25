@@ -16,11 +16,11 @@ import { ContentViewportContext } from "metabase/common/context/ContentViewportC
 import CS from "metabase/css/core/index.css";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
 import { usePageTitle } from "metabase/hooks/use-page-title";
-import { initializeIframeResizer } from "metabase/lib/dom";
-import { connect, useSelector } from "metabase/lib/redux";
 import AppBar from "metabase/nav/containers/AppBar";
 import Navbar from "metabase/nav/containers/Navbar";
+import { connect, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
+import type { AppErrorDescriptor, State } from "metabase/redux/store";
 import {
   getErrorPage,
   getIsAdminApp,
@@ -30,7 +30,7 @@ import {
 } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { StatusListing } from "metabase/status/components/StatusListing";
-import type { AppErrorDescriptor, State } from "metabase-types/store";
+import { initializeIframeResizer } from "metabase/utils/dom";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";

@@ -1,7 +1,7 @@
 (ns metabase-enterprise.tenants.api
   (:require
    [malli.util]
-   [metabase-enterprise.tenants.model :as tenant]
+   [metabase-enterprise.tenants.models :as tenant]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]

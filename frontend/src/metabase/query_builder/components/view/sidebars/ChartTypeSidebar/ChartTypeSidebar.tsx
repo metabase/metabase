@@ -4,7 +4,6 @@ import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
-import { useDispatch } from "metabase/lib/redux";
 import { updateQuestion } from "metabase/query_builder/actions";
 import {
   ChartTypeSettings,
@@ -13,6 +12,7 @@ import {
   getSensibleVisualizations,
   useQuestionVisualizationState,
 } from "metabase/query_builder/components/chart-type-selector";
+import { useDispatch } from "metabase/redux";
 import {
   onCloseChartType,
   onOpenChartSettings,

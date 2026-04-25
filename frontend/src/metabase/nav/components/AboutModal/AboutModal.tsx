@@ -3,8 +3,7 @@ import _ from "underscore";
 
 import { LogoIcon } from "metabase/common/components/LogoIcon";
 import { useSetting } from "metabase/common/hooks";
-import { capitalize } from "metabase/lib/formatting";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import {
   getApplicationName,
   getIsWhiteLabeling,
@@ -19,6 +18,7 @@ import {
   Text,
   Title,
 } from "metabase/ui";
+import { capitalize } from "metabase/utils/formatting";
 import type { MetabaseInfo } from "metabase-types/api";
 
 export const AboutModal = ({

@@ -17,7 +17,7 @@ import Animation from "metabase/css/core/animation.module.css";
 import { useDocumentState } from "metabase/documents/hooks/use-document-state";
 import { getCurrentDocument } from "metabase/documents/selectors";
 import { getListCommentsQuery } from "metabase/documents/utils/api";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import {
   ActionIcon,
   Box,

@@ -6,8 +6,8 @@ import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types/auth-config";
 import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils/request-session-token";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
-import { decodeJwt } from "metabase/lib/jwt";
-import { createAsyncThunk } from "metabase/lib/redux";
+import { createAsyncThunk } from "metabase/redux/utils";
+import { decodeJwt } from "metabase/utils/jwt";
 
 import { getSessionTokenState } from "../selectors";
 

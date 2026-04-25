@@ -11,7 +11,7 @@ import {
   isEmbeddingThemeV2,
 } from "metabase/embedding-sdk/theme";
 import { setGlobalEmbeddingColors } from "metabase/embedding-sdk/theme/embedding-color-palette";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getFont } from "metabase/styled-components/selectors";
 import type { MantineThemeOverride } from "metabase/ui";
 import { deriveFullMetabaseTheme } from "metabase/ui/colors";

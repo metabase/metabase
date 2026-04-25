@@ -11,7 +11,6 @@ import {
   CodeMirror,
   type CodeMirrorRef,
 } from "metabase/common/components/CodeMirror";
-import { useSelector } from "metabase/lib/redux";
 import {
   type DefinedClauseName,
   type ExpressionError,
@@ -21,6 +20,7 @@ import {
 } from "metabase/querying/expressions";
 import { tokenAtPos } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
 import type * as Lib from "metabase-lib";

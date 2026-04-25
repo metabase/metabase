@@ -3,7 +3,7 @@ import cx from "classnames";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Text } from "metabase/ui";
 import { DROPPABLE_ID } from "metabase/visualizer/constants";
 import { useCanHandleActiveItem } from "metabase/visualizer/hooks/use-can-handle-active-item";

@@ -1,5 +1,5 @@
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -47,14 +47,16 @@ export const Notebook = ({
   };
 
   return (
-    <NotebookProvider modelsFilterList={modelsFilterList}>
+    <NotebookProvider
+      modelsFilterList={modelsFilterList}
+      dataPickerOptions={dataPickerOptions}
+    >
       <Box pos="relative" p={{ base: "1rem", sm: "2rem" }}>
         <NotebookStepList
           updateQuestion={handleUpdateQuestion}
           question={question}
           reportTimezone={reportTimezone}
           readOnly={readOnly}
-          dataPickerOptions={dataPickerOptions}
         />
         {hasVisualizeButton && runQuestionQuery && (
           <VisualizeButton

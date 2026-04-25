@@ -3,9 +3,10 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import { EditableText } from "metabase/common/components/EditableText";
-import { useSelector } from "metabase/lib/redux";
+import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { MetabotDataStudioButton } from "metabase/metabot/components/MetabotDataStudioButton";
 import { AppSwitcher } from "metabase/nav/components/AppSwitcher";
+import { useSelector } from "metabase/redux";
 import { getLocation } from "metabase/selectors/routing";
 import {
   Box,
@@ -47,12 +48,12 @@ export const PaneHeader = ({
 }: PaneHeaderProps) => {
   return (
     <Stack gap={0} pt="xs" {...rest}>
-      <Flex mb="lg" mt="md" w="100%">
+      <Flex mb="lg" mt="md" w="100%" h="xl">
         {breadcrumbs}
 
-        <Group ml="auto" gap="md">
+        <Group ml="auto" gap="md" className={S.ButtonGroup}>
           {showMetabotButton && <MetabotDataStudioButton />}
-          {showAppSwitcher && <AppSwitcher className={S.ProfileLink} />}
+          {showAppSwitcher && <AppSwitcher />}
         </Group>
       </Flex>
       <Group
@@ -144,7 +145,7 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
 
   return (
     <Group gap="sm">
-      {tabs.map(({ label, to, icon, isSelected }) => {
+      {tabs.map(({ label, to, icon, isGated, isSelected }) => {
         const selected =
           typeof isSelected === "function"
             ? isSelected(pathname)
@@ -160,6 +161,7 @@ export function PaneHeaderTabs({ tabs, withBackground }: PaneHeaderTabsProps) {
             bg={selected ? "background-selected" : backgroundColor}
             bd="none"
             leftSection={icon != null ? <FixedSizeIcon name={icon} /> : null}
+            rightSection={isGated ? <UpsellGem.New size={14} /> : null}
           >
             {label}
           </Button>

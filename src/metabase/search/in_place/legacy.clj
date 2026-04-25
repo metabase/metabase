@@ -178,11 +178,7 @@
       (seq with) (update :with (fnil into []) with)
       true       (sql.helpers/where
                   (case model
-                    "table" [:and
-                             clause
-                             [:or
-                              [:not :is_published]
-                              (search.permissions/permitted-collections-clause search-ctx :collection_id)]]
+                    "table" clause
                     "search-index" [:or
                                     [:= :search_index.model nil]
                                     [:!= :search_index.model [:inline "table"]]
@@ -200,10 +196,12 @@
                                  "collection"    :collection.id
                                  "search-index"  :search_index.collection_id
                                  :collection_id)
-        permitted-clause       [:or
-                                (when (= model "table")
-                                  [:not :is_published])
-                                (search.permissions/permitted-collections-clause search-ctx collection-id-col)]
+        permitted-clause       (if (= model "table")
+                                ;; Tables have their own permission filter (add-table-where-clauses).
+                                ;; Skip collection filtering to avoid blocking tables where the user
+                                ;; has data permissions but no collection access.
+                                 [:= [:inline 1] [:inline 1]]
+                                 (search.permissions/permitted-collections-clause search-ctx collection-id-col))
         personal-clause        (search.filter/personal-collections-where-clause search-ctx collection-id-col)]
     (-> honeysql-query
         (sql.helpers/where permitted-clause)
@@ -705,7 +703,7 @@
     (log/tracef "Searching with query:\n%s\n%s"
                 (u/pprint-to-str search-query)
                 (mdb/format-sql (first (mdb/compile search-query))))
-    (t2/reducible-query search-query)))
+    (mdb/streaming-reducible-query search-query)))
 
 (defmethod search.engine/results
   :search.engine/in-place

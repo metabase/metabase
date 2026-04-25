@@ -1,4 +1,4 @@
-import { updateMetadata } from "metabase/lib/redux/metadata";
+import { updateMetadata } from "metabase/redux/metadata";
 import { QueryMetadataSchema } from "metabase/schema";
 import type {
   CardQueryMetadata,

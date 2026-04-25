@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Button } from "metabase/ui";
 

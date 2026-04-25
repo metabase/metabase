@@ -5,8 +5,8 @@ import { ActionButton } from "metabase/common/components/ActionButton";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useDashboardContext } from "metabase/dashboard/context/context";
 import { getMissingRequiredParameters } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
+import { useDispatch, useSelector } from "metabase/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
 import { Tooltip } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
@@ -62,6 +62,7 @@ export const SaveEditButton = () => {
           failedText={t`Save failed`}
           successText={t`Saved`}
           disabled={isSaveDisabled}
+          data-testid="save-edit-button"
         />
       </span>
     </Tooltip>

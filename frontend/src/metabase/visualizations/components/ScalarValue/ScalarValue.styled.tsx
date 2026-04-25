@@ -16,16 +16,18 @@ export const ScalarRoot = styled.div`
 interface ScalarValueWrapperProps {
   fontSize?: string | number;
   lineHeight?: string;
+  disableHover?: boolean;
 }
 
 export const ScalarValueWrapper = styled.h1<ScalarValueWrapperProps>`
   display: inline;
   font-size: ${(props) => props.fontSize};
   line-height: ${(props) => props.lineHeight ?? "var(--mantine-line-height)"};
-  cursor: pointer;
+  cursor: ${(props) => (props.disableHover ? "auto" : "pointer")};
   color: ${({ color }) => color};
 
   &:hover {
-    color: var(--mb-color-brand);
+    color: ${({ disableHover }) =>
+      disableHover ? undefined : "var(--mb-color-brand)"};
   }
 `;

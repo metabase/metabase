@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { useTranslateContent } from "metabase/i18n/hooks";
-import { CONTAINER_WIDTH } from "metabase/query_builder/components/DataSelector/constants";
+import { CONTAINER_WIDTH } from "metabase/querying/common/components/DataSelector/constants";
 import { Flex, Icon, NavLink, Paper, ScrollArea, TextInput } from "metabase/ui";
 import type { TableId } from "metabase-types/api";
 

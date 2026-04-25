@@ -3,9 +3,8 @@ import type { Location } from "history";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import NewModelOption from "metabase/models/components/NewModelOption";
+import { useSelector } from "metabase/redux";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import {
@@ -14,6 +13,7 @@ import {
 } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { Group } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 
 import { EducationalButton, OptionsRoot } from "./NewModelOptions.styled";
 

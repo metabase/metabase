@@ -284,6 +284,7 @@ config:
     slack-connect-client-id: null
     slack-connect-client-secret: null
     slack-connect-enabled: false
+    slack-connect-signing-secret-version: 0
     slack-connect-user-provisioning-enabled: true
     smtp-override-enabled: false
     source-address-header: X-Forwarded-For

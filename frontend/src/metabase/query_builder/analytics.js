@@ -1,4 +1,4 @@
-import { trackSchemaEvent, trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 
 export const trackNewQuestionSaved = (
   draftQuestion,

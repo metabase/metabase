@@ -19,7 +19,7 @@ import {
 import { getErrorMessage } from "metabase/api/utils";
 import { useSetting } from "metabase/common/hooks";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import {
   Alert,

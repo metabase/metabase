@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { UpsellCard } from "metabase/common/components/upsells/UpsellCard";
 import { UTM_LOCATION } from "metabase/embedding/embedding-iframe-sdk-setup/analytics";
 import { useSdkIframeEmbedSetupContext } from "metabase/embedding/embedding-iframe-sdk-setup/context";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getUpgradeUrl } from "metabase/selectors/settings";
 
 type Props = {

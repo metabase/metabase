@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 
 import { useGetMetricQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { MetricDefinition } from "metabase-lib/metric";
 import * as LibMetric from "metabase-lib/metric";

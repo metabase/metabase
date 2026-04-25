@@ -1,4 +1,4 @@
-import { trackSchemaEvent, trackSimpleEvent } from "metabase/lib/analytics";
+import { trackSchemaEvent, trackSimpleEvent } from "metabase/analytics";
 import type { ConcreteTableId } from "metabase-types/api";
 
 export const trackTableClick = (tableId: ConcreteTableId) =>
@@ -14,3 +14,10 @@ export const trackBrowseXRayClicked = () => {
     triggered_from: "browse_database",
   });
 };
+
+export const trackEditDataButtonClicked = (tableId: number) =>
+  trackSimpleEvent({
+    event: "edit_data_button_clicked",
+    target_id: tableId,
+    triggered_from: "table-browser",
+  });

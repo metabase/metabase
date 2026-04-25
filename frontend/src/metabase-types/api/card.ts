@@ -1,9 +1,9 @@
-import type { CurrencyStyle } from "metabase/lib/formatting";
 import type {
   EmbeddingParameters,
   EmbeddingType,
 } from "metabase/public/lib/types";
 import type { IconName } from "metabase/ui";
+import type { CurrencyStyle } from "metabase/utils/formatting";
 import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 import type { EntityToken, EntityUuid } from "metabase-types/api/entity";
 
@@ -41,8 +41,9 @@ export type CardType = (typeof CARD_TYPES)[number];
 export type CardDashboardInfo = Pick<Dashboard, "id" | "name">;
 export type CardDocumentInfo = Pick<Document, "id" | "name">;
 
-export interface Card<Q extends DatasetQuery = DatasetQuery>
-  extends UnsavedCard<Q> {
+export interface Card<
+  Q extends DatasetQuery = DatasetQuery,
+> extends UnsavedCard<Q> {
   id: CardId;
   entity_id: BaseEntityId;
   created_at: string;

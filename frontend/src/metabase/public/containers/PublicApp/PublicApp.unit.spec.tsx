@@ -5,8 +5,8 @@ import { Route } from "react-router";
 import { mockSettings } from "__support__/settings";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
 import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
-import type { AppErrorDescriptor } from "metabase-types/store";
-import { createMockAppState } from "metabase-types/store/mocks";
+import type { AppErrorDescriptor } from "metabase/redux/store";
+import { createMockAppState } from "metabase/redux/store/mocks";
 
 import PublicApp from "./PublicApp";
 

@@ -15,13 +15,13 @@ import {
   PaneHeaderActions,
   PaneHeaderInput,
 } from "metabase/data-studio/common/components/PaneHeader";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import * as Urls from "metabase/lib/urls";
 import { PLUGIN_REMOTE_SYNC, PLUGIN_TRANSFORMS_PYTHON } from "metabase/plugins";
 import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useDispatch, useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { useTransformPermissions } from "metabase/transforms/hooks/use-transform-permissions";
 import { Box, Center } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import type {
   Database,

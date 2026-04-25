@@ -4,8 +4,7 @@ import { isEmpty } from "underscore";
 
 import { useCaptureEvent } from "metabase/common/hooks";
 import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import { useSelector } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
+import { useSelector } from "metabase/redux";
 import type {
   FilterTypeKeys,
   SearchFilterComponentProps,
@@ -15,6 +14,7 @@ import type {
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import type { IconName } from "metabase/ui";
 import { Box, Button, Center, Icon, Popover, Stack, Text } from "metabase/ui";
+import { isNotNull } from "metabase/utils/types";
 
 import {
   DropdownFieldSet,

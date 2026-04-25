@@ -15,8 +15,12 @@ import {
   StringColumn,
 } from "__support__/visualizations";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
+import {
+  createMockSettingsState,
+  createMockState,
+} from "metabase/redux/store/mocks";
 import { Box } from "metabase/ui";
 import { registerVisualization } from "metabase/visualizations";
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
@@ -31,10 +35,6 @@ import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase-types/store/mocks";
 
 import {
   PublicOrEmbeddedQuestionView,

@@ -2,7 +2,7 @@ import {
   combineReducers,
   createThunkAction,
   handleActions,
-} from "metabase/lib/redux";
+} from "metabase/redux";
 import { RevisionsApi } from "metabase/services";
 import type { Revision, RevisionId } from "metabase-types/api";
 

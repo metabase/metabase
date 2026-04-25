@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import EmptyEvent from "assets/img/empty-states/event.svg";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Box, Button, Stack, Text, Title } from "metabase/ui";
 import type { Collection, Timeline } from "metabase-types/api";

@@ -1,42 +1,43 @@
 import _ from "underscore";
 
 import { invalidateNotificationsApiCache, revisionApi } from "metabase/api";
+import {
+  cardIsEquivalent,
+  cardQueryIsEquivalent,
+} from "metabase/common/utils/card";
+import { entityCompatibleQuery } from "metabase/entities";
 import { Databases } from "metabase/entities/databases";
 import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import { Questions } from "metabase/entities/questions";
-import { shouldOpenInBlankWindow } from "metabase/lib/dom";
-import { entityCompatibleQuery } from "metabase/lib/entities";
-import { createThunkAction } from "metabase/lib/redux";
-import { isNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
-import { copy } from "metabase/lib/utils";
 import { loadMetadataForCard } from "metabase/questions/actions";
+import { createThunkAction } from "metabase/redux";
 import { openUrl } from "metabase/redux/app";
 import {
   API_UPDATE_QUESTION,
+  REVERT_CARD_TO_REVISION,
   SOFT_RELOAD_CARD,
   clearQueryResult,
   onCloseSidebars,
   resetQB,
   setParameterValue,
 } from "metabase/redux/query-builder";
+import type { Dispatch, GetState } from "metabase/redux/store";
 import { getMetadata } from "metabase/selectors/metadata";
+import { clone } from "metabase/utils/clone";
+import { shouldOpenInBlankWindow } from "metabase/utils/dom";
+import { isNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import NativeQuery from "metabase-lib/v1/queries/NativeQuery";
-import {
-  cardIsEquivalent,
-  cardQueryIsEquivalent,
-} from "metabase-lib/v1/queries/utils/card";
 import type {
   Card,
   DashboardTabId,
   Database,
   DatasetQuery,
 } from "metabase-types/api";
-import type { Dispatch, GetState } from "metabase-types/store";
 
 import { trackNewQuestionSaved } from "../../analytics";
 import {
@@ -107,7 +108,7 @@ export const setCardAndRun = (
 ) => {
   return async (dispatch: Dispatch, getState: GetState) => {
     // clone
-    const card = copy(nextCard);
+    const card = clone(nextCard);
 
     const originalCard = card.original_card_id
       ? // If the original card id is present, dynamically load its information for showing lineage
@@ -349,9 +350,8 @@ export const setParameterValueToDefault = createThunkAction(
   },
 );
 
-export const REVERT_TO_REVISION = "metabase/qb/REVERT_TO_REVISION";
 export const revertToRevision = createThunkAction(
-  REVERT_TO_REVISION,
+  REVERT_CARD_TO_REVISION,
   (cardId, revision) => {
     return async (dispatch) => {
       await entityCompatibleQuery(

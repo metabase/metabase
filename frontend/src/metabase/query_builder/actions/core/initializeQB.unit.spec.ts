@@ -2,15 +2,16 @@ import fetchMock from "fetch-mock";
 import type { LocationDescriptorObject } from "history";
 
 import { createMockEntitiesState } from "__support__/store";
+import * as CardLib from "metabase/common/utils/card";
 import { Databases } from "metabase/entities/databases";
 import { Snippets } from "metabase/entities/snippets";
-import * as CardLib from "metabase/lib/card";
-import { checkNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import * as questionActions from "metabase/questions/actions";
 import { setErrorPage } from "metabase/redux/app";
 import * as sharedQB from "metabase/redux/query-builder";
+import { createMockState } from "metabase/redux/store/mocks";
 import { getMetadata } from "metabase/selectors/metadata";
+import { checkNotNull } from "metabase/utils/types";
+import * as Urls from "metabase/utils/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
@@ -39,7 +40,6 @@ import {
   createSavedStructuredCard,
   createStructuredModelCard,
 } from "metabase-types/api/mocks/presets";
-import { createMockState } from "metabase-types/store/mocks";
 
 import * as querying from "../querying";
 

@@ -18,9 +18,10 @@ on:
 
 permissions:
   id-token: write
-  contents: read
-  actions: read
+  contents: write
   checks: write
+  issues: write
+  actions: read
 
 jobs:
   start-message:
@@ -254,6 +255,3 @@ jobs:
       version: ${{ inputs.version }}
       commit: ${{ inputs.commit }}
       auto: ${{ inputs.auto }}
-      # for now don't auto-set release channel because we don't want to have
-      # multiple nightlies due to race conditions
-      release-channel: none

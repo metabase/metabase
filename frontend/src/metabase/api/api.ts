@@ -10,7 +10,7 @@ import {
   createStoreHook,
 } from "react-redux";
 
-import { MetabaseReduxContext } from "metabase/lib/redux";
+import { metabaseReduxContext } from "metabase/redux";
 
 import { apiQuery } from "./query";
 import { TAG_TYPES } from "./tags";
@@ -19,9 +19,9 @@ const createApi = buildCreateApi(
   coreModule(),
   reactHooksModule({
     hooks: {
-      useDispatch: createDispatchHook(MetabaseReduxContext),
-      useSelector: createSelectorHook(MetabaseReduxContext),
-      useStore: createStoreHook(MetabaseReduxContext),
+      useDispatch: createDispatchHook(metabaseReduxContext),
+      useSelector: createSelectorHook(metabaseReduxContext),
+      useStore: createStoreHook(metabaseReduxContext),
     },
   }),
 );

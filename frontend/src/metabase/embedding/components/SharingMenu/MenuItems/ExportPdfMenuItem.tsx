@@ -1,4 +1,4 @@
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { downloadDashboardToPdf } from "metabase/redux/downloads";
 import { Icon, Menu } from "metabase/ui";
 import { getExportTabAsPdfButtonText } from "metabase/visualizations/lib/save-dashboard-pdf";

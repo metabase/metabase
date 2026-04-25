@@ -12,11 +12,6 @@ import {
   normalizedCollection,
 } from "metabase/entities/collections";
 import {
-  createEntity,
-  entityCompatibleQuery,
-  undo,
-} from "metabase/lib/entities";
-import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
 } from "metabase/redux/query-builder";
@@ -25,6 +20,8 @@ import {
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 import { color } from "metabase/ui/colors";
+
+import { createEntity, entityCompatibleQuery, undo } from "./utils";
 
 export const INJECT_RTK_QUERY_QUESTION_VALUE =
   "metabase/entities/questions/FETCH_ADHOC_METADATA";
@@ -37,12 +34,12 @@ export const Questions = createEntity({
   nameOne: "question",
   path: "/api/card",
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery: useGetCardQuery,
     }),
     useListQuery: useListCardsQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useMount } from "react-use";
 import { match } from "ts-pattern";
 
-import { useSelector } from "metabase/lib/redux";
 import { TagEditorSidebar } from "metabase/query_builder/components/template_tags/TagEditorSidebar";
+import { useSelector } from "metabase/redux";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";

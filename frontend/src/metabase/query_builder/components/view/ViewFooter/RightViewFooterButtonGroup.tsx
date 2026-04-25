@@ -1,13 +1,13 @@
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
 import { ViewFooterDownloadWidget } from "metabase/query_builder/components/view/ViewFooter/ViewFooterDownloadWidget";
 import {
   getFirstQueryResult,
   getIsTimeseries,
 } from "metabase/query_builder/selectors";
 import { getIsObjectDetail } from "metabase/query_builder/selectors/mode";
+import { useSelector } from "metabase/redux";
 import { Group } from "metabase/ui";
 
 import { ExecutionTime } from "../ExecutionTime";

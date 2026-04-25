@@ -3,10 +3,11 @@ import {
   useGetMeasureQuery,
   useListMeasuresQuery,
 } from "metabase/api";
-import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
 import { MeasureSchema } from "metabase/schema";
 import { getMetadata } from "metabase/selectors/metadata";
 import { color } from "metabase/ui/colors";
+
+import { createEntity, entityCompatibleQuery } from "./utils";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -17,12 +18,12 @@ export const Measures = createEntity({
   path: "/api/measure",
   schema: MeasureSchema,
 
-  rtk: {
+  rtk: () => ({
     getUseGetQuery: () => ({
       useGetQuery,
     }),
     useListQuery: useListMeasuresQuery,
-  },
+  }),
 
   api: {
     list: (entityQuery, dispatch) =>

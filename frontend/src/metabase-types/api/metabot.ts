@@ -48,7 +48,6 @@ export type MetabotChatContext = {
   user_is_viewing: MetabotUserIsViewingContext;
   current_time_with_timezone: string;
   default_database_id?: number;
-  workspace_id?: number;
   capabilities: string[];
   code_editor?: MetabotCodeEditorContext;
 };
@@ -346,4 +345,16 @@ export type UserMetabotPermissions = {
 
 export type UserMetabotPermissionsResponse = {
   permissions: UserMetabotPermissions;
+};
+
+export type MetabotLimitPeriod = "daily" | "weekly" | "monthly";
+export type MetabotLimitType = "tokens" | "messages";
+
+/* Metabot v3 - Usage Limits */
+
+export type MetabotInstanceLimit = { max_usage: number | null };
+export type MetabotGroupLimit = { group_id: number; max_usage: number };
+export type MetabotTenantLimit = {
+  tenant_id: number;
+  max_usage: number | null;
 };

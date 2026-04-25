@@ -1,16 +1,16 @@
 import * as LibMetric from "metabase-lib/metric";
 import Metadata from "metabase-lib/v1/metadata/Metadata";
 import Metric from "metabase-lib/v1/metadata/Metric";
-import type { MetricBreakoutValuesResponse } from "metabase-types/api";
 import {
   createMockMetric,
   createMockMetricDimension,
 } from "metabase-types/api/mocks/metric";
 
 import type {
+  MetricDefinitionEntry,
   MetricSourceId,
   MetricsViewerDefinitionEntry,
-  SourceColorMap,
+  SourceBreakoutColorMap,
 } from "../types/viewer-state";
 
 import { buildLegendGroups } from "./legend";
@@ -86,16 +86,44 @@ describe("buildLegendGroups", () => {
     const metadata = createMetadata([REVENUE_METRIC]);
     const definition = setupDefinition(metadata, REVENUE_METRIC.id);
 
-    const definitions: MetricsViewerDefinitionEntry[] = [
-      { id: "metric:1", definition },
-    ];
-    const breakoutValues = new Map<
-      MetricSourceId,
-      MetricBreakoutValuesResponse
-    >();
-    const colors: SourceColorMap = { "metric:1": ["#509EE3"] };
+    const definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {
+      "metric:1": { id: "metric:1", definition },
+    };
+    const activeBreakoutColors: SourceBreakoutColorMap = {
+      0: "#509EE3",
+    };
 
-    expect(buildLegendGroups(definitions, breakoutValues, colors)).toEqual([]);
+    const formulaEntities: MetricDefinitionEntry[] = [
+      { id: "metric:1", type: "metric", definition: null },
+    ];
+
+    expect(
+      buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
+    ).toEqual([]);
+  });
+
+  it("returns empty array when activeBreakoutColors has only string values", () => {
+    const metadata = createMetadata([REVENUE_METRIC]);
+    const definition = setupDefinitionWithBreakout(
+      metadata,
+      REVENUE_METRIC.id,
+      1,
+    );
+
+    const definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {
+      "metric:1": { id: "metric:1", definition },
+    };
+    const activeBreakoutColors: SourceBreakoutColorMap = {
+      0: "#509EE3",
+    };
+
+    const formulaEntities: MetricDefinitionEntry[] = [
+      { id: "metric:1", type: "metric", definition: null },
+    ];
+
+    expect(
+      buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
+    ).toEqual([]);
   });
 
   it("builds legend groups for definitions with and without breakouts", () => {
@@ -107,31 +135,33 @@ describe("buildLegendGroups", () => {
     );
     const ordersDefinition = setupDefinition(metadata, ORDERS_METRIC.id);
 
-    const definitions: MetricsViewerDefinitionEntry[] = [
-      { id: "metric:1", definition: revenueDefinition },
-      { id: "metric:2", definition: ordersDefinition },
-    ];
-
-    const breakoutValues = new Map<
-      MetricSourceId,
-      MetricBreakoutValuesResponse
-    >([
-      [
-        "metric:1",
-        {
-          values: ["Gadgets", "Widgets"],
-          col: { name: "CATEGORY" } as any,
-        },
-      ],
-    ]);
-
-    const colors: SourceColorMap = {
-      "metric:1": ["#509EE3", "#88BF4D"],
-      "metric:2": ["#A989C5"],
+    const definitions: Record<MetricSourceId, MetricsViewerDefinitionEntry> = {
+      "metric:1": { id: "metric:1", definition: revenueDefinition },
+      "metric:2": { id: "metric:2", definition: ordersDefinition },
     };
 
-    expect(buildLegendGroups(definitions, breakoutValues, colors)).toEqual([
+    const formulaEntities: MetricDefinitionEntry[] = [
       {
+        id: "metric:1",
+        type: "metric",
+        definition: revenueDefinition,
+      },
+      { id: "metric:2", type: "metric", definition: null },
+    ];
+
+    const activeBreakoutColors: SourceBreakoutColorMap = {
+      0: new Map([
+        ["Gadgets", "#509EE3"],
+        ["Widgets", "#88BF4D"],
+      ]),
+      1: "#A989C5",
+    };
+
+    expect(
+      buildLegendGroups(formulaEntities, definitions, activeBreakoutColors),
+    ).toEqual([
+      {
+        key: 0,
         header: "Category",
         subtitle: "Revenue",
         items: [
@@ -140,6 +170,7 @@ describe("buildLegendGroups", () => {
         ],
       },
       {
+        key: 1,
         header: "Orders",
         items: [{ label: "Orders", color: "#A989C5" }],
       },

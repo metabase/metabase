@@ -1,19 +1,30 @@
 (ns metabase.metabot.core
   "API namespace for the `metabase.metabot` module."
   (:require
-   [metabase.metabot.api]
+   [metabase.metabot.provider-util]
    [metabase.metabot.scope]
+   [metabase.metabot.search-models]
+   [metabase.metabot.usage]
    [potemkin :as p]))
 
 (p/import-vars
- [metabase.metabot.api
-  routes]
+ [metabase.metabot.provider-util
+  metabase-provider?
+  provider-and-model->provider]
  [metabase.metabot.scope
   agent-metric-read
   agent-query-construct
   agent-query-execute
   agent-search
-  agent-table-read])
+  agent-table-read]
+ [metabase.metabot.search-models
+  entity-type->search-model
+  search-model->entity-type])
+
+(p/import-vars
+ [metabase.metabot.usage
+  check-usage-limits!
+  log-ai-usage!])
 
 ;; TODO: Port analyze-chart to use the native LLM infrastructure
 ;; instead of the deleted `metabase.metabot.client`.

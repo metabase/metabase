@@ -20,13 +20,13 @@ import {
   loadMetadataForDocumentCard,
 } from "metabase/documents/documents.slice";
 import { getCurrentDocument } from "metabase/documents/selectors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
 import MetabotThinkingStyles from "metabase/metabot/components/MetabotChat/MetabotThinking.module.css";
 import { MetabotIcon } from "metabase/metabot/components/MetabotIcon";
 import {
   useMetabotName,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Button, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { Card, MetabotGenerateContentRequest } from "metabase-types/api";
 

@@ -8,7 +8,7 @@ import {
 } from "metabase/common/components/MetadataInfo/MetadataInfo";
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import CS from "metabase/css/core/index.css";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { isConcreteTableId } from "metabase-types/api";
 

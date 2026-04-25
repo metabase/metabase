@@ -11,14 +11,6 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
-      release-channel:
-        description: 'The release channel to publish to (optional)'
-        type: choice
-        options:
-          - none
-          - latest
-        required: true
-        default: 'none'
       auto:
         description: 'auto-patch release DO NOT SET MANUALLY'
         type: boolean
@@ -33,14 +25,6 @@ on:
         description: 'A full-length commit SHA-1 hash'
         type: string
         required: true
-      release-channel:
-        description: 'The release channel to publish to (optional)'
-        type: string
-        # options:
-        #   - none
-        #   - latest
-        required: true
-        default: 'none'
       auto:
         description: 'auto-patch release DO NOT SET MANUALLY'
         type: boolean
@@ -48,9 +32,10 @@ on:
 
 permissions:
   id-token: write
-  contents: read
-  actions: read
+  contents: write
   checks: write
+  issues: write
+  actions: read
 
 jobs:
   check-version:
@@ -290,7 +275,6 @@ jobs:
       release: "true"
 
   push-tags:
-    permissions: write-all
     needs: [verify-s3-download, containerize-oss, containerize-ee, check-version]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 10
@@ -453,7 +437,6 @@ jobs:
     needs: add-extra-tags
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 15
-    permissions: write-all
     env:
       AWS_S3_DOWNLOADS_BUCKET: ${{ vars.AWS_S3_DOWNLOADS_BUCKET }}
       DOCKERHUB_OWNER: ${{ vars.DOCKERHUB_OWNER }}
@@ -582,20 +565,9 @@ jobs:
         --distribution-id ${{ vars.AWS_CLOUDFRONT_STATIC_ID }} \
         --paths "/version-info.json" "/version-info-ee.json"
 
-  set-release-channel:
-    needs: publish-version-info
-    uses: ./.github/workflows/release-tag.yml
-    secrets: inherit
-    with:
-      version: ${{ inputs.version }}
-      tag_name: ${{ inputs.release-channel }}
-      tag_rollout: 100
-      tag_ee: true
-      tag_oss: true
-
   publish-complete-message:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    needs: [set-release-channel, add-extra-tags]
+    needs: [add-extra-tags]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -626,7 +598,6 @@ jobs:
 
   manage-milestones:
     if: ${{ !inputs.auto }}
-    permissions: write-all
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     needs: [draft-release-notes, publish-version-info] # this will ensure that the milestone stays open until the release notes are published
     timeout-minutes: 15

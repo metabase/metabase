@@ -400,6 +400,16 @@
    (prometheus/counter :metabase-search/semantic-indexer-dlq-failures
                        {:description "Number of failed semantic search DLQ retries"})
 
+   ;; data-complexity-score timing
+   ;; 1ms → 1min buckets; widen later if real-world runs push past a minute.
+   (prometheus/histogram :metabase-data-complexity/scoring-duration-ms
+                         {:description "Duration (ms) of a full Data Complexity Score run end-to-end (enumerate + score for all three catalogs + Snowplow publish)."
+                          :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
+   (prometheus/histogram :metabase-data-complexity/phase-duration-ms
+                         {:description "Duration (ms) of one stage (`enumerate` = DB fetch, `score` = in-memory scoring) for one catalog within a Data Complexity Score run."
+                          :labels      [:stage :catalog]
+                          :buckets     [1 10 50 100 500 1000 5000 10000 30000 60000]})
+
 ;; notification metrics
    (prometheus/counter :metabase-notification/send-ok
                        {:description "Number of successful notification sends."
@@ -594,6 +604,11 @@
                           :labels [:profile-id]
                           ;; 100ms -> 10 minutes
                           :buckets [100 500 1000 5000 10000 30000 60000 120000 300000 600000]})
+   (prometheus/histogram :metabase-metabot/message-persist-bytes
+                         {:description "Size in bytes of persisted metabot message data (JSON)"
+                          :labels [:profile-id]
+                          ;; 1KB -> 5MB
+                          :buckets [1000 5000 10000 50000 100000 500000 1000000 5000000]})
 
    ;; release dashboard metrics
    (prometheus/counter :metabase-sync/failures

@@ -23,7 +23,7 @@ export type SdkInternalNavigationEntry =
     })
   | (BaseEntry & {
       type: "question";
-      id: SdkQuestionId;
+      id: SdkQuestionId | null;
       name: string;
       virtual?: true;
       parameters?: ParameterValues;

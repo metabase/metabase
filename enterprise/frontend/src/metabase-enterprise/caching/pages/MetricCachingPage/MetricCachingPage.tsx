@@ -10,11 +10,11 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useLoadCardWithMetadata } from "metabase/data-studio/common/hooks/use-load-card-with-metadata";
-import * as Urls from "metabase/lib/urls";
 import { MetricPageShell } from "metabase/metrics/components/MetricPageShell";
 import { metricUrls as defaultUrls } from "metabase/metrics/urls";
 import type { MetricSettingsPageProps } from "metabase/plugins/oss/caching";
 import { Card, Center } from "metabase/ui";
+import * as Urls from "metabase/utils/urls";
 import { getItemName } from "metabase-enterprise/caching/components/utils";
 import Question from "metabase-lib/v1/Question";
 import type { CacheableModel } from "metabase-types/api";
@@ -51,7 +51,7 @@ export function MetricCachingPage({
     return { savedStrategy };
   }, [configs, cardId]);
 
-  const saveStrategy = useSaveStrategy(cardId ?? null, "question");
+  const saveStrategy = useSaveStrategy(cardId ?? null, "metric");
 
   const { confirmationModal, setIsStrategyFormDirty } =
     useConfirmIfFormIsDirty();
@@ -80,7 +80,7 @@ export function MetricCachingPage({
         <Card withBorder flex={1} p={0}>
           <StrategyForm
             targetId={question.id()}
-            targetModel="question"
+            targetModel="metric"
             targetName={getItemName("question", question)}
             setIsDirty={setIsStrategyFormDirty}
             saveStrategy={saveStrategy}

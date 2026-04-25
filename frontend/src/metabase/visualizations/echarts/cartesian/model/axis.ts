@@ -2,15 +2,11 @@ import * as d3 from "d3";
 import dayjs from "dayjs";
 import _ from "underscore";
 
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
-import { formatValue } from "metabase/lib/formatting";
-import type { OptionsType } from "metabase/lib/formatting/types";
-import {
-  getObjectEntries,
-  getObjectKeys,
-  getObjectValues,
-} from "metabase/lib/objects";
-import { isNotNull, isNumber } from "metabase/lib/types";
+import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { formatValue } from "metabase/utils/formatting";
+import type { OptionsType } from "metabase/utils/formatting/types";
+import { getObjectEntries, getObjectKeys } from "metabase/utils/objects";
+import { isNotNull, isNumber } from "metabase/utils/types";
 import {
   ECHARTS_CATEGORY_AXIS_NULL_VALUE,
   X_AXIS_DATA_KEY,
@@ -938,7 +934,7 @@ function getTimeSeriesXAxisInfo(
   // 2. count - how many intervals per tick?
   // 3. timezone - what timezone are values in? days vary in length by timezone
   const unit = minTimeseriesUnit(
-    getObjectValues(dimensionModel.columnByCardId)
+    Object.values(dimensionModel.columnByCardId)
       .map((column) =>
         isAbsoluteDateTimeUnit(column.unit) ? column.unit : null,
       )

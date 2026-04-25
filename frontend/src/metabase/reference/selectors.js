@@ -1,8 +1,8 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
+import _ from "underscore";
 
 import { Dashboards } from "metabase/entities/dashboards";
-import { resourceListToMap } from "metabase/lib/redux";
 import {
   getShallowDatabases as getDatabases,
   getShallowFields as getFields,
@@ -114,5 +114,5 @@ export const getIsFormulaExpanded = (state, props) =>
 
 export const getDashboards = (state, props) => {
   const list = Dashboards.selectors.getList(state);
-  return list && resourceListToMap(list);
+  return list && _.indexBy(list, "id");
 };

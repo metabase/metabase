@@ -12,7 +12,8 @@ import {
 } from "react";
 import _ from "underscore";
 
-import { useStore } from "metabase/lib/redux";
+import { useStore } from "metabase/redux";
+import type { State } from "metabase/redux/store";
 import {
   canUserCreateNativeQueries,
   canUserCreateQueries,
@@ -24,7 +25,6 @@ import type {
   MetabotTransformInfo,
   TaggedTransform,
 } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 export type ChatContextProviderFn = (
   state: State,

@@ -56,6 +56,7 @@
              :when (not (str/starts-with? actual-name "."))]
          (let [f (.toFile (.resolveIn e dst-path))]
            (if (.isFile e)
-             (io/copy tar f)
+             (do (io/make-parents f)
+                 (io/copy tar f))
              (.mkdirs f))
            true))))))

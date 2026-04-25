@@ -8,12 +8,12 @@ import { getStore } from "__support__/entities-store";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
-import { MetabaseReduxProvider } from "metabase/lib/redux";
 import { LocaleProvider } from "metabase/public/LocaleProvider";
 import { publicReducers } from "metabase/reducers-public";
+import { MetabaseReduxProvider } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import { createMockState } from "metabase/redux/store/mocks";
 import type { ScheduleSettings } from "metabase-types/api";
-import type { State } from "metabase-types/store";
-import { createMockState } from "metabase-types/store/mocks";
 
 import { Schedule } from "./Schedule";
 

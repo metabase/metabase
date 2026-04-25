@@ -3,8 +3,8 @@ import { t } from "ttag";
 import { UpsellCard } from "metabase/common/components/upsells/UpsellCard";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { hasAnySsoFeature } from "metabase/common/utils/plan";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getSetting } from "metabase/selectors/settings";
 import { Box, List } from "metabase/ui";
 

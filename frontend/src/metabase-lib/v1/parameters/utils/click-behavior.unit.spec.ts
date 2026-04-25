@@ -1,6 +1,6 @@
 import { createMockMetadata } from "__support__/metadata";
-import * as dateFormatUtils from "metabase/lib/formatting/date";
-import { checkNotNull } from "metabase/lib/types";
+import * as dateFormatUtils from "metabase/utils/formatting/date";
+import { checkNotNull } from "metabase/utils/types";
 import Question from "metabase-lib/v1/Question";
 import type Field from "metabase-lib/v1/metadata/Field";
 import type { FieldId, TemplateTagType } from "metabase-types/api";
@@ -87,7 +87,7 @@ const emptyData = {
   userAttribute: {},
 };
 
-describe("metabase/lib/click-behavior", () => {
+describe("metabase-lib/v1/parameters/utils/click-behavior", () => {
   describe("getDataFromClicked", () => {
     it("should pull out column values from data", () => {
       const column = createMockColumn({ name: "price" });

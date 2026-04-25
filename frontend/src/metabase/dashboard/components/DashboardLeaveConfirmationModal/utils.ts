@@ -1,6 +1,6 @@
 import type { Location } from "history";
 
-import { deserializeCard, parseHash } from "metabase/lib/card";
+import { deserializeCard, parseHash } from "metabase/common/utils/card";
 
 export const isNavigatingToCreateADashboardQuestion = (
   nextLocation?: Location,

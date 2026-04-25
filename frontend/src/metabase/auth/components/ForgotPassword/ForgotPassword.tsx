@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { Button } from "metabase/common/components/Button";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 
 import { forgotPassword } from "../../actions";
 import { getIsEmailConfigured, getIsLdapEnabled } from "../../selectors";

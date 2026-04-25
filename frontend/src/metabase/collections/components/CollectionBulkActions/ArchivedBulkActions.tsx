@@ -8,7 +8,7 @@ import {
   BulkActionDangerButton,
 } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch } from "metabase/redux";
 import { addUndo } from "metabase/redux/undo";
 import type { Collection, CollectionItem } from "metabase-types/api";
 

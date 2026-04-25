@@ -12,7 +12,6 @@ import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { useListCollectionsQuery, useListSnippetsQuery } from "metabase/api";
-import { useSelector } from "metabase/lib/redux";
 import { getMetabotVisible } from "metabase/metabot/state";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { SnippetFormModal } from "metabase/query_builder/components/template_tags/SnippetFormModal";
@@ -27,6 +26,7 @@ import type {
   SelectionRange,
   SidebarFeatures,
 } from "metabase/querying/editor/types";
+import { useSelector } from "metabase/redux";
 import { Button, Flex, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -63,6 +63,7 @@ type NativeQueryEditorProps = Omit<CodeMirrorEditorProps, "query"> & {
   className?: string;
   closeSnippetModal?: () => void;
   databaseIsDisabled?: (database: Database) => boolean;
+  databaseDisabledTooltip?: (database: Database) => string | undefined;
   editorContext?: "question" | "action";
   extraButton?: ReactNode;
   handleResize?: () => void;
@@ -125,6 +126,7 @@ export const NativeQueryEditor = forwardRef<
     className,
     closeSnippetModal,
     databaseIsDisabled,
+    databaseDisabledTooltip,
     editorContext,
     extensions,
     handleResize: handleResizeFromProps,
@@ -322,6 +324,7 @@ export const NativeQueryEditor = forwardRef<
           setDatasetQuery={setDatasetQuery}
           onFormatQuery={handleFormatQuery}
           databaseIsDisabled={databaseIsDisabled}
+          databaseDisabledTooltip={databaseDisabledTooltip}
           readOnly={readOnly}
         >
           {topBarInnerContent}

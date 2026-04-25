@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector } from "metabase/redux";
 import { getUser } from "metabase/selectors/user";
 import type { IconName } from "metabase/ui";
 

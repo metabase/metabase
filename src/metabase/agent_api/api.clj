@@ -3,18 +3,19 @@
   Endpoints are versioned (e.g., /v1/search) and use standard HTTP semantics."
   (:require
    [clojure.string :as str]
-   [malli.core :as mc]
+   [metabase.agent-api.validation :as agent-api.validation]
+   [metabase.agent-lib.core :as agent-lib]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
    [metabase.api.routes.common :as api.routes.common]
    [metabase.auth-identity.core :as auth-identity]
-   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.core :as metabot]
-   [metabase.metabot.tools.deftool :as deftool]
+   [metabase.metabot.tools.construct :as metabot-construct]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
-   [metabase.metabot.tools.filters :as metabot-filters]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
    [metabase.query-processor.core :as qp]
@@ -35,13 +36,18 @@
   30)
 
 (def ^:private ^:const default-query-row-limit
-  "Default row limit for table queries when no limit is specified."
+  "Default row cap when :limit is omitted from a table query request."
   200)
 
-(def ^:private ^:const max-query-row-limit
-  "Hard cap on rows returned by the combined query endpoint, keeping result sets lean for LLM context windows.
-   Agents can paginate via continuation tokens for more."
+(def ^:private ^:const page-size
+  "Rows returned per page when paginating the combined query endpoint via continuation tokens.
+   Also used as the query processor's per-call row constraint."
   200)
+
+(def ^:private ^:const max-total-row-limit
+  "Ceiling on the user-requested :limit for the combined query endpoint. Agents can paginate
+   through up to this many rows across pages."
+  2000)
 
 ;;; ---------------------------------------------------- Helpers ------------------------------------------------------
 
@@ -65,15 +71,25 @@
   "A data type for a field derived from Metabase's type hierarchy."
   [:enum :boolean :date :datetime :time :number :string])
 
+(mr/def ::field-id
+  "Field id as accepted by agent_api endpoints — either a real app-DB field id (positive integer)
+  or a string alias for expression/aggregation columns."
+  [:or ::lib.schema.id/field :string])
+
 (mr/def ::field
-  "A field from a table or metric. The field_id format is '<prefix><entity-id>-<field-index>' where prefix indicates the source (t=table, c=metric) and index is the position in the entity's fields."
+  "A field from a table or metric. field_id is the real database field ID (integer) for concrete fields,
+  or a string alias for expression/aggregation columns."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:field_id :string]
+   [:field_id ::field-id]
    [:name :string]
+   [:display_name :string]
    [:type {:optional true} [:maybe ::field-type]]
    [:description {:optional true} [:maybe :string]]
-   [:database_type {:optional true} [:maybe :string]]
+   [:base_type {:optional true} [:maybe :string]]
+   [:effective_type {:optional true} [:maybe :string]]
    [:semantic_type {:optional true} [:maybe :string]]
+   [:database_type {:optional true} [:maybe :string]]
+   [:coercion_strategy {:optional true} [:maybe :string]]
    [:field_values {:optional true} [:maybe [:sequential :any]]]])
 
 (mr/def ::entity-type
@@ -87,7 +103,7 @@
    [:type [:= :metric]]
    [:name :string]
    [:description {:optional true} [:maybe :string]]
-   [:default_time_dimension_field_id {:optional true} [:maybe :string]]])
+   [:default_time_dimension_field_id {:optional true} [:maybe ::field-id]]])
 
 (mr/def ::segment
   "A predefined filter condition that can be applied to queries via the segment_id in filters."
@@ -143,7 +159,7 @@
    [:type [:= :metric]]
    [:name :string]
    [:description {:optional true} [:maybe :string]]
-   [:default_time_dimension_field_id {:optional true} [:maybe :string]]
+   [:default_time_dimension_field_id {:optional true} [:maybe ::field-id]]
    [:verified {:optional true} [:maybe :boolean]]
    [:queryable_dimensions {:optional true} [:maybe [:sequential ::field]]]
    [:segments {:optional true} [:maybe [:sequential ::segment]]]])
@@ -170,7 +186,7 @@
 (mr/def ::field-values
   "Statistics and sample values for a specific field."
   [:map {:encode/api #(update-keys % metabot.u/safe->snake_case_en)}
-   [:field_id {:optional true} [:maybe :string]]
+   [:field_id {:optional true} [:maybe ::field-id]]
    [:statistics {:optional true} [:maybe ::statistics]]
    [:values {:optional true} [:maybe [:sequential :any]]]])
 
@@ -220,7 +236,8 @@
        [:with-segments       {:optional true} [:maybe :boolean]]]]
   (check-tool-result
    (entity-details/get-table-details
-    {:table-id             id
+    {:entity-type          :table
+     :entity-id            id
      :with-fields?         with-fields
      :with-field-values?   with-field-values
      :with-related-tables? with-related-tables
@@ -282,6 +299,25 @@
      :field-id    field-id
      :limit       (or (request/limit) default-field-values-limit)})))
 
+(defn- coerce-query-list
+  "Defensive coercion for `/v1/search`'s query arguments. Some MCP clients (notably
+   Codex) serialize array args through a string layer, so a caller that intended to
+   send `[\"orders\"]` may actually send `\"[\\\"orders\\\"]\"`. Accept either shape:
+   an array is returned as-is; a string that parses as a JSON array of non-blank
+   strings is unwrapped; any other string is treated as a single-element query."
+  [v]
+  (cond
+    (nil? v)        nil
+    (sequential? v) v
+    (string? v)     (or (try
+                          (let [parsed (json/decode+kw v)]
+                            (when (and (sequential? parsed)
+                                       (every? #(and (string? %) (not (str/blank? %))) parsed))
+                              parsed))
+                          (catch Exception _ nil))
+                        [v])
+    :else           v))
+
 (api.macros/defendpoint :post "/v1/search" :- ::search-response
   "Search for tables and metrics.
 
@@ -289,18 +325,24 @@
   Reciprocal Rank Fusion when both query types are provided."
   {:scope metabot/agent-search
    :tool  {:name "search"
-           :description "Search for tables and metrics in Metabase. Use term_queries for keyword search or semantic_queries for natural language search."
+           :description (str "Search for tables and metrics in Metabase. "
+                             "Use term_queries for keyword search or semantic_queries for natural language search. "
+                             "Both arguments are arrays of strings, for example term_queries: [\"orders\", \"revenue\"].")
            :annotations {:read-only? true}}}
   [_route-params
    _query-params
    {term-queries     :term_queries
     semantic-queries :semantic_queries}
    :- [:map
-       [:term_queries     {:optional true} [:maybe [:sequential ms/NonBlankString]]]
-       [:semantic_queries {:optional true} [:maybe [:sequential ms/NonBlankString]]]]]
+       [:term_queries {:optional true
+                       :tool/description "Keyword search queries as an array of strings, for example [\"orders\", \"revenue\"]."}
+        [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]
+       [:semantic_queries {:optional true
+                           :tool/description "Natural-language search queries as an array of strings, for example [\"how much revenue did we make\"]."}
+        [:maybe [:or [:sequential ms/NonBlankString] ms/NonBlankString]]]]]
   (let [results (metabot-search/search
-                 {:term-queries     (or term-queries [])
-                  :semantic-queries (or semantic-queries [])
+                 {:term-queries     (or (coerce-query-list term-queries) [])
+                  :semantic-queries (or (coerce-query-list semantic-queries) [])
                   :entity-types     ["table" "metric"]
                   :limit            (or (request/limit) 50)})]
     {:data        results
@@ -308,317 +350,126 @@
 
 ;;; ------------------------------------------------ Construct Query -------------------------------------------------
 
-;; Request schemas for the Agent API.
-;; These use snake_case keys for validation and OpenAPI generation,
-;; with :encode/tool-api-request transformers for converting to the internal format.
-
-(mr/def ::bucket
-  (into [:enum {:error/message           "Valid bucket"
-                :encode/tool-api-request keyword}]
-        (map name)
-        lib.schema.temporal-bucketing/ordered-datetime-bucketing-units))
-
-(mr/def ::existence-filter
-  [:and
-   [:map
-    [:field_id :string]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "is-null"         "is-not-null"
-                 "string-is-empty" "string-is-not-empty"
-                 "is-true"         "is-false"]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::temporal-extraction-filter
-  [:and
-   [:map
-    [:field_id :string]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "year-equals"        "year-not-equals"
-                 "quarter-equals"     "quarter-not-equals"
-                 "month-equals"       "month-not-equals"
-                 "day-of-week-equals" "day-of-week-not-equals"
-                 "hour-equals"        "hour-not-equals"
-                 "minute-equals"      "minute-not-equals"
-                 "second-equals"      "second-not-equals"]]
-    [:value :int]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::disjunctive-temporal-extraction-filter
-  [:and
-   [:map
-    [:field_id :string]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "year-equals"        "year-not-equals"
-                 "quarter-equals"     "quarter-not-equals"
-                 "month-equals"       "month-not-equals"
-                 "day-of-week-equals" "day-of-week-not-equals"
-                 "hour-equals"        "hour-not-equals"
-                 "minute-equals"      "minute-not-equals"
-                 "second-equals"      "second-not-equals"]]
-    [:values [:sequential :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::temporal-filter
-  [:and
-   [:map
-    [:field_id :string]
-    [:bucket {:optional true} ::bucket]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"       "not-equals"
-                 "greater-than" "greater-than-or-equal"
-                 "less-than"    "less-than-or-equal"]]
-    [:value [:or :string :int]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::disjunctive-temporal-filter
-  [:and
-   [:map
-    [:field_id :string]
-    [:bucket {:optional true} ::bucket]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"       "not-equals"
-                 "greater-than" "greater-than-or-equal"
-                 "less-than"    "less-than-or-equal"]]
-    [:values [:sequential [:or :string :int]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::string-filter
-  [:and
-   [:map
-    [:field_id :string]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"             "not-equals"
-                 "string-contains"    "string-not-contains"
-                 "string-starts-with" "string-ends-with"]]
-    [:value :string]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::disjunctive-string-date-filter
-  [:and
-   [:map
-    [:field_id :string]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"             "not-equals"
-                 "string-contains"    "string-not-contains"
-                 "string-starts-with" "string-ends-with"]]
-    [:values [:sequential :string]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::numeric-filter
-  [:and
-   [:map
-    [:field_id :string]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals"       "not-equals"
-                 "greater-than" "greater-than-or-equal"
-                 "less-than"    "less-than-or-equal"]]
-    [:value [:or :int :double]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::disjunctive-numeric-filter
-  [:and
-   [:map
-    [:field_id :string]
-    [:operation [:enum {:encode/tool-api-request keyword}
-                 "equals" "not-equals"]]
-    [:values [:sequential [:or :int :double]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::segment-filter
-  "Filter using a pre-defined segment."
-  [:and
-   [:map
-    [:segment_id :int]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::filter
-  [:or
-   ::segment-filter
-   ::existence-filter
-   ::temporal-extraction-filter ::disjunctive-temporal-extraction-filter
-   ::temporal-filter ::disjunctive-temporal-filter
-   ::string-filter ::disjunctive-string-date-filter
-   ::numeric-filter ::disjunctive-numeric-filter])
-
-(mr/def ::group-by
-  [:and
-   [:map
-    [:field_id :string]
-    [:field_granularity {:optional true}
-     [:maybe [:enum {:encode/tool-api-request keyword}
-              "minute", "hour" "day" "week" "month" "quarter" "year" "day-of-week"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::count-aggregation
-  "Count aggregation — counts rows, no field_id needed.
-   Use sort_order to order results by this aggregation ('asc' or 'desc')."
-  [:and
-   [:map
-    [:function [:= {:encode/tool-api-request keyword} "count"]]
-    [:bucket {:optional true} ::bucket]
-    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::field-aggregation
-  "Aggregation using a field and function. field_id is required.
-   Use sort_order to order results by this aggregation ('asc' or 'desc')."
-  [:and
-   [:map
-    [:field_id :string]
-    [:bucket {:optional true} ::bucket]
-    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]
-    [:function [:enum {:encode/tool-api-request keyword}
-                "avg" "count-distinct" "max" "min" "sum"]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::measure-aggregation
-  "Aggregation using a pre-defined measure."
-  [:and
-   [:map
-    [:measure_id :int]
-    [:sort_order {:optional true} [:maybe [:enum {:encode/tool-api-request keyword} "asc" "desc"]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::aggregation
-  "Aggregation — count (field optional), field-based (field required), or measure-based."
-  [:or ::count-aggregation ::field-aggregation ::measure-aggregation])
-
-(mr/def ::field
-  [:and
-   [:map
-    [:field_id :string]
-    [:bucket {:optional true} ::bucket]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::order-by
-  "Order by item specifying a field and sort direction."
-  [:map
-   [:field ::field]
-   [:direction [:enum {:encode/tool-api-request keyword} "asc" "desc"]]])
-
-(mr/def ::construct-query-table-request
-  "Request schema for constructing a query from a table.
-
-   Query components:
-   - filters: Filter conditions to apply
-   - fields: Specific fields to select (omit for all fields)
-   - aggregations: Aggregation functions (sum, count, avg, etc.). Use sort_order on the aggregation to order by it.
-   - group_by: Fields to group by, with optional temporal granularity
-   - order_by: Order by regular fields only. To order by an aggregation result, use sort_order on the aggregation instead.
-   - limit: Maximum rows to return"
-  [:and
-   [:map
-    [:table_id ms/PositiveInt]
-    [:filters      {:optional true} [:maybe [:sequential ::filter]]]
-    [:fields       {:optional true} [:maybe [:sequential ::field]]]
-    [:aggregations {:optional true} [:maybe [:sequential ::aggregation]]]
-    [:group_by     {:optional true} [:maybe [:sequential ::group-by]]]
-    [:order_by     {:optional true
-                    :description "Order by regular fields only. To order by aggregation results, use sort_order on the aggregation."}
-     [:maybe [:sequential ::order-by]]]
-    [:limit        {:optional true} [:maybe ms/PositiveInt]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::construct-query-metric-request
-  "Request schema for constructing a query from a metric.
-   Only supports filters and group_by (aggregation is defined by the metric)."
-  [:and
-   [:map
-    [:metric_id ms/PositiveInt]
-    [:filters  {:optional true} [:maybe [:sequential ::filter]]]
-    [:group_by {:optional true} [:maybe [:sequential ::group-by]]]]
-   [:map {:encode/tool-api-request #(update-keys % metabot.u/safe->kebab-case-en)}]])
-
-(mr/def ::construct-query-request
-  "Request schema for /v1/construct-query. Accepts either table_id or metric_id."
-  [:or ::construct-query-table-request ::construct-query-metric-request])
-
-(mr/def ::query-request
-  "Request schema for /v1/query. Accepts construct params (table_id or metric_id) or a continuation_token."
-  [:multi {:dispatch (fn [m]
-                       (cond
-                         (:continuation_token m) :continuation
-                         (:metric_id m)          :metric
-                         :else                   :table))}
-   [:continuation [:map [:continuation_token ms/NonBlankString]]]
-   [:table        ::construct-query-table-request]
-   [:metric       ::construct-query-metric-request]])
+(mr/def ::program-request
+  "Request body for /v2/construct-query and /v2/query.
+  An agent-lib structured program with `:source` and `:operations`. The top-level
+  `:source` must reference a database entity (`table`, `card`, `dataset`, or
+  `metric`); `context` and nested `program` sources are rejected at the HTTP
+  boundary by [[evaluate-program-for-execution]] because they require an
+  in-process evaluation context."
+  agent-lib/program-schema)
 
 (mr/def ::construct-query-response
   "Response containing a base64-encoded MBQL query for use with /v1/execute."
   [:map
    [:query ms/NonBlankString]])
 
-(defn- construct-query*
-  "Shared query construction: encodes args, calls the appropriate tool fn, returns the raw lib query."
-  [body]
-  (if (:table_id body)
-    (let [args (mc/encode ::construct-query-table-request body deftool/request-transformer)]
-      (:query (check-tool-result (metabot-filters/query-datasource args))))
-    (let [args (mc/encode ::construct-query-metric-request body deftool/request-transformer)]
-      (:query (check-tool-result (metabot-filters/query-metric args))))))
+(def ^:private allowed-program-source-types
+  "Top-level program source types that the HTTP boundary accepts. `context` and
+  nested `program` sources require an in-process evaluation context and are
+  rejected here."
+  #{"table" "card" "dataset" "metric"})
 
-(defn- construct-table-query
-  "Build a query from a table using the provided query components."
-  [body]
-  (let [body  (cond-> body (not (:limit body)) (assoc :limit default-query-row-limit))
-        query (construct-query* body)]
-    {:query (-> query json/encode u/encode-base64)}))
+(defn- evaluate-program-to-live-query
+  "Resolve a program's source entity, evaluate the program via agent-lib, and return
+  the live lib query (with lib metadata attached)."
+  [program]
+  (let [source-type (get-in program [:source :type])]
+    (api/check (contains? allowed-program-source-types source-type)
+               [400 (str "top-level program source must be one of: "
+                         (str/join ", " (sort allowed-program-source-types)))]))
+  (let [source-entity (metabot-construct/program-source->source-entity (:source program))
+        result        (metabot-construct/execute-program source-entity nil program)]
+    (get-in result [:structured-output :query])))
 
-(defn- construct-metric-query
-  "Build a query from a metric using filters and group_by."
-  [body]
-  {:query (-> (construct-query* body) json/encode u/encode-base64)})
+(defn- evaluate-program-for-execution
+  "Evaluate a program and return a plain MBQL 5 query map suitable for serialization
+  into a continuation token and execution by the QP."
+  [program]
+  (lib/prepare-for-serialization (evaluate-program-to-live-query program)))
 
-(api.macros/defendpoint :post "/v1/construct-query" :- ::construct-query-response
-  "Construct an MBQL query from a table or metric.
+(api.macros/defendpoint :post "/v2/construct-query" :- ::construct-query-response
+  "Construct an MBQL query from a structured agent-lib program.
 
-  Returns a base64-encoded MBQL query that can be used with the query API.
-
-  For tables, supports: filters, fields, aggregations, group_by, order_by, limit.
-  For metrics, supports: filters, group_by (aggregation is defined by the metric)."
+  The body is the program itself: a JSON object with `source` (identifying the
+  table/card/dataset/metric to query) and `operations` (an array of operator
+  tuples). Returns a base64-encoded MBQL query that can be executed via
+  /v1/execute. See the agent_api reference for the full program syntax."
   {:scope metabot/agent-query-construct
    :tool  {:name "construct_query"
-           :description (str "Construct a query against a Metabase table or metric. "
-                             "Returns an opaque query string that can be executed with execute_query.\n\n"
-                             "For table queries: provide table_id. "
-                             "Supports filters, fields, aggregations, group_by, order_by, and limit.\n\n"
-                             "For metric queries: provide metric_id. "
-                             "Supports only filters and group_by (aggregation is defined by the metric).\n\n"
-                             "Provide either table_id or metric_id, not both.")
+           :description (str "Construct a Metabase query from a structured program. "
+                             "The body is a JSON object with `source` and `operations` keys "
+                             "where source identifies the table/card/dataset/metric to query "
+                             "(e.g. {\"type\": \"table\", \"id\": 42}) and operations is an "
+                             "array of operator tuples (filter, aggregate, breakout, expression, "
+                             "with-fields, order-by, limit, join, append-stage, etc.). Returns "
+                             "an opaque query string that can be executed with execute_query.")
            :annotations {:read-only? true :idempotent? true}}}
   [_route-params
    _query-params
-   body :- ::construct-query-request]
-  (if (:table_id body)
-    (construct-table-query body)
-    (construct-metric-query body)))
+   program :- ::program-request]
+  (let [query (evaluate-program-for-execution program)]
+    {:query (-> query json/encode u/encode-base64)}))
 
 ;;; ------------------------------------------------- Combined Query -------------------------------------------------
 
 (defn- generate-continuation-token
-  "Build a base64-encoded continuation token containing the query and next-page pagination info."
-  [query-map limit page]
+  "Build a base64-encoded continuation token carrying the query and next-page pagination info.
+   :limit is the user's total row cap across all pages, not the per-page size."
+  [query-map total-limit page]
   (-> {:query      query-map
-       :pagination {:limit limit :page (inc page)}}
+       :pagination {:limit total-limit :page (inc page)}}
       json/encode
       u/encode-base64))
 
 (defn- decode-continuation-token
-  "Decode a base64-encoded continuation token into {:query ... :pagination ...}."
+  "Decode a base64-encoded continuation token into {:query ... :pagination ...}.
+   The token is client-supplied, so sanity-check the pagination ints to turn
+   garbage into a 400 rather than a downstream 500. This is robustness, not a
+   security boundary — a caller can always issue a fresh program to run any
+   query they want."
   [token]
-  (-> token u/decode-base64 json/decode+kw))
+  (let [decoded (-> token u/decode-base64 json/decode+kw)
+        {:keys [limit page]} (:pagination decoded)]
+    (api/check (and (int? limit) (pos? limit))
+               [400 "Invalid continuation token: limit must be a positive integer"])
+    (api/check (and (int? page) (pos? page))
+               [400 "Invalid continuation token: page must be a positive integer"])
+    decoded))
 
-(defn- build-query-for-execution
-  "Construct a pMBQL query map from table_id or metric_id params. Returns {:query <map> :limit <int>}.
-   The JSON round-trip strips lib metadata so the query is a plain pMBQL map suitable for token serialization."
-  [body]
-  (let [limit (min (or (:limit body) default-query-row-limit) max-query-row-limit)
-        query (construct-query* (assoc body :limit limit))]
-    {:query (json/decode+kw (json/encode query)) :limit limit}))
+(defn- total-row-limit
+  "The user's requested :limit, defaulted when absent and capped at the combined
+   endpoint's hard maximum. This is the app-level total-row budget enforced across
+   paginated responses; each page's QP-level cap comes from `:page.items`, which
+   `remaining-page-rows` clamps to respect this total."
+  [live-query]
+  (min (or (lib/current-limit live-query) default-query-row-limit)
+       max-total-row-limit))
+
+(defn- rows-before-page
+  "Total rows consumed by the pages preceding `page`. Single source of truth for
+   the page-size * (page - 1) arithmetic used by both sizing and pagination-exit."
+  [page]
+  (* (dec page) page-size))
+
+(defn- remaining-page-rows
+  "Rows to request for this page, respecting the user's total cap.
+   Returns at most page-size, and never more than remaining rows under the cap."
+  [total-limit page]
+  (max 0 (min page-size (- total-limit (rows-before-page page)))))
+
+(defn- more-pages-available?
+  "True when this page was filled to its requested size *and* the total cap still
+   has room for more rows — i.e. we should emit a continuation token."
+  [page total-limit rows-returned items]
+  (and (= rows-returned items)
+       (< (rows-before-page (inc page)) total-limit)))
 
 (defn- apply-page-to-query
-  "Apply :page clause to the last stage of a pMBQL query map."
+  "Set `:page` on the last stage of a serialized MBQL 5 query map. Operates on the
+  plain-map form because the continuation-token path only has that shape available —
+  rehydrating to a live lib query here would require a metadata provider we don't
+  currently plumb through the token."
   [query-map page items]
   (let [stages   (:stages query-map)
         last-idx (dec (count stages))]
@@ -634,50 +485,64 @@
                            :context     :agent})))
 
 (defn- prepare-combined-query
-  "Apply the tighter row cap used by the combined query endpoint."
+  "Apply the tighter row cap used by the combined query endpoint. Each page is bounded
+   by page-size; the user's total-limit is enforced separately via pagination."
   [query]
   (assoc (prepare-agent-query query)
-         :constraints {:max-results           max-query-row-limit
-                       :max-results-bare-rows max-query-row-limit}))
+         :constraints {:max-results           page-size
+                       :max-results-bare-rows page-size}))
 
-(api.macros/defendpoint :post "/v1/query"
+(mr/def ::query-request
+  "Request body for /v2/query. Accepts either a structured program or a continuation_token."
+  [:multi {:dispatch (fn [m]
+                       (if (:continuation_token m) :continuation :program))}
+   [:continuation [:map [:continuation_token ms/NonBlankString]]]
+   [:program      ::program-request]])
+
+(defn- initial-page-state
+  "Normalize the two /v2/query entry points into a single {:query :total-limit :page}
+   shape. A fresh program evaluates the user's program and computes a total-row budget
+   from its `:limit`; a continuation token carries that state from a prior response."
+  [body]
+  (if-let [token (:continuation_token body)]
+    (let [{:keys [query pagination]} (decode-continuation-token token)]
+      {:query query :total-limit (:limit pagination) :page (:page pagination)})
+    (let [live-query (evaluate-program-to-live-query body)]
+      {:query       (lib/prepare-for-serialization live-query)
+       :total-limit (total-row-limit live-query)
+       :page        1})))
+
+(api.macros/defendpoint :post "/v2/query"
   :- (streaming-response/streaming-response-schema ::query-response)
-  "Query a Metabase table or metric, or continue paginating a previous query.
+  "Execute a structured program and stream the results, with continuation-token pagination.
 
-  Accepts either construct params (table_id/metric_id + filters, aggregations, etc.)
-  or a continuation_token from a previous response. Returns results with column metadata
-  and an optional continuation_token for fetching the next page."
+  Accepts either a program (same shape as /v2/construct-query) or a
+  `continuation_token` from a previous response. Returns results with column
+  metadata and an optional `continuation_token` for fetching the next page."
   {:scope "agent:query"
    :tool  {:name "query"
-           :description (str "Query a Metabase table or metric. Returns results with column metadata. "
-                             "If more rows are available, the response includes a continuation_token — "
-                             "pass it back to get the next page.\n\n"
-                             "For table queries: provide table_id. "
-                             "Supports filters, fields, aggregations, group_by, order_by, and limit.\n\n"
-                             "For metric queries: provide metric_id. "
-                             "Supports only filters and group_by (aggregation is defined by the metric).\n\n"
-                             "For pagination: provide only continuation_token from a previous response.\n\n"
-                             "Provide exactly one of table_id, metric_id, or continuation_token.")}}
+           :description (str "Execute a Metabase query from a structured program and return "
+                             "results with column metadata. If more rows are available, the "
+                             "response includes a continuation_token — pass it back to get the "
+                             "next page.\n\n"
+                             "The body is either a structured program (see construct_query) or "
+                             "{\"continuation_token\": \"...\"} from a previous response.")}}
   [_route-params
    _query-params
    body :- ::query-request]
-  (let [{:keys [query limit page]}
-        (if-let [token (:continuation_token body)]
-          (let [{:keys [query pagination]} (decode-continuation-token token)]
-            {:query query :limit (:limit pagination) :page (:page pagination)})
-          (let [{:keys [query limit]} (build-query-for-execution body)]
-            {:query query :limit limit :page 1}))
-        pmbql-with-page (apply-page-to-query query page limit)]
+  (let [{:keys [query total-limit page]} (initial-page-state body)
+        items           (remaining-page-rows total-limit page)
+        mbql5-with-page (apply-page-to-query query page items)]
     (qp.streaming/streaming-response
      [rff :api]
       (qp/process-query
-       (prepare-combined-query pmbql-with-page)
+       (prepare-combined-query mbql5-with-page)
        (qp.streaming/transforming-query-response
         rff
         (fn [result]
           (assoc result :continuation_token
-                 (when (= (:row_count result) limit)
-                   (generate-continuation-token query limit page)))))))))
+                 (when (more-pages-available? page total-limit (:row_count result) items)
+                   (generate-continuation-token query total-limit page)))))))))
 
 ;;; ------------------------------------------------- Execute Query --------------------------------------------------
 
@@ -856,8 +721,12 @@
   "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."
   (api.routes.common/wrap-middleware-for-open-api-spec-generation enforce-authentication))
 
+(def +agent-api-enabled
+  "Wrap routes so they may only be accessed when the Agent API is enabled."
+  agent-api.validation/+agent-api-enabled)
+
 ;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
 (def ^{:arglists '([request respond raise])} routes
-  "`/api/agent/` routes. Workspace routes are mounted separately via the EE routes file."
+  "`/api/agent/` routes."
   (api.macros/ns-handler *ns* +auth))
