@@ -194,6 +194,20 @@ export const settings = {
     },
     readDependencies: ["pivot.show_row_totals", "pivot.show_column_totals"],
   },
+  "pivot.transpose": {
+    get section() {
+      return t`Columns`;
+    },
+    get title() {
+      return t`Transpose`;
+    },
+    get hint() {
+      return t`Swap rows and columns`;
+    },
+    widget: "toggle",
+    getDefault: () => false,
+    inline: true,
+  },
   "pivot_table.column_widths": {},
   [COLUMN_FORMATTING_SETTING]: {
     get section() {

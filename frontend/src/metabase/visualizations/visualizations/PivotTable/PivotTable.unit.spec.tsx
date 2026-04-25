@@ -296,6 +296,85 @@ describe("Visualizations > PivotTable > PivotTable", () => {
   });
 });
 
+describe("Visualizations > PivotTable > Transpose", () => {
+  const originalOffsetHeight = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    "offsetHeight",
+  ) as number;
+  const originalOffsetWidth = Object.getOwnPropertyDescriptor(
+    HTMLElement.prototype,
+    "offsetWidth",
+  ) as number;
+
+  beforeAll(() => {
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+      configurable: true,
+      value: 500,
+    });
+    Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+      configurable: true,
+      value: 500,
+    });
+  });
+
+  afterAll(() => {
+    Object.defineProperty(
+      HTMLElement.prototype,
+      "offsetHeight",
+      originalOffsetHeight,
+    );
+    Object.defineProperty(
+      HTMLElement.prototype,
+      "offsetWidth",
+      originalOffsetWidth,
+    );
+  });
+
+  it("should render measure names as row headers when transposed", () => {
+    const transposedSettings = createMockVisualizationSettings({
+      ...settings,
+      "pivot.transpose": true,
+    });
+
+    setupPivotTable({ initialSettings: transposedSettings });
+
+    const pivotTable = screen.getByTestId("pivot-table");
+    expect(pivotTable).toHaveTextContent("aggregation-1");
+    expect(pivotTable).toHaveTextContent("aggregation-2");
+  });
+
+  it("should render breakout values as column headers when transposed", () => {
+    const transposedSettings = createMockVisualizationSettings({
+      ...settings,
+      "pivot.transpose": true,
+    });
+
+    setupPivotTable({ initialSettings: transposedSettings });
+
+    const pivotTable = screen.getByTestId("pivot-table");
+    // original left header values should now appear as top headers
+    expect(pivotTable).toHaveTextContent("foo1");
+    expect(pivotTable).toHaveTextContent("foo2");
+    expect(pivotTable).toHaveTextContent("foo3");
+  });
+
+  it("should render cell values correctly when transposed", () => {
+    const transposedSettings = createMockVisualizationSettings({
+      ...settings,
+      "pivot.transpose": true,
+    });
+
+    setupPivotTable({ initialSettings: transposedSettings });
+
+    const pivotTable = screen.getByTestId("pivot-table");
+    // values from the original rows should still be present
+    expect(pivotTable).toHaveTextContent("111");
+    expect(pivotTable).toHaveTextContent("222");
+    expect(pivotTable).toHaveTextContent("555");
+    expect(pivotTable).toHaveTextContent("666");
+  });
+});
+
 describe("Visualizations > PivotTable > Chart Settings", () => {
   it("should allow you to update a column name", async () => {
     setupPivotSettings();
