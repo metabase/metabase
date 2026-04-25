@@ -6,6 +6,7 @@
    [metabase-enterprise.dependencies.async :as dependencies.async]
    [metabase-enterprise.dependencies.core :as dependencies]
    [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
    [metabase.core.core :as mbc]
@@ -123,6 +124,12 @@
         products (lib.metadata/table mp (mt/id :products))]
     (card/update-card! {:card-before-update model-card
                         :card-updates {:dataset_query (lib/query mp products)}})))
+
+(defn- run-analysis-for-card!
+  "Run analysis for a specific card to detect broken references.
+   Must be called within lib-be/with-metadata-provider-cache."
+  [card-id]
+  (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
 
 ; dependencies.async/submit! effectively awaits all pending tasks on the executor.
 ; Those tasks would be executed regardless; this is just changing the timing to be
@@ -570,93 +577,58 @@
                                                    :dependent-card-types "question")]
                 (is (every? #(= "dashboard" (:type %)) response))))))))))
 
-(deftest ^:sequential graph-archived-card-test
-  (testing "GET /api/ee/dependencies/graph always includes archived upstream entities"
+(deftest graph-archived-card-test
+  (testing "GET /api/ee/dependencies/graph with archived parameter"
     (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)
-            orders-id (mt/id :orders)]
-        (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp orders-id))
-                                                       :archived true}
-                       :model/Card {dependent-card-id :id} {:dataset_query (lib/query mp (lib.metadata/card mp base-card-id))}]
-          (deps.test/synchronously-run-backfill!)
-          (let [{:keys [nodes edges]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
-                                                            :id dependent-card-id
-                                                            :type "card")]
-            (testing "archived base card (upstream) is returned as a node"
-              (is (=? {:id base-card-id :type "card"}
-                      (m/find-first (comp #{base-card-id} :id) nodes))))
-            (testing "dependent card (starting node) is returned"
-              (is (=? {:id dependent-card-id :type "card"}
-                      (m/find-first (comp #{dependent-card-id} :id) nodes))))
-            (testing "upstream orders table is returned"
-              (is (=? {:id orders-id :type "table"}
-                      (m/find-first #(and (= (:type %) "table") (= (:id %) orders-id)) nodes))))
-            (testing "only the dependent→base edge is present (archived sources contribute no outgoing edges)"
-              (is (=? #{{:from_entity_type "card" :from_entity_id dependent-card-id
-                         :to_entity_type   "card" :to_entity_id   base-card-id}}
-                      (set edges))))))))))
+      (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
+        (mt/with-temp [:model/User user {:email "test@test.com"}]
+          (let [base-card (card/create-card! (basic-card "Archived Base Card") user)
+                dependent-card (card/create-card! (wrap-card base-card) user)]
+            (card/update-card! {:card-before-update base-card
+                                :card-updates {:archived true}})
+            (deps.test/synchronously-run-backfill!)
+            (testing "archived=false (default) excludes archived card from dependencies"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                   :id (:id dependent-card)
+                                                   :type "card")
+                    node-ids (set (map :id (:nodes response)))]
+                (is (contains? node-ids (:id dependent-card)))
+                (is (not (contains? node-ids (:id base-card))))))
+            (testing "archived=true includes archived card in dependencies"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                   :id (:id dependent-card)
+                                                   :type "card"
+                                                   :archived true)
+                    node-ids (set (map :id (:nodes response)))]
+                (is (contains? node-ids (:id dependent-card)))
+                (is (contains? node-ids (:id base-card)))
+                (is (contains? node-ids (mt/id :orders)))))))))))
 
-(deftest ^:sequential graph-archived-parent-and-child-test
-  (testing "GET /api/ee/dependencies/graph returns archived starting node; archived downstream does not count in dependents_count"
+(deftest dependents-archived-card-test
+  (testing "GET /api/ee/dependencies/graph/dependents with archived parameter"
     (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)
-            orders-id (mt/id :orders)
-            base-query (lib/query mp (lib.metadata/table mp orders-id))]
-        (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query base-query}]
-          (let [child-query (lib/query mp (lib.metadata/card mp base-card-id))]
-            (mt/with-temp [:model/Card {archived-child-id :id} {:dataset_query child-query}]
-              (deps.test/synchronously-run-backfill!)
-              (t2/update! :model/Card :id base-card-id {:archived true})
-              (t2/update! :model/Card :id archived-child-id {:archived true})
-              (let [{:keys [nodes edges]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
-                                                                :id base-card-id
-                                                                :type "card")]
-                (testing "archived starting node is returned with no visible dependents"
-                  (is (=? {:id base-card-id :type "card" :dependents_count nil}
-                          (m/find-first (comp #{base-card-id} :id) nodes))))
-                (testing "upstream orders table is returned"
-                  (is (=? {:id orders-id :type "table"}
-                          (m/find-first #(and (= (:type %) "table") (= (:id %) orders-id)) nodes))))
-                (testing "archived downstream child is not returned as a node"
-                  (is (nil? (m/find-first #(and (= (:type %) "card") (= (:id %) archived-child-id)) nodes))))
-                (testing "archived source contributes no outgoing edges"
-                  (is (empty? edges)))))))))))
-
-(deftest ^:sequential dependents-archived-card-test
-  (testing "GET /api/ee/dependencies/graph/dependents never includes archived dependents"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)
-            base-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-        (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query base-query}]
-          (let [child-query (lib/query mp (lib.metadata/card mp base-card-id))]
-            (mt/with-temp [:model/Card {archived-child-id :id} {:dataset_query child-query :archived true}]
-              (deps.test/synchronously-run-backfill!)
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
-                                                   :id base-card-id
+      (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
+        (mt/with-temp [:model/User user {:email "test@test.com"}]
+          (let [base-card (card/create-card! (basic-card "Base Card") user)
+                dependent-card (card/create-card! (wrap-card base-card) user)]
+            (card/update-card! {:card-before-update dependent-card
+                                :card-updates {:archived true}})
+            (deps.test/synchronously-run-backfill!)
+            (testing "archived=false (default) excludes archived dependent"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                   :id (:id base-card)
                                                    :type "card"
                                                    :dependent-types "card")]
-                (is (nil? (m/find-first (comp #{archived-child-id} :id) response)))
-                (is (empty? response))))))))))
-
-(deftest ^:sequential dependents-archived-mixed-test
-  (testing "GET /api/ee/dependencies/graph/dependents returns only non-archived dependents when mixed"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)
-            base-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-        (mt/with-temp [:model/Card {base-card-id :id} {:dataset_query base-query}]
-          (let [child-query (lib/query mp (lib.metadata/card mp base-card-id))]
-            (mt/with-temp [:model/Card {active-child-id :id} {:dataset_query child-query}
-                           :model/Card {archived-child-id :id} {:dataset_query child-query :archived true}]
-              (deps.test/synchronously-run-backfill!)
-              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
-                                                   :id base-card-id
+                (is (empty? response))))
+            (testing "archived=true includes archived dependent"
+              (let [response (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                   :id (:id base-card)
                                                    :type "card"
-                                                   :dependent-types "card")]
-                (testing "non-archived dependent appears"
-                  (is (=? {:id active-child-id :type "card"}
-                          (m/find-first (comp #{active-child-id} :id) response))))
-                (testing "archived dependent does not appear"
-                  (is (nil? (m/find-first (comp #{archived-child-id} :id) response))))))))))))
+                                                   :dependent-types "card"
+                                                   :dependent-card-types "question"
+                                                   :archived true)
+                    dependent-ids (set (map :id response))]
+                (is (contains? dependent-ids (:id dependent-card)))))))))))
 
 (deftest ^:sequential dependents-broken-parameter-test
   (testing "GET /api/ee/dependencies/graph/dependents?broken=true - only returns entities that are broken"
@@ -673,8 +645,8 @@
               (break-model-card! model-card)
               (let [next-card (create-dependent-card-on-model! user model-card "Another Dependent Card - brokentest" {:table :products})]
                 (deps.test/synchronously-run-backfill!)
-                (deps.test/run-analysis-for-card! (:id next-card))
-                (deps.test/run-analysis-for-card! (:id dependent-card))
+                (run-analysis-for-card! (:id next-card))
+                (run-analysis-for-card! (:id dependent-card))
                 (let [response2 (mt/user-http-request :crowberto :get 200 (str "ee/dependencies/graph/dependents?broken=true&type=card&id=" (:id model-card)))]
                   (is (= [(:id dependent-card)] (mapv :id response2))
                       "There should be one broken dependent"))
@@ -1547,103 +1519,137 @@
                       response)))))))))
 
 (deftest ^:sequential unreferenced-archived-card-test
-  (testing "GET /api/ee/dependencies/graph/unreferenced excludes archived cards"
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)
             products (lib.metadata/table mp (mt/id :products))]
-        (mt/with-temp [:model/Card {unreffed-card-id :id} {:type :question
+        (mt/with-temp [:model/Card {unreffed-card-id :id} {:name "Unreferenced Card - archivedtest"
+                                                           :type :question
                                                            :dataset_query (lib/query mp products)}
-                       :model/Card {archived-card-id :id} {:type :question
+                       :model/Card {archived-card-id :id} {:name "Archived Unreferenced Card - archivedtest"
+                                                           :type :question
                                                            :archived true
                                                            :dataset_query (lib/query mp products)}]
           (deps.test/synchronously-run-backfill!)
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
-                                                     :types "card" :card-types "question")]
-            (is (=? {:id unreffed-card-id :type "card"}
-                    (m/find-first (comp #{unreffed-card-id} :id) data)))
-            (is (nil? (m/find-first (comp #{archived-card-id} :id) data)))))))))
+          (testing "archived=false (default) excludes archived card"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card-types=question&query=archivedtest")
+                  card-ids (set (map :id (:data response)))]
+              (is (contains? card-ids unreffed-card-id))
+              (is (not (contains? card-ids archived-card-id)))))
+          (testing "archived=true includes archived card"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=card&card-types=question&query=archivedtest&archived=true")
+                  card-ids (set (map :id (:data response)))]
+              (is (contains? card-ids unreffed-card-id))
+              (is (contains? card-ids archived-card-id)))))))))
 
 (deftest ^:sequential unreferenced-archived-dashboard-test
-  (testing "GET /api/ee/dependencies/graph/unreferenced excludes archived dashboards"
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for dashboards"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Dashboard {unreffed-dashboard-id :id} {}
-                     :model/Dashboard {archived-dashboard-id :id} {:archived true}]
+      (mt/with-temp [:model/Dashboard {unreffed-dashboard-id :id} {:name "Unreferenced Dashboard - archivedtest"}
+                     :model/Dashboard {archived-dashboard-id :id} {:name "Archived Unreferenced Dashboard - archivedtest"
+                                                                   :archived true}]
         (deps.test/synchronously-run-backfill!)
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
-                                                   :types "dashboard")]
-          (is (=? {:id unreffed-dashboard-id :type "dashboard"}
-                  (m/find-first (comp #{unreffed-dashboard-id} :id) data)))
-          (is (nil? (m/find-first (comp #{archived-dashboard-id} :id) data))))))))
+        (testing "archived=false (default) excludes archived dashboard"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=archivedtest")
+                dashboard-ids (set (map :id (:data response)))]
+            (is (contains? dashboard-ids unreffed-dashboard-id))
+            (is (not (contains? dashboard-ids archived-dashboard-id)))))
+        (testing "archived=true includes archived dashboard"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=dashboard&query=archivedtest&archived=true")
+                dashboard-ids (set (map :id (:data response)))]
+            (is (contains? dashboard-ids unreffed-dashboard-id))
+            (is (contains? dashboard-ids archived-dashboard-id))))))))
 
 (deftest ^:sequential unreferenced-archived-document-test
-  (testing "GET /api/ee/dependencies/graph/unreferenced excludes archived documents"
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for documents"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Document {unreffed-document-id :id} {}
-                     :model/Document {archived-document-id :id} {:archived true}]
+      (mt/with-temp [:model/Document {unreffed-document-id :id} {:name "Unreferenced Document - archivedtest"}
+                     :model/Document {archived-document-id :id} {:name "Archived Unreferenced Document - archivedtest"
+                                                                 :archived true}]
         (deps.test/synchronously-run-backfill!)
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
-                                                   :types "document")]
-          (is (=? {:id unreffed-document-id :type "document"}
-                  (m/find-first (comp #{unreffed-document-id} :id) data)))
-          (is (nil? (m/find-first (comp #{archived-document-id} :id) data))))))))
+        (testing "archived=false (default) excludes archived document"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=document&query=archivedtest")
+                document-ids (set (map :id (:data response)))]
+            (is (contains? document-ids unreffed-document-id))
+            (is (not (contains? document-ids archived-document-id)))))
+        (testing "archived=true includes archived document"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=document&query=archivedtest&archived=true")
+                document-ids (set (map :id (:data response)))]
+            (is (contains? document-ids unreffed-document-id))
+            (is (contains? document-ids archived-document-id))))))))
 
 (deftest ^:sequential unreferenced-archived-snippet-test
-  (testing "GET /api/ee/dependencies/graph/unreferenced excludes archived snippets"
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for snippets"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/NativeQuerySnippet {unreffed-snippet-id :id} {:content "WHERE ID > 10"}
-                     :model/NativeQuerySnippet {archived-snippet-id :id} {:content "WHERE ID > 20"
+      (mt/with-temp [:model/NativeQuerySnippet {unreffed-snippet-id :id} {:name "Unreferenced Snippet - archivedtest"
+                                                                          :content "WHERE ID > 10"}
+                     :model/NativeQuerySnippet {archived-snippet-id :id} {:name "Archived Unreferenced Snippet - archivedtest"
+                                                                          :content "WHERE ID > 20"
                                                                           :archived true}]
         (deps.test/synchronously-run-backfill!)
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
-                                                   :types "snippet")]
-          (is (=? {:id unreffed-snippet-id :type "snippet"}
-                  (m/find-first (comp #{unreffed-snippet-id} :id) data)))
-          (is (nil? (m/find-first (comp #{archived-snippet-id} :id) data))))))))
+        (testing "archived=false (default) excludes archived snippet"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=snippet&query=archivedtest")
+                snippet-ids (set (map :id (:data response)))]
+            (is (contains? snippet-ids unreffed-snippet-id))
+            (is (not (contains? snippet-ids archived-snippet-id)))))
+        (testing "archived=true includes archived snippet"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=snippet&query=archivedtest&archived=true")
+                snippet-ids (set (map :id (:data response)))]
+            (is (contains? snippet-ids unreffed-snippet-id))
+            (is (contains? snippet-ids archived-snippet-id))))))))
 
 (deftest ^:sequential unreferenced-archived-segment-test
-  (testing "GET /api/ee/dependencies/graph/unreferenced excludes archived segments"
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for segments"
     (mt/with-premium-features #{:dependencies}
       (let [products-id (mt/id :products)
             price-field-id (mt/id :products :price)]
-        (mt/with-temp [:model/Segment {unreffed-segment-id :id} {:table_id products-id
-                                                                 :definition {:filter [:> [:field price-field-id nil] 50]}}
-                       :model/Segment {archived-segment-id :id} {:table_id products-id
-                                                                 :definition {:filter [:> [:field price-field-id nil] 100]}
-                                                                 :archived true}]
+        (mt/with-temp [:model/Segment {unreffed-segment-id :id :as unreffed-segment} {:name "Unreferenced Segment - archivedtest"
+                                                                                      :table_id products-id
+                                                                                      :definition {:filter [:> [:field price-field-id nil] 50]}}
+                       :model/Segment {archived-segment-id :id :as archived-segment} {:name "Archived Unreferenced Segment - archivedtest"
+                                                                                      :table_id products-id
+                                                                                      :definition {:filter [:> [:field price-field-id nil] 100]}
+                                                                                      :archived true}]
+          (events/publish-event! :event/segment-create {:object unreffed-segment :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/segment-create {:object archived-segment :user-id (mt/user->id :crowberto)})
           (deps.test/synchronously-run-backfill!)
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
-                                                     :types "segment")]
-            (is (=? {:id unreffed-segment-id :type "segment"}
-                    (m/find-first (comp #{unreffed-segment-id} :id) data)))
-            (is (nil? (m/find-first (comp #{archived-segment-id} :id) data)))))))))
+          (testing "archived=false (default) excludes archived segment"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=segment&query=archivedtest")
+                  segment-ids (set (map :id (:data response)))]
+              (is (contains? segment-ids unreffed-segment-id))
+              (is (not (contains? segment-ids archived-segment-id)))))
+          (testing "archived=true includes archived segment"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=segment&query=archivedtest&archived=true")
+                  segment-ids (set (map :id (:data response)))]
+              (is (contains? segment-ids unreffed-segment-id))
+              (is (contains? segment-ids archived-segment-id)))))))))
 
 (deftest ^:sequential unreferenced-archived-table-test
-  (testing "GET /api/ee/dependencies/graph/unreferenced excludes inactive and hidden tables"
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for tables"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Table {active-table-id :id}   {:db_id (mt/id) :active true}
-                     :model/Table {inactive-table-id :id} {:db_id (mt/id) :active false}
-                     :model/Table {hidden-table-id :id}   {:db_id (mt/id) :active true :visibility_type "hidden"}]
+      (mt/with-temp [:model/Table {active-table-id :id} {:name "Active Unreferenced Table - archivedtest"
+                                                         :db_id (mt/id)
+                                                         :active true}
+                     :model/Table {inactive-table-id :id} {:name "Inactive Unreferenced Table - archivedtest"
+                                                           :db_id (mt/id)
+                                                           :active false}
+                     :model/Table {hidden-table-id :id} {:name "Hidden Unreferenced Table - archivedtest"
+                                                         :db_id (mt/id)
+                                                         :active true
+                                                         :visibility_type "hidden"}]
         (deps.test/synchronously-run-backfill!)
-        (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
-                                                   :types "table")]
-          (is (=? {:id active-table-id :type "table"}
-                  (m/find-first (comp #{active-table-id} :id) data)))
-          (is (nil? (m/find-first (comp #{inactive-table-id} :id) data)))
-          (is (nil? (m/find-first (comp #{hidden-table-id} :id) data))))))))
-
-(deftest ^:sequential unreferenced-table-archived-child-test
-  (testing "GET /api/ee/dependencies/graph/unreferenced - a table with only archived dependents is unreferenced"
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC" :active true}]
-        (let [mp (mt/metadata-provider)
-              query (lib/query mp (lib.metadata/table mp table-id))]
-          (mt/with-temp [:model/Card {dependent-card-id :id} {:dataset_query query}]
-            (deps.test/synchronously-run-backfill!)
-            (t2/update! :model/Card :id dependent-card-id {:archived true})
-            (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
-                                                       :types "table")]
-              (is (=? {:id table-id :type "table"}
-                      (m/find-first (comp #{table-id} :id) data))))))))))
+        (testing "archived=false (default) excludes inactive and hidden tables"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=archivedtest")
+                table-ids (set (map :id (:data response)))]
+            (is (contains? table-ids active-table-id))
+            (is (not (contains? table-ids inactive-table-id)))
+            (is (not (contains? table-ids hidden-table-id)))))
+        (testing "archived=true includes inactive and hidden tables"
+          (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=archivedtest&archived=true")
+                table-ids (set (map :id (:data response)))]
+            (is (contains? table-ids active-table-id))
+            (is (contains? table-ids inactive-table-id))
+            (is (contains? table-ids hidden-table-id))))))))
 
 (deftest ^:sequential unreferenced-pagination-test
   (testing "GET /api/ee/dependencies/unreferenced - should paginate results"
@@ -1683,7 +1689,7 @@
                 (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=table&query=notification")))))))
 
 (deftest ^:sequential unreferenced-archived-measure-test
-  (testing "GET /api/ee/dependencies/graph/unreferenced excludes archived measures"
+  (testing "GET /api/ee/dependencies/graph/unreferenced with archived parameter for measures"
     (mt/with-premium-features #{:dependencies}
       (let [mp (mt/metadata-provider)
             products-id (mt/id :products)
@@ -1691,17 +1697,26 @@
             price (lib.metadata/field mp (mt/id :products :price))
             measure-definition (-> (lib/query mp products)
                                    (lib/aggregate (lib/sum price)))]
-        (mt/with-temp [:model/Measure {unreffed-measure-id :id} {:table_id products-id
-                                                                 :definition measure-definition}
-                       :model/Measure {archived-measure-id :id} {:table_id products-id
-                                                                 :definition measure-definition
-                                                                 :archived true}]
+        (mt/with-temp [:model/Measure {unreffed-measure-id :id :as unreffed-measure} {:name "Unreferenced Measure - archivedtest"
+                                                                                      :table_id products-id
+                                                                                      :definition measure-definition}
+                       :model/Measure {archived-measure-id :id :as archived-measure} {:name "Archived Unreferenced Measure - archivedtest"
+                                                                                      :table_id products-id
+                                                                                      :definition measure-definition
+                                                                                      :archived true}]
+          (events/publish-event! :event/measure-create {:object unreffed-measure :user-id (mt/user->id :crowberto)})
+          (events/publish-event! :event/measure-create {:object archived-measure :user-id (mt/user->id :crowberto)})
           (deps.test/synchronously-run-backfill!)
-          (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
-                                                     :types "measure")]
-            (is (=? {:id unreffed-measure-id :type "measure"}
-                    (m/find-first (comp #{unreffed-measure-id} :id) data)))
-            (is (nil? (m/find-first (comp #{archived-measure-id} :id) data)))))))))
+          (testing "archived=false (default) excludes archived measure"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=measure&query=archivedtest")
+                  measure-ids (set (map :id (:data response)))]
+              (is (contains? measure-ids unreffed-measure-id))
+              (is (not (contains? measure-ids archived-measure-id)))))
+          (testing "archived=true includes archived measure"
+            (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=measure&query=archivedtest&archived=true")
+                  measure-ids (set (map :id (:data response)))]
+              (is (contains? measure-ids unreffed-measure-id))
+              (is (contains? measure-ids archived-measure-id)))))))))
 
 (deftest ^:sequential unreferenced-personal-collection-card-test
   (testing "GET /api/ee/dependencies/graph/unreferenced with include-personal-collections parameter for cards"
@@ -1899,7 +1914,7 @@
             ;; Run analysis in a fresh metadata provider cache session to detect the broken reference
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id dependent-card)))
+              (run-analysis-for-card! (:id dependent-card)))
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=brokentest")]
               (is (= [(:id model-card)] (mapv :id (:data response)))
                   "Model card should appear as a breaking entity"))))))))
@@ -1924,8 +1939,8 @@
             ;; Run analysis in a fresh metadata provider cache session to detect broken references
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id dependent-card-1))
-              (deps.test/run-analysis-for-card! (:id dependent-card-2)))
+              (run-analysis-for-card! (:id dependent-card-1))
+              (run-analysis-for-card! (:id dependent-card-2)))
             (testing "filtering by card returns only card sources"
               (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=typesfiltertest")
                     ids (set (map :id (:data response)))]
@@ -1937,143 +1952,40 @@
                 (is (empty? ids) "No tables should be in results")))))))))
 
 (deftest ^:sequential breaking-entities-archived-card-test
-  (testing "GET /api/ee/dependencies/graph/breaking includes archived source cards that break non-archived dependents"
+  (testing "GET /api/ee/dependencies/graph/breaking with archived parameter for source cards"
     (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)
-            orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-        (mt/with-temp [:model/Card {active-model-id :id}   {:type :model :dataset_query orders-query}
-                       :model/Card {archived-model-id :id} {:type :model :dataset_query orders-query}]
-          (let [dep-query-for (fn [model-id]
-                                (as-> (lib/query mp (lib.metadata/card mp model-id)) q
-                                  (lib/filter q (lib/> (m/find-first #(= (:id %) (mt/id :orders :total))
-                                                                     (lib/filterable-columns q))
-                                                       100))))]
-            (mt/with-temp [:model/Card {dep-1-id :id} {:dataset_query (dep-query-for active-model-id)}
-                           :model/Card {dep-2-id :id} {:dataset_query (dep-query-for archived-model-id)}]
-              (deps.test/synchronously-run-backfill!)
-              (let [products-query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
-                (t2/update! :model/Card :id active-model-id   {:dataset_query products-query})
-                (t2/update! :model/Card :id archived-model-id {:dataset_query products-query :archived true}))
-              (lib-be/with-metadata-provider-cache
-                (deps.test/run-analysis-for-card! dep-1-id)
-                (deps.test/run-analysis-for-card! dep-2-id))
-              (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking"
-                                                         :types "card")]
-                (is (=? {:id active-model-id   :type "card"}
-                        (m/find-first (comp #{active-model-id} :id) data)))
-                (is (=? {:id archived-model-id :type "card"}
-                        (m/find-first (comp #{archived-model-id} :id) data)))))))))))
-
-(deftest ^:sequential breaking-inactive-table-mixed-dependents-test
-  (testing "GET /api/ee/dependencies/graph/breaking - inactive table is returned; archived dependents do not count"
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC" :active true}
-                     :model/Field {field-id :id} {:table_id table-id
-                                                  :base_type :type/Integer
-                                                  :database_type "INTEGER"}]
-        (let [mp (mt/metadata-provider)
-              query (-> (lib/query mp (lib.metadata/table mp table-id))
-                        (lib/filter (lib/> (lib.metadata/field mp field-id) 100)))]
-          (mt/with-temp [:model/Card {active-card-id :id}   {:dataset_query query}
-                         :model/Card {archived-card-id :id} {:dataset_query query :archived true}]
-            (deps.test/synchronously-run-backfill!)
-            (t2/update! :model/Table :id table-id {:active false})
-            (t2/update! :model/Field :id field-id {:active false})
+      (mt/with-temp [:model/User user {:email "test@test.com"}]
+        (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
+          ;; Create cards in one metadata provider cache session
+          (let [[active-model archived-model dependent-card-1 dependent-card-2]
+                (lib-be/with-metadata-provider-cache
+                  (let [active-model (create-model-card! user "Active Model - archivedbrokentestcard")
+                        archived-model (create-model-card! user "Archived Model - archivedbrokentestcard")
+                        dependent-card-1 (create-dependent-card-on-model! user active-model "Dependent of Active - archivedbrokentestcard")
+                        dependent-card-2 (create-dependent-card-on-model! user archived-model "Dependent of Archived - archivedbrokentestcard")]
+                    [active-model archived-model dependent-card-1 dependent-card-2]))]
+            ;; Archive the second model
+            (card/update-card! {:card-before-update archived-model
+                                :card-updates {:archived true}})
+            ;; Break both models
             (lib-be/with-metadata-provider-cache
-              (deps.test/run-analysis-for-card! active-card-id)
-              (deps.test/run-analysis-for-card! archived-card-id))
-            (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking"
-                                                       :types "table")]
-              ;; The inactive table is returned with exactly one (non-archived) dependent counted in
-              ;; :dependents_count and exactly one (non-archived) entry in :dependents_errors.
-              (is (=? {:id table-id
-                       :type "table"
-                       :dependents_count {:question 1}
-                       :dependents_errors [{:analyzed_entity_id active-card-id}]}
-                      (m/find-first (comp #{table-id} :id) data))))))))))
-
-(deftest ^:sequential breaking-inactive-table-only-archived-dependent-test
-  (testing "GET /api/ee/dependencies/graph/breaking - inactive table drops out when its only dependent becomes archived"
-    (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :schema "PUBLIC" :active true}
-                     :model/Field {field-id :id} {:table_id table-id
-                                                  :base_type :type/Integer
-                                                  :database_type "INTEGER"}]
-        (let [mp (mt/metadata-provider)
-              query (-> (lib/query mp (lib.metadata/table mp table-id))
-                        (lib/filter (lib/> (lib.metadata/field mp field-id) 100)))]
-          (mt/with-temp [:model/Card {dependent-card-id :id} {:dataset_query query}]
-            (deps.test/synchronously-run-backfill!)
-            (t2/update! :model/Table :id table-id {:active false})
-            (t2/update! :model/Field :id field-id {:active false})
+              (break-model-card! active-model)
+              (break-model-card! (t2/select-one :model/Card :id (:id archived-model))))
+            ;; Run analysis in a fresh metadata provider cache session to detect broken references
             (lib-be/with-metadata-provider-cache
-              (deps.test/run-analysis-for-card! dependent-card-id))
-            (testing "with non-archived dependent, inactive table is returned"
-              (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking"
-                                                         :types "table")]
-                (is (=? {:id table-id :type "table"}
-                        (m/find-first (comp #{table-id} :id) data)))))
-            (t2/update! :model/Card :id dependent-card-id {:archived true})
-            (testing "after archiving the only dependent, the inactive table is not returned"
-              (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking"
-                                                         :types "table")]
-                (is (nil? (m/find-first (comp #{table-id} :id) data)))))))))))
-
-(deftest ^:sequential breaking-archived-card-mixed-dependents-test
-  (testing "GET /api/ee/dependencies/graph/breaking - archived source card is returned; archived dependents do not count"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)
-            orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-        (mt/with-temp [:model/Card {archived-model-id :id} {:type :model :dataset_query orders-query}]
-          (let [dep-query (as-> (lib/query mp (lib.metadata/card mp archived-model-id)) q
-                            (lib/filter q (lib/> (m/find-first #(= (:id %) (mt/id :orders :total))
-                                                               (lib/filterable-columns q))
-                                                 100)))]
-            (mt/with-temp [:model/Card {active-dep-id :id}   {:dataset_query dep-query}
-                           :model/Card {archived-dep-id :id} {:dataset_query dep-query}]
               (deps.test/synchronously-run-backfill!)
-              (t2/update! :model/Card :id archived-dep-id {:archived true})
-              (let [products-query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
-                (t2/update! :model/Card :id archived-model-id {:dataset_query products-query
-                                                               :archived true}))
-              (lib-be/with-metadata-provider-cache
-                (deps.test/run-analysis-for-card! active-dep-id)
-                (deps.test/run-analysis-for-card! archived-dep-id))
-              (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking"
-                                                         :types "card")]
-                (is (=? {:id archived-model-id
-                         :type "card"
-                         :dependents_count {:question 1}
-                         :dependents_errors [{:analyzed_entity_id active-dep-id}]}
-                        (m/find-first (comp #{archived-model-id} :id) data)))))))))))
-
-(deftest ^:sequential breaking-archived-card-only-archived-dependent-test
-  (testing "GET /api/ee/dependencies/graph/breaking - archived source card drops out when its only dependent becomes archived"
-    (mt/with-premium-features #{:dependencies}
-      (let [mp (mt/metadata-provider)
-            orders-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-        (mt/with-temp [:model/Card {archived-model-id :id} {:type :model :dataset_query orders-query}]
-          (let [dep-query (as-> (lib/query mp (lib.metadata/card mp archived-model-id)) q
-                            (lib/filter q (lib/> (m/find-first #(= (:id %) (mt/id :orders :total))
-                                                               (lib/filterable-columns q))
-                                                 100)))]
-            (mt/with-temp [:model/Card {dependent-card-id :id} {:dataset_query dep-query}]
-              (deps.test/synchronously-run-backfill!)
-              (let [products-query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
-                (t2/update! :model/Card :id archived-model-id {:dataset_query products-query
-                                                               :archived true}))
-              (lib-be/with-metadata-provider-cache
-                (deps.test/run-analysis-for-card! dependent-card-id))
-              (testing "with non-archived dependent, archived source card is returned"
-                (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking"
-                                                           :types "card")]
-                  (is (=? {:id archived-model-id :type "card"}
-                          (m/find-first (comp #{archived-model-id} :id) data)))))
-              (t2/update! :model/Card :id dependent-card-id {:archived true})
-              (testing "after archiving the only dependent, the archived source card is not returned"
-                (let [{:keys [data]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking"
-                                                           :types "card")]
-                  (is (nil? (m/find-first (comp #{archived-model-id} :id) data))))))))))))
+              (run-analysis-for-card! (:id dependent-card-1))
+              (run-analysis-for-card! (:id dependent-card-2)))
+            (testing "archived=false (default) excludes archived source card"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=archivedbrokentestcard")
+                    card-ids (set (map :id (:data response)))]
+                (is (contains? card-ids (:id active-model)))
+                (is (not (contains? card-ids (:id archived-model))))))
+            (testing "archived=true includes archived source card"
+              (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=archivedbrokentestcard&archived=true")
+                    card-ids (set (map :id (:data response)))]
+                (is (contains? card-ids (:id active-model)))
+                (is (contains? card-ids (:id archived-model)))))))))))
 
 (deftest ^:sequential breaking-entities-multiple-dependents-test
   (testing "GET /api/ee/dependencies/graph/breaking - model breaking multiple dependents appears once"
@@ -2093,8 +2005,8 @@
             ;; Run analysis in a fresh metadata provider cache session to detect broken references
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id dependent-card-1))
-              (deps.test/run-analysis-for-card! (:id dependent-card-2)))
+              (run-analysis-for-card! (:id dependent-card-1))
+              (run-analysis-for-card! (:id dependent-card-2)))
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=multipledependents")
                   model-ids (filter #(= (:id %) (:id model-card)) (:data response))]
               (is (= 1 (count model-ids)) "Model should appear exactly once even with multiple broken dependents"))))))))
@@ -2124,8 +2036,8 @@
               ;; Run analysis in a fresh metadata provider cache session to detect broken references
               (lib-be/with-metadata-provider-cache
                 (deps.test/synchronously-run-backfill!)
-                (deps.test/run-analysis-for-card! (:id dependent-card-1))
-                (deps.test/run-analysis-for-card! (:id dependent-card-2)))
+                (run-analysis-for-card! (:id dependent-card-1))
+                (run-analysis-for-card! (:id dependent-card-2)))
               (testing "include-personal-collections=false (default) excludes source cards in personal collections"
                 (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/breaking?types=card&query=personalcollbrokentest")
                       card-ids (set (map :id (:data response)))]
@@ -2157,8 +2069,8 @@
             ;; Run analysis in a fresh metadata provider cache session to detect broken references
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id dependent-card-1))
-              (deps.test/run-analysis-for-card! (:id dependent-card-2)))
+              (run-analysis-for-card! (:id dependent-card-1))
+              (run-analysis-for-card! (:id dependent-card-2)))
             (is (=? {:data   [{:id (:id model-card-1)}]
                      :total  2
                      :offset 0
@@ -2190,8 +2102,8 @@
             ;; Run analysis in a fresh metadata provider cache session to detect broken references
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id dependent-card-a))
-              (deps.test/run-analysis-for-card! (:id dependent-card-b)))
+              (run-analysis-for-card! (:id dependent-card-a))
+              (run-analysis-for-card! (:id dependent-card-b)))
             (doseq [sort-direction [:asc :desc]]
               (let [response (mt/user-http-request :crowberto :get 200
                                                    "ee/dependencies/graph/breaking"
@@ -2227,8 +2139,8 @@
             ;; Run analysis in a fresh metadata provider cache session to detect broken references
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id dependent-card-1))
-              (deps.test/run-analysis-for-card! (:id dependent-card-2)))
+              (run-analysis-for-card! (:id dependent-card-1))
+              (run-analysis-for-card! (:id dependent-card-2)))
             (doseq [sort-direction [:asc :desc]]
               (let [response (mt/user-http-request :crowberto :get 200
                                                    "ee/dependencies/graph/breaking"
@@ -2264,9 +2176,9 @@
             ;; Run analysis in a fresh metadata provider cache session to detect broken references
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id dependent-card-1a))
-              (deps.test/run-analysis-for-card! (:id dependent-card-1b))
-              (deps.test/run-analysis-for-card! (:id dependent-card-2a)))
+              (run-analysis-for-card! (:id dependent-card-1a))
+              (run-analysis-for-card! (:id dependent-card-1b))
+              (run-analysis-for-card! (:id dependent-card-2a)))
             (doseq [sort-direction [:asc :desc]]
               (let [response (mt/user-http-request :crowberto :get 200
                                                    "ee/dependencies/graph/breaking"
@@ -2303,9 +2215,9 @@
             ;; Run analysis in a fresh metadata provider cache session to detect broken references
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id dependent-card-1a))
-              (deps.test/run-analysis-for-card! (:id dependent-card-1b))
-              (deps.test/run-analysis-for-card! (:id dependent-card-2a)))
+              (run-analysis-for-card! (:id dependent-card-1a))
+              (run-analysis-for-card! (:id dependent-card-1b))
+              (run-analysis-for-card! (:id dependent-card-2a)))
             (doseq [sort-direction [:asc :desc]]
               (let [response (mt/user-http-request :crowberto :get 200
                                                    "ee/dependencies/graph/breaking"
@@ -2542,10 +2454,10 @@
             ;; Run analysis to detect broken references
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id visible-dep-a))
-              (deps.test/run-analysis-for-card! (:id visible-dep-b))
-              (deps.test/run-analysis-for-card! (:id archived-dep-a))
-              (deps.test/run-analysis-for-card! (:id archived-dep-b)))
+              (run-analysis-for-card! (:id visible-dep-a))
+              (run-analysis-for-card! (:id visible-dep-b))
+              (run-analysis-for-card! (:id archived-dep-a))
+              (run-analysis-for-card! (:id archived-dep-b)))
             (testing "pagination works correctly with error filtering"
               ;; Both model cards should appear in results with only visible errors
               (let [page-1 (mt/user-http-request :crowberto :get 200
@@ -2787,8 +2699,8 @@
               (break-model-card! model-card-2))
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id dependent-card-1))
-              (deps.test/run-analysis-for-card! (:id dependent-card-2)))
+              (run-analysis-for-card! (:id dependent-card-1))
+              (run-analysis-for-card! (:id dependent-card-2)))
             (testing "returns only broken dependents for the specified source (not other sources)"
               (let [response (mt/user-http-request :crowberto :get 200
                                                    (str "ee/dependencies/graph/broken?id=" (:id model-card-1)
@@ -2814,8 +2726,8 @@
               (break-model-card! model-card))
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id dependent-card-a))
-              (deps.test/run-analysis-for-card! (:id dependent-card-b)))
+              (run-analysis-for-card! (:id dependent-card-a))
+              (run-analysis-for-card! (:id dependent-card-b)))
             (testing "count matches dependents-with-errors from /graph/breaking"
               (let [breaking-response (mt/user-http-request
                                        :crowberto :get 200
@@ -2868,7 +2780,7 @@
                 (break-model-card! model-card))
               (lib-be/with-metadata-provider-cache
                 (deps.test/synchronously-run-backfill!)
-                (deps.test/run-analysis-for-card! (:id dependent-card)))
+                (run-analysis-for-card! (:id dependent-card)))
               ;; Admin can access
               (is (sequential? (mt/user-http-request :crowberto :get 200
                                                      (str "ee/dependencies/graph/broken?id=" (:id model-card)
@@ -2903,8 +2815,8 @@
             ;; Run analysis for both model-2 and dependent-card
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id model-card-2))
-              (deps.test/run-analysis-for-card! (:id dependent-card)))
+              (run-analysis-for-card! (:id model-card-2))
+              (run-analysis-for-card! (:id dependent-card)))
             ;; Query /graph/broken for model-1 - should only return model-2, not dependent-card
             ;; because dependent-card's error source is model-2, not model-1
             (let [response (mt/user-http-request :crowberto :get 200
@@ -2927,7 +2839,7 @@
               (break-model-card! model-card))
             (lib-be/with-metadata-provider-cache
               (deps.test/synchronously-run-backfill!)
-              (deps.test/run-analysis-for-card! (:id dependent-card)))
+              (run-analysis-for-card! (:id dependent-card)))
             (testing "filtering by card type returns the dependent card"
               (let [response (mt/user-http-request :crowberto :get 200
                                                    (str "ee/dependencies/graph/broken?id=" (:id model-card)
@@ -2962,8 +2874,8 @@
                 (break-model-card! model-card))
               (lib-be/with-metadata-provider-cache
                 (deps.test/synchronously-run-backfill!)
-                (deps.test/run-analysis-for-card! (:id dependent-in-personal))
-                (deps.test/run-analysis-for-card! (:id dependent-regular)))
+                (run-analysis-for-card! (:id dependent-in-personal))
+                (run-analysis-for-card! (:id dependent-regular)))
               (testing "include-personal-collections=false (default) excludes broken dependents in personal collections"
                 (let [response (mt/user-http-request :crowberto :get 200
                                                      (str "ee/dependencies/graph/broken?id=" (:id model-card) "&type=card"))

@@ -1,15 +1,13 @@
 (ns metabase-enterprise.dependencies.test-util
   (:require
    [medley.core :as m]
-   [metabase-enterprise.dependencies.findings :as dependencies.findings]
    [metabase-enterprise.dependencies.task.backfill :as dependencies.backfill]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
-   [metabase.test :as mt]
-   [toucan2.core :as t2]))
+   [metabase.test :as mt]))
 
 (defn synchronously-run-backfill!
   "Run the dependency backfill job synchronously, processing all stale/outdated entities
@@ -18,12 +16,6 @@
   []
   (mt/with-premium-features #{:dependencies}
     (while (#'dependencies.backfill/backfill-dependencies!))))
-
-(defn run-analysis-for-card!
-  "Run analysis for a specific card to detect broken references.
-   Must be called within lib-be/with-metadata-provider-cache."
-  [card-id]
-  (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
 
 (defn mock-card [metadata-provider {:keys [id query details]}]
   (merge {:lib/type        :metadata/card
