@@ -22,3 +22,10 @@ export const trackClickActionPerformed = (action: RegularClickAction) => {
     });
   }
 };
+
+export const trackStackedSeriesEnabled = () => {
+  trackSimpleEvent({
+    event: "stack_series_enabled",
+    triggered_from: "viz_settings",
+  });
+};
