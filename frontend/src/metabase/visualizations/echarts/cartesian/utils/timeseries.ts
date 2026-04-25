@@ -264,6 +264,15 @@ export function computeTimeseriesTicksInterval(
   return TICKS_TIMESERIES_INTERVALS[intervalIndex];
 }
 
+// Wrapping `formatter` with a "month" arg creates a fresh closure each call. Because `getFormatter`
+// runs inside the per-interval loop in `computeTimeseriesTicksInterval`, this churn would defeat any
+// downstream cache keyed on formatter identity. Memoize the wrapped formatter per source formatter so
+// callers see a stable reference.
+const monthWrappedFormatterCache = new WeakMap<
+  TimeSeriesAxisFormatter,
+  TimeSeriesAxisFormatter
+>();
+
 export function getFormatter(
   formatter: TimeSeriesAxisFormatter,
   dataUnit: CartesianChartDateTimeAbsoluteUnit,
@@ -272,9 +281,64 @@ export function getFormatter(
   // If the data interval is week but due to available space and the range of the chart
   // we decide to show monthly, yearly or even larger ticks, we should format ticks values as months.
   if (dataUnit === "week" && chartUnit !== "week") {
-    return (value: RowValue) => formatter(value, "month");
+    let wrapped = monthWrappedFormatterCache.get(formatter);
+    if (!wrapped) {
+      wrapped = (value: RowValue) => formatter(value, "month");
+      monthWrappedFormatterCache.set(formatter, wrapped);
+    }
+    return wrapped;
   }
   return formatter;
+}
+
+const representativeDatesCache = new Map<
+  CartesianChartDateTimeAbsoluteUnit,
+  string[]
+>();
+
+function getCachedRepresentativeDates(
+  unit: CartesianChartDateTimeAbsoluteUnit,
+) {
+  let dates = representativeDatesCache.get(unit);
+  if (!dates) {
+    dates = getRepresentativeDates(unit);
+    representativeDatesCache.set(unit, dates);
+  }
+  return dates;
+}
+
+// Finding the longest formatted label for a unit means running the formatter over up to ~168 dates
+// (12 months × 7 weekdays × 2 hours). The result depends only on (unit, formatter), so memoize it
+// across calls and renders. Keyed on formatter identity via WeakMap, so entries are GC'd with the
+// formatter.
+const longestFormattedDateCache = new WeakMap<
+  TimeSeriesAxisFormatter,
+  Map<CartesianChartDateTimeAbsoluteUnit, string>
+>();
+
+function getLongestFormattedDate(
+  unit: CartesianChartDateTimeAbsoluteUnit,
+  formatter: TimeSeriesAxisFormatter,
+) {
+  let perFormatter = longestFormattedDateCache.get(formatter);
+  if (!perFormatter) {
+    perFormatter = new Map();
+    longestFormattedDateCache.set(formatter, perFormatter);
+  }
+  const cached = perFormatter.get(unit);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  let longest = "";
+  for (const date of getCachedRepresentativeDates(unit)) {
+    const formatted = getPaddedAxisLabel(formatter(date));
+    if (formatted.length > longest.length) {
+      longest = formatted;
+    }
+  }
+  perFormatter.set(unit, longest);
+  return longest;
 }
 
 function maxTicksForChartWidth(
@@ -287,12 +351,7 @@ function maxTicksForChartWidth(
     chartLayout.padding.left -
     chartLayout.padding.right;
   const TICK_BUFFER_PIXELS = 10;
-  const representativeDates = getRepresentativeDates(unit).map((date) =>
-    getPaddedAxisLabel(formatter(date)),
-  );
-  const longestDate = representativeDates.reduce((longest, date) => {
-    return date.length > longest.length ? date : longest;
-  });
+  const longestDate = getLongestFormattedDate(unit, formatter);
   const longestDateWidth =
     chartLayout.ticksDimensions.getXTickWidth(longestDate);
   return Math.floor(availableWidth / (longestDateWidth + TICK_BUFFER_PIXELS));
