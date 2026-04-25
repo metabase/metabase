@@ -15,6 +15,7 @@
    [metabase.events.core :as events]
    [metabase.lib.computed :as lib.computed]
    [metabase.queries.models.query :as query]
+   [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.util :as qp.util]
    [metabase.tracing.core :as tracing]
@@ -132,14 +133,17 @@
        (rf result row)))))
 
 (mu/defn- query-execution-info
-  "Return the info for the QueryExecution entry for this `query`."
+  "Return the info for the QueryExecution entry for this `query`. Fields that depend on dynamic vars set by
+  postprocessing middleware (`is_impersonated`, `is_db_routed`, the routed `database_id`) are NOT computed here —
+  they're added later by [[enrich-with-execution-context]] from inside the postprocessing rff, where the bindings
+  are still in effect. See PR #71386 — reading those values from the query map at the top of the around middleware
+  was a timing bug because pre-processing hadn't yet run."
   {:arglists '([query])}
   [{{:keys       [executed-by query-hash context action-id card-id dashboard-id transform-id lens-id lens-params pulse-id]
      :pivot/keys [original-query]} :info
     database-id                    :database
     query-type                     :type
     parameters                     :parameters
-    destination-database-id        :destination-database/id
     :as                            query} :- ::qp.schema/any-query]
   {:pre [(bytes? query-hash)]}
   (let [json-query (if original-query
@@ -148,7 +152,7 @@
                          (assoc :was-pivot true))
                      (cond-> (dissoc query :info)
                        (empty? (:parameters query)) (dissoc :parameters)))]
-    {:database_id       (or destination-database-id database-id)
+    {:database_id       database-id
      :executor_id       executed-by
      :action_id         action-id
      :card_id           card-id
@@ -164,14 +168,23 @@
      :native            (= (keyword query-type) :native)
      :json_query        json-query
      :tenant_id         (:tenant_id @api/*current-user*)
-     :is_impersonated   (boolean (:impersonation/role query))
-     :is_db_routed      (boolean destination-database-id)
      :parameters        (when (and (seq parameters) (analytics.settings/analytics-pii-retention-enabled))
                           (json/encode parameters))
      :started_at        (t/zoned-date-time)
      :running_time      0
      :result_rows       0
      :start_time_millis (System/currentTimeMillis)}))
+
+(defn- enrich-with-execution-context
+  "Adds fields derived from postprocessing-middleware dynamic vars (`*impersonation-role*`,
+  `*destination-database-id*`) to `execution-info`. Must be called from inside the postprocessing rff, before the
+  async dispatch in [[save-execution-metadata!]] drops dynamic bindings."
+  [execution-info]
+  (let [destination-db-id (qp.middleware.enterprise/currently-destination-database-id)]
+    (cond-> (assoc execution-info
+                   :is_impersonated (qp.middleware.enterprise/currently-impersonated?)
+                   :is_db_routed    (qp.middleware.enterprise/currently-db-routed?))
+      destination-db-id (assoc :database_id destination-db-id))))
 
 (mu/defn process-userland-query-middleware :- ::qp.schema/qp
   "Around middleware.
@@ -197,17 +210,23 @@
             execution-info (query-execution-info query)]
         (letfn [(rff* [metadata]
                   (let [;; we only need the preprocessed query to find field usages, so make sure we don't return it
-                        result (rff (dissoc metadata :preprocessed_query))]
-                        ;; temporarily disabled because it impacts query performance
+                        result (rff (dissoc metadata :preprocessed_query))
+                        ;; Enrich here, while the impersonation / db-routing dynamic var bindings established by
+                        ;; postprocessing middleware are still in effect. Doing this at the top of the around
+                        ;; middleware was wrong — preprocessing hadn't run yet and the bindings weren't set.
+                        execution-info (enrich-with-execution-context execution-info)]
                     (add-and-save-execution-metadata-xform! execution-info result)))]
           (try
             (qp query rff*)
             (catch Throwable e
-              (save-failed-query-execution!
-               execution-info
-               (or
-                (some-> e ex-cause ex-message)
-                (ex-message e)))
-              (throw (ex-info (ex-message e)
-                              {:query-execution execution-info}
-                              e)))))))))
+              ;; Same enrichment for the error path: we're still inside `(qp query rff*)` so the postprocessing
+              ;; bindings are in effect.
+              (let [execution-info (enrich-with-execution-context execution-info)]
+                (save-failed-query-execution!
+                 execution-info
+                 (or
+                  (some-> e ex-cause ex-message)
+                  (ex-message e)))
+                (throw (ex-info (ex-message e)
+                                {:query-execution execution-info}
+                                e))))))))))

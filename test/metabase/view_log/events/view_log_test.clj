@@ -381,14 +381,9 @@
                  :context     :question}}
          overrides))
 
-(deftest query-execution-is-db-routed-test
-  (testing "is_db_routed is true when destination-database/id is present"
-    (let [ei (#'process-userland-query/query-execution-info
-              (make-test-query :destination-database/id 42))]
-      (is (true? (:is_db_routed ei)))))
-  (testing "is_db_routed is false when destination-database/id is absent"
-    (let [ei (#'process-userland-query/query-execution-info (make-test-query))]
-      (is (= false (:is_db_routed ei))))))
+;; `is_db_routed` is now populated from the `*destination-database-id*` dynamic var in
+;; `enrich-with-execution-context` (see process_userland_query.clj). End-to-end coverage lives in
+;; `metabase-enterprise.database-routing.query-execution-test`.
 
 (deftest query-execution-parameters-test
   (testing "parameters is JSON-encoded when PII retention enabled"
@@ -408,15 +403,9 @@
     (let [ei (#'process-userland-query/query-execution-info (make-test-query))]
       (is (= nil (:parameters ei))))))
 
-(deftest query-execution-is-impersonated-test
-  (testing "is_impersonated is true when :impersonation/role present"
-    (let [ei (#'process-userland-query/query-execution-info
-              (make-test-query :impersonation/role "some_role"))]
-      (is (true? (:is_impersonated ei)))))
-  (testing "is_impersonated is false when absent"
-    (let [ei (#'process-userland-query/query-execution-info
-              (make-test-query))]
-      (is (= false (:is_impersonated ei))))))
+;; `is_impersonated` is now populated from the `*impersonation-role*` dynamic var in
+;; `enrich-with-execution-context` (see process_userland_query.clj). End-to-end coverage lives in
+;; `metabase-enterprise.impersonation.query-execution-test`.
 
 (deftest public-card-pii-fields-test
   (mt/with-premium-features #{:audit-app}

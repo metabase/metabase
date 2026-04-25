@@ -37,3 +37,9 @@
         (binding [impersonation.driver/*impersonation-role* role]
           (qp query rff)))
       (qp query rff))))
+
+(defenterprise currently-impersonated?
+  "True when a connection-impersonation role is bound for the current query."
+  :feature :none
+  []
+  (some? impersonation.driver/*impersonation-role*))
