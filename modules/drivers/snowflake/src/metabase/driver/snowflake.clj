@@ -39,8 +39,9 @@
    [metabase.util.performance :refer [mapv not-empty select-keys]]
    [ring.util.codec :as codec])
   (:import
-   (java.io File)
+   (java.io File FileInputStream)
    (java.net URI URLDecoder)
+   (java.nio.charset StandardCharsets)
    (java.sql Connection DatabaseMetaData ResultSet ResultSetMetaData Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (net.snowflake.client.api.exception SnowflakeSQLException)))
@@ -103,37 +104,92 @@
   []
   (inc (driver.common/start-of-week->int)))
 
-(defn- handle-conn-uri [details user account private-key-file]
+(defn- handle-conn-uri
+  "Builds a JDBC URL for key-pair auth. When a non-blank `private-key-passphrase` is present, it is included in the
+  URL as `private_key_pwd` (URL-encoded). [[resolve-private-key]] also sets `:private_key_pwd` on the spec so
+  `metabase.connection-pool` passes it in JDBC `Properties` (the pool uses `jdbc:subprotocol:subname` as the URL and
+  puts remaining spec keys in `Properties`; the full `:connection-uri` query is not used as the primary URL). For
+  `clojure.java.jdbc` with `:connection-uri` only, see that namespace's `get-connection` behavior."
+  [details user account private-key-file private-key-passphrase]
   (let [existing-conn-uri (or (:connection-uri details)
                               (when-let [sub (:subname details)]
                                 (format "jdbc:snowflake:%s" sub))
                               (format "jdbc:snowflake://%s.snowflakecomputing.com" account))
-        opts-str (sql-jdbc.common/additional-opts->string :url
-                                                          (cond-> {:user (codec/url-encode user)
-                                                                   :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))}
-                                                            (:db details)
-                                                            (assoc :db (codec/url-encode (:db details)))))
-        new-conn-uri (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
+        trim-pass       (not-empty (str/trim (str private-key-passphrase)))
+        opts-str        (sql-jdbc.common/additional-opts->string
+                         :url
+                         (cond-> {:user (codec/url-encode user)
+                                  :private_key_file (codec/url-encode (.getCanonicalPath ^File private-key-file))}
+                           (:db details)
+                           (assoc :db (codec/url-encode (:db details)))
+
+                           trim-pass
+                           (assoc :private_key_pwd (codec/url-encode trim-pass))))
+        new-conn-uri     (sql-jdbc.common/conn-str-with-additional-opts existing-conn-uri :url opts-str)]
     (-> details
         (assoc :connection-uri new-conn-uri)
         ;; The Snowflake driver uses the :account property, but we need to drop the region from it first (#30376 comment)
         (m/assoc-some :account (some-> account (str/split #"\.") first)))))
 
+(def ^:private ^:const private-key-prefix-read-max-bytes
+  "Max bytes to read from the private key file for PKCS#8 header sniffing (bounded read; same [[File]] as
+  `private_key_file` — see [[metabase.driver.snowflake/resolve-private-key]])."
+  32768)
+
+(defn- read-private-key-file-prefix
+  "Read at most [[private-key-prefix-read-max-bytes]] from `key-file` (UTF-8) for PEM detection. Returns nil for empty
+  files."
+  [^File key-file]
+  (with-open [is (FileInputStream. key-file)]
+    (let [max-b private-key-prefix-read-max-bytes
+          buf (byte-array max-b)
+          n   (loop [offset 0]
+                (if (>= offset max-b)
+                  max-b
+                  (let [r (.read is buf offset (- max-b offset))]
+                    (if (neg? r)
+                      offset
+                      (recur (+ offset r))))))]
+      (when (pos? n)
+        (String. ^bytes buf 0 (int n) StandardCharsets/UTF_8)))))
+
+(defn- private-key-pkcs8-content-appears-encrypted?
+  "True if `s` (typically a file prefix) contains a PEM PKCS#8 encrypted private key header."
+  [^String s]
+  (boolean (re-find #"(?i)-----BEGIN ENCRYPTED PRIVATE KEY-----" s)))
+
 (defn- resolve-private-key
   "Convert the private-key secret properties into a private_key_file property in `details`.
   Setting the Snowflake driver property privatekey would be easier, but that doesn't work
   because clojure.java.jdbc (properly) converts the property values into strings while the
-  Snowflake driver expects a java.security.PrivateKey instance."
-  [{:keys [user password account]
+  Snowflake driver expects a java.security.PrivateKey instance.
+
+  For an encrypted key, the passphrase is (1) URL-encoded in the connection string by [[handle-conn-uri]], and
+  (2) set on the spec as `:private_key_pwd` and `:private_key_file_pwd` so the connection pool
+  (`metabase.connection-pool` / C3P0) forwards them in JDBC `Properties` to `DriverManager/getConnection` — see
+  https://docs.snowflake.com/en/developer-guide/jdbc/jdbc-configure#private-key-file-name-and-password-as-connection-properties"
+  [{:keys [user password account private-key-passphrase]
     :as   details}]
-  (if password
-    details
-    (if-let [private-key-file (driver-api/secret-value-as-file! :snowflake details "private-key")]
-      (-> details
-          (driver-api/clean-secret-properties-from-details :snowflake)
-          (handle-conn-uri user account private-key-file)
-          (assoc :private_key_file private-key-file))
-      (driver-api/clean-secret-properties-from-details details :snowflake))))
+  (let [trim-pass (not-empty (str/trim (str private-key-passphrase)))]
+    (if password
+      (dissoc details :private-key-passphrase)
+      (if-let [private-key-file (driver-api/secret-value-as-file! :snowflake details "private-key")]
+        (do
+          (when (and (not trim-pass)
+                     (private-key-pkcs8-content-appears-encrypted?
+                      (read-private-key-file-prefix private-key-file)))
+            (let [msg (tru "This PKCS#8 private key file is encrypted. Enter a passphrase in ''Passphrase for RSA private key''. That passphrase is the key-encryption password from when the key was created, not your Snowflake user password.")]
+              (throw (ex-info msg {:message msg :metabase.driver/can-connect-message? true}))))
+          (-> details
+              (driver-api/clean-secret-properties-from-details :snowflake)
+              (handle-conn-uri user account private-key-file private-key-passphrase)
+              (assoc :private_key_file private-key-file)
+              (cond-> trim-pass
+                (assoc :private_key_pwd trim-pass)
+                trim-pass (assoc :private_key_file_pwd trim-pass))
+              (dissoc :private-key-passphrase)))
+        (-> (driver-api/clean-secret-properties-from-details details :snowflake)
+            (dissoc :private-key-passphrase))))))
 
 (defn- quote-name
   [raw-name]
@@ -265,7 +321,7 @@
                    ;; see https://github.com/metabase/metabase/issues/27856
                    (update :db quote-name)
                    (cond-> use-password
-                     (dissoc :private-key))
+                     (dissoc :private-key :private-key-passphrase))
                    ;; password takes precedence if `use-password` is missing
                    (cond-> (or (false? use-password) (not password))
                      (dissoc :password))
