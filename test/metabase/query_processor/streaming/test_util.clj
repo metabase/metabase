@@ -2,6 +2,7 @@
   "Utility functions for testing QP streaming (download) functionality."
   (:require
    [clojure.data.csv :as csv]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [metabase.driver.settings :as driver.settings]
@@ -11,7 +12,9 @@
    [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
-   (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader)))
+   (java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader)
+   (org.odftoolkit.odfdom.doc OdfSpreadsheetDocument)
+   (org.odftoolkit.odfdom.doc.table OdfTable OdfTableCell)))
 
 (set! *warn-on-reflection* true)
 
@@ -43,6 +46,42 @@
                                                 (range (int \A) (inc (int \Z))))
                                            column-names))
        rest))
+
+(defn- ^Object ods-cell-typed-value
+  [^OdfTableCell cell]
+  (if (nil? cell)
+    nil
+    (let [s  (.getStringValue cell)
+          vt (or (.getValueType cell) "")]
+      (if (str/blank? vt)
+        s
+        (let [vt' (u/lower-case-en vt)]
+          (cond
+            (= "boolean" vt') (.getBooleanValue cell)
+            (contains? #{"float" "percentage" "currency"} vt')
+            (double (or (.getDoubleValue cell) 0.0))
+            :else
+            s))))))
+
+(defmethod parse-result* :ods
+  [_ ^InputStream is column-names]
+  (with-open [^OdfSpreadsheetDocument doc (OdfSpreadsheetDocument/loadDocument is)]
+    (let [^OdfTable table (or (.getTableByName doc "Query result")
+                              (first (.getTableList doc)))]
+      (when table
+        (let [nrows (int (.getRowCount table))
+              ncols (int (.getColumnCount table))
+              use-keyword-keys? (and (seq column-names) (every? keyword? column-names))
+              col-keys (vec (if use-keyword-keys?
+                              column-names
+                              (for [c (range ncols)]
+                                (str (ods-cell-typed-value (.getCellByPosition table (int c) 0))))))
+              max-cols (int (min (count col-keys) ncols))]
+          (for [r (range 1 nrows)]
+            (zipmap (subvec col-keys 0 max-cols)
+                    (map (fn [^long c]
+                           (ods-cell-typed-value (.getCellByPosition table (int c) (int r))))
+                         (range max-cols)))))))))
 
 (defn parse-result
   ([export-format input-stream]
@@ -114,3 +153,4 @@
                 (if (number? v)
                   (double v)
                   v))))))
+
