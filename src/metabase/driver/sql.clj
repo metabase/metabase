@@ -14,6 +14,7 @@
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.util :as driver.u]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -250,12 +251,17 @@
                     (if (lib.util/native-stage? stage)
                       (let [{:keys [is-single-select? sql error]}
                             (sql-tools/is-single-select-stmt? driver (:native stage))]
-                        (when error
-                          (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage)))
-                        (if is-single-select?
-                          (assoc stage :native sql)
-                          (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
-                                          {:sql (:native stage)}))))
+                        (cond error
+                              (do
+                                (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage))
+                                (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
+                                                {:type qp.error-type/invalid-query
+                                                 :sql  (:native stage)})))
+                              (not is-single-select?)
+                              (throw (ex-info (tru "Invalid impersonated native query. Must be a single select statement.")
+                                              {:type qp.error-type/invalid-query
+                                               :sql  (:native stage)}))
+                              :else (assoc stage :native sql)))
                       stage))
                   stages))))
 
