@@ -1169,11 +1169,13 @@
    :uses #{agent-api
            api
            api-scope
+           app-db
            config
            llm
            oauth-server
            request
            server
+           session
            settings
            system
            util}}
@@ -1398,6 +1400,7 @@
            metabase.oauth-server.init}
    :uses #{api
            appearance
+           mcp
            models
            request
            settings

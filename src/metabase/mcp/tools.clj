@@ -5,11 +5,11 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase.agent-api.api :as agent-api]
-   [metabase.api-scope.core :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
-   [metabase.api.macros.scope :as scope]
    [metabase.config.core :as config]
+   [metabase.mcp.resources :as mcp.resources]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.json :as json])
@@ -36,31 +36,15 @@
     (generate-manifest)
     @manifest-delay))
 
-(defn- scope-matches?
-  "Does `token-scopes` grant access to a tool with the given `tool-scope`?
-   - nil token-scopes → always matches (internal callers)
-   - ::scope/unrestricted in token-scopes → always matches
-   - nil tool-scope → only matches nil or unrestricted token-scopes
-   - Delegates wildcard/exact matching to [[api-scope/scope-matches?]]"
-  [token-scopes tool-scope]
-  (or (nil? token-scopes)
-      (contains? token-scopes ::scope/unrestricted)
-      (when (and (some? tool-scope)
-                 (api-scope/scope-matches? token-scopes tool-scope))
-        true)))
-
 (defn list-tools
   "Return the tool definitions suitable for MCP `tools/list` responses.
    When `token-scopes` is provided, only tools whose scope matches are included."
   [token-scopes]
   (let [{:keys [tools]} (manifest)]
     (into []
-          (comp (filter #(scope-matches? token-scopes (:scope %)))
-                (map (fn [tool]
-                       {:name        (:name tool)
-                        :description (:description tool)
-                        :inputSchema (:inputSchema tool)})))
-          tools)))
+          (comp (filter #(mcp.scope/matches? token-scopes (:scope %)))
+                (map #(select-keys % [:name :description :inputSchema :_meta])))
+          (concat tools (mcp.resources/list-ui-tools)))))
 
 (defn- build-tool-index
   "Build name->tool lookup from manifest tools."
@@ -223,9 +207,15 @@
    `defendpoint` middleware.
    Returns MCP content on success, or error content on failure."
   [token-scopes tool-name arguments]
-  (if-let [tool-def (get (tool-index) tool-name)]
-    (try
-      (dispatch-via-agent-api tool-def arguments token-scopes)
-      (catch Exception e
-        (error-content (or (ex-message e) "Internal error"))))
-    (error-content (str "Unknown tool: " tool-name))))
+  (if-let [ui-tool (some #(when (= tool-name (:name %)) %) (mcp.resources/list-ui-tools))]
+    (if-not (mcp.scope/matches? token-scopes (:scope ui-tool))
+      (error-content (str "Insufficient scope to call tool: " tool-name))
+      ((:response-fn ui-tool) arguments))
+    (if-let [tool-def (get (tool-index) tool-name)]
+      (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
+        (error-content (str "Insufficient scope to call tool: " tool-name))
+        (try
+          (dispatch-via-agent-api tool-def arguments token-scopes)
+          (catch Exception e
+            (error-content (or (ex-message e) "Internal error")))))
+      (error-content (str "Unknown tool: " tool-name)))))

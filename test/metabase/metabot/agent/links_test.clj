@@ -6,7 +6,17 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.json :as json]))
+
+(defn- decode-question-url
+  "Decode a `/question#<base64>` URL into its JSON-decoded pseudo-card map."
+  [url]
+  (-> url
+      (subs (count "/question#"))
+      u/decode-base64
+      (json/decode+kw)))
 
 ;;; resolve-metabase-uri tests
 
@@ -19,6 +29,19 @@
           result        (links/resolve-metabase-uri "metabase://query/abc-123" queries-state charts-state)]
       (is (string? result))
       (is (str/starts-with? result "/question#")))))
+
+(deftest ^:parallel resolve-metabase-uri-query-link-produces-renderable-pseudo-card-test
+  (testing "decoded /question# hash from a query link is a pseudo card the frontend can render"
+    (let [query-id      "abc-123"
+          query         (lib.tu/venues-query)
+          result        (links/resolve-metabase-uri "metabase://query/abc-123" {query-id query} {})
+          decoded       (decode-question-url result)]
+      (testing "dataset_query is populated so the query can be executed"
+        (is (map? (:dataset_query decoded)))
+        (is (some? (get-in decoded [:dataset_query :database]))))
+      (testing "type and visualization_settings are present so renderers like `getAlertType` don't crash"
+        (is (= "question" (:type decoded)))
+        (is (= {} (:visualization_settings decoded)))))))
 
 (deftest ^:parallel resolve-metabase-uri-missing-query-test
   (testing "returns nil for missing query"

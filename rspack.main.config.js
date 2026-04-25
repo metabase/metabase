@@ -106,6 +106,7 @@ const config = {
     "app-public": "./app-public.ts",
     "app-embed": "./app-embed.ts",
     "app-embed-sdk": "./app-embed-sdk.tsx",
+    "app-embed-mcp": "./app-embed-mcp.tsx",
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
   },
@@ -290,6 +291,18 @@ const config = {
       chunks: ["vendor", "vendor-styles", "styles", "app-embed-sdk"],
       template: __dirname + "/resources/frontend_client/index_template.html",
     }),
+    new HtmlWebpackPlugin({
+      filename: "../../embed-mcp.html",
+      chunksSortMode: "manual",
+      chunks: ["vendor", "vendor-styles", "styles", "app-embed-mcp"],
+      template: __dirname + "/resources/frontend_client/mcp_apps_template.html",
+
+      // MCP apps are rendered inside a sandboxed srcdoc iframe (about:srcdoc),
+      // so asset URLs must point to the Metabase instance. We embed a Mustache
+      // variable in publicPath — HtmlWebpackPlugin emits it literally, then
+      // Stencil substitutes it at runtime with the real instance URL.
+      publicPath: "{{{instanceUrlRaw}}}/app/dist/",
+    }),
     new rspack.BannerPlugin(getBannerOptions(LICENSE_TEXT)),
     // https://github.com/orgs/remarkjs/discussions/903
     new rspack.ProvidePlugin({
@@ -354,7 +367,10 @@ if (shouldEnableHotRefresh) {
   config.plugins.unshift(
     new ReactRefreshPlugin({
       overlay: false,
-      exclude: [SDK_DOCS_SNIPPETS_PATH],
+
+      // app-embed-mcp runs in an isolated iframe with CSP restrictions.
+      // Excluding it avoids injecting the React Refresh runtime which uses eval.
+      exclude: [SDK_DOCS_SNIPPETS_PATH, /app-embed-mcp/],
     }),
   );
 }

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="robots" content="noindex" />
+
+    <title>Metabase</title>
+
+    <style>
+      :root {
+        /* Allow light-dark() to work */
+        color-scheme: light dark;
+      }
+
+      body {
+        margin: 0;
+        height: 500px;
+      }
+
+      body {
+        background: var(--color-background-primary);
+        color: var(--color-text-primary);
+        font-family: var(--font-sans);
+      }
+
+      /* Allow Cursor and VS Code to have proper colors & fonts */
+      body.vscode-light,
+      body.vscode-dark,
+      body.vscode-high-contrast {
+        color: var(--vscode-foreground);
+        background: var(--vscode-editor-background);
+        font-family: var(--vscode-font-family);
+      }
+
+      .mcp-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+      }
+
+      @keyframes mcp-spinner-animation {
+        0% {
+          transform: rotate(0deg);
+        }
+
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .mcp-spinner {
+        display: inline-block;
+        box-sizing: border-box;
+        width: 1.5rem;
+        height: 1.5rem;
+      }
+
+      .mcp-spinner::after {
+        content: "";
+        display: block;
+        box-sizing: border-box;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 10000px;
+        border-width: calc(1.5rem / 8);
+        border-style: solid;
+        border-color: #509ee3 #509ee3 #509ee3 transparent;
+        animation: mcp-spinner-animation 1.2s linear infinite;
+      }
+    </style>
+    <script>
+      window.Metabase = window.Metabase || {};
+      window.Metabase.AssetErrorLoad = function (tag) {
+        console.error("Could not download asset " + tag.src);
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="mcp-loading" class="mcp-loading">
+      <span class="mcp-spinner"></span>
+    </div>
+
+    <script>
+      window.metabaseConfig = {
+        instanceUrl: {{{instanceUrl}}},
+        sessionToken: {{{sessionToken}}}
+      };
+    </script>
+  </body>
+</html>

@@ -5,6 +5,7 @@
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.api.macros.scope :as scope]
    [metabase.mcp.api :as mcp.api]
+   [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.tools :as mcp.tools]
    [metabase.oauth-server.core :as oauth-server]
@@ -20,6 +21,11 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
+
+;; Backend-only test runs don't produce embed-mcp.html; install the inline fallback.
+(use-fixtures :each
+  (fn [thunk]
+    (mcp.resources/with-fallback-template (thunk))))
 
 ;;; --------------------------------------------------- Helpers ----------------------------------------------------
 
@@ -135,7 +141,7 @@
       (is (= 1 (get-in response [:body :id])))
       (let [result (get-in response [:body :result])]
         (is (= "2025-03-26" (:protocolVersion result)))
-        (is (= {:tools {}} (:capabilities result)))
+        (is (= {:resources {} :tools {}} (:capabilities result)))
         (is (= {:name "metabase" :version "0.1.0"} (:serverInfo result)))))))
 
 (deftest notifications-initialized-test
@@ -149,35 +155,40 @@
   (testing "requests without a session ID return 400"
     (let [response (mcp-request (jsonrpc-request "tools/list"))]
       (is (= 400 (:status response)))
-      (is (= -32600 (get-in response [:body :error :code]))))))
+      (is (= -32600 (get-in response [:body :error :code])))))
 
-(deftest degenerate-session-id-test
-  (testing "requests with any nonblank session ID are accepted"
+  (testing "requests with an invalid session ID return 404"
     (let [response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" "bogus-session-id"})]
-      (is (= 200 (:status response)))
-      (is (some? (get-in response [:body :result :tools]))))))
+      (is (= 404 (:status response)))
+      (is (= -32600 (get-in response [:body :error :code]))))))
 
 (deftest session-delete-test
-  (testing "DELETE succeeds but does not invalidate a degenerate session ID"
+  (testing "DELETE succeeds for a valid session"
     (let [[session-id _] (initialize!)
-          delete-response (mcp-delete {"mcp-session-id" session-id})
-          post-response (mcp-request (jsonrpc-request "tools/list")
-                                     {"mcp-session-id" session-id})]
-      (is (= 200 (:status delete-response)))
-      (is (= 200 (:status post-response))))))
+          delete-response (mcp-delete {"mcp-session-id" session-id})]
+      (is (= 200 (:status delete-response))))))
+
+(def ^:private all-tool-names
+  #{"construct_query"
+    "execute_query"
+    "get_metric"
+    "get_metric_field_values"
+    "get_table"
+    "get_table_field_values"
+    "query"
+    "search"
+    "visualize_query"})
 
 (deftest tools-list-test
-  (testing "tools/list returns the 8 agent tools"
+  (testing "tools/list returns the agent and UI tools"
     (let [[session-id _] (initialize!)
           response (mcp-request (jsonrpc-request "tools/list")
                                 {"mcp-session-id" session-id})
           tools (get-in response [:body :result :tools])]
       (is (= 200 (:status response)))
       (is (pos? (count tools)))
-      (is (= #{"search" "get_table" "get_metric" "get_table_field_values"
-               "get_metric_field_values" "construct_query" "execute_query" "query"}
-             (set (map :name tools))))
+      (is (= all-tool-names (set (map :name tools))))
       (testing "each tool has a description and inputSchema"
         (doseq [tool tools]
           (is (string? (:description tool)))
@@ -350,11 +361,12 @@
       (is (string? content-text))
       ;; Parse the content text as JSON and verify snake_case keys from Malli encoding
       (let [table-data (json/decode+kw content-text)]
-        (is (some? (:name table-data)))
-        (is (some? (:display_name table-data)))
-        (is (some? (:database_id table-data)))
-        (is (= "table" (:type table-data)))
-        (is (seq (:fields table-data)))))))
+        (is (=? {:name         string?
+                 :display_name string?
+                 :database_id  int?
+                 :type         "table"
+                 :fields       sequential?}
+                table-data))))))
 
 (deftest initialized-notification-compatibility-test
   (testing "requests succeed without notifications/initialized"
@@ -365,7 +377,7 @@
       (is (= 200 (:status list-response)))
       (is (some? (get-in list-response [:body :result :tools])))))
 
-  (testing "notifications/initialized remains accepted for compatibility"
+  (testing "notifications/initialized is accepted as a no-op for compatibility"
     (let [response   (mcp-request (jsonrpc-request "initialize"))
           session-id (get-in response [:headers "Mcp-Session-Id"])]
       (is (= 202 (:status (mcp-request (jsonrpc-notification "notifications/initialized")
@@ -373,14 +385,11 @@
 
 (deftest full-handshake-test
   (testing "complete MCP handshake flow"
-    (let [[session-id init-response] (initialize!)
-          _ (is (= 200 (:status init-response)))
-          _ (is (some? session-id))
-          ;; tools/list should work after full handshake
-          list-response (mcp-request (jsonrpc-request "tools/list")
-                                     {"mcp-session-id" session-id})]
+    (let [[session-id _] (initialize!)
+          list-response  (mcp-request (jsonrpc-request "tools/list")
+                                      {"mcp-session-id" session-id})]
       (is (= 200 (:status list-response)))
-      (is (pos? (count (get-in list-response [:body :result :tools])))))))
+      (is (seq (get-in list-response [:body :result :tools]))))))
 
 (deftest batch-with-notifications-test
   (testing "batch with mix of notifications and requests returns only request responses"
@@ -493,7 +502,7 @@
 (deftest tools-list-scope-filtering-test
   (testing "tools/list with unrestricted scopes returns all tools"
     (let [tools (mcp.tools/list-tools #{::scope/unrestricted})]
-      (is (= 8 (count tools)))))
+      (is (= all-tool-names (set (map :name tools))))))
 
   (testing "tools/list with specific scope only returns matching tools"
     (let [tools     (mcp.tools/list-tools #{"agent:search"})
@@ -504,17 +513,17 @@
       (is (not (contains? tool-names "get_table")))
       (is (not (contains? tool-names "construct_query")))))
 
-  (testing "tools/list with wildcard scope matches all agent tools"
+  (testing "tools/list with wildcard scope matches all agent and UI tools"
     (let [tools (mcp.tools/list-tools #{"agent:*"})]
-      (is (= 8 (count tools)))))
+      (is (= all-tool-names (set (map :name tools))))))
 
   (testing "tools/list with nil scopes returns all tools"
     (let [tools (mcp.tools/list-tools nil)]
-      (is (= 8 (count tools)))))
+      (is (= all-tool-names (set (map :name tools))))))
 
   (testing "tools/list with empty scopes does not return all tools"
     (let [tools (mcp.tools/list-tools #{})]
-      (is (zero? (count tools))
+      (is (empty? tools)
           "Empty scopes should not grant access to scoped tools"))))
 
 (defn- insert-expired-oauth-token!
@@ -563,6 +572,29 @@
       (is (str/includes? (-> result :content first :text) "Insufficient scope")
           "Scope enforcement error from defendpoint middleware"))))
 
+(deftest check-resource-access-test
+  (testing "returns :ok for a known URI with matching scope"
+    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:visualize"}))))
+  (testing "returns :ok with wildcard scope"
+    (is (= :ok (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:*"}))))
+  (testing "returns :scope-denied for a known URI with non-matching scope"
+    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{"agent:search"}))))
+  (testing "returns :scope-denied for a known URI with empty scopes"
+    (is (= :scope-denied (mcp.resources/check-resource-access "ui://metabase/visualize-query.html" #{}))))
+  (testing "returns :not-found for an unknown URI"
+    (is (= :not-found (mcp.resources/check-resource-access "ui://metabase/nonexistent.html" #{"agent:*"})))))
+
+(deftest resources-read-scope-denied-test
+  (testing "resources/read returns -32602 for unknown URI"
+    (let [[session-id _] (initialize!)
+          response (mcp-request (jsonrpc-request "resources/read"
+                                                 {:uri "ui://metabase/nonexistent.html"})
+                                {"mcp-session-id" session-id})]
+      (is (= 200 (:status response)))
+      (is (= -32602 (get-in response [:body :error :code])))
+      (is (= "Resource not found"
+             (get-in response [:body :error :message]))))))
+
 (deftest agent-api-preserves-token-scopes-test
   (testing "scoped token restrictions are enforced by the Agent API layer (defense-in-depth)"
     (testing "restricted scopes that don't match the endpoint are rejected by Agent API"
@@ -608,3 +640,36 @@
                                      :message #(str/starts-with? % "Too many attempts!")}}}
                 (mcp-request (jsonrpc-request "ping")
                              {"mcp-session-id" session-id})))))))
+
+;;; -------------------------------------------- Session Lifecycle -------------------------------------------------
+
+(deftest session-embedding-reuse-test
+  (testing "multiple resources/read calls within one session reuse the same embedding session"
+    (let [[session-id _] (initialize!)
+          read1 (mcp-request (jsonrpc-request "resources/read"
+                                              {:uri "ui://metabase/visualize-query.html"} 1)
+                             {"mcp-session-id" session-id})
+          read2 (mcp-request (jsonrpc-request "resources/read"
+                                              {:uri "ui://metabase/visualize-query.html"} 2)
+                             {"mcp-session-id" session-id})]
+      (is (= 200 (:status read1)))
+      (is (= 200 (:status read2)))
+      ;; Both responses should contain the same session token in the rendered HTML
+      (let [html1 (-> (get-in read1 [:body :result :contents]) first :text)
+            html2 (-> (get-in read2 [:body :result :contents]) first :text)]
+        (is (some? html1))
+        (is (= html1 html2)
+            "Same embedding session should produce identical HTML output")))))
+
+(deftest batch-initialized-then-resources-read-test
+  (testing "batch containing notifications/initialized + resources/read succeeds"
+    (let [response      (mcp-request (jsonrpc-request "initialize"))
+          session-id    (get-in response [:headers "Mcp-Session-Id"])
+          batch-response (mcp-request [(jsonrpc-notification "notifications/initialized")
+                                       (jsonrpc-request "resources/read"
+                                                        {:uri "ui://metabase/visualize-query.html"} 1)]
+                                      {"mcp-session-id" session-id})]
+      (is (=? {:status 200
+               :body   [{:id     1
+                         :result {:contents some?}}]}
+              batch-response)))))
