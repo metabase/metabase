@@ -72,10 +72,11 @@
 (defn- handle-tools-list [id _params token-scopes]
   (jsonrpc-response id {:tools (mcp.tools/list-tools token-scopes)}))
 
-(defn- handle-tools-call [id params token-scopes]
+(defn- handle-tools-call [id params session-id token-scopes]
   (let [tool-name (:name params)
         arguments (or (:arguments params) {})]
-    (jsonrpc-response id (mcp.tools/call-tool token-scopes tool-name arguments))))
+    (binding [mcp.session/*current-session-id* session-id]
+      (jsonrpc-response id (mcp.tools/call-tool token-scopes tool-name arguments)))))
 
 (defn- handle-resources-list [id _params token-scopes]
   (jsonrpc-response id (mcp.resources/list-resources token-scopes)))
@@ -100,7 +101,7 @@
     (case method
       "notifications/initialized" nil
       "tools/list"                (handle-tools-list id params token-scopes)
-      "tools/call"                (handle-tools-call id params token-scopes)
+      "tools/call"                (handle-tools-call id params session-id token-scopes)
       "resources/list"            (handle-resources-list id params token-scopes)
       "resources/read"            (handle-resources-read id params session-id token-scopes)
       "ping"                      (handle-ping id params)
@@ -275,12 +276,19 @@
   "Handle POST /api/mcp/ui/drills — store a base64-encoded query for the upcoming render_drill_through
    tool call. The frontend calls this immediately after a drill-through action, before sending
    app.sendMessage, so the tool can retrieve the query without the LLM carrying the payload."
-  [user-id request]
-  (let [encoded-query (get (:body request) :encodedQuery)]
-    (if (and (string? encoded-query) (not (str/blank? encoded-query)))
-      (do (mcp.session/store-pending-card! user-id encoded-query)
-          {:status 204 :headers {"Content-Type" "application/json"} :body ""})
-      (json-response 400 {:error "Missing or invalid encodedQuery"}))))
+  [_user-id request]
+  (let [session-id    (get-in request [:headers "mcp-session-id"])
+        encoded-query (get (:body request) :encodedQuery)]
+    (cond
+      (str/blank? session-id)
+      (json-response 400 {:error "Missing Mcp-Session-Id header"})
+
+      (not (and (string? encoded-query) (not (str/blank? encoded-query))))
+      (json-response 400 {:error "Missing or invalid encodedQuery"})
+
+      :else
+      (do (mcp.session/store-drill-handle! session-id encoded-query)
+          {:status 204 :headers {"Content-Type" "application/json"} :body ""}))))
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 

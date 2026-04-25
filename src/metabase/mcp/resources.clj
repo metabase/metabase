@@ -3,7 +3,6 @@
    that renders interactive Metabase visualizations via the Embedding SDK."
   (:require
    [clojure.java.io :as io]
-   [metabase.api.common :as api]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.system.core :as system]
@@ -159,11 +158,18 @@
  {:name        "visualize_query"
   :description "Visualize a previously constructed query as an interactive chart or table."
   :inputSchema {:type       "object"
-                :properties {:query {:type "string" :minLength 1}}
-                :required   ["query"]}
+                :properties {:query        {:type "string" :minLength 1}
+                             :query_handle {:type "string" :minLength 1}}
+                :anyOf      [{"required" ["query"]} {"required" ["query_handle"]}]}
   :response-fn (fn [arguments]
-                 {:content          [{:type "text" :text "Visualizing query..."}]
-                  :structuredContent {:query (:query arguments)}})})
+                 (let [encoded (or (:query arguments)
+                                   (when-let [h (:query_handle arguments)]
+                                     (mcp.session/resolve-query-handle h)))]
+                   (if encoded
+                     {:content          [{:type "text" :text "Visualizing query..."}]
+                      :structuredContent {:query encoded}}
+                     {:content [{:type "text" :text "Query handle not found. Try running construct_query again."}]
+                      :isError true})))})
 
 (register-ui-tool!
  :visualize-query
@@ -173,7 +179,7 @@
                     "no arguments needed. The query is pre-loaded from session context.")
   :inputSchema {:type "object" :properties {} :required []}
   :response-fn (fn [_arguments]
-                 (let [encoded-query (mcp.session/consume-pending-card! api/*current-user-id*)]
+                 (let [encoded-query (mcp.session/consume-drill-handle! mcp.session/*current-session-id*)]
                    (if encoded-query
                      {:content          [{:type "text" :text "Rendering drill-through visualization..."}]
                       :structuredContent {:query encoded-query}}

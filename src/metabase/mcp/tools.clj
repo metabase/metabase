@@ -10,6 +10,7 @@
    [metabase.config.core :as config]
    [metabase.mcp.resources :as mcp.resources]
    [metabase.mcp.scope :as mcp.scope]
+   [metabase.mcp.session :as mcp.session]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
    [metabase.util.json :as json])
@@ -93,6 +94,40 @@
       error            error
       :else            (str "Agent API error: " (:status response)))))
 
+;;; ------------------------------------------- Query Handle Transforms -------------------------------------------
+
+(defn- resolve-query-arg
+  "If `arguments` contains :query_handle, look it up in mcp_ui_query_handle and replace
+   it with the :query base64 string. Returns updated arguments, or ::handle-not-found if
+   the handle id doesn't exist in the store."
+  [arguments]
+  (if-let [handle-id (:query_handle arguments)]
+    (if-let [encoded (mcp.session/resolve-query-handle handle-id)]
+      (-> arguments (dissoc :query_handle) (assoc :query encoded))
+      ::handle-not-found)
+    arguments))
+
+(defn- store-construct-query-result
+  "Post-process construct_query's response body: store the base64 payload in
+   mcp_ui_query_handle and return {:query_handle uuid} instead of {:query base64}.
+   The LLM carries a short opaque ID rather than hundreds of base64 characters,
+   eliminating hallucination of the payload across conversation turns."
+  [body]
+  (if-let [encoded (:query body)]
+    {:query_handle (mcp.session/store-query-handle!
+                    mcp.session/*current-session-id*
+                    encoded)}
+    body))
+
+;; Tools whose raw response body should be transformed before being wrapped in text-content.
+(def ^:private tool-body-transforms
+  {"construct_query" store-construct-query-result})
+
+;; Tools that accept :query_handle as an alternative to a raw :query base64 string.
+;; The handle is resolved to the base64 payload before dispatch to the agent API.
+(def ^:private tools-accepting-query-handle
+  #{"execute_query"})
+
 ;;; ------------------------------------------------- Tool Dispatch -------------------------------------------------
 
 (defn- text-content
@@ -149,8 +184,11 @@
    For POST, `params` becomes the request body; for GET/DELETE, `params` becomes query-params.
 
    Propagates `token-scopes` from the original MCP request so that scope restrictions
-   are preserved through the synthetic request."
-  [method path token-scopes params]
+   are preserved through the synthetic request.
+
+   `body-transform-fn`, when provided, is applied to the response body before
+   wrapping with text-content. Used to post-process construct_query results."
+  [method path token-scopes params & {:keys [body-transform-fn]}]
   (let [result (promise)]
     (deliver-agent-api-response result method path token-scopes params)
     (let [response (deref result 30000 {:status 504 :body {:message "Timeout"}})]
@@ -160,7 +198,8 @@
         response
 
         (= 200 (:status response))
-        (text-content (:body response))
+        (text-content (cond-> (:body response)
+                        body-transform-fn (body-transform-fn)))
 
         :else
         (error-content (extract-error-message response))))))
@@ -194,11 +233,13 @@
    request body. For GET/DELETE requests, remaining args are sent as query params."
   [tool-def arguments token-scopes]
   (let [{:keys [method path]} (:endpoint tool-def)
+        tool-name             (:name tool-def)
         method                (keyword (u/lower-case-en method))
         [resolved-path
          remaining-args]      (interpolate-path path arguments)
         api-path              (strip-api-prefix resolved-path)]
-    (invoke-agent-api method api-path token-scopes remaining-args)))
+    (invoke-agent-api method api-path token-scopes remaining-args
+                      :body-transform-fn (get tool-body-transforms tool-name))))
 
 (defn call-tool
   "Dispatch an MCP `tools/call` request to the appropriate handler.
@@ -214,8 +255,13 @@
     (if-let [tool-def (get (tool-index) tool-name)]
       (if-not (mcp.scope/matches? token-scopes (:scope tool-def))
         (error-content (str "Insufficient scope to call tool: " tool-name))
-        (try
-          (dispatch-via-agent-api tool-def arguments token-scopes)
-          (catch Exception e
-            (error-content (or (ex-message e) "Internal error")))))
+        (let [arguments (if (tools-accepting-query-handle tool-name)
+                          (resolve-query-arg arguments)
+                          arguments)]
+          (if (= arguments ::handle-not-found)
+            (error-content "Query handle not found. The query may have expired — try running construct_query again.")
+            (try
+              (dispatch-via-agent-api tool-def arguments token-scopes)
+              (catch Exception e
+                (error-content (or (ex-message e) "Internal error")))))))
       (error-content (str "Unknown tool: " tool-name)))))
