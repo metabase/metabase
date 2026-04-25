@@ -272,10 +272,24 @@
 
 (def ^:private job-key "metabase.transforms.jobs.timeout-job")
 
+(defn- timeout-and-notify-old-runs!
+  "Time out stale job runs and notify admins for each cron-scheduled run that was
+  timed out. Manual runs are left alone to mirror `run-job!`'s cron-only
+  notification behavior."
+  []
+  (let [timed-out (transforms.job-run/timeout-old-runs!
+                   (transforms.settings/transform-timeout) :minute)]
+    (doseq [{:keys [job_id run_method message]} timed-out
+            :when (= run_method :cron)]
+      (try
+        (notify-job-failure job_id (or message "Timed out by metabase"))
+        (catch Throwable t
+          (log/error t "Error notifying of timed-out transform job run" (pr-str job_id)))))))
+
 (task/defjob  ^{:doc "Times out transform jobs when necessary."
                 org.quartz.DisallowConcurrentExecution true}
   TimeoutOldRuns [_ctx]
-  (transforms.job-run/timeout-old-runs! (transforms.settings/transform-timeout) :minute))
+  (timeout-and-notify-old-runs!))
 
 (defn- start-job! []
   (when (not (task/job-exists? job-key))
