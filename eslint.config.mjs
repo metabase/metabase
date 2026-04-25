@@ -345,7 +345,7 @@ const configs = [
   },
   {
     files: [
-      "**/*.unit.spec.*",
+      "**/*.spec.*",
       "frontend/lint/**/*",
       "**/*.stories.*",
       "**/stories-data.*",

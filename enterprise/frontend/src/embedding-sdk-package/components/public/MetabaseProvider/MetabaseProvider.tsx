@@ -87,7 +87,15 @@ const MetabaseProviderInner = memo(function MetabaseProviderInner(
     return null;
   }
 
-  return <MetabaseProviderInitDataWrapper />;
+  const MetabotSubscriber =
+    getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.MetabotSubscriber;
+
+  return (
+    <>
+      <MetabaseProviderInitDataWrapper />
+      {MetabotSubscriber && <MetabotSubscriber store={reduxStore} />}
+    </>
+  );
 });
 
 /**

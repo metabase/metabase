@@ -52,6 +52,7 @@ export type SdkQuestionEntityPublicProps =
        */
       questionId: SdkQuestionId | null;
       token?: never;
+      query?: never;
     }
   | {
       questionId?: never;
@@ -59,6 +60,19 @@ export type SdkQuestionEntityPublicProps =
        * A valid JWT token for the guest embed.
        */
       token: SdkEntityToken | null;
+      query?: never;
+    };
+
+/**
+ * Internal type that adds the `query` prop used by the `useMetabot` hook. Not
+ * re-exported from the public SDK package entry point.
+ */
+export type SdkQuestionEntityInternalProps =
+  | SdkQuestionEntityPublicProps
+  | {
+      questionId?: never;
+      token?: never;
+      query: string;
     };
 
 export interface SdkQuestionState {
