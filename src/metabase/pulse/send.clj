@@ -76,7 +76,7 @@
                               :dashboard_subscription_dashcards (map
                                                                  #(merge {:card_id (:id %)
                                                                           :dashboard_card_id (:dashboard_card_id %)}
-                                                                         (select-keys % [:include_xls :include_csv :pivot_results :format_rows]))
+                                                                         (select-keys % [:include_xls :include_csv :include_ods :pivot_results :format_rows]))
                                                                  (:cards pulse))}
      :handlers               [(get-notification-handler pulse-channel)]}
     {:id            (:id pulse)

@@ -171,7 +171,7 @@
 (defn- can-read-attachments?
   "Return true if the card has attachments and those can be read. If it has no attachments, return true"
   [card]
-  (if (or (:include_csv card) (:include_xls card))
+  (if (or (:include_csv card) (:include_xls card) (:include_ods card))
     (let [level (perms/download-perms-level (or (:dataset_query card) (t2/select-one-fn :dataset_query :model/Card :id (:id card))) api/*current-user-id*)]
       (and level (not= level  :no)))
     true))
@@ -202,10 +202,11 @@
    [:map
     [:include_csv                        ms/BooleanValue]
     [:include_xls                        ms/BooleanValue]
+    [:include_ods                        {:default false} ms/BooleanValue]
     [:format_rows       {:optional true} [:maybe ms/BooleanValue]]
     [:pivot_results     {:optional true} [:maybe ms/BooleanValue]]
     [:dashboard_card_id {:optional true} [:maybe ms/PositiveInt]]]
-   (deferred-tru "value must be a map with the keys `{0}`, `{1}`, and `{2}`." "include_csv" "include_xls" "dashboard_card_id")))
+   (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "include_csv" "include_xls" "include_ods" "dashboard_card_id")))
 
 (def CardRef
   "Schema for the map we use to internally represent the fact that a Card is in a Notification and the details about its
@@ -214,7 +215,7 @@
    [:merge CardBase
     [:map
      [:id ms/PositiveInt]]]
-   (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, and `{3}`." "id" "include_csv" "include_xls" "dashboard_card_id")))
+   (deferred-tru "value must be a map with the keys `{0}`, `{1}`, `{2}`, `{3}`, and `{4}`." "id" "include_csv" "include_xls" "include_ods" "dashboard_card_id")))
 
 (def HybridPulseCard
   "This schema represents the cards that are included in a pulse. This is the data from the `PulseCard` and some
@@ -230,7 +231,7 @@
      [:dashboard_id       [:maybe ms/PositiveInt]]
      [:parameter_mappings [:maybe [:sequential ms/Map]]]]]
    (deferred-tru "value must be a map with the following keys `({0})`"
-                 (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "name"
+                 (str/join ", " ["collection_id" "description" "display" "id" "include_csv" "include_xls" "include_ods" "name"
                                  "dashboard_id" "parameter_mappings"]))))
 
 (def CoercibleToCardRef
@@ -256,7 +257,7 @@
   [pulse-ids]
   (t2/select
    :model/Card
-   {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.format_rows :pc.pivot_results
+   {:select    [:c.id :c.name :c.description :c.collection_id :c.display :pc.include_csv :pc.include_xls :pc.include_ods :pc.format_rows :pc.pivot_results
                 :pc.dashboard_card_id :dc.dashboard_id [nil :parameter_mappings] [:p.id :pulse_id]] ;; :dc.parameter_mappings - how do you select this?
     :from      [[:pulse :p]]
     :join      [[:pulse_card :pc] [:= :p.id :pc.pulse_id]
@@ -450,6 +451,7 @@
   {:id                (u/the-id card)
    :include_csv       (get card :include_csv false)
    :include_xls       (get card :include_xls false)
+   :include_ods       (get card :include_ods false)
    :format_rows       (get card :format_rows true)
    :pivot_results     (get card :pivot_results false)
    :dashboard_card_id (get card :dashboard_card_id nil)})
@@ -458,7 +460,7 @@
 
 (mu/defn update-notification-cards!
   "Update the PulseCards for a given `notification-or-id`. `card-refs` should be a definitive collection of *all* Cards
-  for the Notification in the desired order. They should have keys like `id`, `include_csv`, and `include_xls`.
+  for the Notification in the desired order. They should have keys like `id`, `include_csv`, `include_xls`, and `include_ods`.
 
   *  If a Card ID in `card-refs` has no corresponding existing `PulseCard` object, one will be created.
   *  If an existing `PulseCard` has no corresponding ID in CARD-IDs, it will be deleted.
@@ -468,12 +470,13 @@
   (t2/delete! :model/PulseCard :pulse_id (u/the-id notification-or-id))
   ;; now just insert all of the cards that were given to us
   (when (seq card-refs)
-    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls format_rows pivot_results dashboard_card_id]}]
+    (let [cards (map-indexed (fn [i {card-id :id :keys [include_csv include_xls include_ods format_rows pivot_results dashboard_card_id]}]
                                {:pulse_id          (u/the-id notification-or-id)
                                 :card_id           card-id
                                 :position          i
                                 :include_csv       include_csv
                                 :include_xls       include_xls
+                                :include_ods       include_ods
                                 :format_rows       format_rows
                                 :pivot_results     pivot_results
                                 :dashboard_card_id dashboard_card_id})
@@ -563,7 +566,7 @@
 
 (mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
   [notification-or-id]
-  (t2/select [:model/PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
+  (t2/select [:model/PulseCard [:card_id :id] :include_csv :include_xls :include_ods :dashboard_card_id]
              :pulse_id (u/the-id notification-or-id)
              {:order-by [[:position :asc]]}))
 

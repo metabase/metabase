@@ -164,9 +164,9 @@
 
 (defn attached-results-text
   "Returns hiccup structures to indicate truncated results are available as an attachment"
-  [render-type {:keys [include_csv include_xls]}]
+  [render-type {:keys [include_csv include_xls include_ods]}]
   (when (and (not= :inline render-type)
-             (or include_csv include_xls))
+             (or include_csv include_xls include_ods))
     [:div {:style (style/style {:color         style/color-gray-2
                                 :margin-bottom :16px})}
      (trs "Results have been included as a file attachment")]))

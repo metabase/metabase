@@ -58,9 +58,9 @@
    :some])
 
 (def export-formats
-  "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results
-  with extra metadata)."
-  #{:api :csv :json :xlsx})
+  "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, `:ods`, and `:api` (normal JSON API
+  results with extra metadata)."
+  #{:api :csv :json :ods :xlsx})
 
 (def export-formats-regex
   "Regex for `export-formats` for use in API routes."

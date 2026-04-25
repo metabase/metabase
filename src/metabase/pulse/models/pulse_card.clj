@@ -29,6 +29,7 @@
    [:position          {:optional true} [:maybe ms/IntGreaterThanOrEqualToZero]]
    [:include_csv       {:optional true} [:maybe :boolean]]
    [:include_xls       {:optional true} [:maybe :boolean]]
+   [:include_ods       {:optional true} [:maybe :boolean]]
    [:format_rows       {:optional true} [:maybe :boolean]]
    [:pivot_results     {:optional true} [:maybe :boolean]]])
 
@@ -37,12 +38,13 @@
   values if they're not provided."
   [new-pulse-cards :- [:sequential NewPulseCard]]
   (t2/insert! :model/PulseCard
-              (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls format_rows pivot_results]} new-pulse-cards]
+              (for [{:keys [card_id pulse_id dashboard_card_id position include_csv include_xls include_ods format_rows pivot_results]} new-pulse-cards]
                 {:card_id           card_id
                  :pulse_id          pulse_id
                  :dashboard_card_id dashboard_card_id
                  :position          (u/or-with some? position (next-position-for pulse_id))
                  :include_csv       (boolean include_csv)
                  :include_xls       (boolean include_xls)
+                 :include_ods       (boolean include_ods)
                  :format_rows       (boolean format_rows)
                  :pivot_results     (boolean pivot_results)})))

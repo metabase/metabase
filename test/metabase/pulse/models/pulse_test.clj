@@ -76,6 +76,7 @@
                              :display            :table
                              :include_csv        false
                              :include_xls        false
+                             :include_ods        false
                              :format_rows        true
                              :pivot_results      false
                              :dashboard_card_id  nil
@@ -143,6 +144,7 @@
                              :display            :table
                              :include_csv        false
                              :include_xls        false
+                             :include_ods        false
                              :format_rows        true
                              :pivot_results      false
                              :dashboard_card_id  nil
@@ -235,6 +237,7 @@
                                    :display            :bar
                                    :include_csv        false
                                    :include_xls        false
+                                   :include_ods        false
                                    :format_rows        true
                                    :pivot_results      false
                                    :dashboard_card_id  nil
@@ -246,6 +249,7 @@
                                    :display            :table
                                    :include_csv        false
                                    :include_xls        false
+                                   :include_ods        false
                                    :format_rows        true
                                    :pivot_results      false
                                    :dashboard_card_id  nil

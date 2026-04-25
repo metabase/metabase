@@ -1,0 +1,21 @@
+## Add pulse_card.include_ods for OpenDocument spreadsheet email attachments (subscriptions and alerts).
+
+databaseChangeLog:
+
+  - changeSet:
+      id: v61.2026-04-23T00:00:00
+      author: luis
+      comment: Add pulse_card.include_ods (OpenDocument spreadsheet attachment for subscriptions and alerts)
+      changes:
+        - addColumn:
+            tableName: pulse_card
+            columns:
+              - column:
+                  name: include_ods
+                  type: ${boolean.type}
+                  defaultValue: false
+                  remarks: Whether the subscription should attach a .ods of the results for this card
+      rollback:
+        - dropColumn:
+            tableName: pulse_card
+            columnName: include_ods

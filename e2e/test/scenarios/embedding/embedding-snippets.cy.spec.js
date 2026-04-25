@@ -101,7 +101,7 @@ tokens.forEach((token) => {
         if (token === "pro-self-hosted") {
           // Disable both download options
           cy.findByLabelText("Export to PDF").click();
-          cy.findByLabelText("Results (csv, xlsx, json, png)").click();
+          cy.findByLabelText("Results (csv, xlsx, ods, json, png)").click();
 
           codeBlock()
             .first()
@@ -161,7 +161,7 @@ tokens.forEach((token) => {
 
         // hide download button for pro/enterprise users metabase#23477
         if (token === "pro-self-hosted") {
-          cy.findByLabelText("Download (csv, xlsx, json, png)").click();
+          cy.findByLabelText("Download (csv, xlsx, ods, json, png)").click();
 
           codeBlock()
             .first()

@@ -25,16 +25,19 @@
    :question
    :csv-download
    :xlsx-download
+   :ods-download
    :json-download
    :public-dashboard
    :public-question
    :public-csv-download
    :public-xlsx-download
+   :public-ods-download
    :public-json-download
    :embedded-dashboard
    :embedded-question
    :embedded-csv-download
    :embedded-xlsx-download
+   :embedded-ods-download
    :embedded-json-download
    :table-grid
    :table-rows-sample

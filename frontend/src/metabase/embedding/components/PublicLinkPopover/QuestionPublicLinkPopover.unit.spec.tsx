@@ -91,10 +91,11 @@ describe("QuestionPublicLinkPopover", () => {
 
     const extensionOptions = screen.getAllByTestId("extension-option");
 
-    expect(extensionOptions).toHaveLength(3);
+    expect(extensionOptions).toHaveLength(4);
     expect(extensionOptions.map((option) => option.textContent)).toEqual([
       "csv",
       "xlsx",
+      "ods",
       "json",
     ]);
   });
