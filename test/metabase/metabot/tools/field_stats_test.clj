@@ -28,24 +28,46 @@
                              {:entity-type "table", :entity-id people-id, :field-id state-id, :limit 5}))))
     (testing "Getting statistics and values for table fields works."
       (mt/as-admin
+        ;; Skewness is a derived double whose last few digits vary across JVMs/platforms,
+        ;; so strip it from the exact-equality check and assert approximate value separately.
+        (let [birth-date-result (metabot.tools.field-stats/field-values
+                                 {:entity-type "table", :entity-id people-id, :field-id birth-date-id, :limit 5})
+              birth-date-skewness (get-in birth-date-result
+                                          [:structured-output :value_metadata :statistics :skewness])]
+          (is (some? birth-date-skewness))
+          (is (< (abs (- birth-date-skewness -0.00557870227770)) 1e-6)
+              "skewness should be approximately -0.00557870227770"))
         (are [table-id field-id value-metadata]
              (= {:structured-output {:result-type    :field-metadata
                                      :field_id       field-id
                                      :value_metadata value-metadata}}
-                (metabot.tools.field-stats/field-values
-                 {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5}))
+                (let [result (metabot.tools.field-stats/field-values
+                              {:entity-type "table", :entity-id table-id, :field-id field-id, :limit 5})]
+                  ;; strip skewness to avoid platform-dependent floating-point mismatch
+                  (cond-> result
+                    (get-in result [:structured-output :value_metadata :statistics :skewness])
+                    (update-in [:structured-output :value_metadata :statistics] dissoc :skewness))))
           people-id   birth-date-id {:statistics
-                                     {:distinct-count 2308
-                                      :percent-null   0.0
-                                      :earliest       "1958-04-26"
-                                      :latest         "2000-04-03"}}
+                                     {:distinct-count      2308
+                                      :percent-null        0.0
+                                      :earliest            "1958-04-26"
+                                      :latest              "2000-04-03"
+                                      :hour-distribution   nil
+                                      :mode-fraction       0.0012
+                                      :top-3-fraction      0.0032
+                                      :weekday-distribution [0.15 0.1304 0.1416 0.1372 0.156 0.1516 0.1332]}}
           people-id   state-id      {:statistics   {:distinct-count 49
                                                     :percent-null   0.0
                                                     :percent-json   0.0
                                                     :percent-url    0.0
                                                     :percent-email  0.0
                                                     :percent-state  1.0
-                                                    :average-length 2.0}
+                                                    :average-length 2.0
+                                                    :max-length     2.0
+                                                    :min-length     2.0
+                                                    :mode-fraction  0.0776
+                                                    :top-3-fraction 0.1624
+                                                    :percent-blank  0.0}
                                      :field_values ["AK" "AL" "AR" "AZ" "CA"]}
           products-id category-id   {:statistics   {:distinct-count 4
                                                     :percent-null   0.0
@@ -53,7 +75,12 @@
                                                     :percent-url    0.0
                                                     :percent-email  0.0
                                                     :percent-state  0.0
-                                                    :average-length 6.375}
+                                                    :average-length 6.375
+                                                    :max-length     9.0
+                                                    :min-length     5.0
+                                                    :mode-fraction  0.27
+                                                    :top-3-fraction 0.79
+                                                    :percent-blank  0.0}
                                      :field_values ["Doohickey" "Gadget" "Gizmo" "Widget"]})))))
 
 (deftest field-values-model-test

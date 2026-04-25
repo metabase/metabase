@@ -5,9 +5,8 @@
   series data in chart_configs, which is seeded into agent memory during
   initialization. This avoids re-executing queries."
   (:require
+   [metabase.interestingness.core :as interestingness]
    [metabase.metabot.scope :as scope]
-   [metabase.metabot.stats.core :as stats.core]
-   [metabase.metabot.stats.repr :as stats.repr]
    [metabase.metabot.tools.shared :as shared]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -68,12 +67,12 @@ Do not use headers (##). Do not list statistics. Do not analyze series separatel
       (resource/stack-resource-context
        (let [{:keys [timeline_events title display_type]} chart-config
              opts  {:deep? (if (nil? deep) true (boolean deep))}
-             stats (stats.core/compute-chart-stats chart-config opts)
+             stats (interestingness/compute-chart-stats chart-config opts)
              context {:title           title
                       :display-type    display_type
                       :stats           stats
                       :timeline-events timeline_events}
-             representation (stats.repr/generate-representation context)]
+             representation (interestingness/generate-representation context)]
          {:output (str representation "\n\n---\n\n" interpretation-guidance)}))
       {:output (str "Chart config not found: " chart_config_id
                     ". Available chart configs can be found in the viewing context.")})

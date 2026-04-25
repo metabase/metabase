@@ -1,11 +1,11 @@
-(ns metabase.metabot.stats.core
+(ns metabase.interestingness.chart.stats
   "Chart type detection and statistics routing."
   (:require
-   [metabase.metabot.stats.categorical :as categorical]
-   [metabase.metabot.stats.histogram :as histogram]
-   [metabase.metabot.stats.scatter :as scatter]
-   [metabase.metabot.stats.time-series :as time-series]
-   [metabase.metabot.stats.types :as stats.types]
+   [metabase.interestingness.chart.categorical :as categorical]
+   [metabase.interestingness.chart.histogram :as histogram]
+   [metabase.interestingness.chart.scatter :as scatter]
+   [metabase.interestingness.chart.time-series :as time-series]
+   [metabase.interestingness.chart.types :as stats.types]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)

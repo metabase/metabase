@@ -320,7 +320,9 @@
    "😎"]) ; smiling face with sunglasses
 
 (defn- percent-done->emoji [percent-done]
-  (progress-emoji (int (math/round (* percent-done (dec (count progress-emoji)))))))
+  (let [last-idx (dec (count progress-emoji))
+        idx      (int (math/round (* percent-done last-idx)))]
+    (progress-emoji (max 0 (min last-idx idx)))))
 
 (defn emoji-progress-bar
   "Create a string that shows progress for something, e.g. a database sync process.

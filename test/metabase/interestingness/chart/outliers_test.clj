@@ -1,8 +1,8 @@
-(ns metabase.metabot.stats.outliers-test
+(ns metabase.interestingness.chart.outliers-test
   (:require
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as =?]
-   [metabase.metabot.stats.outliers :as outliers]))
+   [metabase.interestingness.chart.outliers :as outliers]))
 
 (set! *warn-on-reflection* true)
 

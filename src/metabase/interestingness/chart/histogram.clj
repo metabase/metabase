@@ -1,8 +1,8 @@
-(ns metabase.metabot.stats.histogram
+(ns metabase.interestingness.chart.histogram
   "Histogram chart statistics."
   (:require
-   [metabase.metabot.stats.types :as stats.types]
-   [metabase.metabot.stats.util :as stats.u]
+   [metabase.interestingness.chart.types :as stats.types]
+   [metabase.interestingness.chart.util :as stats.u]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)

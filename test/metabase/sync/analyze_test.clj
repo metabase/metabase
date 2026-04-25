@@ -225,7 +225,7 @@
                    :model/Field _     (fake-field table)]
       (let [results (analyze-table! table)]
         (testing "has the steps performed"
-          (is (= ["fingerprint-fields" "classify-fields" "classify-tables"]
+          (is (= ["fingerprint-fields" "classify-fields" "classify-tables" "score-interestingness"]
                  (->> results :steps (map first)))))
         (testing "has start and finish times"
           (is (seq (select-keys results [:start-time :end-time]))))))))

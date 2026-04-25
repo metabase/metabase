@@ -6,6 +6,7 @@
   (:require
    [metabase.sync.analyze.classify :as classify]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
+   [metabase.sync.analyze.interestingness :as sync.interestingness]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -75,6 +76,7 @@
   (sync.fingerprint/fingerprint-table! table)
   (classify/classify-fields! table)
   (classify/classify-table! table)
+  (sync.interestingness/score-fields! table)
   (update-fields-last-analyzed! table))
 
 (defn- maybe-log-progress [progress-bar-fn]
@@ -95,6 +97,10 @@
   (format "Total number of tables classified %d, %d updated"
           total-tables tables-classified))
 
+(defn- interestingness-summary [{:keys [fields-scored fields-failed]}]
+  (format "Interestingness scored %d fields, %d failed"
+          fields-scored fields-failed))
+
 (defn- make-analyze-steps [log-fn]
   [(sync-util/create-sync-step "fingerprint-fields"
                                #(sync.fingerprint/fingerprint-fields-for-db! % log-fn)
@@ -104,7 +110,10 @@
                                classify-fields-summary)
    (sync-util/create-sync-step "classify-tables"
                                #(classify/classify-tables-for-db! % log-fn)
-                               classify-tables-summary)])
+                               classify-tables-summary)
+   (sync-util/create-sync-step "score-interestingness"
+                               #(sync.interestingness/score-fields-for-db! % log-fn)
+                               interestingness-summary)])
 
 (mu/defn analyze-db!
   "Perform in-depth analysis on the data for all Tables in a given `database`. This is dependent on what each database
@@ -112,7 +121,7 @@
   `:last_analyzed` value for each affected Field."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
-    (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 3 (sync-util/sync-tables-count database)))]
+    (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 4 (sync-util/sync-tables-count database)))]
       (u/prog1 (sync-util/run-sync-operation "analyze" database (make-analyze-steps (maybe-log-progress emoji-progress-bar)))
         (update-fields-last-analyzed-for-db! database)))))
 

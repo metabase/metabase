@@ -1,8 +1,8 @@
-(ns metabase.metabot.stats.repr
+(ns metabase.interestingness.chart.repr
   "LLM-friendly text representation generator for chart statistics."
   (:require
    [clojure.string :as str]
-   [metabase.metabot.stats.types :as stats.types]
+   [metabase.interestingness.chart.types :as stats.types]
    [metabase.util.malli :as mu])
   (:import
    (java.time LocalDate LocalDateTime ZonedDateTime)
