@@ -57,6 +57,7 @@ import {
   trackDocumentUnsavedChangesWarningDisplayed,
   trackDocumentUpdated,
 } from "../analytics";
+import { ScrollContainerProvider } from "../contexts/ScrollContainerContext";
 import {
   clearDraftCards,
   openVizSettingsSidebar,
@@ -110,6 +111,7 @@ export const DocumentPage = ({
     null,
   );
   const editorContainerRef = useRef<HTMLDivElement>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
   const hasUnsavedEditorChanges = useSelector(getHasUnsavedChanges);
   const [createDocument, { isLoading: isCreating }] =
     useCreateDocumentMutation();
@@ -474,41 +476,43 @@ export const DocumentPage = ({
     <Box className={styles.documentPage}>
       {documentData?.archived && <DocumentArchivedEntityBanner />}
       <Box className={styles.contentArea}>
-        <Box className={styles.mainContent}>
-          <Box className={styles.documentContainer}>
-            <DocumentHeader
-              document={documentData}
-              documentTitle={documentTitle}
-              isNewDocument={isNewDocument}
-              canWrite={canWrite ?? false}
-              showSaveButton={showSaveButton ?? false}
-              isBookmarked={isBookmarked}
-              onTitleChange={setDocumentTitle}
-              onTitleSubmit={focusEditorBody}
-              onSave={() => {
-                if (isNewDocument) {
-                  setCollectionPickerMode("save");
-                } else {
-                  handleSave();
-                }
-              }}
-              onMove={() => setCollectionPickerMode("move")}
-              onDuplicate={handleDuplicate}
-              onToggleBookmark={handleToggleBookmark}
-              onArchive={() => handleUpdate({ archived: true })}
-              onShowHistory={handleShowHistory}
-            />
-            <Editor
-              onEditorReady={setEditorInstance}
-              onCardEmbedsChange={updateCardEmbeds}
-              onQuestionSelect={handleQuestionSelect}
-              initialContent={documentContent}
-              onChange={handleChange}
-              editable={canWrite && !isSaving}
-              isLoading={isDocumentLoading}
-              editorContainerRef={editorContainerRef}
-            />
-          </Box>
+        <Box className={styles.mainContent} ref={mainContentRef}>
+          <ScrollContainerProvider value={mainContentRef}>
+            <Box className={styles.documentContainer}>
+              <DocumentHeader
+                document={documentData}
+                documentTitle={documentTitle}
+                isNewDocument={isNewDocument}
+                canWrite={canWrite ?? false}
+                showSaveButton={showSaveButton ?? false}
+                isBookmarked={isBookmarked}
+                onTitleChange={setDocumentTitle}
+                onTitleSubmit={focusEditorBody}
+                onSave={() => {
+                  if (isNewDocument) {
+                    setCollectionPickerMode("save");
+                  } else {
+                    handleSave();
+                  }
+                }}
+                onMove={() => setCollectionPickerMode("move")}
+                onDuplicate={handleDuplicate}
+                onToggleBookmark={handleToggleBookmark}
+                onArchive={() => handleUpdate({ archived: true })}
+                onShowHistory={handleShowHistory}
+              />
+              <Editor
+                onEditorReady={setEditorInstance}
+                onCardEmbedsChange={updateCardEmbeds}
+                onQuestionSelect={handleQuestionSelect}
+                initialContent={documentContent}
+                onChange={handleChange}
+                editable={canWrite && !isSaving}
+                isLoading={isDocumentLoading}
+                editorContainerRef={editorContainerRef}
+              />
+            </Box>
+          </ScrollContainerProvider>
         </Box>
 
         {selectedQuestionId &&
