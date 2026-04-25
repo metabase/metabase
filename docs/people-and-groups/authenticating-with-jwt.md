@@ -22,6 +22,8 @@ Assuming your site is localhost serving on port 3000:
 5. In the event of a successful sign-in, your authentication app should issue a GET request to your Metabase endpoint with the token and the "return to" URI: `http://localhost:3000/auth/sso?jwt=TOKEN_GOES_HERE&return_to=/question/1-superb-question`.
 6. Metabase verifies the JSON Web Token, logs the person in, then redirects the person to their original destination, `/question/1-superb-question`.
 
+As an alternative to putting the JWT in the URL query string (which some environments log or cache), you can send the same token in the body of a `POST` request to `/auth/sso` with `Content-Type: application/json` and a JSON body like `{"jwt": "TOKEN_GOES_HERE"}`. You can still pass `return_to` as a query parameter on that URL (for example `POST /auth/sso?return_to=/question/1-superb-question`). The login behavior is otherwise the same as the GET flow.
+
 ## Set up JWT authentication
 
 Navigate to the **Admin**>**Settings** section of the Admin area, then click on the **Authentication > JWT** tab.
