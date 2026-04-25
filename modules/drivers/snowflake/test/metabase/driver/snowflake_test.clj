@@ -535,6 +535,87 @@
             :private_key_file some?}
            (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :private-key-value pk-key)))))))
 
+(deftest ^:parallel private-key-passphrase-connection-spec-test
+  (let [base-details {:role nil
+                      :warehouse "COMPUTE_WH"
+                      :additional-options nil
+                      :db "v3_sample-dataset"
+                      :let-user-control-scheduling false
+                      :private-key-options "uploaded"
+                      :port nil
+                      :account "ls10467.us-east-2.aws"
+                      :tunnel-enabled false
+                      :engine :snowflake
+                      :user "SNOWFLAKE_DEVELOPER"
+                      :host ""
+                      :use-password false
+                      :private-key-value "testing"}]
+    (testing "non-blank passphrase: URL has private_key_pwd; spec has JDBC Properties keys for the connection pool
+              (clojure.java.jdbc with :connection-uri only does not add extra keys from the spec to get-connection)"
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :snowflake
+                  (assoc base-details :private-key-passphrase "  my-pk-pass  "))]
+        (is (= "my-pk-pass" (get (#'driver.snowflake/connection-str->parameters (:connection-uri spec))
+                                 "PRIVATE_KEY_PWD")))
+        (is (= "my-pk-pass" (:private_key_pwd spec)))
+        (is (= "my-pk-pass" (:private_key_file_pwd spec)))
+        (is (nil? (:private-key-passphrase spec)))))
+    (testing "blank or absent passphrase does not add private_key_pwd to the connection URI"
+      (doseq [pass [nil "" "   "]]
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :snowflake
+                    (cond-> base-details
+                      pass (assoc :private-key-passphrase pass)))]
+          (is (nil? (get (#'driver.snowflake/connection-str->parameters (:connection-uri spec))
+                         "PRIVATE_KEY_PWD"))))))
+    (testing "account password auth does not set private key passphrase in the URL and strips Metabase key"
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :snowflake
+                  (assoc base-details
+                         :use-password true
+                         :password "account-pass"
+                         :private-key-value nil
+                         :private-key-passphrase "ignored-in-spec"))]
+        (is (str/blank? (get (#'driver.snowflake/connection-str->parameters (:connection-uri spec))
+                             "PRIVATE_KEY_PWD")))
+        (is (nil? (:private_key_pwd spec)))
+        (is (nil? (:private_key_file_pwd spec)))
+        (is (nil? (:private-key-passphrase spec)))))))
+
+(deftest ^:parallel encrypted-pkcs8-without-passphrase-validation-test
+  (let [encrypted-pem   "-----BEGIN ENCRYPTED PRIVATE KEY-----\nYWJj\n-----END ENCRYPTED PRIVATE KEY-----\n"
+        unencrypted-pem "-----BEGIN PRIVATE KEY-----\nYWJj\n-----END PRIVATE KEY-----\n"
+        base-details    {:role nil
+                         :warehouse "COMPUTE_WH"
+                         :additional-options nil
+                         :db "v3_sample-dataset"
+                         :let-user-control-scheduling false
+                         :private-key-options "uploaded"
+                         :port nil
+                         :account "ls10467.us-east-2.aws"
+                         :tunnel-enabled false
+                         :engine :snowflake
+                         :user "SNOWFLAKE_DEVELOPER"
+                         :host ""
+                         :use-password false}]
+    (testing "encrypted PKCS#8 PEM and blank passphrase throws before JDBC"
+      (try
+        (sql-jdbc.conn/connection-details->spec
+         :snowflake
+         (assoc base-details
+                :private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes encrypted-pem))
+                :private-key-passphrase nil))
+        (is false "expected throw")
+        (catch clojure.lang.ExceptionInfo e
+          (is (re-find #"Passphrase for RSA private key" (ex-message e)))
+          (is (true? (:metabase.driver/can-connect-message? (ex-data e)))))))
+    (testing "unencrypted PKCS#8 PEM and blank passphrase does not throw this validation"
+      (is (some? (sql-jdbc.conn/connection-details->spec
+                  :snowflake
+                  (assoc base-details
+                         :private-key-value (mt/bytes->base64-data-uri (u/string-to-bytes unencrypted-pem))
+                         :private-key-passphrase nil)))))))
+
 (deftest can-connect-test
   (let [pk-key (mt/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
         pk-user (tx/db-test-env-var :snowflake :pk-user)

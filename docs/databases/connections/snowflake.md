@@ -61,6 +61,12 @@ The password for the username that you use to connect to the database.
 
 Not required. You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
+### Passphrase for RSA private key (optional)
+
+Use this only if your PKCS#8 (`.p8`) private key is **encrypted**. It is the password you set when generating the key, **not** your Snowflake user password. Leave it blank for unencrypted keys. If the key file is encrypted PKCS#8 but you leave this blank, Metabase returns a clear error asking for this passphrase instead of a generic connection failure. Metabase passes the passphrase to the driver as the JDBC `private_key_pwd` connection property (what the connection pool / `Properties` use), and also includes it in the connection string for compatibility with the same [Snowflake JDBC private key](https://docs.snowflake.com/en/developer-guide/jdbc/jdbc-configure#private-key-file-name-and-password-in-connection-string) form.
+
+If your encrypted key still fails to connect, you may need to start the Metabase process with the JVM option `-Dnet.snowflake.jdbc.enableBouncyCastle=true` (for example, some OpenSSL 3-encrypted keys). See [Configuring the JDBC driver](https://docs.snowflake.com/en/developer-guide/jdbc/jdbc-configure) in the Snowflake documentation.
+
 ### Warehouse
 
 Snowflake warehouse. If the user lacks a default warehouse, you'll need to enter the warehouse to connect to.
