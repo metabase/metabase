@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 
-import { Divider, Flex } from "metabase/ui";
 import type { DimensionMetadata, MetricDefinition } from "metabase-lib/metric";
 import type { TemporalUnit, VisualizationSettings } from "metabase-types/api";
 
@@ -11,13 +10,11 @@ import type {
 import { getProjectionInfo } from "../../utils/definition-builder";
 import type { DimensionFilterValue } from "../../utils/dimension-filters";
 import { getTabConfig } from "../../utils/tab-config";
+import { QueryExplorerBar } from "../QueryExplorerBar";
 
 import { BinningButton } from "./BinningButton";
 import { BucketButton } from "./BucketButton";
-import { ChartLayoutPicker } from "./ChartLayoutPicker";
-import { ChartTypePicker } from "./ChartTypePicker";
 import { DimensionFilterButton } from "./DimensionFilterButton";
-import S from "./MetricControls.module.css";
 
 function isValidDisplayTypeForTab(
   displayType: MetricsViewerDisplayType,
@@ -81,40 +78,53 @@ export function MetricControls({
     ? displayType
     : config.defaultDisplayType;
 
+  const { projectionDimension } = projectionInfo;
+
+  let granularityControl;
+
+  // Bucket and binning controls are mutually exclusive
+  if (projectionDimension) {
+    if (hasBucketControls) {
+      granularityControl = (
+        <BucketButton
+          definition={definition}
+          dimension={projectionDimension}
+          projection={projectionInfo.projection!}
+          onChange={onTemporalUnitChange}
+        />
+      );
+    } else if (hasBinningControls) {
+      granularityControl = (
+        <BinningButton
+          definition={definition}
+          dimension={projectionDimension}
+          projection={projectionInfo.projection!}
+          onBinningChange={onBinningChange}
+        />
+      );
+    }
+  }
+
   return (
-    <Flex
-      maw="100%"
-      h="3rem"
-      display="inline-flex"
-      bg="background-primary"
-      bd="1px solid var(--mb-color-border)"
-      bdrs="lg"
-      px="sm"
-      align="center"
-      gap="xs"
-      data-testid="metrics-viewer-controls"
-    >
-      <ChartTypePicker
-        chartTypes={chartTypes}
-        value={effectiveDisplayType}
-        onChange={onDisplayTypeChange}
-      />
-      {showStackSeries && onVisualizationSettingsChange && (
-        <>
-          <Divider orientation="vertical" className={S.divider} mx="xs" />
-          <ChartLayoutPicker
-            isStacked={!!visualizationSettings?.["graph.split_panels"]}
-            onToggle={(stacked) =>
-              onVisualizationSettingsChange({
-                "graph.split_panels": stacked,
-              })
+    <QueryExplorerBar
+      chartTypes={chartTypes}
+      currentChartType={effectiveDisplayType}
+      onChartTypeChange={(type) =>
+        onDisplayTypeChange(type as MetricsViewerDisplayType)
+      }
+      layout={
+        showStackSeries && onVisualizationSettingsChange
+          ? {
+              isStacked: !!visualizationSettings?.["graph.split_panels"],
+              onToggle: (stacked) =>
+                onVisualizationSettingsChange({
+                  "graph.split_panels": stacked,
+                }),
             }
-          />
-        </>
-      )}
-      {hasFilterControls && projectionInfo.filterDimension && (
-        <>
-          <Divider orientation="vertical" className={S.divider} mx="xs" />
+          : undefined
+      }
+      filterControl={
+        hasFilterControls && projectionInfo.filterDimension ? (
           <DimensionFilterButton
             definition={definition}
             filterDimension={projectionInfo.filterDimension}
@@ -122,30 +132,9 @@ export function MetricControls({
             allFilterDimensions={allFilterDimensions}
             onChange={onDimensionFilterChange}
           />
-        </>
-      )}
-      {hasBucketControls && projectionInfo.projectionDimension && (
-        <>
-          <Divider orientation="vertical" className={S.divider} mx="xs" />
-          <BucketButton
-            definition={definition}
-            dimension={projectionInfo.projectionDimension}
-            projection={projectionInfo.projection!}
-            onChange={onTemporalUnitChange}
-          />
-        </>
-      )}
-      {hasBinningControls && projectionInfo.projectionDimension && (
-        <>
-          <Divider orientation="vertical" className={S.divider} mx="xs" />
-          <BinningButton
-            definition={definition}
-            dimension={projectionInfo.projectionDimension}
-            projection={projectionInfo.projection!}
-            onBinningChange={onBinningChange}
-          />
-        </>
-      )}
-    </Flex>
+        ) : undefined
+      }
+      granularityControl={granularityControl}
+    />
   );
 }
