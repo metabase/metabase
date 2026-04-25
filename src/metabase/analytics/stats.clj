@@ -650,7 +650,7 @@
   [executions]
   (mapv (fn [qe-group]
           {:group (str qe-group) :value (get executions qe-group)})
-        [:interactive_embed :internal :public_link :sdk_embed :static_embed]))
+        [:interactive_embed :internal :public_link :sdk_embed :simple_embed :static_embed]))
 
 (mu/defn- snowplow-grouped-metrics
   :- [:sequential

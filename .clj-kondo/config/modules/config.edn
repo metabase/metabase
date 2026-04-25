@@ -181,6 +181,7 @@
    :api  #{metabase.analytics.api
            metabase.analytics.core
            metabase.analytics.init
+           metabase.analytics.settings
            metabase.analytics.snowplow}
    :uses #{analytics-interface
            api
@@ -194,6 +195,7 @@
            models
            permissions
            premium-features
+           request
            session
            settings
            sso
@@ -1791,8 +1793,10 @@
   request
   {:team "UX West"
    :api  #{metabase.request.core
+           metabase.request.current
            metabase.request.init
-           metabase.request.schema}
+           metabase.request.schema
+           metabase.request.user-agent}
    :uses #{analytics-interface
            api
            config

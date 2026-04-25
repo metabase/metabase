@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [clojure.tools.reader.edn :as edn]
    [java-time.api :as t]
+   [metabase.request.current :as request.current]
+   [metabase.request.user-agent :as request.user-agent]
    [metabase.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -72,7 +74,7 @@
            (req.util/device-info (update @mock-request :headers assoc "x-metabase-client" "embedding-simple"))))))
 
 (deftest ^:parallel describe-user-agent-test
-  (are [user-agent expected] (= expected (req.util/describe-user-agent user-agent))
+  (are [user-agent expected] (= expected (request.user-agent/describe-user-agent user-agent))
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML  like Gecko) Chrome/89.0.4389.86 Safari/537.36"
     "Browser (Chrome/Windows)"
 
@@ -95,31 +97,31 @@
   (let [request (ring.mock/request :get "api/session")]
     (testing "request with no forwarding"
       (is (= "127.0.0.1"
-             (req.util/ip-address request))))
+             (request.current/ip-address request))))
 
     (testing "request with forwarding"
       (let [mock-request (-> (ring.mock/request :get "api/session")
                              (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
         (is (= "5.6.7.8"
-               (req.util/ip-address mock-request))))
+               (request.current/ip-address mock-request))))
       (testing "multiple IP addresses"
         (let [mock-request (-> (ring.mock/request :get "api/session")
                                (ring.mock/header "X-Forwarded-For" "1.2.3.4, 5.6.7.8"))]
           (is (= "1.2.3.4"
-                 (req.util/ip-address mock-request)))))
+                 (request.current/ip-address mock-request)))))
       (testing "different header than default X-Forwarded-For"
         (mt/with-temporary-setting-values [source-address-header "X-ProxyUser-Ip"]
           (let [mock-request (-> (ring.mock/request :get "api/session")
                                  (ring.mock/header "x-proxyuser-ip" "1.2.3.4"))]
             (is (= "1.2.3.4"
-                   (req.util/ip-address mock-request)))))))
+                   (request.current/ip-address mock-request)))))))
 
     (testing "forwarding explicitly disabled via MB_NOT_BEHIND_PROXY=true"
       (mt/with-temp-env-var-value! [mb-not-behind-proxy "true"]
         (let [mock-request (-> (ring.mock/request :get "api/session")
                                (ring.mock/header "X-Forwarded-For" "5.6.7.8"))]
           (is (= "127.0.0.1"
-                 (req.util/ip-address mock-request))))))))
+                 (request.current/ip-address mock-request))))))))
 
 (def ^:private mock-geojs-responses
   "Canned GeoJS responses for test IPs. These mock what GeoJS would return."

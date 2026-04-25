@@ -26,6 +26,7 @@
     "v_fields"
     "v_query_log"
     "v_tables"
+    "v_tenants"
     "v_tasks"
     "v_task_runs"
     "v_view_log"})

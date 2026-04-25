@@ -5,7 +5,10 @@ import querystring from "querystring";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { isTest } from "metabase/env";
 import { PLUGIN_API, PLUGIN_EMBEDDING_SDK } from "metabase/plugins";
-import type { OnBeforeRequestHandlerConfig } from "metabase/plugins/oss/api";
+import type {
+  OnBeforeRequestHandler,
+  OnBeforeRequestHandlerConfig,
+} from "metabase/plugins/oss/api";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 import { getTraceparentHeader } from "metabase/utils/otel";
 import { delay } from "metabase/utils/promise";
@@ -92,6 +95,8 @@ export class Api extends EventEmitter {
   onResponseError: ((info: ResponseErrorInfo) => void) | undefined;
   requestClient: RequestClientInfo | undefined;
 
+  beforeRequestHandlers: OnBeforeRequestHandler[] = [];
+
   GET: MethodCreator;
   POST: MethodCreator;
   PUT: MethodCreator;
@@ -117,16 +122,8 @@ export class Api extends EventEmitter {
       headers["X-Metabase-Session"] = self.sessionToken!;
     }
 
-    if (isWithinIframe() && !self.requestClient) {
+    if (isWithinIframe() && !isEmbeddingSdk()) {
       headers["X-Metabase-Embedded"] = "true";
-      /**
-       * We counted static embed preview query executions which led to wrong embedding stats (EMB-930)
-       * This header is only used for analytics and for checking if we want to disable some features in the
-       * embedding iframe (only for Documents at the time of this comment)
-       */
-      if (!IFRAMED_IN_SELF) {
-        headers["X-Metabase-Client"] = "embedding-iframe";
-      }
     }
 
     if (self.requestClient) {
@@ -135,8 +132,9 @@ export class Api extends EventEmitter {
       }
       if (typeof self.requestClient === "object") {
         headers["X-Metabase-Client"] = self.requestClient.name;
-        headers["X-Metabase-Client-Version"] =
-          self.requestClient.version ?? "unknown";
+        if (self.requestClient.version) {
+          headers["X-Metabase-Client-Version"] = self.requestClient.version;
+        }
       } else {
         headers["X-Metabase-Client"] = self.requestClient;
       }
@@ -530,6 +528,8 @@ export class Api extends EventEmitter {
         ],
       );
     }
+
+    handlers.push(...this.beforeRequestHandlers);
 
     if (handlers.length) {
       for (const handler of handlers) {

@@ -18,25 +18,47 @@
    :started_at   (t/offset-date-time)})
 
 (deftest query-execution-24h-filtering-test
+  (mt/initialize-if-needed! :db)
   (t/with-clock (t/mock-clock 1583351015000)
     (let [before (sut/query-executions-all-time-and-last-24h)
           one-year-ago-defaults (assoc query-execution-defaults
                                        :started_at (-> (t/offset-date-time)
                                                        (t/minus (t/years 1))))]
       (mt/with-temp [:model/User           u {}
+                     ;; -- one year ago rows (all-time only) --
                      :model/QueryExecution _ one-year-ago-defaults
                      :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-sdk-react")
+                     :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-simple")
+                     ;; legacy embedding-iframe (no executor = static)
                      :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-iframe")
+                     ;; legacy embedding-iframe (with executor = interactive)
                      :model/QueryExecution _ (assoc one-year-ago-defaults
                                                     :embedding_client "embedding-iframe"
                                                     :executor_id (u/the-id u))
+                     ;; new header values
+                     :model/QueryExecution _ (assoc one-year-ago-defaults
+                                                    :embedding_client "embedding-iframe-full-app"
+                                                    :executor_id (u/the-id u))
+                     :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-iframe-static")
+                     :model/QueryExecution _ (assoc one-year-ago-defaults :embedding_client "embedding-public")
+                     ;; context-based public link
                      :model/QueryExecution _ (assoc one-year-ago-defaults :context :public-question)
                      :model/QueryExecution _ (assoc one-year-ago-defaults :context :public-csv-download)
+                     ;; -- recent rows (within 24h) --
                      :model/QueryExecution _ query-execution-defaults
                      :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-sdk-react")
+                     :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-simple")
+                     ;; legacy embedding-iframe (no executor = static)
                      :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
                      :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe")
+                     ;; new header values
+                     :model/QueryExecution _ (assoc query-execution-defaults
+                                                    :embedding_client "embedding-iframe-full-app"
+                                                    :executor_id (u/the-id u))
+                     :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-iframe-static")
+                     :model/QueryExecution _ (assoc query-execution-defaults :embedding_client "embedding-public")
+                     ;; context-based public link
                      :model/QueryExecution _ (assoc query-execution-defaults :context :public-question)
                      :model/QueryExecution _ (assoc query-execution-defaults :context :public-csv-download)]
         (let [after (sut/query-executions-all-time-and-last-24h)
@@ -48,19 +70,26 @@
           (is (= 1 (- after-24h-internal before-24h-internal)))
           (is (= 2 (- (-> after :query-executions :sdk_embed)
                       (-> before :query-executions :sdk_embed))))
-          (is (= 4 (- (-> after :query-executions :static_embed)
+          (is (= 2 (- (-> after :query-executions :simple_embed)
+                      (-> before :query-executions :simple_embed))))
+          ;; 3 static per window: 2 legacy embedding-iframe + 1 embedding-iframe-static
+          (is (= 6 (- (-> after :query-executions :static_embed)
                       (-> before :query-executions :static_embed))))
-          (is (= 4 (- (-> after :query-executions :public_link)
+          ;; 3 public per window: 2 context-based + 1 embedding-public
+          (is (= 6 (- (-> after :query-executions :public_link)
                       (-> before :query-executions :public_link))))
-          (is (= 1 (- (-> after :query-executions :interactive_embed)
+          ;; 3 interactive total: 1 old legacy + 1 old new + 1 recent new
+          (is (= 3 (- (-> after :query-executions :interactive_embed)
                       (-> before :query-executions :interactive_embed))))
           (is (= 1 (- (-> after :query-executions-24h :sdk_embed)
                       (-> before :query-executions-24h :sdk_embed))))
-          (is (= 2 (- (-> after :query-executions-24h :static_embed)
+          (is (= 1 (- (-> after :query-executions-24h :simple_embed)
+                      (-> before :query-executions-24h :simple_embed))))
+          (is (= 3 (- (-> after :query-executions-24h :static_embed)
                       (-> before :query-executions-24h :static_embed))))
-          (is (= 2 (- (-> after :query-executions-24h :public_link)
+          (is (= 3 (- (-> after :query-executions-24h :public_link)
                       (-> before :query-executions-24h :public_link))))
-          (is (= 0 (- (-> after :query-executions-24h :interactive_embed)
+          (is (= 1 (- (-> after :query-executions-24h :interactive_embed)
                       (-> before :query-executions-24h :interactive_embed)))))))))
 
 (deftest query-execution-last-utc-day-test

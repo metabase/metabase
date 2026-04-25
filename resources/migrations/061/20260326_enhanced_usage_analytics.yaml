@@ -1,0 +1,508 @@
+## Enhanced usage analytics columns for view_log and query_execution
+
+databaseChangeLog:
+  - logicalFilePath: migrations/061_update_migrations.yaml
+
+  # ============================================================
+  # view_log columns
+  # ============================================================
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:00
+      author: bgrabow
+      comment: Add auth_method column to view_log for tracking authentication method
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: auth_method
+                  type: varchar(32)
+                  remarks: Authentication method used (e.g. jwt, saml, api-key, public, guest, etc.)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:01
+      author: bgrabow
+      comment: Add tenant_id column to view_log for multi-tenant analytics
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: tenant_id
+                  type: int
+                  remarks: Tenant ID of the user who generated this view
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:02
+      author: bgrabow
+      comment: Add embedding_hostname column to view_log for embedding analytics
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: embedding_hostname
+                  type: varchar(512)
+                  remarks: Hostname from Origin header, PII
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:03
+      author: bgrabow
+      comment: Add embedding_path column to view_log for embedding analytics
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: embedding_path
+                  type: varchar(2048)
+                  remarks: Path from Referer header (query params stripped), PII
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:04
+      author: bgrabow
+      comment: Add user_agent column to view_log for usage analytics
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: user_agent
+                  type: varchar(512)
+                  remarks: User-Agent header, PII
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:05
+      author: bgrabow
+      comment: Add ip_address column to view_log for usage analytics
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: ip_address
+                  type: varchar(45)
+                  remarks: Client IP address, PII
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:06
+      author: bgrabow
+      comment: Add index on view_log.tenant_id for tenant-scoped analytics queries
+      changes:
+        - createIndex:
+            tableName: view_log
+            indexName: idx_view_log_tenant_id
+            columns:
+              - column:
+                  name: tenant_id
+
+  # ============================================================
+  # query_execution columns
+  # ============================================================
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:07
+      author: bgrabow
+      comment: Add auth_method column to query_execution for tracking authentication method
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: auth_method
+                  type: varchar(32)
+                  remarks: Authentication method used (e.g. jwt, saml, api-key, public, guest)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:08
+      author: bgrabow
+      comment: Add tenant_id column to query_execution for multi-tenant analytics
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: tenant_id
+                  type: int
+                  remarks: Tenant ID of the user who executed this query
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:09
+      author: bgrabow
+      comment: Add is_impersonated column to query_execution for connection impersonation tracking
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: is_impersonated
+                  type: ${boolean.type}
+                  remarks: Whether the query was executed with connection impersonation
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:10
+      author: bgrabow
+      comment: Add is_db_routed column to query_execution for database routing tracking
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: is_db_routed
+                  type: ${boolean.type}
+                  remarks: Whether the query was routed to a destination database
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:11
+      author: bgrabow
+      comment: Add parameters column to query_execution for tracking query filter values
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: parameters
+                  type: ${text.type}
+                  remarks: JSON-encoded query parameters (filter values)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:12
+      author: bgrabow
+      comment: Add embedding_hostname column to query_execution for embedding analytics
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: embedding_hostname
+                  type: varchar(512)
+                  remarks: Hostname from Origin header, PII
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:13
+      author: bgrabow
+      comment: Add embedding_path column to query_execution for embedding analytics
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: embedding_path
+                  type: varchar(2048)
+                  remarks: Path from Referer header (query params stripped), PII
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:14
+      author: bgrabow
+      comment: Add user_agent column to query_execution for embedding analytics
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: user_agent
+                  type: varchar(512)
+                  remarks: User-Agent header, PII
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:15
+      author: bgrabow
+      comment: Add ip_address column to query_execution for embedding analytics
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: ip_address
+                  type: varchar(45)
+                  remarks: Client IP address, PII
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:16
+      author: bgrabow
+      comment: Add index on query_execution.tenant_id for tenant-scoped analytics queries
+      changes:
+        - createIndex:
+            tableName: query_execution
+            indexName: idx_query_execution_tenant_id
+            columns:
+              - column:
+                  name: tenant_id
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:23
+      author: bcm
+      comment: Add sanitized_user_agent column to view_log for human-readable parsed UA
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: sanitized_user_agent
+                  type: varchar(512)
+                  remarks: Human-friendly parsed User-Agent (e.g. Browser (Chrome/Windows)), PII
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:24
+      author: bcm
+      comment: Add sanitized_user_agent column to query_execution for human-readable parsed UA
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: sanitized_user_agent
+                  type: varchar(512)
+                  remarks: Human-friendly parsed User-Agent (e.g. Browser (Chrome/Windows)), PII
+                  constraints:
+                    nullable: true
+
+  # ============================================================
+  # embedding_route column (separate from embedding_client)
+  # ============================================================
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:21
+      author: bgrabow
+      comment: Add embedding_route column to view_log for route-surface tracking
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: embedding_route
+                  type: varchar(64)
+                  remarks: API route surface (e.g. public, guest-embed, metabot, agent-api)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:22
+      author: bgrabow
+      comment: Add embedding_route column to query_execution for route-surface tracking
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: embedding_route
+                  type: varchar(64)
+                  remarks: API route surface (e.g. public, guest-embed, metabot, agent-api)
+                  constraints:
+                    nullable: true
+
+  # ============================================================
+  # metabase_version column + rename embedding_version -> embedding_sdk_version
+  # ============================================================
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:25
+      author: bcm
+      comment: Add metabase_version column to view_log for tracking server version at insert time (EMB-1577)
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: metabase_version
+                  type: varchar(32)
+                  remarks: Metabase server version tag at time of insert
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:26
+      author: bcm
+      comment: Add metabase_version column to query_execution for tracking server version at insert time (EMB-1577)
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: metabase_version
+                  type: varchar(32)
+                  remarks: Metabase server version tag at time of insert
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:27
+      author: bcm
+      comment: Rename embedding_version to embedding_sdk_version on view_log (EMB-1578)
+      changes:
+        - renameColumn:
+            tableName: view_log
+            oldColumnName: embedding_version
+            newColumnName: embedding_sdk_version
+            columnDataType: varchar(254)
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:28
+      author: bcm
+      comment: Rename embedding_version to embedding_sdk_version on query_execution (EMB-1578)
+      changes:
+        - renameColumn:
+            tableName: query_execution
+            oldColumnName: embedding_version
+            newColumnName: embedding_sdk_version
+            columnDataType: varchar(254)
+
+  # ============================================================
+  # Analytics view updates - add embedding_client, is_preview
+  # ============================================================
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:17
+      author: bcm
+      comment: Updated view v_view_log v4 - add embedding_client, is_preview (EMB-1535)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/view_log/v4/postgres-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/view_log/v4/mysql-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/view_log/v4/h2-view_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/view_log/v2/postgres-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/view_log/v3/mysql-view_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/view_log/v2/h2-view_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:18
+      author: bcm
+      comment: Updated view v_query_log v5 - add embedding_client, is_preview (EMB-1535)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/query_log/v5/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/query_log/v5/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/query_log/v5/h2-query_log.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/query_log/v4/postgres-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/query_log/v4/mysql-query_log.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/query_log/v4/h2-query_log.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:19
+      author: bcm
+      comment: Updated view v_users v5 - add tenant_id (EMB-1506)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/users/v5/postgres-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/users/v5/mysql-users.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/users/v5/h2-users.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: DROP VIEW IF EXISTS v_users;
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/users/v3/postgres-users.sql
+            relativeToChangelogFile: true
+        - sql:
+            dbms: mysql,mariadb
+            sql: DROP VIEW IF EXISTS v_users;
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/users/v4/mysql-users.sql
+            relativeToChangelogFile: true
+        - sql:
+            dbms: h2
+            sql: DROP VIEW IF EXISTS v_users;
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/users/v3/h2-users.sql
+            relativeToChangelogFile: true
+
+  - changeSet:
+      id: v61.2026-03-26T00:00:20
+      author: bcm
+      comment: New view v_tenants v1 - expose tenant data (EMB-1506)
+      changes:
+        - sqlFile:
+            dbms: postgresql
+            path: ../instance_analytics_views/tenants/v1/postgres-tenants.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: mysql,mariadb
+            path: ../instance_analytics_views/tenants/v1/mysql-tenants.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: ../instance_analytics_views/tenants/v1/h2-tenants.sql
+            relativeToChangelogFile: true
+      rollback:
+        - sql:
+            sql: DROP VIEW IF EXISTS v_tenants;

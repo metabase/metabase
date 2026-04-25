@@ -108,7 +108,10 @@ export const formatAttributeValue = (
   return wrapWithQuotes ? `"${value}"` : String(value);
 };
 
-type SettingKey = Exclude<keyof SdkIframeEmbedBaseSettings, "_isLocalhost">;
+type SettingKey = Exclude<
+  keyof SdkIframeEmbedBaseSettings,
+  "_isLocalhost" | "_embedReferrer"
+>;
 
 function transformEmbedSettingsToAttributes({
   settings,

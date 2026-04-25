@@ -584,7 +584,7 @@
         (let [signed-token (dash-token dashboard)
               url            (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_STATIC_CATEGORY_")]
           (testing "Should work if the param we're fetching values for is enabled"
-            (testing "\nGET /api/preview-embed/dashboard/:token/params/:param-key/values"
+            (testing "\nGET /api/preview_embed/dashboard/:token/params/:param-key/values"
               (is (= {:values          [["African"] ["American"] ["Asian"]]
                       :has_more_values false}
                      (mt/user-http-request :rasta :get 200 url))))))))))
