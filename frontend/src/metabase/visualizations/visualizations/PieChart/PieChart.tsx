@@ -23,9 +23,9 @@ import S from "./PieChart.module.css";
 import { PIE_CHART_DEFINITION } from "./chart-definition";
 import { useChartEvents } from "./use-chart-events";
 
-Object.assign(PieChart, PIE_CHART_DEFINITION);
+export const PieChart = Object.assign(PieChartComponent, PIE_CHART_DEFINITION);
 
-export function PieChart(props: VisualizationProps) {
+function PieChartComponent(props: VisualizationProps) {
   const {
     fontFamily,
     rawSeries,

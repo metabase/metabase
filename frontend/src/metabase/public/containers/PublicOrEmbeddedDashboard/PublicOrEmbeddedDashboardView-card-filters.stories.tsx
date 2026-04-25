@@ -37,9 +37,8 @@ import { PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import { PublicOrEmbeddedDashboardView } from "./PublicOrEmbeddedDashboardView";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
-// @ts-expect-error: incompatible prop types with registerVisualization
+// @ts-expect-error: Heading has its own HeadingProps shape; migrate props to VisualizationProps
 registerVisualization(Heading);
 
 export default {

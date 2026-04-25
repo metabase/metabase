@@ -257,7 +257,7 @@ const vizDefinition: VisualizationDefinition = {
   },
 };
 
-export const ListViz = ({
+const ListVizComponent = ({
   data,
   settings,
   onVisualizationClick,
@@ -391,4 +391,4 @@ export const ListViz = ({
   );
 };
 
-Object.assign(ListViz, vizDefinition);
+export const ListViz = Object.assign(ListVizComponent, vizDefinition);

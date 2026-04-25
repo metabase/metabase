@@ -191,9 +191,9 @@ const FunnelViz: VisualizationDefinition = {
   },
 };
 
-Object.assign(Funnel, FunnelViz);
+export const Funnel = Object.assign(FunnelComponent, FunnelViz);
 
-export function Funnel(props: VisualizationProps) {
+function FunnelComponent(props: VisualizationProps) {
   const {
     headerIcon,
     settings,

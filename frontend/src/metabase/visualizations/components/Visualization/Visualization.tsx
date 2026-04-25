@@ -931,7 +931,7 @@ class Visualization extends PureComponent<
                     getHref={getHref}
                     gridSize={gridSize}
                     headerIcon={hasHeader ? null : headerIcon}
-                    height={rawHeight}
+                    height={height}
                     hovered={hovered}
                     isDashboard={!!isDashboard}
                     isDocument={!!isDocument}
@@ -968,7 +968,7 @@ class Visualization extends PureComponent<
                     timelineEvents={timelineEvents}
                     totalNumGridCols={totalNumGridCols}
                     visualizationIsClickable={this.visualizationIsClickable}
-                    width={rawWidth}
+                    width={width}
                     zoomedRowIndex={zoomedRowIndex}
                     onActionDismissal={this.hideActions}
                     onChangeCardAndRun={

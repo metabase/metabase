@@ -41,12 +41,14 @@ export default function () {
   registerVisualization(ScatterPlot);
   registerVisualization(BoxPlot);
   registerVisualization(PieChart);
+  // @ts-expect-error: migrate Map to tsx
   registerVisualization(Map);
   registerVisualization(Funnel);
+  // @ts-expect-error: ObjectDetail uses its own OwnProps shape; migrate props to VisualizationProps
   registerVisualization(ObjectDetail);
   registerVisualization(PivotTable);
   registerVisualization(SankeyChart);
-
+  // @ts-expect-error: not a real visualization, requires type rework
   registerVisualization(ActionViz);
 
   registerVisualization(ListViz);

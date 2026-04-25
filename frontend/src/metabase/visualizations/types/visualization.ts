@@ -256,7 +256,7 @@ export type VisualizationPassThroughProps = {
    * Items that will be shown in a menu when the title is clicked.
    * Used for visualizer cards to jump to underlying questions
    */
-  titleMenuItems?: ReactNode[];
+  titleMenuItems?: ReactNode;
 
   // frontend/src/metabase/visualizations/components/ChartSettings/ChartSettingsVisualization/ChartSettingsVisualization.tsx
   isSettings?: boolean;
@@ -593,10 +593,7 @@ export type VisualizationGridSize = {
 
 // TODO: add component property for the react component instead of the intersection
 export type Visualization = ComponentType<
-  Omit<VisualizationProps, "width" | "height"> & {
-    width?: number | null;
-    height?: number | null;
-  } & VisualizationPassThroughProps
+  VisualizationProps & VisualizationPassThroughProps
 > &
   VisualizationDefinition;
 

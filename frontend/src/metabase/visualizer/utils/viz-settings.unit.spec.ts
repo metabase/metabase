@@ -4,9 +4,8 @@ import { Map } from "metabase/visualizations/visualizations/Map/Map";
 
 import { getColumnVizSettings } from "./viz-settings";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
+// @ts-expect-error: migrate Map to tsx
 registerVisualization(Map);
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(BarChart);
 
 describe("getColumnVizSettings", () => {

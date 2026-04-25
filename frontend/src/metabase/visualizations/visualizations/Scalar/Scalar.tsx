@@ -24,6 +24,7 @@ import {
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
   ComputedVisualizationSettings,
+  VisualizationDefinition,
   VisualizationPassThroughProps,
   VisualizationProps,
 } from "metabase/visualizations/types";
@@ -52,9 +53,9 @@ function legacyScalarSettingsToFormatOptions(
 export class Scalar extends Component<
   VisualizationProps & VisualizationPassThroughProps
 > {
-  static getUiName = () => t`Number`;
-  static identifier = "scalar";
-  static iconName = "number";
+  static getUiName: VisualizationDefinition["getUiName"] = () => t`Number`;
+  static identifier: VisualizationDefinition["identifier"] = "scalar";
+  static iconName: VisualizationDefinition["iconName"] = "number";
   static canSavePng = false;
 
   static minSize = getMinSize("scalar");

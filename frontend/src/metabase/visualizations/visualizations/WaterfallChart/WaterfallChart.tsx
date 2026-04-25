@@ -89,8 +89,11 @@ const WaterfallViz: Omit<VisualizationDefinition, "checkRenderable"> = {
   },
 };
 
-Object.assign(WaterfallChart, getCartesianChartDefinition(WaterfallViz));
-
-export function WaterfallChart(props: VisualizationProps) {
+function WaterfallChartComponent(props: VisualizationProps) {
   return <CartesianChart {...props} />;
 }
+
+export const WaterfallChart = Object.assign(
+  WaterfallChartComponent,
+  getCartesianChartDefinition(WaterfallViz),
+);

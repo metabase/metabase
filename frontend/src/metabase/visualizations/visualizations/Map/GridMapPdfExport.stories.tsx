@@ -36,7 +36,7 @@ import {
 
 import { Map } from "./index";
 
-// @ts-expect-error: incompatible prop types with registerVisualization
+// @ts-expect-error: migrate Map to tsx
 registerVisualization(Map);
 
 // Initialize MetabaseSettings with required values for map rendering

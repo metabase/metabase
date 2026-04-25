@@ -22,7 +22,6 @@ export default {
   component: LineChart,
 };
 
-// @ts-expect-error: incompatible prop types with registerVisualization
 registerVisualization(LineChart);
 
 const dataset_query = createMockStructuredDatasetQuery({

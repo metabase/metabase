@@ -23,9 +23,12 @@ const MAX_BAR_HEIGHT = 65;
 const MIN_BAR_HEIGHT = 30;
 const COMPONENT_HEIGHT_TO_MIN_BAR_HEIGHT = 99;
 
-Object.assign(Progress, PROGRESS_CHART_DEFINITION);
+export const Progress = Object.assign(
+  ProgressComponent,
+  PROGRESS_CHART_DEFINITION,
+);
 
-export function Progress(props: VisualizationProps) {
+function ProgressComponent(props: VisualizationProps) {
   const {
     className,
     isMobile,
