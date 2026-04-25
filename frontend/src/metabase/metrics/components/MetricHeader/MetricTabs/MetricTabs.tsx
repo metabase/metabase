@@ -8,8 +8,8 @@ import {
 } from "metabase/data-studio/common/components/PaneHeader";
 import { isNumericMetric } from "metabase/metrics/utils/validation";
 import { PLUGIN_CACHING, PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
-import { useSelector } from "metabase/utils/redux";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";

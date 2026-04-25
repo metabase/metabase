@@ -1,5 +1,5 @@
 import { userApi } from "metabase/api";
-import { createThunkAction } from "metabase/utils/redux";
+import { createThunkAction } from "metabase/redux";
 import type { User } from "metabase-types/api";
 
 import type { UserProfileData } from "./types";

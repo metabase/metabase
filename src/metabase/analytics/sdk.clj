@@ -9,7 +9,7 @@
   then we can use the information on the tables to track information about the embedding client,
   and TODO: send it out in `summarize-execution`."
   (:require
-   [metabase.analytics.prometheus :as prometheus]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -46,8 +46,8 @@
   "Tabulates the number of responses by status code made by clients of the SDK."
   [sdk-client {:keys [status]}]
   (case sdk-client
-    "embedding-sdk-react"    (prometheus/inc! :metabase-sdk/response {:status (str status)})
-    "embedding-iframe"       (prometheus/inc! :metabase-embedding-iframe/response {:status (str status)})
+    "embedding-sdk-react"    (analytics/inc! :metabase-sdk/response {:status (str status)})
+    "embedding-iframe"       (analytics/inc! :metabase-embedding-iframe/response {:status (str status)})
     (log/infof "Unknown client. client: %s" sdk-client)))
 
 (defn embedding-context?

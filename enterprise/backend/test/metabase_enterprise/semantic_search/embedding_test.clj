@@ -12,7 +12,7 @@
    [metabase-enterprise.semantic-search.pgvector-api :as semantic.pgvector-api]
    [metabase-enterprise.semantic-search.settings :as semantic.settings]
    [metabase-enterprise.semantic-search.test-util :as semantic.tu]
-   [metabase.analytics.core :as analytics]
+   [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.test :as mt]
    [metabase.util.json :as json]

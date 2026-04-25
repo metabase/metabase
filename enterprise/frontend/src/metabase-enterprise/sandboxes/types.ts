@@ -1,4 +1,3 @@
-import type { RequestState, RequestsState } from "metabase/redux/store";
 import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
 import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
@@ -10,18 +9,9 @@ import type {
 export type GroupTableAccessPolicyParams = { groupId: string; tableId: string };
 
 export interface SandboxesState extends EnterpriseState {
-  requests: RequestsState & {
-    plugins: {
-      sandboxesPlugin: {
-        policies: Record<string, RequestState>;
-      };
-      shared: EnterpriseSharedState;
-    };
-  };
   plugins: {
     sandboxingPlugin: {
       groupTableAccessPolicies: Record<string, GroupTableAccessPolicy>;
-      originalGroupTableAccessPolicies: Record<string, GroupTableAccessPolicy>;
     };
     shared: EnterpriseSharedState;
   };

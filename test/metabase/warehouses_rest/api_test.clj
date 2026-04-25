@@ -124,7 +124,7 @@
     :database_id   (mt/id)
     :dataset_query {:database (mt/id)
                     :type     :native
-                    :native   {:query (format "SELECT * FROM VENUES")}}}
+                    :native   {:query "SELECT * FROM VENUES"}}}
    kvs))
 
 (defn- card-with-mbql-query [card-name & {:as inner-query-clauses}]
@@ -2982,27 +2982,27 @@
       (mt/with-temp [:model/Database {id :id} {}]
         (is (mt/user-http-request :crowberto :get 400 (str "database/" id "/healthcheck?connection-type=invalid")))))))
 
-(setting/defsetting api-test-missing-premium-feature
+(defsetting api-test-missing-premium-feature
   "A feature used for testing /settings-available (1)"
   :type :boolean
   :database-local :only
   :feature :forever-withheld-feature)
 
-(setting/defsetting api-test-missing-driver-feature
+(defsetting api-test-missing-driver-feature
   "A feature used for testing /settings-available (2)"
   :type :boolean
   :database-local :only
   ;; Something h2 will never support
   :driver-feature :test/jvm-timezone-setting)
 
-(setting/defsetting api-test-disabled-for-database
+(defsetting api-test-disabled-for-database
   "A feature used for testing /settings-available (3)"
   :type :boolean
   :default false
   :database-local :only
   :enabled-for-db? (constantly false))
 
-(setting/defsetting api-test-disabled-for-custom-reasons
+(defsetting api-test-disabled-for-custom-reasons
   "A feature used for testing /settings-available (4)"
   :type :boolean
   :database-local :only
@@ -3010,7 +3010,7 @@
                      (setting/custom-disabled-reasons! [{:key :custom/one, :type :warning, :message "Because..."}
                                                         {:key :custom/two, :type :warning, :message "Also..."}])))
 
-(setting/defsetting api-test-disabled-for-multiple-reasons
+(defsetting api-test-disabled-for-multiple-reasons
   "A feature used for testing /settings-available (5)"
   :type :boolean
   :database-local :only

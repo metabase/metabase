@@ -1,5 +1,5 @@
 import { useSetting } from "metabase/common/hooks";
-import { useDispatch, useSelector } from "metabase/utils/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { useGetRemoteSyncCurrentTaskQuery } from "metabase-enterprise/api";
 
 import { SyncProgressModal } from "../components/SyncProgressModal";

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { replace } from "react-router-redux";
 
 import { useUserKeyValue } from "metabase/common/hooks/use-user-key-value";
-import { useDispatch } from "metabase/utils/redux";
+import { useDispatch } from "metabase/redux";
 import type * as Urls from "metabase/utils/urls";
 
 import { DependencyDiagnostics } from "../../components/DependencyDiagnostics";

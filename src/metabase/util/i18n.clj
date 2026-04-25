@@ -248,7 +248,7 @@
                          ;; number of {n} placeholders in format string *not* including ones you make have skipped. e.g. "{0} {2}" -> 2
                          num-args          (count (.getFormats message-format))]
                      (assert (and (<= num-args-by-index 1) (<= num-args 1))
-                             (format "(deferred-)trsn/trun only supports a single {0} placeholder for the value `n`"))))]
+                             "(deferred-)trsn/trun only supports a single {0} placeholder for the value `n`")))]
     (validate format-string)
     (validate format-string-pl)))
 

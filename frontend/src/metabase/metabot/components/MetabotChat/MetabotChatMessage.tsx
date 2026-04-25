@@ -73,7 +73,10 @@ export const UserMessage = ({
 }: UserMessageProps) => (
   <MessageContainer chatRole={message.role} {...props}>
     {message.type === "text" && (
-      <AIMarkdown className={cx(Styles.message, Styles.messageUser)}>
+      <AIMarkdown
+        className={cx(Styles.message, Styles.messageUser)}
+        singleNewlinesAreParagraphs
+      >
         {message.message}
       </AIMarkdown>
     )}

@@ -23,13 +23,13 @@ import {
 } from "metabase/entities/collections";
 import { Databases } from "metabase/entities/databases";
 import { PLUGIN_TENANTS } from "metabase/plugins";
+import { connect, useSelector } from "metabase/redux";
 import type { State } from "metabase/redux/store";
 import {
   getIsTenantUser,
   getUser,
   getUserCanWriteToCollections,
 } from "metabase/selectors/user";
-import { connect, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { Bookmark, Collection, User } from "metabase-types/api";

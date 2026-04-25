@@ -7,7 +7,7 @@ import {
   getQuestion,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
-import { useSelector } from "metabase/utils/redux";
+import { useSelector } from "metabase/redux";
 
 export const ViewFooterDownloadWidget = () => {
   const question = useSelector(getQuestion);

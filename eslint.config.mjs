@@ -47,7 +47,7 @@ const baseMetabaseRestrictedConfig = {
     {
       name: "react-redux",
       importNames: ["useSelector", "useDispatch", "connect"],
-      message: "Please import from `metabase/utils/redux` instead.",
+      message: "Please import from `metabase/redux` instead.",
     },
     {
       name: "@mantine/core",
@@ -581,7 +581,7 @@ const configs = [
     },
   },
   {
-    files: ["frontend/src/metabase/utils/redux/hooks.ts"],
+    files: ["frontend/src/metabase/redux/hooks.ts"],
     rules: {
       "no-restricted-imports": "off",
     },
@@ -643,7 +643,7 @@ const configs = [
             {
               name: "react-redux",
               importNames: ["useSelector", "useDispatch", "connect"],
-              message: "Please import from `metabase/utils/redux` instead.",
+              message: "Please import from `metabase/redux` instead.",
             },
             {
               name: "@mantine/core",
@@ -870,7 +870,7 @@ const configs = [
               message: 'Please use "useSdkSelector", "useSdkDispatch"',
             },
             {
-              name: "metabase/utils/redux",
+              name: "metabase/redux",
               importNames: ["useStore", "useDispatch"],
               message: 'Please use "useSdkStore", "useSdkDispatch"',
             },

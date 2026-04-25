@@ -860,12 +860,12 @@
                      {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
-                     {:text (format "### [https://metabase.com](https://metabase.com)")}]
+                     {:text "### [https://metabase.com](https://metabase.com)"}]
                     (execute-dashboard (:id dashboard) collection-owner-id nil))))
           (testing "it should filter out models that current users does not have permission to read"
             (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                     {:text (format "### [https://metabase.com](https://metabase.com)")}]
+                     {:text "### [https://metabase.com](https://metabase.com)"}]
                     (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil)))))))))
 
 (deftest iframe-cards-are-skipped-test
@@ -911,13 +911,13 @@
                      {:text (format "### [New Dashboard name](%s/dashboard/%d)\nLinked Dashboard desc" site-url dashboard-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked card desc" site-url card-id)}
                      {:text (format "### [New Card name](%s/question/%d)\nLinked model desc" site-url model-id)}
-                     {:text (format "### [https://metabase.com](https://metabase.com)")}]
+                     {:text "### [https://metabase.com](https://metabase.com)"}]
                     (execute-dashboard (:id dashboard) collection-owner-id nil))))
 
           (testing "it should filter out models that current users does not have permission to read"
             (is (=? [{:text (format "### [New Database name](%s/browse/%d)\nLinked database desc" site-url database-id)}
                      {:text (format "### [Linked table dname](%s/question?db=%d&table=%d)\nLinked table desc" site-url database-id table-id)}
-                     {:text (format "### [https://metabase.com](https://metabase.com)")}]
+                     {:text "### [https://metabase.com](https://metabase.com)"}]
                     (execute-dashboard (:id dashboard) (mt/user->id :lucky) nil)))))))))
 
 (deftest execute-dashboard-with-tabs-test

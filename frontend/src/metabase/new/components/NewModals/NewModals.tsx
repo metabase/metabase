@@ -19,9 +19,9 @@ import { Collections } from "metabase/entities/collections/collections";
 import { PaletteShortcutsModal } from "metabase/palette/components/PaletteShortcutsModal/PaletteShortcutsModal";
 import { useRegisterShortcut } from "metabase/palette/hooks/useRegisterShortcut";
 import type { SdkIframeEmbedSetupModalProps } from "metabase/plugins";
+import { useDispatch, useSelector } from "metabase/redux";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { getCurrentOpenModalState } from "metabase/selectors/ui";
-import { useDispatch, useSelector } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { WritebackAction } from "metabase-types/api";
 

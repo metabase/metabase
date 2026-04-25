@@ -5,7 +5,11 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { createMockState } from "metabase/redux/store/mocks";
-import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+import {
+  createMockSettingDefinition,
+  createMockSettings,
+  createMockUser,
+} from "metabase-types/api/mocks";
 
 import { useGitSyncVisible } from "./use-git-sync-visible";
 
@@ -14,11 +18,13 @@ const setup = ({
   remoteSyncEnabled = true,
   currentBranch = "main",
   syncType = "read-write",
+  isBranchEnvSetting = false,
 }: {
   isAdmin?: boolean;
   remoteSyncEnabled?: boolean;
   currentBranch?: string | null;
   syncType?: "read-only" | "read-write";
+  isBranchEnvSetting?: boolean;
 } = {}) => {
   setupPropertiesEndpoints(
     createMockSettings({
@@ -27,7 +33,14 @@ const setup = ({
       "remote-sync-type": syncType,
     }),
   );
-  setupSettingsEndpoints([]);
+  setupSettingsEndpoints([
+    createMockSettingDefinition({
+      key: "remote-sync-branch",
+      value: currentBranch,
+      is_env_setting: isBranchEnvSetting,
+      env_name: "MB_REMOTE_SYNC_BRANCH",
+    }),
+  ]);
 
   const storeInitialState = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
@@ -107,6 +120,26 @@ describe("useGitSyncVisible", () => {
 
     await waitFor(() => {
       expect(result.current.isVisible).toBe(false);
+    });
+  });
+
+  it("should return isBranchSetByEnv: true when branch is set by environment variable", async () => {
+    const { result } = setup({
+      isBranchEnvSetting: true,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isBranchSetByEnv).toBe(true);
+    });
+  });
+
+  it("should return isBranchSetByEnv: false when branch is not set by environment variable", async () => {
+    const { result } = setup({
+      isBranchEnvSetting: false,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isBranchSetByEnv).toBe(false);
     });
   });
 });

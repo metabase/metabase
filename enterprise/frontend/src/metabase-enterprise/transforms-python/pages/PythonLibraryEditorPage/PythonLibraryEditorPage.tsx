@@ -6,9 +6,9 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/data-studio/common/components/PageContainer";
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useSelector } from "metabase/redux";
 import { Alert, Box, Card, Stack } from "metabase/ui";
 import { isResourceNotFoundError } from "metabase/utils/errors";
-import { useSelector } from "metabase/utils/redux";
 import type * as Urls from "metabase/utils/urls";
 import {
   useGetPythonLibraryQuery,

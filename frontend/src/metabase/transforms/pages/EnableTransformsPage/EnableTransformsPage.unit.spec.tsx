@@ -1,6 +1,7 @@
 import { Route } from "react-router";
 
 import {
+  setupDatabaseListEndpoint,
   setupPropertiesEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
@@ -24,6 +25,7 @@ type SetupOpts = {
 const setup = ({ isAdmin = true, tokenFeatures = {} }: SetupOpts = {}) => {
   setupPropertiesEndpoints(createMockSettings());
   setupUserMetabotPermissionsEndpoint();
+  setupDatabaseListEndpoint([]);
   const state = createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({

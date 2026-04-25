@@ -20,9 +20,9 @@ import {
 } from "metabase/querying/expressions";
 import { tokenAtPos } from "metabase/querying/expressions";
 import { COMMA, GROUP } from "metabase/querying/expressions/pratt";
+import { useSelector } from "metabase/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Button, Tooltip as ButtonTooltip, Flex, Icon } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import type * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 

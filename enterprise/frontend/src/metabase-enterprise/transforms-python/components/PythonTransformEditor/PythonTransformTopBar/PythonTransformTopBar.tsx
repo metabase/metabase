@@ -5,10 +5,10 @@ import {
   useListDatabasesQuery,
 } from "metabase/api";
 import { DatabaseDataSelector } from "metabase/querying/common/components/DataSelector";
+import { useSelector } from "metabase/redux";
 import { EditDefinitionButton } from "metabase/transforms/components/TransformEditor/EditDefinitionButton";
 import { doesDatabaseSupportTransforms } from "metabase/transforms/utils";
 import { Flex } from "metabase/ui";
-import { useSelector } from "metabase/utils/redux";
 import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
 import type { Database, DatabaseId, Transform } from "metabase-types/api";
 

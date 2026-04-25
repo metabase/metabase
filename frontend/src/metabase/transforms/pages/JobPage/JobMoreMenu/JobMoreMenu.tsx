@@ -3,8 +3,8 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useDispatch } from "metabase/redux";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
-import { useDispatch } from "metabase/utils/redux";
 import * as Urls from "metabase/utils/urls";
 import type { TransformJob } from "metabase-types/api";
 

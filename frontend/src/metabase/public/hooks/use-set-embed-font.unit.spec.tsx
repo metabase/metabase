@@ -3,10 +3,10 @@ import type { Location } from "history";
 import type { PropsWithChildren } from "react";
 
 import { mainReducers } from "metabase/reducers-main";
+import { MetabaseReduxProvider } from "metabase/redux";
 import type { EmbedState } from "metabase/redux/store";
 import { createMockState } from "metabase/redux/store/mocks";
 import { getStore } from "metabase/store";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
 
 import { useSetEmbedFont } from "./use-set-embed-font";
 

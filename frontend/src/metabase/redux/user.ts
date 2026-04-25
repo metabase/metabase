@@ -2,8 +2,8 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 
 import { Dashboards } from "metabase/entities/dashboards";
 import { CLOSE_QB_NEWB_MODAL } from "metabase/redux/query-builder";
+import { createAsyncThunk } from "metabase/redux/utils";
 import { UserApi } from "metabase/services";
-import { createAsyncThunk } from "metabase/utils/redux";
 import type { User } from "metabase-types/api";
 
 export const refreshCurrentUser = createAsyncThunk(

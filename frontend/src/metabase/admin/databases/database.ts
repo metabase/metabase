@@ -2,8 +2,8 @@ import { createAction, createReducer } from "@reduxjs/toolkit";
 import { push } from "react-router-redux";
 
 import { Databases } from "metabase/entities/databases";
+import { combineReducers } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
-import { combineReducers } from "metabase/utils/redux";
 import type { DatabaseData, DatabaseId } from "metabase-types/api";
 
 import { editParamsForUserControlledScheduling } from "./editParamsForUserControlledScheduling";
