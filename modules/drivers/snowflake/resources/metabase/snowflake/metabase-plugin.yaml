@@ -35,6 +35,13 @@ driver:
       visible-if:
         use-password: false
       required: true
+    - name: private-key-passphrase
+      display-name: Passphrase for RSA private key
+      helper-text: Use only if your private key is encrypted. This is not your Snowflake user password.
+      type: password
+      visible-if:
+        use-password: false
+      required: false
     - merge:
       - password
       - visible-if:
