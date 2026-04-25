@@ -349,9 +349,14 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     // We don't cache the iframe content, so random query parameter does not break caching.
     this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}?${EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME}=${_iframeCounter++}`;
     this._iframe.style.width = "100%";
-    this._iframe.style.height = "100%";
+
+    // Issue #71512: give the iframe enough initial space to render before resize messages arrive
+    this._iframe.style.height = "600px";
+
     this._iframe.style.border = "none";
-    this._iframe.style.minHeight = "600px";
+
+    // Issue #71512: remove large default minHeight that prevents shrinking
+    this._iframe.style.minHeight = "0";
 
     this._iframe.setAttribute("data-metabase-embed", "true");
 
@@ -432,8 +437,13 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       this._emitEvent({ type: "ready" });
     }
 
-    if (event.data.type === "metabase.embed.requestSessionToken") {
-      await this._authenticate();
+    // Issue #71512: fix iframe not shrinking by always applying latest height
+    if (event.data.type === "metabase.embed.frame") {
+      const height = event.data.data?.height;
+
+      if (this._iframe && typeof height === "number") {
+        this._iframe.style.height = `${Math.ceil(height)}px`;
+      }
     }
 
     // Note: if we wrap other functions like this, let's come up with a generic utility function

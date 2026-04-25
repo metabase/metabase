@@ -13,7 +13,7 @@ export const IS_EMBED_PREVIEW = IFRAMED_IN_SELF;
 export function initializeEmbedding(store) {
   if (isWithinIframe()) {
     let currentHref;
-    let currentFrame;
+    //let currentFrame;
     // NOTE: history.listen and window's onhashchange + popstate events were not
     // enough to catch all URL changes, so just poll for now :(
     setInterval(() => {
@@ -27,13 +27,16 @@ export function initializeEmbedding(store) {
         currentHref = location.href;
       }
       const frame = getFrameSpec();
-      if (!_.isEqual(currentFrame, frame)) {
-        sendMessage({
-          type: "frame",
-          frame: frame,
-        });
-        currentFrame = frame;
-      }
+
+      // Issue #71512: static embeds can grow but fail to shrink when content
+      // becomes shorter, so always send frame updates instead of relying on
+      // equality checks that can miss shrink events.
+      sendMessage({
+        type: "frame",
+        frame: frame,
+      });
+
+      //currentFrame = frame;
     }, 100);
     window.addEventListener("message", (e) => {
       if (e.source === window.parent && e.data.metabase) {
@@ -54,7 +57,17 @@ function sendMessage(message) {
   //  2) The risk should be very low because
   //      - the data we sent is not sensitive data (frame size, current URL)
   //      - we are already using frame ancestor policy to limit domains that can embed metabase
-  window.parent.postMessage({ metabase: message }, "*");
+  // Issue #71512: force parent to apply updated height even when shrinking
+  window.parent.postMessage(
+    {
+      metabase: {
+        ...message,
+        // signal parent to always apply height
+        force: true,
+      },
+    },
+    "*",
+  );
 }
 
 function isFitViewportMode() {
@@ -72,13 +85,22 @@ function isFitViewportMode() {
 function getFrameSpec() {
   if (isFitViewportMode()) {
     return { mode: "fit", height: getScrollHeight() };
-  } else {
-    return { mode: "normal", height: document.body.scrollHeight };
   }
-}
 
-function defaultGetScrollHeight() {
-  return document.body.scrollHeight;
+  // Issue #71512: static embeds can keep the previous larger document height
+  // after switching to shorter content. Measure the visible embed content
+  // directly so the parent frame can shrink.
+  const mainContent =
+    document.querySelector("main") ??
+    document.querySelector("[role='main']") ??
+    document.getElementById("root")?.firstElementChild;
+
+  const height = mainContent?.getBoundingClientRect().height;
+
+  return {
+    mode: "normal",
+    height: Math.ceil(height ?? document.body.scrollHeight),
+  };
 }
 
 function getScrollHeight() {
@@ -96,5 +118,10 @@ function getScrollHeight() {
     return appBarHeight + dashboardHeight;
   }
 
-  return defaultGetScrollHeight();
+  // Issue #71512: static embeds can shrink when using the visible content height
+  // instead of the document height, which may retain the previous larger size.
+  const root = document.getElementById("root");
+  const rootContent = root?.firstElementChild;
+
+  return rootContent?.scrollHeight ?? document.body.scrollHeight;
 }

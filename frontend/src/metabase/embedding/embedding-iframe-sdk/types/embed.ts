@@ -26,17 +26,26 @@ import type { EmbeddingEntityType } from "metabase-types/store/embedding-data-pi
 export type SdkIframeEmbedTagMessage =
   | SdkIframeEmbedTagIframeReadyMessage
   | SdkIframeEmbedTagRequestSessionTokenMessage
-  | SdkIframeEmbedTagHandleLinkMessage;
+  | SdkIframeEmbedTagHandleLinkMessage
+  | SdkIframeEmbedFrameMessage;
 
 export type SdkIframeEmbedTagIframeReadyMessage = {
   type: "metabase.embed.iframeReady";
 };
+
 export type SdkIframeEmbedTagRequestSessionTokenMessage = {
   type: "metabase.embed.requestSessionToken";
 };
+
 export type SdkIframeEmbedTagHandleLinkMessage = {
   type: "metabase.embed.handleLink";
   data: { url: string; requestId: string };
+};
+
+// Issue #71512: allow iframe to send height updates so parent can resize dynamically.
+export type SdkIframeEmbedFrameMessage = {
+  type: "metabase.embed.frame";
+  data: { height: number };
 };
 
 /** Events that the sdk embed route listens for */
