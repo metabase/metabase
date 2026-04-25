@@ -4,7 +4,7 @@ import { METABOT_SDK_EE_PLUGIN } from "embedding-sdk-bundle/components/public/Me
 import { useMetabot } from "embedding-sdk-bundle/hooks/public/use-metabot";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { publishMetabotState } from "embedding-sdk-shared/lib/metabot-state-channel";
-import { MetabaseReduxProvider } from "metabase/utils/redux";
+import { MetabaseReduxProvider } from "metabase/redux";
 
 type Props = {
   store: SdkStore;
